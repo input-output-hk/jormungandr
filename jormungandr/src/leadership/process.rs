@@ -20,6 +20,7 @@ use jormungandr_lib::{
     interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
 };
+use slog::Logger;
 use std::{
     collections::VecDeque,
     sync::Arc,
@@ -312,175 +313,19 @@ impl Module {
     }
 
     fn action_run_entry(self, entry: Entry) -> impl Future<Item = Self, Error = LeadershipError> {
-        let event = entry.event;
-        let event_logs = entry.log;
         let now = SystemTime::now();
-        let event_start = self.event_slot_time(&event);
-        let event_end = self.event_following_slot_time(&event);
+        let event_start = self.event_slot_time(&entry.event);
+        let event_end = self.event_following_slot_time(&entry.event);
 
         let logger = self.service_info.logger().new(o!(
-            "leader_id" => event.id.to_string(),
-            "event_date" => event.date.to_string(),
+            "leader_id" => entry.event.id.to_string(),
+            "event_date" => entry.event.date.to_string(),
             "event_start" => event_start.to_string(),
             "event_end" => event_end.to_string(),
         ));
 
         if event_start <= now && now <= event_end {
-            // we can safely unwrap here as we just proved that `now <= event_end`
-            // so that `now` is earlier to `event_end`.
-            //
-            // This gives us the remaining time to the execute the
-            // block building (including block selection) and to submit the block
-            // to the network.
-            let remaining_time = event_end.as_ref().duration_since(now.into()).unwrap();
-            let deadline = Instant::now() + remaining_time;
-
-            info!(
-                logger,
-                "Leader event started" ;
-                "event_remaining_time" => jormungandr_lib::time::Duration::from(remaining_time).to_string()
-            );
-
-            let enclave = self.enclave.clone();
-            let sender = self.block_message.clone();
-            let pool = self.pool.clone();
-
-            let (parent_id, chain_length, ledger, ledger_parameters) = if self.tip_ref.block_date()
-                < event.date
-            {
-                (
-                    self.tip_ref.hash(),
-                    self.tip_ref.chain_length().increase(),
-                    Arc::clone(self.tip_ref.ledger()),
-                    Arc::clone(self.tip_ref.epoch_ledger_parameters()),
-                )
-            } else {
-                // it appears we are either competing against another stake pool for the same
-                // slot or we are a bit behind schedule
-                //
-                // TODO: check up to a certain distance a valid block to use as parent
-                //       for now we will simply exit early
-                //
-                // * reminder that there is a timeout
-                // * jumping epoch is might not be acceptable
-
-                warn!(
-                        logger,
-                        "It appears the node is running a bit behind schedule, system time might be off?"
-                    );
-
-                let tell_user_about_failure = event_logs.set_status(
-                    LeadershipLogStatus::Rejected {
-                        reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
-                    }
-                );
-
-                return Either::B(Either::A(tell_user_about_failure.map(|()| self)));
-            };
-
-            let eval_context = HeaderContentEvalContext {
-                block_date: event.date,
-                chain_length,
-                nonce: None,
-            };
-
-            let preparation = prepare_block(pool, eval_context, &ledger, ledger_parameters);
-
-            let event_logs_error = event_logs.clone();
-            let signing = preparation.and_then(move |contents| {
-                let ver = match event.output {
-                    LeaderOutput::None => BlockVersion::Genesis,
-                    LeaderOutput::Bft(_) => BlockVersion::Ed25519Signed,
-                    LeaderOutput::GenesisPraos(..) => BlockVersion::KesVrfproof,
-                };
-                let hdr_builder = HeaderBuilderNew::new(ver, &contents)
-                    .set_parent(&parent_id, chain_length)
-                    .set_date(event.date);
-                match event.output {
-                    LeaderOutput::None => {
-                        let header = hdr_builder.to_unsigned_header().unwrap().generalize();
-                        Either::A(future::ok(Some(Block { header, contents })))
-                    }
-                    LeaderOutput::Bft(leader_id) => {
-                        let final_builder = hdr_builder
-                            .to_bft_builder()
-                            .unwrap()
-                            .set_consensus_data(&leader_id);
-                        Either::B(Either::A(
-                            enclave
-                                .query_header_bft_finalize(final_builder, event.id)
-                                .map(|h| {
-                                    Some(Block {
-                                        header: h.generalize(),
-                                        contents,
-                                    })
-                                })
-                                .or_else(move |e| {
-                                    event_logs_error
-                                        .set_status(LeadershipLogStatus::Rejected {
-                                            reason: format!("Cannot sign the block: {}", e),
-                                        })
-                                        .map(|()| None)
-                                }),
-                        ))
-                    }
-                    LeaderOutput::GenesisPraos(node_id, vrfproof) => {
-                        let final_builder = hdr_builder
-                            .to_genesis_praos_builder()
-                            .unwrap()
-                            .set_consensus_data(&node_id, &vrfproof.into());
-                        Either::B(Either::B(
-                            enclave
-                                .query_header_genesis_praos_finalize(final_builder, event.id)
-                                .map(|h| {
-                                    Some(Block {
-                                        header: h.generalize(),
-                                        contents,
-                                    })
-                                })
-                                .or_else(move |e| {
-                                    event_logs_error
-                                        .set_status(LeadershipLogStatus::Rejected {
-                                            reason: format!("Cannot sign the block: {}", e),
-                                        })
-                                        .map(|()| None)
-                                }),
-                        ))
-                    }
-                }
-            });
-
-            let event_logs_success = event_logs.clone();
-            let send_block = signing.and_then(|block| {
-                if let Some(block) = block {
-                    let id = block.header.hash();
-                    let chain_length: u32 = block.header.chain_length().into();
-                    Either::A(
-                        sender
-                            .send(BlockMsg::LeadershipBlock(block))
-                            .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
-                            .and_then(move |_| {
-                                event_logs_success.set_status(LeadershipLogStatus::Block {
-                                    block: id.into(),
-                                    chain_length,
-                                })
-                            }),
-                    )
-                } else {
-                    Either::B(future::ok(()))
-                }
-            });
-
-            let timeout = Timeout::new_at(send_block, deadline)
-                .or_else(move |timeout_error| {
-                    error!(logger, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
-                    event_logs.set_status(LeadershipLogStatus::Rejected {
-                        reason: "Failed to compute the schedule within time boundaries".to_owned()
-                    })
-                })
-                .map(|_| self);
-
-            Either::A(timeout)
+            Either::A(self.action_run_entry_in_bound(entry, logger, event_end))
         } else {
             // the event happened out of bounds, ignore it and move to the next one
             error!(
@@ -488,12 +333,194 @@ impl Module {
                 "Eek... we missed an event schedule, system time might be off?"
             );
 
-            let tell_user_about_failure = event_logs.set_status(LeadershipLogStatus::Rejected {
+            let tell_user_about_failure = entry.log.set_status(LeadershipLogStatus::Rejected {
                 reason: "Missed the deadline to compute the schedule".to_owned(),
             });
 
-            Either::B(Either::B(tell_user_about_failure.map(|()| self)))
+            Either::B(tell_user_about_failure.map(|()| self))
         }
+    }
+
+    fn action_run_entry_in_bound(
+        self,
+        entry: Entry,
+        logger: Logger,
+        event_end: SystemTime,
+    ) -> impl Future<Item = Self, Error = LeadershipError> {
+        let event_logs = entry.log.clone();
+        let now = SystemTime::now();
+
+        // we can safely unwrap here as we just proved that `now <= event_end`
+        // so that `now` is earlier to `event_end`.
+        //
+        // This gives us the remaining time to the execute the
+        // block building (including block selection) and to submit the block
+        // to the network.
+        let remaining_time = event_end
+            .as_ref()
+            .duration_since(now.into())
+            .expect("event end in the future");
+        let deadline = Instant::now() + remaining_time;
+
+        let logger = logger.new(o!(
+            "event_remaining_time" => jormungandr_lib::time::Duration::from(remaining_time).to_string()
+        ));
+
+        info!(logger, "Leader event started");
+
+        let timed_out_log = logger.clone();
+        Timeout::new_at(self.action_run_entry_build_block(entry, logger), deadline)
+            .or_else(move |timeout_error| {
+                error!(timed_out_log, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
+                event_logs.set_status(LeadershipLogStatus::Rejected {
+                    reason: "Failed to compute the schedule within time boundaries".to_owned()
+                })
+            })
+            .map(|_| self)
+    }
+
+    fn action_run_entry_build_block(
+        &self,
+        entry: Entry,
+        logger: Logger,
+    ) -> impl Future<Item = (), Error = LeadershipError> {
+        let event = entry.event;
+        let event_logs = entry.log;
+
+        let enclave = self.enclave.clone();
+        let sender = self.block_message.clone();
+        let pool = self.pool.clone();
+
+        let (parent_id, chain_length, ledger, ledger_parameters) = if self.tip_ref.block_date()
+            < event.date
+        {
+            (
+                self.tip_ref.hash(),
+                self.tip_ref.chain_length().increase(),
+                Arc::clone(self.tip_ref.ledger()),
+                Arc::clone(self.tip_ref.epoch_ledger_parameters()),
+            )
+        } else {
+            // it appears we are either competing against another stake pool for the same
+            // slot or we are a bit behind schedule
+            //
+            // TODO: check up to a certain distance a valid block to use as parent
+            //       for now we will simply exit early
+            //
+            // * reminder that there is a timeout
+            // * jumping epoch is might not be acceptable
+
+            warn!(
+                logger,
+                "It appears the node is running a bit behind schedule, system time might be off?"
+            );
+
+            let tell_user_about_failure = event_logs.set_status(
+                    LeadershipLogStatus::Rejected {
+                        reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
+                    }
+                );
+
+            return Either::B(tell_user_about_failure);
+        };
+
+        let eval_context = HeaderContentEvalContext {
+            block_date: event.date,
+            chain_length,
+            nonce: None,
+        };
+
+        let preparation = prepare_block(pool, eval_context, &ledger, ledger_parameters);
+
+        let event_logs_error = event_logs.clone();
+        let signing = preparation.and_then(move |contents| {
+            let ver = match event.output {
+                LeaderOutput::None => BlockVersion::Genesis,
+                LeaderOutput::Bft(_) => BlockVersion::Ed25519Signed,
+                LeaderOutput::GenesisPraos(..) => BlockVersion::KesVrfproof,
+            };
+            let hdr_builder = HeaderBuilderNew::new(ver, &contents)
+                .set_parent(&parent_id, chain_length)
+                .set_date(event.date);
+            match event.output {
+                LeaderOutput::None => {
+                    let header = hdr_builder
+                        .to_unsigned_header()
+                        .expect("Valid Header Builder")
+                        .generalize();
+                    Either::A(future::ok(Some(Block { header, contents })))
+                }
+                LeaderOutput::Bft(leader_id) => {
+                    let final_builder = hdr_builder
+                        .to_bft_builder()
+                        .expect("Valid Header Builder")
+                        .set_consensus_data(&leader_id);
+                    Either::B(Either::A(
+                        enclave
+                            .query_header_bft_finalize(final_builder, event.id)
+                            .map(|h| {
+                                Some(Block {
+                                    header: h.generalize(),
+                                    contents,
+                                })
+                            })
+                            .or_else(move |e| {
+                                event_logs_error
+                                    .set_status(LeadershipLogStatus::Rejected {
+                                        reason: format!("Cannot sign the block: {}", e),
+                                    })
+                                    .map(|()| None)
+                            }),
+                    ))
+                }
+                LeaderOutput::GenesisPraos(node_id, vrfproof) => {
+                    let final_builder = hdr_builder
+                        .to_genesis_praos_builder()
+                        .expect("Valid Header Builder")
+                        .set_consensus_data(&node_id, &vrfproof.into());
+                    Either::B(Either::B(
+                        enclave
+                            .query_header_genesis_praos_finalize(final_builder, event.id)
+                            .map(|h| {
+                                Some(Block {
+                                    header: h.generalize(),
+                                    contents,
+                                })
+                            })
+                            .or_else(move |e| {
+                                event_logs_error
+                                    .set_status(LeadershipLogStatus::Rejected {
+                                        reason: format!("Cannot sign the block: {}", e),
+                                    })
+                                    .map(|()| None)
+                            }),
+                    ))
+                }
+            }
+        });
+
+        let event_logs_success = event_logs.clone();
+        let send_block = signing.and_then(|block| {
+            if let Some(block) = block {
+                let id = block.header.hash();
+                let chain_length: u32 = block.header.chain_length().into();
+                Either::A(
+                    sender
+                        .send(BlockMsg::LeadershipBlock(block))
+                        .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
+                        .and_then(move |_| {
+                            event_logs_success.set_status(LeadershipLogStatus::Block {
+                                block: id.into(),
+                                chain_length,
+                            })
+                        }),
+                )
+            } else {
+                Either::B(future::ok(()))
+            }
+        });
+
+        Either::A(send_block)
     }
 
     fn action_schedule(self) -> impl Future<Item = Self, Error = LeadershipError> {
