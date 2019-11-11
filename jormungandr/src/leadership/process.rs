@@ -525,7 +525,7 @@ impl Module {
             // The only reason this would happen is if we had accepted a block
             // that is set in the future or our system local date time is off
 
-            crit!(
+            error!(
                 logger,
                 "It seems the current epoch tip is way ahead of its time."
             );
