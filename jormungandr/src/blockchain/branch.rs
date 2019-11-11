@@ -97,7 +97,7 @@ impl Branch {
         }
     }
 
-    pub fn get_ref(&self) -> impl Future<Item = Arc<Ref>, Error = Infallible> {
+    pub fn get_ref<E>(&self) -> impl Future<Item = Arc<Ref>, Error = E> {
         let mut branch = self.inner.clone();
         future::poll_fn(move || Ok(branch.poll_lock())).map(|guard| guard.reference().clone())
     }
