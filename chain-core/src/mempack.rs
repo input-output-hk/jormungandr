@@ -136,6 +136,12 @@ impl<'a> ReadBuf<'a> {
         s
     }
 
+    pub fn into_slice_mut(&mut self, slice: &mut [u8]) -> Result<(), ReadError> {
+        let s = self.get_slice(slice.len())?;
+        slice.copy_from_slice(s);
+        Ok(())
+    }
+
     /// Return a sub-buffer ending at the given byte offset
     pub fn split_to(&mut self, sz: usize) -> Result<ReadBuf<'a>, ReadError> {
         let slice = self.get_slice(sz)?;
