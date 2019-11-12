@@ -1,6 +1,7 @@
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::certificate::{
-    Certificate, PoolOwnersSigned, PoolRegistration, SignedCertificate, StakeDelegation,
+    Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
+    StakeDelegation,
 };
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::{
@@ -54,19 +55,19 @@ impl Sign {
                 let sclone = s.clone();
                 let txbuilder = Transaction::block0_payload_builder(&s);
                 pool_owner_sign(s, Some(&sclone), &keys_str, txbuilder, |c, a| {
-                    SignedCertificate::PoolRegistration(c, a)
+                    SignedCertificate::PoolRegistration(c, PoolSignature::Owners(a))
                 })?
             }
             Certificate::PoolRetirement(s) => {
                 let txbuilder = Transaction::block0_payload_builder(&s);
                 pool_owner_sign(s, None, &keys_str, txbuilder, |c, a| {
-                    SignedCertificate::PoolRetirement(c, a)
+                    SignedCertificate::PoolRetirement(c, PoolSignature::Owners(a))
                 })?
             }
             Certificate::PoolUpdate(s) => {
                 let txbuilder = Transaction::block0_payload_builder(&s);
                 pool_owner_sign(s, None, &keys_str, txbuilder, |c, a| {
-                    SignedCertificate::PoolUpdate(c, a)
+                    SignedCertificate::PoolUpdate(c, PoolSignature::Owners(a))
                 })?
             }
             Certificate::OwnerStakeDelegation(_) => {
@@ -123,13 +124,10 @@ where
         .collect();
     let keys = keys?;
 
-    let keys: Vec<(u16, &EitherEd25519SecretKey)> = match mreg {
+    let keys: Vec<(u8, &EitherEd25519SecretKey)> = match mreg {
         None => {
             // here we don't know the order of things, so just assume sequential index from 0
-            keys.iter()
-                .enumerate()
-                .map(|(i, k)| (i as u16, k))
-                .collect()
+            keys.iter().enumerate().map(|(i, k)| (i as u8, k)).collect()
         }
         Some(reg) => {
             //let pks = &reg.owners;
@@ -139,7 +137,7 @@ where
                 // look for the owner's index of k
                 match reg.owners.iter().enumerate().find(|(_, p)| *p == &pk) {
                     None => return Err(Error::KeyNotFound { index: isk }),
-                    Some((ipk, _)) => found.push((ipk as u16, k)),
+                    Some((ipk, _)) => found.push((ipk as u8, k)),
                 }
             }
             found

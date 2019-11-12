@@ -1,7 +1,7 @@
 use chain_addr::Address;
 use chain_impl_mockchain::{
     self as chain,
-    certificate::{Certificate, CertificatePayload, SignedCertificate},
+    certificate::{Certificate, CertificatePayload, PoolSignature, SignedCertificate},
     fee::FeeAlgorithm,
     fragment::Fragment,
     transaction::{
@@ -136,7 +136,7 @@ impl Staging {
                     let pool_reg = Some(&sclone);
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
                     let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
-                        SignedCertificate::PoolRegistration(p, pos)
+                        SignedCertificate::PoolRegistration(p, PoolSignature::Owners(pos))
                     })
                     .map_err(|e| Error::CertificateError { error: e })?;
                     self.extra_authed = Some(sc.into())
@@ -145,7 +145,7 @@ impl Staging {
                     let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
                     let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
-                        SignedCertificate::PoolRetirement(p, pos)
+                        SignedCertificate::PoolRetirement(p, PoolSignature::Owners(pos))
                     })
                     .map_err(|e| Error::CertificateError { error: e })?;
                     self.extra_authed = Some(sc.into())
@@ -154,7 +154,7 @@ impl Staging {
                     let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
                     let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
-                        SignedCertificate::PoolUpdate(p, pos)
+                        SignedCertificate::PoolUpdate(p, PoolSignature::Owners(pos))
                     })
                     .map_err(|e| Error::CertificateError { error: e })?;
                     self.extra_authed = Some(sc.into())
