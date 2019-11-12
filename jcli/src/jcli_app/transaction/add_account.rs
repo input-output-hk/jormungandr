@@ -24,8 +24,12 @@ impl AddAccount {
         let mut transaction = self.common.load()?;
 
         let account_id = match Address::from(self.account).kind() {
-            Kind::Account(key) => UnspecifiedAccountIdentifier::from_single_account(key.clone().into()),
-            Kind::Multisig(key) => UnspecifiedAccountIdentifier::from_multi_account(key.clone().into()),
+            Kind::Account(key) => {
+                UnspecifiedAccountIdentifier::from_single_account(key.clone().into())
+            }
+            Kind::Multisig(key) => {
+                UnspecifiedAccountIdentifier::from_multi_account(key.clone().into())
+            }
             Kind::Single(_) => return Err(Error::AccountAddressSingle),
             Kind::Group(_, _) => return Err(Error::AccountAddressGroup),
         };

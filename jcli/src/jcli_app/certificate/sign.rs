@@ -7,7 +7,8 @@ use chain_impl_mockchain::certificate::{
 };
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::{
-    AccountBindingSignature, Payload, SetAuthData, Transaction, TxBuilderState, SingleAccountBindingSignature,
+    AccountBindingSignature, Payload, SetAuthData, SingleAccountBindingSignature, Transaction,
+    TxBuilderState,
 };
 use jormungandr_lib::interfaces;
 use std::ops::Deref;
