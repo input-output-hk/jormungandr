@@ -104,16 +104,14 @@ pub type PoolOwnersSigned = PoolOwnersSignature;
 
 impl PoolRegistration {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
-        let oo = oo_mux(self.owners.len(), self.operators.len());
         bb.u128(self.serial)
             .u64(self.start_validity.into())
             .u64(self.permissions.0)
-            .u8(0).u8(0).u8(0).u8(oo)
-            .fold(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
-            .fold(&mut self.operators.iter(), |bb, o| bb.bytes(o.as_ref()))
-            .sub(|sbb| self.rewards.serialize_in(sbb))
             .bytes(self.keys.vrf_public_key.as_ref())
             .bytes(self.keys.kes_public_key.as_ref())
+            .iter8(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
+            .iter8(&mut self.operators.iter(), |bb, o| bb.bytes(o.as_ref()))
+            .sub(|sbb| self.rewards.serialize_in(sbb))
     }
     pub fn serialize(&self) -> ByteArray<Self> {
         self.serialize_in(ByteBuilder::new()).finalize()
@@ -261,32 +259,21 @@ impl Readable for PoolRegistration {
         let permissions = PoolPermissions::from_u64(buf.get_u64()?).ok_or(
             ReadError::StructureInvalid("permission value not correct".to_string()),
         )?;
+        let keys = GenesisPraosLeader::read(buf)?;
 
-        let p1 = buf.get_u8()?;
-        let p2 = buf.get_u8()?;
-        let p3 = buf.get_u8()?;
-
-        if p1 != 0 || p2 != 0 || p3 != 0 {
-            Err(ReadError::StructureInvalid("pool registration padding is invalid".to_string()))?
-        }
-
-        let oo_nb = buf.get_u8()?;
-
-        let (owners_nb, operators_nb) = oo_demux(oo_nb)
-            .ok_or(ReadError::StructureInvalid("size owners-operators invalid".to_string()))?;
-
+        let owners_nb = buf.get_u8()?;
         let mut owners = Vec::with_capacity(owners_nb as usize);
         for _ in 0..owners_nb {
             owners.push(deserialize_public_key(buf)?);
         }
 
+        let operators_nb = buf.get_u8()?;
         let mut operators = Vec::with_capacity(operators_nb as usize);
         for _ in 0..operators_nb {
             operators.push(deserialize_public_key(buf)?);
         }
 
         let rewards = TaxType::read_frombuf(buf)?;
-        let keys = GenesisPraosLeader::read(buf)?;
 
         let info = Self {
             serial,
@@ -331,16 +318,13 @@ impl Payload for PoolRegistration {
 impl PoolSignature {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         match self {
-            PoolSignature::Operator(op) => {
-                bb.u8(0).bytes(op.0.as_ref())
-            }
+            PoolSignature::Operator(op) => bb.u8(0).bytes(op.0.as_ref()),
             PoolSignature::Owners(owners) => {
                 assert!(owners.signatures.len() > 0);
                 assert!(owners.signatures.len() < 256);
                 bb.iter8(&mut owners.signatures.iter(), |bb, (i, s)| {
                     bb.u8(*i).bytes(s.as_ref())
                 })
-
             }
         }
     }
@@ -352,9 +336,7 @@ impl PoolSignature {
     ) -> Verification {
         match self {
             PoolSignature::Operator(_) => Verification::Failed,
-            PoolSignature::Owners(owners) => {
-                owners.verify(pool_info, verify_data)
-            }
+            PoolSignature::Owners(owners) => owners.verify(pool_info, verify_data),
         }
     }
 }
@@ -415,7 +397,9 @@ impl Readable for PoolOwnersSigned {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
         let sigs_nb = buf.get_u8()? as usize;
         if sigs_nb == 0 {
-            Err(ReadError::StructureInvalid("pool owner signature with 0 signatures".to_string()))?
+            Err(ReadError::StructureInvalid(
+                "pool owner signature with 0 signatures".to_string(),
+            ))?
         }
         let mut signatures = Vec::new();
         for _ in 0..sigs_nb {
@@ -435,34 +419,7 @@ impl Readable for PoolSignature {
                 let sig = deserialize_signature(buf)?;
                 Ok(PoolSignature::Operator(AccountBindingSignature(sig)))
             }
-            _ => PoolOwnersSigned::read(buf).map(PoolSignature::Owners)
+            _ => PoolOwnersSigned::read(buf).map(PoolSignature::Owners),
         }
-    }
-}
-
-// Operator-Owners-size (de-)multiplexing
-// 5 bits for the owners for a maximum of 31 elements
-// 2 bits for the operators for a maximum of 3 elements
-// 1 bit of unused set to 0
-
-const OO_OWNERS_BITMASK : u8 = 0b1_1111;
-const OO_OPERATORS_BITMASK : u8 = 0b11;
-const OO_OPERATORS_SHIFT : u32 = OO_OWNERS_BITMASK.count_ones();
-const OO_UNUSED_BITMASK : u8 = 0b1000_0000;
-
-fn oo_mux(owners: usize, operators: usize) -> u8 {
-    assert!(owners < 32);
-    assert!(operators < 4);
-    (owners | (operators << OO_OPERATORS_SHIFT)) as u8
-}
-
-fn oo_demux(v: u8) -> Option<(usize, usize)> {
-    if v & OO_UNUSED_BITMASK != 0 {
-        None
-    } else {
-        Some((
-            (v & OO_OWNERS_BITMASK) as usize,
-            ((v >> OO_OPERATORS_SHIFT) & OO_OPERATORS_BITMASK) as usize
-        ))
     }
 }

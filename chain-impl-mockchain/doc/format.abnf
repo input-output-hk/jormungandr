@@ -94,21 +94,20 @@ POOL-UPDATE       = UPDATE-CERT IOW POOL-SIG
 REGISTRATION-CERT = POOL-SERIAL
                     TIME-SINCE-EPOCH0
                     POOL-PERMISSIONS
-                    %x00 %x00 %x00 ; padding
-                    SIZE-ELEMENT-OO
+                    POOL-KEYS
                     POOL-OWNERS
                     POOL-OPERATORS
                     POOL-REWARD-SCHM
+                    POOL-REWARD-ACNT
 POOL-SERIAL       = 16OCTET
 POOL-PERMISSIONS  = U64 ; for now management threshold
-POOL-OWNERS       = 1*31POOL-OWNER
-POOL-OPERATORS    = 0*3POOL-OWNER
-POOL-REWARD-SCHM  = 4*U64 ; fixed, ratio numerator, denominator, and optional limit value
-POOL-KEYS         = VRF_PUBLICKEY KES_PUBLICKEY
-POOL-OPERATOR     = %x00 / (%x01 SINGLE-ACNT-ID)
-
-POOL-OWNERS       = SIZE-ELEMENT-1-31 1*31POOL-OWNER
-POOL-OPERATORS    = SIZE-ELEMENT-0-4 0*3POOL-OPERATOR
+POOL-OWNERS       = SIZE-ELEMENT-1-31 1*31POOL-OWNER  ; ledger allow between 1 and 31
+POOL-OPERATORS    = SIZE-ELEMENT-0-3 0*3POOL-OPERATOR ; ledger allow between 0 and 3
+POOL-OWNER        = SINGLE-ACNT-ID
+POOL-OPERATOR     = SINGLE-ACNT-ID
+POOL-REWARD-SCHM  = 4U64 ; fixed, ratio numerator, denominator, and optional limit value
+POOL-REWARD-ACNT  = OPTIONAL-ACNT-ID
+POOL-KEYS         = VRF-PUBLICKEY KES-PUBLICKEY
 
 RETIREMENT-CERT   = POOL-ID
                     TIME-SINCE-EPOCH0 ; time in seconds
