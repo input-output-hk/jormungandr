@@ -32,7 +32,7 @@ pub struct StakePoolRegistration {
     pub owners: Vec<PublicKey<Ed25519>>,
     /// public key of the operators(s)
     #[structopt(
-        long = "operators",
+        long = "operator",
         name = "OPERATOR_KEY",
         parse(try_from_str = "parse_pub_key")
     )]
