@@ -1,9 +1,12 @@
 use crate::{
     account::SpendingCounter,
-    fragment::{FragmentId, Fragment},
+    fragment::{Fragment, FragmentId},
     header::HeaderId,
-    testing::{KeysDb, ledger::TestLedger},
-    transaction::{AccountIdentifier, Transaction, NoExtra, TxBuilder, Input, InputEnum, Output, Witness, UtxoPointer},
+    testing::{ledger::TestLedger, KeysDb},
+    transaction::{
+        Input, InputEnum, NoExtra, Output, Transaction, TxBuilder, UnspecifiedAccountIdentifier,
+        UtxoPointer, Witness,
+    },
     value::Value,
 };
 use chain_addr::{Address, Kind};
@@ -74,34 +77,46 @@ impl TestTxBuilder {
         TestTx { tx }
     }
 
-    pub fn inputs_to_outputs(self, kdb: &KeysDb, testledger: &mut TestLedger, sources: &[Output<Address>], destination: &[Output<Address>]) -> TestTx {
-        let inputs : Vec<_> = sources.iter().map(|out| {
-            match out.address.kind() {
-                Kind::Single(_) | Kind::Group(..) => {
-                    let fragments = testledger.utxodb.find_fragments(&out);
+    pub fn inputs_to_outputs(
+        self,
+        kdb: &KeysDb,
+        testledger: &mut TestLedger,
+        sources: &[Output<Address>],
+        destination: &[Output<Address>],
+    ) -> TestTx {
+        let inputs: Vec<_> = sources
+            .iter()
+            .map(|out| {
+                match out.address.kind() {
+                    Kind::Single(_) | Kind::Group(..) => {
+                        let fragments = testledger.utxodb.find_fragments(&out);
 
-                    if fragments.len() == 0 {
-                        panic!("trying to do a inputs_to_outputs with unknown single utxo")
+                        if fragments.len() == 0 {
+                            panic!("trying to do a inputs_to_outputs with unknown single utxo")
+                        }
+
+                        // Take the first one ..
+                        let (fragment_id, idx) = fragments[0];
+
+                        Input::from_utxo(UtxoPointer {
+                            transaction_id: fragment_id,
+                            output_index: idx,
+                            value: out.value,
+                        })
                     }
-
-                    // Take the first one ..
-                    let (fragment_id, idx) = fragments[0];
-
-                    Input::from_utxo(UtxoPointer {
-                        transaction_id: fragment_id,
-                        output_index: idx,
-                        value: out.value,
-                    })
+                    Kind::Account(pk) => {
+                        let aid =
+                            UnspecifiedAccountIdentifier::from_single_account(pk.clone().into());
+                        Input::from_account(aid, out.value)
+                    }
+                    Kind::Multisig(pk) => {
+                        let aid =
+                            UnspecifiedAccountIdentifier::from_multi_account(pk.clone().into());
+                        Input::from_account(aid, out.value)
+                    }
                 }
-                Kind::Account(pk) => {
-                    let aid = AccountIdentifier::from_single_account(pk.clone().into());
-                    Input::from_account(aid, out.value)
-                }
-                Kind::Multisig(_) => {
-                    unimplemented!()
-                }
-            }
-        }).collect();
+            })
+            .collect();
 
         let tx_builder = TxBuilder::new()
             .set_payload(&NoExtra)

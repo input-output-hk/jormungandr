@@ -44,7 +44,7 @@ pub type AuthenticatedTransaction<P> = Transaction<P>;
 
 #[cfg(test)]
 mod test {
-    use super::element::AccountBindingSignature;
+    use super::element::SingleAccountBindingSignature;
     use super::*;
     use crate::certificate::OwnerStakeDelegation;
     use quickcheck::{Arbitrary, Gen, TestResult};
@@ -201,9 +201,15 @@ mod test {
         }
     }
 
+    impl Arbitrary for SingleAccountBindingSignature {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            SingleAccountBindingSignature(Arbitrary::arbitrary(g))
+        }
+    }
+
     impl Arbitrary for AccountBindingSignature {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            AccountBindingSignature(Arbitrary::arbitrary(g))
+            AccountBindingSignature::Single(Arbitrary::arbitrary(g))
         }
     }
 }

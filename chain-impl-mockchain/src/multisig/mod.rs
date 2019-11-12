@@ -19,6 +19,7 @@ mod test {
     use crate::{account, key};
     use chain_crypto::{PublicKey, SecretKey};
     use rand_core::{CryptoRng, RngCore};
+    use quickcheck::{Arbitrary, Gen};
 
     fn make_keypair<R: RngCore + CryptoRng>(
         rng: &mut R,
@@ -130,6 +131,16 @@ mod test {
                 false,
                 "multisignature not enough threshold 2/3 succeeded"
             );
+        }
+    }
+
+    impl Arbitrary for Identifier {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut b = [0u8; 32];
+            for v in b.iter_mut() {
+                *v = Arbitrary::arbitrary(g)
+            }
+            Identifier::from(b)
         }
     }
 }

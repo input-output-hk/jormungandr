@@ -3,6 +3,7 @@ use crate::transaction::TransactionBindingAuthData;
 use crate::value::{Value, ValueError};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_crypto::{digest::DigestOf, Blake2b256, Ed25519, PublicKey, Signature, Verification};
+use typed_bytes::ByteBuilder;
 
 pub struct TransactionSignData(Box<[u8]>);
 
@@ -21,9 +22,9 @@ impl AsRef<[u8]> for TransactionSignData {
 pub type TransactionSignDataHash = DigestOf<Blake2b256, TransactionSignData>;
 
 #[derive(Debug, Clone)]
-pub struct AccountBindingSignature(pub(crate) Signature<u32, Ed25519>);
+pub struct SingleAccountBindingSignature(pub(crate) Signature<u32, Ed25519>);
 
-impl AccountBindingSignature {
+impl SingleAccountBindingSignature {
     pub fn verify_slice<'a>(
         &self,
         pk: &PublicKey<Ed25519>,
@@ -33,19 +34,60 @@ impl AccountBindingSignature {
     }
 
     pub fn new<'a>(sk: &EitherEd25519SecretKey, data: &TransactionBindingAuthData<'a>) -> Self {
-        AccountBindingSignature(sk.sign_slice(data.0))
+        SingleAccountBindingSignature(sk.sign_slice(data.0))
     }
 }
 
-impl AsRef<[u8]> for AccountBindingSignature {
+impl AsRef<[u8]> for SingleAccountBindingSignature {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
+impl Readable for SingleAccountBindingSignature {
+    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+        deserialize_signature(buf).map(SingleAccountBindingSignature)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum AccountBindingSignature {
+    Single(SingleAccountBindingSignature),
+    Multi(u32), // TODO
+}
+
+impl AccountBindingSignature {
+    pub fn new_single<'a>(sk: &EitherEd25519SecretKey, data: &TransactionBindingAuthData<'a>) -> Self {
+        AccountBindingSignature::Single(SingleAccountBindingSignature::new(sk, data))
+    }
+
+    pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
+        match self {
+            AccountBindingSignature::Single(sig) => {
+                bb.u8(1).bytes(sig.as_ref())
+            }
+            AccountBindingSignature::Multi(_) => {
+                bb.u8(2);
+                unimplemented!()
+            }
+        }
+    }
+}
+
 impl Readable for AccountBindingSignature {
     fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
-        deserialize_signature(buf).map(AccountBindingSignature)
+        match buf.get_u8()? {
+            1 => {
+                let sig = deserialize_signature(buf).map(SingleAccountBindingSignature)?;
+                Ok(AccountBindingSignature::Single(sig))
+            }
+            2 => {
+                unimplemented!()
+            }
+            n => {
+                Err(ReadError::UnknownTag(n as u32))
+            }
+        }
     }
 }
 

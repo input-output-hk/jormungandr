@@ -1,7 +1,8 @@
 use crate::accounting::account::{DelegationRatio, DelegationType, DELEGATION_RATIO_MAX_DECLS};
 use crate::certificate::CertificateSlice;
 use crate::transaction::{
-    AccountBindingSignature, AccountIdentifier, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+    AccountBindingSignature, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+    UnspecifiedAccountIdentifier,
 };
 
 use chain_core::{
@@ -32,7 +33,7 @@ impl OwnerStakeDelegation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDelegation {
-    pub account_id: AccountIdentifier,
+    pub account_id: UnspecifiedAccountIdentifier,
     pub delegation: DelegationType,
 }
 
@@ -123,7 +124,8 @@ impl Payload for StakeDelegation {
     }
 
     fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
-        PayloadAuthData(auth.as_ref().to_owned().into(), PhantomData)
+        let bb = auth.serialize_in(ByteBuilder::new()).finalize_as_vec();
+        PayloadAuthData(bb.into(), PhantomData)
     }
     fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
         Some(CertificateSlice::from(p))

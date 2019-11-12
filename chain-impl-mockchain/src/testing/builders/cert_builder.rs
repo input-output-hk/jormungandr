@@ -1,11 +1,11 @@
 use crate::{
     account::{DelegationType, Identifier},
     certificate::{
-        Certificate, OwnerStakeDelegation, PoolId,
-        PoolRegistration, PoolRetirement, StakeDelegation,
+        Certificate, OwnerStakeDelegation, PoolId, PoolRegistration, PoolRetirement,
+        StakeDelegation,
     },
     testing::data::AddressData,
-    transaction::AccountIdentifier,
+    transaction::UnspecifiedAccountIdentifier,
 };
 use chain_time::units::DurationSeconds;
 
@@ -13,8 +13,9 @@ pub fn build_stake_delegation_cert(
     stake_pool: &PoolRegistration,
     delegate_from: &AddressData,
 ) -> Certificate {
-    let account_id =
-        AccountIdentifier::from_single_account(Identifier::from(delegate_from.delegation_key()));
+    let account_id = UnspecifiedAccountIdentifier::from_single_account(Identifier::from(
+        delegate_from.delegation_key(),
+    ));
     Certificate::StakeDelegation(StakeDelegation {
         account_id: account_id,
         delegation: DelegationType::Full(stake_pool.to_id()),
