@@ -4,7 +4,7 @@
 ; HEADER
 ; ####################
 
-HEADER-ID        = *32OCTET
+HEADER-ID        = 32OCTET
 HEADER           = HEADER-SIZE (HEADER-UNSIGNED / HEADER-BFT / HEADER-GP)
 HEADER-SIZE      = SIZE-BYTES-16BIT
 HEADER-UNSIGNED  = %x00 HEADER-COMMON
@@ -24,14 +24,14 @@ CONSENSUS-GP     = POOL-ID VRF-OUTPUT KES-SIGNATURE
 ; CONTENT
 ; ####################
 
-CONTENT-ID       = *32OCTET
+CONTENT-ID       = 32OCTET
 CONTENT          = *FRAGMENT
 
 ; ####################
 ; FRAGMENT
 ; ####################
 
-FRAGMENT-ID      = *32OCTET
+FRAGMENT-ID      = 32OCTET
 FRAGMENT         = FRAGMENT-SIZE %x00 FRAGMENT-SPEC
 FRAGMENT-SIZE    = SIZE-BYTES-16BIT
 FRAGMENT-SPEC    = %x00 INITIAL
@@ -81,7 +81,7 @@ DLG-FULL         = %x01 POOL-ID
 DLG-RATIO        = %x02-FF %x02-08 2*8DLG-RATIO-POOL
 DLG-RATIO-POOL   = %x01-FF POOL-ID
 
-POOL-ID          = *32OCTET
+POOL-ID          = 32OCTET
 
 ; ####################
 ; FRAGMENT Pool management
@@ -99,8 +99,7 @@ REGISTRATION-CERT = POOL-SERIAL
                     POOL-OWNERS
                     POOL-OPERATORS
                     POOL-REWARD-SCHM
-                    POOL-KEYS
-POOL-SERIAL       = *16OCTET
+POOL-SERIAL       = 16OCTET
 POOL-PERMISSIONS  = U64 ; for now management threshold
 POOL-OWNERS       = 1*31POOL-OWNER
 POOL-OPERATORS    = 0*3POOL-OWNER
@@ -168,16 +167,16 @@ ACCOUNT-ID        = SINGLE-ACNT-ID / MULTI_ACNT-ID
 ACCOUNT-SIG       = SINGLE-ACNT-SIG / MULTI-ACNT-SIG ; NOT FINAL
 SINGLE-ACNT-ID    = ED25519-PUBLICKEY
 SINGLE-ACNT-SIG   = ED25519-SIGNATURE
-MULTI-ACNT-ID     = *32OCTET
+MULTI-ACNT-ID     = 32OCTET
 MULTI-ACNT-SIG    = TODO
 LEGACY-SIGNATURE  = ED25519-SIGNATURE
-LEGACY-XPUB       = *64OCTET
-VRF-PUBLICKEY     = *32OCTET
-VRF-OUTPUT        = *96OCTET
-KES-PUBLICKEY     = *32OCTET
-KES-SIGNATURE     = *484OCTET
-ED25519-PUBLICKEY = *32OCTET ; ed25519 public key
-ED25519-SIGNATURE = *64OCTET
+LEGACY-XPUB       = 64OCTET
+VRF-PUBLICKEY     = 32OCTET
+VRF-OUTPUT        = 96OCTET
+KES-PUBLICKEY     = 32OCTET
+KES-SIGNATURE     = 484OCTET
+ED25519-PUBLICKEY = 32OCTET
+ED25519-SIGNATURE = 64OCTET
 
 ; ####################
 ; PRIMITIVES
@@ -191,6 +190,6 @@ SIZE-ELEMENT-OO   = U8  ; size of operators & owners : 5 bits for owners, 3 high
 SIZE-BYTES-16BIT  = U16 ; size in bytes (16 bits)
 SIZE-BYTES-32BIT  = U32 ; size in bytes (32 bits)
 U8                = OCTET   ; unsigned integer 8 bit
-U16               = *2OCTET ; unsigned integer 16 bit (BE)
-U32               = *4OCTET ; unsigned integer 32 bit (BE)
-U64               = *8OCTET ; unsigned integer 64 bit (BE)
+U16               = 2OCTET ; unsigned integer 16 bit (BE)
+U32               = 4OCTET ; unsigned integer 32 bit (BE)
+U64               = 8OCTET ; unsigned integer 64 bit (BE)
