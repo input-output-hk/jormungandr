@@ -7,9 +7,10 @@ use slog_gelf::Gelf;
 use slog_journald::JournaldDrain;
 #[cfg(unix)]
 use slog_syslog::Facility;
-use slog_term::TermDecorator;
+use slog_term::{PlainDecorator, TermDecorator};
 use std::error;
 use std::fmt::{self, Display};
+use std::fs;
 use std::io;
 use std::str::FromStr;
 
@@ -53,6 +54,7 @@ pub enum LogOutput {
         backend: String,
         log_id: String,
     },
+    File(String),
 }
 
 impl FromStr for LogFormat {
@@ -133,6 +135,15 @@ impl LogOutput {
                 let stderr_drain = format.decorate_stderr();
                 Ok(slog::Duplicate(gelf_drain, stderr_drain).into_async())
             }
+            LogOutput::File(path) => {
+                let file = fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .append(true)
+                    .open(path)
+                    .map_err(Error::FileError)?;
+                Ok(format.decorate_writer(file))
+            }
         }
     }
 }
@@ -169,6 +180,13 @@ impl LogFormat {
             LogFormat::Json => slog_json::Json::default(io::stderr()).into_async(),
         }
     }
+
+    fn decorate_writer<T: io::Write + Send + 'static>(&self, w: T) -> Async {
+        match self {
+            LogFormat::Plain => term_drain_with_decorator(PlainDecorator::new(w)).async(),
+            LogFormat::Json => slog_json::Json::default(w).async(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -180,6 +198,7 @@ pub enum Error {
     SyslogAccessFailed(io::Error),
     #[cfg(feature = "gelf")]
     GelfConnectionFailed(io::Error),
+    FileError(io::Error),
 }
 
 impl Display for Error {
@@ -194,6 +213,7 @@ impl Display for Error {
             Error::SyslogAccessFailed(_) => write!(f, "syslog access failed"),
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(_) => write!(f, "GELF connection failed"),
+            Error::FileError(e) => write!(f, "failed to open the log file: {}", e),
         }
     }
 }
@@ -206,6 +226,7 @@ impl error::Error for Error {
             Error::SyslogAccessFailed(err) => Some(err),
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(err) => Some(err),
+            Error::FileError(err) => Some(err),
         }
     }
 }

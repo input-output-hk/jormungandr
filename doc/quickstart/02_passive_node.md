@@ -56,6 +56,7 @@ Description of the fields:
         - `backend`: _hostname_:_port_ of a GELF server
         - `log_id`: identifier of the source of the log, for the `host` field
                     in the messages.
+      - `file`: path to the log file.
 - `rest`: (optional) Configuration of the REST endpoint.
     - `listen`: _address_:_port_ to listen for requests
     - `pkcs12`: (optional) Certificate file
