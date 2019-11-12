@@ -19,6 +19,12 @@ mod buffer_sizes {
     // Size of buffer for processing of header push/pull streams.
     pub const CHAIN_PULL: usize = 32;
 
+    // The maximum number of blocks to buffer from an incoming stream
+    // (GetBlocks response or an UploadBlocks request)
+    // while waiting for the block task to become ready to process
+    // the next block.
+    pub const BLOCKS: usize = 2;
+
     // The maximum number of fragments to buffer from an incoming subscription
     // while waiting for the fragment task to become ready to process them.
     pub const FRAGMENTS: usize = 128;

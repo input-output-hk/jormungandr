@@ -446,11 +446,8 @@ pub enum BlockMsg {
     LeadershipBlock(Block),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
-    /// An untrusted Block has been received from the network task.
-    /// The reply handle must be used to enable continued streaming by
-    /// sending `Ok`, or to cancel the incoming stream with an error sent in
-    /// `Err`.
-    NetworkBlock(Block, ReplyHandle<()>),
+    /// A stream of untrusted blocks has been received from the network task.
+    NetworkBlocks(RequestStreamHandle<Block, ()>),
     /// The stream of headers for missing chain blocks has been received
     /// from the network in response to a PullHeaders request or a Missing
     /// solicitation event.

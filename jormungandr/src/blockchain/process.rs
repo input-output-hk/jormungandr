@@ -31,7 +31,7 @@ pub fn handle_input(
     stats_counter: &StatsCounter,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
-    explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
+    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
     input: Input<BlockMsg>,
 ) -> impl Future<Item = (), Error = ()> {
     future::result(
@@ -64,7 +64,7 @@ pub fn run_handle_input(
     stats_counter: &StatsCounter,
     network_msg_box: &mut MessageBox<NetworkMsg>,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
-    explorer_msg_box: &mut Option<MessageBox<ExplorerMsg>>,
+    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
     input: Input<BlockMsg>,
 ) -> Result<(), Error> {
     let bquery = match input {
@@ -127,55 +127,47 @@ pub fn run_handle_input(
             );
             future.wait().unwrap();
         }
-        BlockMsg::NetworkBlock(block, reply) => {
-            let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
-            let logger = info.logger().new(o!(
-                "hash" => block.header.hash().to_string(),
-                "parent" => block.header.parent_id().to_string(),
-                "date" => block.header.block_date().to_string()));
-
-            let future = process_network_block(
-                blockchain.clone(),
-                candidate_forest.clone(),
-                block.clone(),
-                logger.clone(),
-            );
-            match future.wait() {
-                Err(e) => {
-                    reply.reply_error(network_block_error_into_reply(e));
-                }
-                Ok(maybe_updated) => {
-                    stats_counter.add_block_recv_cnt(1);
+        BlockMsg::NetworkBlocks(handle) => {
+            let logger = info.logger().clone();
+            let logger2 = logger.clone();
+            let tx_msg_box = tx_msg_box.clone();
+            let explorer_msg_box = explorer_msg_box.cloned();
+            let (stream, reply) = handle.into_stream_and_reply();
+            let future = stream
+                .fold((reply, None), move |(reply, _), block| {
+                    process_network_block(
+                        blockchain.clone(),
+                        candidate_forest.clone(),
+                        block,
+                        tx_msg_box.clone(),
+                        explorer_msg_box.clone(),
+                        logger.clone(),
+                    )
+                    .then(move |res| match res {
+                        Ok(maybe_updated) => {
+                            stats_counter.add_block_recv_cnt(1);
+                            Ok((reply, maybe_updated))
+                        }
+                        Err(e) => {
+                            reply.reply_error(network_block_error_into_reply(e));
+                            Err(())
+                        }
+                    })
+                })
+                .and_then(move |(reply, maybe_updated)| {
                     if let Some(new_block_ref) = maybe_updated {
                         let header = new_block_ref.header().clone();
-                        process_new_ref(
-                            logger.clone(),
-                            blockchain.clone(),
-                            blockchain_tip.clone(),
-                            new_block_ref,
-                        )
-                        .wait()
-                        .unwrap();
-                        try_request_fragment_removal(tx_msg_box, fragment_ids, &header).unwrap_or_else(|err| {
-                            error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
-                        });
                         network_msg_box
                             .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                             .unwrap_or_else(|err| {
-                                error!(logger, "cannot propagate block to network: {}", err)
+                                error!(logger2, "cannot propagate block to network: {}", err)
                             });
-
-                        if let Some(msg_box) = explorer_msg_box {
-                            msg_box
-                                .try_send(ExplorerMsg::NewBlock(block))
-                                .unwrap_or_else(|err| {
-                                    error!(logger, "cannot add block to explorer: {}", err)
-                                });
-                        };
                     }
                     reply.reply_ok(());
-                }
-            }
+                    Ok(())
+                });
+
+            let _ = future.wait();
         }
         BlockMsg::ChainHeaders(handle) => {
             let (stream, reply) = handle.into_stream_and_reply();
@@ -363,11 +355,20 @@ pub fn process_network_block(
     mut blockchain: Blockchain,
     candidate_forest: CandidateForest,
     block: Block,
+    mut tx_msg_box: MessageBox<TransactionMsg>,
+    mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     logger: Logger,
 ) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
     use futures::future::Either::{A, B};
 
+    let logger = logger.new(o!(
+        "hash" => block.header.hash().to_string(),
+        "parent" => block.header.parent_id().to_string(),
+        "date" => block.header.block_date().to_string()
+    ));
+    let end_logger = logger.clone();
     let mut end_blockchain = blockchain.clone();
+    let explorer_enabled = explorer_msg_box.is_some();
     let header = block.header();
     blockchain
         .pre_check_header(header, false)
@@ -387,7 +388,27 @@ pub fn process_network_block(
                 let post_check_and_apply = blockchain
                     .post_check_header(header, parent_ref)
                     .and_then(move |post_checked| {
-                        end_blockchain.apply_and_store_block(post_checked, block)
+                        let mut block_for_explorer = if explorer_enabled {
+                            Some(block.clone())
+                        } else {
+                            None
+                        };
+                        let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
+                        end_blockchain
+                            .apply_and_store_block(post_checked, block)
+                            .and_then(move |block_ref| {
+                                try_request_fragment_removal(&mut tx_msg_box, fragment_ids, block_ref.header()).unwrap_or_else(|err| {
+                                    error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
+                                });
+                                if let Some(msg_box) = explorer_msg_box.as_mut() {
+                                    msg_box
+                                        .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
+                                        .unwrap_or_else(|err| {
+                                            error!(logger, "cannot add block to explorer: {}", err)
+                                        });
+                                }
+                                Ok(block_ref)
+                            })
                     })
                     .and_then(move |block_ref| {
                         candidate_forest
@@ -396,10 +417,10 @@ pub fn process_network_block(
                             .map(|more_blocks| (block_ref, more_blocks))
                     })
                     .map(move |(block_ref, more_blocks)| {
-                        info!(logger, "block successfully applied");
+                        info!(end_logger, "block successfully applied");
                         if !more_blocks.is_empty() {
                             warn!(
-                                logger,
+                                end_logger,
                                 "{} more blocks have arrived out of order, \
                                  but I don't know what to do with them yet!",
                                 more_blocks.len(),

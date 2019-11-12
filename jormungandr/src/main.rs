@@ -193,7 +193,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 &stats_counter,
                 &mut network_msgbox,
                 &mut fragment_msgbox,
-                &mut explorer_msg_box,
+                explorer_msg_box.as_mut(),
                 input,
             )
         })

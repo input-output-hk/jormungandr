@@ -2,7 +2,6 @@ mod connect;
 
 use super::{
     buffer_sizes,
-    inbound::InboundProcessing,
     p2p::{
         comm::{OutboundSubscription, PeerComms},
         Gossip as NodeData, Id,
@@ -325,88 +324,54 @@ impl<S> Client<S>
 where
     S: BlockService<Block = Block>,
     S: FragmentService + GossipService,
-    S::PullBlocksToTipFuture: Send + 'static,
-    S::PullBlocksStream: Send + 'static,
-{
-    // Temporary support for pulling chain blocks without two-stage
-    // retrieval.
-    fn pull_blocks_to_tip(&mut self, req: ChainPullRequest<HeaderHash>) {
-        let block_box = self.block_sink.message_box();
-        let logger = self.logger.clone();
-        let err_logger = logger.clone();
-        self.global_state.spawn(
-            self.service
-                .pull_blocks_to_tip(&req.from)
-                .map_err(move |e| {
-                    info!(err_logger, "PullBlocksToTip request failed: {:?}", e);
-                })
-                .and_then(move |stream| {
-                    let stream_err_logger = logger.clone();
-                    let sink_err_logger = logger.clone();
-                    let stream = stream.map_err(move |e| {
-                        info!(
-                            stream_err_logger,
-                            "PullBlocksToTip response stream failed: {:?}", e
-                        );
-                    });
-                    InboundProcessing::with_unary(
-                        block_box.clone(),
-                        logger.clone(),
-                        |block, reply| BlockMsg::NetworkBlock(block, reply),
-                    )
-                    .sink_map_err(move |e| {
-                        warn!(sink_err_logger, "pulled block validation failed: {:?}", e)
-                    })
-                    .send_all(stream)
-                    .map(move |_| {
-                        debug!(logger, "PullBlocksToTip response processed");
-                    })
-                }),
-        );
-    }
-}
-
-impl<S> Client<S>
-where
-    S: BlockService<Block = Block>,
-    S: FragmentService + GossipService,
     S::GetBlocksFuture: Send + 'static,
     S::GetBlocksStream: Send + 'static,
 {
     fn solicit_blocks(&mut self, block_ids: &[HeaderHash]) {
         let block_box = self.block_sink.message_box();
-        let logger = self.logger.clone();
-        let err_logger = logger.clone();
+        let logger = self.logger.new(o!("request" => "GetBlocks"));
+        let req_err_logger = logger.clone();
+        let res_logger = logger.clone();
+        let (handle, sink) = intercom::stream_request::<Block, (), core_error::Error>(
+            buffer_sizes::BLOCKS,
+            logger.clone(),
+        );
+        // TODO: make sure that back pressure on the number of requests
+        // in flight, imposed through self.service.poll_ready(),
+        // prevents unlimited spawning of these tasks.
+        // https://github.com/input-output-hk/jormungandr/issues/1034
+        self.global_state.spawn(
+            block_box
+                .send(BlockMsg::NetworkBlocks(handle))
+                .map_err(move |e| {
+                    error!(
+                        logger,
+                        "failed to enqueue request for processing";
+                        "reason" => %e,
+                    );
+                })
+                .map(|_mbox| ()),
+        );
         self.global_state.spawn(
             self.service
                 .get_blocks(block_ids)
                 .map_err(move |e| {
                     info!(
-                        err_logger,
-                        "GetBlocks request (solicitation) failed: {:?}", e
+                        req_err_logger,
+                        "request failed";
+                        "reason" => %e,
                     );
                 })
                 .and_then(move |stream| {
-                    let stream_err_logger = logger.clone();
-                    let sink_err_logger = logger.clone();
-                    let stream = stream.map_err(move |e| {
-                        info!(
-                            stream_err_logger,
-                            "GetBlocks response stream failed: {:?}", e
-                        );
-                    });
-                    InboundProcessing::with_unary(
-                        block_box.clone(),
-                        logger.clone(),
-                        |block, reply| BlockMsg::NetworkBlock(block, reply),
-                    )
-                    .sink_map_err(move |e| {
-                        warn!(sink_err_logger, "network block validation failed: {:?}", e)
-                    })
-                    .send_all(stream)
-                    .map(move |_| {
-                        debug!(logger, "GetBlocks response processed");
-                    })
+                    sink.send_all(stream)
+                        .map_err(move |e| {
+                            info!(
+                                res_logger,
+                                "response stream failed";
+                                "reason" => %e,
+                            );
+                        })
+                        .map(|_| ())
                 }),
         );
     }
