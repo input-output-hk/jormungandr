@@ -49,7 +49,7 @@ pub struct PoolPermissions(u64);
 
 pub type ManagementThreshold = u8;
 
-const MANAGEMENT_THRESHOLD_BITMASK: u64 = 0b111111; // only support 32 bytes, reserved one for later extension if needed
+const MANAGEMENT_THRESHOLD_BITMASK: u64 = 0b111111; // only support 32, reserved one for later extension if needed
 const ALL_USED_BITMASK: u64 =
     0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00111111;
 
@@ -68,7 +68,7 @@ impl PoolPermissions {
     }
 
     pub fn management_threshold(self) -> ManagementThreshold {
-        (self.0 & !MANAGEMENT_THRESHOLD_BITMASK) as ManagementThreshold
+        (self.0 & MANAGEMENT_THRESHOLD_BITMASK) as ManagementThreshold
     }
 }
 
