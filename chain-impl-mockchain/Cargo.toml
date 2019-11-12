@@ -22,6 +22,7 @@ typed-bytes = { path = "../typed-bytes" }
 rand_core = "0.3"
 rand_os = "0.1"
 imhamt = { path = "../imhamt" }
+sparse-array = { path = "../sparse-array" }
 strum = "0.15.0"
 strum_macros = "0.15.0"
 custom_error = "1.6"

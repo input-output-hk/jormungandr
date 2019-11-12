@@ -1,0 +1,9 @@
+[package]
+name = "sparse-array"
+version = "0.1.0"
+authors = ["Yevhenii Babichenko <eugene.babichenko@iohk.io>"]
+edition = "2018"
+
+[dev-dependencies]
+quickcheck = "0.8"
+quickcheck_macros = "0.8"
