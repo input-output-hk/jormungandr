@@ -1,5 +1,50 @@
 # Change Log
 
+## [v0.7.0](https://github.com/input-output-hk/jormungandr/tree/v0.7.0) (2019-11-12)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc7...v0.7.0)
+
+**Implemented enhancements:**
+
+- Allow setting multiple stake pool for delegation [\#1089](https://github.com/input-output-hk/jormungandr/issues/1089)
+- Leeway for schedule to happen [\#1114](https://github.com/input-output-hk/jormungandr/pull/1114)
+- Allow setting multiple stake pool for delegation [\#1112](https://github.com/input-output-hk/jormungandr/pull/1112)
+- leadership re-write [\#1106](https://github.com/input-output-hk/jormungandr/pull/1106)
+- Properly filter checkpoints for given descendant [\#1100](https://github.com/input-output-hk/jormungandr/pull/1100)
+- breaking change: add pool permission + operators [\#1097](https://github.com/input-output-hk/jormungandr/pull/1097)
+- Start improving the readability of this document. [\#1083](https://github.com/input-output-hk/jormungandr/pull/1083)
+
+**Fixed bugs:**
+
+- explorer panic [\#1103](https://github.com/input-output-hk/jormungandr/issues/1103)
+- node panicked - "cannot process leadership block" - cluster with 2 nodes on local pc; v0.7.0-rc4 [\#1065](https://github.com/input-output-hk/jormungandr/issues/1065)
+- error while streaming response: Error { code: Internal, cause: CannotIterate }, sub\_task: server, task: network [\#1056](https://github.com/input-output-hk/jormungandr/issues/1056)
+- Excessive network/memory usage [\#1044](https://github.com/input-output-hk/jormungandr/issues/1044)
+- Invalid block should not unwrap on the chain task and panic [\#1024](https://github.com/input-output-hk/jormungandr/issues/1024)
+- Large amount of network traffic in short time frame. [\#1007](https://github.com/input-output-hk/jormungandr/issues/1007)
+- Leeway for schedule to happen [\#1114](https://github.com/input-output-hk/jormungandr/pull/1114)
+- leadership re-write [\#1106](https://github.com/input-output-hk/jormungandr/pull/1106)
+- Fix blocks in epoch first cursor not being 0 [\#1096](https://github.com/input-output-hk/jormungandr/pull/1096)
+
+**Closed issues:**
+
+- Panic in jormungandr 0.7.0-rc7 [\#1105](https://github.com/input-output-hk/jormungandr/issues/1105)
+- Re-open \#1094 [\#1104](https://github.com/input-output-hk/jormungandr/issues/1104)
+- Port to Rust 2018 edition [\#1098](https://github.com/input-output-hk/jormungandr/issues/1098)
+- Error in the overall configuration of the node  |-\> Error while parsing the node configuration file: p2p.trusted\_peers\[0\].id: Odd number of digits at line 13 column 11  |-\> p2p.trusted\_peers\[0\].id: Odd number of digits at line 13 column 11 [\#1094](https://github.com/input-output-hk/jormungandr/issues/1094)
+- Mined transactions are not propagated to other nodes - RC5, local cluster with 2 nodes [\#1090](https://github.com/input-output-hk/jormungandr/issues/1090)
+- Transactions not propagating [\#1042](https://github.com/input-output-hk/jormungandr/issues/1042)
+- Sync issues not fully resolved [\#1031](https://github.com/input-output-hk/jormungandr/issues/1031)
+
+**Merged pull requests:**
+
+- breaking change: add discriminant account signature and reward account [\#1116](https://github.com/input-output-hk/jormungandr/pull/1116)
+- Port Jormungandr to 2018 edition [\#1115](https://github.com/input-output-hk/jormungandr/pull/1115)
+- fixed create-account-and-delegate.shtmpl to work with 0.7.0-rc7 [\#1111](https://github.com/input-output-hk/jormungandr/pull/1111)
+- Add old utxo and old address to explorer [\#1109](https://github.com/input-output-hk/jormungandr/pull/1109)
+- Update Quick-Start in public mode section [\#1108](https://github.com/input-output-hk/jormungandr/pull/1108)
+- Simplify Storage::stream\_from\_to [\#1102](https://github.com/input-output-hk/jormungandr/pull/1102)
+- registering\_stake\_pool.md: do not longer sign the cert [\#1101](https://github.com/input-output-hk/jormungandr/pull/1101)
+
 ## [v0.7.0-rc7](https://github.com/input-output-hk/jormungandr/tree/v0.7.0-rc7) (2019-11-08)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc6...v0.7.0-rc7)
 
