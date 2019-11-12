@@ -34,7 +34,7 @@ pub struct StakePoolRegistration {
     #[structopt(
         long = "operators",
         name = "OPERATOR_KEY",
-        parse(try_from_str = "parse_pub_key"),
+        parse(try_from_str = "parse_pub_key")
     )]
     pub operators: Vec<PublicKey<Ed25519>>,
     /// Public key of the block signing key
@@ -71,7 +71,8 @@ impl StakePoolRegistration {
             },
         };
 
-        if self.management_threshold == 0 || self.management_threshold as usize > self.owners.len() {
+        if self.management_threshold == 0 || self.management_threshold as usize > self.owners.len()
+        {
             return Err(Error::ManagementThresholdInvalid {
                 got: self.management_threshold as usize,
                 max_expected: self.owners.len(),
