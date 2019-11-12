@@ -114,6 +114,10 @@ impl SystemTime {
         let timestamps = self.0.duration_since(time::UNIX_EPOCH).unwrap();
         Utc.timestamp(timestamps.as_secs() as i64, timestamps.subsec_nanos())
     }
+
+    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, time::SystemTimeError> {
+        self.0.duration_since(earlier.0).map(Duration)
+    }
 }
 
 impl LocalDateTime {
@@ -127,6 +131,34 @@ impl Duration {
     #[inline]
     pub fn new(secs: u64, nanos: u32) -> Self {
         Duration(time::Duration::new(secs, nanos))
+    }
+
+    pub fn as_secs(&self) -> u64 {
+        self.0.as_secs()
+    }
+
+    pub fn as_millis(&self) -> u128 {
+        self.0.as_millis()
+    }
+
+    pub fn as_micro(&self) -> u128 {
+        self.0.as_micros()
+    }
+
+    pub fn as_nanos(&self) -> u128 {
+        self.0.as_nanos()
+    }
+
+    pub fn from_millis(millis: u64) -> Self {
+        Duration(time::Duration::from_millis(millis))
+    }
+
+    pub fn checked_add(self, rhs: Duration) -> Option<Duration> {
+        self.0.checked_add(rhs.0).map(Duration)
+    }
+
+    pub fn checked_sub(self, rhs: Duration) -> Option<Duration> {
+        self.0.checked_sub(rhs.0).map(Duration)
     }
 }
 
@@ -270,6 +302,10 @@ impl SystemTime {
             .checked_add(time::Duration::from_secs(secs))
             .unwrap()
             .into()
+    }
+
+    pub fn duration_since_epoch(self) -> Duration {
+        Duration(self.0.duration_since(time::UNIX_EPOCH).unwrap())
     }
 }
 
