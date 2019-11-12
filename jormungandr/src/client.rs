@@ -63,9 +63,9 @@ fn handle_get_headers_range(
         .map_err(|e| e.into())
         .and_then(move |maybe_ancestor| match maybe_ancestor {
             Some(from) => Either::A(storage.stream_from_to(from, to).map_err(|e| e.into())),
-            None => Either::B(future::err(Error::failed_precondition(
-                "none of the checkpoints found in the local storage are ancestors \
-                 of the requested end block",
+            None => Either::B(future::err(Error::not_found(
+                "none of the checkpoints found in the local storage \
+                 are ancestors of the requested end block",
             ))),
         })
         .and_then(move |stream| {
@@ -156,7 +156,7 @@ fn handle_pull_blocks_to_tip(
         .map_err(|e| e.into())
         .and_then(move |maybe_ancestor| match maybe_ancestor {
             Some(from) => Either::A(storage.stream_from_to(from, tip_hash).map_err(|e| e.into())),
-            None => Either::B(future::err(Error::failed_precondition(
+            None => Either::B(future::err(Error::not_found(
                 "none of the checkpoints found in the local storage \
                  are ancestors of the current tip",
             ))),
