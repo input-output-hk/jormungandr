@@ -27,6 +27,7 @@ impl StakePoolBuilder {
             start_validity: DurationSeconds::from(0).into(),
             permissions: PoolPermissions::new(std::cmp::max(self.owners.len() as u8 / 2, 1)),
             rewards: TaxType::zero(),
+            reward_account: None,
             keys: GenesisPraosLeader {
                 vrf_public_key: pool_vrf.public_key().clone(),
                 kes_public_key: pool_kes.public_key().clone(),

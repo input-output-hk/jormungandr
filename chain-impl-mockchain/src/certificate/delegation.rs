@@ -124,7 +124,8 @@ impl Payload for StakeDelegation {
     }
 
     fn payload_auth_data(auth: &Self::Auth) -> PayloadAuthData<Self> {
-        PayloadAuthData(auth.as_ref().to_owned().into(), PhantomData)
+        let bb = auth.serialize_in(ByteBuilder::new()).finalize_as_vec();
+        PayloadAuthData(bb.into(), PhantomData)
     }
     fn to_certificate_slice<'a>(p: PayloadSlice<'a, Self>) -> Option<CertificateSlice<'a>> {
         Some(CertificateSlice::from(p))

@@ -3,7 +3,8 @@ use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
 use crate::transaction::{
-    AccountBindingSignature, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+    AccountIdentifier, SingleAccountBindingSignature,
+    Payload, PayloadAuthData, PayloadData, PayloadSlice,
     TransactionBindingAuthData,
 };
 use chain_core::{
@@ -19,7 +20,7 @@ use typed_bytes::{ByteArray, ByteBuilder};
 pub type PoolId = DigestOf<Blake2b256, PoolRegistration>;
 
 /// signatures with indices
-pub type IndexSignatures = Vec<(u8, AccountBindingSignature)>;
+pub type IndexSignatures = Vec<(u8, SingleAccountBindingSignature)>;
 
 /// Pool information
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +40,8 @@ pub struct PoolRegistration {
     pub operators: Box<[PublicKey<Ed25519>]>,
     /// Rewarding
     pub rewards: TaxType,
+    /// Reward account
+    pub reward_account: Option<AccountIdentifier>,
     /// Genesis Praos keys
     pub keys: GenesisPraosLeader,
 }
@@ -90,7 +93,7 @@ pub struct PoolRetirement {
 
 #[derive(Debug, Clone)]
 pub enum PoolSignature {
-    Operator(AccountBindingSignature),
+    Operator(SingleAccountBindingSignature),
     Owners(PoolOwnersSignature),
 }
 
@@ -104,14 +107,24 @@ pub type PoolOwnersSigned = PoolOwnersSignature;
 
 impl PoolRegistration {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
-        bb.u128(self.serial)
+        let bb = bb.u128(self.serial)
             .u64(self.start_validity.into())
             .u64(self.permissions.0)
             .bytes(self.keys.vrf_public_key.as_ref())
             .bytes(self.keys.kes_public_key.as_ref())
             .iter8(&mut self.owners.iter(), |bb, o| bb.bytes(o.as_ref()))
             .iter8(&mut self.operators.iter(), |bb, o| bb.bytes(o.as_ref()))
-            .sub(|sbb| self.rewards.serialize_in(sbb))
+            .sub(|sbb| self.rewards.serialize_in(sbb));
+
+        match &self.reward_account {
+            None => bb.u8(0),
+            Some(AccountIdentifier::Single(pk)) => {
+                bb.u8(1).bytes(pk.as_ref().as_ref())
+            },
+            Some(AccountIdentifier::Multi(pk)) => {
+                bb.u8(2).bytes(pk.as_ref())
+            }
+        }
     }
     pub fn serialize(&self) -> ByteArray<Self> {
         self.serialize_in(ByteBuilder::new()).finalize()
@@ -274,6 +287,21 @@ impl Readable for PoolRegistration {
         }
 
         let rewards = TaxType::read_frombuf(buf)?;
+        let reward_account = match buf.get_u8()? {
+            0 => None,
+            1 => {
+                let pk = deserialize_public_key(buf)?;
+                Some(AccountIdentifier::Single(pk.into()))
+            }
+            2 => {
+                let mut pk = [0u8;32];
+                buf.into_slice_mut(&mut pk)?;
+                Some(AccountIdentifier::Multi(pk.into()))
+            }
+            n => {
+                Err(ReadError::UnknownTag(n as u32))?
+            }
+        };
 
         let info = Self {
             serial,
@@ -282,6 +310,7 @@ impl Readable for PoolRegistration {
             owners,
             operators: operators.into(),
             rewards,
+            reward_account,
             keys,
         };
         Ok(info)
@@ -405,7 +434,7 @@ impl Readable for PoolOwnersSigned {
         for _ in 0..sigs_nb {
             let nb = buf.get_u8()?;
             let sig = deserialize_signature(buf)?;
-            signatures.push((nb, AccountBindingSignature(sig)))
+            signatures.push((nb, SingleAccountBindingSignature(sig)))
         }
         Ok(PoolOwnersSigned { signatures })
     }
@@ -417,7 +446,7 @@ impl Readable for PoolSignature {
             0 => {
                 let _ = buf.get_u8()?;
                 let sig = deserialize_signature(buf)?;
-                Ok(PoolSignature::Operator(AccountBindingSignature(sig)))
+                Ok(PoolSignature::Operator(SingleAccountBindingSignature(sig)))
             }
             _ => PoolOwnersSigned::read(buf).map(PoolSignature::Owners),
         }

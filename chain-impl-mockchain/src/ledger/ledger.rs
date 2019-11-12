@@ -392,13 +392,21 @@ impl Ledger {
             Fragment::StakeDelegation(tx) => {
                 let tx = tx.as_slice();
                 let payload = tx.payload().into_payload();
-                let account_pk = payload
-                    .account_id
-                    .to_single_account()
-                    .ok_or(Error::AccountIdentifierInvalid)?;
-                let signature = tx.payload_auth().into_payload_auth();
-                let verified =
-                    signature.verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data());
+                let payload_auth = tx.payload_auth().into_payload_auth();
+                let verified = match payload_auth {
+                    AccountBindingSignature::Single(signature) => {
+                        let account_pk = payload
+                            .account_id
+                            .to_single_account()
+                            .ok_or(Error::AccountIdentifierInvalid)?;
+                            signature.verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data())
+                    }
+                    AccountBindingSignature::Multi(_) => {
+                        // TODO
+                        Verification::Failed
+                    }
+                };
+
                 if verified == Verification::Failed {
                     return Err(Error::StakeDelegationSignatureFailed);
                 }
@@ -406,6 +414,7 @@ impl Ledger {
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_stake_delegation(&payload)?;
+
             }
             Fragment::PoolRegistration(tx) => {
                 let tx = tx.as_slice();

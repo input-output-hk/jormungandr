@@ -111,6 +111,7 @@ impl Arbitrary for PoolRegistration {
             owners: owners,
             operators: operators.into(),
             rewards: TaxType::zero(),
+            reward_account: None,
             keys,
         }
     }
