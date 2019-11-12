@@ -12,7 +12,7 @@ use chain_impl_mockchain::{
     fee::LinearFee,
     key::EitherEd25519SecretKey,
     rewards::TaxType,
-    transaction::{AccountBindingSignature, TxBuilder},
+    transaction::{SingleAccountBindingSignature, TxBuilder},
 };
 use chain_time::DurationSeconds;
 use jormungandr_lib::{
@@ -207,6 +207,7 @@ impl Settings {
                             owners: vec![owner.to_public()],
                             operators: vec![].into(),
                             rewards: TaxType::zero(),
+                            reward_account: None,
                             keys: GenesisPraosLeader {
                                 kes_public_key: kes_signing_key.identifier().into_public_key(),
                                 vrf_public_key: vrf_signing_key.identifier().into_public_key(),
@@ -227,7 +228,7 @@ impl Settings {
                             .set_ios(&[], &[])
                             .set_witnesses(&[]);
                         let auth_data = txb.get_auth_data();
-                        let sig0 = AccountBindingSignature::new(
+                        let sig0 = SingleAccountBindingSignature::new(
                             &EitherEd25519SecretKey::Normal(owner),
                             &auth_data,
                         );

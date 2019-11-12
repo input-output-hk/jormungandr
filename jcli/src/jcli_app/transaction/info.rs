@@ -3,7 +3,7 @@ use crate::jcli_app::{
     utils::io,
 };
 use chain_addr::{Address, AddressReadable};
-use chain_impl_mockchain::transaction::{AccountIdentifier, Balance, Output};
+use chain_impl_mockchain::transaction::{Balance, Output, UnspecifiedAccountIdentifier};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{TransactionInput, TransactionInputType, TransactionOutput};
 use std::{collections::HashMap, io::Write, path::PathBuf};
@@ -162,7 +162,7 @@ impl Info {
                 self.write_info(writer, &self.format_utxo_input, vars)
             }
             TransactionInputType::Account(account_id) => {
-                let account_id: AccountIdentifier = account_id.into();
+                let account_id: UnspecifiedAccountIdentifier = account_id.into();
                 let account: chain_crypto::PublicKey<_> = account_id
                     .to_single_account()
                     .ok_or(Error::InfoExpectedSingleAccount)?
