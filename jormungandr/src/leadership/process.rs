@@ -324,7 +324,7 @@ impl Module {
             "event_end" => event_end.to_string(),
         ));
 
-        if event_start <= now && now <= event_end {
+        if within_bounds(event_start, now, event_end) {
             Either::A(self.action_run_entry_in_bound(entry, logger, event_end))
         } else {
             // the event happened out of bounds, ignore it and move to the next one
@@ -655,4 +655,25 @@ fn prepare_block(
         )
         .map(|selection_algorithm| selection_algorithm.finalize())
         .map_err(|()| LeadershipError::FragmentSelectionFailed)
+}
+
+/// function to compare system times are within acceptable boundaries.
+///
+/// By acceptable boundaries, it means that the start date allow for some error, but not
+/// the end.
+///
+/// i.e. if now is: `11:05:22.993` and but start is `11:05:23.000` then the
+/// predicate should still be hold and be accepted.
+///
+fn within_bounds(event_start: SystemTime, now: SystemTime, event_end: SystemTime) -> bool {
+    use jormungandr_lib::time::Duration;
+
+    const ALLOWED_MARGIN_ERROR: u64 = 50;
+
+    let event_start_d = event_start.duration_since_epoch();
+    let now_d = now.duration_since_epoch();
+    let allowed_margin_error: Duration = Duration::from_millis(ALLOWED_MARGIN_ERROR);
+    let event_start_d = event_start_d.checked_sub(allowed_margin_error).unwrap();
+
+    event_start_d <= now_d && now <= event_end
 }
