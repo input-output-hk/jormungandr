@@ -103,7 +103,10 @@ impl Services {
         let thread_service_info = ThreadServiceInfo {
             name: name,
             up_time: now,
-            logger: self.logger.new(o!(::log::KEY_TASK => name)).into_erased(),
+            logger: self
+                .logger
+                .new(o!(crate::log::KEY_TASK => name))
+                .into_erased(),
         };
 
         let handler = thread::Builder::new()
@@ -170,7 +173,10 @@ impl Services {
         let future_service_info = TokioServiceInfo {
             name: name,
             up_time: now,
-            logger: self.logger.new(o!(::log::KEY_TASK => name)).into_erased(),
+            logger: self
+                .logger
+                .new(o!(crate::log::KEY_TASK => name))
+                .into_erased(),
             executor: executor,
         };
 

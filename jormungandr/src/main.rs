@@ -270,7 +270,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         Some(rest_context) => {
             let logger = bootstrapped_node
                 .logger
-                .new(o!(::log::KEY_TASK => "rest"))
+                .new(o!(crate::log::KEY_TASK => "rest"))
                 .into_erased();
             let full_context = rest::FullContext {
                 logger,

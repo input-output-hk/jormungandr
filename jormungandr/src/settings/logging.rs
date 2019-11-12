@@ -104,14 +104,14 @@ impl LogOutput {
             LogOutput::Syslog => {
                 format.require_plain()?;
                 match slog_syslog::unix_3164(Facility::LOG_USER) {
-                    Ok(drain) => Ok(drain.async()),
+                    Ok(drain) => Ok(drain.into_async()),
                     Err(e) => Err(Error::SyslogAccessFailed(e)),
                 }
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
                 format.require_plain()?;
-                Ok(JournaldDrain.async())
+                Ok(JournaldDrain.into_async())
             }
             #[cfg(feature = "gelf")]
             LogOutput::Gelf {
@@ -131,7 +131,7 @@ impl LogOutput {
                 // We also log to stderr otherwise users see no logs.
                 // TODO: remove when multiple output is properly supported.
                 let stderr_drain = format.decorate_stderr();
-                Ok(slog::Duplicate(gelf_drain, stderr_drain).async())
+                Ok(slog::Duplicate(gelf_drain, stderr_drain).into_async())
             }
         }
     }
@@ -155,18 +155,18 @@ impl LogFormat {
     fn decorate_stdout(&self) -> Async {
         match self {
             LogFormat::Plain => {
-                term_drain_with_decorator(TermDecorator::new().stdout().build()).async()
+                term_drain_with_decorator(TermDecorator::new().stdout().build()).into_async()
             }
-            LogFormat::Json => slog_json::Json::default(io::stdout()).async(),
+            LogFormat::Json => slog_json::Json::default(io::stdout()).into_async(),
         }
     }
 
     fn decorate_stderr(&self) -> Async {
         match self {
             LogFormat::Plain => {
-                term_drain_with_decorator(TermDecorator::new().stderr().build()).async()
+                term_drain_with_decorator(TermDecorator::new().stderr().build()).into_async()
             }
-            LogFormat::Json => slog_json::Json::default(io::stderr()).async(),
+            LogFormat::Json => slog_json::Json::default(io::stderr()).into_async(),
         }
     }
 }

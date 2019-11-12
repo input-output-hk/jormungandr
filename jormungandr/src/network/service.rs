@@ -28,7 +28,7 @@ impl NodeService {
             channels,
             logger: global_state
                 .logger()
-                .new(o!(::log::KEY_SUB_TASK => "server")),
+                .new(o!(crate::log::KEY_SUB_TASK => "server")),
             global_state,
         }
     }
