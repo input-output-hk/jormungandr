@@ -7,7 +7,7 @@
 use crate::fragment::FragmentId;
 use crate::transaction::{Output, TransactionIndex};
 use chain_addr::Address;
-use sparse_array::{SparseArray, SparseArrayIter};
+use sparse_array::{FastSparseArray, FastSparseArrayIter};
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 
@@ -47,12 +47,12 @@ impl From<RemoveError> for Error {
 
 /// Hold all the individual outputs that remain unspent
 #[derive(Clone, PartialEq, Eq, Debug)]
-struct TransactionUnspents<OutAddress>(SparseArray<Output<OutAddress>>);
+struct TransactionUnspents<OutAddress>(FastSparseArray<Output<OutAddress>>);
 
 impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
     pub fn from_outputs(outs: &[(TransactionIndex, Output<OutAddress>)]) -> Self {
         assert!(outs.len() < 255);
-        let mut sa = SparseArray::with_capacity(outs.len() as u8);
+        let mut sa = FastSparseArray::with_capacity(outs.len() as u8);
         for (index, output) in outs.iter() {
             sa.set(*index, output.clone());
         }
@@ -78,12 +78,12 @@ pub struct Ledger<OutAddress>(Hamt<DefaultHasher, FragmentId, TransactionUnspent
 
 pub struct Iter<'a, V> {
     hamt_iter: HamtIter<'a, FragmentId, TransactionUnspents<V>>,
-    unspents_iter: Option<(&'a FragmentId, SparseArrayIter<'a, Output<V>>)>,
+    unspents_iter: Option<(&'a FragmentId, FastSparseArrayIter<'a, Output<V>>)>,
 }
 
 pub struct Values<'a, V> {
     hamt_iter: HamtIter<'a, FragmentId, TransactionUnspents<V>>,
-    unspents_iter: Option<SparseArrayIter<'a, Output<V>>>,
+    unspents_iter: Option<FastSparseArrayIter<'a, Output<V>>>,
 }
 
 impl fmt::Debug for Ledger<Address> {
@@ -101,7 +101,7 @@ pub struct Entry<'a, OutputAddress> {
     pub output: &'a Output<OutputAddress>,
 }
 
-impl<OutAddress> Ledger<OutAddress> {
+impl<OutAddress: Clone> Ledger<OutAddress> {
     pub fn iter<'a>(&'a self) -> Iter<'a, OutAddress> {
         Iter {
             hamt_iter: self.0.iter(),
@@ -136,7 +136,7 @@ impl<OutAddress> Ledger<OutAddress> {
     }
 }
 
-impl<'a, V> Iterator for Values<'a, V> {
+impl<'a, V: Clone> Iterator for Values<'a, V> {
     type Item = &'a Output<V>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -155,7 +155,7 @@ impl<'a, V> Iterator for Values<'a, V> {
     }
 }
 
-impl<'a, V> Iterator for Iter<'a, V> {
+impl<'a, V: Clone> Iterator for Iter<'a, V> {
     type Item = Entry<'a, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
