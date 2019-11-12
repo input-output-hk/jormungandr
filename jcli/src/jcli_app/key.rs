@@ -1,3 +1,4 @@
+use crate::jcli_app::utils::io;
 use bech32::{u5, Bech32, FromBase32, ToBase32};
 use chain_crypto::{
     bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519,
@@ -5,7 +6,6 @@ use chain_crypto::{
     VerificationAlgorithm,
 };
 use hex::FromHexError;
-use jcli_app::utils::io;
 use rand::{rngs::EntropyRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{

@@ -1,6 +1,6 @@
+use crate::jcli_app::transaction::{common, Error};
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::transaction::TransactionIndex;
-use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 

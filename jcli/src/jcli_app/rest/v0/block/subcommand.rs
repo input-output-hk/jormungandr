@@ -1,6 +1,6 @@
 use super::next_id::NextId;
-use jcli_app::rest::Error;
-use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
+use crate::jcli_app::rest::Error;
+use crate::jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

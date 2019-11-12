@@ -1,6 +1,6 @@
+use crate::jcli_app::rest::Error;
+use crate::jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use chain_crypto::Blake2b256;
-use jcli_app::rest::Error;
-use jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
