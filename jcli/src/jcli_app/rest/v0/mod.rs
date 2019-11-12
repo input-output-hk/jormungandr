@@ -11,7 +11,7 @@ mod stake_pools;
 mod tip;
 mod utxo;
 
-use jcli_app::rest::Error;
+use crate::jcli_app::rest::Error;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

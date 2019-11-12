@@ -13,11 +13,11 @@ mod seal;
 mod staging;
 
 use self::staging::StagingKind;
+use crate::jcli_app::certificate;
+use crate::jcli_app::utils::error::CustomErrorFiller;
+use crate::jcli_app::utils::key_parser;
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
-use jcli_app::certificate;
-use jcli_app::utils::error::CustomErrorFiller;
-use jcli_app::utils::key_parser;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

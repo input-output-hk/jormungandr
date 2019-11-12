@@ -1,4 +1,4 @@
-use jcli_app::utils::{rest_api::RestApiRequestBody, CustomErrorFiller};
+use crate::jcli_app::utils::{rest_api::RestApiRequestBody, CustomErrorFiller};
 use mime::Mime;
 use openapiv3::{
     OpenAPI, Operation, Parameter, ParameterData, ParameterSchemaOrContent, PathItem, PathStyle,

@@ -1,4 +1,4 @@
-use jcli_app::utils::{io, key_parser};
+use crate::jcli_app::utils::{io, key_parser};
 use jormungandr_lib::interfaces::{self, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};

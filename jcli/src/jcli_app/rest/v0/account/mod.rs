@@ -1,5 +1,5 @@
-use jcli_app::rest::Error;
-use jcli_app::utils::{AccountId, DebugFlag, HostAddr, OutputFormat, RestApiSender};
+use crate::jcli_app::rest::Error;
+use crate::jcli_app::utils::{AccountId, DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

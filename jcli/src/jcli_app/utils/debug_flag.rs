@@ -1,4 +1,4 @@
-use jcli_app::utils::rest_api::{RestApiRequestBody, RestApiResponse};
+use crate::jcli_app::utils::rest_api::{RestApiRequestBody, RestApiResponse};
 use reqwest::Request;
 use structopt::StructOpt;
 

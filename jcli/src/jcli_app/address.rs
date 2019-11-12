@@ -1,7 +1,7 @@
+use crate::jcli_app::utils::key_parser::parse_pub_key;
 use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::bech32::Bech32 as _;
 use chain_crypto::{AsymmetricPublicKey, Ed25519, PublicKey};
-use jcli_app::utils::key_parser::parse_pub_key;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

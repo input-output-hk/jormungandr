@@ -1,3 +1,5 @@
+use crate::jcli_app::certificate::{write_cert, Error};
+use crate::jcli_app::utils::key_parser::parse_pub_key;
 use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{Certificate, PoolPermissions, PoolRegistration},
@@ -5,8 +7,6 @@ use chain_impl_mockchain::{
     rewards,
 };
 use chain_time::DurationSeconds;
-use jcli_app::certificate::{write_cert, Error};
-use jcli_app::utils::key_parser::parse_pub_key;
 use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;

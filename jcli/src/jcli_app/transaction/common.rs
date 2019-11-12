@@ -1,5 +1,5 @@
+use crate::jcli_app::transaction::{staging::Staging, Error};
 use chain_impl_mockchain::fee::LinearFee;
-use jcli_app::transaction::{staging::Staging, Error};
 use std::path::PathBuf;
 use structopt::StructOpt;
 

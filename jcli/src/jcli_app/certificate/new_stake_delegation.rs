@@ -1,10 +1,10 @@
+use crate::jcli_app::certificate::{write_cert, Error};
+use crate::jcli_app::utils::key_parser::parse_pub_key;
 use chain_crypto::{Blake2b256, Ed25519, PublicKey};
 use chain_impl_mockchain::account::{DelegationRatio, DelegationType};
 use chain_impl_mockchain::accounting::account::DELEGATION_RATIO_MAX_DECLS;
 use chain_impl_mockchain::certificate::{Certificate, StakeDelegation as Delegation};
 use chain_impl_mockchain::transaction::AccountIdentifier;
-use jcli_app::certificate::{write_cert, Error};
-use jcli_app::utils::key_parser::parse_pub_key;
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::convert::TryFrom;
 use std::error::Error as StdError;

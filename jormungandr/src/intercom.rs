@@ -1,8 +1,8 @@
 use crate::blockcfg::{Block, Fragment, FragmentId, Header, HeaderHash};
+use crate::blockchain::Checkpoints;
 use crate::network::p2p::comm::PeerStats;
 use crate::network::p2p::Id as NodeId;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
-use blockchain::Checkpoints;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
 use jormungandr_lib::interfaces::{FragmentOrigin, FragmentStatus};
