@@ -258,7 +258,11 @@ where
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
             Ok(Async::Ready(Some(Err(e)))) => {
-                warn!(self.logger, "error while streaming response: {:?}", e);
+                info!(
+                    self.logger,
+                    "error while streaming response";
+                    "error" => ?e,
+                );
                 return Err(e.into());
             }
         }
