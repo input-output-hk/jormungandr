@@ -919,7 +919,7 @@ pub enum MatchingIdentifierWitness<'a> {
 }
 
 fn match_identifier_witness<'a>(
-    account: &AccountIdentifier,
+    account: &UnspecifiedAccountIdentifier,
     witness: &'a Witness,
 ) -> Result<MatchingIdentifierWitness<'a>, Error> {
     match witness {

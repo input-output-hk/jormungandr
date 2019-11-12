@@ -16,9 +16,9 @@ pub const INPUT_PTR_SIZE: usize = 32;
 
 /// This is either an single account or a multisig account depending on the witness type
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AccountIdentifier([u8; INPUT_PTR_SIZE]);
+pub struct UnspecifiedAccountIdentifier([u8; INPUT_PTR_SIZE]);
 
-impl AccountIdentifier {
+impl UnspecifiedAccountIdentifier {
     pub fn to_single_account(&self) -> Option<account::Identifier> {
         PublicKey::from_binary(&self.0).map(|x| x.into()).ok()
     }
@@ -30,26 +30,32 @@ impl AccountIdentifier {
         let mut buf = [0u8; INPUT_PTR_SIZE];
         let pk: PublicKey<account::AccountAlg> = identifier.into();
         buf.copy_from_slice(pk.as_ref());
-        AccountIdentifier(buf)
+        UnspecifiedAccountIdentifier(buf)
     }
 
     pub fn from_multi_account(identifier: multisig::Identifier) -> Self {
         let mut buf = [0u8; INPUT_PTR_SIZE];
         buf.copy_from_slice(identifier.as_ref());
-        AccountIdentifier(buf)
+        UnspecifiedAccountIdentifier(buf)
     }
 }
 
-impl AsRef<[u8]> for AccountIdentifier {
+impl AsRef<[u8]> for UnspecifiedAccountIdentifier {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl From<[u8; INPUT_PTR_SIZE]> for AccountIdentifier {
+impl From<[u8; INPUT_PTR_SIZE]> for UnspecifiedAccountIdentifier {
     fn from(v: [u8; INPUT_PTR_SIZE]) -> Self {
-        AccountIdentifier(v)
+        UnspecifiedAccountIdentifier(v)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AccountIdentifier {
+    Single(account::Identifier),
+    Multi(multisig::Identifier),
 }
 
 /// Generalized input which have a specific input value, and
@@ -68,14 +74,14 @@ pub enum InputType {
     Account,
 }
 
-impl From<AccountIdentifier> for [u8; INPUT_PTR_SIZE] {
-    fn from(v: AccountIdentifier) -> Self {
+impl From<UnspecifiedAccountIdentifier> for [u8; INPUT_PTR_SIZE] {
+    fn from(v: UnspecifiedAccountIdentifier) -> Self {
         v.0
     }
 }
 
 pub enum InputEnum {
-    AccountInput(AccountIdentifier, Value),
+    AccountInput(UnspecifiedAccountIdentifier, Value),
     UtxoInput(UtxoPointer),
 }
 
@@ -141,12 +147,12 @@ impl Input {
 
     pub fn from_account_public_key(public_key: SpendingPublicKey, value: Value) -> Self {
         Input::from_account(
-            AccountIdentifier::from_single_account(Identifier::from(public_key)),
+            UnspecifiedAccountIdentifier::from_single_account(Identifier::from(public_key)),
             value,
         )
     }
 
-    pub fn from_account(id: AccountIdentifier, value: Value) -> Self {
+    pub fn from_account(id: UnspecifiedAccountIdentifier, value: Value) -> Self {
         let mut input_ptr = [0u8; INPUT_PTR_SIZE];
         input_ptr.copy_from_slice(&id.0);
         Input {
@@ -157,12 +163,12 @@ impl Input {
     }
 
     pub fn from_account_single(id: account::Identifier, value: Value) -> Self {
-        let id = AccountIdentifier::from_single_account(id);
+        let id = UnspecifiedAccountIdentifier::from_single_account(id);
         Input::from_account(id, value)
     }
 
     pub fn from_multisig_account(id: multisig::Identifier, value: Value) -> Self {
-        let id = AccountIdentifier::from_multi_account(id);
+        let id = UnspecifiedAccountIdentifier::from_multi_account(id);
         Input::from_account(id, value)
     }
 
@@ -170,7 +176,7 @@ impl Input {
         match self.get_type() {
             InputType::Account => {
                 let account_identifier = self.input_ptr.clone();
-                let id = AccountIdentifier(account_identifier);
+                let id = UnspecifiedAccountIdentifier(account_identifier);
                 InputEnum::AccountInput(id, self.value)
             }
             InputType::Utxo => InputEnum::UtxoInput(UtxoPointer::new(
@@ -240,13 +246,23 @@ mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
-    impl Arbitrary for AccountIdentifier {
+    impl Arbitrary for UnspecifiedAccountIdentifier {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let mut b = [0u8; 32];
             for v in b.iter_mut() {
                 *v = Arbitrary::arbitrary(g)
             }
             b.into()
+        }
+    }
+
+    impl Arbitrary for AccountIdentifier {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            if Arbitrary::arbitrary(g) {
+                AccountIdentifier::Single(Arbitrary::arbitrary(g))
+            } else {
+                AccountIdentifier::Multi(Arbitrary::arbitrary(g))
+            }
         }
     }
 }

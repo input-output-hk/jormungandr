@@ -8,10 +8,8 @@ use crate::transaction::{Payload, PayloadData, PayloadSlice};
 
 pub use delegation::{OwnerStakeDelegation, StakeDelegation};
 pub use pool::{
-    IndexSignatures, ManagementThreshold, PoolId,
-    PoolOwnersSigned, PoolPermissions,
-    PoolRegistration, PoolRetirement, PoolSignature,
-    PoolUpdate,
+    IndexSignatures, ManagementThreshold, PoolId, PoolOwnersSigned, PoolPermissions,
+    PoolRegistration, PoolRetirement, PoolSignature, PoolUpdate,
 };
 
 pub enum CertificateSlice<'a> {
