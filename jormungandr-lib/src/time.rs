@@ -114,6 +114,10 @@ impl SystemTime {
         let timestamps = self.0.duration_since(time::UNIX_EPOCH).unwrap();
         Utc.timestamp(timestamps.as_secs() as i64, timestamps.subsec_nanos())
     }
+
+    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, time::SystemTimeError> {
+        self.0.duration_since(earlier.0).map(Duration)
+    }
 }
 
 impl LocalDateTime {

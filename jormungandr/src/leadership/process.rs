@@ -357,10 +357,9 @@ impl Module {
         // block building (including block selection) and to submit the block
         // to the network.
         let remaining_time = event_end
-            .as_ref()
-            .duration_since(now.into())
+            .duration_since(now)
             .expect("event end in the future");
-        let deadline = Instant::now() + remaining_time;
+        let deadline = Instant::now() + remaining_time.into();
 
         let logger = logger.new(o!(
             "event_remaining_time" => jormungandr_lib::time::Duration::from(remaining_time).to_string()
