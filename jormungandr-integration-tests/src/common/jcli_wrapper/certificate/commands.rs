@@ -23,8 +23,8 @@ impl CertificateCommands {
             .arg("certificate")
             .arg("new")
             .arg("stake-delegation")
-            .arg(&stake_pool_id)
-            .arg(&delegation_id);
+            .arg(&delegation_id)
+            .arg(&stake_pool_id);
         command
     }
 
