@@ -65,6 +65,7 @@ impl StakePoolRegistration {
             permissions: PoolPermissions::new(self.management_threshold),
             start_validity: DurationSeconds::from(self.start_validity).into(),
             rewards: rewards::TaxType::zero(),
+            reward_account: None,
             keys: GenesisPraosLeader {
                 kes_public_key: self.kes_key,
                 vrf_public_key: self.vrf_key,

@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
     certificate::{PoolId, SignedCertificate},
     fee::LinearFee,
     fragment::Fragment,
-    transaction::AccountIdentifier,
+    transaction::UnspecifiedAccountIdentifier,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -105,7 +105,7 @@ impl Wallet {
         }
     }
 
-    pub fn stake_key(&self) -> Option<AccountIdentifier> {
+    pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
         match &self.inner {
             Inner::Account(account) => Some(account.stake_key()),
             Inner::UTxO(_utxo) => unimplemented!(),

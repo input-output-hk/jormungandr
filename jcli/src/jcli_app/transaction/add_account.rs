@@ -1,6 +1,6 @@
 use crate::jcli_app::transaction::{common, Error};
 use chain_addr::{Address, Kind};
-use chain_impl_mockchain::transaction::AccountIdentifier;
+use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 
@@ -24,10 +24,14 @@ impl AddAccount {
         let mut transaction = self.common.load()?;
 
         let account_id = match Address::from(self.account).kind() {
-            Kind::Account(key) => AccountIdentifier::from_single_account(key.clone().into()),
+            Kind::Account(key) => {
+                UnspecifiedAccountIdentifier::from_single_account(key.clone().into())
+            }
+            Kind::Multisig(key) => {
+                UnspecifiedAccountIdentifier::from_multi_account(key.clone().into())
+            }
             Kind::Single(_) => return Err(Error::AccountAddressSingle),
             Kind::Group(_, _) => return Err(Error::AccountAddressGroup),
-            Kind::Multisig(_) => return Err(Error::AccountAddressMultisig),
         };
 
         transaction.add_input(interfaces::TransactionInput {

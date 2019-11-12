@@ -4,7 +4,7 @@ use chain_crypto::{Blake2b256, Ed25519, PublicKey};
 use chain_impl_mockchain::account::{DelegationRatio, DelegationType};
 use chain_impl_mockchain::accounting::account::DELEGATION_RATIO_MAX_DECLS;
 use chain_impl_mockchain::certificate::{Certificate, StakeDelegation as Delegation};
-use chain_impl_mockchain::transaction::AccountIdentifier;
+use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::convert::TryFrom;
 use std::error::Error as StdError;
@@ -53,7 +53,7 @@ impl StakeDelegation {
             _ => DelegationType::Ratio(delegation_ratio(&self.pool_ids)?),
         };
         let content = Delegation {
-            account_id: AccountIdentifier::from_single_account(self.stake_id.into()),
+            account_id: UnspecifiedAccountIdentifier::from_single_account(self.stake_id.into()),
             delegation,
         };
         let cert = Certificate::StakeDelegation(content);

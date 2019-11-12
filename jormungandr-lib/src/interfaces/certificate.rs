@@ -115,7 +115,7 @@ impl property::Serialize for SignedCertificate {
             certificate::SignedCertificate::StakeDelegation(c, a) => {
                 writer.write_all(&[1])?;
                 c.serialize(&mut writer)?;
-                writer.write_all(a.as_ref())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::OwnerStakeDelegation(c, ()) => {
                 writer.write_all(&[2])?;

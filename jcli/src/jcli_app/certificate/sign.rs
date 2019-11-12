@@ -7,7 +7,8 @@ use chain_impl_mockchain::certificate::{
 };
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::{
-    AccountBindingSignature, Payload, SetAuthData, Transaction, TxBuilderState,
+    AccountBindingSignature, Payload, SetAuthData, SingleAccountBindingSignature, Transaction,
+    TxBuilderState,
 };
 use jormungandr_lib::interfaces;
 use std::ops::Deref;
@@ -103,7 +104,7 @@ pub(crate) fn stake_delegation_account_binding_sign(
         }
     }
 
-    let sig = AccountBindingSignature::new(&private_key, &builder.get_auth_data());
+    let sig = AccountBindingSignature::new_single(&private_key, &builder.get_auth_data());
 
     Ok(SignedCertificate::StakeDelegation(delegation, sig))
 }
@@ -149,7 +150,7 @@ where
 
     let mut sigs = Vec::new();
     for (i, key) in keys.iter() {
-        let sig = AccountBindingSignature::new(key, &auth_data);
+        let sig = SingleAccountBindingSignature::new(key, &auth_data);
         sigs.push((*i, sig))
     }
     let sig = PoolOwnersSigned { signatures: sigs };
