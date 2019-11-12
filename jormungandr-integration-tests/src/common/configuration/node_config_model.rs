@@ -72,6 +72,11 @@ impl NodeConfig {
             level: Some("info".to_string()),
             format: Some("json".to_string()),
         }]);
+        let grpc_address = format!(
+            "/ip4/{}/tcp/{}",
+            DEFAULT_HOST,
+            public_address_port.to_string()
+        );
 
         NodeConfig {
             storage: Some(String::from(storage_file.as_os_str().to_str().unwrap())),
@@ -81,17 +86,9 @@ impl NodeConfig {
             }),
             p2p: Peer2Peer {
                 trusted_peers: None,
-                public_address: format!(
-                    "/ip4/{}/tcp/{}",
-                    DEFAULT_HOST,
-                    public_address_port.to_string()
-                ),
+                public_address: grpc_address.clone(),
                 public_id: public_id.to_string(),
-                listen_address: format!(
-                    "/ip4/{}/tcp/{}",
-                    DEFAULT_HOST,
-                    public_address_port.to_string()
-                ),
+                listen_address: grpc_address.clone(),
                 topics_of_interest: TopicsOfInterest {
                     messages: String::from("high"),
                     blocks: String::from("high"),
@@ -120,6 +117,7 @@ impl NodeConfig {
             "/ip4/127.0.0.1/tcp/{}",
             super::get_available_port().to_string()
         );
+        self.p2p.listen_address = self.p2p.public_address.clone();
     }
 
     pub fn get_node_address(&self) -> String {
