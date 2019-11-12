@@ -183,8 +183,8 @@ impl LogFormat {
 
     fn decorate_writer<T: io::Write + Send + 'static>(&self, w: T) -> Async {
         match self {
-            LogFormat::Plain => term_drain_with_decorator(PlainDecorator::new(w)).async(),
-            LogFormat::Json => slog_json::Json::default(w).async(),
+            LogFormat::Plain => term_drain_with_decorator(PlainDecorator::new(w)).into_async(),
+            LogFormat::Json => slog_json::Json::default(w).into_async(),
         }
     }
 }
