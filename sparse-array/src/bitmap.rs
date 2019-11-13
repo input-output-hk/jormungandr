@@ -6,12 +6,14 @@ impl BitmapIndex {
         Self(0u128, 0u128)
     }
 
+    #[inline]
     fn get_mask_and_part(&self, idx: u8) -> (u128, u8) {
         let mask: u128 = 1 << (idx % 128);
         let part: u8 = idx / 128;
         (mask, part)
     }
 
+    #[inline]
     pub fn get_index(&self, idx: u8) -> bool {
         let (mask, part) = self.get_mask_and_part(idx);
 
@@ -22,6 +24,7 @@ impl BitmapIndex {
         }
     }
 
+    #[inline]
     pub fn set_index(&mut self, idx: u8) {
         let (mask, part) = self.get_mask_and_part(idx);
 
@@ -32,6 +35,7 @@ impl BitmapIndex {
         }
     }
 
+    #[inline]
     pub fn remove_index(&mut self, idx: u8) {
         let (mask, part) = self.get_mask_and_part(idx);
 
@@ -42,7 +46,9 @@ impl BitmapIndex {
         }
     }
 
-    pub fn get_real_index(&self, idx: u8) -> Option<u8> {
+    #[inline]
+    #[cfg_attr(target_arch = "x86_64", target_feature(enable = "popcnt"))]
+    unsafe fn get_real_index_impl(&self, idx: u8) -> Option<u8> {
         if !self.get_index(idx) {
             return None;
         }
@@ -58,11 +64,19 @@ impl BitmapIndex {
         }
     }
 
+    #[inline]
+    pub fn get_real_index(&self, idx: u8) -> Option<u8> {
+        unsafe { self.get_real_index_impl(idx) }
+    }
+
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.0 == 0 && self.1 == 0
     }
 
-    pub fn get_first_index(&self) -> Option<u8> {
+    #[inline]
+    #[cfg_attr(target_arch = "x86_64", target_feature(enable = "bmi1"))]
+    unsafe fn get_first_index_impl(&self) -> Option<u8> {
         let trailing_zeros0 = self.0.trailing_zeros();
         let trailing_zeros1 = self.1.trailing_zeros();
         if trailing_zeros0 < 128 {
@@ -72,6 +86,11 @@ impl BitmapIndex {
         } else {
             None
         }
+    }
+
+    #[inline]
+    pub fn get_first_index(&self) -> Option<u8> {
+        unsafe { self.get_first_index_impl() }
     }
 }
 
