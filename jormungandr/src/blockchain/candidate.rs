@@ -408,6 +408,12 @@ impl CandidateForest {
     pub fn purge(&self) -> impl Future<Item = (), Error = timer::Error> {
         let mut inner = self.inner.clone();
 
+        // FIXME: this is expected to be called periodically, as it ignores
+        // polling deadlines set by the DelayQueue. A rework will be
+        // needed to gather all GC activities from here and other blockchain
+        // entities to be managed by a common DelayQueue in a separate task,
+        // with channels from the garbage-producing tasks to manage
+        // expiration.
         future::poll_fn(move || Ok(inner.poll_lock()))
             .and_then(|mut forest| future::poll_fn(move || forest.poll_purge()))
     }
@@ -527,7 +533,11 @@ impl CandidateForestThickets {
     fn poll_purge(&mut self) -> Poll<(), timer::Error> {
         loop {
             match self.expirations.poll()? {
-                Async::NotReady => return Ok(Async::NotReady),
+                Async::NotReady => {
+                    // Nothing to process now.
+                    // Return Ready to release the lock.
+                    return Ok(Async::Ready(()));
+                }
                 Async::Ready(None) => return Ok(Async::Ready(())),
                 Async::Ready(Some(entry)) => {
                     self.expunge_root(entry.into_inner());
