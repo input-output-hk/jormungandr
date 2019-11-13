@@ -83,40 +83,61 @@ pub fn run_handle_input(
                 "parent" => block.header.parent_id().to_string(),
                 "date" => block.header.block_date().to_string()));
 
-            let future =
+            let process_new_block =
                 process_leadership_block(logger.clone(), blockchain.clone(), block.clone());
-            let new_block_ref = future.wait().unwrap();
-            let header = new_block_ref.header().clone();
 
-            try_request_fragment_removal(
-                tx_msg_box,
-                block.fragments().map(|f| f.id()).collect(),
-                &header,
+            let fragments = block.fragments().map(|f| f.id()).collect();
+
+            let update_mempool = process_new_block.and_then(|new_block_ref| {
+                try_request_fragment_removal(tx_msg_box, fragments, new_block_ref.header())
+                    .map_err(|_| "cannot remove fragments from pool".into())
+                    .map(|_| {
+                        stats_counter.add_block_recv_cnt(1);
+                        new_block_ref
+                    })
+            });
+
+            let process_new_ref = update_mempool.and_then(|new_block_ref| {
+                process_new_ref(
+                    logger.clone(),
+                    blockchain.clone(),
+                    blockchain_tip.clone(),
+                    Arc::clone(&new_block_ref),
+                )
+                .map(|()| new_block_ref)
+            });
+
+            let propagate_new_block = process_new_ref.and_then(|new_block_ref| {
+                let header = new_block_ref.header().clone();
+                network_msg_box
+                    .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                    .map_err(|_| "Cannot propagate block to network".into())
+                    .map(|()| new_block_ref)
+            });
+
+            let notify_explorer = propagate_new_block.and_then(move |new_block_ref| {
+                if let Some(msg_box) = explorer_msg_box {
+                    msg_box
+                        .try_send(ExplorerMsg::NewBlock(block))
+                        .map_err(|_| "Cannot propagate block to explorer".into())
+                        .map(|()| new_block_ref)
+                        .into()
+                } else {
+                    future::ok(new_block_ref)
+                }
+            });
+
+            notify_explorer.map(|_| ()).wait().unwrap_or_else(
+                |err| error!(logger, "Cannot process the event block" ; "reason" => %err),
             )
-            .unwrap_or_else(
-                |err| error!(logger, "cannot remove fragments from pool" ; "reason" => %err),
-            );
-            process_new_ref(
-                logger.clone(),
-                blockchain.clone(),
-                blockchain_tip.clone(),
-                new_block_ref.clone(),
-            )
-            .wait()
-            .unwrap();
-            network_msg_box
-                .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-                .unwrap_or_else(|err| error!(logger, "cannot propagate block to network: {}", err));
-
-            if let Some(msg_box) = explorer_msg_box {
-                msg_box
-                    .try_send(ExplorerMsg::NewBlock(block))
-                    .unwrap_or_else(|err| error!(logger, "cannot add block to explorer: {}", err));
-            };
-
-            stats_counter.add_block_recv_cnt(1);
         }
         BlockMsg::AnnouncedBlock(header, node_id) => {
+            let logger = info.logger().new(o!(
+                "hash" => header.hash().to_string(),
+                "parent" => header.parent_id().to_string(),
+                "date" => header.block_date().to_string(),
+                "from_node_id" => node_id.to_string()));
+
             let future = process_block_announcement(
                 blockchain.clone(),
                 blockchain_tip.clone(),
@@ -125,7 +146,9 @@ pub fn run_handle_input(
                 network_msg_box.clone(),
                 info.logger().clone(),
             );
-            future.wait().unwrap();
+            future.wait().unwrap_or_else(
+                |err| error!(logger, "Cannot process the announced block" ; "reason" => %err),
+            )
         }
         BlockMsg::NetworkBlocks(handle) => {
             let logger = info.logger().clone();
