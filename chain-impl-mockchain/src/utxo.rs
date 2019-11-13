@@ -101,7 +101,7 @@ pub struct Entry<'a, OutputAddress> {
     pub output: &'a Output<OutputAddress>,
 }
 
-impl<OutAddress: Clone> Ledger<OutAddress> {
+impl<OutAddress> Ledger<OutAddress> {
     pub fn iter<'a>(&'a self) -> Iter<'a, OutAddress> {
         Iter {
             hamt_iter: self.0.iter(),
@@ -136,7 +136,7 @@ impl<OutAddress: Clone> Ledger<OutAddress> {
     }
 }
 
-impl<'a, V: Clone> Iterator for Values<'a, V> {
+impl<'a, V> Iterator for Values<'a, V> {
     type Item = &'a Output<V>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -155,7 +155,7 @@ impl<'a, V: Clone> Iterator for Values<'a, V> {
     }
 }
 
-impl<'a, V: Clone> Iterator for Iter<'a, V> {
+impl<'a, V> Iterator for Iter<'a, V> {
     type Item = Entry<'a, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -179,6 +179,7 @@ impl<'a, V: Clone> Iterator for Iter<'a, V> {
         }
     }
 }
+
 impl<OutAddress: Clone> Ledger<OutAddress> {
     /// Create a new empty UTXO Ledger
     pub fn new() -> Self {

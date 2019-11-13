@@ -13,7 +13,7 @@ pub struct FastSparseArray<V> {
     data: Arc<SparseArray<V>>,
 }
 
-impl<V: Clone> FastSparseArray<V> {
+impl<V> FastSparseArray<V> {
     pub fn new() -> Self {
         Self {
             index: BitmapIndex::new(),
@@ -36,22 +36,17 @@ impl<V: Clone> FastSparseArray<V> {
         }
     }
 
-    pub fn set(&mut self, idx: u8, value: V) {
-        match Arc::get_mut(&mut self.data) {
-            Some(d) => d.set(idx, value),
-            None => {
-                let mut new_sparse_array = SparseArray::new();
-                for (idx, value) in self.iter() {
-                    new_sparse_array.set(idx, (*value).clone());
-                }
-                new_sparse_array.set(idx, value);
-                self.data = Arc::new(new_sparse_array);
-            }
-        }
+    pub fn set(&mut self, idx: u8, value: V)
+        where V: Clone
+    {
+        let data_view = Arc::make_mut(&mut self.data);
+        data_view.set(idx, value);
         self.index.set_index(idx);
     }
 
-    pub fn remove(&mut self, idx: u8) -> Option<V> {
+    pub fn remove(&mut self, idx: u8) -> Option<V>
+        where V: Clone
+    {
         if self.index.get_index(idx) {
             self.index.remove_index(idx);
             return self.data.get(idx).map(|x| (*x).clone());
@@ -72,7 +67,9 @@ impl<V: Clone> FastSparseArray<V> {
         FastSparseArrayIter::new(&self)
     }
 
-    pub fn shrink(&mut self) {
+    pub fn shrink(&mut self)
+        where V: Clone
+    {
         let mut new_sparse_array = SparseArray::new();
         for (idx, value) in self.iter() {
             new_sparse_array.set(idx, (*value).clone());
@@ -95,7 +92,7 @@ impl<'a, V> FastSparseArrayIter<'a, V> {
     }
 }
 
-impl<'a, V: Clone> Iterator for FastSparseArrayIter<'a, V> {
+impl<'a, V> Iterator for FastSparseArrayIter<'a, V> {
     type Item = (u8, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
