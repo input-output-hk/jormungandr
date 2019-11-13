@@ -80,7 +80,7 @@ impl SmallBitmap {
 
     #[inline]
     /// Create a new bitmap with 1 element set
-    pub fn once(b: LevelIndex) -> Self {
+    pub const fn once(b: LevelIndex) -> Self {
         SmallBitmap(b.mask())
     }
 

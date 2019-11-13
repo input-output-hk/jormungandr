@@ -37,7 +37,7 @@ pub struct LevelIndex(pub usize);
 
 impl LevelIndex {
     #[inline]
-    pub fn mask(&self) -> u32 {
+    pub const fn mask(&self) -> u32 {
         1u32.wrapping_shl(self.0 as u32)
     }
 }

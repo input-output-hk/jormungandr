@@ -14,7 +14,7 @@ use std::slice;
 #[derive(Clone)]
 pub struct Node<K, V> {
     pub bitmap: SmallBitmap,
-    pub children: Vec<SharedRef<Entry<K, V>>>,
+    pub children: Box<[SharedRef<Entry<K, V>>]>,
 }
 
 pub type NodeIter<'a, K, V> = slice::Iter<'a, SharedRef<Entry<K, V>>>;
@@ -28,7 +28,14 @@ impl<K, V> Node<K, V> {
     pub fn new() -> Self {
         Node {
             bitmap: SmallBitmap::new(),
-            children: Vec::with_capacity(0),
+            children: Vec::with_capacity(0).into(),
+        }
+    }
+
+    pub fn singleton(idx: LevelIndex, child: SharedRef<Entry<K, V>>) -> Self {
+        Node {
+            bitmap: SmallBitmap::once(idx),
+            children: vec![child].into(),
         }
     }
 
@@ -66,25 +73,15 @@ impl<K, V> Node<K, V> {
         }
     }
 
-    pub fn unchecked_set_mut(&mut self, idx: LevelIndex, child: SharedRef<Entry<K, V>>) {
-        assert_eq!(self.bitmap.is_set(idx), false);
-
-        let pos = self.bitmap.get_sparse_pos(idx);
-
-        self.bitmap = self.bitmap.set_index(idx);
-        self.children.insert(pos.get_found(), child)
-    }
-
     pub fn clear_at(&self, idx: LevelIndex) -> Option<Self> {
         assert_eq!(self.bitmap.is_set(idx), true);
         let new_bitmap = self.bitmap.clear_index(idx);
         if new_bitmap.is_empty() {
             None
         } else {
-            let mut v = self.children.clone();
+            // use the old bitmap to locate the element
             let pos = self.bitmap.get_sparse_pos(idx);
-
-            v.remove(pos.get_found());
+            let v = helper::clone_array_and_remove_at_pos(&self.children, pos.get_found());
 
             Some(Node {
                 bitmap: new_bitmap,
@@ -153,13 +150,12 @@ pub fn insert_rec<K: PartialEq, V>(
                     let e = SharedRef::new(newent);
                     Ok(node.replace_at(idx, e))
                 } else {
-                    let mut subnode = Node::new();
-
                     let leaf_idx = content.hashed.level_index(lvl + 1);
                     let entry_next_idx = h.level_index(lvl + 1);
-                    subnode.unchecked_set_mut(leaf_idx, SharedRef::clone(node.get_child(idx)));
+                    let subnode = Node::singleton(leaf_idx, SharedRef::clone(node.get_child(idx)));
+
                     if entry_next_idx != leaf_idx {
-                        subnode.unchecked_set_mut(
+                        let subnode = subnode.set_at(
                             entry_next_idx,
                             SharedRef::new(Entry::Leaf(LeafContent::single(*h, kv))),
                         );

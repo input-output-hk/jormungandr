@@ -28,7 +28,7 @@ impl<K: Clone, V> KV<K, V> {
 pub enum SmallVec<T> {
     One(T),
     //Two(T, T),
-    Many(Vec<T>),
+    Many(Box<[T]>),
 }
 
 /// Leaf content is usually one key-value pair,
@@ -67,7 +67,7 @@ impl<K: PartialEq, V> LeafContent<K, V> {
                 let v = vec![SharedRef::clone(fkv), kv];
                 Ok(LeafContent {
                     hashed: self.hashed,
-                    content: SmallVec::Many(v),
+                    content: SmallVec::Many(v.into()),
                 })
             }
             SmallVec::Many(ref content) => {
@@ -76,9 +76,7 @@ impl<K: PartialEq, V> LeafContent<K, V> {
                         return Err(InsertError::EntryExists);
                     }
                 }
-                let mut v = Vec::with_capacity(content.len() + 1);
-                v.extend_from_slice(&content[..]);
-                v.push(kv);
+                let v = clone_array_and_extend(content, kv);
                 Ok(LeafContent {
                     hashed: self.hashed,
                     content: SmallVec::Many(v),
@@ -199,8 +197,7 @@ impl<K: PartialEq + Clone, V> LeafContent<K, V> {
                                         content: SmallVec::One(to_keep),
                                     }))
                                 } else {
-                                    let mut newv = content.clone();
-                                    newv.remove(pos);
+                                    let newv = clone_array_and_remove_at_pos(content, pos);
                                     Ok(Some(LeafContent {
                                         hashed: self.hashed,
                                         content: SmallVec::Many(newv),
@@ -304,8 +301,7 @@ impl<K: PartialEq, V> LeafContent<K, V> {
                                 content: SmallVec::One(to_keep),
                             }))
                         } else {
-                            let mut newv = content.clone();
-                            newv.remove(pos);
+                            let newv = clone_array_and_remove_at_pos(content, pos);
                             Ok(Some(LeafContent {
                                 hashed: self.hashed,
                                 content: SmallVec::Many(newv),
@@ -364,8 +360,7 @@ impl<K: PartialEq, V: PartialEq> LeafContent<K, V> {
                                 content: SmallVec::One(to_keep),
                             }))
                         } else {
-                            let mut newv = content.clone();
-                            newv.remove(pos);
+                            let newv = clone_array_and_remove_at_pos(content, pos);
                             Ok(Some(LeafContent {
                                 hashed: self.hashed,
                                 content: SmallVec::Many(newv),
