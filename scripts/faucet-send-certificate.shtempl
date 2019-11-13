@@ -85,24 +85,30 @@ $CLI transaction finalize --staging ${STAGING_FILE}
 
 TRANSACTION_ID=$($CLI transaction id --staging ${STAGING_FILE})
 
-# Create the witness for the 1 input (add-account) and add it
-WITNESS_SECRET_FILE="witness.secret.$$"
-WITNESS_OUTPUT_FILE="witness.out.$$"
+# File with the private key needed for witness and transaction auth
+FAUCET_SK_FILE="faucet_key.$$.prv"
+printf "${FAUCET_SK}" > ${FAUCET_SK_FILE}
 
-printf "${FAUCET_SK}" > ${WITNESS_SECRET_FILE}
+# Create the witness for the 1 input (add-account) and add it
+WITNESS_OUTPUT_FILE="witness.out.$$"
 
 $CLI transaction make-witness ${TRANSACTION_ID} \
     --genesis-block-hash ${BLOCK0_HASH} \
     --type "account" --account-spending-counter "${FAUCET_COUNTER}" \
-    ${WITNESS_OUTPUT_FILE} ${WITNESS_SECRET_FILE}
+    ${WITNESS_OUTPUT_FILE} ${FAUCET_SK_FILE}
 $CLI transaction add-witness ${WITNESS_OUTPUT_FILE} --staging "${STAGING_FILE}"
 
-rm ${WITNESS_SECRET_FILE} ${WITNESS_OUTPUT_FILE}
+rm ${WITNESS_OUTPUT_FILE}
 
-# Finalize the transaction and send it
+# Finalize the transaction
 $CLI transaction seal --staging "${STAGING_FILE}"
+
+# Auth the transaction since it contains a certificate
+$CLI transaction auth --key=${FAUCET_SK_FILE} --staging "${STAGING_FILE}"
+
+# Send the transaction
 $CLI transaction to-message --staging "${STAGING_FILE}" | $CLI rest v0 message post -h "${REST_URL}"
 
-rm ${STAGING_FILE}
+rm ${STAGING_FILE} ${FAUCET_SK_FILE}
 
 exit 0
