@@ -88,8 +88,8 @@ CERTIFICATE_FILE="account_delegation_certificate"
 SIGNED_CERTIFICATE_FILE="account_delegation_certificate.signed"
 
 $CLI certificate new stake-delegation \
-    ${STAKE_POOL_ID} \
     ${ACCOUNT_PK} \
+    ${STAKE_POOL_ID} \
     ${CERTIFICATE_FILE}
 
 ##
