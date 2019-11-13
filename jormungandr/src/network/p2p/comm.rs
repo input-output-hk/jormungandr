@@ -598,8 +598,10 @@ impl Peers {
         let mut map = self.mutex.lock().unwrap();
         match map.peer_comms(node_id) {
             Some(comms) => {
-                debug!(self.logger, "pulling headers from {}", node_id;
-                       "from" => ?from, "to" => ?to);
+                debug!(self.logger, "pulling headers";
+                       "node_id" => %node_id,
+                       "from" => format!("[{}]", from.iter().map(|h| h.to_string()).collect::<Vec<_>>().join(", ")),
+                       "to" => %to);
                 comms
                     .chain_pulls
                     .try_send(ChainPullRequest { from, to })
