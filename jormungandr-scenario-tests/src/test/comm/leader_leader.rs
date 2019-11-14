@@ -15,7 +15,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) {
         &mut context,
         topology [
             LEADER_1 -> LEADER_2,
-            LEADER_2 -> LEADER_1,
+            LEADER_2
         ]
         blockchain {
             consensus = GenesisPraos,
@@ -38,6 +38,8 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)
         .unwrap();
 
+    leader_2.wait_for_bootstrap();
+    leader_1.wait_for_bootstrap();
     controller.monitor_nodes();
 
     let mut wallet1 = controller.wallet("delegated2").unwrap();

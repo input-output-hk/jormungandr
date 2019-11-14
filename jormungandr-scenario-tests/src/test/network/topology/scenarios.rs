@@ -56,7 +56,10 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER_1, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    leader4.wait_for_bootstrap();
+    leader3.wait_for_bootstrap();
+    leader2.wait_for_bootstrap();
+    leader1.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -119,7 +122,11 @@ pub fn star(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER_1, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    leader5.wait_for_bootstrap();
+    leader4.wait_for_bootstrap();
+    leader3.wait_for_bootstrap();
+    leader2.wait_for_bootstrap();
+    leader1.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -181,7 +188,10 @@ pub fn ring(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER_1, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    leader4.wait_for_bootstrap();
+    leader3.wait_for_bootstrap();
+    leader2.wait_for_bootstrap();
+    leader1.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -246,7 +256,11 @@ pub fn mesh(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER_1, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    leader5.wait_for_bootstrap();
+    leader4.wait_for_bootstrap();
+    leader3.wait_for_bootstrap();
+    leader2.wait_for_bootstrap();
+    leader1.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -306,7 +320,10 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER_1, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    leader4.wait_for_bootstrap();
+    leader3.wait_for_bootstrap();
+    leader2.wait_for_bootstrap();
+    leader1.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -379,7 +396,13 @@ pub fn tree(mut context: Context<ChaChaRng>) {
         .unwrap();
 
     controller.monitor_nodes();
-    thread::sleep(Duration::from_secs(10));
+    leader7.wait_for_bootstrap();
+    leader6.wait_for_bootstrap();
+    leader5.wait_for_bootstrap();
+    leader4.wait_for_bootstrap();
+    leader3.wait_for_bootstrap();
+    leader2.wait_for_bootstrap();
+    leader1.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -479,7 +502,15 @@ pub fn relay(mut context: Context<ChaChaRng>) {
 
     controller.monitor_nodes();
 
-    thread::sleep(Duration::from_secs(10));
+    relay2.wait_for_bootstrap();
+    relay1.wait_for_bootstrap();
+    leader7.wait_for_bootstrap();
+    leader6.wait_for_bootstrap();
+    leader5.wait_for_bootstrap();
+    leader4.wait_for_bootstrap();
+    leader3.wait_for_bootstrap();
+    leader2.wait_for_bootstrap();
+    leader1.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("delegated1").unwrap();
     let mut wallet2 = controller.wallet("delegated2").unwrap();

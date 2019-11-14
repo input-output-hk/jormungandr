@@ -38,7 +38,8 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) {
     let passive = controller
         .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
-    thread::sleep(Duration::from_secs(4));
+    leader.wait_for_bootstrap();
+    passive.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -85,7 +86,7 @@ pub fn leader_is_offline(mut context: Context<ChaChaRng>) {
         .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(2));
+    passive.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -130,7 +131,7 @@ pub fn leader_is_online_with_delay(mut context: Context<ChaChaRng>) {
         .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(3));
+    passive.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -146,7 +147,7 @@ pub fn leader_is_online_with_delay(mut context: Context<ChaChaRng>) {
     let leader = controller
         .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
         .unwrap();
-    thread::sleep(Duration::from_secs(3));
+    leader.wait_for_bootstrap();
 
     utils::keep_sending_transaction_dispite_error(
         40,
@@ -194,7 +195,8 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    leader.wait_for_bootstrap();
+    passive.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
@@ -267,7 +269,8 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
         .unwrap();
 
-    thread::sleep(Duration::from_secs(10));
+    leader.wait_for_bootstrap();
+    passive.wait_for_bootstrap();
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
