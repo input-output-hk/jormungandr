@@ -6,7 +6,7 @@ There are multiple components to be aware of when running a stake pool:
   will delegate to your stake pool via this `NodeId`);
 * your [**VRF**] key pairs: this is the cryptographic material we will use to participate
   to the leader election;
-* your [**KES**] key pairs: this is the cryptographic material we will use to sign the
+* your **KES** key pairs: this is the cryptographic material we will use to sign the
   block with.
 
 So in order to start your stake pool you will need to generate these objects.
@@ -15,7 +15,7 @@ So in order to start your stake pool you will need to generate these objects.
 
 ### VRF key pair
 
-To generate your [**VRF**] Key pairs, we will utilise [`jcli`] as described
+To generate your [**VRF**] Key pairs, we will utilise [`jcli`](../jcli/introduction.md) as described
 [here](../jcli/key.md):
 
 ```sh
