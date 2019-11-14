@@ -63,7 +63,8 @@ fn main() {
 
     introduction(&context);
     let scenarios_repo = ScenariosRepository::new(command_args.scenario);
-    scenarios_repo.run(&mut context);
+    let scenario_suite_result = scenarios_repo.run(&mut context);
+    println!("{}", scenario_suite_result.result_string())
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
