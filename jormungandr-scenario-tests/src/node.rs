@@ -319,6 +319,20 @@ impl NodeController {
         Ok(stats)
     }
 
+    pub fn wait_for_bootstrap(&self) {
+        loop {
+            let stats = self.stats();
+            println!("{:?}", stats);
+            if let Ok(stats) = stats {
+                if stats.uptime > 0 {
+                    return;
+                }
+            } else {
+            }
+            std::thread::sleep(Duration::from_secs(1));
+        }
+    }
+
     pub fn shutdown(&self) -> Result<bool> {
         let result = self.get("shutdown")?.text()?;
 
