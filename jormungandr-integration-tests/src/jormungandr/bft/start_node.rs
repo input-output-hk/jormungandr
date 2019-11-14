@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::node_config_model::{Log, TrustedPeer},
+    configuration::node_config_model::{Log, LogEntry, TrustedPeer},
     jormungandr::{ConfigurationBuilder, Starter},
 };
 
@@ -58,13 +58,13 @@ pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
 #[test]
 pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
     let config = ConfigurationBuilder::new()
-        .with_log(Log {
+        .with_log(Log(vec![LogEntry {
             format: Some("xml".to_string()),
             level: None,
-        })
+        }]))
         .build();
     Starter::new().config(config).start_fail(
-        r"Error while parsing the node configuration file: log\.format: unknown variant",
+        r"Error while parsing the node configuration file: log\[0\]\.format: unknown variant",
     );
 }
 

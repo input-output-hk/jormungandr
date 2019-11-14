@@ -404,7 +404,11 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     // The log crate is used by some libraries, e.g. tower-grpc.
     // Set up forwarding from log to slog, but only when trace log level is
     // requested, because the logs are very verbose.
-    if log_settings.level >= slog::FilterLevel::Trace {
+    if log_settings
+        .0
+        .iter()
+        .any(|entry| entry.level >= slog::FilterLevel::Trace)
+    {
         slog_scope::set_global_logger(logger.new(o!(log::KEY_SCOPE => "global"))).cancel_reset();
         slog_stdlog::init().unwrap();
     }

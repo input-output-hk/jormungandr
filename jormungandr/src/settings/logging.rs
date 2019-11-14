@@ -14,8 +14,10 @@ use std::fs;
 use std::io;
 use std::str::FromStr;
 
+pub struct LogSettings(pub Vec<LogSettingsEntry>);
+
 #[derive(Debug)]
-pub struct LogSettings {
+pub struct LogSettingsEntry {
     pub level: FilterLevel,
     pub format: LogFormat,
     pub output: LogOutput,
@@ -85,15 +87,50 @@ impl FromStr for LogOutput {
     }
 }
 
+#[derive(Debug)]
+struct DrainMux<D>(Vec<D>);
+
+impl<D> DrainMux<D> {
+    pub fn new(d: Vec<D>) -> Self {
+        Self(d)
+    }
+}
+
+impl<D: Drain> Drain for DrainMux<D> {
+    type Ok = ();
+    type Err = D::Err;
+
+    fn log(
+        &self,
+        record: &slog::Record,
+        values: &slog::OwnedKVList,
+    ) -> Result<Self::Ok, Self::Err> {
+        self.0.iter().try_for_each(|drain| {
+            drain.log(record, values);
+            Ok(())
+        })
+    }
+}
+
 impl LogSettings {
     pub fn to_logger(&self) -> Result<Logger, Error> {
+        let mut drains = Vec::new();
+        for config in self.0.iter() {
+            drains.push(config.to_logger()?);
+        }
+        let common_drain = DrainMux::new(drains).fuse();
+        Ok(slog::Logger::root(common_drain, o!()))
+    }
+}
+
+impl LogSettingsEntry {
+    pub fn to_logger(&self) -> Result<slog::Filter<Async, impl slog::FilterFn>, Error> {
         let filter_level = self.level;
         let drain = self
             .output
             .to_logger(&self.format)?
-            .filter(move |record| filter_level.accepts(record.level()))
-            .fuse();
-        Ok(slog::Logger::root(drain, o!()))
+            .filter(move |record| filter_level.accepts(record.level()));
+        Ok(drain)
     }
 }
 
@@ -130,10 +167,7 @@ impl LogOutput {
                 };
                 let gelf_drain = Gelf::new(graylog_source, graylog_host_port)
                     .map_err(Error::GelfConnectionFailed)?;
-                // We also log to stderr otherwise users see no logs.
-                // TODO: remove when multiple output is properly supported.
-                let stderr_drain = format.decorate_stderr();
-                Ok(slog::Duplicate(gelf_drain, stderr_drain).into_async())
+                Ok(gelf_drain.into_async())
             }
             LogOutput::File(path) => {
                 let file = fs::OpenOptions::new()

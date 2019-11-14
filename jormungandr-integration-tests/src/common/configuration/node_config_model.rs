@@ -8,7 +8,10 @@ use std::{path::PathBuf, time::Duration};
 use jormungandr_lib::interfaces::Mempool;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Log {
+pub struct Log(pub Vec<LogEntry>);
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LogEntry {
     pub level: Option<String>,
     pub format: Option<String>,
 }
@@ -65,13 +68,14 @@ impl NodeConfig {
         let public_address_port = super::get_available_port();
         let storage_file = file_utils::get_path_in_temp("storage");
         let public_id = poldercast::Id::generate(&mut rand::rngs::OsRng::new().unwrap());
+        let log = Log(vec![LogEntry {
+            level: Some("info".to_string()),
+            format: Some("json".to_string()),
+        }]);
 
         NodeConfig {
             storage: Some(String::from(storage_file.as_os_str().to_str().unwrap())),
-            log: Some(Log {
-                level: Some("info".to_string()),
-                format: Some("json".to_string()),
-            }),
+            log: Some(log),
             rest: Some(Rest {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string()),
             }),
