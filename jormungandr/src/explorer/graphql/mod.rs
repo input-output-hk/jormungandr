@@ -3,7 +3,7 @@ mod error;
 mod scalars;
 use self::connections::{
     BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
-    TransactionConnection,
+    TransactionConnection, TransactionNodeFetchInfo,
 };
 use self::error::ErrorKind;
 use super::indexing::{
@@ -120,8 +120,13 @@ impl Block {
                     let to = usize::try_from(range.upper_bound).unwrap();
 
                     (from..=to)
-                        .map(|i| (transactions[i].id().clone(), i.try_into().unwrap()))
-                        .collect::<Vec<(FragmentId, u32)>>()
+                        .map(|i| {
+                            (
+                                TransactionNodeFetchInfo::Contents(transactions[i].clone()),
+                                i.try_into().unwrap(),
+                            )
+                        })
+                        .collect::<Vec<(TransactionNodeFetchInfo, u32)>>()
                 }
             },
         )
@@ -217,6 +222,7 @@ impl From<blockcfg::BlockDate> for BlockDate {
 struct Transaction {
     id: FragmentId,
     block_hash: Option<HeaderHash>,
+    contents: Option<ExplorerTransaction>,
 }
 
 impl Transaction {
@@ -234,6 +240,7 @@ impl Transaction {
         Ok(Transaction {
             id,
             block_hash: Some(block_hash),
+            contents: None,
         })
     }
 
@@ -241,6 +248,15 @@ impl Transaction {
         Transaction {
             id,
             block_hash: None,
+            contents: None,
+        }
+    }
+
+    fn from_contents(contents: ExplorerTransaction) -> Transaction {
+        Transaction {
+            id: contents.id,
+            block_hash: None,
+            contents: Some(contents),
         }
     }
 
@@ -266,14 +282,18 @@ impl Transaction {
     }
 
     fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
-        let block = self.get_block(context)?;
-        Ok(block
-            .transactions
-            .get(&self.id)
-            .ok_or(ErrorKind::InternalError(
-                "transaction was not found in respective block".to_owned(),
-            ))?
-            .clone())
+        if let Some(c) = &self.contents {
+            Ok(c.clone())
+        } else {
+            let block = self.get_block(context)?;
+            Ok(block
+                .transactions
+                .get(&self.id)
+                .ok_or(ErrorKind::InternalError(
+                    "transaction was not found in respective block".to_owned(),
+                ))?
+                .clone())
+        }
     }
 }
 
@@ -442,7 +462,11 @@ impl Address {
             |range: PaginationInterval<u64>| match range {
                 PaginationInterval::Empty => vec![],
                 PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                    .filter_map(|i| transactions.get(i).map(|h| ((*h).clone(), i.into())))
+                    .filter_map(|i| {
+                        transactions
+                            .get(i)
+                            .map(|h| (TransactionNodeFetchInfo::Id((*h).clone()), i.into()))
+                    })
                     .collect(),
             },
         )
