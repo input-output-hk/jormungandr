@@ -5,11 +5,15 @@ use self::config::{Config, Leadership};
 pub use self::config::{Cors, Rest};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
-use crate::settings::logging::{LogFormat, LogOutput, LogSettings};
+use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
 use jormungandr_lib::interfaces::Mempool;
 use slog::{FilterLevel, Logger};
 use std::{fs::File, path::PathBuf};
+
+const DEFAULT_FILTER_LEVEL: FilterLevel = FilterLevel::Info;
+const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Plain;
+const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 
 custom_error! {pub Error
    ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
@@ -51,32 +55,39 @@ impl RawSettings {
     }
 
     pub fn log_settings(&self) -> LogSettings {
-        LogSettings {
-            level: self.logger_level(),
-            format: self.logger_format(),
-            output: self.logger_output(),
+        let mut entries = Vec::new();
+
+        if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
+            log.0.iter().for_each(|entry| {
+                entries.push(LogSettingsEntry {
+                    level: entry.level.clone().unwrap_or(DEFAULT_FILTER_LEVEL),
+                    format: entry.format.clone().unwrap_or(DEFAULT_LOG_FORMAT),
+                    output: entry.output.clone().unwrap_or(DEFAULT_LOG_OUTPUT),
+                })
+            });
         }
-    }
 
-    fn logger_level(&self) -> FilterLevel {
         let cmd_level = self.command_line.log_level.clone();
-        let config_log = self.config.as_ref().and_then(|cfg| cfg.log.as_ref());
-        let config_level = config_log.and_then(|log| log.level.clone());
-        cmd_level.or(config_level).unwrap_or(FilterLevel::Info)
-    }
-
-    fn logger_format(&self) -> LogFormat {
         let cmd_format = self.command_line.log_format.clone();
-        let config_log = self.config.as_ref().and_then(|cfg| cfg.log.as_ref());
-        let config_format = config_log.and_then(|logger| logger.format.clone());
-        cmd_format.or(config_format).unwrap_or(LogFormat::Plain)
-    }
-
-    fn logger_output(&self) -> LogOutput {
         let cmd_output = self.command_line.log_output.clone();
-        let config_log = self.config.as_ref().and_then(|cfg| cfg.log.as_ref());
-        let config_output = config_log.and_then(|logger| logger.output.clone());
-        cmd_output.or(config_output).unwrap_or(LogOutput::Stderr)
+
+        if cmd_level.is_some() || cmd_format.is_some() || cmd_output.is_some() {
+            entries.push(LogSettingsEntry {
+                level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
+                format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
+                output: cmd_output.unwrap_or(DEFAULT_LOG_OUTPUT),
+            });
+        }
+
+        if entries.is_empty() {
+            entries.push(LogSettingsEntry {
+                level: DEFAULT_FILTER_LEVEL,
+                format: DEFAULT_LOG_FORMAT,
+                output: DEFAULT_LOG_OUTPUT,
+            });
+        }
+
+        LogSettings(entries)
     }
 
     fn rest_config(&self) -> Option<Rest> {
