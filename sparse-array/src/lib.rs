@@ -8,5 +8,7 @@ mod bitmap;
 mod fast;
 mod sparse_array;
 
-pub use crate::fast::{FastSparseArray, FastSparseArrayIter};
-pub use crate::sparse_array::{SparseArray, SparseArrayIter};
+pub use crate::{
+    fast::{FastSparseArray, FastSparseArrayBuilder, FastSparseArrayIter},
+    sparse_array::{SparseArray, SparseArrayBuilder, SparseArrayIter},
+};

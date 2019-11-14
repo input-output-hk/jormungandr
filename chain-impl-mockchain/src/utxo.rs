@@ -7,7 +7,7 @@
 use crate::fragment::FragmentId;
 use crate::transaction::{Output, TransactionIndex};
 use chain_addr::Address;
-use sparse_array::{FastSparseArray, FastSparseArrayIter};
+use sparse_array::{FastSparseArray, FastSparseArrayBuilder, FastSparseArrayIter};
 use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 
@@ -52,11 +52,11 @@ struct TransactionUnspents<OutAddress>(FastSparseArray<Output<OutAddress>>);
 impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
     pub fn from_outputs(outs: &[(TransactionIndex, Output<OutAddress>)]) -> Self {
         assert!(outs.len() < 255);
-        let mut sa = FastSparseArray::with_capacity(outs.len() as u8);
+        let mut sa = FastSparseArrayBuilder::with_capacity(outs.len() as u8);
         for (index, output) in outs.iter() {
             sa.set(*index, output.clone());
         }
-        TransactionUnspents(sa)
+        TransactionUnspents(sa.build())
     }
 
     pub fn remove_input(

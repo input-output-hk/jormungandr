@@ -1,11 +1,8 @@
 ///! Wrapper for sparse arrays that doesn't delete anything from the memory
-/// unless `shrink` is called.
+///! unless `shrink` is called.
 
+use crate::{bitmap::BitmapIndex, SparseArray, SparseArrayBuilder};
 use std::sync::Arc;
-use crate::{
-    bitmap::BitmapIndex,
-    SparseArray,
-};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FastSparseArray<V> {
@@ -21,13 +18,6 @@ impl<V> FastSparseArray<V> {
         }
     }
 
-    pub fn with_capacity(capacity: u8) -> Self {
-        Self {
-            index: BitmapIndex::new(),
-            data: Arc::new(SparseArray::with_capacity(capacity)),
-        }
-    }
-
     pub fn get(&self, idx: u8) -> Option<&V> {
         if !self.index.get_index(idx) {
             None
@@ -37,15 +27,16 @@ impl<V> FastSparseArray<V> {
     }
 
     pub fn set(&mut self, idx: u8, value: V)
-        where V: Clone
+    where
+        V: Clone,
     {
-        let data_view = Arc::make_mut(&mut self.data);
-        data_view.set(idx, value);
+        self.data = Arc::new((*self.data).clone().set(idx, value));
         self.index.set_index(idx);
     }
 
     pub fn remove(&mut self, idx: u8) -> Option<V>
-        where V: Clone
+    where
+        V: Clone,
     {
         if self.index.get_index(idx) {
             self.index.remove_index(idx);
@@ -68,13 +59,47 @@ impl<V> FastSparseArray<V> {
     }
 
     pub fn shrink(&mut self)
-        where V: Clone
+    where
+        V: Clone,
     {
-        let mut new_sparse_array = SparseArray::new();
+        let mut new_sparse_array = SparseArrayBuilder::new();
         for (idx, value) in self.iter() {
             new_sparse_array.set(idx, (*value).clone());
         }
-        self.data = Arc::new(new_sparse_array);
+        self.data = Arc::new(new_sparse_array.build());
+    }
+}
+
+pub struct FastSparseArrayBuilder<V> {
+    index: BitmapIndex,
+    data: SparseArrayBuilder<V>,
+}
+
+impl<V> FastSparseArrayBuilder<V> {
+    pub fn new() -> Self {
+        Self {
+            index: BitmapIndex::new(),
+            data: SparseArrayBuilder::new(),
+        }
+    }
+
+    pub fn with_capacity(capacity: u8) -> Self {
+        Self {
+            index: BitmapIndex::new(),
+            data: SparseArrayBuilder::with_capacity(capacity),
+        }
+    }
+
+    pub fn set(&mut self, idx: u8, value: V) {
+        self.index.set_index(idx);
+        self.data.set(idx, value)
+    }
+
+    pub fn build(self) -> FastSparseArray<V> {
+        FastSparseArray {
+            index: self.index,
+            data: Arc::new(self.data.build()),
+        }
     }
 }
 
@@ -154,14 +179,12 @@ mod tests {
     #[test]
     fn test_original_copy_not_changed_add() {
         let mut sparse_array = FastSparseArray::new();
-        
         let original_value = 1;
         let new_value = 2;
         let original_idx = 10;
         let new_idx = 15;
 
         sparse_array.set(original_idx, original_value);
-        
         let mut new_array = sparse_array.clone();
         new_array.set(new_idx, new_value);
 
@@ -171,11 +194,9 @@ mod tests {
     #[test]
     fn test_original_copy_not_changed_remove() {
         let mut sparse_array = FastSparseArray::new();
-        
         let original_value = 1;
         let original_idx = 2;
         sparse_array.set(original_idx, original_value);
-        
         let mut new_array = sparse_array.clone();
         new_array.remove(original_idx);
 
