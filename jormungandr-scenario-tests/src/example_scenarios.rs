@@ -1,6 +1,6 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    scenario, Context,
+    Context,
 };
 use rand_chacha::ChaChaRng;
 use std::{thread, time::Duration};

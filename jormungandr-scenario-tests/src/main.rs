@@ -8,7 +8,7 @@ use jormungandr_scenario_tests::{
     node::{LeadershipMode, PersistenceMode},
     prepare_command, style, Context, ScenariosRepository, Seed,
 };
-use std::{collections::HashMap, path::PathBuf, thread, time::Duration};
+use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]

@@ -1,4 +1,4 @@
-use crate::{node::NodeController, scenario::Controller, wallet::Wallet, Context};
+use crate::{node::NodeController, scenario::Controller, wallet::Wallet};
 use std::{thread, time::Duration};
 
 pub fn assert_are_in_sync(nodes: Vec<&NodeController>) {
