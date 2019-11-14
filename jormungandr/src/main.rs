@@ -103,6 +103,7 @@ pub struct BootstrappedNode {
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
+    services: Services,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
@@ -113,7 +114,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         context.set_node_state(NodeState::StartingWorkers)
     }
 
-    let mut services = Services::new(bootstrapped_node.logger.clone());
+    let mut services = bootstrapped_node.services;
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
@@ -326,6 +327,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         storage,
         logger,
         rest_context,
+        services,
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
@@ -374,6 +376,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         explorer_db,
         rest_context,
+        services,
     })
 }
 
@@ -383,6 +386,7 @@ pub struct InitializedNode {
     pub storage: start_up::NodeStorage,
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
+    pub services: Services,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -416,6 +420,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
+    let services = Services::new(logger.clone());
 
     let rest_context = match &settings.rest {
         Some(rest) => {
@@ -448,6 +453,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         storage,
         logger,
         rest_context,
+        services,
     })
 }
 
