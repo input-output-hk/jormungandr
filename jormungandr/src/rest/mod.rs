@@ -11,6 +11,7 @@ use actix_web::dev::Resource;
 use actix_web::error::{Error as ActixError, ErrorServiceUnavailable};
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
+
 use futures::{Future, IntoFuture};
 use slog::Logger;
 use std::sync::{Arc, RwLock};
@@ -100,14 +101,14 @@ pub struct FullContext {
     pub explorer: Option<crate::explorer::Explorer>,
 }
 
-pub fn start_rest_server(
-    config: &Rest,
+pub fn run_rest_server(
+    config: Rest,
     explorer_enabled: bool,
-    context: &Context,
+    context: Context,
 ) -> Result<(), ConfigError> {
     let app_context = context.clone();
-    let cors_cfg = config.cors.clone();
-    let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
+    let cors_cfg = config.cors;
+    let handlers = move || {
         let mut apps = vec![build_app(
             app_context.clone(),
             "/api/v0",
@@ -125,9 +126,9 @@ pub fn start_rest_server(
         }
 
         apps
-    })?;
-    context.set_server(server);
-    Ok(())
+    };
+    let server_receiver = move |server| context.set_server(server);
+    Server::run(config.pkcs12, config.listen, handlers, server_receiver).map_err(Into::into)
 }
 
 fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>

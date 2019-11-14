@@ -420,12 +420,17 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
-    let services = Services::new(logger.clone());
+    let mut services = Services::new(logger.clone());
 
-    let rest_context = match &settings.rest {
+    let rest_context = match settings.rest.clone() {
         Some(rest) => {
             let context = rest::Context::new();
-            rest::start_rest_server(rest, settings.explorer, &context)?;
+            let explorer = settings.explorer;
+            let server_context = context.clone();
+            services.spawn("rest", move |_info| {
+                rest::run_rest_server(rest, explorer, server_context)
+                    .expect("REST server critical failure")
+            });
             Some(context)
         }
         None => None,
