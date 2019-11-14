@@ -38,6 +38,25 @@ SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
 
+check_program_in_path () {
+    # check if the command exists
+    command -v $1 > /dev/null
+    # fail if the command does not exist and the argument is not a path to an
+    # executable
+    if [ $? -ne 0 ] && [ ! -f $1 ] ; then
+        echo "$1 is required but not found in \$PATH"
+        exit 1
+    fi
+}
+
+check_program_in_path $CLI
+check_program_in_path $NODE
+
+# exit on failure inside pipes (might be unavailable on some shells)
+set -o pipefail || true
+# exit on failure
+set -e
+
 while getopts 'bc:ghk:p:s:xCod:e:' c
 do
     case $c in
