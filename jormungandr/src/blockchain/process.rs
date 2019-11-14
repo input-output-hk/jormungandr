@@ -110,20 +110,21 @@ pub fn run_handle_input(
             let propagate_new_block = process_new_ref.and_then(|new_block_ref| {
                 let header = new_block_ref.header().clone();
                 network_msg_box
-                    .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                    .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
                     .map_err(|_| "Cannot propagate block to network".into())
-                    .map(|()| new_block_ref)
+                    .map(|_| new_block_ref)
             });
 
             let notify_explorer = propagate_new_block.and_then(move |new_block_ref| {
                 if let Some(msg_box) = explorer_msg_box {
-                    msg_box
-                        .try_send(ExplorerMsg::NewBlock(block))
-                        .map_err(|_| "Cannot propagate block to explorer".into())
-                        .map(|()| new_block_ref)
-                        .into()
+                    Either::A(
+                        msg_box
+                            .send(ExplorerMsg::NewBlock(block))
+                            .map_err(|_| "Cannot propagate block to explorer".into())
+                            .map(|_| new_block_ref),
+                    )
                 } else {
-                    future::ok(new_block_ref)
+                    Either::B(future::ok(new_block_ref))
                 }
             });
 
@@ -180,12 +181,19 @@ pub fn run_handle_input(
                 .and_then(move |(reply, maybe_updated)| {
                     if let Some(new_block_ref) = maybe_updated {
                         let header = new_block_ref.header().clone();
-                        network_msg_box
-                            .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-                            .unwrap_or_else(|err| {
-                                error!(logger2, "cannot propagate block to network: {}", err)
-                            });
+                        Either::A(
+                            network_msg_box
+                                .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+                                .map_err(move |err| {
+                                    error!(logger2, "cannot propagate block to network: {}", err)
+                                })
+                                .map(|_| reply),
+                        )
+                    } else {
+                        Either::B(future::ok(reply))
                     }
+                })
+                .and_then(|reply| {
                     reply.reply_ok(());
                     Ok(())
                 });
@@ -193,23 +201,33 @@ pub fn run_handle_input(
             let _ = future.wait();
         }
         BlockMsg::ChainHeaders(handle) => {
+            let logger = info.logger().clone();
+
             let (stream, reply) = handle.into_stream_and_reply();
             let future = candidate_forest.advance_branch(stream);
-            match future.wait() {
+
+            let future = future.then(|resp| match resp {
                 Err(e) => {
                     reply.reply_error(chain_header_error_into_reply(e));
+                    Either::A(future::err::<(), Error>(
+                        format!("Error processing ChainHeader handling").into(),
+                    ))
                 }
                 Ok((hashes, maybe_remainder)) => {
-                    network_msg_box
-                        .try_send(NetworkMsg::GetBlocks(hashes))
-                        .unwrap_or_else(|err| {
-                            error!(info.logger(), "cannot request blocks from network: {}", err)
-                        });
+                    Either::B(
+                        network_msg_box
+                            .send(NetworkMsg::GetBlocks(hashes))
+                            .map_err(|_| "cannot request blocks from network".into())
+                            .map(|_| reply.reply_ok(())),
+                    )
                     // TODO: if the stream is not ended, resume processing
                     // after more blocks arrive
-                    reply.reply_ok(());
                 }
-            }
+            });
+
+            future.wait().unwrap_or_else(
+                |err| error!(logger, "Cannot process the chain headers" ; "reason" => %err),
+            )
         }
     };
 
