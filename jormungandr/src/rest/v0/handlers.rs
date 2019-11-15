@@ -369,10 +369,11 @@ pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
 }
 
 pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
-    context.try_full_fut().and_then(|context| {
-        let (reply_handle, reply_future) =
-            intercom::unary_reply::<_, intercom::Error>(context.logger.clone());
-        context
+    context.try_full_fut()
+        .and_then(move |full_context| context.logger().map(|logger| (full_context, logger)))
+        .and_then(|(full_context, logger)| {
+        let (reply_handle, reply_future) = intercom::unary_reply::<_, intercom::Error>(logger);
+        full_context
             .network_task
             .clone()
             .try_send(NetworkMsg::PeerStats(reply_handle))

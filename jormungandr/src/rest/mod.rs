@@ -8,7 +8,7 @@ pub mod v0;
 pub use self::server::{Error, Server};
 
 use actix_web::dev::Resource;
-use actix_web::error::{Error as ActixError, ErrorServiceUnavailable};
+use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServiceUnavailable};
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
 
@@ -33,6 +33,7 @@ pub struct Context {
     full: Arc<RwLock<Option<Arc<FullContext>>>>,
     server: Arc<RwLock<Option<Arc<Server>>>>,
     node_state: Arc<RwLock<NodeState>>,
+    logger: Arc<RwLock<Option<Logger>>>,
 }
 
 impl Context {
@@ -41,6 +42,7 @@ impl Context {
             full: Default::default(),
             server: Default::default(),
             node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
+            logger: Default::default(),
         }
     }
 
@@ -85,11 +87,22 @@ impl Context {
             .expect("Context node state poisoned")
             .clone()
     }
+
+    pub fn set_logger(&self, logger: Logger) {
+        *self.logger.write().expect("Context logger poisoned") = Some(logger);
+    }
+
+    pub fn logger(&self) -> Result<Logger, ActixError> {
+        self.logger
+            .read()
+            .expect("Context logger poisoned")
+            .clone()
+            .ok_or_else(|| ErrorInternalServerError("Logger not set in  REST context"))
+    }
 }
 
 #[derive(Clone)]
 pub struct FullContext {
-    pub logger: Logger,
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,

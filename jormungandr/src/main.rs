@@ -276,12 +276,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let rest_server = match bootstrapped_node.rest_context {
         Some(rest_context) => {
-            let logger = bootstrapped_node
-                .logger
-                .new(o!(crate::log::KEY_TASK => "rest"))
-                .into_erased();
             let full_context = rest::FullContext {
-                logger,
                 stats_counter,
                 blockchain,
                 blockchain_tip,
@@ -427,7 +422,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let context = rest::Context::new();
             let explorer = settings.explorer;
             let server_context = context.clone();
-            services.spawn("rest", move |_info| {
+            services.spawn("rest", move |info| {
+                server_context.set_logger(info.into_logger());
                 rest::run_rest_server(rest, explorer, server_context)
                     .expect("REST server critical failure")
             });
