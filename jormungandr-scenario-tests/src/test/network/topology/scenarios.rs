@@ -60,13 +60,13 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     let mut wallet1 = controller.wallet("unassigned1")?;
     let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &leader1,
-    );
+    )?;
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -123,15 +123,15 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &leader1,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5]);
+    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5])?;
 
     leader5.shutdown()?;
     leader4.shutdown()?;
@@ -185,15 +185,15 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &leader1,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4]);
+    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -250,15 +250,15 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &leader1,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5]);
+    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5])?;
 
     leader5.shutdown()?;
     leader4.shutdown()?;
@@ -310,15 +310,15 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut wallet1 = controller.wallet("unassigned1")?;
     let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &leader1,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4]);
+    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -383,17 +383,17 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &leader1,
-    );
+    )?;
 
     utils::assert_are_in_sync(vec![
         &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7,
-    ]);
+    ])?;
 
     leader7.shutdown()?;
     leader6.shutdown()?;
@@ -533,7 +533,7 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     utils::assert_are_in_sync(vec![
         &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
-    ]);
+    ])?;
 
     leader7.shutdown()?;
     leader6.shutdown()?;
