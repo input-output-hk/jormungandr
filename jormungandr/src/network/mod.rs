@@ -375,7 +375,7 @@ fn connect_and_propagate_with<F>(
     let conn_err_state = state.clone();
     let cf = connecting
         .map_err(move |e| {
-            match e {
+            let benign = match e {
                 ConnectError::Connect(e) => {
                     if let Some(e) = e.connect_error() {
                         info!(conn_logger, "failed to connect to peer"; "reason" => %e);
@@ -384,13 +384,21 @@ fn connect_and_propagate_with<F>(
                     } else {
                         info!(conn_logger, "gRPC connection to peer failed"; "reason" => %e);
                     }
+                    false
+                }
+                ConnectError::Canceled => {
+                    debug!(conn_logger, "connection to peer has been canceled");
+                    true
                 }
                 _ => {
                     info!(conn_logger, "connection to peer failed"; "reason" => %e);
+                    false
                 }
+            };
+            if !benign {
+                conn_err_state.peers.remove_peer(node_id);
+                conn_err_state.topology.report_node(node_id, StrikeReason::CannotConnect);
             }
-            conn_err_state.peers.remove_peer(node_id);
-            conn_err_state.topology.report_node(node_id, StrikeReason::CannotConnect);
         })
         .and_then(move |client| {
             let connected_node_id = client.remote_node_id();
