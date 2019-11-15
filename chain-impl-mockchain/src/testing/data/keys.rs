@@ -12,12 +12,21 @@ pub struct KeysDb {
 
 impl KeysDb {
     /// Create a new keys DB
-    pub fn new(tcg: TestCryptoGen) -> KeysDb {
+    pub fn new(tcg: TestCryptoGen) -> Self {
         KeysDb {
             rng: 0,
             tcg: tcg,
             ed25519: HashMap::new(),
         }
+    }
+
+    pub fn empty() -> Self {
+       KeysDb::new(TestCryptoGen(0))
+    }
+
+    pub fn add_key(&mut self, sk: EitherEd25519SecretKey) {
+        let pk = sk.to_public();
+        self.ed25519.insert(pk,sk);
     }
 
     /// Create a new Ed25519 and record it

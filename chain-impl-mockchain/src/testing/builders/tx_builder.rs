@@ -2,12 +2,13 @@ use crate::{
     account::SpendingCounter,
     fragment::{Fragment, FragmentId},
     header::HeaderId,
-    testing::{ledger::TestLedger, KeysDb},
+    testing::{ledger::TestLedger, KeysDb, data::AddressDataValue},
     transaction::{
         Input, InputEnum, NoExtra, Output, Transaction, TxBuilder, UnspecifiedAccountIdentifier,
         UtxoPointer, Witness,
     },
     value::Value,
+    fee::FeeAlgorithm
 };
 use chain_addr::{Address, Kind};
 
@@ -41,16 +42,18 @@ impl TestTxBuilder {
         }
     }
 
-    pub fn move_from_faucet(self, testledger: &mut TestLedger, destination: &Address, value: Value) -> TestTx {
-        let faucet = testledger.faucet.as_mut().expect("test ledger with no faucet configured");
-        assert_eq!(faucet.block0_hash, self.block0_hash);
-        let inputs = vec![faucet.get_input_of(value)];
-        let outputs = vec![Output { address: destination.clone(), value: value }];
+    pub fn move_from_faucet(self, test_ledger: &mut TestLedger, destination: &Address, value: &Value) -> TestTx {
+        assert_eq!(test_ledger.faucets.len(),1,"method can be used only for single faucet ledger");
+        let mut faucet = test_ledger.faucets.iter().cloned().next().as_mut().expect("test ledger with no faucet configured").clone();
+        let fee = test_ledger.fee().fees_for_inputs_outputs(1u8,1u8);
+        let output_value = (*value - fee).expect("input value is smaller than fee");
+        let inputs = vec![faucet.clone().make_input_with_value(test_ledger.find_utxo_for_address(&faucet.clone().into()),&value)];
+        let outputs = vec![Output { address: destination.clone(), value: output_value }];
         let tx_builder = TxBuilder::new()
             .set_payload(&NoExtra)
             .set_ios(&inputs, &outputs);
 
-        let witness = faucet.make_witness(tx_builder.get_auth_data_for_witness());
+        let witness = faucet.make_witness(&self.block0_hash,tx_builder.get_auth_data_for_witness());
         let witnesses = vec![witness];
 
         let tx = tx_builder
@@ -59,28 +62,62 @@ impl TestTxBuilder {
         TestTx { tx }
     }
 
-    pub fn move_to_outputs_from_faucet(self, testledger: &mut TestLedger, destination: &[Output<Address>]) -> TestTx {
-        let faucet = testledger.faucet.as_mut().expect("test ledger with no faucet configured");
-        assert_eq!(faucet.block0_hash, self.block0_hash);
+    pub fn move_to_outputs_from_faucet(self, test_ledger: &mut TestLedger, destination: &[Output<Address>]) -> TestTx {
+        assert_eq!(test_ledger.faucets.len(),1,"method can be used only for single faucet ledger");
+        let mut faucet = test_ledger.faucets.iter().next().as_mut().expect("test ledger with no faucet configured").clone();
         let input_val = Value::sum(destination.iter().map(|o| o.value)).unwrap();
-        let inputs = vec![faucet.get_input_of(input_val)];
+        let inputs = vec![faucet.clone().make_input_with_value(test_ledger.find_utxo_for_address(&faucet.clone().into()),&input_val)];
         let tx_builder = TxBuilder::new()
             .set_payload(&NoExtra)
             .set_ios(&inputs, &destination);
 
-        let witness = faucet.make_witness(tx_builder.get_auth_data_for_witness());
+        let witness = faucet.make_witness(&self.block0_hash,tx_builder.get_auth_data_for_witness());
         let witnesses = vec![witness];
 
         let tx = tx_builder
             .set_witnesses(&witnesses)
             .set_payload_auth(&());
         TestTx { tx }
+    }
+
+    pub fn move_all_funds(self, test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue) -> TestTx {
+        let mut keys_db = KeysDb::empty();
+        keys_db.add_key(source.private_key());
+        keys_db.add_key(destination.private_key());
+        self.move_funds(test_ledger,&source,&destination,&source.value)
+    }
+
+    pub fn move_funds(self, test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue, value: &Value) -> TestTx {
+        let mut keys_db = KeysDb::empty();
+        keys_db.add_key(source.private_key());
+        keys_db.add_key(destination.private_key());
+
+        let fee = test_ledger.fee().fees_for_inputs_outputs(1u8,1u8);
+        let output_value = (*value - fee).expect("input value is smaller than fee");
+
+        self.inputs_to_outputs(&keys_db,test_ledger,&[source.make_output_with_value(&value)],&[destination.make_output_with_value(&output_value)])
+    }
+    
+    pub fn move_funds_multiple(self,test_ledger: &mut TestLedger, sources: &Vec<AddressDataValue>, destinations: &Vec<AddressDataValue>) -> TestTx {
+        let mut keys_db = KeysDb::empty();
+
+        for source in sources {
+            keys_db.add_key(source.private_key())
+        }
+        for destination in destinations {
+            keys_db.add_key(destination.private_key())
+        }
+
+        let source_outputs: Vec<Output<Address>>  = sources.iter().cloned().map(|x| x.make_output()).collect();
+        let destination_outputs: Vec<Output<Address>> = destinations.iter().cloned().map(|x| x.make_output()).collect();
+
+        self.inputs_to_outputs(&keys_db,test_ledger,&source_outputs,&destination_outputs)
     }
 
     pub fn inputs_to_outputs(
         self,
         kdb: &KeysDb,
-        testledger: &mut TestLedger,
+        test_ledger: &mut TestLedger,
         sources: &[Output<Address>],
         destination: &[Output<Address>],
     ) -> TestTx {
@@ -89,7 +126,7 @@ impl TestTxBuilder {
             .map(|out| {
                 match out.address.kind() {
                     Kind::Single(_) | Kind::Group(..) => {
-                        let fragments = testledger.utxodb.find_fragments(&out);
+                        let fragments = test_ledger.utxodb.find_fragments(&out);
 
                         if fragments.len() == 0 {
                             panic!("trying to do a inputs_to_outputs with unknown single utxo")
@@ -136,7 +173,7 @@ impl TestTxBuilder {
                         Witness::new_account(&self.block0_hash, &auth_data_hash, &counter, sk)
                     }
                     InputEnum::UtxoInput(utxopointer) => {
-                        match testledger.utxodb.get(&(utxopointer.transaction_id, utxopointer.output_index)) {
+                        match test_ledger.utxodb.get(&(utxopointer.transaction_id, utxopointer.output_index)) {
                             None => {
                                 panic!("cannot find utxo input")
                             },

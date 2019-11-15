@@ -113,7 +113,7 @@ pub struct LedgerStateVerifier {
                 .ledger
                 .utxos
                 .iter()
-                .find(|x| *x.output == address_data.make_output(value));
+                .find(|x| *x.output == address_data.make_output(&value));
             match value == Value::zero() {
                 true => {
                     assert!(utxo.is_none());

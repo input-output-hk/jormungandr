@@ -2,8 +2,8 @@ use super::*;
 use crate::accounting::account::DelegationType;
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
+use chain_core::mempack::{ReadBuf, Readable};
 use chain_crypto::{testing, Ed25519};
-use chain_core::mempack::{Readable, ReadBuf};
 use chain_time::DurationSeconds;
 use quickcheck::{Arbitrary, Gen, TestResult};
 use quickcheck_macros::quickcheck;
@@ -41,7 +41,7 @@ impl Arbitrary for PoolOwnersSigned {
         if signatoree == 0 {
             signatoree = 1;
         }
-        
+
         let mut signatures = Vec::new();
         for i in 0..signatoree {
             let s = Arbitrary::arbitrary(g);

@@ -1,43 +1,41 @@
 #![cfg(test)]
 
-use crate::testing::{
-    arbitrary::OutputsWithoutMultisig,
-    ledger::{self, ConfigBuilder},
+use crate::{
+    testing::{
+        ledger::{ConfigBuilder, LedgerBuilder},
+        arbitrary::address::ArbitraryAddressDataValueVec,
+        data::AddressDataValue
+    },
+    value::Value,
 };
-use crate::{transaction::Output, value::Value};
-use chain_addr::{Address, Discrimination};
+use chain_addr::Discrimination;
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
 #[quickcheck]
 pub fn ledger_verifies_value_of_initial_funds(
-    mut arbitrary_outputs: OutputsWithoutMultisig,
+    arbitrary_faucets: ArbitraryAddressDataValueVec,
 ) -> TestResult {
-    arbitrary_outputs.set_discrimination(Discrimination::Test);
-    let message = ledger::create_initial_transactions(&arbitrary_outputs.0);
-    let result = ledger::create_initial_fake_ledger(
-        &[message],
-        ConfigBuilder::new()
-            .with_discrimination(Discrimination::Test)
-            .build(),
-    );
-    let should_ledger_fail = should_ledger_fail(&arbitrary_outputs.0);
-    match (should_ledger_fail, result) {
-        (false, Ok(_)) => TestResult::passed(),
-        (false, Err(err)) => TestResult::error(format!(
-            "Ledger should NOT fail because there is NO zero value in initial funds: {:?}",
-            err
-        )),
-        (true, Err(_)) => TestResult::passed(),
-        (true, Ok(_)) => {
-            TestResult::error("Ledger should fail because there is a zero value in initial funds")
-        }
-    }
+    let config = ConfigBuilder::new(0)
+        .with_discrimination(Discrimination::Test);
+
+    TestResult::from_bool(LedgerBuilder::from_config(config)
+        .initial_funds(&arbitrary_faucets.values())
+        .build()
+        .is_ok()
+    )
 }
 
-fn should_ledger_fail(outputs: &Vec<Output<Address>>) -> bool {
-    if outputs.is_empty() {
-        return false;
-    }
-    outputs.iter().any(|x| x.value == Value::zero())
+#[test]
+pub fn ledger_fails_to_start_when_there_is_zero_output() {
+    let config = ConfigBuilder::new(0)
+        .with_discrimination(Discrimination::Test);
+
+    let address = AddressDataValue::account(Discrimination::Test,Value::zero());
+
+    assert!(LedgerBuilder::from_config(config)
+        .faucet(&address)
+        .build()
+        .is_err(),
+        "Ledger should fail to start with zero value output");
 }

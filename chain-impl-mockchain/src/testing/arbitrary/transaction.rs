@@ -2,11 +2,12 @@ use super::ArbitraryAddressDataVec;
 use crate::{
     account::Ledger as AccountLedger,
     fee::LinearFee,
-    ledger::Ledger,
-    testing::arbitrary::{utils as arbitrary_utils, AverageValue},
-    testing::data::{AddressData, AddressDataValue},
+    testing::{
+        ledger::TestLedger,
+        arbitrary::{utils as arbitrary_utils, AverageValue},
+        data::{AddressData, AddressDataValue}
+    },
     transaction::{Input, Output},
-    utxo::{self, Entry},
     value::*,
 };
 use chain_addr::{Address, Kind};
@@ -119,27 +120,20 @@ impl ArbitraryValidTransactionData {
             .collect()
     }
 
-    fn find_utxo_for_address<'a>(
-        address_data: &AddressData,
-        utxos: &mut utxo::Iter<'a, Address>,
-    ) -> Option<Entry<'a, Address>> {
-        utxos.find(|x| x.output.address == address_data.address)
-    }
-
     fn make_single_input(
         &self,
         address_data_value: AddressDataValue,
-        mut utxos: &mut utxo::Iter<'_, Address>,
+        ledger: &TestLedger
     ) -> Input {
-        let utxo_option = Self::find_utxo_for_address(&address_data_value.address_data, &mut utxos);
+        let utxo_option = ledger.find_utxo_for_address(&address_data_value.address_data);
         address_data_value.make_input(utxo_option)
     }
 
-    pub fn make_inputs(&mut self, ledger: &Ledger) -> Vec<Input> {
+    pub fn make_inputs(&mut self, ledger: &TestLedger) -> Vec<Input> {
         self.input_addresses
             .iter()
             .cloned()
-            .map(|x| self.make_single_input(x, &mut ledger.utxos()))
+            .map(|x| self.make_single_input(x,ledger))
             .collect()
     }
 
@@ -286,7 +280,7 @@ impl UtxoVerifier {
         snapshot
     }
 
-    pub fn verify(&self, ledger: &Ledger) -> Result<(), Error> {
+    pub fn verify(&self, ledger: &TestLedger) -> Result<(), Error> {
         let expected_utxo_snapshots = &self.calculate_current_utxo();
         for utxo_snapshot in expected_utxo_snapshots {
             if !ledger.utxos().any(|x| {

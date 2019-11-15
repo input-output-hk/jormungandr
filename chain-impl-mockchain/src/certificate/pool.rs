@@ -3,9 +3,8 @@ use crate::key::{deserialize_public_key, deserialize_signature};
 use crate::leadership::genesis::GenesisPraosLeader;
 use crate::rewards::TaxType;
 use crate::transaction::{
-    AccountIdentifier, SingleAccountBindingSignature,
-    Payload, PayloadAuthData, PayloadData, PayloadSlice,
-    TransactionBindingAuthData,
+    AccountIdentifier, Payload, PayloadAuthData, PayloadData, PayloadSlice,
+    SingleAccountBindingSignature, TransactionBindingAuthData,
 };
 use chain_core::{
     mempack::{ReadBuf, ReadError, Readable},
@@ -107,7 +106,8 @@ pub type PoolOwnersSigned = PoolOwnersSignature;
 
 impl PoolRegistration {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
-        let bb = bb.u128(self.serial)
+        let bb = bb
+            .u128(self.serial)
             .u64(self.start_validity.into())
             .u64(self.permissions.0)
             .bytes(self.keys.vrf_public_key.as_ref())
@@ -118,12 +118,8 @@ impl PoolRegistration {
 
         match &self.reward_account {
             None => bb.u8(0),
-            Some(AccountIdentifier::Single(pk)) => {
-                bb.u8(1).bytes(pk.as_ref().as_ref())
-            },
-            Some(AccountIdentifier::Multi(pk)) => {
-                bb.u8(2).bytes(pk.as_ref())
-            }
+            Some(AccountIdentifier::Single(pk)) => bb.u8(1).bytes(pk.as_ref().as_ref()),
+            Some(AccountIdentifier::Multi(pk)) => bb.u8(2).bytes(pk.as_ref()),
         }
     }
     pub fn serialize(&self) -> ByteArray<Self> {
@@ -294,13 +290,11 @@ impl Readable for PoolRegistration {
                 Some(AccountIdentifier::Single(pk.into()))
             }
             2 => {
-                let mut pk = [0u8;32];
+                let mut pk = [0u8; 32];
                 buf.into_slice_mut(&mut pk)?;
                 Some(AccountIdentifier::Multi(pk.into()))
             }
-            n => {
-                Err(ReadError::UnknownTag(n as u32))?
-            }
+            n => Err(ReadError::UnknownTag(n as u32))?,
         };
 
         let info = Self {

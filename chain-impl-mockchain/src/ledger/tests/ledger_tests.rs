@@ -1,25 +1,15 @@
-/*
 #![cfg(test)]
 
 use crate::fee::FeeAlgorithm;
 use crate::{
-    fragment::Fragment,
-    ledger::{
-        check::TxVerifyError,
-        Entry,
-        Error::TransactionMalformed,
-        Ledger,
-    },
     testing::{
         arbitrary::{
-            AccountStatesVerifier, ArbitraryValidTransactionData, NonZeroValue, UtxoVerifier,
+            AccountStatesVerifier, ArbitraryValidTransactionData, UtxoVerifier,
         },
-        data::AddressData,
-        ledger::{self, ConfigBuilder},
-        TestGen,
+        data::AddressDataValue,
+        ledger::{ConfigBuilder,LedgerBuilder},
+        builders::TestTxBuilder
     },
-    transaction::*,
-    value::*,
 };
 use chain_addr::Discrimination;
 use quickcheck::TestResult;
@@ -27,99 +17,57 @@ use quickcheck_macros::quickcheck;
 
 #[quickcheck]
 pub fn ledger_accepts_correct_transaction(
-    faucet: AddressData,
-    receiver: AddressData,
-    value: NonZeroValue,
+    faucet: AddressDataValue,
+    receiver: AddressDataValue,
 ) -> TestResult {
-    let message = requests::create_initial_transaction(Output::from_address(
-        faucet.address.clone(),
-        value.into(),
-    ));
 
-    let (block0_hash, ledger) =
-        ledger::create_initial_fake_ledger(&[message], ConfigBuilder::new().build()).unwrap();
-    let mut utxos = ledger.utxos();
-    let signed_tx = TransactionBuilder::new()
-        .with_input(faucet.make_input(value.into(), utxos.next()))
-        .with_output(Output::from_address(receiver.address.clone(), value.into()))
-        .authenticate()
-        .with_witness(&block0_hash, &faucet)
-        .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
+    let mut ledger = LedgerBuilder::from_config(ConfigBuilder::new(0)).initial_fund(&faucet).build().unwrap();
+    let fragment = TestTxBuilder::new(&ledger.block0_hash).move_funds(&mut ledger,&faucet,&receiver,&faucet.value).get_fragment();
+    let total_funds_before = ledger.total_funds();
+    let result = ledger.apply_transaction(fragment);
 
-    let total_funds_before = calculate_total_funds_in_ledger(&ledger);
-
-    let fees = ledger.get_ledger_parameters();
-    let result = ledger.apply_transaction(&fragment_id, &signed_tx, &fees);
-
-    match result {
-        Err(err) => TestResult::error(format!("Error from ledger: {}", err)),
-        Ok((ledger, _)) => {
-            let total_funds_after = calculate_total_funds_in_ledger(&ledger);
-            match total_funds_before == total_funds_after {
-                false => TestResult::error(format!(
-                    "Total funds in ledger before and after transaction is not equal {} <> {} ",
-                    total_funds_before, total_funds_after
-                )),
-                true => TestResult::passed(),
-            }
-        }
+    if result.is_err() {
+        return TestResult::error(format!("Error from ledger: {}", result.err().unwrap()));
     }
-}
-
-fn calculate_total_funds_in_ledger(ledger: &Ledger) -> u64 {
-    ledger.utxos().map(|x| x.output.value.0).sum::<u64>()
-        + ledger.accounts().get_total_value().unwrap().0
+    let total_funds_after = ledger.total_funds();
+    match total_funds_before == total_funds_after {
+        false => TestResult::error(format!(
+                "Total funds in ledger before and after transaction is not equal {} <> {} ",
+                total_funds_before, total_funds_after
+        )),
+        true => TestResult::passed(),
+    }
 }
 
 #[quickcheck]
 pub fn total_funds_are_const_in_ledger(
-    mut transaction_data: ArbitraryValidTransactionData,
+    transaction_data: ArbitraryValidTransactionData,
 ) -> TestResult {
-    let message =
-        ledger::create_initial_transactions(&transaction_data.make_outputs_from_all_addresses());
-    let (block0_hash, ledger) = ledger::create_initial_fake_ledger(
-        &[message],
-        ConfigBuilder::new()
-            .with_discrimination(Discrimination::Test)
-            .with_fee(transaction_data.fee.clone())
-            .build(),
-    )
-    .expect("ledger_failed");
 
-    let inputs = transaction_data.make_inputs(&ledger);
-    let outputs = transaction_data.make_outputs();
-    let input_addresses = transaction_data.input_addresses();
+    let config = ConfigBuilder::new(0)
+        .with_discrimination(Discrimination::Test)
+        .with_fee(transaction_data.fee.clone());
 
-    let signed_tx = TxBuilder::new()
-        .set_nopayload()
-        .set_ios(&inputs, &outputs)
-        .authenticate()
-        .with_witnesses(&block0_hash, &input_addresses)
-        .seal();
-    let fragment_id = Fragment::Transaction(signed_tx.clone()).hash();
+    let mut ledger = LedgerBuilder::from_config(config).initial_funds(&transaction_data.addresses).build().unwrap();
+    let signed_tx = TestTxBuilder::new(&ledger.block0_hash).move_funds_multiple(&mut ledger,&transaction_data.input_addresses,&transaction_data.output_addresses);
+    let total_funds_before = ledger.total_funds();
+    let result = ledger.apply_transaction(signed_tx.clone().get_fragment());
 
-    let total_funds_before = calculate_total_funds_in_ledger(&ledger);
-    let fees = ledger.get_ledger_parameters();
-    let result = ledger.apply_transaction(&fragment_id, &signed_tx, &fees);
+    if result.is_err() {
+        return TestResult::error(format!("Error from ledger: {:?}", result.err()));
+    }
 
-    match result {
-        Err(err) => TestResult::error(format!("Error from ledger: {:?}", err)),
-
-        Ok((ledger, _)) => {
-            let total_funds_after = calculate_total_funds_in_ledger(&ledger);
-            let fee = transaction_data
+    let total_funds_after = ledger.total_funds();
+    let fee = transaction_data
                 .fee
-                .calculate_tx(&signed_tx.transaction)
-                .unwrap()
-                .0;
+                .calculate_tx(&signed_tx.get_tx());
 
-            if total_funds_before != (total_funds_after + fee) {
-                return TestResult::error(format!(
-                    "Total funds in ledger before and (after transaction + fee) is not equal {} <> {} (fee: {:?})",
-                    total_funds_before, (total_funds_after + fee),transaction_data.fee
-                ));
-            }
+    if total_funds_before != (total_funds_after + fee).unwrap() {
+        return TestResult::error(format!(
+            "Total funds in ledger before and (after transaction + fee) is not equal {} <> {} (fee: {:?})",
+            total_funds_before, (total_funds_after + fee).unwrap(),transaction_data.fee
+        ));
+    }
 
             let utxo_verifier = UtxoVerifier::new(transaction_data.clone());
             let utxo_verification_result = utxo_verifier.verify(&ledger);
@@ -137,7 +85,5 @@ pub fn total_funds_are_const_in_ledger(
                 ));
             }
             TestResult::passed()
-        }
-    }
+
 }
-*/

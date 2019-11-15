@@ -1,9 +1,11 @@
 use crate::{
     account::{Identifier, SpendingCounter},
     key::EitherEd25519SecretKey,
-    transaction::{Input, Output},
+    transaction::{Input, Output, Witness, TransactionAuthData},
     utxo::Entry,
     value::Value,
+    testing::builders::make_witness,
+    header::HeaderId
 };
 use chain_addr::{Address, AddressReadable, Discrimination, Kind, KindType};
 use chain_crypto::{
@@ -116,7 +118,7 @@ impl AddressData {
         AddressData::delegation_from(&AddressData::delegation(address.discrimination()), address)
     }
 
-    pub fn make_input(&self, value: Value, utxo: Option<Entry<Address>>) -> Input {
+    pub fn make_input(&self, value: &Value, utxo: Option<Entry<Address>>) -> Input {
         match self.address.kind() {
             Kind::Account { .. } => {
                 Input::from_account_public_key(self.public_key(), value.clone())
@@ -139,8 +141,8 @@ impl AddressData {
         Identifier::from(self.public_key())
     }
 
-    pub fn make_output(&self, value: Value) -> Output<Address> {
-        Output::from_address(self.address.clone(), value)
+    pub fn make_output(&self, value: &Value) -> Output<Address> {
+        Output::from_address(self.address.clone(), value.clone())
     }
 
     pub fn public_key(&self) -> PublicKey<Ed25519> {
@@ -160,8 +162,12 @@ impl AddressData {
         }
     }
 
-    pub fn confirm_transaction(&mut self) {
-        self.spending_counter = self.spending_counter.map(|sp| sp.increment().unwrap())
+    pub fn confirm_transaction(&self) {
+        self.spending_counter.map(|sp| sp.increment().unwrap());
+    }
+
+    pub fn spending_counter(&self) -> Option<SpendingCounter> {
+        self.spending_counter
     }
 
     pub fn private_key(&self) -> EitherEd25519SecretKey {
@@ -198,6 +204,12 @@ impl AddressData {
         );
         AddressData::new(other.private_key, other.spending_counter, user_address)
     }
+
+    pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
+        let witness = make_witness(block0_hash,&self,tad.hash());
+        self.confirm_transaction();
+        witness
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -226,6 +238,14 @@ impl AddressDataValue {
         AddressDataValue::new(AddressData::delegation(discrimination),value)
     }
 
+    pub fn from_discrimination_and_kind_type(
+        discrimination: Discrimination,
+        kind: &KindType,
+        value: Value
+    ) -> Self {
+        AddressDataValue::new(AddressData::from_discrimination_and_kind_type(discrimination,kind),value)
+    }
+
     pub fn to_id(&self) -> Identifier {
         self.address_data.to_id()
     }
@@ -239,18 +259,18 @@ impl AddressDataValue {
     }
 
     pub fn make_input(&self, utxo: Option<Entry<Address>>) -> Input {
-        self.make_input_with_value(utxo,self.value)
+        self.make_input_with_value(utxo,&self.value)
     }
 
-    pub fn make_input_with_value(&self, utxo: Option<Entry<Address>>, value: Value) -> Input {
+    pub fn make_input_with_value(&self, utxo: Option<Entry<Address>>, value: &Value) -> Input {
         self.address_data.make_input(value, utxo)
     }
 
     pub fn make_output(&self) -> Output<Address> {
-        self.make_output_with_value(self.value)
+        self.make_output_with_value(&self.value)
     }
 
-    pub fn make_output_with_value(&self, value: Value) -> Output<Address> {
+    pub fn make_output_with_value(&self, value: &Value) -> Output<Address> {
         self.address_data.make_output(value)
     }
 
@@ -258,6 +278,21 @@ impl AddressDataValue {
         let counter: u32 = self.address_data.spending_counter.unwrap().into();
         self.address_data.spending_counter = Some((counter + 1u32).into());
     }
+    pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
+        self.address_data.make_witness(block0_hash,tad)
+    }
+
+    pub fn kind(&self) -> Kind {
+        self.address_data.kind()
+    }
+
+    pub fn is_utxo(&self) -> bool {
+        match self.kind() {
+            Kind::Single{..} | Kind::Group{..} => true,
+            _ => false
+        }
+    }
+
 }
 
 impl Into<AddressData> for AddressDataValue {

@@ -8,7 +8,7 @@ pub use arbitrary::*;
 pub use builders::*;
 pub use cert_signer::CertificateSigner;
 pub use data::KeysDb;
-pub use ledger::{ConfigBuilder, LedgerBuilder, Faucet, TestLedger, UtxoDb};
+pub use ledger::{ConfigBuilder, LedgerBuilder, TestLedger, UtxoDb};
 
 pub use chain_crypto::testing::TestCryptoGen;
 

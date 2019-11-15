@@ -57,15 +57,16 @@ pub enum AccountBindingSignature {
 }
 
 impl AccountBindingSignature {
-    pub fn new_single<'a>(sk: &EitherEd25519SecretKey, data: &TransactionBindingAuthData<'a>) -> Self {
+    pub fn new_single<'a>(
+        sk: &EitherEd25519SecretKey,
+        data: &TransactionBindingAuthData<'a>,
+    ) -> Self {
         AccountBindingSignature::Single(SingleAccountBindingSignature::new(sk, data))
     }
 
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         match self {
-            AccountBindingSignature::Single(sig) => {
-                bb.u8(1).bytes(sig.as_ref())
-            }
+            AccountBindingSignature::Single(sig) => bb.u8(1).bytes(sig.as_ref()),
             AccountBindingSignature::Multi(_) => {
                 bb.u8(2);
                 unimplemented!()
@@ -81,12 +82,8 @@ impl Readable for AccountBindingSignature {
                 let sig = deserialize_signature(buf).map(SingleAccountBindingSignature)?;
                 Ok(AccountBindingSignature::Single(sig))
             }
-            2 => {
-                unimplemented!()
-            }
-            n => {
-                Err(ReadError::UnknownTag(n as u32))
-            }
+            2 => unimplemented!(),
+            n => Err(ReadError::UnknownTag(n as u32)),
         }
     }
 }

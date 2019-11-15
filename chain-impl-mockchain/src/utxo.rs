@@ -323,7 +323,7 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let size = usize::arbitrary(g) % 50 + 1;
             let iter = iter::from_fn(|| {
-                Some(AddressData::arbitrary(g).make_output(AverageValue::arbitrary(g).into()))
+                Some(AddressData::arbitrary(g).make_output(&AverageValue::arbitrary(g).into()))
             })
             .enumerate()
             .take(size);
@@ -417,8 +417,8 @@ mod tests {
         let mut ledger = Ledger::new();
         let first_fragment_id = TestGen::hash();
         let second_fragment_id = TestGen::hash();
-        let first_address_data = AddressData::utxo(Discrimination::Test).make_output(Value(100));
-        let second_address_data = AddressData::utxo(Discrimination::Test).make_output(Value(100));
+        let first_address_data = AddressData::utxo(Discrimination::Test).make_output(&Value(100));
+        let second_address_data = AddressData::utxo(Discrimination::Test).make_output(&Value(100));
         let first_index = 0 as u8;
         let second_index = 1 as u8;
 

@@ -399,7 +399,8 @@ impl Ledger {
                             .account_id
                             .to_single_account()
                             .ok_or(Error::AccountIdentifierInvalid)?;
-                            signature.verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data())
+                        signature
+                            .verify_slice(&account_pk.into(), &tx.transaction_binding_auth_data())
                     }
                     AccountBindingSignature::Multi(_) => {
                         // TODO
@@ -414,7 +415,6 @@ impl Ledger {
                 let (new_ledger_, _fee) =
                     new_ledger.apply_transaction(&fragment_id, &tx, &ledger_params)?;
                 new_ledger = new_ledger_.apply_stake_delegation(&payload)?;
-
             }
             Fragment::PoolRegistration(tx) => {
                 let tx = tx.as_slice();

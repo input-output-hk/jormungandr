@@ -1,22 +1,20 @@
 use crate::{
-    account::{AccountAlg, SpendingCounter},
+    account::{AccountAlg,Ledger as AccountLedger},
     block::{ConsensusVersion, HeaderId},
     config::ConfigParam,
     fee::LinearFee,
     fragment::{config::ConfigParams, Fragment, FragmentId},
-    key::EitherEd25519SecretKey,
     leadership::bft::LeaderId,
     ledger::{Error, Ledger, LedgerParameters},
     milli::Milli,
-    transaction::{Input, Output, TxBuilder, TransactionAuthData, Witness},
+    transaction::{Output, TxBuilder},
     value::Value,
+    utxo::{Entry,Iter},
+    testing::data::{AddressData,AddressDataValue}
 };
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
-use std::vec::Vec;
 use std::collections::HashMap;
-
-//use crate::testing::{data::AddressDataValue};
 
 #[derive(Clone)]
 pub struct ConfigBuilder {
@@ -114,36 +112,9 @@ pub struct LedgerBuilder {
     cfg_builder: ConfigBuilder,
     cfg_params: ConfigParams,
     fragments: Vec<Fragment>,
-    faucet_value: Option<Value>,
+    faucets: Vec<AddressDataValue>,
     utxo_declaration: Vec<UtxoDeclaration>,
     seed: u64,
-}
-
-pub struct Faucet {
-    pub block0_hash: HeaderId,
-    st: SpendingCounter,
-    discrimination: Discrimination,
-    secret_key: SecretKey<AccountAlg>,
-    pub initial_value: Value,
-}
-
-impl Faucet {
-    pub fn get_address(&self) -> Address {
-        let pk = self.secret_key.to_public();
-        Address(self.discrimination, chain_addr::Kind::Account(pk))
-    }
-
-    pub fn get_input_of(&self, value: Value) -> Input {
-        Input::from_account_public_key(self.secret_key.to_public(), value)
-    }
-
-    pub fn make_witness<'a>(&mut self, tad: TransactionAuthData<'a>) -> Witness {
-        let sc = self.st;
-        self.st = self.st.increment().expect("faucet use more than expected");
-
-        let sk = EitherEd25519SecretKey::Normal(self.secret_key.clone());
-        Witness::new_account(&self.block0_hash, &tad.hash(), &sc, &sk)
-    }
 }
 
 pub type UtxoDeclaration = Output<Address>;
@@ -173,7 +144,7 @@ impl LedgerBuilder {
             seed: cfg_builder.seed,
             cfg_builder,
             cfg_params,
-            faucet_value: None,
+            faucets: Vec::new(),
             utxo_declaration: Vec::new(),
             fragments: Vec::new(),
         }
@@ -225,8 +196,34 @@ impl LedgerBuilder {
         self.fragment(Fragment::Transaction(tx))
     }
 
-    pub fn faucet(mut self, faucet_value: Value) -> Self {
-        self.faucet_value = Some(faucet_value);
+    pub fn faucet_value(mut self, value: Value) -> Self {
+        self.faucets.push(AddressDataValue::account(self.cfg_builder.discrimination,value));
+        self
+    }
+
+    pub fn initial_fund(mut self, fund: &AddressDataValue) -> Self {
+        if fund.is_utxo() {
+            self = self.utxos(&[fund.make_output()]);
+        } else {
+            self = self.faucet(&fund);
+        }
+        self
+    }
+
+    pub fn initial_funds(mut self, funds: &Vec<AddressDataValue>) -> Self {
+        for fund in funds {
+            self = self.initial_fund(fund);
+        }
+        self
+    }
+
+    pub fn faucet(mut self, faucet: &AddressDataValue) -> Self {
+        self.faucets.push(faucet.clone());
+        self
+    }
+
+    pub fn faucets(mut self, faucets: &Vec<AddressDataValue>) -> Self {
+        self.faucets.extend(faucets.iter().cloned());
         self
     }
 
@@ -237,24 +234,15 @@ impl LedgerBuilder {
 
     pub fn build(mut self) -> Result<TestLedger, Error> {
         let block0_hash = HeaderId::hash_bytes(&[1, 2, 3]);
-
-        // push the faucet
-        let faucet = match self.faucet_value {
-            None => None,
-            Some(val) => {
-                let secret_key = self.account_secret_key();
-                let faucet = Faucet { block0_hash, st: SpendingCounter::zero(), discrimination: self.cfg_builder.discrimination, secret_key, initial_value: val };
-                self = self.prefill_address(faucet.get_address(), val);
-                Some(faucet) 
-            }
-        };
+        let outputs: Vec<Output<Address>> = self.faucets.iter().map(|x| x.make_output()).collect();
+        self = self.prefill_outputs(&outputs);
 
         let utxodb = if self.utxo_declaration.len() > 0 {
             let mut db = HashMap::new();
 
             // TODO subdivide utxo_declaration in group of 254 elements
             // and repeatdly create fragment
-            assert!(self.utxo_declaration.len() > 254);
+            assert!(self.utxo_declaration.len() < 254);
             let group = self.utxo_declaration;
             {
                 let tx = TxBuilder::new()
@@ -283,10 +271,11 @@ impl LedgerBuilder {
         fragments.push(Fragment::Initial(self.cfg_params));
         fragments.extend_from_slice(&self.fragments);
 
+        let faucets = self.faucets.clone();
         Ledger::new(block0_hash, &fragments).map(|ledger| {
             let parameters = ledger.get_ledger_parameters();
             TestLedger {
-                cfg, faucet, ledger, block0_hash, utxodb, parameters,
+                cfg, faucets, ledger, block0_hash, utxodb, parameters,
             }
         })
     }
@@ -295,7 +284,7 @@ impl LedgerBuilder {
 pub struct TestLedger {
     pub block0_hash: HeaderId, 
     pub cfg: ConfigParams,
-    pub faucet: Option<Faucet>,
+    pub faucets: Vec<AddressDataValue>,
     pub ledger: Ledger,
     pub parameters: LedgerParameters,
     pub utxodb: UtxoDb,
@@ -321,5 +310,31 @@ impl TestLedger {
                 panic!("test ledger apply transaction only supports transaction type for now")
             }
         }
+    }
+
+    pub fn total_funds(&self) -> Value {
+        let utxo_total = Value(self.ledger.utxos().map(|x| x.output.value.0).sum::<u64>());
+        let accounts_total = self.ledger.accounts().get_total_value().unwrap();
+        (utxo_total + accounts_total).unwrap()
+    }
+
+    pub fn find_utxo_for_address<'a>(
+        &'a self,
+        address_data: &AddressData
+    ) -> Option<Entry<'a, Address>> {
+        let entry = self.utxos().find(|x| x.output.address == address_data.address);
+        entry
+    }
+
+    pub fn accounts(&self) -> &AccountLedger {
+        &self.ledger.accounts()
+    }
+
+    pub fn utxos<'a>(&'a self) -> Iter<'a, Address> {
+        self.ledger.utxos()
+    }
+
+    pub fn fee(&self) -> LinearFee {
+        self.parameters.fees
     }
 }

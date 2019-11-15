@@ -18,8 +18,8 @@ mod test {
     use crate::transaction::{TransactionSignData, TransactionSignDataHash};
     use crate::{account, key};
     use chain_crypto::{PublicKey, SecretKey};
-    use rand_core::{CryptoRng, RngCore};
     use quickcheck::{Arbitrary, Gen};
+    use rand_core::{CryptoRng, RngCore};
 
     fn make_keypair<R: RngCore + CryptoRng>(
         rng: &mut R,

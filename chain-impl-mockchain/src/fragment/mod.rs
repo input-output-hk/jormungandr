@@ -216,7 +216,6 @@ mod test {
         }
     }
 
-
     #[quickcheck]
     fn fragment_serialization_bijection(b: Fragment) -> TestResult {
         let b_got = Fragment::from_raw(&b.to_raw()).unwrap();
