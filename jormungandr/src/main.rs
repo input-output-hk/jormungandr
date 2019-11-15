@@ -65,7 +65,6 @@ use futures::Future;
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use std::thread;
 use std::time::Duration;
 
 pub mod blockcfg;
@@ -274,33 +273,24 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let rest_server = match bootstrapped_node.rest_context {
-        Some(rest_context) => {
-            let full_context = rest::FullContext {
-                stats_counter,
-                blockchain,
-                blockchain_tip,
-                network_task: network_msgbox,
-                transaction_task: fragment_msgbox,
-                logs: pool_logs,
-                leadership_logs,
-                enclave,
-                explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
-            };
-            rest_context.set_full(full_context);
-            rest_context.set_node_state(NodeState::Running);
-            Some(
-                rest_context
-                    .server()
-                    .expect("Server not set in REST context"),
-            )
-        }
-        None => None,
+    if let Some(rest_context) = bootstrapped_node.rest_context {
+        let full_context = rest::FullContext {
+            stats_counter,
+            blockchain,
+            blockchain_tip,
+            network_task: network_msgbox,
+            transaction_task: fragment_msgbox,
+            logs: pool_logs,
+            leadership_logs,
+            enclave,
+            explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+        };
+        rest_context.set_full(full_context);
+        rest_context.set_node_state(NodeState::Running);
     };
 
     services.wait_any_finished();
     info!(bootstrapped_node.logger, "Shutting down node");
-
     Ok(())
 }
 
