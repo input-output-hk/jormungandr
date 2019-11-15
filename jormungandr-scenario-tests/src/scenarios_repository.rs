@@ -1,10 +1,11 @@
 use crate::{
+    test::Result,
     test::{comm::leader_leader::*, comm::passive_leader::*, network::topology::scenarios::*},
     Context,
 };
 use rand_chacha::ChaChaRng;
 use std::{any::Any, collections::HashMap, marker::Send};
-type ScenarioMethod = fn(Context<ChaChaRng>) -> ();
+type ScenarioMethod = fn(Context<ChaChaRng>) -> Result<ScenarioResult>;
 
 pub struct ScenariosRepository {
     repository: HashMap<String, ScenarioMethod>,
@@ -55,9 +56,7 @@ impl ScenariosRepository {
 
         let scenario_to_run = self.repository.get(scenario).unwrap();
         println!("Running '{}' scenario", scenario);
-        let result = std::panic::catch_unwind(|| {
-            scenario_to_run(context.clone().derive());
-        });
+        let result = std::panic::catch_unwind(|| return scenario_to_run(context.clone().derive()));
         println!("Scenario '{}' completed", scenario);
         ScenarioResult::from_result(result)
     }
@@ -117,10 +116,14 @@ impl ScenarioSuiteResult {
 #[derive(Clone, Debug)]
 pub enum ScenarioResult {
     Passed,
-    Failed,
+    Failed(String),
 }
 
 impl ScenarioResult {
+    pub fn Failed<S: Into<String>>(reason: S) -> Self {
+        ScenarioResult::Failed(reason.into())
+    }
+
     pub fn is_failed(&self) -> bool {
         match self {
             ScenarioResult::Passed => false,
@@ -128,10 +131,15 @@ impl ScenarioResult {
         }
     }
 
-    pub fn from_result(result: Result<(), Box<dyn Any + Send>>) -> ScenarioResult {
+    pub fn from_result(
+        result: std::result::Result<Result<ScenarioResult>, std::boxed::Box<dyn Any + Send>>,
+    ) -> ScenarioResult {
         match result {
-            Ok(_) => ScenarioResult::Passed,
-            Err(_) => ScenarioResult::Failed,
+            Ok(inner) => match inner {
+                Ok(scenario_result) => scenario_result,
+                Err(err) => ScenarioResult::Failed(err.to_string()),
+            },
+            Err(_) => ScenarioResult::Failed("no data".to_string()),
         }
     }
 }
