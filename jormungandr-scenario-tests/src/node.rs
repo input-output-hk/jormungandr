@@ -54,9 +54,19 @@ error_chain! {
             description("the node is no longer running"),
         }
 
+        NodeFailedToBootstrap (alias: String, duration: Duration) {
+            description("cannot start node"),
+            display("node '{}' failed to start after {} s", alias, duration.as_secs()),
+        }
+
         FragmentNoInMemPoolLogs (fragment_id: FragmentId) {
             description("cannot find fragment in mempool logs"),
             display("fragment '{}' not in the mempool of the node", fragment_id),
+        }
+
+        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration) {
+            description("fragment is pending for too long"),
+            display("fragment '{}' is pending for tool long ({} s)", fragment_id, duration.as_secs()),
         }
     }
 }
@@ -275,7 +285,8 @@ impl NodeController {
     }
 
     pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
-        loop {
+        let max_try = 20;
+        for _ in 0..max_try {
             let logs = self.fragment_logs()?;
 
             if let Some(log) = logs.get(&check.fragment_id) {
@@ -302,12 +313,17 @@ impl NodeController {
                     }
                 }
             } else {
-                // bail!(ErrorKind::FragmentNoInMemPoolLogs(
-                //    check.fragment_id.clone()
-                //))
+                bail!(ErrorKind::FragmentNoInMemPoolLogs(
+                    check.fragment_id.clone()
+                ))
             }
             std::thread::sleep(duration);
         }
+
+        bail!(ErrorKind::FragmentIsPendingForTooLong(
+            check.fragment_id.clone(),
+            Duration::from_secs(duration.as_secs() * max_try)
+        ))
     }
 
     pub fn stats(&self) -> Result<Stats> {
@@ -319,18 +335,22 @@ impl NodeController {
         Ok(stats)
     }
 
-    pub fn wait_for_bootstrap(&self) {
-        loop {
+    pub fn wait_for_bootstrap(&self) -> Result<()> {
+        let max_try = 20;
+        let sleep = Duration::from_secs(1);
+        for _ in 0..max_try {
             let stats = self.stats();
-            println!("{:?}", stats);
             if let Ok(stats) = stats {
                 if stats.uptime > 0 {
-                    return;
+                    return Ok(());
                 }
-            } else {
             }
-            std::thread::sleep(Duration::from_secs(1));
+            std::thread::sleep(sleep);
         }
+        bail!(ErrorKind::NodeFailedToBootstrap(
+            self.alias().to_string(),
+            Duration::from_secs(sleep.as_secs() * max_try)
+        ))
     }
 
     pub fn shutdown(&self) -> Result<bool> {
