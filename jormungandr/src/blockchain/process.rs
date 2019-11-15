@@ -154,9 +154,8 @@ pub fn run_handle_input(
             let logger_fold = logger.clone();
             let blockchain_fold = blockchain.clone();
             let (stream, reply) = handle.into_stream_and_reply();
-            let stream = stream
-                .take(chunk_sizes::BLOCKS)
-                .map_err(|()| Error::from("Error while processing block input stream"));
+            let stream =
+                stream.map_err(|()| Error::from("Error while processing block input stream"));
             let state = State {
                 stream,
                 reply,
