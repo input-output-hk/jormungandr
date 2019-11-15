@@ -2,7 +2,7 @@ use super::{
     candidate::{self, CandidateForest},
     chain,
     chain_selection::{self, ComparisonResult},
-    Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+    chunk_sizes, Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::{
     blockcfg::{Block, FragmentId, Header},
@@ -147,6 +147,7 @@ pub fn run_handle_input(
             let blockchain_fold = blockchain.clone();
             let (stream, reply) = handle.into_stream_and_reply();
             let future = stream
+                .take(chunk_sizes::BLOCKS)
                 .map_err(|()| Error::from("Error while processing block input stream"))
                 .fold(
                     (reply, stats_counter, None),

@@ -14,10 +14,12 @@ mod tip;
 
 mod chunk_sizes {
     // The maximum number of blocks to request per each GetBlocks request
-    // when pulling missing blocks.
+    // or a Solicit event when pulling missing blocks.
     //
     // This may need to be made into a configuration parameter.
-    pub const BLOCKS: usize = 32;
+    // The number used here aims for this number of block IDs to fit within
+    // a reasonable network path MTU, leaving room for gRPC and TCP/IP framing.
+    pub const BLOCKS: u64 = 32;
 }
 
 // Re-exports
