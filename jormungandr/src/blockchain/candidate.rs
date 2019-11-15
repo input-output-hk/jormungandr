@@ -279,7 +279,7 @@ impl ChainAdvance {
                 }
             }
             // TODO: bail out when block data are needed due to new epoch.
-            if self.new_hashes.len() >= chunk_sizes::BLOCKS {
+            if self.new_hashes.len() as u64 >= chunk_sizes::BLOCKS {
                 return Ok(Outcome::Incomplete.into());
             }
         }
