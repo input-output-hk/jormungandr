@@ -106,10 +106,8 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) {
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
 
-    loop {
-        let check = controller
-            .wallet_send_to(&mut wallet1, &wallet2, &leader1, 5_000.into())
-            .unwrap();
+    for i in 0..10 {
+        let check = controller.wallet_send_to(&mut wallet1, &wallet2, &leader1, 5_000.into())?;
 
         thread::sleep(Duration::from_secs(1));
 
