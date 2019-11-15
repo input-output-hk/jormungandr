@@ -4,7 +4,7 @@ use crate::{
     Context,
 };
 use rand_chacha::ChaChaRng;
-use std::{any::Any, collections::HashMap, marker::Send};
+use std::{any::Any, collections::HashMap, fmt, marker::Send};
 type ScenarioMethod = fn(Context<ChaChaRng>) -> Result<ScenarioResult>;
 
 pub struct ScenariosRepository {
@@ -57,8 +57,9 @@ impl ScenariosRepository {
         let scenario_to_run = self.repository.get(scenario).unwrap();
         println!("Running '{}' scenario", scenario);
         let result = std::panic::catch_unwind(|| return scenario_to_run(context.clone().derive()));
-        println!("Scenario '{}' completed", scenario);
-        ScenarioResult::from_result(result)
+        let scenario_result = ScenarioResult::from_result(result);
+        println!("Scenario '{}' {}", scenario, scenario_result);
+        scenario_result
     }
 }
 
@@ -144,6 +145,14 @@ impl ScenarioResult {
     }
 }
 
+impl fmt::Display for ScenarioResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ScenarioResult::Passed => write!(f, "passed"),
+            ScenarioResult::Failed(reason) => write!(f, "failed, due to '{}'", reason),
+        }
+    }
+}
 fn scenarios_repository() -> HashMap<String, ScenarioMethod> {
     let mut map: HashMap<String, ScenarioMethod> = HashMap::new();
     map.insert(
