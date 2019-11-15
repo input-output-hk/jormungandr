@@ -289,7 +289,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             };
             rest_context.set_full(full_context);
             rest_context.set_node_state(NodeState::Running);
-            Some(rest_context.server())
+            Some(
+                rest_context
+                    .server()
+                    .expect("Server not set in REST context"),
+            )
         }
         None => None,
     };

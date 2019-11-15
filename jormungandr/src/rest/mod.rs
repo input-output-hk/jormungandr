@@ -66,12 +66,12 @@ impl Context {
         *self.server.write().expect("Context server poisoned") = Some(Arc::new(server));
     }
 
-    pub fn server(&self) -> Arc<Server> {
+    pub fn server(&self) -> Result<Arc<Server>, ActixError> {
         self.server
             .read()
             .expect("Context server poisoned")
             .clone()
-            .expect("Context server not set")
+            .ok_or_else(|| ErrorInternalServerError("Server not set in  REST context"))
     }
 
     pub fn set_node_state(&self, node_state: NodeState) {
