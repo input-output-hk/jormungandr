@@ -298,10 +298,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         None => None,
     };
 
-    match rest_server {
-        Some(server) => server.wait_for_stop(),
-        None => thread::sleep(Duration::from_secs(u64::max_value())),
-    }
+    services.wait_any_finished();
     info!(bootstrapped_node.logger, "Shutting down node");
 
     Ok(())
