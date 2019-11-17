@@ -103,6 +103,7 @@ pub struct BootstrappedNode {
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
+    services: Services,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
@@ -113,7 +114,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         context.set_node_state(NodeState::StartingWorkers)
     }
 
-    let mut services = Services::new(bootstrapped_node.logger.clone());
+    let mut services = bootstrapped_node.services;
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
@@ -275,12 +276,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let rest_server = match bootstrapped_node.rest_context {
         Some(rest_context) => {
-            let logger = bootstrapped_node
-                .logger
-                .new(o!(crate::log::KEY_TASK => "rest"))
-                .into_erased();
             let full_context = rest::FullContext {
-                logger,
                 stats_counter,
                 blockchain,
                 blockchain_tip,
@@ -293,7 +289,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             };
             rest_context.set_full(full_context);
             rest_context.set_node_state(NodeState::Running);
-            Some(rest_context.server())
+            Some(
+                rest_context
+                    .server()
+                    .expect("Server not set in REST context"),
+            )
         }
         None => None,
     };
@@ -326,6 +326,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         storage,
         logger,
         rest_context,
+        services,
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
@@ -374,6 +375,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         explorer_db,
         rest_context,
+        services,
     })
 }
 
@@ -383,6 +385,7 @@ pub struct InitializedNode {
     pub storage: start_up::NodeStorage,
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
+    pub services: Services,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -416,11 +419,18 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
+    let mut services = Services::new(logger.clone());
 
-    let rest_context = match &settings.rest {
+    let rest_context = match settings.rest.clone() {
         Some(rest) => {
             let context = rest::Context::new();
-            rest::start_rest_server(rest, settings.explorer, &context)?;
+            let explorer = settings.explorer;
+            let server_context = context.clone();
+            services.spawn("rest", move |info| {
+                server_context.set_logger(info.into_logger());
+                rest::run_rest_server(rest, explorer, server_context)
+                    .expect("REST server critical failure")
+            });
             Some(context)
         }
         None => None,
@@ -448,6 +458,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         storage,
         logger,
         rest_context,
+        services,
     })
 }
 
