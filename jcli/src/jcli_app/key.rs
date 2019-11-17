@@ -5,6 +5,7 @@ use chain_crypto::{
     Ed25519Bip32, Ed25519Extended, SecretKey, SigningAlgorithm, SumEd25519_12, Verification,
     VerificationAlgorithm,
 };
+use ed25519_bip32::{DerivationError, DerivationScheme};
 use hex::FromHexError;
 use rand::{rngs::EntropyRng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -32,6 +33,7 @@ custom_error! { pub Error
     UnexpectedBech32SignHrp { actual_hrp: String, expected_hrp: String }
         = "signature bech32 has invalid HRP: '{actual_hrp}', expected: '{expected_hrp}'",
     SignatureVerification = "signature verification failed",
+    Derivation { source: DerivationError } = "failed to derive from BIP32 public key",
 }
 
 #[derive(StructOpt, Debug)]
@@ -49,6 +51,8 @@ pub enum Key {
     Sign(Sign),
     /// verify signed data with public key
     Verify(Verify),
+    /// derive a child key
+    Derive(Derive),
 }
 
 #[derive(StructOpt, Debug)]
@@ -143,6 +147,22 @@ pub struct Verify {
 }
 
 #[derive(StructOpt, Debug)]
+pub struct Derive {
+    /// the parent key to derive a child key from
+    ///
+    /// if no value passed, the parent key will be read from the
+    /// standard input
+    #[structopt(long = "input")]
+    parent_key: Option<PathBuf>,
+
+    /// the index of child key
+    index: u32,
+
+    #[structopt(flatten)]
+    child_key: OutputFile,
+}
+
+#[derive(StructOpt, Debug)]
 struct OutputFile {
     /// output the key to the given file or to stdout if not provided
     #[structopt(name = "OUTPUT_FILE")]
@@ -178,6 +198,7 @@ impl Key {
             Key::FromBytes(args) => args.exec(),
             Key::Sign(args) => args.exec(),
             Key::Verify(args) => args.exec(),
+            Key::Derive(args) => args.exec(),
         }
     }
 }
@@ -324,6 +345,38 @@ impl Verify {
             Verification::Failed => Err(Error::SignatureVerification),
         }?;
         println!("Success");
+        Ok(())
+    }
+}
+
+impl Derive {
+    fn exec(self) -> Result<(), Error> {
+        let key_bech32 = read_bech32(&self.parent_key)?;
+        let key_bytes = Vec::<u8>::from_base32(key_bech32.data())?;
+        let hrp;
+        let child_key;
+
+        match key_bech32.hrp() {
+            Ed25519Bip32::PUBLIC_BECH32_HRP => {
+                let key = Ed25519Bip32::public_from_binary(&key_bytes)?;
+                child_key = key.derive(DerivationScheme::V2, self.index)?.to_base32();
+                hrp = Ed25519Bip32::PUBLIC_BECH32_HRP.to_string();
+            }
+            Ed25519Bip32::SECRET_BECH32_HRP => {
+                let key = Ed25519Bip32::secret_from_binary(&key_bytes)?;
+                child_key = key.derive(DerivationScheme::V2, self.index).to_base32();
+                hrp = Ed25519Bip32::SECRET_BECH32_HRP.to_string();
+            }
+            other => {
+                return Err(Error::UnknownBech32PubKeyHrp {
+                    hrp: other.to_string(),
+                })
+            }
+        }
+
+        let child_key_bech32 = Bech32::new(hrp, child_key)?;
+        let mut output = self.child_key.open()?;
+        writeln!(output, "{}", child_key_bech32)?;
         Ok(())
     }
 }
