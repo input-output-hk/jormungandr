@@ -8,6 +8,7 @@
 use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use std::{
+    any::Any,
     panic::{catch_unwind, AssertUnwindSafe},
     sync::mpsc::{self, Receiver, Sender},
     thread,
@@ -99,22 +100,23 @@ impl Services {
         F: Send + 'static,
     {
         let now = Instant::now();
+        let logger = self
+            .logger
+            .new(o!(crate::log::KEY_TASK => name))
+            .into_erased();
         let thread_service_info = ThreadServiceInfo {
             name: name,
             up_time: now,
-            logger: self
-                .logger
-                .new(o!(crate::log::KEY_TASK => name))
-                .into_erased(),
+            logger: logger.clone(),
         };
-
         let finish_notifier = self.finish_listener.notifier();
         thread::Builder::new()
             .name(name.to_owned())
             // .stack_size(2 * 1024 * 1024)
             .spawn(move || {
-                info!(thread_service_info.logger, "starting task");
+                info!(logger, "starting task");
                 if let Err(error) = catch_unwind(AssertUnwindSafe(|| f(thread_service_info))) {
+                    log_service_panic(&logger, &*error);
                 }
                 finish_notifier.notify();
             })
@@ -172,27 +174,22 @@ impl Services {
         let executor = runtime.executor();
 
         let now = Instant::now();
+        let logger = self
+            .logger
+            .new(o!(crate::log::KEY_TASK => name))
+            .into_erased();
         let future_service_info = TokioServiceInfo {
-            name: name,
+            name,
             up_time: now,
-            logger: self
-                .logger
-                .new(o!(crate::log::KEY_TASK => name))
-                .into_erased(),
-            executor: executor,
+            logger: logger.clone(),
+            executor,
         };
 
         let finish_notifier_ok = self.finish_listener.notifier();
         let finish_notifier_err = self.finish_listener.notifier();
-        use std::panic::AssertUnwindSafe;
-
         let future = AssertUnwindSafe(f(future_service_info))
             .catch_unwind()
-            .map_err(|err| {
-                if let Some(string) = err.downcast_ref::<String>() {
-                    eprintln!("{}", string);
-                }
-            });
+            .map_err(move |error| log_service_panic(&logger, &*error))
             // use of `then` triggers type-length limit compilation error
             .map(|_| finish_notifier_ok.notify())
             .map_err(|_| finish_notifier_err.notify());
@@ -384,3 +381,10 @@ impl ServiceFinishNotifier {
     }
 }
 
+fn log_service_panic(logger: &Logger, error: &dyn Any) {
+    let reason_logger = error
+        .downcast_ref::<&str>()
+        .map(|reason| logger.new(o!("reason" => *reason)));
+    let panic_logger = reason_logger.as_ref().unwrap_or(logger);
+    crit!(panic_logger, "Task panicked");
+}
