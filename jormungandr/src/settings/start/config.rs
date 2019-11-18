@@ -99,6 +99,15 @@ pub struct P2pConfig {
     /// setting for the policy
     #[serde(default)]
     pub policy: PolicyConfig,
+
+    /// set the maximum number of unreachable nodes to contact at a time for every
+    /// new notification. The default value is 20.
+    ///
+    /// Every time a new propagation event is triggered, the node will select
+    /// randomly a certain amount of unreachable nodes to connect to in addition
+    /// to the one selected by other p2p topology layer.
+    #[serde(default)]
+    pub unreachable_notification_size: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,6 +168,7 @@ impl Default for P2pConfig {
             max_connections: None,
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
+            unreachable_notification_size: None,
         }
     }
 }

@@ -242,6 +242,7 @@ fn generate_network(
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.allow_private_addresses,
+        unreachable_notification_size: p2p.unreachable_notification_size,
     };
 
     Ok(network)

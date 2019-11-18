@@ -66,6 +66,8 @@ pub struct Configuration {
 
     /// Whether to allow non-public IP addresses in gossip
     pub allow_private_addresses: bool,
+
+    pub unreachable_notification_size: Option<usize>,
 }
 
 #[derive(Clone)]

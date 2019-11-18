@@ -52,9 +52,13 @@ impl P2pTopology {
         topology.add_layer(Cyclon::default());
     }
 
-    pub fn set_custom_modules(&mut self) {
+    pub fn set_custom_modules(&mut self, unreachable_size: Option<usize>) {
         let mut topology = self.lock.write().unwrap();
-        topology.add_layer(custom_layers::RandomDirectConnections::default());
+        if let Some(size) = unreachable_size {
+            topology.add_layer(custom_layers::RandomDirectConnections::with_max_view_length(size))
+        } else {
+            topology.add_layer(custom_layers::RandomDirectConnections::default());
+        }
     }
 
     /// Returns a list of neighbors selected in this turn
