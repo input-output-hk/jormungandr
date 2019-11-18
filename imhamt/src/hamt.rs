@@ -1,11 +1,10 @@
-use super::content::{LeafIterator, KV};
+use super::content::LeafIterator;
 use super::hash::{Hash, HashedKey, Hasher};
 use super::node::{
     insert_rec, lookup_one, remove_eq_rec, remove_rec, replace_rec, size_rec, update_rec, Entry,
     LookupRet, Node, NodeIter,
 };
 pub use super::operation::{InsertError, RemoveError, ReplaceError, UpdateError};
-use super::sharedref::SharedRef;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::mem::swap;
@@ -41,8 +40,7 @@ impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
 impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
     pub fn insert(&self, k: K, v: V) -> Result<Self, InsertError> {
         let h = HashedKey::compute(self.hasher, &k);
-        let kv = SharedRef::new(KV::new(k, v));
-        let newroot = insert_rec(&self.root, &h, 0, kv)?;
+        let newroot = insert_rec(&self.root, h, 0, k, v)?;
         Ok(Hamt {
             root: newroot,
             hasher: PhantomData,

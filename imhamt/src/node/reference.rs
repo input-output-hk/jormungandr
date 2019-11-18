@@ -121,14 +121,16 @@ impl<K, V> Node<K, V> {
 // creating Leaf and Collision node instead of Subnode.
 pub fn insert_rec<K: PartialEq, V>(
     node: &Node<K, V>,
-    h: &HashedKey,
+    h: HashedKey,
     lvl: usize,
-    kv: SharedRef<KV<K, V>>,
+    k: K,
+    v: V,
 ) -> Result<Node<K, V>, InsertError> {
     let level_hash = h.level_index(lvl);
     let idx = node.bitmap.get_index_sparse(level_hash);
     if idx.is_not_found() {
-        let content = LeafContent::single(*h, kv);
+        let kv = SharedRef::new(KV::new(k, v));
+        let content = LeafContent::single(h, kv);
         let e = SharedRef::new(Entry::Leaf(content));
         Ok(node.set_at(level_hash, e))
     } else {
@@ -136,7 +138,8 @@ pub fn insert_rec<K: PartialEq, V>(
             &Entry::Leaf(ref content) => {
                 // in case of same hash, then we append to the collision type
                 // otherwise we create a new subnode
-                if &content.hashed == h {
+                if content.hashed == h {
+                    let kv = SharedRef::new(KV::new(k, v));
                     let newent = Entry::Leaf(content.add(kv)?);
                     let e = SharedRef::new(newent);
                     Ok(node.replace_at(idx, e))
@@ -146,13 +149,14 @@ pub fn insert_rec<K: PartialEq, V>(
                     let subnode = Node::singleton(leaf_idx, SharedRef::clone(node.get_child(idx)));
 
                     if entry_next_idx != leaf_idx {
+                        let kv = SharedRef::new(KV::new(k, v));
                         let subnode = subnode.set_at(
                             entry_next_idx,
-                            SharedRef::new(Entry::Leaf(LeafContent::single(*h, kv))),
+                            SharedRef::new(Entry::Leaf(LeafContent::single(h, kv))),
                         );
                         Ok(node.replace_at(idx, SharedRef::new(Entry::SubNode(subnode))))
                     } else {
-                        let r = insert_rec(&subnode, h, lvl + 1, kv)?;
+                        let r = insert_rec(&subnode, h, lvl + 1, k, v)?;
                         let e = SharedRef::new(Entry::SubNode(r));
                         Ok(node.replace_at(idx, e))
                     }
@@ -165,7 +169,7 @@ pub fn insert_rec<K: PartialEq, V>(
                     assert!(false);
                     unimplemented!()
                 } else {
-                    let r = insert_rec(sub, h, lvl + 1, kv)?;
+                    let r = insert_rec(sub, h, lvl + 1, k, v)?;
                     let e = SharedRef::new(Entry::SubNode(r));
                     Ok(node.replace_at(idx, e))
                 }
