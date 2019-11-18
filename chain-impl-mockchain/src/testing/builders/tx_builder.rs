@@ -22,6 +22,11 @@ pub struct TestTx {
 }
 
 impl TestTx {
+
+    pub fn new(tx: Transaction<NoExtra>) -> Self {
+        TestTx { tx }
+    }
+
     pub fn get_fragment_id(&self) -> FragmentId {
         self.clone().get_fragment().hash()
     }

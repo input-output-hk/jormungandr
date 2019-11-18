@@ -212,6 +212,12 @@ impl AddressData {
     }
 }
 
+impl Into<Address> for AddressData {
+    fn into(self) -> Address {
+        self.address
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddressDataValue {
     pub address_data: AddressData,
@@ -232,6 +238,11 @@ impl AddressDataValue {
 
     pub fn account(discrimination: Discrimination, value: Value) -> Self {
         AddressDataValue::new(AddressData::account(discrimination),value)
+    }
+
+    pub fn account_with_spending_counter(discrimination: Discrimination, spending_counter: u32, value: Value) -> Self {
+       let address_data = AddressData::account_with_spending_counter(discrimination, spending_counter);
+       Self::new(address_data, value)
     }
 
     pub fn delegation(discrimination: Discrimination, value: Value) -> Self {
@@ -280,6 +291,10 @@ impl AddressDataValue {
     }
     pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
         self.address_data.make_witness(block0_hash,tad)
+    }
+
+    pub fn confirm_transaction(&mut self) {
+        self.address_data.confirm_transaction();
     }
 
     pub fn kind(&self) -> Kind {
