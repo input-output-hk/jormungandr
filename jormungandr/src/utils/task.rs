@@ -115,6 +115,8 @@ impl Services {
             // .stack_size(2 * 1024 * 1024)
             .spawn(move || {
                 info!(logger, "starting task");
+                // This AssertUnwindSafe is safe, because after `catch_unwind`
+                // its content is never used in this thread
                 if let Err(error) = catch_unwind(AssertUnwindSafe(|| f(thread_service_info))) {
                     log_service_panic(&logger, &*error);
                 }
@@ -187,6 +189,8 @@ impl Services {
 
         let finish_notifier_ok = self.finish_listener.notifier();
         let finish_notifier_err = self.finish_listener.notifier();
+        // This AssertUnwindSafe is safe, because after `catch_unwind`
+        // its content is never used in executor thread
         let future = AssertUnwindSafe(f(future_service_info))
             .catch_unwind()
             .map_err(move |error| log_service_panic(&logger, &*error))
