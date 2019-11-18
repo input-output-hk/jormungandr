@@ -47,15 +47,6 @@ impl<K, V> Node<K, V> {
         self.bitmap.present()
     }
 
-    /*
-    pub fn singleton(idx: LevelIndex, child: Entry<K, V>) -> Self {
-        Node {
-            bitmap: SmallBitmap::once(idx),
-            children: vec![Arc::new(child)],
-        }
-    }
-    */
-
     pub fn get_child(&self, at: ArrayIndex) -> &SharedRef<Entry<K, V>> {
         assert_eq!(at.is_not_found(), false);
         &self.children[at.get_found()]
