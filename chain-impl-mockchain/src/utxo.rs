@@ -7,9 +7,8 @@
 use crate::fragment::FragmentId;
 use crate::transaction::{Output, TransactionIndex};
 use chain_addr::Address;
-use std::collections::btree_map;
+use sparse_array::{FastSparseArray, FastSparseArrayBuilder, FastSparseArrayIter};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::BTreeMap;
 use std::fmt;
 
 use imhamt::{Hamt, HamtIter, InsertError, RemoveError, ReplaceError, UpdateError};
@@ -48,18 +47,16 @@ impl From<RemoveError> for Error {
 
 /// Hold all the individual outputs that remain unspent
 #[derive(Clone, PartialEq, Eq, Debug)]
-struct TransactionUnspents<OutAddress>(BTreeMap<TransactionIndex, Output<OutAddress>>);
+struct TransactionUnspents<OutAddress>(FastSparseArray<Output<OutAddress>>);
 
 impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
     pub fn from_outputs(outs: &[(TransactionIndex, Output<OutAddress>)]) -> Self {
         assert!(outs.len() < 255);
-        let mut b = BTreeMap::new();
+        let mut sa = FastSparseArrayBuilder::with_capacity(outs.len() as u8);
         for (index, output) in outs.iter() {
-            let r = b.insert(*index, output.clone());
-            // duplicated index
-            if r.is_some() {}
+            sa.set(*index, output.clone());
         }
-        TransactionUnspents(b)
+        TransactionUnspents(sa.build())
     }
 
     pub fn remove_input(
@@ -68,7 +65,7 @@ impl<OutAddress: Clone> TransactionUnspents<OutAddress> {
     ) -> Result<(Self, Output<OutAddress>), Error> {
         assert!(index < 255);
         let mut t = self.0.clone();
-        match t.remove(&index) {
+        match t.remove(index) {
             None => Err(Error::IndexNotFound),
             Some(o) => Ok((TransactionUnspents(t), o)),
         }
@@ -81,15 +78,12 @@ pub struct Ledger<OutAddress>(Hamt<DefaultHasher, FragmentId, TransactionUnspent
 
 pub struct Iter<'a, V> {
     hamt_iter: HamtIter<'a, FragmentId, TransactionUnspents<V>>,
-    unspents_iter: Option<(
-        &'a FragmentId,
-        btree_map::Iter<'a, TransactionIndex, Output<V>>,
-    )>,
+    unspents_iter: Option<(&'a FragmentId, FastSparseArrayIter<'a, Output<V>>)>,
 }
 
 pub struct Values<'a, V> {
     hamt_iter: HamtIter<'a, FragmentId, TransactionUnspents<V>>,
-    unspents_iter: Option<btree_map::Iter<'a, TransactionIndex, Output<V>>>,
+    unspents_iter: Option<FastSparseArrayIter<'a, Output<V>>>,
 }
 
 impl fmt::Debug for Ledger<Address> {
@@ -129,7 +123,7 @@ impl<OutAddress> Ledger<OutAddress> {
     ) -> Option<Entry<'a, OutAddress>> {
         self.0
             .lookup(tid)
-            .and_then(|unspent| unspent.0.get(index))
+            .and_then(|unspent| unspent.0.get(*index))
             .map(|output| Entry {
                 fragment_id: tid.clone(),
                 output_index: *index,
@@ -176,15 +170,16 @@ impl<'a, V> Iterator for Iter<'a, V> {
                     Some(x) => {
                         return Some(Entry {
                             fragment_id: id.clone(),
-                            output_index: *x.0,
+                            output_index: x.0,
                             output: x.1,
-                        })
+                        });
                     }
                 },
             }
         }
     }
 }
+
 impl<OutAddress: Clone> Ledger<OutAddress> {
     /// Create a new empty UTXO Ledger
     pub fn new() -> Self {
@@ -368,13 +363,13 @@ mod tests {
     #[quickcheck]
     pub fn transaction_unspent_remove(outputs: ArbitraryTransactionOutputs) -> TestResult {
         let transaction_unspent = TransactionUnspents::from_outputs(outputs.to_vec().as_slice());
-        let is_index_correct = transaction_unspent.0.contains_key(&outputs.idx_to_remove);
+        let is_index_correct = transaction_unspent.0.contains_key(outputs.idx_to_remove);
         match (
             transaction_unspent.remove_input(outputs.idx_to_remove),
             is_index_correct,
         ) {
             (Ok((transaction_unspent, output)), true) => {
-                if transaction_unspent.0.contains_key(&outputs.idx_to_remove) {
+                if transaction_unspent.0.contains_key(outputs.idx_to_remove) {
                     return TestResult::error("Element not removed");
                 }
 
