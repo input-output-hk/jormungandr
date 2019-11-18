@@ -324,13 +324,26 @@ impl Module {
             "event_end" => event_end.to_string(),
         ));
 
-        if within_bounds(event_start, now, event_end) {
-            Either::A(self.action_run_entry_in_bound(entry, logger, event_end))
-        } else {
+        if let Some(right_time) = too_early(event_start, now) {
+            // it appears the node woke slightly too early for the event to start
+            // this may happen and can be corrected. It is certainly a matter of
+            // of X hundreds milliseconds or so.
+
+            warn!(
+                logger,
+                "system woke a bit early for the event, delaying until right time."
+            );
+
+            Either::A(Either::A(
+                Delay::new(right_time)
+                    .map_err(|source| LeadershipError::AwaitError { source })
+                    .and_then(move |()| self.action_run_entry_in_bound(entry, logger, event_end)),
+            ))
+        } else if too_late(now, event_end) {
             // the event happened out of bounds, ignore it and move to the next one
             error!(
                 logger,
-                "Eek... we missed an event schedule, system time might be off?"
+                "Eek... Too late, we missed an event schedule, system time might be off?"
             );
 
             let tell_user_about_failure = entry.log.set_status(LeadershipLogStatus::Rejected {
@@ -338,6 +351,10 @@ impl Module {
             });
 
             Either::B(tell_user_about_failure.map(|()| self))
+        } else {
+            Either::A(Either::B(
+                self.action_run_entry_in_bound(entry, logger, event_end),
+            ))
         }
     }
 
@@ -665,7 +682,7 @@ fn prepare_block(
 /// i.e. if now is: `11:05:22.993` and but start is `11:05:23.000` then the
 /// predicate should still be hold and be accepted.
 ///
-fn within_bounds(event_start: SystemTime, now: SystemTime, event_end: SystemTime) -> bool {
+fn too_early(event_start: SystemTime, now: SystemTime) -> Option<Instant> {
     use jormungandr_lib::time::Duration;
 
     const ALLOWED_MARGIN_ERROR: u64 = 50;
@@ -675,5 +692,13 @@ fn within_bounds(event_start: SystemTime, now: SystemTime, event_end: SystemTime
     let allowed_margin_error: Duration = Duration::from_millis(ALLOWED_MARGIN_ERROR);
     let event_start_d = event_start_d.checked_sub(allowed_margin_error).unwrap();
 
-    event_start_d <= now_d && now <= event_end
+    if now_d < event_start_d {
+        Some(Instant::now() + (*event_start_d.as_ref() - *now_d.as_ref()))
+    } else {
+        None
+    }
+}
+
+fn too_late(now: SystemTime, event_end: SystemTime) -> bool {
+    event_end <= now
 }
