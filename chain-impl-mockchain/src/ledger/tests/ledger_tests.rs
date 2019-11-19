@@ -2,13 +2,23 @@
 
 use crate::fee::FeeAlgorithm;
 use crate::{
+    config::ConfigParam,
+    fragment::{config::ConfigParams, Fragment},
+    ledger::{
+        check::TxVerifyError,
+        Entry,
+        Error::TransactionMalformed,
+        Ledger,
+        ledger::{Block0Error,Error::{Block0,ExpectingInitialMessage}}
+    },
     testing::{
         arbitrary::{
             AccountStatesVerifier, ArbitraryValidTransactionData, UtxoVerifier,
         },
-        data::AddressDataValue,
-        ledger::{ConfigBuilder,LedgerBuilder},
-        builders::TestTxBuilder
+        data::{AddressData, AddressDataValue},
+        ledger::{self, ConfigBuilder, LedgerBuilder},
+        builders::{self,OldAddressBuilder,TestTxBuilder},
+        TestGen,
     },
 };
 use chain_addr::Discrimination;
@@ -86,4 +96,122 @@ pub fn total_funds_are_const_in_ledger(
             }
             TestResult::passed()
 
+}
+
+#[test]
+pub fn test_first_initial_fragment_empty() {
+    let header_id = TestGen::hash();
+    let content = Vec::new();
+    assert_eq!(Ledger::new(header_id,content).err().unwrap(),Block0 {
+        source: Block0Error::InitialMessageMissing,
+    });
+}
+
+#[test]
+pub fn test_first_initial_fragment_wrong_type() {
+    let header_id = TestGen::hash();
+    let fragment = Fragment::OldUtxoDeclaration(OldAddressBuilder::build_utxo_declaration(Some(1)));
+    assert_eq!(Ledger::new(header_id,&vec![fragment]).err().unwrap(),ExpectingInitialMessage); 
+}
+
+#[test]
+pub fn ledger_new_no_block_start_time() {
+    let leader_pair = TestGen::leader_pair();
+    let header_id = TestGen::hash();
+    let mut ie = ConfigParams::new();
+    ie.push(ConfigParam::Discrimination(Discrimination::Test));
+    ie.push(ConfigParam::AddBftLeader(leader_pair.leader_id));
+    ie.push(ConfigParam::SlotDuration(10u8));
+    ie.push(ConfigParam::SlotsPerEpoch(10u32));
+    ie.push(ConfigParam::KESUpdateSpeed(3600));
+
+    assert_eq!(Ledger::new(header_id,vec![&Fragment::Initial(ie)]).err().unwrap(),
+            Block0 {
+                source: Block0Error::InitialMessageNoDate,
+            });
+}
+
+#[test]
+pub fn ledger_new_no_discrimination() {
+    let leader_pair = TestGen::leader_pair();
+    let header_id = TestGen::hash();
+    let mut ie = ConfigParams::new();
+    ie.push(ConfigParam::AddBftLeader(leader_pair.leader_id));
+    ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+    ie.push(ConfigParam::SlotDuration(10u8));
+    ie.push(ConfigParam::SlotsPerEpoch(10u32));
+    ie.push(ConfigParam::KESUpdateSpeed(3600));
+
+    assert_eq!(Ledger::new(header_id,vec![&Fragment::Initial(ie)]).err().unwrap(),
+        Block0 {
+            source: Block0Error::InitialMessageNoDiscrimination,
+    });
+}
+
+#[test]
+pub fn ledger_new_no_slot_duration() {
+    let leader_pair = TestGen::leader_pair();
+    let header_id = TestGen::hash();
+    let mut ie = ConfigParams::new();
+    ie.push(ConfigParam::Discrimination(Discrimination::Test));
+    ie.push(ConfigParam::AddBftLeader(leader_pair.leader_id));
+    ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+    ie.push(ConfigParam::SlotsPerEpoch(10u32));
+    ie.push(ConfigParam::KESUpdateSpeed(3600));
+
+    assert_eq!(Ledger::new(header_id,vec![&Fragment::Initial(ie)]).err().unwrap(),
+        Block0 {
+            source: Block0Error::InitialMessageNoSlotDuration,
+    });
+}
+
+#[test]
+pub fn ledger_new_no_slots_per_epoch() {
+    let leader_pair = TestGen::leader_pair();
+    let header_id = TestGen::hash();
+    let mut ie = ConfigParams::new();
+    ie.push(ConfigParam::Discrimination(Discrimination::Test));
+    ie.push(ConfigParam::AddBftLeader(leader_pair.leader_id));
+    ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+    ie.push(ConfigParam::SlotDuration(10u8));
+    ie.push(ConfigParam::KESUpdateSpeed(3600));
+
+    assert_eq!(Ledger::new(header_id,vec![&Fragment::Initial(ie)]).err().unwrap(),
+        Block0 {
+            source: Block0Error::InitialMessageNoSlotsPerEpoch,
+    });
+}
+
+#[test]
+pub fn ledger_new_no_kes_update_speed() {
+    let leader_pair = TestGen::leader_pair();
+    let header_id = TestGen::hash();
+    let mut ie = ConfigParams::new();
+    ie.push(ConfigParam::Discrimination(Discrimination::Test));
+    ie.push(ConfigParam::AddBftLeader(leader_pair.leader_id));
+    ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+    ie.push(ConfigParam::SlotDuration(10u8));
+    ie.push(ConfigParam::SlotsPerEpoch(10u32));
+
+    assert_eq!(Ledger::new(header_id,vec![&Fragment::Initial(ie)]).err().unwrap(),
+        Block0 {
+            source: Block0Error::InitialMessageNoKesUpdateSpeed,
+    });
+}
+
+#[test]
+pub fn ledger_new_no_bft_leader() {
+    let leader_pair = TestGen::leader_pair();
+    let header_id = TestGen::hash();
+    let mut ie = ConfigParams::new();
+    ie.push(ConfigParam::Discrimination(Discrimination::Test));
+    ie.push(ConfigParam::Block0Date(crate::config::Block0Date(0)));
+    ie.push(ConfigParam::SlotDuration(10u8));
+    ie.push(ConfigParam::SlotsPerEpoch(10u32));
+    ie.push(ConfigParam::KESUpdateSpeed(3600));
+
+    assert_eq!(Ledger::new(header_id,vec![&Fragment::Initial(ie)]).err().unwrap(),
+        Block0 {
+            source: Block0Error::InitialMessageNoConsensusLeaderId,
+    });
 }
