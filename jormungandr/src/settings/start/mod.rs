@@ -242,6 +242,7 @@ fn generate_network(
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.allow_private_addresses,
+        max_unreachable_nodes_to_connect_per_event: p2p.max_unreachable_nodes_to_connect_per_event,
     };
 
     Ok(network)
