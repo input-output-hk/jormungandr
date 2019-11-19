@@ -73,6 +73,7 @@ use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
+pub mod blockchain_stuck_notifier;
 pub mod client;
 pub mod explorer;
 pub mod fragment;
@@ -281,7 +282,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let full_context = rest::FullContext {
             stats_counter,
             blockchain,
-            blockchain_tip,
+            blockchain_tip: blockchain_tip.clone(),
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
             logs: pool_logs,
@@ -292,6 +293,14 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         rest_context.set_full(full_context);
         rest_context.set_node_state(NodeState::Running);
     };
+
+    {
+        let blockchain_tip = blockchain_tip.clone();
+
+        services.spawn_future("blockchain_stuck_notifier", move |info| {
+            blockchain_stuck_notifier::check_last_block_time(info, blockchain_tip)
+        });
+    }
 
     services.wait_any_finished();
     info!(bootstrapped_node.logger, "Shutting down node");
