@@ -105,10 +105,9 @@ impl<D: Drain> Drain for DrainMux<D> {
         record: &slog::Record,
         values: &slog::OwnedKVList,
     ) -> Result<Self::Ok, Self::Err> {
-        self.0.iter().try_for_each(|drain| {
-            drain.log(record, values);
-            Ok(())
-        })
+        self.0
+            .iter()
+            .try_for_each(|drain| drain.log(record, values).map(|_| ()))
     }
 }
 
