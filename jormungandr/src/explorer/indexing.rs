@@ -8,7 +8,7 @@ use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::block::Proof;
-use chain_impl_mockchain::certificate::{Certificate, PoolId};
+use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration};
 use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
@@ -25,7 +25,14 @@ pub type ChainLengths = Hamt<ChainLength, HeaderHash>;
 pub type Addresses = Hamt<ExplorerAddress, PersistentSequence<FragmentId>>;
 pub type Epochs = Hamt<Epoch, EpochData>;
 
-pub type StakePools = Hamt<PoolId, PersistentSequence<HeaderHash>>;
+pub type StakePoolBlocks = Hamt<PoolId, PersistentSequence<HeaderHash>>;
+pub type StakePool = Hamt<PoolId, StakePoolData>;
+
+#[derive(Clone)]
+pub struct StakePoolData {
+    pub registration: PoolRegistration,
+    // TODO: Track updates and retirement here too?
+}
 
 /// Block with unified inputs the metadata needed in the queries
 #[derive(Clone)]
