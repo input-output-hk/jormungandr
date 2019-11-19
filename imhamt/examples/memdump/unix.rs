@@ -18,7 +18,7 @@ fn statprint() {
     println!("{} bytes allocated/{} bytes resident", allocated, resident);
 }
 
-fn main() {
+pub fn run() {
     let mut h: Hamt<DefaultHasher, u32, u32> = Hamt::new();
 
     println!("adding 100000 entries");
