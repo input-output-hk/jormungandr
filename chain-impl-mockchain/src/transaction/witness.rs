@@ -56,8 +56,13 @@ impl std::fmt::Display for Witness {
 pub struct WitnessUtxoData(Vec<u8>);
 
 impl WitnessUtxoData {
-    pub fn new(block0: &HeaderId, transaction_id: &TransactionSignDataHash) -> Self {
+    pub fn new(block0: &HeaderId, transaction_id: &TransactionSignDataHash, is_legacy: bool) -> Self {
         let mut v = Vec::with_capacity(65);
+        let tag = match is_legacy {
+            true => WITNESS_TAG_OLDUTXO,
+            false => WITNESS_TAG_UTXO,
+        };
+        v.push(tag);
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
         WitnessUtxoData(v)
@@ -78,7 +83,7 @@ impl WitnessAccountData {
         transaction_id: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
     ) -> Self {
-        let mut v = Vec::with_capacity(65);
+        let mut v = Vec::with_capacity(69);
         v.push(WITNESS_TAG_ACCOUNT);
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
@@ -101,7 +106,7 @@ impl WitnessMultisigData {
         transaction_id: &TransactionSignDataHash,
         spending_counter: &account::SpendingCounter,
     ) -> Self {
-        let mut v = Vec::with_capacity(65);
+        let mut v = Vec::with_capacity(69);
         v.push(WITNESS_TAG_MULTISIG);
         v.extend_from_slice(block0.as_ref());
         v.extend_from_slice(transaction_id.as_ref());
@@ -123,7 +128,7 @@ impl Witness {
         sign_data_hash: &TransactionSignDataHash,
         secret_key: &EitherEd25519SecretKey,
     ) -> Self {
-        let wud = WitnessUtxoData::new(block0, sign_data_hash);
+        let wud = WitnessUtxoData::new(block0, sign_data_hash, false);
         let sig = secret_key.sign(&wud);
         Witness::Utxo(sig)
     }
@@ -133,7 +138,7 @@ impl Witness {
         sign_data_hash: &TransactionSignDataHash,
         secret_key: SecretKey<Ed25519Bip32>,
     ) -> Self {
-        let wud = WitnessUtxoData::new(block0, sign_data_hash);
+        let wud = WitnessUtxoData::new(block0, sign_data_hash, true);
         Witness::OldUtxo(secret_key.to_public(), secret_key.sign(&wud))
     }
 
