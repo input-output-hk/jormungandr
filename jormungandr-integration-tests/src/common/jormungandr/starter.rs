@@ -234,9 +234,9 @@ impl Starter {
 
     fn custom_errors_found(&self) -> Result<(), StartupError> {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
-        //Can not resume socket accept process: The parameter is incorrect. (os error 87)
+        let port_occupied_msgs = ["error 87", "thread 'network0' panicked at 'Box<Any>'"];
         match logger
-            .contains_message("error 87")
+            .contains_any_of_messages(&port_occupied_msgs)
             .unwrap_or_else(|_| false)
         {
             true => Err(StartupError::PortAlreadyInUse),

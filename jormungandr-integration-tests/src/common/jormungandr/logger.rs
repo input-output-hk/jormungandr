@@ -87,6 +87,15 @@ impl JormungandrLogger {
         println!("{}", self.get_log_content());
     }
 
+    pub fn contains_any_of_messages(&self, messages: &[&str]) -> Result<bool, LoggerError> {
+        for message in messages {
+            if self.contains_message(message)? == true {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     pub fn contains_message(&self, message: &str) -> Result<bool, LoggerError> {
         self.verify_file_exists()?;
         Ok(self.get_log_entries().any(|x| x.msg.contains(message)))
