@@ -43,7 +43,7 @@ p2p:
     - `quarantine_duration` set the time to leave a node in quarantine before allowing
     it back (or not) into the fold.
     It is recommended to leave the default value `[default: 30min]`.
-- `unreachable_notification_size`: (optional) set the maximum number of unreachable nodes
+- `max_unreachable_nodes_to_connect_per_event`: (optional) set the maximum number of unreachable nodes
   to contact at a time for every new notification.
   Every time a new propagation event is triggered, the node will select
   randomly a certain amount of unreachable nodes to connect to in addition

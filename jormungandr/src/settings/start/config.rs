@@ -107,7 +107,7 @@ pub struct P2pConfig {
     /// randomly a certain amount of unreachable nodes to connect to in addition
     /// to the one selected by other p2p topology layer.
     #[serde(default)]
-    pub unreachable_notification_size: Option<usize>,
+    pub max_unreachable_nodes_to_connect_per_event: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,7 +168,7 @@ impl Default for P2pConfig {
             max_connections: None,
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
-            unreachable_notification_size: None,
+            max_unreachable_nodes_to_connect_per_event: None,
         }
     }
 }
