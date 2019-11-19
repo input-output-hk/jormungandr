@@ -38,6 +38,9 @@ pub struct PublicKey(pub String);
 #[derive(juniper::GraphQLScalarValue)]
 pub struct TimeOffsetSeconds(pub String);
 
+#[derive(juniper::GraphQLScalarValue)]
+pub struct NonZero(pub String);
+
 // u32 should be enough to count blocks and transactions (the only two cases for now)
 #[derive(Clone)]
 pub struct IndexCursor(pub u64);
