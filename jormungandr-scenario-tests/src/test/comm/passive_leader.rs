@@ -1,15 +1,15 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     test::utils,
-    Context,
+    test::Result,
+    Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
-use std::{thread, time::Duration};
 
 const LEADER: &str = "Leader";
 const PASSIVE: &str = "Passive";
 
-pub fn transaction_to_passive(mut context: Context<ChaChaRng>) {
+pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "L2001-transaction_propagation_from_passive",
         &mut context,
@@ -29,19 +29,18 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) {
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader = controller
-        .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
-    let passive = controller
-        .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
-        .unwrap();
-    thread::sleep(Duration::from_secs(4));
+    let leader =
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    leader.wait_for_bootstrap()?;
+    passive.wait_for_bootstrap()?;
 
-    let mut wallet1 = controller.wallet("unassigned1").unwrap();
-    let wallet2 = controller.wallet("delegated1").unwrap();
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
         20,
@@ -49,16 +48,17 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) {
         &mut wallet1,
         &wallet2,
         &passive,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&passive, &leader]);
+    utils::assert_are_in_sync(vec![&passive, &leader])?;
 
-    passive.shutdown().unwrap();
-    leader.shutdown().unwrap();
+    passive.shutdown()?;
+    leader.shutdown()?;
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }
 
-pub fn leader_is_offline(mut context: Context<ChaChaRng>) {
+pub fn leader_is_offline(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "L2002-leader_is_offline_while_passive_receives_tx",
         &mut context,
@@ -78,32 +78,32 @@ pub fn leader_is_offline(mut context: Context<ChaChaRng>) {
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let passive = controller
-        .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
-        .unwrap();
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
 
-    thread::sleep(Duration::from_secs(2));
+    passive.wait_for_bootstrap()?;
 
-    let mut wallet1 = controller.wallet("unassigned1").unwrap();
-    let wallet2 = controller.wallet("delegated1").unwrap();
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_dispite_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &passive,
-    );
+    )?;
 
-    passive.shutdown().unwrap();
+    passive.shutdown()?;
 
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }
 
-pub fn leader_is_online_with_delay(mut context: Context<ChaChaRng>) {
+pub fn leader_is_online_with_delay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "L2003-leader_is_online_with_delay",
         &mut context,
@@ -123,48 +123,47 @@ pub fn leader_is_online_with_delay(mut context: Context<ChaChaRng>) {
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let passive = controller
-        .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
-        .unwrap();
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
 
-    thread::sleep(Duration::from_secs(3));
+    passive.wait_for_bootstrap()?;
 
-    let mut wallet1 = controller.wallet("unassigned1").unwrap();
-    let wallet2 = controller.wallet("delegated1").unwrap();
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_dispite_error(
+    utils::sending_transactions_to_node_sequentially(
         10,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &passive,
-    );
+    )?;
 
-    let leader = controller
-        .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
-    thread::sleep(Duration::from_secs(3));
+    let leader =
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    leader.wait_for_bootstrap()?;
 
-    utils::keep_sending_transaction_dispite_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &passive,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&passive, &leader]);
+    utils::assert_are_in_sync(vec![&passive, &leader])?;
 
-    passive.shutdown().unwrap();
-    leader.shutdown().unwrap();
+    passive.shutdown()?;
+    leader.shutdown()?;
 
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }
 
-pub fn leader_restart(mut context: Context<ChaChaRng>) {
+pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "L2003-leader_is_restarted",
         &mut context,
@@ -184,30 +183,19 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) {
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let passive = controller
-        .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
-        .unwrap();
-    let leader = controller
-        .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let leader =
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    thread::sleep(Duration::from_secs(10));
+    leader.wait_for_bootstrap()?;
+    passive.wait_for_bootstrap()?;
 
-    let mut wallet1 = controller.wallet("unassigned1").unwrap();
-    let wallet2 = controller.wallet("delegated1").unwrap();
-
-    utils::sending_transactions_to_node_sequentially(
-        10,
-        &mut controller,
-        &mut wallet1,
-        &wallet2,
-        &passive,
-    );
-
-    leader.shutdown().unwrap();
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
         10,
@@ -215,29 +203,39 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) {
         &mut wallet1,
         &wallet2,
         &passive,
-    );
+    )?;
 
-    let leader = controller
-        .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
+    leader.shutdown()?;
 
-    utils::keep_sending_transaction_to_node_until_error(
-        40,
+    utils::sending_transactions_to_node_sequentially(
+        10,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &passive,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&passive, &leader]);
+    let leader =
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    passive.shutdown().unwrap();
-    leader.shutdown().unwrap();
+    utils::sending_transactions_to_node_sequentially(
+        10,
+        &mut controller,
+        &mut wallet1,
+        &wallet2,
+        &passive,
+    )?;
+
+    utils::assert_are_in_sync(vec![&passive, &leader])?;
+
+    passive.shutdown()?;
+    leader.shutdown()?;
 
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }
 
-pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) {
+pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "L2004-passive_node_is_updated",
         &mut context,
@@ -257,33 +255,33 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) {
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let passive = controller
-        .spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)
-        .unwrap();
-    let leader = controller
-        .spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let leader =
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    thread::sleep(Duration::from_secs(10));
+    leader.wait_for_bootstrap()?;
+    passive.wait_for_bootstrap()?;
 
-    let mut wallet1 = controller.wallet("unassigned1").unwrap();
-    let wallet2 = controller.wallet("delegated1").unwrap();
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let wallet2 = controller.wallet("delegated1")?;
 
-    utils::keep_sending_transaction_to_node_until_error(
+    utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
         &wallet2,
         &leader,
-    );
+    )?;
 
-    utils::assert_are_in_sync(vec![&passive, &leader]);
+    utils::assert_are_in_sync(vec![&passive, &leader])?;
 
-    passive.shutdown().unwrap();
-    leader.shutdown().unwrap();
+    passive.shutdown()?;
+    leader.shutdown()?;
 
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }

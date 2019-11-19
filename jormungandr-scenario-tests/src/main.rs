@@ -8,7 +8,7 @@ use jormungandr_scenario_tests::{
     node::{LeadershipMode, PersistenceMode},
     prepare_command, style, Context, ScenariosRepository, Seed,
 };
-use std::{collections::HashMap, path::PathBuf, thread, time::Duration};
+use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -63,7 +63,8 @@ fn main() {
 
     introduction(&context);
     let scenarios_repo = ScenariosRepository::new(command_args.scenario);
-    scenarios_repo.run(&mut context);
+    let scenario_suite_result = scenarios_repo.run(&mut context);
+    println!("{}", scenario_suite_result.result_string())
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {

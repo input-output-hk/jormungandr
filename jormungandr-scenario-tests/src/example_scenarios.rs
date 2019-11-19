@@ -1,11 +1,12 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    scenario, Context,
+    test::Result,
+    Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
 use std::{thread, time::Duration};
 
-pub fn scenario_1(mut context: Context<ChaChaRng>) {
+pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "simple network example",
         &mut context,
@@ -25,30 +26,31 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) {
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let mut controller = scenario_settings.build(context)?;
 
-    let node1 = controller
-        .spawn_node("node1", LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
-    let node2 = controller
-        .spawn_node("node2", LeadershipMode::Passive, PersistenceMode::InMemory)
-        .unwrap();
+    let node1 =
+        controller.spawn_node("node1", LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let node2 =
+        controller.spawn_node("node2", LeadershipMode::Passive, PersistenceMode::InMemory)?;
 
     controller.monitor_nodes();
-    std::thread::sleep(std::time::Duration::from_secs(10));
-    let tip1 = node1.tip().unwrap();
+
+    node1.wait_for_bootstrap()?;
+    node2.wait_for_bootstrap()?;
+
+    let tip1 = node1.tip()?;
     std::thread::sleep(std::time::Duration::from_secs(1));
-    node1.shutdown().unwrap();
-    let _block = node2.block(&tip1).unwrap();
+    node1.shutdown()?;
+    let _block = node2.block(&tip1)?;
 
     std::thread::sleep(std::time::Duration::from_secs(1));
 
-    node2.shutdown().unwrap();
-
+    node2.shutdown()?;
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }
 
-pub fn scenario_2(mut context: Context<ChaChaRng>) {
+pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "Testing the network",
         &mut context,
@@ -75,41 +77,36 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) {
 
     let mut controller = scenario_settings.build(context).unwrap();
 
-    let leader1 = controller
-        .spawn_node("Leader1", LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
-    thread::sleep(Duration::from_secs(2));
-    let passive1 = controller
-        .spawn_node(
-            "Passive1",
-            LeadershipMode::Passive,
-            PersistenceMode::InMemory,
-        )
-        .unwrap();
-    let _passive2 = controller
-        .spawn_node(
-            "Passive2",
-            LeadershipMode::Passive,
-            PersistenceMode::InMemory,
-        )
-        .unwrap();
-    let _passive3 = controller
-        .spawn_node(
-            "Passive3",
-            LeadershipMode::Passive,
-            PersistenceMode::InMemory,
-        )
-        .unwrap();
+    let leader1 =
+        controller.spawn_node("Leader1", LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let passive1 = controller.spawn_node(
+        "Passive1",
+        LeadershipMode::Passive,
+        PersistenceMode::InMemory,
+    )?;
+    let passive2 = controller.spawn_node(
+        "Passive2",
+        LeadershipMode::Passive,
+        PersistenceMode::InMemory,
+    )?;
+    let passive3 = controller.spawn_node(
+        "Passive3",
+        LeadershipMode::Passive,
+        PersistenceMode::InMemory,
+    )?;
 
     controller.monitor_nodes();
+
+    leader1.wait_for_bootstrap()?;
+    passive1.wait_for_bootstrap()?;
+    passive2.wait_for_bootstrap()?;
+    passive3.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
     let wallet2 = controller.wallet("delegated1").unwrap();
 
-    loop {
-        let check = controller
-            .wallet_send_to(&mut wallet1, &wallet2, &leader1, 5_000.into())
-            .unwrap();
+    for i in 0..10 {
+        let check = controller.wallet_send_to(&mut wallet1, &wallet2, &leader1, 5_000.into())?;
 
         thread::sleep(Duration::from_secs(1));
 
@@ -119,15 +116,22 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) {
             if status.is_in_a_block() {
                 wallet1.confirm_transaction();
             } else {
-                break;
+                return Ok(ScenarioResult::Failed(format!(
+                    "transaction no. {} not confirmed",
+                    i
+                )));
             }
         } else {
-            break;
+            return Ok(ScenarioResult::Failed(format!(
+                "cannot get status from leader1"
+            )));
         }
     }
 
-    leader1.shutdown().unwrap();
-    passive1.shutdown().unwrap();
-
+    leader1.shutdown()?;
+    passive1.shutdown()?;
+    passive2.shutdown()?;
+    passive3.shutdown()?;
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }

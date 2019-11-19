@@ -1,4 +1,3 @@
-use crate::scenario::settings::NodeSetting;
 use crate::{
     node::{LeadershipMode, Node, PersistenceMode},
     scenario::{settings::Settings, Blockchain, ContextChaCha, ErrorKind, Result, Topology},

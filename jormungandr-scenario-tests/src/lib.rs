@@ -18,6 +18,6 @@ pub use self::node::{
 };
 pub use self::programs::prepare_command;
 pub use self::scenario::{Context, Controller, NodeAlias, Seed, WalletAlias, WalletType};
-pub use self::scenarios_repository::ScenariosRepository;
+pub use self::scenarios_repository::{ScenarioResult, ScenariosRepository};
 pub use self::slog::{Error as SlogCodecError, SlogCodec};
 pub use self::wallet::Wallet;

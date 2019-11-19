@@ -1,12 +1,11 @@
 use crate::{
-    example_scenarios::*,
+    test::Result,
     test::{comm::leader_leader::*, comm::passive_leader::*, network::topology::scenarios::*},
     Context,
 };
 use rand_chacha::ChaChaRng;
-use std::collections::HashMap;
-
-type ScenarioMethod = fn(Context<ChaChaRng>) -> ();
+use std::{any::Any, collections::HashMap, fmt, marker::Send};
+type ScenarioMethod = fn(Context<ChaChaRng>) -> Result<ScenarioResult>;
 
 pub struct ScenariosRepository {
     repository: HashMap<String, ScenarioMethod>,
@@ -21,10 +20,12 @@ impl ScenariosRepository {
         }
     }
 
-    pub fn run(&self, mut context: &mut Context<ChaChaRng>) {
+    pub fn run(&self, context: &Context<ChaChaRng>) -> ScenarioSuiteResult {
         match self.should_run_all() {
-            true => self.run_all_scenarios(&mut context),
-            false => self.run_scenario_by_name(&self.scenario, &mut context),
+            true => self.run_all_scenarios(&mut context.clone()),
+            false => ScenarioSuiteResult::from_single(
+                self.run_scenario_by_name(&self.scenario, &mut context.clone()),
+            ),
         }
     }
 
@@ -32,56 +33,126 @@ impl ScenariosRepository {
         self.scenario.trim() == "*"
     }
 
-    fn run_all_scenarios(&self, mut context: &mut Context<ChaChaRng>) {
-        for scenario_to_run in scenarios_repository().keys() {
-            self.run_scenario_by_name(&scenario_to_run, &mut context);
+    fn run_all_scenarios(&self, mut context: &mut Context<ChaChaRng>) -> ScenarioSuiteResult {
+        let mut suite_result = ScenarioSuiteResult::new();
+        for scenario_to_run in self.repository.keys() {
+            suite_result.push(self.run_scenario_by_name(&scenario_to_run, &mut context));
         }
-        RunReporter::after_suite();
+        suite_result
     }
 
-    fn run_scenario_by_name(&self, scenario: &str, context: &mut Context<ChaChaRng>) {
-        let repo = scenarios_repository();
-        if !repo.contains_key(scenario) {
+    fn run_scenario_by_name(
+        &self,
+        scenario: &str,
+        context: &mut Context<ChaChaRng>,
+    ) -> ScenarioResult {
+        if !self.repository.contains_key(scenario) {
             panic!(format!(
                 "Cannot find scenario '{}'. Available are: {:?}",
                 scenario,
-                repo.keys().cloned().collect::<Vec<String>>()
+                self.repository.keys().cloned().collect::<Vec<String>>()
             ));
         }
 
-        let scenario_to_run = repo.get(scenario).unwrap();
-        let run_reporter = RunReporter::new(scenario);
-
-        run_reporter.before_scenario();
-        scenario_to_run(context.derive());
-        run_reporter.after_scenario();
+        let scenario_to_run = self.repository.get(scenario).unwrap();
+        println!("Running '{}' scenario", scenario);
+        let result = std::panic::catch_unwind(|| return scenario_to_run(context.clone().derive()));
+        let scenario_result = ScenarioResult::from_result(result);
+        println!("Scenario '{}' {}", scenario, scenario_result);
+        scenario_result
     }
 }
 
-struct RunReporter {
-    scenario: String,
+#[derive(Clone, Debug)]
+pub struct ScenarioSuiteResult {
+    results: Vec<ScenarioResult>,
 }
 
-impl RunReporter {
-    pub fn new<S: Into<String>>(scenario: S) -> Self {
-        RunReporter {
-            scenario: scenario.into(),
+impl ScenarioSuiteResult {
+    pub fn new() -> Self {
+        ScenarioSuiteResult {
+            results: Vec::new(),
         }
     }
 
-    pub fn before_scenario(&self) {
-        println!("Running '{}' scenario", self.scenario);
+    pub fn push(&mut self, result: ScenarioResult) {
+        self.results.push(result)
     }
 
-    pub fn after_scenario(&self) {
-        println!("Scenario '{}' completed", self.scenario);
+    pub fn is_failed(&self) -> bool {
+        self.results.iter().any(|x| x.is_failed())
     }
 
-    pub fn after_suite() {
-        print!("Suite completed");
+    pub fn count_passed(&self) -> usize {
+        self.results.iter().filter(|x| !x.is_failed()).count()
+    }
+
+    pub fn count_failed(&self) -> usize {
+        self.results.iter().filter(|x| x.is_failed()).count()
+    }
+
+    fn result_as_string(&self) -> String {
+        match self.is_failed() {
+            true => "failed".to_owned(),
+            false => "ok".to_owned(),
+        }
+    }
+
+    pub fn result_string(&self) -> String {
+        format!(
+            "test result: {}. {} passed; {} failed; 0 ignored; 0 measured; 0 filtered out",
+            self.result_as_string(),
+            self.count_passed(),
+            self.count_failed()
+        )
+    }
+
+    pub fn from_single(result: ScenarioResult) -> Self {
+        let mut suite_result = Self::new();
+        suite_result.push(result);
+        suite_result
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum ScenarioResult {
+    Passed,
+    Failed(String),
+}
+
+impl ScenarioResult {
+    pub fn Failed<S: Into<String>>(reason: S) -> Self {
+        ScenarioResult::Failed(reason.into())
+    }
+
+    pub fn is_failed(&self) -> bool {
+        match self {
+            ScenarioResult::Passed => false,
+            ScenarioResult::Failed { .. } => true,
+        }
+    }
+
+    pub fn from_result(
+        result: std::result::Result<Result<ScenarioResult>, std::boxed::Box<dyn Any + Send>>,
+    ) -> ScenarioResult {
+        match result {
+            Ok(inner) => match inner {
+                Ok(scenario_result) => scenario_result,
+                Err(err) => ScenarioResult::Failed(err.to_string()),
+            },
+            Err(_) => ScenarioResult::Failed("no data".to_string()),
+        }
+    }
+}
+
+impl fmt::Display for ScenarioResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ScenarioResult::Passed => write!(f, "passed"),
+            ScenarioResult::Failed(reason) => write!(f, "failed, due to '{}'", reason),
+        }
+    }
+}
 fn scenarios_repository() -> HashMap<String, ScenarioMethod> {
     let mut map: HashMap<String, ScenarioMethod> = HashMap::new();
     map.insert(

@@ -1,7 +1,8 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     test::utils,
-    Context,
+    test::Result,
+    Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
 use std::time::Duration;
@@ -9,13 +10,13 @@ use std::time::Duration;
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 
-pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) {
+pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "L2101-Leader_to_leader_communication",
         &mut context,
         topology [
             LEADER_1 -> LEADER_2,
-            LEADER_2 -> LEADER_1,
+            LEADER_2
         ]
         blockchain {
             consensus = GenesisPraos,
@@ -38,6 +39,8 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) {
         .spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)
         .unwrap();
 
+    leader_2.wait_for_bootstrap()?;
+    leader_1.wait_for_bootstrap()?;
     controller.monitor_nodes();
 
     let mut wallet1 = controller.wallet("delegated2").unwrap();
@@ -70,9 +73,10 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) {
         wallet2.confirm_transaction();
     }
 
-    utils::assert_are_in_sync(vec![&leader_1, &leader_2]);
+    utils::assert_are_in_sync(vec![&leader_1, &leader_2])?;
 
     leader_1.shutdown().unwrap();
     leader_2.shutdown().unwrap();
     controller.finalize();
+    Ok(ScenarioResult::Passed)
 }
