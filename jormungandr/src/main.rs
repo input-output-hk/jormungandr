@@ -182,7 +182,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
             let candidate_repo = CandidateForest::new(
-                blockchain.storage().clone(),
+                blockchain.clone(),
                 block_cache_ttl,
                 info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull")),
             );
