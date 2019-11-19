@@ -324,13 +324,11 @@ impl Module {
             "event_end" => event_end.to_string(),
         ));
 
-        if within_bounds(event_start, now, event_end) {
-            Either::A(self.action_run_entry_in_bound(entry, logger, event_end))
-        } else {
+        if too_late(now, event_end) {
             // the event happened out of bounds, ignore it and move to the next one
             error!(
                 logger,
-                "Eek... we missed an event schedule, system time might be off?"
+                "Eek... Too late, we missed an event schedule, system time might be off?"
             );
 
             let tell_user_about_failure = entry.log.set_status(LeadershipLogStatus::Rejected {
@@ -338,6 +336,32 @@ impl Module {
             });
 
             Either::B(tell_user_about_failure.map(|()| self))
+        } else {
+            let right_time = future::result(entry.instant(&self));
+
+            Either::A(right_time.and_then(move |right_time| {
+                if let Some(right_time) = right_time {
+                    warn!(
+                        logger,
+                        "system woke a bit early for the event, delaying until right time."
+                    );
+
+                    // await the right_time before starting the action
+                    Either::A(
+                        Delay::new(right_time)
+                            .map_err(|source| LeadershipError::AwaitError { source })
+                            .and_then(move |()| {
+                                self.action_run_entry_in_bound(entry, logger, event_end)
+                            }),
+                    )
+                } else {
+                    // because we checked that the entry's slot was below the current
+                    // time, if we cannot compute the _right_time_ it means the time
+                    // is just starting now to be correct. So it's okay to start
+                    // running it now still
+                    Either::B(self.action_run_entry_in_bound(entry, logger, event_end))
+                }
+            }))
         }
     }
 
@@ -657,23 +681,6 @@ fn prepare_block(
         .map_err(|()| LeadershipError::FragmentSelectionFailed)
 }
 
-/// function to compare system times are within acceptable boundaries.
-///
-/// By acceptable boundaries, it means that the start date allow for some error, but not
-/// the end.
-///
-/// i.e. if now is: `11:05:22.993` and but start is `11:05:23.000` then the
-/// predicate should still be hold and be accepted.
-///
-fn within_bounds(event_start: SystemTime, now: SystemTime, event_end: SystemTime) -> bool {
-    use jormungandr_lib::time::Duration;
-
-    const ALLOWED_MARGIN_ERROR: u64 = 50;
-
-    let event_start_d = event_start.duration_since_epoch();
-    let now_d = now.duration_since_epoch();
-    let allowed_margin_error: Duration = Duration::from_millis(ALLOWED_MARGIN_ERROR);
-    let event_start_d = event_start_d.checked_sub(allowed_margin_error).unwrap();
-
-    event_start_d <= now_d && now <= event_end
+fn too_late(now: SystemTime, event_end: SystemTime) -> bool {
+    event_end <= now
 }
