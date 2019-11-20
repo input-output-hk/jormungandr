@@ -222,7 +222,7 @@ custom_error! {pub AddressError
 }
 
 impl TrustedAddress {
-    pub fn to_addresses(&self) -> Result<Vec<Address>, AddressError> {
+    pub fn to_addresses(&self) -> Result<Option<Vec<Address>>, AddressError> {
         use multiaddr::AddrComponent;
         use std::iter::FromIterator;
         use trust_dns_proto::rr::{record_data::RData, RecordType};
@@ -254,20 +254,27 @@ impl TrustedAddress {
                 .collect(),
             Some(AddrComponent::IP4(addr)) => vec![AddrComponent::IP4(addr)],
             Some(AddrComponent::IP6(addr)) => vec![AddrComponent::IP6(addr)],
-            _ => Vec::new(),
+            _ => return Ok(None),
         };
 
+        if addresses.is_empty() {
+            return Ok(None);
+        }
+
         if let Some(AddrComponent::TCP(port)) = components.next() {
-            Ok(addresses
-                .into_iter()
-                .map(|addr| {
-                    let new_components = vec![addr, AddrComponent::TCP(port)];
-                    let new_multiaddr = multiaddr::Multiaddr::from_iter(new_components.into_iter());
-                    Address(poldercast::Address::new(new_multiaddr).unwrap())
-                })
-                .collect())
+            Ok(Some(
+                addresses
+                    .into_iter()
+                    .map(|addr| {
+                        let new_components = vec![addr, AddrComponent::TCP(port)];
+                        let new_multiaddr =
+                            multiaddr::Multiaddr::from_iter(new_components.into_iter());
+                        Address(poldercast::Address::new(new_multiaddr).unwrap())
+                    })
+                    .collect(),
+            ))
         } else {
-            Ok(Vec::new())
+            Ok(None)
         }
     }
 }

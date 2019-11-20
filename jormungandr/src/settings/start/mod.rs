@@ -182,6 +182,8 @@ fn generate_network(
     command_arguments: &StartArguments,
     config: &Option<Config>,
 ) -> Result<network::Configuration, Error> {
+    use crate::settings::start::network::TrustedPeer;
+
     let mut p2p = if let Some(cfg) = config {
         cfg.p2p.clone()
     } else {
@@ -235,14 +237,16 @@ fn generate_network(
             .unwrap_or(vec![])
             .into_iter()
             .filter_map(|tp| {
-                tp.address.to_addresses().ok().map(|addrs| {
-                    addrs.into_iter().map(move |address| {
-                        crate::settings::start::network::TrustedPeer {
+                tp.address
+                    .to_addresses()
+                    .ok()
+                    .and_then(std::convert::identity)
+                    .map(|addrs| {
+                        addrs.into_iter().map(move |addr| TrustedPeer {
                             id: tp.id.clone(),
-                            address: address.0,
-                        }
+                            address: addr.0,
+                        })
                     })
-                })
             })
             .flatten()
             .collect(),
