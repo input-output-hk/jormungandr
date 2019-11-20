@@ -1,7 +1,6 @@
 use super::{
-    chain::{self, HeaderChainVerifyError},
+    chain::{self, Blockchain, HeaderChainVerifyError, PreCheckedHeader},
     chunk_sizes,
-    storage::{Storage, StorageError},
 };
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::utils::async_msg::MessageQueue;
@@ -25,18 +24,20 @@ type HeaderStream = MessageQueue<Header>;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("blockchain storage error")]
-    Storage(
-        #[from]
-        #[source]
-        StorageError,
-    ),
     #[error("the incoming header stream is empty")]
     EmptyHeaderStream,
+    #[error("header chain verification failed")]
+    Blockchain(
+        #[from]
+        #[source]
+        chain::Error,
+    ),
     #[error("the parent block {0} of the first received block header is not found in storage")]
     MissingParentBlock(HeaderHash),
     #[error("the parent hash field {0} of a received block header does not match the hash of the preceding header")]
     BrokenHeaderChain(HeaderHash),
+    // FIXME: this needs to be merged into the Blockchain variant above
+    // when Blockchain can pre-validate headers without up-to-date ledger.
     #[error("block headers do not form a valid chain: {0}")]
     HeaderChainVerificationFailed(
         #[from]
@@ -50,7 +51,7 @@ pub enum Error {
 #[derive(Clone)]
 pub struct CandidateForest {
     inner: Lock<CandidateForestThickets>,
-    storage: Storage,
+    blockchain: Blockchain,
     logger: Logger,
 }
 
@@ -112,7 +113,7 @@ mod chain_landing {
     use super::*;
 
     pub struct State<S> {
-        storage: Storage,
+        blockchain: Blockchain,
         header: Header,
         stream: S,
     }
@@ -125,74 +126,64 @@ mod chain_landing {
         /// exists in storage.
         /// Return a future that resolves to a state object.
         /// This method starts the sequence of processing a header chain.
-        pub fn start(stream: S, storage: Storage) -> impl Future<Item = Self, Error = Error> {
+        pub fn start(stream: S, blockchain: Blockchain) -> impl Future<Item = Self, Error = Error> {
             stream
                 .into_future()
                 .map_err(|(err, _)| err)
                 .and_then(move |(maybe_first, stream)| match maybe_first {
                     Some(header) => {
-                        let parent_hash = header.block_parent_hash();
-                        let check_parent_exists = storage.block_exists(parent_hash);
                         let state = State {
-                            storage,
+                            blockchain,
                             header,
                             stream,
                         };
-                        Ok((check_parent_exists, state))
+                        Ok(state)
                     }
                     None => Err(Error::EmptyHeaderStream),
                 })
-                .and_then(move |(check_parent_exists, state)| {
-                    check_parent_exists
-                        .map_err(|e| e.into())
-                        .and_then(|exists| {
-                            if exists {
-                                Ok(state)
-                            } else {
-                                Err(Error::MissingParentBlock(state.header.block_parent_hash())
-                                    .into())
-                            }
-                        })
-                })
         }
 
-        /// Read the stream and skip blocks that are already present in the storage.
-        /// The end state has the header of the first block that is not present,
-        /// but its parent is in storage. The chain also is pre-verified for sanity.
-        pub fn skip_present_blocks(self) -> impl Future<Item = Self, Error = Error> {
+        /// Reads the stream and skips blocks that are already present in the storage.
+        /// Resolves with the header of the first block that is not present,
+        /// but its parent is in storage, and the stream with headers remaining
+        /// to be read. If the stream ends before the requisite header is found,
+        /// resolves with None.
+        /// The chain also is pre-verified for sanity.
+        pub fn skip_present_blocks(self) -> impl Future<Item = Option<(Header, S)>, Error = Error> {
             future::loop_fn(self, move |state| {
-                state
-                    .storage
-                    .block_exists(state.header.hash())
+                let State {
+                    mut blockchain,
+                    header,
+                    stream,
+                } = state;
+                blockchain
+                    .pre_check_header(header, false)
                     .map_err(|e| e.into())
-                    .and_then(move |exists| {
-                        if !exists {
-                            Either::A(future::ok(Loop::Break(state)))
-                        } else {
-                            let mut state = Some(state);
-                            let read_next = future::poll_fn(move || {
-                                let polled = try_ready!(state.as_mut().unwrap().stream.poll());
-                                let state = state.take().unwrap();
-                                match polled {
+                    .and_then(move |pre_checked| match pre_checked {
+                        PreCheckedHeader::AlreadyPresent { .. } => {
+                            let fut = stream.into_future().map_err(|(err, _)| err).and_then(
+                                move |(maybe_next, stream)| match maybe_next {
                                     Some(header) => {
-                                        let parent_hash = header.block_parent_hash();
-                                        if parent_hash != state.header.hash() {
-                                            return Err(Error::BrokenHeaderChain(parent_hash));
-                                        }
-                                        chain::pre_verify_link(&header, &state.header)?;
-                                        Ok(Loop::Continue(State { header, ..state }).into())
+                                        let state = State {
+                                            blockchain,
+                                            header,
+                                            stream,
+                                        };
+                                        Ok(Loop::Continue(state))
                                     }
-                                    None => Ok(Loop::Break(state).into()),
-                                }
-                            });
-                            Either::B(read_next)
+                                    None => Ok(Loop::Break(None)),
+                                },
+                            );
+                            Either::A(fut)
                         }
+                        PreCheckedHeader::HeaderWithCache { header, .. } => {
+                            Either::B(future::ok(Loop::Break(Some((header, stream)))))
+                        }
+                        PreCheckedHeader::MissingParent { header } => Either::B(future::err(
+                            Error::MissingParentBlock(header.block_parent_hash()),
+                        )),
                     })
             })
-        }
-
-        pub fn end(self) -> (Header, S) {
-            (self.header, self.stream)
         }
     }
 }
@@ -246,6 +237,9 @@ impl ChainAdvance {
                         .candidate_map
                         .get_mut(&parent_hash)
                         .expect("parent candidate should be in the map");
+                    // TODO: replace with a Blockchain method call
+                    // when that can pre-validate headers without
+                    // up-to-date ledger.
                     chain::pre_verify_link(&header, &parent_candidate.header())?;
                     debug_assert!(!parent_candidate.children.contains(&block_hash));
                     parent_candidate.children.push(block_hash);
@@ -287,7 +281,7 @@ impl ChainAdvance {
 }
 
 impl CandidateForest {
-    pub fn new(storage: Storage, root_ttl: Duration, logger: Logger) -> Self {
+    pub fn new(blockchain: Blockchain, root_ttl: Duration, logger: Logger) -> Self {
         let inner = CandidateForestThickets {
             candidate_map: HashMap::new(),
             roots: HashMap::new(),
@@ -296,7 +290,7 @@ impl CandidateForest {
         };
         CandidateForest {
             inner: Lock::new(inner),
-            storage: storage.clone(),
+            blockchain,
             logger,
         }
     }
@@ -304,38 +298,43 @@ impl CandidateForest {
     fn land_header_chain(
         &self,
         stream: HeaderStream,
-    ) -> impl Future<Item = ChainAdvance, Error = Error> {
-        let storage = self.storage.clone();
+    ) -> impl Future<Item = Option<ChainAdvance>, Error = Error> {
+        let blockchain = self.blockchain.clone();
         let mut inner = self.inner.clone();
         let logger = self.logger.clone();
 
-        chain_landing::State::start(stream.map_err(|()| unreachable!()), storage)
+        chain_landing::State::start(stream.map_err(|()| unreachable!()), blockchain)
             .and_then(move |state| state.skip_present_blocks())
-            .and_then(move |state| {
-                let (header, stream) = state.end();
-                // We have got a header that is not in storage, but its
-                // parent is.
-                // Find an existing root or create a new one.
-                future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |mut forest| {
-                    let root_parent_hash = header.block_parent_hash();
-                    let (root_hash, is_new) = forest.add_or_refresh_root(header);
-                    debug!(
-                        logger,
-                        "landed the header chain, {}",
-                        if is_new { "new root" } else { "existing root" };
-                        "hash" => %root_hash,
-                        "parent" => %root_parent_hash,
+            .and_then(move |maybe_new| match maybe_new {
+                Some((header, stream)) => {
+                    // We have got a header that is not in storage, but its
+                    // parent is.
+                    // Find an existing root or create a new one.
+                    let fut = future::poll_fn(move || Ok(inner.poll_lock())).and_then(
+                        move |mut forest| {
+                            let root_parent_hash = header.block_parent_hash();
+                            let (root_hash, is_new) = forest.add_or_refresh_root(header);
+                            debug!(
+                                logger,
+                                "landed the header chain, {}",
+                                if is_new { "new root" } else { "existing root" };
+                                "hash" => %root_hash,
+                                "parent" => %root_parent_hash,
+                            );
+                            let new_hashes = if is_new { vec![root_hash] } else { Vec::new() };
+                            let landing = ChainAdvance {
+                                stream: stream.into_inner(),
+                                parent_hash: root_hash,
+                                header: None,
+                                new_hashes,
+                                logger,
+                            };
+                            Ok(Some(landing))
+                        },
                     );
-                    let new_hashes = if is_new { vec![root_hash] } else { Vec::new() };
-                    let landing = ChainAdvance {
-                        stream: stream.into_inner(),
-                        parent_hash: root_hash,
-                        header: None,
-                        new_hashes,
-                        logger,
-                    };
-                    Ok(landing)
-                })
+                    Either::A(fut)
+                }
+                None => Either::B(future::ok(None)),
             })
     }
 
@@ -351,18 +350,22 @@ impl CandidateForest {
     ) -> impl Future<Item = (Vec<HeaderHash>, Option<HeaderStream>), Error = Error> {
         let mut inner = self.inner.clone();
         self.land_header_chain(header_stream)
-            .and_then(move |advance| {
-                let mut advance = Some(advance);
-                future::poll_fn(move || {
-                    use self::chain_advance::Outcome;
-                    let done = try_ready!(advance.as_mut().unwrap().poll_done(&mut inner));
-                    let advance = advance.take().unwrap();
-                    let ret_stream = match done {
-                        Outcome::Complete => None,
-                        Outcome::Incomplete => Some(advance.stream),
-                    };
-                    Ok((advance.new_hashes, ret_stream).into())
-                })
+            .and_then(move |mut advance| {
+                if advance.is_some() {
+                    let fut = future::poll_fn(move || {
+                        use self::chain_advance::Outcome;
+                        let done = try_ready!(advance.as_mut().unwrap().poll_done(&mut inner));
+                        let advance = advance.take().unwrap();
+                        let ret_stream = match done {
+                            Outcome::Complete => None,
+                            Outcome::Incomplete => Some(advance.stream),
+                        };
+                        Ok((advance.new_hashes, ret_stream).into())
+                    });
+                    Either::A(fut)
+                } else {
+                    Either::B(future::ok((Vec::new(), None)))
+                }
             })
     }
 

@@ -2,7 +2,7 @@ use super::{
     candidate::{self, CandidateForest},
     chain,
     chain_selection::{self, ComparisonResult},
-    chunk_sizes, Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+    Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::{
     blockcfg::{Block, FragmentId, Header},
@@ -240,14 +240,18 @@ pub fn run_handle_input(
                     ))
                 }
                 Ok((hashes, maybe_remainder)) => {
-                    Either::B(
-                        network_msg_box
-                            .send(NetworkMsg::GetBlocks(hashes))
-                            .map_err(|_| "cannot request blocks from network".into())
-                            .map(|_| reply.reply_ok(())),
-                    )
-                    // TODO: if the stream is not ended, resume processing
-                    // after more blocks arrive
+                    if hashes.is_empty() {
+                        Either::A(future::ok(()))
+                    } else {
+                        Either::B(
+                            network_msg_box
+                                .send(NetworkMsg::GetBlocks(hashes))
+                                .map_err(|_| "cannot request blocks from network".into())
+                                .map(|_| reply.reply_ok(())),
+                        )
+                        // TODO: if the stream is not ended, resume processing
+                        // after more blocks arrive
+                    }
                 }
             });
 
@@ -530,11 +534,11 @@ fn chain_header_error_into_reply(err: candidate::Error) -> intercom::Error {
 
     // TODO: more detailed error case matching
     match err {
-        Storage(e) => intercom::Error::failed(e),
-        EmptyHeaderStream => intercom::Error::invalid_argument(err),
-        MissingParentBlock(_) => intercom::Error::failed_precondition(err),
-        BrokenHeaderChain(_) => intercom::Error::invalid_argument(err),
+        Blockchain(e) => intercom::Error::failed(e.to_string()),
+        EmptyHeaderStream => intercom::Error::invalid_argument(err.to_string()),
+        MissingParentBlock(_) => intercom::Error::failed_precondition(err.to_string()),
+        BrokenHeaderChain(_) => intercom::Error::invalid_argument(err.to_string()),
         HeaderChainVerificationFailed(e) => intercom::Error::invalid_argument(e),
-        _ => intercom::Error::failed(err),
+        _ => intercom::Error::failed(err.to_string()),
     }
 }
