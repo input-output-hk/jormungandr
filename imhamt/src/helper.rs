@@ -1,5 +1,5 @@
 #[inline]
-pub fn clone_array_and_insert_at_pos<A: Clone>(v: &Box<[A]>, a: A, pos: usize) -> Box<[A]> {
+pub fn clone_array_and_insert_at_pos<A: Clone>(v: &[A], a: A, pos: usize) -> Box<[A]> {
     // copy all elements but insert a new elements at position pos
     let mut new_array: Vec<A> = Vec::with_capacity(v.len() + 1);
     new_array.extend_from_slice(&v[0..pos]);
@@ -9,7 +9,7 @@ pub fn clone_array_and_insert_at_pos<A: Clone>(v: &Box<[A]>, a: A, pos: usize) -
 }
 
 #[inline]
-pub fn clone_array_and_set_at_pos<A: Clone>(v: &Box<[A]>, a: A, pos: usize) -> Box<[A]> {
+pub fn clone_array_and_set_at_pos<A: Clone>(v: &[A], a: A, pos: usize) -> Box<[A]> {
     // copy all elements except at pos where a replaces it.
     let mut new_array: Vec<A> = Vec::with_capacity(v.len());
     if pos > 0 {
@@ -23,13 +23,13 @@ pub fn clone_array_and_set_at_pos<A: Clone>(v: &Box<[A]>, a: A, pos: usize) -> B
 }
 
 #[inline]
-pub fn clone_array_and_remove_at_pos<A: Clone>(v: &Box<[A]>, pos: usize) -> Box<[A]> {
-    let mut v = v.clone().into_vec();
+pub fn clone_array_and_remove_at_pos<A: Clone>(v: &[A], pos: usize) -> Box<[A]> {
+    let mut v : Vec<_> = v.to_vec();
     v.remove(pos);
     v.into()
 }
 
-pub fn clone_array_and_extend<A: Clone>(v: &Box<[A]>, end: A) -> Box<[A]> {
+pub fn clone_array_and_extend<A: Clone>(v: &[A], end: A) -> Box<[A]> {
     let mut new_array: Vec<A> = Vec::with_capacity(v.len() + 1);
     new_array.extend_from_slice(&v[..]);
     new_array.push(end);

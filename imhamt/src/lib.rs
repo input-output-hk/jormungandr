@@ -10,7 +10,6 @@ extern crate quickcheck_macros;
 extern crate test;
 
 mod bitmap;
-mod content;
 mod hamt;
 mod hash;
 mod helper;
@@ -59,7 +58,7 @@ mod tests {
                     3 => PlanOperation::Update(Arbitrary::arbitrary(g)),
                     4 => PlanOperation::UpdateRemoval(Arbitrary::arbitrary(g)),
                     5 => PlanOperation::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
-                    _ => unimplemented!(),
+                    _ => panic!("test internal error: quickcheck tag code is invalid"),
                 };
                 v.push(op)
             }
@@ -142,7 +141,7 @@ mod tests {
     }
 
     fn next_u32(x: &u32) -> Result<Option<u32>, ()> {
-        Ok(Some(x + 1))
+        Ok(Some(*x + 1))
     }
 
     #[test]
@@ -189,8 +188,8 @@ mod tests {
             .remove_match(&k1, &v1)
             .expect("cannot remove from already inserted");
 
-        assert_eq!(h.size(), 16 + 3);
-        assert_eq!(h2.size(), 16 + 2);
+        assert_eq!(h.size(), keys.len() + 3);
+        assert_eq!(h2.size(), keys.len() + 2);
 
         assert_eq!(h.lookup(&k1), Some(&v1));
         assert_eq!(h2.lookup(&k1), None);
@@ -216,12 +215,15 @@ mod tests {
             Err(UpdateError::KeyNotFound)
         );
 
-        assert_eq!(h.size(), 16 + 1);
-        assert_eq!(h2.size(), 16 + 2);
+        assert_eq!(h.size(), keys.len() + 1);
+        assert_eq!(h2.size(), keys.len() + 2);
     }
 
-    use hash::HashedKey;
-    use std::marker::PhantomData;
+    //use hash::HashedKey;
+    //use std::marker::PhantomData;
+
+    /* commented -- as this doesn't do what it says on the tin.
+    it doesn't test for h collision, but node splitting
 
     #[test]
     fn collision() {
@@ -231,8 +233,9 @@ mod tests {
         let mut found = None;
         for i in 0..10000 {
             let x = format!("key{}", i);
-            let h2 = HashedKey::compute(PhantomData::<DefaultHasher>, &"keyx".to_string());
-            if h2.level_index(0) == l {
+            let h2 = HashedKey::compute(PhantomData::<DefaultHasher>, &x);
+            if h1 == h2 {
+            //if h2.level_index(0) == l {
                 found = Some(x.clone());
                 break;
             }
@@ -242,7 +245,9 @@ mod tests {
             None => assert!(false),
             Some(x) => {
                 let mut h: Hamt<DefaultHasher, String, u32> = Hamt::new();
+                println!("k0: {}", k0);
                 h = h.insert(k0.clone(), 1u32).unwrap();
+                println!("x: {}", x);
                 h = h.insert(x.clone(), 2u32).unwrap();
                 assert_eq!(h.size(), 2);
                 assert_eq!(h.lookup(&k0), Some(&1u32));
@@ -258,6 +263,7 @@ mod tests {
             }
         }
     }
+    */
 
     fn property_btreemap_eq<A: Eq + Ord + Hash, B: PartialEq>(
         reference: &BTreeMap<A, B>,
@@ -293,6 +299,40 @@ mod tests {
         property_btreemap_eq(&reference, &h)
     }
 
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct LargeVec<A>(Vec<A>);
+
+    const LARGE_MIN : usize = 1000;
+    const LARGE_DIFF : usize = 1000;
+
+    impl<A: Arbitrary+Clone+PartialEq+Send+'static> Arbitrary for LargeVec<A> {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let nb = LARGE_MIN + (usize::arbitrary(g) % LARGE_DIFF);
+            let mut v = Vec::with_capacity(nb);
+            for _ in 0..nb {
+                v.push(Arbitrary::arbitrary(g))
+            }
+            LargeVec(v)
+        }
+    }
+
+    #[quickcheck]
+    fn large_insert_equivalent(xs: LargeVec<(String, u32)>) -> bool {
+        let xs = xs.0;
+        let mut reference = BTreeMap::new();
+        let mut h: Hamt<DefaultHasher, String, u32> = Hamt::new();
+        for (k, v) in xs.iter() {
+            if reference.get(k).is_some() {
+                continue;
+            }
+            reference.insert(k.clone(), v.clone());
+            h = h.insert(k.clone(), *v).unwrap();
+        }
+
+        property_btreemap_eq(&reference, &h)
+    }
+
+
     fn get_key_nth<K: Clone, V>(b: &BTreeMap<K, V>, n: usize) -> Option<K> {
         let keys_nb = b.len();
         if keys_nb == 0 {
@@ -302,10 +342,13 @@ mod tests {
         Some(keys.nth(n % keys_nb).unwrap().clone())
     }
 
-    #[quickcheck]
-    fn plan_equivalent(xs: Plan<String, u32>) -> bool {
+    fn arbitrary_hamt_and_btree<K, V, F>(xs: Plan<K, V>, update_f: F) -> (Hamt<DefaultHasher, K, V>, BTreeMap<K, V>)
+      where K: Hash+Clone+Eq+Ord+Sync,
+            V: Clone+PartialEq+Sync,
+            F: Fn(&V) -> Result<Option<V>, ()> + Copy,
+    {
         let mut reference = BTreeMap::new();
-        let mut h: Hamt<DefaultHasher, String, u32> = Hamt::new();
+        let mut h: Hamt<DefaultHasher, K, V> = Hamt::new();
         //println!("plan {} operations", xs.0.len());
         for op in xs.0.iter() {
             match op {
@@ -314,7 +357,7 @@ mod tests {
                         continue;
                     }
                     reference.insert(k.clone(), v.clone());
-                    h = h.insert(k.clone(), *v).unwrap();
+                    h = h.insert(k.clone(), v.clone()).unwrap();
                 }
                 PlanOperation::DeleteOne(r) => match get_key_nth(&reference, *r) {
                     None => continue,
@@ -337,16 +380,21 @@ mod tests {
                         let v = reference.get_mut(&k).unwrap();
                         *v = newv.clone();
 
-                        h = h.replace(&k, *newv).unwrap().0;
+                        h = h.replace(&k, newv.clone()).unwrap().0;
                     }
                 },
                 PlanOperation::Update(r) => match get_key_nth(&reference, *r) {
                     None => continue,
                     Some(k) => {
                         let v = reference.get_mut(&k).unwrap();
-                        *v = *v + 1;
+                        match update_f(v).unwrap() {
+                            None => {
+                                reference.remove(&k);
+                            }
+                            Some(newv) => *v = newv,
+                        }
 
-                        h = h.update(&k, next_u32).unwrap();
+                        h = h.update(&k, update_f).unwrap();
                     }
                 },
                 PlanOperation::UpdateRemoval(r) => match get_key_nth(&reference, *r) {
@@ -358,7 +406,21 @@ mod tests {
                 },
             }
         }
+        (h, reference)
+    }
+
+    #[quickcheck]
+    fn plan_equivalent(xs: Plan<String, u32>) -> bool {
+        let (h, reference) = arbitrary_hamt_and_btree(xs, next_u32);
         property_btreemap_eq(&reference, &h)
+    }
+
+    #[quickcheck]
+    fn iter_equivalent(xs: Plan<String, u32>) -> bool {
+        use std::iter::FromIterator;
+        let (h, reference) = arbitrary_hamt_and_btree(xs, next_u32);
+        let after_iter = BTreeMap::from_iter(h.iter().map(|(k, v)| (k.clone(), v.clone())));
+        reference == after_iter
     }
 }
 

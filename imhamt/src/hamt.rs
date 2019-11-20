@@ -1,4 +1,3 @@
-use super::content::LeafIterator;
 use super::hash::{Hash, HashedKey, Hasher};
 use super::node::{
     insert_rec, lookup_one, remove_eq_rec, remove_rec, replace_rec, size_rec, update_rec, Entry,
@@ -8,6 +7,7 @@ pub use super::operation::{InsertError, RemoveError, ReplaceError, UpdateError};
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::mem::swap;
+use std::slice;
 
 #[derive(Clone)]
 pub struct Hamt<H: Hasher + Default, K: PartialEq + Eq + Hash, V> {
@@ -17,7 +17,7 @@ pub struct Hamt<H: Hasher + Default, K: PartialEq + Eq + Hash, V> {
 
 pub struct HamtIter<'a, K, V> {
     stack: Vec<NodeIter<'a, K, V>>,
-    content: Option<LeafIterator<'a, K, V>>,
+    content: Option<slice::Iter<'a, (K, V)>>,
 }
 
 impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
@@ -37,7 +37,7 @@ impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
     }
 }
 
-impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
+impl<H: Hasher + Default, K: Clone + Eq + Hash, V: Clone> Hamt<H, K, V> {
     pub fn insert(&self, k: K, v: V) -> Result<Self, InsertError> {
         let h = HashedKey::compute(self.hasher, &k);
         let newroot = insert_rec(&self.root, h, 0, k, v)?;
@@ -48,10 +48,10 @@ impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
     }
 }
 
-impl<H: Hasher + Default, K: Eq + Hash, V: PartialEq> Hamt<H, K, V> {
+impl<H: Hasher + Default, K: Eq + Hash + Clone, V: PartialEq + Clone> Hamt<H, K, V> {
     pub fn remove_match(&self, k: &K, v: &V) -> Result<Self, RemoveError> {
         let h = HashedKey::compute(self.hasher, &k);
-        let newroot = remove_eq_rec(&self.root, &h, 0, k, v)?;
+        let newroot = remove_eq_rec(&self.root, h, 0, k, v)?;
         match newroot {
             None => Ok(Self::new()),
             Some(r) => Ok(Hamt {
@@ -62,10 +62,10 @@ impl<H: Hasher + Default, K: Eq + Hash, V: PartialEq> Hamt<H, K, V> {
     }
 }
 
-impl<H: Hasher + Default, K: Eq + Hash, V> Hamt<H, K, V> {
+impl<H: Hasher + Default, K: Clone + Eq + Hash, V: Clone> Hamt<H, K, V> {
     pub fn remove(&self, k: &K) -> Result<Self, RemoveError> {
         let h = HashedKey::compute(self.hasher, &k);
-        let newroot = remove_rec(&self.root, &h, 0, k)?;
+        let newroot = remove_rec(&self.root, h, 0, k)?;
         match newroot {
             None => Ok(Self::new()),
             Some(r) => Ok(Hamt {
@@ -81,7 +81,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
     /// and the old value.
     pub fn replace(&self, k: &K, v: V) -> Result<(Self, V), ReplaceError> {
         let h = HashedKey::compute(self.hasher, &k);
-        let (newroot, oldv) = replace_rec(&self.root, &h, 0, k, v)?;
+        let (newroot, oldv) = replace_rec(&self.root, h, 0, k, v)?;
         Ok((
             Hamt {
                 root: newroot,
@@ -92,7 +92,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
     }
 }
 
-impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
+impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
     /// Update the element at the key K.
     ///
     /// If the closure F in parameter returns None, then the key is deleted.
@@ -103,7 +103,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
         F: FnOnce(&V) -> Result<Option<V>, U>,
     {
         let h = HashedKey::compute(self.hasher, &k);
-        let newroot = update_rec(&self.root, &h, 0, k, f)?;
+        let newroot = update_rec(&self.root, h, 0, k, f)?;
         match newroot {
             None => Ok(Self::new()),
             Some(r) => Ok(Hamt {
@@ -120,6 +120,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
     pub fn insert_or_update<F, U>(&self, k: K, v: V, f: F) -> Result<Self, UpdateError<U>>
     where
         F: FnOnce(&V) -> Result<Option<V>, U>,
+        V: Clone,
     {
         match self.update(&k, f) {
             Ok(new_self) => Ok(new_self),
@@ -141,6 +142,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V> Hamt<H, K, V> {
     pub fn insert_or_update_simple<F>(&self, k: K, v: V, f: F) -> Self
     where
         F: for<'a> FnOnce(&'a V) -> Option<V>,
+        V: Clone,
     {
         match self.update(&k, |x| Ok(f(x))) {
             Ok(new_self) => new_self,
@@ -194,7 +196,7 @@ impl<'a, K, V> Iterator for HamtIter<'a, K, V> {
                     None => self.content = None,
                     Some(ref o) => {
                         self.content = Some(iter);
-                        return Some((o.get_key(), o.get_value()));
+                        return Some((&o.0, &o.1));
                     }
                 },
                 None => match self.stack.last_mut() {
@@ -205,7 +207,8 @@ impl<'a, K, V> Iterator for HamtIter<'a, K, V> {
                         }
                         Some(o) => match o.as_ref() {
                             &Entry::SubNode(ref sub) => self.stack.push(sub.iter()),
-                            &Entry::Leaf(ref leaf) => self.content = Some(leaf.iter()),
+                            &Entry::Leaf(_, ref k, ref v) => return Some((&k,&v)),
+                            &Entry::LeafMany(_, ref col) => self.content = Some(col.iter()),
                         },
                     },
                 },
@@ -214,7 +217,7 @@ impl<'a, K, V> Iterator for HamtIter<'a, K, V> {
     }
 }
 
-impl<H: Default + Hasher, K: Eq + Hash, V> FromIterator<(K, V)> for Hamt<H, K, V> {
+impl<H: Default + Hasher, K: Eq + Hash + Clone, V: Clone> FromIterator<(K, V)> for Hamt<H, K, V> {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let mut h = Hamt::new();
         for (k, v) in iter {
