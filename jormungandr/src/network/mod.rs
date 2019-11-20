@@ -137,7 +137,7 @@ impl GlobalState {
                 .map(|tp| {
                     let mut builder = poldercast::NodeProfileBuilder::new();
                     builder.id(tp.id.into());
-                    builder.address(tp.address.into());
+                    builder.address(tp.address);
                     builder.build()
                 })
                 .map(p2p::Gossip::from)
@@ -432,7 +432,8 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
     let mut peers = config
         .trusted_peers
         .iter()
-        .filter_map(|peer| peer.address.to_socketaddr())
+        .map(|peer| peer.address.to_socketaddr().into_iter())
+        .flatten()
         .collect::<Vec<_>>();
     let mut rng = rand::thread_rng();
     peers.shuffle(&mut rng);

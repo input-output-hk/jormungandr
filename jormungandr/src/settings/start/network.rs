@@ -76,15 +76,6 @@ pub struct TrustedPeer {
     pub id: Id,
 }
 
-impl From<super::config::TrustedPeer> for TrustedPeer {
-    fn from(tp: super::config::TrustedPeer) -> Self {
-        TrustedPeer {
-            address: tp.address.0,
-            id: tp.id,
-        }
-    }
-}
-
 impl Peer {
     pub fn new(connection: SocketAddr, protocol: Protocol) -> Self {
         Peer {

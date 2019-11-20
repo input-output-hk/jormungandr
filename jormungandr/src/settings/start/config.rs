@@ -113,7 +113,7 @@ pub struct P2pConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TrustedPeer {
-    pub address: Address,
+    pub address: TrustedAddress,
     pub id: Id,
 }
 
@@ -129,6 +129,9 @@ pub struct Leadership {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Address(pub poldercast::Address);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrustedAddress(pub multiaddr::Multiaddr);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Topic(pub poldercast::Topic);
@@ -188,9 +191,8 @@ impl std::str::FromStr for TrustedPeer {
         let mut split = s.split('@');
 
         let address = if let Some(address) = split.next() {
-            address
-                .parse::<poldercast::Address>()
-                .map(Address)
+            multiaddr::Multiaddr::from_bytes(address.as_bytes().iter().cloned().collect())
+                .map(TrustedAddress)
                 .map_err(|e| e.to_string())?
         } else {
             return Err("Missing address component".to_owned());
@@ -212,7 +214,71 @@ impl Address {
     }
 }
 
+// FIXME: in DnsLookupError we cannot specify the error source because it
+// doesn't implement the Error trait
+custom_error! {pub AddressError
+    DnsResolverInitError { source: std::io::Error } = "failed to initialize the DNS resolver: {source}",
+    DnsLookupError = "failed to resolve DNS name",
+}
+
+impl TrustedAddress {
+    pub fn to_addresses(&self) -> Result<Vec<Address>, AddressError> {
+        use multiaddr::AddrComponent;
+        use std::iter::FromIterator;
+        use trust_dns_proto::rr::{record_data::RData, RecordType};
+
+        let resolver = trust_dns_resolver::Resolver::from_system_conf()
+            .map_err(|e| AddressError::DnsResolverInitError { source: e })?;
+
+        let mut components = self.0.iter();
+        let protocol = components.next();
+
+        let addresses = match protocol {
+            Some(AddrComponent::DNS4(fqdn)) => resolver
+                .lookup(&fqdn, RecordType::A)
+                .map_err(|_| AddressError::DnsLookupError)?
+                .into_iter()
+                .filter_map(|r| match r {
+                    RData::A(addr) => Some(AddrComponent::IP4(addr)),
+                    _ => None,
+                })
+                .collect(),
+            Some(AddrComponent::DNS6(fqdn)) => resolver
+                .lookup(&fqdn, RecordType::AAAA)
+                .map_err(|_| AddressError::DnsLookupError)?
+                .into_iter()
+                .filter_map(|r| match r {
+                    RData::AAAA(addr) => Some(AddrComponent::IP6(addr)),
+                    _ => None,
+                })
+                .collect(),
+            Some(AddrComponent::IP4(addr)) => vec![AddrComponent::IP4(addr)],
+            Some(AddrComponent::IP6(addr)) => vec![AddrComponent::IP6(addr)],
+            _ => Vec::new(),
+        };
+
+        if let Some(AddrComponent::TCP(port)) = components.next() {
+            Ok(addresses
+                .into_iter()
+                .map(|addr| {
+                    let new_components = vec![addr, AddrComponent::TCP(port)];
+                    let new_multiaddr = multiaddr::Multiaddr::from_iter(new_components.into_iter());
+                    Address(poldercast::Address::new(new_multiaddr).unwrap())
+                })
+                .collect())
+        } else {
+            Ok(Vec::new())
+        }
+    }
+}
+
 impl std::fmt::Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::fmt::Display for TrustedAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.0.fmt(f)
     }
@@ -226,6 +292,16 @@ impl Serialize for Address {
         serializer.serialize_str(&format!("{}", self.0))
     }
 }
+
+impl Serialize for TrustedAddress {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0))
+    }
+}
+
 impl Serialize for Topic {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -279,6 +355,34 @@ impl<'de> Deserialize<'de> for Address {
             }
         }
         deserializer.deserialize_str(AddressVisitor)
+    }
+}
+
+impl<'de> Deserialize<'de> for TrustedAddress {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct TrustedAddressVisitor;
+        impl<'de> Visitor<'de> for TrustedAddressVisitor {
+            type Value = TrustedAddress;
+
+            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                write!(fmt, "Multiaddr (example: /ip4/192.168.0.1/tcp/443)")
+            }
+
+            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                use serde::de::Unexpected;
+                match v.parse() {
+                    Err(_err) => Err(E::invalid_value(Unexpected::Str(v), &self)),
+                    Ok(addr) => Ok(TrustedAddress(addr)),
+                }
+            }
+        }
+        deserializer.deserialize_str(TrustedAddressVisitor)
     }
 }
 
