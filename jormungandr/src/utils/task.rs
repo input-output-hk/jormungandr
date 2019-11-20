@@ -8,12 +8,14 @@
 use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use std::{
-    sync::mpsc::{self, Sender},
+    any::Any,
+    panic::{catch_unwind, AssertUnwindSafe},
+    sync::mpsc::{self, Receiver, Sender},
     thread,
     time::{Duration, Instant},
 };
-use tokio::prelude::*;
-use tokio::runtime::{self, TaskExecutor};
+use tokio::prelude::{stream, Future, IntoFuture, Stream};
+use tokio::runtime::{self, Runtime, TaskExecutor};
 
 // Limit on the length of a task message queue
 const MESSAGE_QUEUE_LEN: usize = 1000;
@@ -22,6 +24,7 @@ const MESSAGE_QUEUE_LEN: usize = 1000;
 pub struct Services {
     logger: Logger,
     services: Vec<Service>,
+    finish_listener: ServiceFinishListener,
 }
 
 /// wrap up a service
@@ -40,7 +43,8 @@ pub struct Service {
     up_time: Instant,
 
     /// the tokio Runtime running the service in
-    inner: Inner,
+    #[allow(dead_code)]
+    runtime: Option<Runtime>,
 }
 
 /// the current thread service information
@@ -59,7 +63,7 @@ pub struct TokioServiceInfo {
     name: &'static str,
     up_time: Instant,
     logger: Logger,
-    executor: runtime::TaskExecutor,
+    executor: TaskExecutor,
 }
 
 pub struct TaskMessageBox<Msg>(Sender<Msg>);
@@ -76,17 +80,13 @@ pub enum Input<Msg> {
     Input(Msg),
 }
 
-enum Inner {
-    Tokio { runtime: runtime::Runtime },
-    Thread { handler: thread::JoinHandle<()> },
-}
-
 impl Services {
     /// create a new set of services
     pub fn new(logger: Logger) -> Self {
         Services {
             logger: logger,
             services: Vec::new(),
+            finish_listener: ServiceFinishListener::new(),
         }
     }
 
@@ -100,25 +100,31 @@ impl Services {
         F: Send + 'static,
     {
         let now = Instant::now();
+        let logger = self
+            .logger
+            .new(o!(crate::log::KEY_TASK => name))
+            .into_erased();
         let thread_service_info = ThreadServiceInfo {
             name: name,
             up_time: now,
-            logger: self
-                .logger
-                .new(o!(crate::log::KEY_TASK => name))
-                .into_erased(),
+            logger: logger.clone(),
         };
-
-        let handler = thread::Builder::new()
+        let finish_notifier = self.finish_listener.notifier();
+        thread::Builder::new()
             .name(name.to_owned())
             // .stack_size(2 * 1024 * 1024)
             .spawn(move || {
-                info!(thread_service_info.logger, "starting task");
-                f(thread_service_info)
+                info!(logger, "starting task");
+                // This AssertUnwindSafe is safe, because after `catch_unwind`
+                // its content is never used in this thread
+                if let Err(error) = catch_unwind(AssertUnwindSafe(|| f(thread_service_info))) {
+                    log_service_panic(&logger, &*error);
+                }
+                finish_notifier.notify();
             })
             .unwrap_or_else(|err| panic!("Cannot spawn thread: {}", err));
 
-        let task = Service::new_handler(name, handler, now);
+        let task = Service::new_handler(name, now);
         self.services.push(task);
     }
 
@@ -170,27 +176,27 @@ impl Services {
         let executor = runtime.executor();
 
         let now = Instant::now();
+        let logger = self
+            .logger
+            .new(o!(crate::log::KEY_TASK => name))
+            .into_erased();
         let future_service_info = TokioServiceInfo {
-            name: name,
+            name,
             up_time: now,
-            logger: self
-                .logger
-                .new(o!(crate::log::KEY_TASK => name))
-                .into_erased(),
-            executor: executor,
+            logger: logger.clone(),
+            executor,
         };
 
-        use std::panic::AssertUnwindSafe;
-
+        let finish_notifier_ok = self.finish_listener.notifier();
+        let finish_notifier_err = self.finish_listener.notifier();
+        // This AssertUnwindSafe is safe, because after `catch_unwind`
+        // its content is never used in executor thread
         let future = AssertUnwindSafe(f(future_service_info))
             .catch_unwind()
-            .map(|_| ())
-            .map_err(|err| {
-                if let Some(string) = err.downcast_ref::<String>() {
-                    eprintln!("{}", string);
-                }
-                std::process::exit(66);
-            });
+            .map_err(move |error| log_service_panic(&logger, &*error))
+            // use of `then` triggers type-length limit compilation error
+            .map(|_| finish_notifier_ok.notify())
+            .map_err(|_| finish_notifier_err.notify());
 
         runtime.spawn(future);
 
@@ -222,16 +228,9 @@ impl Services {
         msg_box
     }
 
-    /// join on all the started services. this function will block
-    /// until all services return
-    ///
-    pub fn wait_all(self) {
-        for service in self.services {
-            match service.inner {
-                Inner::Thread { handler } => handler.join().unwrap(),
-                Inner::Tokio { runtime } => runtime.shutdown_on_idle().wait().unwrap(),
-            }
-        }
+    /// select on all the started services. this function will block until first services returns
+    pub fn wait_any_finished(&self) {
+        self.finish_listener.wait_any_finished();
     }
 }
 
@@ -316,20 +315,20 @@ impl Service {
     }
 
     #[inline]
-    fn new_handler(name: &'static str, handler: thread::JoinHandle<()>, now: Instant) -> Self {
+    fn new_handler(name: &'static str, now: Instant) -> Self {
         Service {
             name,
             up_time: now,
-            inner: Inner::Thread { handler },
+            runtime: None,
         }
     }
 
     #[inline]
-    fn new_runtime(name: &'static str, runtime: runtime::Runtime, now: Instant) -> Self {
+    fn new_runtime(name: &'static str, runtime: Runtime, now: Instant) -> Self {
         Service {
             name,
             up_time: now,
-            inner: Inner::Tokio { runtime },
+            runtime: Some(runtime),
         }
     }
 }
@@ -344,4 +343,52 @@ impl<Msg> TaskMessageBox<Msg> {
     pub fn send_to(&self, a: Msg) {
         self.0.send(a).unwrap()
     }
+}
+
+struct ServiceFinishListener {
+    sender: Sender<()>,
+    receiver: Receiver<()>,
+}
+
+struct ServiceFinishNotifier {
+    sender: Sender<()>,
+}
+
+impl ServiceFinishListener {
+    pub fn new() -> Self {
+        let (sender, receiver) = mpsc::channel();
+        ServiceFinishListener { sender, receiver }
+    }
+
+    pub fn notifier(&self) -> ServiceFinishNotifier {
+        ServiceFinishNotifier {
+            sender: self.sender.clone(),
+        }
+    }
+
+    pub fn wait_any_finished(&self) {
+        let _ = self.receiver.recv();
+    }
+
+    #[allow(dead_code)]
+    pub fn wait_all_finished(self) {
+        std::mem::drop(self.sender);
+        while let Ok(_) = self.receiver.recv() {
+            continue;
+        }
+    }
+}
+
+impl ServiceFinishNotifier {
+    pub fn notify(self) {
+        let _ = self.sender.send(());
+    }
+}
+
+fn log_service_panic(logger: &Logger, error: &dyn Any) {
+    let reason_logger = error
+        .downcast_ref::<&str>()
+        .map(|reason| logger.new(o!("reason" => *reason)));
+    let panic_logger = reason_logger.as_ref().unwrap_or(logger);
+    crit!(panic_logger, "Task panicked");
 }

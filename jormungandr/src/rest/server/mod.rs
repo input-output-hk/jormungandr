@@ -5,7 +5,6 @@ mod error;
 
 pub use self::error::Error;
 
-use crate::utils::drop_watchdog::{DropTripwire, DropWatchdog};
 use actix_net::server::Server as ActixServer;
 use actix_web::{
     actix::{Addr, System},
@@ -23,7 +22,6 @@ pub type ServerResult<T> = Result<T, Error>;
 #[derive(Clone)]
 pub struct Server {
     addr: Addr<ActixServer>,
-    shutdown_watchdog: DropWatchdog,
 }
 
 impl Server {
@@ -40,11 +38,7 @@ impl Server {
         let tls = load_tls_acceptor(pkcs12)?;
         let actix_system = System::builder().build();
         let addr = start_server_curr_actix_system(address, tls, handler)?;
-        let shutdown_tripwire = DropTripwire::new();
-        let server = Server {
-            addr,
-            shutdown_watchdog: shutdown_tripwire.watchdog(),
-        };
+        let server = Server { addr };
         server_receiver(server);
         actix_system.run();
         Ok(())
@@ -52,10 +46,6 @@ impl Server {
 
     pub fn stop(&self) {
         self.addr.do_send(StopServer { graceful: false })
-    }
-
-    pub fn wait_for_stop(&self) {
-        self.shutdown_watchdog.wait()
     }
 }
 
