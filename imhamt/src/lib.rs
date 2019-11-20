@@ -302,10 +302,10 @@ mod tests {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct LargeVec<A>(Vec<A>);
 
-    const LARGE_MIN : usize = 1000;
-    const LARGE_DIFF : usize = 1000;
+    const LARGE_MIN: usize = 1000;
+    const LARGE_DIFF: usize = 1000;
 
-    impl<A: Arbitrary+Clone+PartialEq+Send+'static> Arbitrary for LargeVec<A> {
+    impl<A: Arbitrary + Clone + PartialEq + Send + 'static> Arbitrary for LargeVec<A> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let nb = LARGE_MIN + (usize::arbitrary(g) % LARGE_DIFF);
             let mut v = Vec::with_capacity(nb);
@@ -332,7 +332,6 @@ mod tests {
         property_btreemap_eq(&reference, &h)
     }
 
-
     fn get_key_nth<K: Clone, V>(b: &BTreeMap<K, V>, n: usize) -> Option<K> {
         let keys_nb = b.len();
         if keys_nb == 0 {
@@ -342,10 +341,14 @@ mod tests {
         Some(keys.nth(n % keys_nb).unwrap().clone())
     }
 
-    fn arbitrary_hamt_and_btree<K, V, F>(xs: Plan<K, V>, update_f: F) -> (Hamt<DefaultHasher, K, V>, BTreeMap<K, V>)
-      where K: Hash+Clone+Eq+Ord+Sync,
-            V: Clone+PartialEq+Sync,
-            F: Fn(&V) -> Result<Option<V>, ()> + Copy,
+    fn arbitrary_hamt_and_btree<K, V, F>(
+        xs: Plan<K, V>,
+        update_f: F,
+    ) -> (Hamt<DefaultHasher, K, V>, BTreeMap<K, V>)
+    where
+        K: Hash + Clone + Eq + Ord + Sync,
+        V: Clone + PartialEq + Sync,
+        F: Fn(&V) -> Result<Option<V>, ()> + Copy,
     {
         let mut reference = BTreeMap::new();
         let mut h: Hamt<DefaultHasher, K, V> = Hamt::new();

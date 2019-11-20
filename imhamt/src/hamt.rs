@@ -207,7 +207,7 @@ impl<'a, K, V> Iterator for HamtIter<'a, K, V> {
                         }
                         Some(o) => match o.as_ref() {
                             &Entry::SubNode(ref sub) => self.stack.push(sub.iter()),
-                            &Entry::Leaf(_, ref k, ref v) => return Some((&k,&v)),
+                            &Entry::Leaf(_, ref k, ref v) => return Some((&k, &v)),
                             &Entry::LeafMany(_, ref col) => self.content = Some(col.iter()),
                         },
                     },

@@ -24,7 +24,7 @@ pub fn clone_array_and_set_at_pos<A: Clone>(v: &[A], a: A, pos: usize) -> Box<[A
 
 #[inline]
 pub fn clone_array_and_remove_at_pos<A: Clone>(v: &[A], pos: usize) -> Box<[A]> {
-    let mut v : Vec<_> = v.to_vec();
+    let mut v: Vec<_> = v.to_vec();
     v.remove(pos);
     v.into()
 }
