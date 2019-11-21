@@ -5,7 +5,7 @@ mod server;
 pub mod explorer;
 pub mod v0;
 
-pub use self::server::{Error, Server};
+pub use self::server::{Error, Server, ServerHandle};
 
 use actix_web::dev::Resource;
 use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServiceUnavailable};
@@ -114,11 +114,11 @@ pub struct FullContext {
     pub explorer: Option<crate::explorer::Explorer>,
 }
 
-pub fn run_rest_server(
+pub fn start_rest_server(
     config: Rest,
     explorer_enabled: bool,
-    context: Context,
-) -> Result<(), ConfigError> {
+    context: &Context,
+) -> Result<ServerHandle, ConfigError> {
     let app_context = context.clone();
     let cors_cfg = config.cors;
     let handlers = move || {
@@ -140,8 +140,9 @@ pub fn run_rest_server(
 
         apps
     };
-    let server_receiver = move |server| context.set_server(server);
-    Server::run(config.pkcs12, config.listen, handlers, server_receiver).map_err(Into::into)
+    let server_handle = Server::start(config.pkcs12, config.listen, handlers)?;
+    context.set_server(server_handle.server());
+    Ok(server_handle)
 }
 
 fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>

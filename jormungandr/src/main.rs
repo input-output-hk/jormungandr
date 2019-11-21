@@ -415,12 +415,12 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
             let context = rest::Context::new();
+            let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_context = context.clone();
-            services.spawn("rest", move |info| {
-                server_context.set_logger(info.into_logger());
-                rest::run_rest_server(rest, explorer, server_context)
-                    .expect("REST server critical failure")
+            let server_handler = rest::start_rest_server(rest, explorer, &context)?;
+            services.spawn_future("rest", move |info| {
+                service_context.set_logger(info.into_logger());
+                server_handler
             });
             Some(context)
         }
