@@ -435,9 +435,7 @@ impl Address {
             .db
             .get_transactions_by_address(&self.id)
             .wait()?
-            .ok_or(ErrorKind::InternalError(
-                "Expected address to be indexed".to_owned(),
-            ))?;
+            .unwrap_or(PersistentSequence::<FragmentId>::new());
 
         let boundaries = if transactions.len() > 0 {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
