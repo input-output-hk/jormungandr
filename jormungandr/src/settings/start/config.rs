@@ -108,6 +108,22 @@ pub struct P2pConfig {
     /// to the one selected by other p2p topology layer.
     #[serde(default)]
     pub max_unreachable_nodes_to_connect_per_event: Option<usize>,
+
+    /// interval to start gossiping with new nodes, changing the value will
+    /// affect the bandwidth. The more often the node will gossip the more
+    /// bandwidth the node will need. The less often the node gossips the less
+    /// good the resilience to node churn.
+    ///
+    /// The default value is 10seconds.
+    #[serde(default)]
+    pub gossip_interval: Option<Duration>,
+
+    /// If this value is set, it will trigger a force reset of the topology
+    /// layers. The default is to not do force the reset. It is recommended
+    /// to let the protocol handle it.
+    ///
+    #[serde(default)]
+    pub topology_force_reset_interval: Option<Duration>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,6 +185,8 @@ impl Default for P2pConfig {
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
+            gossip_interval: None,
+            topology_force_reset_interval: None,
         }
     }
 }

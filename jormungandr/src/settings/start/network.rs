@@ -68,6 +68,10 @@ pub struct Configuration {
     pub allow_private_addresses: bool,
 
     pub max_unreachable_nodes_to_connect_per_event: Option<usize>,
+
+    pub gossip_interval: Duration,
+
+    pub topology_force_reset_interval: Option<Duration>,
 }
 
 #[derive(Clone)]

@@ -48,7 +48,13 @@ p2p:
   Every time a new propagation event is triggered, the node will select
   randomly a certain amount of unreachable nodes to connect to in addition
   to the one selected by other p2p topology layer `[default: 20]`
-
+- `gossip_interval`: (optional) interval to start gossiping with new nodes,
+  changing the value will affect the bandwidth. The more often the node will
+  gossip the more bandwidth the node will need. The less often the node gossips
+  the less good the resilience to node churn. `[default: 10]`
+- `topology_force_reset_interval`: (optional) If this value is set, it will
+  trigger a force reset of the topology layers. The default is to not do
+  force the reset. It is recommended to let the protocol handle it.
 
 ### The trusted peers
 
