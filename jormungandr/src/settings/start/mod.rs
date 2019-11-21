@@ -35,7 +35,7 @@ pub struct Settings {
     pub mempool: Mempool,
     pub leadership: Leadership,
     pub explorer: bool,
-    pub no_blockchain_updates_warning_interval: u64,
+    pub no_blockchain_updates_warning_interval: std::time::Duration,
 }
 
 pub struct RawSettings {
@@ -177,8 +177,11 @@ impl RawSettings {
             explorer,
             no_blockchain_updates_warning_interval: config
                 .as_ref()
-                .and_then(|config| config.no_blockchain_updates_warning_interval)
-                .unwrap_or(DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL),
+                .and_then(|config| config.no_blockchain_updates_warning_interval.clone())
+                .map(|d| d.into())
+                .unwrap_or(std::time::Duration::from_secs(
+                    DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL,
+                )),
         })
     }
 }
