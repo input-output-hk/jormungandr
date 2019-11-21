@@ -160,16 +160,12 @@ fn scenarios_repository() -> HashMap<String, ScenarioMethod> {
         two_transaction_to_two_leaders,
     );
     map.insert("transaction_to_passive".to_string(), transaction_to_passive);
-    map.insert("leader_is_offline".to_string(), leader_is_offline);
-    map.insert(
-        "leader_is_online_with_delay".to_string(),
-        leader_is_online_with_delay,
-    );
     map.insert("leader_restart".to_string(), leader_restart);
     map.insert(
         "passive_node_is_updated".to_string(),
         passive_node_is_updated,
     );
+    map.insert("fully_connected".to_string(), fully_connected);
     map.insert("star".to_string(), star);
     map.insert("ring".to_string(), ring);
     map.insert("mesh".to_string(), mesh);

@@ -30,44 +30,30 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let mut controller = scenario_settings.build(context)?;
 
-    let leader_1 = controller
-        .spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
-    let leader_2 = controller
-        .spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)
-        .unwrap();
+    let leader_1 =
+        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader_2 =
+        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     leader_2.wait_for_bootstrap()?;
     leader_1.wait_for_bootstrap()?;
     controller.monitor_nodes();
 
-    let mut wallet1 = controller.wallet("delegated2").unwrap();
-    let mut wallet2 = controller.wallet("delegated1").unwrap();
+    let mut wallet1 = controller.wallet("delegated2")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
 
-    for _ in 0..40 {
-        let check1 = controller
-            .wallet_send_to(&mut wallet1, &wallet2, &leader_1, 1_000.into())
-            .unwrap();
+    for _ in 0..10 {
+        let check1 = controller.wallet_send_to(&mut wallet1, &wallet2, &leader_1, 1_000.into())?;
 
-        let check2 = controller
-            .wallet_send_to(&mut wallet2, &wallet1, &leader_2, 1_000.into())
-            .unwrap();
+        let check2 = controller.wallet_send_to(&mut wallet2, &wallet1, &leader_2, 1_000.into())?;
 
-        let status_1 = leader_1.wait_fragment(Duration::from_secs(2), check1);
-        let status_2 = leader_2.wait_fragment(Duration::from_secs(2), check2);
+        let status_1 = leader_1.wait_fragment(Duration::from_secs(2), check1)?;
+        let status_2 = leader_2.wait_fragment(Duration::from_secs(2), check2)?;
 
-        if status_1.is_err() || status_2.is_err() {
-            break;
-        }
-
-        let status_1 = status_1.unwrap();
-        let status_2 = status_2.unwrap();
-
-        if !status_1.is_in_a_block() || !status_2.is_in_a_block() {
-            break;
-        }
+        utils::assert_is_in_block(status_1, &leader_1)?;
+        utils::assert_is_in_block(status_2, &leader_2)?;
 
         wallet1.confirm_transaction();
         wallet2.confirm_transaction();
