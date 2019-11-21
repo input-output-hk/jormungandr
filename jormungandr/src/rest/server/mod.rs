@@ -23,16 +23,16 @@ use std::{
 
 pub type ServerResult<T> = Result<T, Error>;
 
-#[derive(Clone)]
+/// A future that resolves when server shuts down
+/// Dropping Server causes its shutdown
 pub struct Server {
-    addr: Addr<ActixServer>,
+    stopper: ServerStopper,
+    stop_receiver: Receiver<()>,
 }
 
-/// A future that resolves when server shuts down
-/// Dropping ServerHandle causes server shut down
-pub struct ServerHandle {
-    server: Server,
-    shutdown_receiver: Receiver<()>,
+#[derive(Clone)]
+pub struct ServerStopper {
+    addr: Addr<ActixServer>,
 }
 
 impl Server {
@@ -40,62 +40,60 @@ impl Server {
         pkcs12: Option<PathBuf>,
         address: SocketAddr,
         handler: F,
-    ) -> ServerResult<ServerHandle>
+    ) -> ServerResult<Server>
     where
         F: Fn() -> H + Clone + Send + 'static,
         H: IntoHttpHandler + 'static,
     {
         let tls = load_tls_acceptor(pkcs12)?;
-        let (handle_sender, handle_receiver) = mpsc::sync_channel::<ServerResult<ServerHandle>>(0);
+        let (server_sender, server_receiver) = mpsc::sync_channel::<ServerResult<Server>>(0);
         thread::spawn(move || {
             let actix_system = System::builder().build();
-            let (shutdown_sender, shutdown_receiver) = oneshot::channel();
-            let handle_res =
-                start_server_curr_actix_system(address, tls, handler).map(move |addr| {
-                    ServerHandle {
-                        server: Server { addr },
-                        shutdown_receiver,
-                    }
+            let (stop_sender, stop_receiver) = oneshot::channel();
+            let server_res =
+                start_server_curr_actix_system(address, tls, handler).map(move |addr| Server {
+                    stopper: ServerStopper { addr },
+                    stop_receiver,
                 });
-            let run_system = handle_res.is_ok();
-            let _ = handle_sender.send(handle_res);
+            let run_system = server_res.is_ok();
+            let _ = server_sender.send(server_res);
             if run_system {
                 actix_system.run();
             };
-            let _ = shutdown_sender.send(());
+            let _ = stop_sender.send(());
         });
-        handle_receiver
+        server_receiver
             .recv()
             .expect("Actix thread terminated before sending server handle")
     }
 
-    pub fn stop(&self) {
-        self.addr.do_send(StopServer { graceful: false })
+    pub fn stopper(&self) -> ServerStopper {
+        self.stopper.clone()
     }
 }
 
-impl ServerHandle {
-    pub fn server(&self) -> Server {
-        self.server.clone()
-    }
-}
-
-impl Future for ServerHandle {
+impl Future for Server {
     type Item = ();
     type Error = ();
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match self.shutdown_receiver.poll() {
+        match self.stop_receiver.poll() {
             Err(_) => Ok(Async::Ready(())),
             Ok(ok) => Ok(ok),
         }
     }
 }
 
-impl Drop for ServerHandle {
+impl Drop for Server {
     fn drop(&mut self) {
-        self.server.stop();
+        self.stopper.stop();
         let _ = self.wait();
+    }
+}
+
+impl ServerStopper {
+    pub fn stop(&self) {
+        self.addr.do_send(StopServer { graceful: false })
     }
 }
 

@@ -5,7 +5,7 @@ mod server;
 pub mod explorer;
 pub mod v0;
 
-pub use self::server::{Error, Server, ServerHandle};
+pub use self::server::{Error, Server, ServerStopper};
 
 use actix_web::dev::Resource;
 use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServiceUnavailable};
@@ -31,7 +31,7 @@ use jormungandr_lib::interfaces::NodeState;
 #[derive(Clone)]
 pub struct Context {
     full: Arc<RwLock<Option<Arc<FullContext>>>>,
-    server: Arc<RwLock<Option<Arc<Server>>>>,
+    server_stopper: Arc<RwLock<Option<ServerStopper>>>,
     node_state: Arc<RwLock<NodeState>>,
     logger: Arc<RwLock<Option<Logger>>>,
 }
@@ -40,7 +40,7 @@ impl Context {
     pub fn new() -> Self {
         Context {
             full: Default::default(),
-            server: Default::default(),
+            server_stopper: Default::default(),
             node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
             logger: Default::default(),
         }
@@ -62,16 +62,19 @@ impl Context {
             .ok_or_else(|| ErrorServiceUnavailable("Full REST context not available yet"))
     }
 
-    fn set_server(&self, server: Server) {
-        *self.server.write().expect("Context server poisoned") = Some(Arc::new(server));
+    fn set_server_stopper(&self, server_stopper: ServerStopper) {
+        *self
+            .server_stopper
+            .write()
+            .expect("Context server stopper poisoned") = Some(server_stopper);
     }
 
-    pub fn server(&self) -> Result<Arc<Server>, ActixError> {
-        self.server
+    pub fn server_stopper(&self) -> Result<ServerStopper, ActixError> {
+        self.server_stopper
             .read()
-            .expect("Context server poisoned")
+            .expect("Context server stopper poisoned")
             .clone()
-            .ok_or_else(|| ErrorInternalServerError("Server not set in  REST context"))
+            .ok_or_else(|| ErrorInternalServerError("Server stopper not set in  REST context"))
     }
 
     pub fn set_node_state(&self, node_state: NodeState) {
@@ -118,7 +121,7 @@ pub fn start_rest_server(
     config: Rest,
     explorer_enabled: bool,
     context: &Context,
-) -> Result<ServerHandle, ConfigError> {
+) -> Result<Server, ConfigError> {
     let app_context = context.clone();
     let cors_cfg = config.cors;
     let handlers = move || {
@@ -140,9 +143,9 @@ pub fn start_rest_server(
 
         apps
     };
-    let server_handle = Server::start(config.pkcs12, config.listen, handlers)?;
-    context.set_server(server_handle.server());
-    Ok(server_handle)
+    let server = Server::start(config.pkcs12, config.listen, handlers)?;
+    context.set_server_stopper(server.stopper());
+    Ok(server)
 }
 
 fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>
