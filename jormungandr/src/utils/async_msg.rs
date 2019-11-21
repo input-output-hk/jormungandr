@@ -36,6 +36,12 @@ impl<Msg> MessageBox<Msg> {
     pub fn try_send(&mut self, a: Msg) -> Result<(), TrySendError<Msg>> {
         self.0.try_send(a)
     }
+
+    /// Polls the channel to determine if there is guaranteed to be capacity
+    /// to send at least one item without waiting.
+    pub fn poll_ready(&mut self) -> Poll<(), SendError<()>> {
+        self.0.poll_ready()
+    }
 }
 
 impl<Msg> Sink for MessageBox<Msg> {
