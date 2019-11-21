@@ -585,12 +585,63 @@ impl OwnerStakeDelegation {
     }
 }
 
+/// Retirement info for a pool
+struct PoolRetirement {
+    pool_retirement: certificate::PoolRetirement,
+}
+
+impl From<certificate::PoolRetirement> for PoolRetirement {
+    fn from(pool_retirement: certificate::PoolRetirement) -> PoolRetirement {
+        PoolRetirement { pool_retirement }
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl PoolRetirement {
+    pub fn pool_id(&self) -> PoolId {
+        PoolId(format!("{}", self.pool_retirement.pool_id))
+    }
+
+    pub fn retirement_time(&self) -> TimeOffsetSeconds {
+        self.pool_retirement.retirement_time.into()
+    }
+}
+
+struct PoolUpdate {
+    pool_update: certificate::PoolUpdate,
+}
+
+impl From<certificate::PoolUpdate> for PoolUpdate {
+    fn from(pool_update: certificate::PoolUpdate) -> PoolUpdate {
+        PoolUpdate { pool_update }
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl PoolUpdate {
+    pub fn pool_id(&self) -> PoolId {
+        PoolId(format!("{}", self.pool_update.pool_id))
+    }
+
+    pub fn start_validity(&self) -> TimeOffsetSeconds {
+        self.pool_update.start_validity.into()
+    }
+
+    // TODO: Previous keys?
+    // TODO: Updated keys?
+}
+
 // TODO can we use jormungandr-lib Certificate ?
 enum Certificate {
     StakeDelegation(StakeDelegation),
     OwnerStakeDelegation(OwnerStakeDelegation),
     PoolRegistration(PoolRegistration),
-    // TODO: PoolManagement
+    PoolRetirement(PoolRetirement),
+    PoolUpdate(PoolUpdate),
 }
 
 impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
@@ -608,8 +659,12 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::PoolRegistration(c) => {
                 Ok(Certificate::PoolRegistration(PoolRegistration::from(c)))
             }
-            certificate::Certificate::PoolRetirement(_) => Err(ErrorKind::Unimplemented.into()),
-            certificate::Certificate::PoolUpdate(_) => Err(ErrorKind::Unimplemented.into()),
+            certificate::Certificate::PoolRetirement(c) => {
+                Ok(Certificate::PoolRetirement(PoolRetirement::from(c)))
+            }
+            certificate::Certificate::PoolUpdate(c) => {
+                Ok(Certificate::PoolUpdate(PoolUpdate::from(c)))
+            }
         }
     }
 }
@@ -621,6 +676,8 @@ graphql_union!(Certificate: Context |&self| {
         &StakeDelegation => match *self { Certificate::StakeDelegation(ref c) => Some(c), _ => None },
         &OwnerStakeDelegation => match *self { Certificate::OwnerStakeDelegation(ref c) => Some(c), _ => None },
         &PoolRegistration => match *self { Certificate::PoolRegistration(ref c) => Some(c), _ => None },
+        &PoolUpdate => match *self { Certificate::PoolUpdate(ref c) => Some(c), _ => None},
+        &PoolRetirement => match *self { Certificate::PoolRetirement(ref c) => Some(c), _ => None}
     }
 });
 
