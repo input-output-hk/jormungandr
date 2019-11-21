@@ -582,12 +582,32 @@ impl PoolRegistration {
     }
 
     /// Reward account
-    pub fn reward_account(&self, context: &Context) -> Option<String> {
-        // TODO: What's the best way to show this? As an Address?
+    pub fn reward_account(&self, context: &Context) -> Option<Address> {
+        use chain_impl_mockchain::transaction::AccountIdentifier;
+        let discrimination = context.db.blockchain_config.discrimination;
+
+        // FIXME: Move this transformation to a point earlier
+
         self.registration
             .reward_account
             .clone()
-            .map(|acc_id| format!("{:#?}", &acc_id))
+            .map(|acc_id| match acc_id {
+                AccountIdentifier::Single(d) => ExplorerAddress::New(chain_addr::Address(
+                    discrimination,
+                    chain_addr::Kind::Account(d.into()),
+                )),
+                AccountIdentifier::Multi(d) => {
+                    let mut bytes = [0u8; 32];
+                    bytes.copy_from_slice(&d.as_ref()[0..32]);
+                    ExplorerAddress::New(chain_addr::Address(
+                        discrimination,
+                        chain_addr::Kind::Multisig(bytes),
+                    ))
+                }
+            })
+            .map(|explorer_address| Address {
+                id: explorer_address,
+            })
     }
 
     // Genesis Praos keys
@@ -616,6 +636,7 @@ impl TaxType {
 }
 
 struct Ratio(chain_impl_mockchain::rewards::Ratio);
+
 #[juniper::object(
     Context = Context,
 )]
