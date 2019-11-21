@@ -1,7 +1,5 @@
 #[macro_use]
 extern crate jormungandr_scenario_tests;
-
-#[macro_use]
 extern crate jormungandr_integration_tests;
 
 use jormungandr_scenario_tests::{

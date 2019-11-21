@@ -121,7 +121,7 @@ pub enum ScenarioResult {
 }
 
 impl ScenarioResult {
-    pub fn Failed<S: Into<String>>(reason: S) -> Self {
+    pub fn failed<S: Into<String>>(reason: S) -> Self {
         ScenarioResult::Failed(reason.into())
     }
 

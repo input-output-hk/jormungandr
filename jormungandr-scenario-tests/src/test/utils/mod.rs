@@ -4,6 +4,7 @@ use crate::{
     test::{ErrorKind, Result},
     wallet::Wallet,
 };
+use jormungandr_lib::interfaces::FragmentStatus;
 use std::{fmt, thread, time::Duration};
 
 pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str) -> Result<()> {
