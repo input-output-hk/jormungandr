@@ -87,9 +87,9 @@ impl JormungandrLogger {
         println!("{}", self.get_log_content());
     }
 
-    pub fn contains_any_of_messages(&self, messages: &[&str]) -> Result<bool, LoggerError> {
+    pub fn raw_log_contains_any_of(&self, messages: &[&str]) -> Result<bool, LoggerError> {
         for message in messages {
-            if self.contains_message(message)? == true {
+            if self.get_log_content().contains(message) {
                 return Ok(true);
             }
         }
