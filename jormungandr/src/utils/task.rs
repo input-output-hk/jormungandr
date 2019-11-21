@@ -187,16 +187,13 @@ impl Services {
             executor,
         };
 
-        let finish_notifier_ok = self.finish_listener.notifier();
-        let finish_notifier_err = self.finish_listener.notifier();
+        let finish_notifier = self.finish_listener.notifier();
         // This AssertUnwindSafe is safe, because after `catch_unwind`
         // its content is never used in executor thread
         let future = AssertUnwindSafe(f(future_service_info))
             .catch_unwind()
             .map_err(move |error| log_service_panic(&logger, &*error))
-            // use of `then` triggers type-length limit compilation error
-            .map(|_| finish_notifier_ok.notify())
-            .map_err(|_| finish_notifier_err.notify());
+            .then(|_| Ok(finish_notifier.notify()));
 
         runtime.spawn(future);
 
