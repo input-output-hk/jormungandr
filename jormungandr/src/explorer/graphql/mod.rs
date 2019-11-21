@@ -7,7 +7,7 @@ use self::connections::{
 };
 use self::error::ErrorKind;
 use super::indexing::{
-    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction,
+    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
 };
 use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
@@ -22,7 +22,7 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, IndexCursor, PoolId, PublicKey, Serial, Slot,
+    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Serial, Slot,
     TimeOffsetSeconds, Value,
 };
 
@@ -435,9 +435,7 @@ impl Address {
             .db
             .get_transactions_by_address(&self.id)
             .wait()?
-            .ok_or(ErrorKind::InternalError(
-                "Expected address to be indexed".to_owned(),
-            ))?;
+            .unwrap_or(PersistentSequence::<FragmentId>::new());
 
         let boundaries = if transactions.len() > 0 {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
@@ -558,7 +556,7 @@ impl PoolRegistration {
 
     /// Management threshold for owners, this need to be <= #owners and > 0
     pub fn management_threshold(&self) -> i32 {
-        // XXX: u16 fits in i32, but maybe some kind of custom scalar is better?
+        // XXX: u8 fits in i32, but maybe some kind of custom scalar is better?
         self.registration.management_threshold().into()
     }
 
@@ -571,8 +569,85 @@ impl PoolRegistration {
             .collect()
     }
 
-    // TODO: rewards
-    // TODO: keys
+    pub fn operators(&self) -> Vec<PublicKey> {
+        self.registration
+            .operators
+            .iter()
+            .map(PublicKey::from)
+            .collect()
+    }
+
+    pub fn rewards(&self) -> TaxType {
+        TaxType(self.registration.rewards)
+    }
+
+    /// Reward account
+    pub fn reward_account(&self, context: &Context) -> Option<Address> {
+        use chain_impl_mockchain::transaction::AccountIdentifier;
+        let discrimination = context.db.blockchain_config.discrimination;
+
+        // FIXME: Move this transformation to a point earlier
+
+        self.registration
+            .reward_account
+            .clone()
+            .map(|acc_id| match acc_id {
+                AccountIdentifier::Single(d) => ExplorerAddress::New(chain_addr::Address(
+                    discrimination,
+                    chain_addr::Kind::Account(d.into()),
+                )),
+                AccountIdentifier::Multi(d) => {
+                    let mut bytes = [0u8; 32];
+                    bytes.copy_from_slice(&d.as_ref()[0..32]);
+                    ExplorerAddress::New(chain_addr::Address(
+                        discrimination,
+                        chain_addr::Kind::Multisig(bytes),
+                    ))
+                }
+            })
+            .map(|explorer_address| Address {
+                id: explorer_address,
+            })
+    }
+
+    // Genesis Praos keys
+    // pub keys: GenesisPraosLeader,
+}
+
+struct TaxType(chain_impl_mockchain::rewards::TaxType);
+
+#[juniper::object(
+    Context = Context,
+)]
+impl TaxType {
+    /// what get subtracted as fixed value
+    pub fn fixed(&self) -> Value {
+        Value(format!("{}", self.0.fixed))
+    }
+    /// Ratio of tax after fixed amout subtracted
+    pub fn ratio(&self) -> Ratio {
+        Ratio(self.0.ratio)
+    }
+
+    /// Max limit of tax
+    pub fn max_limit(&self) -> Option<NonZero> {
+        self.0.max_limit.map(|n| NonZero(format!("{}", n)))
+    }
+}
+
+struct Ratio(chain_impl_mockchain::rewards::Ratio);
+
+#[juniper::object(
+    Context = Context,
+)]
+impl Ratio {
+    pub fn numerator(&self) -> Value {
+        Value(format!("{}", self.0.numerator))
+    }
+
+    pub fn denominator(&self) -> NonZero {
+        NonZero(format!("{}", self.0.denominator))
+    }
 }
 
 struct OwnerStakeDelegation {
@@ -650,6 +725,7 @@ graphql_union!(Certificate: Context |&self| {
 
 struct Pool {
     id: certificate::PoolId,
+    data: Option<StakePoolData>,
     blocks: Option<PersistentSequence<HeaderHash>>,
 }
 
@@ -661,14 +737,26 @@ impl Pool {
             .wait()
             .unwrap()
             .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+
+        let data = db
+            .get_stake_pool_data(&id)
+            .wait()
+            .unwrap()
+            .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+
         Ok(Pool {
             id,
+            data: Some(data),
             blocks: Some(blocks),
         })
     }
 
     fn from_valid_id(id: certificate::PoolId) -> Pool {
-        Pool { id, blocks: None }
+        Pool {
+            id,
+            blocks: None,
+            data: None,
+        }
     }
 }
 
@@ -726,6 +814,19 @@ impl Pool {
                 .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
                 .collect(),
         })
+    }
+
+    pub fn registration(&self, context: &Context) -> FieldResult<PoolRegistration> {
+        match &self.data {
+            Some(data) => Ok(data.registration.clone().into()),
+            None => context
+                .db
+                .get_stake_pool_data(&self.id)
+                .wait()
+                .unwrap()
+                .map(|data| PoolRegistration::from(data.registration.clone()))
+                .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
+        }
     }
 }
 
