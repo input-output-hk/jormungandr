@@ -6,7 +6,6 @@ pub use self::config::{Cors, Rest};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
-use crate::settings::start::config::AddressError;
 use crate::settings::{command_arguments::*, Block0Info};
 use jormungandr_lib::interfaces::Mempool;
 use slog::{FilterLevel, Logger};
@@ -237,16 +236,12 @@ fn generate_network(
             .unwrap_or(vec![])
             .into_iter()
             .filter_map(|tp| {
-                tp.address
-                    .to_addresses()
-                    .ok()
-                    .and_then(std::convert::identity)
-                    .map(|addrs| {
-                        addrs.into_iter().map(move |addr| TrustedPeer {
-                            id: tp.id.clone(),
-                            address: addr.0,
-                        })
+                tp.address.to_addresses().ok().map(|addrs| {
+                    addrs.into_iter().map(move |addr| TrustedPeer {
+                        id: tp.id.clone(),
+                        address: addr.0,
                     })
+                })
             })
             .flatten()
             .collect(),

@@ -214,68 +214,68 @@ impl Address {
     }
 }
 
-// FIXME: in DnsLookupError we cannot specify the error source because it
-// doesn't implement the Error trait
 custom_error! {pub AddressError
-    DnsResolverInitError { source: std::io::Error } = "failed to initialize the DNS resolver: {source}",
-    DnsLookupError = "failed to resolve DNS name",
+    DnsLookupError { source: std::io::Error } = "failed to resolve DNS name {source}",
+    NoPortSpecified = "no TCP port specified",
+    NoAppropriateDNSFound = "the address was resolved, but it doesn't provide IPv4 or IPv6 addresses",
+    UnsupportedProtocol = "the provided protocol is unsupported, please use one of ip4/ip6/dns4/dns6",
 }
 
 impl TrustedAddress {
-    pub fn to_addresses(&self) -> Result<Option<Vec<Address>>, AddressError> {
+    pub fn to_addresses(&self) -> Result<Vec<Address>, AddressError> {
         use multiaddr::AddrComponent;
-        use std::iter::FromIterator;
-        use trust_dns_proto::rr::{record_data::RData, RecordType};
-
-        let resolver = trust_dns_resolver::Resolver::from_system_conf()
-            .map_err(|e| AddressError::DnsResolverInitError { source: e })?;
+        use std::{iter::FromIterator, net::ToSocketAddrs};
 
         let mut components = self.0.iter();
         let protocol = components.next();
 
-        let addresses = match protocol {
-            Some(AddrComponent::DNS4(fqdn)) => resolver
-                .lookup(&fqdn, RecordType::A)
-                .map_err(|_| AddressError::DnsLookupError)?
+        if let Some(AddrComponent::IP4(_)) | Some(AddrComponent::IP6(_)) = protocol {
+            return Ok(vec![Address(
+                poldercast::Address::new(self.0.clone()).unwrap(),
+            )]);
+        }
+
+        let port = match components.next() {
+            Some(AddrComponent::TCP(port)) => port,
+            _ => return Err(AddressError::NoPortSpecified),
+        };
+
+        let addresses: Vec<AddrComponent> = match protocol {
+            Some(AddrComponent::DNS4(fqdn)) => format!("{}:{}", fqdn, port)
+                .to_socket_addrs()
+                .map_err(|e| AddressError::DnsLookupError { source: e })?
                 .into_iter()
                 .filter_map(|r| match r {
-                    RData::A(addr) => Some(AddrComponent::IP4(addr)),
+                    SocketAddr::V4(addr) => Some(AddrComponent::IP4(*addr.ip())),
                     _ => None,
                 })
                 .collect(),
-            Some(AddrComponent::DNS6(fqdn)) => resolver
-                .lookup(&fqdn, RecordType::AAAA)
-                .map_err(|_| AddressError::DnsLookupError)?
+            Some(AddrComponent::DNS6(fqdn)) => format!("{}:{}", fqdn, port)
+                .to_socket_addrs()
+                .map_err(|e| AddressError::DnsLookupError { source: e })?
                 .into_iter()
                 .filter_map(|r| match r {
-                    RData::AAAA(addr) => Some(AddrComponent::IP6(addr)),
+                    SocketAddr::V6(addr) => Some(AddrComponent::IP6(*addr.ip())),
                     _ => None,
                 })
                 .collect(),
-            Some(AddrComponent::IP4(addr)) => vec![AddrComponent::IP4(addr)],
-            Some(AddrComponent::IP6(addr)) => vec![AddrComponent::IP6(addr)],
-            _ => return Ok(None),
+            _ => return Err(AddressError::UnsupportedProtocol),
         };
 
         if addresses.is_empty() {
-            return Ok(None);
+            return Err(AddressError::NoAppropriateDNSFound);
         }
 
-        if let Some(AddrComponent::TCP(port)) = components.next() {
-            Ok(Some(
-                addresses
-                    .into_iter()
-                    .map(|addr| {
-                        let new_components = vec![addr, AddrComponent::TCP(port)];
-                        let new_multiaddr =
-                            multiaddr::Multiaddr::from_iter(new_components.into_iter());
-                        Address(poldercast::Address::new(new_multiaddr).unwrap())
-                    })
-                    .collect(),
-            ))
-        } else {
-            Ok(None)
-        }
+        let addresses = addresses
+            .into_iter()
+            .map(|addr| {
+                let new_components = vec![addr, AddrComponent::TCP(port)];
+                let new_multiaddr = multiaddr::Multiaddr::from_iter(new_components.into_iter());
+                Address(poldercast::Address::new(new_multiaddr).unwrap())
+            })
+            .collect();
+
+        Ok(addresses)
     }
 }
 
