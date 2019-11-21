@@ -4,10 +4,10 @@ use super::{
     GlobalStateR,
 };
 use crate::{
-    blockcfg::{Fragment, Header, HeaderHash},
+    blockcfg::{Fragment, Header},
     intercom::{BlockMsg, TransactionMsg},
     settings::start::network::Configuration,
-    utils::async_msg::MessageBox,
+    utils::async_msg::{self, MessageBox},
 };
 use jormungandr_lib::interfaces::FragmentOrigin;
 use network_core::error as core_error;
@@ -18,7 +18,6 @@ use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use slog::Logger;
 
-use std::collections::HashSet;
 use std::fmt::Debug;
 
 #[must_use = "`Subscription` needs to be plugged into a service trait implementation"]
@@ -90,26 +89,7 @@ where
         // Not logging the item here because start_send might refuse to send it
         // and it will end up logged redundantly. This won't be a problem with
         // futures 0.3.
-        match self.inbound.start_send(item) {
-            Ok(AsyncSink::Ready) => {
-                trace!(
-                    self.logger,
-                    "item queued for processing";
-                    "direction" => "in",
-                );
-                Ok(AsyncSink::Ready)
-            }
-            Ok(AsyncSink::NotReady(item)) => Ok(AsyncSink::NotReady(item)),
-            Err(e) => {
-                debug!(
-                    self.logger,
-                    "failed to queue item for processing";
-                    "error" => ?e,
-                    "direction" => "in",
-                );
-                Err(e)
-            }
-        }
+        self.inbound.start_send(item)
     }
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
@@ -192,7 +172,6 @@ pub struct BlockAnnouncementProcessor {
     node_id: Id,
     global_state: GlobalStateR,
     logger: Logger,
-    seen_blocks: HashSet<HeaderHash>,
 }
 
 impl BlockAnnouncementProcessor {
@@ -207,12 +186,23 @@ impl BlockAnnouncementProcessor {
             node_id,
             global_state,
             logger,
-            seen_blocks: HashSet::new(),
         }
     }
 
     pub fn message_box(&self) -> MessageBox<BlockMsg> {
         self.mbox.clone()
+    }
+
+    fn mbox_error<T>(&self, err: async_msg::SendError<T>) -> core_error::Error
+    where
+        T: Send + Sync + 'static,
+    {
+        error!(
+            self.logger,
+            "failed to send block announcement to the block task";
+            "reason" => %err,
+        );
+        core_error::Error::new(core_error::Code::Internal, err)
     }
 }
 
@@ -282,25 +272,18 @@ impl Sink for BlockAnnouncementProcessor {
     type SinkError = core_error::Error;
 
     fn start_send(&mut self, header: Header) -> StartSend<Header, core_error::Error> {
-        let block_hash = header.hash();
-        if self.seen_blocks.insert(block_hash) {
-            info!(self.logger, "received block announcement"; "hash" => %block_hash);
+        let polled_ready = self.mbox.poll_ready().map_err(|e| self.mbox_error(e))?;
+        if polled_ready.is_not_ready() {
+            return Ok(AsyncSink::NotReady(header));
         }
+        let block_hash = header.hash();
+        info!(self.logger, "received block announcement"; "hash" => %block_hash);
         let polled = self
             .mbox
             .start_send(BlockMsg::AnnouncedBlock(header, self.node_id))
-            .map_err(|e| {
-                error!(
-                    self.logger,
-                    "failed to send block announcement to the block task";
-                    "reason" => %e,
-                );
-                self.seen_blocks.remove(&block_hash);
-                core_error::Error::new(core_error::Code::Internal, e)
-            })?;
+            .map_err(|e| self.mbox_error(e))?;
         match polled {
             AsyncSink::Ready => {
-                self.seen_blocks.remove(&block_hash);
                 self.global_state.peers.refresh_peer_on_block(self.node_id);
                 Ok(AsyncSink::Ready)
             }
@@ -342,6 +325,11 @@ impl Sink for FragmentProcessor {
         if self.buffered_fragments.len() >= buffer_sizes::FRAGMENTS {
             return Ok(AsyncSink::NotReady(fragment));
         }
+        trace!(
+            self.logger,
+            "received";
+            "item" => ?fragment,
+        );
         self.buffered_fragments.push(fragment);
         let async_send = self.try_send_fragments()?;
         Ok(async_send.map(|()| self.buffered_fragments.pop().unwrap()))
@@ -418,6 +406,11 @@ impl Sink for GossipProcessor {
         &mut self,
         gossip: Gossip<NodeData>,
     ) -> StartSend<Self::SinkItem, core_error::Error> {
+        trace!(
+            self.logger,
+            "received";
+            "item" => ?gossip,
+        );
         self.process_item(gossip);
         Ok(AsyncSink::Ready)
     }
