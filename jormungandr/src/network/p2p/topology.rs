@@ -14,6 +14,7 @@ use slog::Logger;
 use std::sync::{Arc, RwLock};
 
 /// object holding the P2pTopology of the Node
+#[derive(Clone)]
 pub struct P2pTopology {
     lock: Arc<RwLock<Topology>>,
     logger: Logger,
@@ -94,6 +95,10 @@ impl P2pTopology {
 
     pub fn node(&self) -> NodeProfile {
         self.lock.read().unwrap().profile().clone()
+    }
+
+    pub fn force_reset_layers(&self) {
+        self.lock.write().unwrap().force_reset_layers()
     }
 
     /// register a strike against the given node id

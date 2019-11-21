@@ -255,6 +255,17 @@ pub fn start(
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
     let gossip_err_logger = global_state.logger.clone();
+    let reset_err_logger = global_state.logger.clone();
+    let tp2p = global_state.topology.clone();
+
+    global_state.spawn(
+        Interval::new_interval(Duration::from_secs(20))
+            .map_err(move |e| {
+                error!(reset_err_logger, "interval timer error: {:?}", e);
+            })
+            .for_each(move |_| Ok(tp2p.force_reset_layers())),
+    );
+
     // TODO: get gossip propagation interval from configuration
     let gossip = Interval::new_interval(Duration::from_secs(10))
         .map_err(move |e| {
