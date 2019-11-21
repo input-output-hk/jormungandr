@@ -14,6 +14,7 @@ use std::{fs::File, path::PathBuf};
 const DEFAULT_FILTER_LEVEL: FilterLevel = FilterLevel::Info;
 const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Plain;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
+const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 
 custom_error! {pub Error
    ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
@@ -34,6 +35,7 @@ pub struct Settings {
     pub mempool: Mempool,
     pub leadership: Leadership,
     pub explorer: bool,
+    pub no_blockchain_updates_warning_interval: u64,
 }
 
 pub struct RawSettings {
@@ -173,6 +175,10 @@ impl RawSettings {
                 .as_ref()
                 .map_or(Leadership::default(), |cfg| cfg.leadership.clone()),
             explorer,
+            no_blockchain_updates_warning_interval: config
+                .as_ref()
+                .and_then(|config| config.no_blockchain_updates_warning_interval)
+                .unwrap_or(DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL),
         })
     }
 }

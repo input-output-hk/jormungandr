@@ -10,14 +10,17 @@ use tokio::timer::Interval;
 pub fn check_last_block_time(
     service_info: TokioServiceInfo,
     blockchain_tip: blockchain::Tip,
+    check_interval: u64,
 ) -> impl Future<Item = (), Error = ()> {
     let logger = service_info.logger().clone();
     let err_logger = logger.clone();
 
-    // TODO set from configuration
-    let check_period = Duration::from_secs(180);
+    // those are different values, because check_interval can be big
+    // (30 minutes) and the notification may remain unseen
+    let check_period = Duration::from_secs(check_interval);
+    let notification_period = Duration::from_secs(60);
 
-    Interval::new_interval(check_period.clone())
+    Interval::new_interval(notification_period)
         .map_err(move |e| error!(err_logger, "timer error: {}", e))
         .and_then(move |_| blockchain_tip.get_ref())
         .for_each(move |tip| {

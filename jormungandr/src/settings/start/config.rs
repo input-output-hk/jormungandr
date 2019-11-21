@@ -30,6 +30,9 @@ pub struct Config {
     pub p2p: P2pConfig,
 
     pub explorer: Option<Explorer>,
+
+    /// the time interval with no blockchain updates after which alerts are thrown
+    pub no_blockchain_updates_warning_interval: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
