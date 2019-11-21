@@ -11,7 +11,15 @@ license = "MIT OR Apache-2.0"
 quickcheck = "0.8"
 quickcheck_macros = "0.8"
 
+[target.'cfg(unix)'.dev-dependencies]
+jemalloc-ctl = "*"
+jemallocator = "*"
+
 [features]
 default = []
 with-bench = []
 optimized-node = []
+
+[[example]]
+name = "memdump"
+path = "examples/memdump/main.rs"
