@@ -39,7 +39,7 @@ linked-hash-map = "0.5"
 native-tls = "0.2.2"
 network-core    = { path = "../chain-deps/network-core" }
 network-grpc    = { path = "../chain-deps/network-grpc" }
-poldercast = "0.9.7"
+poldercast = "0.9.9"
 rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
