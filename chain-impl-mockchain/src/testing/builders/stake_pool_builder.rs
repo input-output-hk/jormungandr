@@ -7,11 +7,22 @@ use chain_time::DurationSeconds;
 
 pub struct StakePoolBuilder {
     owners: Vec<PublicKey<Ed25519>>,
+    alias: String
 }
 
 impl StakePoolBuilder {
     pub fn new() -> Self {
-        StakePoolBuilder { owners: Vec::new() }
+        StakePoolBuilder { owners: Vec::new(), alias: "".to_owned() }
+    }
+
+    pub fn with_owners(&mut self, owners: Vec<PublicKey<Ed25519>>) -> &mut Self {
+        self.owners.extend(owners);
+        self
+    }
+
+    pub fn with_alias(&mut self, alias: &str) -> &mut Self {
+        self.alias = alias.to_owned();
+        self
     }
 
     pub fn build(&self) -> StakePool {
@@ -33,6 +44,6 @@ impl StakePoolBuilder {
                 kes_public_key: pool_kes.public_key().clone(),
             },
         };
-        StakePool::new(pool_info.to_id(), pool_vrf, pool_kes, pool_info)
+        StakePool::new(&self.alias,pool_info.to_id(), pool_vrf, pool_kes, pool_info)
     }
 }

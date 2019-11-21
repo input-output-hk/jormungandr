@@ -210,6 +210,10 @@ impl AddressData {
         self.confirm_transaction();
         witness
     }
+
+    pub fn address(&self) -> Address {
+        self.address.clone()
+    }
 }
 
 impl Into<Address> for AddressData {
@@ -308,6 +312,13 @@ impl AddressDataValue {
         }
     }
 
+    pub fn address(&self) -> Address {
+        self.address_data.address.clone()
+    }
+
+    pub fn address_data(&self) -> AddressData {
+        self.address_data.clone()
+    }
 }
 
 impl Into<AddressData> for AddressDataValue {

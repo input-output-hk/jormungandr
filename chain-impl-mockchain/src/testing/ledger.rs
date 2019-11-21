@@ -1,5 +1,5 @@
 use crate::{
-    account::{AccountAlg,Ledger as AccountLedger},
+    account::Ledger as AccountLedger,
     block::{ConsensusVersion, HeaderId},
     config::ConfigParam,
     fee::LinearFee,
@@ -10,7 +10,8 @@ use crate::{
     transaction::{Output, TxBuilder},
     value::Value,
     utxo::{Entry,Iter},
-    testing::data::{AddressData,AddressDataValue}
+    testing::data::{AddressData,AddressDataValue},
+    header::HeaderContentEvalContext
 };
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
@@ -112,9 +113,9 @@ pub struct LedgerBuilder {
     cfg_builder: ConfigBuilder,
     cfg_params: ConfigParams,
     fragments: Vec<Fragment>,
+    certs: Vec<Fragment>,
     faucets: Vec<AddressDataValue>,
     utxo_declaration: Vec<UtxoDeclaration>,
-    seed: u64,
 }
 
 pub type UtxoDeclaration = Output<Address>;
@@ -141,26 +142,13 @@ impl LedgerBuilder {
         cfg_builder.normalize();
         let cfg_params = cfg_builder.clone().build();
         Self {
-            seed: cfg_builder.seed,
             cfg_builder,
             cfg_params,
             faucets: Vec::new(),
             utxo_declaration: Vec::new(),
             fragments: Vec::new(),
+            certs: Vec::new()
         }
-    }
-
-    fn randbuf(&mut self, buf: &mut [u8]) {
-        for b in buf.iter_mut() {
-            *b = self.seed as u8;
-            self.seed = self.seed.wrapping_mul(2862933555777941757u64).wrapping_add(3037000493);
-        }
-    }
-
-    fn account_secret_key(&mut self) -> SecretKey<AccountAlg> {
-        let mut sk = [0u8;32];
-        self.randbuf(&mut sk);
-        SecretKey::from_binary(&sk).unwrap()
     }
 
     pub fn fragment(mut self, f: Fragment) -> Self {
@@ -170,6 +158,11 @@ impl LedgerBuilder {
 
     pub fn fragments(mut self, f: &[Fragment]) -> Self {
         self.fragments.extend_from_slice(f);
+        self
+    }
+
+    pub fn certs(mut self, f: &[Fragment]) -> Self {
+        self.certs.extend_from_slice(f);
         self
     }
 
@@ -270,6 +263,7 @@ impl LedgerBuilder {
         let mut fragments = Vec::new();
         fragments.push(Fragment::Initial(self.cfg_params));
         fragments.extend_from_slice(&self.fragments);
+        fragments.extend_from_slice(&self.certs);
 
         let faucets = self.faucets.clone();
         Ledger::new(block0_hash, &fragments).map(|ledger| {
@@ -305,9 +299,19 @@ impl TestLedger {
                         Ok(())
                     }
                 }
-            }
+            },
             _ => {
                 panic!("test ledger apply transaction only supports transaction type for now")
+            }
+        }
+    }
+
+    pub fn apply_fragment(&mut self, fragment: &Fragment, metadata: &HeaderContentEvalContext) -> Result<(),Error> {
+        match self.ledger.clone().apply_fragment(&self.parameters, fragment, metadata) {
+            Err(err) => Err(err),
+            Ok(ledger) => {
+                self.ledger = ledger;
+                Ok(())
             }
         }
     }
@@ -336,5 +340,11 @@ impl TestLedger {
 
     pub fn fee(&self) -> LinearFee {
         self.parameters.fees
+    }
+}
+
+impl Into<Ledger> for TestLedger {
+    fn into(self) -> Ledger {
+        self.ledger
     }
 }

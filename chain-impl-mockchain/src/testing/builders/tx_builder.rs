@@ -1,16 +1,14 @@
 use crate::{
-    account::SpendingCounter,
     fragment::{Fragment, FragmentId},
     header::HeaderId,
-    testing::{ledger::TestLedger, KeysDb, data::AddressDataValue},
+    testing::{ledger::TestLedger, KeysDb, data::AddressDataValue, builders::witness_builder::make_witness},
     transaction::{
-        Input, InputEnum, NoExtra, Output, Transaction, TxBuilder, UnspecifiedAccountIdentifier,
-        UtxoPointer, Witness,
+        Input, NoExtra, Output, Transaction, TxBuilder, Witness,
     },
     value::Value,
-    fee::FeeAlgorithm
+    fee::FeeAlgorithm,
 };
-use chain_addr::{Address, Kind};
+use chain_addr::Address;
 
 pub struct TestTxBuilder {
     block0_hash: HeaderId,
@@ -93,105 +91,32 @@ impl TestTxBuilder {
     }
 
     pub fn move_funds(self, test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue, value: &Value) -> TestTx {
-        let mut keys_db = KeysDb::empty();
-        keys_db.add_key(source.private_key());
-        keys_db.add_key(destination.private_key());
-
-        let fee = test_ledger.fee().fees_for_inputs_outputs(1u8,1u8);
-        let output_value = (*value - fee).expect("input value is smaller than fee");
-
-        self.inputs_to_outputs(&keys_db,test_ledger,&[source.make_output_with_value(&value)],&[destination.make_output_with_value(&output_value)])
+        let fee = test_ledger.fee();
+        let fee_value = (fee.fees_for_inputs_outputs(1u8,1u8) + Value(fee.constant)).unwrap();
+        let output_value = (*value - fee_value).expect("input value is smaller than fee");
+        let sources = vec![AddressDataValue::new(source.address_data(),value.clone())];
+        let destinations = vec![AddressDataValue::new(destination.address_data(),output_value)];
+        self.move_funds_multiple(test_ledger, &sources, &destinations)
     }
     
     pub fn move_funds_multiple(self,test_ledger: &mut TestLedger, sources: &Vec<AddressDataValue>, destinations: &Vec<AddressDataValue>) -> TestTx {
-        let mut keys_db = KeysDb::empty();
-
-        for source in sources {
-            keys_db.add_key(source.private_key())
-        }
-        for destination in destinations {
-            keys_db.add_key(destination.private_key())
-        }
-
-        let source_outputs: Vec<Output<Address>>  = sources.iter().cloned().map(|x| x.make_output()).collect();
-        let destination_outputs: Vec<Output<Address>> = destinations.iter().cloned().map(|x| x.make_output()).collect();
-
-        self.inputs_to_outputs(&keys_db,test_ledger,&source_outputs,&destination_outputs)
-    }
-
-    pub fn inputs_to_outputs(
-        self,
-        kdb: &KeysDb,
-        test_ledger: &mut TestLedger,
-        sources: &[Output<Address>],
-        destination: &[Output<Address>],
-    ) -> TestTx {
-        let inputs: Vec<_> = sources
-            .iter()
-            .map(|out| {
-                match out.address.kind() {
-                    Kind::Single(_) | Kind::Group(..) => {
-                        let fragments = test_ledger.utxodb.find_fragments(&out);
-
-                        if fragments.len() == 0 {
-                            panic!("trying to do a inputs_to_outputs with unknown single utxo")
-                        }
-
-                        // Take the first one ..
-                        let (fragment_id, idx) = fragments[0];
-
-                        Input::from_utxo(UtxoPointer {
-                            transaction_id: fragment_id,
-                            output_index: idx,
-                            value: out.value,
-                        })
-                    }
-                    Kind::Account(pk) => {
-                        let aid =
-                            UnspecifiedAccountIdentifier::from_single_account(pk.clone().into());
-                        Input::from_account(aid, out.value)
-                    }
-                    Kind::Multisig(pk) => {
-                        let aid =
-                            UnspecifiedAccountIdentifier::from_multi_account(pk.clone().into());
-                        Input::from_account(aid, out.value)
-                    }
-                }
-            })
-            .collect();
-
+        let inputs: Vec<Input>  = sources.iter().cloned().map(|x| {
+                    let optional_utxo = test_ledger.find_utxo_for_address(&x.address_data());
+                    x.make_input(optional_utxo)
+                }).collect();
+        let destinations: Vec<Output<Address>> = destinations.iter().cloned().map(|x| x.make_output()).collect();
         let tx_builder = TxBuilder::new()
             .set_payload(&NoExtra)
-            .set_ios(&inputs, &destination);
+            .set_ios(&inputs, &destinations);
 
-        let auth_data_hash = tx_builder.get_auth_data_for_witness().hash();
-        let mut witnesses = Vec::with_capacity(inputs.len());
-
-        for (inp, _) in inputs.iter().zip(sources.iter()) {
-            let witness = {
-                match inp.to_enum() {
-                    InputEnum::AccountInput(account_id, _) => {
-                        let aid = account_id.to_single_account().unwrap();
-                        let sk = kdb.find_ed25519_secret_key(&aid.into()).unwrap();
-                        // FIXME - TODO need accountdb to get the latest state of account counter
-                        let counter = SpendingCounter::zero();
-                        Witness::new_account(&self.block0_hash, &auth_data_hash, &counter, sk)
-                    }
-                    InputEnum::UtxoInput(utxopointer) => {
-                        match test_ledger.utxodb.get(&(utxopointer.transaction_id, utxopointer.output_index)) {
-                            None => {
-                                panic!("cannot find utxo input")
-                            },
-                            Some(output) => {
-                                let sk = kdb.find_by_address(&output.address).unwrap();
-                                Witness::new_utxo(&self.block0_hash, &auth_data_hash, sk)
-                            }
-                        }
-                    }
-                }
-            };
-            witnesses.push(witness)
-        }
+        let witnesses: Vec<Witness> = sources.iter().map(|source| {
+            let auth_data_hash = tx_builder.get_auth_data_for_witness().hash();
+            make_witness(
+                &self.block0_hash,
+                &source.address_data(),
+                auth_data_hash,
+            )}
+        ).collect();
 
         let tx = tx_builder
             .set_witnesses(&witnesses)

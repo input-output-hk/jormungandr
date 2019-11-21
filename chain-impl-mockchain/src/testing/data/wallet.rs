@@ -1,7 +1,8 @@
 use crate::{
     testing::data::{AddressDataValue,AddressData},
     value::Value,
-    transaction::{Input, Output},
+    transaction::{Input, Output, TransactionAuthData, Witness},
+    header::HeaderId,
     key::EitherEd25519SecretKey
 };
 use chain_crypto::{
@@ -61,7 +62,16 @@ impl Wallet {
         self.as_account().into()
     }
 
+    pub fn as_address(&self) -> Address {
+        self.as_account_data().address.clone()
+    }
+
     pub fn confirm_transaction(&mut self) {
         self.account.increment_spending_counter();
     }
+
+    pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
+        self.as_account().make_witness(block0_hash,tad)
+    }
+
 }

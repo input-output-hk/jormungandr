@@ -2,18 +2,14 @@
 
 use crate::{
     accounting::account::LedgerError::NonExistent,
-    ledger::{self, check::TxVerifyError, Error::{TransactionMalformed, Account,ExpectingAccountWitness }},
+    ledger::{self, check::TxVerifyError, Error::{TransactionMalformed, Account}},
     testing::{
         ConfigBuilder, LedgerBuilder,
-        KeysDb,
         data::{AddressData,AddressDataValue},
         TestTxBuilder,
-        TestCryptoGen,
-        builders::tx_builder::TestTx
     },
     transaction::*,
-    value::*,
-    fee::FeeAlgorithm,
+    value::*
 };
 use chain_addr::Discrimination;
 
@@ -70,21 +66,16 @@ pub fn duplicated_account_transaction() {
 
 #[test]
 pub fn transaction_nonexisting_account_input() {
-    let receiver = AddressData::utxo(Discrimination::Test);
-
-    let mut kdb = KeysDb::new(TestCryptoGen(0));
-
+    let receiver = AddressDataValue::utxo(Discrimination::Test,Value(0));
+    let unregistered_account = AddressDataValue::account(Discrimination::Test,Value(100));
+   
     let mut test_ledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
         .faucet_value(Value(1000))
         .build()
         .expect("cannot build test ledger");
 
-    let unregistered_account = kdb.new_account_address();
-    let value = Value(10);
     let fragment = TestTxBuilder::new(&test_ledger.block0_hash)
-        .inputs_to_outputs(&mut kdb, &mut test_ledger,
-            &[Output { address: unregistered_account, value }],
-            &[Output { address: receiver.address, value }])
+        .move_all_funds(&mut test_ledger,&unregistered_account,&receiver)
         .get_fragment();
 
     assert_err!(
@@ -96,7 +87,7 @@ pub fn transaction_nonexisting_account_input() {
 #[test]
 pub fn transaction_with_incorrect_account_spending_counter() {
     let faucet = AddressDataValue::account_with_spending_counter(Discrimination::Test, 1, Value(1000));
-    let receiver = AddressData::account(Discrimination::Test,);
+    let receiver = AddressData::account(Discrimination::Test);
 
     let mut test_ledger = LedgerBuilder::from_config(ConfigBuilder::new(0))
         .faucet(&faucet)

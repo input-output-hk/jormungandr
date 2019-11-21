@@ -1,64 +1,85 @@
 use crate::{
-    account::SpendingCounter,
-    fragment::{FragmentId, Fragment},
+    fragment::Fragment,
     header::HeaderId,
-    testing::{KeysDb, ledger::TestLedger},
-    transaction::{AccountIdentifier, Transaction, TxBuilder, Input, InputEnum, Output, Witness, UtxoPointer},
+    testing::{ledger::TestLedger, data::Wallet, builders::make_witness},
+    transaction::{TxBuilder, Payload, SetIOs, TxBuilderState,SetAuthData,SingleAccountBindingSignature, AccountBindingSignature},
     value::Value,
+    certificate::{Certificate,PoolSignature, PoolOwnersSigned},
+    key::EitherEd25519SecretKey
 };
-use chain_addr::{Address, Kind};
 
-pub struct TestTxCertBuilder {
-    block0_hash: HeaderId,
+pub struct TestTxCertBuilder<'a> {
+    test_ledger: &'a TestLedger
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TestCertTx {
-    tx: Transaction<Extra>,
+impl<'a> TestTxCertBuilder<'a> {
+    pub fn new(test_ledger: &'a TestLedger) -> Self {
+        Self { test_ledger }
+    }
+
+    fn block0_hash(&self) -> &HeaderId {
+        &self.test_ledger.block0_hash
+    }
+
+    fn fee(&self) -> Value {
+        let linear_fee =  self.test_ledger.fee();
+        Value(linear_fee.certificate + linear_fee.constant + linear_fee.coefficient)
+    }
+
+    fn set_initial_ios<P: Payload>(&self, builder: TxBuilderState<SetIOs<P>>, funder: &Wallet) -> TxBuilderState<SetAuthData<P>> {
+        //utxo not supported yet
+        let input = funder.make_input_with_value(&self.fee());
+        let builder = builder.set_ios(&[input], &[]);
+        let witness = make_witness(self.block0_hash(),&funder.as_account_data(),builder.get_auth_data_for_witness().hash());
+        builder.set_witnesses(&[witness])
+    }
+
+    fn fragment(&self, cert: &Certificate, keys: Vec<EitherEd25519SecretKey>, funder: &Wallet) -> Fragment {
+        match cert {
+                Certificate::StakeDelegation(s) => {
+                    let builder = self.set_initial_ios(TxBuilder::new().set_payload(s),&funder);
+                    let signature = AccountBindingSignature::new_single(&keys[0], &builder.get_auth_data());
+                    let tx = builder.set_payload_auth(&signature);
+                    Fragment::StakeDelegation(tx)
+                }
+                Certificate::PoolRegistration(s) => {
+                    let builder = self.set_initial_ios(TxBuilder::new().set_payload(s),&funder);
+                    let signature = pool_owner_sign(&keys, &builder);
+                    let tx = builder.set_payload_auth(&signature);
+                    Fragment::PoolRegistration(tx)
+                }
+                Certificate::PoolRetirement(s) => {
+                    let builder = self.set_initial_ios(TxBuilder::new().set_payload(s),&funder);
+                    let signature = pool_owner_sign(&keys, &builder);
+                    let tx = builder.set_payload_auth(&signature);
+                    Fragment::PoolRetirement(tx)
+                }
+                Certificate::PoolUpdate(s) => {
+                    let builder = self.set_initial_ios(TxBuilder::new().set_payload(s),&funder);
+                    let signature = pool_owner_sign(&keys, &builder);
+                    let tx = builder.set_payload_auth(&signature);
+                    Fragment::PoolUpdate(tx)
+                }
+                Certificate::OwnerStakeDelegation(_) => unreachable!(),
+            }
+    }
+
+    pub fn make_transaction(self, signers: &[&Wallet], certificate: &Certificate) -> Fragment {
+        let keys = signers.iter().cloned().map(|owner| owner.private_key()).collect();
+        self.fragment(certificate,keys,&signers[0])
+    }
 }
 
-impl TestCertTx {
-    pub fn get_fragment_id(&self) -> FragmentId {
-        self.clone().get_fragment().hash()
-    }
-
-    pub fn get_fragment(self) -> Fragment {
-        Fragment::Transaction(self.tx)
-    }
-
-    pub fn get_tx(self) -> Transaction<Extra> {
-        self.tx
-    }
-}
-
-impl TestTxCertBuilder {
-    pub fn new(block0_hash: &HeaderId) -> Self {
-        Self {
-            block0_hash: block0_hash.clone(),
+pub fn pool_owner_sign<P: Payload>(
+        keys: &[EitherEd25519SecretKey],
+        builder: &TxBuilderState<SetAuthData<P>>
+    ) -> PoolSignature {
+        let auth_data = builder.get_auth_data();
+        let mut sigs = Vec::new();
+        for (i, key) in keys.iter().enumerate() {
+            let sig = SingleAccountBindingSignature::new(key, &auth_data);
+            sigs.push((i as u8, sig))
         }
+        let pool_owner = PoolOwnersSigned { signatures: sigs };
+        PoolSignature::Owners(pool_owner)
     }
-
-    pub fn make_transaction_with_payload(self, testledger: &mut TestLedger, signers: &[Wallet], certificate: &Certificate) -> TestCertTx {
-        let funder = &signers[0];
-        let inputs = vec![funder.make_input()];
-        let tx_builder = TxBuilder::new()
-            .set_payload(&certificate.into())
-            .set_ios(&inputs, &[]);
-
-        let auth_data_hash = tx_builder.get_auth_data_for_witness().hash();
-        let witness = witness_builder::make_witness(
-            &testledger.block0_hash,
-            &funder.address,
-            auth_data_hash,
-        );
-        let tx = tx_builder.set_witnesses(&vec![witness]);
-        let auth = set_auth(&funder.private_key(),certificate,&tx);
-
-        let payload_auth = match certificate {
-            certificate::OwnerStakeDelegation => (),
-            _ => sign_certificate(certificate,keys)
-        }
-        tx.set_payload_auth(&payload_auth);
-        TestCertTx { tx }
-    }
-}

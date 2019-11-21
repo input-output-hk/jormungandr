@@ -6,6 +6,7 @@ pub mod proposal_builder;
 pub mod witness_builder;
 pub mod update_builder;
 pub mod tx_builder;
+mod tx_cert_builder;
 mod initial_builder;
 
 pub use block_builder::*;
@@ -17,3 +18,4 @@ pub use proposal_builder::*;
 pub use witness_builder::*;
 pub use update_builder::*;
 pub use tx_builder::*;
+pub use tx_cert_builder::*;
