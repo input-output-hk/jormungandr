@@ -6,7 +6,7 @@ use crate::common::{
         secret_model::SecretModel,
     },
     file_utils, jcli_wrapper,
-    startup::{build_genesis_block, create_new_key_pair},
+    startup::build_genesis_block,
 };
 
 use jormungandr_lib::interfaces::Mempool;
