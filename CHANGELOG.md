@@ -1,5 +1,59 @@
 # Change Log
 
+## [v0.7.1](https://github.com/input-output-hk/jormungandr/tree/v0.7.1) (2019-11-21)
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0...v0.7.1)
+
+**Implemented enhancements:**
+
+- add config for the number of allowed non reachable nodes at a time [\#1150](https://github.com/input-output-hk/jormungandr/issues/1150)
+- Logging improvements for network subscriptions [\#1175](https://github.com/input-output-hk/jormungandr/pull/1175)
+- poldercast crate update and automatic topology reset [\#1172](https://github.com/input-output-hk/jormungandr/pull/1172)
+- Add pool retirement and pool update certificates graphql types [\#1169](https://github.com/input-output-hk/jormungandr/pull/1169)
+- Expose stake pool parameters [\#1161](https://github.com/input-output-hk/jormungandr/pull/1161)
+- Ground work for header chain validation [\#1159](https://github.com/input-output-hk/jormungandr/pull/1159)
+- Add warning if blockchain is not moving up [\#1157](https://github.com/input-output-hk/jormungandr/pull/1157)
+- allow setting the number of unreachable nodes to contact for propagation [\#1153](https://github.com/input-output-hk/jormungandr/pull/1153)
+- Gracefully handle mutual connection flares [\#1139](https://github.com/input-output-hk/jormungandr/pull/1139)
+- Update tip after network blocks [\#1138](https://github.com/input-output-hk/jormungandr/pull/1138)
+- Implement BIP32 key derivation [\#1136](https://github.com/input-output-hk/jormungandr/pull/1136)
+- Logging to multiple outputs [\#1134](https://github.com/input-output-hk/jormungandr/pull/1134)
+- \(\#511\) logging to a file [\#1118](https://github.com/input-output-hk/jormungandr/pull/1118)
+
+**Fixed bugs:**
+
+- Timing issue in Jormungandr for slot leader signing blocks [\#1143](https://github.com/input-output-hk/jormungandr/issues/1143)
+- Rise type\_length\_limit [\#1162](https://github.com/input-output-hk/jormungandr/pull/1162)
+- catch the error the drains [\#1154](https://github.com/input-output-hk/jormungandr/pull/1154)
+- Make sure if the node wake too early for the leader event to wait a bit [\#1151](https://github.com/input-output-hk/jormungandr/pull/1151)
+
+**Closed issues:**
+
+- Local 0.7.0 Jormungandr node not receiving blocks from Incentivized TestNet [\#1147](https://github.com/input-output-hk/jormungandr/issues/1147)
+- bootstrap script fails [\#1142](https://github.com/input-output-hk/jormungandr/issues/1142)
+- Which faucet to use for the latest release v0.7.0? [\#1135](https://github.com/input-output-hk/jormungandr/issues/1135)
+- Error fetching the genesis block from the network [\#1132](https://github.com/input-output-hk/jormungandr/issues/1132)
+- panic with error: Some\(NonMonotonicDate [\#1130](https://github.com/input-output-hk/jormungandr/issues/1130)
+- Documentation to register a stake pool is not up to date [\#1110](https://github.com/input-output-hk/jormungandr/issues/1110)
+- panicked at 'upper\_bound should be \>= than lower\_bound' [\#1093](https://github.com/input-output-hk/jormungandr/issues/1093)
+
+**Merged pull requests:**
+
+- added script for creating a new stakepool [\#1170](https://github.com/input-output-hk/jormungandr/pull/1170)
+- clean imports in jormungandr-integration-tests [\#1167](https://github.com/input-output-hk/jormungandr/pull/1167)
+- Shutdown node when any service terminates [\#1141](https://github.com/input-output-hk/jormungandr/pull/1141)
+- Move REST to a service [\#1140](https://github.com/input-output-hk/jormungandr/pull/1140)
+- Fetch block's body only once for transactions in block [\#1133](https://github.com/input-output-hk/jormungandr/pull/1133)
+- Add safety checks to bootstrap script [\#1131](https://github.com/input-output-hk/jormungandr/pull/1131)
+- \[Tests\]\[JST\] Improve Error Reporting [\#1129](https://github.com/input-output-hk/jormungandr/pull/1129)
+- Docs: fix mdbook-linkcheck errors [\#1127](https://github.com/input-output-hk/jormungandr/pull/1127)
+- make the blockchain::process fully async [\#1126](https://github.com/input-output-hk/jormungandr/pull/1126)
+- Scripts: fix some issues related to certificates [\#1123](https://github.com/input-output-hk/jormungandr/pull/1123)
+- Chain pull redux [\#1121](https://github.com/input-output-hk/jormungandr/pull/1121)
+- logging settings: .async\(\) -\> .into\_async\(\) [\#1119](https://github.com/input-output-hk/jormungandr/pull/1119)
+- Clean up JCLI TX info command [\#1117](https://github.com/input-output-hk/jormungandr/pull/1117)
+- Docs: update some certificate related commands [\#1113](https://github.com/input-output-hk/jormungandr/pull/1113)
+- \[Tests\] Jormungandr test scenarios - additional test cases [\#1082](https://github.com/input-output-hk/jormungandr/pull/1082)
+
 ## [v0.7.0](https://github.com/input-output-hk/jormungandr/tree/v0.7.0) (2019-11-12)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0-rc7...v0.7.0)
 
