@@ -1,9 +1,6 @@
 use chain_core::property::FromStr;
 use chain_impl_mockchain::key::Hash;
-use jormungandr_integration_tests::mock::{
-    proto::{node::*, node_grpc::*},
-    server::{self, ProtocolVersion},
-};
+use jormungandr_integration_tests::mock::server::{self, ProtocolVersion};
 use std::{env, path::PathBuf, thread};
 
 fn main() {

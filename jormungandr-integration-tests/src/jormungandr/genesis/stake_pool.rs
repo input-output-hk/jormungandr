@@ -16,6 +16,7 @@ use chain_crypto::{Curve25519_2HashDH, SumEd25519_12};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use std::str::FromStr;
 
+#[allow(dead_code)]
 fn create_account_from_secret_key(private_key: String) -> Account {
     let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
     let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
