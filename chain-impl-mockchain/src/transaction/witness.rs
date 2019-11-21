@@ -131,7 +131,7 @@ impl Witness {
     pub fn new_old_utxo(
         block0: &HeaderId,
         sign_data_hash: &TransactionSignDataHash,
-        secret_key: SecretKey<Ed25519Bip32>,
+        secret_key: &SecretKey<Ed25519Bip32>,
     ) -> Self {
         let wud = WitnessUtxoData::new(block0, sign_data_hash);
         Witness::OldUtxo(secret_key.to_public(), secret_key.sign(&wud))
