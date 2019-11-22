@@ -114,9 +114,18 @@ To start a new node from scratch on a given blockchain, you need to know the
 block0 hash of this blockchain for trust purpose and internet peers to connect
 to. The simplest way to start such a node is:
 
-    jormungandr --block0-hash <HASH> --trusted-peers <IPs>
+    jormungandr --genesis-block-hash <HASH> --trusted-peer <IPs>
     
 In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool WSorkgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
+
+Trusted peer IP addresses needs to be provided in a following format: `/ip4/<IP-ADDRESS>/tcp/<PORT>@<NODE-ID>`
+
+### Unofficial Docker images of Jormungandr
+Unofficial Docker images of Jormungandr are also available at [GitHub](https://github.com/2nd-Layer/docker-hub-cardano-images/tree/master/jormungandr) and [Docker Hub](https://hub.docker.com/r/2ndlayer/centos-cardano-jormungandr). To use these images, just install Docker (for Linux, Windows or Mac OS X) and start the Docker instance using:
+
+    docker run -ti 2ndlayer/centos-cardano-jormungandr:<VERSION> jormungandr --genesis-block-hash <HASH> --trusted-peer <IPs>
+
+Please file any issues with these images in the respective [GitHub repository](https://github.com/2nd-Layer/docker-hub-cardano-images/issues/).
 
 # Documentation
 
