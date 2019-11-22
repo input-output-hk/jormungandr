@@ -96,25 +96,22 @@ impl<Msg> Future for SendTask<Msg> {
     type Error = ();
 
     fn poll(&mut self) -> Poll<(), ()> {
-        loop {
-            if self.pending.is_some() {
-                let msg = self.pending.take().unwrap();
-                let async_sink = self
-                    .mbox
-                    .start_send(msg)
-                    .map_err(|e| self.handle_mbox_error(e))?;
-                if let AsyncSink::NotReady(msg) = async_sink {
-                    self.pending = Some(msg);
-                    return Ok(Async::NotReady);
-                }
-            } else {
-                try_ready!(self
-                    .mbox
-                    .poll_complete()
-                    .map_err(|e| self.handle_mbox_error(e)));
-                return Ok(().into());
+        if self.pending.is_some() {
+            let msg = self.pending.take().unwrap();
+            let async_sink = self
+                .mbox
+                .start_send(msg)
+                .map_err(|e| self.handle_mbox_error(e))?;
+            if let AsyncSink::NotReady(msg) = async_sink {
+                self.pending = Some(msg);
+                return Ok(Async::NotReady);
             }
         }
+        try_ready!(self
+            .mbox
+            .poll_complete()
+            .map_err(|e| self.handle_mbox_error(e)));
+        Ok(().into())
     }
 }
 
