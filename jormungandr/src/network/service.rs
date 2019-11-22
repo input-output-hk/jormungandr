@@ -149,7 +149,7 @@ impl BlockService for NodeService {
         _from: &[Self::BlockId],
         _to: &Self::BlockId,
     ) -> Self::PullBlocksFuture {
-        unimplemented!()
+        future::err(core_error::Error::unimplemented())
     }
 
     fn pull_headers(
@@ -171,7 +171,7 @@ impl BlockService for NodeService {
     }
 
     fn pull_headers_to_tip(&mut self, _from: &[Self::BlockId]) -> Self::PullHeadersFuture {
-        unimplemented!()
+        future::err(core_error::Error::unimplemented())
     }
 
     fn push_headers(&mut self) -> Self::PushHeadersSink {
@@ -248,7 +248,7 @@ impl FragmentService for NodeService {
     type FragmentSubscriptionFuture = FutureResult<Self::FragmentSubscription, core_error::Error>;
 
     fn get_fragments(&mut self, _ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture {
-        unimplemented!()
+        future::err(core_error::Error::unimplemented())
     }
 
     fn fragment_subscription(
