@@ -1,5 +1,6 @@
 pub mod config;
 pub mod network;
+pub mod trusted_peer;
 
 use self::config::{Config, Leadership};
 pub use self::config::{Cors, Rest};

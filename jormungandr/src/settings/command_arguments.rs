@@ -1,4 +1,4 @@
-use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
+use crate::settings::{start::trusted_peer::*, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
 use slog::FilterLevel;
 use std::net::SocketAddr;
 use std::path::PathBuf;
