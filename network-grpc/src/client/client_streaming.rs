@@ -1,8 +1,8 @@
-use crate::convert::{error_from_grpc, IntoProtobuf};
+use crate::convert::{error_from_grpc, error_into_grpc, IntoProtobuf};
 use network_core::error as core_error;
 
 use futures::prelude::*;
-use tower_grpc::{Code, Status};
+use tower_grpc::Status;
 
 use std::marker::PhantomData;
 
@@ -54,17 +54,14 @@ where
 
 impl<S, R> Stream for RequestStream<S, R>
 where
-    S: Stream,
+    S: Stream<Error = core_error::Error>,
     S::Item: IntoProtobuf<R>,
 {
     type Item = R;
     type Error = Status;
 
     fn poll(&mut self) -> Poll<Option<R>, Status> {
-        let maybe_item = try_ready!(self
-            .inner
-            .poll()
-            .map_err(|_| Status::new(Code::Unknown, "request stream failure")));
+        let maybe_item = try_ready!(self.inner.poll().map_err(error_into_grpc));
         let maybe_msg = maybe_item.map(|item| item.into_message()).transpose()?;
         Ok(Async::Ready(maybe_msg))
     }

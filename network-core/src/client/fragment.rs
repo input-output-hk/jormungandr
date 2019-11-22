@@ -46,5 +46,5 @@ pub trait FragmentService: P2pService {
     /// as a long-lived subscription handle.
     fn fragment_subscription<S>(&mut self, outbound: S) -> Self::FragmentSubscriptionFuture
     where
-        S: Stream<Item = Self::Fragment> + Send + 'static;
+        S: Stream<Item = Self::Fragment, Error = Error> + Send + 'static;
 }

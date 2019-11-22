@@ -216,7 +216,7 @@ where
 
     fn push_headers<S>(&mut self, headers: S) -> Self::PushHeadersFuture
     where
-        S: Stream<Item = P::Header> + Send + 'static,
+        S: Stream<Item = P::Header, Error = core_error::Error> + Send + 'static,
     {
         let stream = RequestStream::new(headers);
         let req = Request::new(stream);
@@ -226,7 +226,7 @@ where
 
     fn upload_blocks<S>(&mut self, blocks: S) -> Self::UploadBlocksFuture
     where
-        S: Stream<Item = P::Block> + Send + 'static,
+        S: Stream<Item = P::Block, Error = core_error::Error> + Send + 'static,
     {
         let rs = RequestStream::new(blocks);
         let req = Request::new(rs);
@@ -236,7 +236,7 @@ where
 
     fn block_subscription<Out>(&mut self, outbound: Out) -> Self::BlockSubscriptionFuture
     where
-        Out: Stream<Item = P::Header> + Send + 'static,
+        Out: Stream<Item = P::Header, Error = core_error::Error> + Send + 'static,
     {
         let req = self.new_subscription_request(outbound);
         let future = self.service.block_subscription(req);
@@ -266,7 +266,7 @@ where
 
     fn fragment_subscription<Out>(&mut self, outbound: Out) -> Self::FragmentSubscriptionFuture
     where
-        Out: Stream<Item = P::Fragment> + Send + 'static,
+        Out: Stream<Item = P::Fragment, Error = core_error::Error> + Send + 'static,
     {
         let req = self.new_subscription_request(outbound);
         let future = self.service.fragment_subscription(req);
@@ -285,7 +285,7 @@ where
 
     fn gossip_subscription<Out>(&mut self, outbound: Out) -> Self::GossipSubscriptionFuture
     where
-        Out: Stream<Item = Gossip<P::Node>> + Send + 'static,
+        Out: Stream<Item = Gossip<P::Node>, Error = core_error::Error> + Send + 'static,
     {
         let req = self.new_subscription_request(outbound);
         let future = self.service.gossip_subscription(req);

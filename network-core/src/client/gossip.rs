@@ -29,5 +29,5 @@ pub trait GossipService: P2pService {
     /// as a long-lived subscription handle.
     fn gossip_subscription<S>(&mut self, outbound: S) -> Self::GossipSubscriptionFuture
     where
-        S: Stream<Item = Gossip<Self::Node>> + Send + 'static;
+        S: Stream<Item = Gossip<Self::Node>, Error = Error> + Send + 'static;
 }

@@ -105,7 +105,7 @@ pub trait BlockService: P2pService {
     /// a `NotFound` error.
     fn push_headers<S>(&mut self, headers: S) -> Self::PushHeadersFuture
     where
-        S: Stream<Item = <Self::Block as HasHeader>::Header> + Send + 'static;
+        S: Stream<Item = <Self::Block as HasHeader>::Header, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `upload_blocks`.
     type UploadBlocksFuture: Future<Item = (), Error = Error>;
@@ -115,7 +115,7 @@ pub trait BlockService: P2pService {
     /// The blocks to send are retrieved asynchronously from the passed stream.
     fn upload_blocks<S>(&mut self, blocks: S) -> Self::UploadBlocksFuture
     where
-        S: Stream<Item = Self::Block> + Send + 'static;
+        S: Stream<Item = Self::Block, Error = Error> + Send + 'static;
 
     /// The type of asynchronous futures returned by method `block_subscription`.
     ///
@@ -137,7 +137,7 @@ pub trait BlockService: P2pService {
     /// as a long-lived subscription handle.
     fn block_subscription<S>(&mut self, outbound: S) -> Self::BlockSubscriptionFuture
     where
-        S: Stream<Item = <Self::Block as HasHeader>::Header> + Send + 'static;
+        S: Stream<Item = <Self::Block as HasHeader>::Header, Error = Error> + Send + 'static;
 }
 
 /// An error that the future returned by `BlockService::handshake` can
