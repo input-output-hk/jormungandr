@@ -100,7 +100,7 @@ pub fn e2e_stake_pool() {
 
     let long_wait = WaitBuilder::new()
         .tries(100)
-        .sleep_between_tries(60)
+        .sleep_between_tries(120)
         .build();
 
     //register stake pool

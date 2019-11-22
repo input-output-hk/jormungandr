@@ -92,8 +92,6 @@ pub fn create_new_stake_pool(
     let stake_pool_certificate_file =
         file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_certificate);
 
-    //  &owner_stake_key,
-
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)
         .assert_add_account(&account.address, &fee_value)
         .assert_add_certificate(&stake_pool_certificate)
