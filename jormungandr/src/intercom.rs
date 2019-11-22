@@ -159,6 +159,16 @@ impl<T> ReplyHandle<T> {
     pub fn reply_error(self, error: Error) {
         self.reply(Err(error))
     }
+
+    pub fn async_reply<Fut>(self, future: Fut) -> impl Future<Item = (), Error = ()>
+    where
+        Fut: Future<Item = T, Error = Error>,
+    {
+        future.then(move |res| {
+            self.reply(res);
+            Ok(())
+        })
+    }
 }
 
 pub struct ReplyFuture<T, E> {
@@ -193,7 +203,7 @@ where
     }
 }
 
-pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) {
+fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) {
     let (sender, receiver) = oneshot::channel();
     let future = ReplyFuture {
         receiver,
@@ -201,6 +211,64 @@ pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) 
         _phantom_error: PhantomData,
     };
     (ReplyHandle { sender }, future)
+}
+
+pub fn unary_future<T, R, E, F>(
+    mbox: MessageBox<T>,
+    logger: Logger,
+    make_msg: F,
+) -> RequestFuture<T, R, E>
+where
+    F: FnOnce(ReplyHandle<R>) -> T,
+{
+    let (reply_handle, reply_future) = unary_reply(logger.clone());
+    let msg = make_msg(reply_handle);
+    let send_task = mbox.into_send_task(msg, logger);
+    RequestFuture {
+        state: request_future::State::PendingSend(send_task),
+        reply_future,
+    }
+}
+
+pub struct RequestFuture<T, R, E> {
+    state: request_future::State<T>,
+    reply_future: ReplyFuture<R, E>,
+}
+
+mod request_future {
+    use super::Error;
+    use crate::utils::async_msg::SendTask;
+
+    pub enum State<T> {
+        PendingSend(SendTask<T>),
+        AwaitingReply,
+    }
+
+    pub fn mbox_error() -> Error {
+        Error::failed("failed to enqueue request for processing")
+    }
+}
+
+impl<T, R, E> Future for RequestFuture<T, R, E>
+where
+    E: From<Error>,
+{
+    type Item = R;
+    type Error = E;
+
+    fn poll(&mut self) -> Poll<R, E> {
+        use self::request_future::State;
+
+        loop {
+            match &mut self.state {
+                State::AwaitingReply => return self.reply_future.poll(),
+                State::PendingSend(future) => {
+                    try_ready!(future.poll().map_err(|()| request_future::mbox_error()));
+                    self.state = State::AwaitingReply;
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -214,32 +282,46 @@ impl fmt::Display for ReplySendError {
 
 impl error::Error for ReplySendError {}
 
-// FIXME: change to bounded Sender and implement Sink for it
 #[derive(Debug)]
 pub struct ReplyStreamHandle<T> {
-    sender: mpsc::UnboundedSender<Result<T, Error>>,
+    sender: mpsc::Sender<Result<T, Error>>,
 }
 
 impl<T> ReplyStreamHandle<T> {
-    pub fn send(&mut self, item: T) -> Result<(), ReplySendError> {
-        self.send_result(Ok(item))
+    pub fn async_reply<S>(self, stream: S) -> impl Future<Item = (), Error = ()>
+    where
+        S: Stream<Item = T, Error = Error>,
+    {
+        self.sender
+            .send_all(stream.then(Ok))
+            .map(|(_, _)| ())
+            .map_err(|_| ())
     }
 
-    pub fn send_error(&mut self, error: Error) -> Result<(), ReplySendError> {
-        self.send_result(Err(error))
+    pub fn async_error(self, err: Error) -> impl Future<Item = (), Error = ()> {
+        self.sender.send(Err(err)).map(|_| ()).map_err(|_| ())
+    }
+}
+
+impl<T> Sink for ReplyStreamHandle<T> {
+    type SinkItem = Result<T, Error>;
+    type SinkError = ReplySendError;
+
+    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, ReplySendError> {
+        self.sender.start_send(item).map_err(|_| ReplySendError)
     }
 
-    fn send_result(&mut self, res: Result<T, Error>) -> Result<(), ReplySendError> {
-        self.sender.unbounded_send(res).map_err(|_| ReplySendError)
+    fn poll_complete(&mut self) -> Poll<(), ReplySendError> {
+        self.sender.poll_complete().map_err(|_| ReplySendError)
     }
 
-    pub fn close(self) {
-        self.sender.wait().close().unwrap();
+    fn close(&mut self) -> Poll<(), ReplySendError> {
+        self.sender.close().map_err(|_| ReplySendError)
     }
 }
 
 pub struct ReplyStream<T, E> {
-    receiver: mpsc::UnboundedReceiver<Result<T, Error>>,
+    receiver: mpsc::Receiver<Result<T, Error>>,
     logger: Logger,
     _phantom_error: PhantomData<E>,
 }
@@ -269,29 +351,17 @@ where
     }
 }
 
-pub fn stream_reply<T, E>(logger: Logger) -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
-    let (sender, receiver) = mpsc::unbounded();
+pub fn stream_reply<T, E>(
+    buffer: usize,
+    logger: Logger,
+) -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
+    let (sender, receiver) = mpsc::channel(buffer);
     let stream = ReplyStream {
         receiver,
         logger,
         _phantom_error: PhantomData,
     };
     (ReplyStreamHandle { sender }, stream)
-}
-
-pub fn do_stream_reply<T, F>(mut handler: ReplyStreamHandle<T>, f: F)
-where
-    F: FnOnce(&mut ReplyStreamHandle<T>) -> Result<(), Error>,
-{
-    match f(&mut handler) {
-        Ok(()) => {}
-        Err(e) => {
-            if let Err(_) = handler.send_error(e) {
-                return;
-            }
-        }
-    };
-    handler.close();
 }
 
 #[derive(Debug)]

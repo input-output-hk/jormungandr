@@ -1,11 +1,10 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::{Storage, Tip};
-use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
-use crate::utils::task::{Input, ThreadServiceInfo};
+use crate::intercom::{ClientMsg, Error, ReplyStreamHandle};
+use crate::utils::task::{Input, TokioServiceInfo};
 use chain_core::property::HasHeader;
-use chain_storage::store;
 
-use futures::future::Either;
+use futures::future::{Either, FutureResult};
 use tokio::prelude::*;
 
 pub struct TaskData {
@@ -14,165 +13,203 @@ pub struct TaskData {
     pub blockchain_tip: Tip,
 }
 
-pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: Input<ClientMsg>) {
+enum TaskAction<
+    GetBlockTip,
+    GetHeaders,
+    GetHeadersRange,
+    GetBlocks,
+    GetBlocksRange,
+    PullBlocksToTip,
+> {
+    Shutdown(FutureResult<(), ()>),
+    GetBlockTip(GetBlockTip),
+    GetHeaders(GetHeaders),
+    GetHeadersRange(GetHeadersRange),
+    GetBlocks(GetBlocks),
+    GetBlocksRange(GetBlocksRange),
+    PullBlocksToTip(PullBlocksToTip),
+}
+
+impl<
+        GetBlockTip: Future<Item = (), Error = ()>,
+        GetHeaders: Future<Item = (), Error = ()>,
+        GetHeadersRange: Future<Item = (), Error = ()>,
+        GetBlocks: Future<Item = (), Error = ()>,
+        GetBlocksRange: Future<Item = (), Error = ()>,
+        PullBlocksToTip: Future<Item = (), Error = ()>,
+    > Future
+    for TaskAction<
+        GetBlockTip,
+        GetHeaders,
+        GetHeadersRange,
+        GetBlocks,
+        GetBlocksRange,
+        PullBlocksToTip,
+    >
+{
+    type Item = ();
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<(), ()> {
+        use self::TaskAction::*;
+
+        match self {
+            Shutdown(fut) => fut.poll(),
+            GetBlockTip(fut) => fut.poll(),
+            GetHeaders(fut) => fut.poll(),
+            GetHeadersRange(fut) => fut.poll(),
+            GetBlocks(fut) => fut.poll(),
+            GetBlocksRange(fut) => fut.poll(),
+            PullBlocksToTip(fut) => fut.poll(),
+        }
+    }
+}
+
+pub fn handle_input(
+    _info: &TokioServiceInfo,
+    task_data: &mut TaskData,
+    input: Input<ClientMsg>,
+) -> impl Future<Item = (), Error = ()> {
     let cquery = match input {
-        Input::Shutdown => return,
+        Input::Shutdown => return TaskAction::Shutdown(Ok(()).into()),
         Input::Input(msg) => msg,
     };
 
     match cquery {
-        ClientMsg::GetBlockTip(handler) => {
-            handler.reply(handle_get_block_tip(&task_data.blockchain_tip))
+        ClientMsg::GetBlockTip(handle) => {
+            TaskAction::GetBlockTip(handle.async_reply(get_block_tip(&task_data.blockchain_tip)))
         }
-        ClientMsg::GetHeaders(ids, handler) => do_stream_reply(handler, |handler| {
-            handle_get_headers(&task_data.storage, ids, handler)
-        }),
-        ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
-            do_stream_reply(handler, |handler| {
-                handle_get_headers_range(&task_data.storage, checkpoints, to, handler)
-            })
+        ClientMsg::GetHeaders(ids, handle) => {
+            TaskAction::GetHeaders(handle.async_reply(get_headers(task_data.storage.clone(), ids)))
         }
-        ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
-            handle_get_blocks(&task_data.storage, ids, handler)
-        }),
-        ClientMsg::GetBlocksRange(from, to, handler) => do_stream_reply(handler, |handler| {
-            handle_get_blocks_range(&task_data.storage, from, to, handler)
-        }),
-        ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
-            handle_pull_blocks_to_tip(&task_data.storage, &task_data.blockchain_tip, from, handler)
-        }),
+        ClientMsg::GetHeadersRange(checkpoints, to, handle) => TaskAction::GetHeadersRange(
+            handle_get_headers_range(task_data.storage.clone(), checkpoints, to, handle),
+        ),
+        ClientMsg::GetBlocks(ids, handle) => {
+            TaskAction::GetBlocks(handle.async_reply(get_blocks(task_data.storage.clone(), ids)))
+        }
+        ClientMsg::GetBlocksRange(from, to, handle) => TaskAction::GetBlocksRange(
+            handle_get_blocks_range(&task_data.storage, from, to, handle),
+        ),
+        ClientMsg::PullBlocksToTip(from, handle) => {
+            TaskAction::PullBlocksToTip(handle_pull_blocks_to_tip(
+                task_data.storage.clone(),
+                task_data.blockchain_tip.clone(),
+                from,
+                handle,
+            ))
+        }
     }
 }
 
-fn handle_get_block_tip(blockchain_tip: &Tip) -> Result<Header, Error> {
-    let blockchain_tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
-
-    Ok(blockchain_tip.header().clone())
+fn get_block_tip(blockchain_tip: &Tip) -> impl Future<Item = Header, Error = Error> {
+    blockchain_tip
+        .get_ref()
+        .map_err(|never| match never {})
+        .and_then(|tip| Ok(tip.header().clone()))
 }
 
-const MAX_HEADERS: u64 = 2000;
-
 fn handle_get_headers_range(
-    storage: &Storage,
+    storage: Storage,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
-    reply: &mut ReplyStreamHandle<Header>,
-) -> Result<(), Error> {
-    let future = storage
+    handle: ReplyStreamHandle<Header>,
+) -> impl Future<Item = (), Error = ()> {
+    storage
         .find_closest_ancestor(checkpoints, to)
-        .map_err(|e| e.into())
+        .map_err(Into::into)
         .and_then(move |maybe_ancestor| match maybe_ancestor {
-            Some(from) => Either::A(storage.stream_from_to(from, to).map_err(|e| e.into())),
+            Some(from) => Either::A(storage.stream_from_to(from, to).map_err(Into::into)),
             None => Either::B(future::err(Error::not_found(
                 "none of the checkpoints found in the local storage \
                  are ancestors of the requested end block",
             ))),
         })
-        .and_then(move |stream| {
-            // Send headers up to the maximum
-            stream
-                .map_err(|e| e.into())
-                .take(MAX_HEADERS)
-                .for_each(move |block| {
-                    reply
-                        .send(block.header())
-                        .map_err(|_| Error::failed("failed to send reply"))?;
-                    Ok(())
-                })
-        });
-
-    future.wait()
+        .then(move |res| match res {
+            Ok(stream) => {
+                let stream = stream.map_err(Into::into).map(move |block| block.header());
+                Either::A(handle.async_reply(stream))
+            }
+            Err(e) => Either::B(handle.async_error(e)),
+        })
 }
 
 fn handle_get_blocks_range(
     storage: &Storage,
     from: HeaderHash,
     to: HeaderHash,
-    reply: &mut ReplyStreamHandle<Block>,
-) -> Result<(), Error> {
-    // FIXME: remove double locking
-    let storage = storage.get_inner().wait().unwrap();
-
-    // FIXME: include the from block
-
-    for x in store::iterate_range(&*storage, &from, &to)? {
-        let info = x?;
-        let (blk, _) = storage.get_block(&info.block_hash)?;
-        if let Err(_) = reply.send(blk) {
-            break;
+    handle: ReplyStreamHandle<Block>,
+) -> impl Future<Item = (), Error = ()> {
+    storage.stream_from_to(from, to).then(move |res| match res {
+        Ok(stream) => {
+            let stream = stream.map_err(Into::into);
+            Either::A(handle.async_reply(stream))
         }
-    }
-
-    Ok(())
+        Err(e) => Either::B(handle.async_error(e.into())),
+    })
 }
 
-fn handle_get_blocks(
-    storage: &Storage,
-    ids: Vec<HeaderHash>,
-    reply: &mut ReplyStreamHandle<Block>,
-) -> Result<(), Error> {
-    for id in ids.into_iter() {
-        if let Some(blk) = storage.get(id).wait()? {
-            if let Err(_) = reply.send(blk) {
-                break;
-            }
-        } else {
-            // TODO: reply this hash was not found?
-        }
-    }
-
-    Ok(())
+fn get_blocks(storage: Storage, ids: Vec<HeaderHash>) -> impl Stream<Item = Block, Error = Error> {
+    stream::iter_ok(ids).and_then(move |id| {
+        storage
+            .get(id)
+            .map_err(Into::into)
+            .and_then(move |maybe_block| match maybe_block {
+                Some(block) => Ok(block),
+                None => Err(Error::not_found(format!(
+                    "block {} is not known to this node",
+                    id
+                ))),
+            })
+    })
 }
 
-fn handle_get_headers(
-    storage: &Storage,
+fn get_headers(
+    storage: Storage,
     ids: Vec<HeaderHash>,
-    reply: &mut ReplyStreamHandle<Header>,
-) -> Result<(), Error> {
-    for id in ids.into_iter() {
-        if let Some(blk) = storage.get(id).wait()? {
-            if let Err(_) = reply.send(blk.header()) {
-                break;
-            }
-        } else {
-            // TODO: reply this hash was not found?
-        }
-    }
-
-    Ok(())
+) -> impl Stream<Item = Header, Error = Error> {
+    stream::iter_ok(ids).and_then(move |id| {
+        storage
+            .get(id)
+            .map_err(Into::into)
+            .and_then(move |maybe_block| match maybe_block {
+                Some(block) => Ok(block.header()),
+                None => Err(Error::not_found(format!(
+                    "block {} is not known to this node",
+                    id
+                ))),
+            })
+    })
 }
 
 fn handle_pull_blocks_to_tip(
-    storage: &Storage,
-    blockchain_tip: &Tip,
+    storage: Storage,
+    blockchain_tip: Tip,
     checkpoints: Vec<HeaderHash>,
-    reply: &mut ReplyStreamHandle<Block>,
-) -> Result<(), Error> {
-    let tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
-    let tip_hash = tip.hash();
-
-    let future = storage
-        .find_closest_ancestor(checkpoints, tip_hash)
-        .map_err(|e| e.into())
-        .and_then(move |maybe_ancestor| match maybe_ancestor {
-            Some(from) => Either::A(storage.stream_from_to(from, tip_hash).map_err(|e| e.into())),
+    handle: ReplyStreamHandle<Block>,
+) -> impl Future<Item = (), Error = ()> {
+    blockchain_tip
+        .get_ref()
+        .map_err(|never| match never {})
+        .and_then(move |tip| {
+            let tip_hash = tip.hash();
+            storage
+                .find_closest_ancestor(checkpoints, tip_hash)
+                .map_err(Into::into)
+                .map(move |maybe_ancestor| (storage, maybe_ancestor, tip_hash))
+        })
+        .and_then(move |(storage, maybe_ancestor, to)| match maybe_ancestor {
+            Some(from) => Either::A(storage.stream_from_to(from, to).map_err(Into::into)),
             None => Either::B(future::err(Error::not_found(
                 "none of the checkpoints found in the local storage \
                  are ancestors of the current tip",
             ))),
         })
-        .and_then(move |stream| {
-            // Send headers up to the maximum
-            stream
-                .map_err(|e| e.into())
-                .take(MAX_HEADERS)
-                .for_each(move |block| {
-                    reply
-                        .send(block)
-                        .map_err(|_| Error::failed("failed to send reply"))?;
-                    Ok(())
-                })
-        });
-
-    future.wait()
+        .then(move |res| match res {
+            Ok(stream) => {
+                let stream = stream.map_err(Into::into);
+                Either::A(handle.async_reply(stream))
+            }
+            Err(e) => Either::B(handle.async_error(e)),
+        })
 }

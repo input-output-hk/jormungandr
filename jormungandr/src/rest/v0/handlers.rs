@@ -41,7 +41,10 @@ fn chain_tip_fut<'a>(context: &State<Context>) -> impl Future<Item = Arc<Ref>, E
 }
 
 fn chain_tip_fut_raw<'a>(context: &FullContext) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    context.blockchain_tip.get_ref()
+    context
+        .blockchain_tip
+        .get_ref()
+        .map_err(|never| match never {})
 }
 
 pub fn get_account_state(context: State<Context>, account_id_hex: Path<String>) -> ActixFuture!() {
@@ -372,14 +375,12 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
     context.try_full_fut()
         .and_then(move |full_context| context.logger().map(|logger| (full_context, logger)))
         .and_then(|(full_context, logger)| {
-        let (reply_handle, reply_future) = intercom::unary_reply::<_, intercom::Error>(logger);
-        full_context
-            .network_task
-            .clone()
-            .try_send(NetworkMsg::PeerStats(reply_handle))
-            .map_err(ErrorInternalServerError)
-            .into_future()
-            .and_then(move |_| reply_future.map_err(ErrorInternalServerError))
+            intercom::unary_future(
+                full_context.network_task.clone(),
+                logger,
+                |reply_handle| NetworkMsg::PeerStats(reply_handle),
+            )
+            .map_err(|e: intercom::Error| ErrorInternalServerError(e))
             .map(|peer_stats| {
                 let network_stats = peer_stats
                     .into_iter()
@@ -393,7 +394,7 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
                     .collect::<Vec<_>>();
                 Json(network_stats)
             })
-    })
+        })
 }
 
 pub fn get_utxo(context: State<Context>, path_params: Path<(String, u8)>) -> ActixFuture!() {

@@ -4,6 +4,7 @@
 use futures::prelude::*;
 use futures::sync::mpsc::{self, Receiver, Sender};
 pub use futures::sync::mpsc::{SendError, TrySendError};
+use slog::Logger;
 
 /// The output end of an in-memory FIFO channel.
 #[derive(Debug)]
@@ -42,6 +43,17 @@ impl<Msg> MessageBox<Msg> {
     pub fn poll_ready(&mut self) -> Poll<(), SendError<()>> {
         self.0.poll_ready()
     }
+
+    /// Makes a sending task from this message box instance, the message to
+    /// send, and a logger instance to report errors. The returned future
+    /// is suitable for spawning onto an executor.
+    pub fn into_send_task(self, msg: Msg, logger: Logger) -> SendTask<Msg> {
+        SendTask {
+            mbox: self,
+            pending: Some(msg),
+            logger,
+        }
+    }
 }
 
 impl<Msg> Sink for MessageBox<Msg> {
@@ -58,6 +70,51 @@ impl<Msg> Sink for MessageBox<Msg> {
 
     fn close(&mut self) -> Poll<(), SendError<Msg>> {
         self.0.close()
+    }
+}
+
+/// State for asynchronous sending of a message over a `MessageBox`
+/// that can be driven as a standalone task.
+pub struct SendTask<Msg> {
+    mbox: MessageBox<Msg>,
+    pending: Option<Msg>,
+    logger: Logger,
+}
+
+impl<Msg> SendTask<Msg> {
+    fn handle_mbox_error<T>(&self, err: SendError<T>) {
+        error!(
+            self.logger,
+            "failed to enqueue message for processing";
+            "reason" => %err,
+        )
+    }
+}
+
+impl<Msg> Future for SendTask<Msg> {
+    type Item = ();
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<(), ()> {
+        loop {
+            if self.pending.is_some() {
+                let msg = self.pending.take().unwrap();
+                let async_sink = self
+                    .mbox
+                    .start_send(msg)
+                    .map_err(|e| self.handle_mbox_error(e))?;
+                if let AsyncSink::NotReady(msg) = async_sink {
+                    self.pending = Some(msg);
+                    return Ok(Async::NotReady);
+                }
+            } else {
+                try_ready!(self
+                    .mbox
+                    .poll_complete()
+                    .map_err(|e| self.handle_mbox_error(e)));
+                return Ok(().into());
+            }
+        }
     }
 }
 

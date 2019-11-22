@@ -722,7 +722,10 @@ impl Blockchain {
         &self,
         branch: Branch,
     ) -> impl Future<Item = Checkpoints, Error = Error> {
-        branch.get_ref().map(Checkpoints::new_from)
+        branch
+            .get_ref()
+            .map(Checkpoints::new_from)
+            .map_err(|never| match never {})
     }
 }
 

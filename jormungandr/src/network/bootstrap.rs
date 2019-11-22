@@ -59,7 +59,7 @@ pub fn bootstrap_from_peer(
                 .ready()
                 .map_err(|e| Error::ClientNotReady { source: e })
         })
-        .join(branch.get_ref())
+        .join(branch.get_ref().map_err(|never| match never {}))
         .and_then(move |(mut client, tip)| {
             let tip_hash = tip.hash();
             debug!(logger, "pulling blocks starting from {}", tip_hash);
