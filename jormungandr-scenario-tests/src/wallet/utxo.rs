@@ -3,7 +3,6 @@ use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 
 pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519>;
-pub type Identifier = key::Identifier<chain_crypto::Ed25519>;
 
 /// wallet for an account
 #[derive(Debug, Clone)]
@@ -40,10 +39,6 @@ impl Wallet {
         self.signing_keys.push(key);
 
         self.signing_keys.get(self.signing_keys.len() - 1).unwrap()
-    }
-
-    pub fn signing_keys<'a>(&'a self) -> impl Iterator<Item = &'a SpendingKey> {
-        self.signing_keys.iter()
     }
 }
 

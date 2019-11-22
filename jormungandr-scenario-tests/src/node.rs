@@ -7,9 +7,8 @@ use chain_impl_mockchain::{
 };
 use indicatif::ProgressBar;
 use jormungandr_integration_tests::mock::{client::JormungandrClient, read_into};
-use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus, Stats};
-#[macro_use]
 use jormungandr_integration_tests::response_to_vec;
+use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus, Stats};
 use rand_core::RngCore;
 use std::{
     collections::HashMap,

@@ -58,13 +58,13 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader1.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
-    let wallet2 = controller.wallet("delegated1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
-        40,
+        10,
         &mut controller,
         &mut wallet1,
-        &wallet2,
+        &mut wallet2,
         &leader1,
     )?;
 
@@ -121,13 +121,13 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
-    let wallet2 = controller.wallet("delegated1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
-        &wallet2,
+        &mut wallet2,
         &leader1,
     )?;
 
@@ -160,7 +160,7 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             leaders = [ LEADER_1 ],
             initials = [
                 account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_5,
+                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
             ],
         }
     };
@@ -183,13 +183,13 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
-    let wallet2 = controller.wallet("delegated1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
-        &wallet2,
+        &mut wallet2,
         &leader1,
     )?;
 
@@ -248,13 +248,13 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
-    let wallet2 = controller.wallet("delegated1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
-        &wallet2,
+        &mut wallet2,
         &leader1,
     )?;
 
@@ -308,13 +308,13 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader1.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
-    let wallet2 = controller.wallet("delegated1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
-        &wallet2,
+        &mut wallet2,
         &leader1,
     )?;
 
@@ -381,13 +381,13 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
-    let wallet2 = controller.wallet("delegated1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
 
     utils::sending_transactions_to_node_sequentially(
         40,
         &mut controller,
         &mut wallet1,
-        &wallet2,
+        &mut wallet2,
         &leader1,
     )?;
 
@@ -486,41 +486,30 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet6 = controller.wallet("delegated6")?;
     let mut wallet7 = controller.wallet("delegated7")?;
 
-    for _ in 0..100 {
+    for _ in 0..10 {
         let check1 = controller.wallet_send_to(&mut wallet1, &wallet2, &leader1, 1_000.into())?;
-
         let check2 = controller.wallet_send_to(&mut wallet2, &wallet1, &leader2, 1_000.into())?;
-
         let check3 = controller.wallet_send_to(&mut wallet3, &wallet4, &leader3, 1_000.into())?;
-
         let check4 = controller.wallet_send_to(&mut wallet4, &wallet3, &leader4, 1_000.into())?;
-
         let check5 = controller.wallet_send_to(&mut wallet5, &wallet6, &leader5, 1_000.into())?;
-
         let check6 = controller.wallet_send_to(&mut wallet6, &wallet1, &leader6, 1_000.into())?;
-
         let check7 = controller.wallet_send_to(&mut wallet7, &wallet6, &leader7, 1_000.into())?;
 
-        let mut statuses = Vec::new();
-        statuses.push(leader1.wait_fragment(Duration::from_secs(2), check1));
-        statuses.push(leader2.wait_fragment(Duration::from_secs(2), check2));
+        let status1 = leader1.wait_fragment(Duration::from_secs(2), check1)?;
+        let status2 = leader2.wait_fragment(Duration::from_secs(2), check2)?;
+        let status3 = leader3.wait_fragment(Duration::from_secs(2), check3)?;
+        let status4 = leader4.wait_fragment(Duration::from_secs(2), check4)?;
+        let status5 = leader5.wait_fragment(Duration::from_secs(2), check5)?;
+        let status6 = leader6.wait_fragment(Duration::from_secs(2), check6)?;
+        let status7 = leader7.wait_fragment(Duration::from_secs(2), check7)?;
 
-        statuses.push(leader3.wait_fragment(Duration::from_secs(2), check3));
-        statuses.push(leader4.wait_fragment(Duration::from_secs(2), check4));
-        statuses.push(leader5.wait_fragment(Duration::from_secs(2), check5));
-        statuses.push(leader6.wait_fragment(Duration::from_secs(2), check6));
-        statuses.push(leader7.wait_fragment(Duration::from_secs(2), check7));
-
-        if statuses.iter().any(|x| x.is_err()) {
-            break;
-        }
-
-        if statuses
-            .iter()
-            .any(|x| !x.as_ref().unwrap().is_in_a_block())
-        {
-            break;
-        }
+        utils::assert_is_in_block(status1, &leader1)?;
+        utils::assert_is_in_block(status2, &leader2)?;
+        utils::assert_is_in_block(status3, &leader3)?;
+        utils::assert_is_in_block(status4, &leader4)?;
+        utils::assert_is_in_block(status5, &leader5)?;
+        utils::assert_is_in_block(status6, &leader6)?;
+        utils::assert_is_in_block(status7, &leader7)?;
 
         wallet1.confirm_transaction();
         wallet2.confirm_transaction();
