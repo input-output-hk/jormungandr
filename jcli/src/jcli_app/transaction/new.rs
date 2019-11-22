@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-use jcli_app::transaction::{common, staging::Staging, Error};
+use crate::jcli_app::transaction::{common, staging::Staging, Error};
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]

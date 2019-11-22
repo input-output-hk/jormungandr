@@ -56,6 +56,7 @@ Description of the fields:
         - `backend`: _hostname_:_port_ of a GELF server
         - `log_id`: identifier of the source of the log, for the `host` field
                     in the messages.
+      - `file`: path to the log file.
 - `rest`: (optional) Configuration of the REST endpoint.
     - `listen`: _address_:_port_ to listen for requests
     - `pkcs12`: (optional) Certificate file
@@ -83,6 +84,9 @@ Description of the fields:
       this node should maintain.
 - `explorer`: (optional) Explorer settings
     - `enabled`: True or false
+- `no_blockchain_updates_warning_interval`: (optional, seconds) if no new blocks
+  were received after this period of time, the node will start sending you
+  warnings in the logs.
 
 [multiaddr]: https://github.com/multiformats/multiaddr
 

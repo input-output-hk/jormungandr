@@ -1,6 +1,6 @@
 [package]
 name = "jcli"
-version = "0.7.0-rc7"
+version = "0.7.1"
 authors = [ "dev@iohk.io" ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/input-output-hk/jormungandr"
@@ -9,6 +9,7 @@ documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
 description = """
 Midgard Serpent
 """
+edition = "2018"
 
 [dependencies]
 rand = "0.6"
@@ -31,10 +32,10 @@ chain-time    = { path = "../chain-deps/chain-time" }
 reqwest = "0.9.11"
 custom_error = "1.7"
 jormungandr-lib = { path = "../jormungandr-lib" }
-strfmt = "0.1"
 gtmpl = "0.5.6"
 openapiv3 = "0.3.0"
 valico = "3.1.0"
+ed25519-bip32 = "0.1"
 
 [dependencies.clap]
 version = "2.32"

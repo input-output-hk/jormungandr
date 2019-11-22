@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr"
-version = "0.7.0-rc7"
+version = "0.7.1"
 authors = [ "dev@iohk.io" ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/input-output-hk/jormungandr"
@@ -9,6 +9,7 @@ documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
 description = """
 Midgard Serpent
 """
+edition = "2018"
 
 [dependencies]
 actix-net = "0.2.6"
@@ -24,6 +25,7 @@ chain-storage   = { path = "../chain-deps/chain-storage" }
 chain-storage-sqlite = { path = "../chain-deps/chain-storage-sqlite" }
 chain-time      = { path = "../chain-deps/chain-time" }
 chain-addr = { path = "../chain-deps/chain-addr" }
+cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 custom_error = "1.7"
 error-chain = "0.12"
@@ -37,7 +39,7 @@ linked-hash-map = "0.5"
 native-tls = "0.2.2"
 network-core    = { path = "../chain-deps/network-core" }
 network-grpc    = { path = "../chain-deps/network-grpc" }
-poldercast = "0.9.7"
+poldercast = "0.9.9"
 rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"

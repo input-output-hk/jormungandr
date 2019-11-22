@@ -8,10 +8,11 @@ use crate::{
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
     block::ConsensusVersion,
+    certificate::{PoolPermissions, PoolSignature},
     fee::LinearFee,
     key::EitherEd25519SecretKey,
     rewards::TaxType,
-    transaction::{AccountBindingSignature, TxBuilder},
+    transaction::{SingleAccountBindingSignature, TxBuilder},
 };
 use chain_time::DurationSeconds;
 use jormungandr_lib::{
@@ -201,10 +202,12 @@ impl Settings {
                         );
                         let stake_pool_info = PoolRegistration {
                             serial,
-                            management_threshold: 1,
+                            permissions: PoolPermissions::new(1),
                             start_validity: DurationSeconds(0).into(),
                             owners: vec![owner.to_public()],
+                            operators: vec![].into(),
                             rewards: TaxType::zero(),
+                            reward_account: None,
                             keys: GenesisPraosLeader {
                                 kes_public_key: kes_signing_key.identifier().into_public_key(),
                                 vrf_public_key: vrf_signing_key.identifier().into_public_key(),
@@ -225,7 +228,7 @@ impl Settings {
                             .set_ios(&[], &[])
                             .set_witnesses(&[]);
                         let auth_data = txb.get_auth_data();
-                        let sig0 = AccountBindingSignature::new(
+                        let sig0 = SingleAccountBindingSignature::new(
                             &EitherEd25519SecretKey::Normal(owner),
                             &auth_data,
                         );
@@ -234,7 +237,10 @@ impl Settings {
                         };
 
                         let stake_pool_registration_certificate =
-                            SignedCertificate::PoolRegistration(stake_pool_info, owner_signed);
+                            SignedCertificate::PoolRegistration(
+                                stake_pool_info,
+                                PoolSignature::Owners(owner_signed),
+                            );
 
                         self.block0
                             .initial

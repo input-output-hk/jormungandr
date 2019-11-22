@@ -1,4 +1,4 @@
-use jcli_app::transaction::{common, Error};
+use crate::jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces::Certificate;
 use structopt::StructOpt;
 

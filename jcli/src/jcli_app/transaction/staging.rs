@@ -1,7 +1,10 @@
+use crate::jcli_app::certificate::{pool_owner_sign, stake_delegation_account_binding_sign};
+use crate::jcli_app::transaction::Error;
+use crate::jcli_app::utils::io;
 use chain_addr::Address;
 use chain_impl_mockchain::{
     self as chain,
-    certificate::{Certificate, CertificatePayload, SignedCertificate},
+    certificate::{Certificate, CertificatePayload, PoolSignature, SignedCertificate},
     fee::FeeAlgorithm,
     fragment::Fragment,
     transaction::{
@@ -10,9 +13,6 @@ use chain_impl_mockchain::{
     },
     value::{Value, ValueError},
 };
-use jcli_app::certificate::{pool_owner_sign, stake_delegation_account_binding_sign};
-use jcli_app::transaction::Error;
-use jcli_app::utils::io;
 use jormungandr_lib::interfaces;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -136,7 +136,7 @@ impl Staging {
                     let pool_reg = Some(&sclone);
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
                     let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
-                        SignedCertificate::PoolRegistration(p, pos)
+                        SignedCertificate::PoolRegistration(p, PoolSignature::Owners(pos))
                     })
                     .map_err(|e| Error::CertificateError { error: e })?;
                     self.extra_authed = Some(sc.into())
@@ -145,7 +145,7 @@ impl Staging {
                     let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
                     let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
-                        SignedCertificate::PoolRetirement(p, pos)
+                        SignedCertificate::PoolRetirement(p, PoolSignature::Owners(pos))
                     })
                     .map_err(|e| Error::CertificateError { error: e })?;
                     self.extra_authed = Some(sc.into())
@@ -154,7 +154,7 @@ impl Staging {
                     let pool_reg = None; // TODO eventually ask for optional extra registration cert to do a better job
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
                     let sc = pool_owner_sign(s, pool_reg, keys, builder, |p, pos| {
-                        SignedCertificate::PoolUpdate(p, pos)
+                        SignedCertificate::PoolUpdate(p, PoolSignature::Owners(pos))
                     })
                     .map_err(|e| Error::CertificateError { error: e })?;
                     self.extra_authed = Some(sc.into())

@@ -58,11 +58,11 @@ if(![System.IO.File]::Exists($WORKDIR+"\"+$CLI)){
 	# if there is no jcli.exe we download the latest release for Windows
 	write-host "`n`nThere is no jcli.exe`nShould I download the latest release $latestReleaseTag ?" -ForegroundColor Yellow
 	$Readhost = read-host "( Y / n )"
-    Switch ($ReadHost) 
-    { 
-       Y {Write-host "Yes, download"; $DoUpdate=$true} 
-       N {Write-Host "No, keep existing executables"; $DoUpdate=$false} 
-       Default {Write-Host "Default, download"; $DoUpdate=$true} 
+    Switch ($ReadHost)
+    {
+       Y {Write-host "Yes, download"; $DoUpdate=$true}
+       N {Write-Host "No, keep existing executables"; $DoUpdate=$false}
+       Default {Write-Host "Default, download"; $DoUpdate=$true}
     }
 	if ($DoUpdate) {
 		$assetsJson = curl $latestReleaseJson.assets_url | ConvertFrom-Json
@@ -81,7 +81,7 @@ if(![System.IO.File]::Exists($WORKDIR+"\"+$CLI)){
 		write-host "No executables no fun." -ForegroundColor RED
 		exit
 	}
-	
+
 } else {
 	# if there is already a jcli.exe compare it's version with the latest available release
 	$MYCLIVER= & $MYCLI --version
@@ -89,11 +89,11 @@ if(![System.IO.File]::Exists($WORKDIR+"\"+$CLI)){
 	if ($MYCLIVER -ne $latestReleaseTag) {
 		write-host "`n`There is  JCLI $MYCLIVER in use.`nShould I upgrade to $latestReleaseTag ?" -ForegroundColor Yellow
 		$Readhost = read-host "( Y / n )"
-		Switch ($ReadHost) 
-		{ 
-		   Y {Write-host "Yes, update"; $DoUpdate=$true} 
-		   N {Write-Host "No, do nothing"; $DoUpdate=$false} 
-		   Default {Write-Host "Default, update"; $DoUpdate=$true} 
+		Switch ($ReadHost)
+		{
+		   Y {Write-host "Yes, update"; $DoUpdate=$true}
+		   N {Write-Host "No, do nothing"; $DoUpdate=$false}
+		   Default {Write-Host "Default, update"; $DoUpdate=$true}
 		}
 		if ($DoUpdate) {
 			$assetsJson = curl $latestReleaseJson.assets_url | ConvertFrom-Json
@@ -109,62 +109,62 @@ if(![System.IO.File]::Exists($WORKDIR+"\"+$CLI)){
 					Remove-Item $WORKDIR\latestAsset.zip
 				}
 			}
-		} 
+		}
 		$MYCLIVER= & $MYCLI --version
-		
+
 	}
 }
 
 ### MAKE EVERYTHING
 
-if([System.IO.File]::Exists($MYCLI)){ 
-	
+if([System.IO.File]::Exists($MYCLI)){
+
 	$MYCLIVER= & $MYCLI --version
 	write-host "Using $MYCLIVER"
 
 	# create or clean the CONFIG folder
-	if(![System.IO.Directory]::Exists($WORKDIR+"\"+$CONFIG_PATH)){ 
+	if(![System.IO.Directory]::Exists($WORKDIR+"\"+$CONFIG_PATH)){
 		[System.IO.Directory]::CreateDirectory($WORKDIR+"\"+$CONFIG_PATH)
 	} else {
-		Write-host "Found an existing CONFIG folder ($CONFIG_PATH) Remove it? (Default is Yes)" -ForegroundColor Yellow 
-    $Readhost = Read-Host " ( Y / n ) " 
-    Switch ($ReadHost) 
-     { 
-       Y {Write-host "Yes, Remove former configuration"; $RemoveConfig=$false} 
-       N {Write-Host "No, keep existing configuration"; $RemoveConfig=$true} 
-       Default {Write-Host "Default, Remove former configuration"; $RemoveConfig=$false} 
+		Write-host "Found an existing CONFIG folder ($CONFIG_PATH) Remove it? (Default is Yes)" -ForegroundColor Yellow
+    $Readhost = Read-Host " ( Y / n ) "
+    Switch ($ReadHost)
+     {
+       Y {Write-host "Yes, Remove former configuration"; $RemoveConfig=$false}
+       N {Write-Host "No, keep existing configuration"; $RemoveConfig=$true}
+       Default {Write-Host "Default, Remove former configuration"; $RemoveConfig=$false}
      }
 		if(!$RemoveConfig) {
 			Get-ChildItem $WORKDIR"\"$CONFIG_PATH -Recurse | Remove-Item -Force
 		}
 	}
 	# create or clean the DATA folder
-	if(![System.IO.Directory]::Exists($WORKDIR+"\"+$DATA_PATH)){ 
+	if(![System.IO.Directory]::Exists($WORKDIR+"\"+$DATA_PATH)){
 		[System.IO.Directory]::CreateDirectory($WORKDIR+"\"+$DATA_PATH)
 	} else {
-		Write-host "Found an existing DATA folder ($DATA_PATH) Remove it? (Default is Yes)" -ForegroundColor Yellow 
-    $Readhost = Read-Host " ( Y / n ) " 
-    Switch ($ReadHost) 
-     { 
-       Y {Write-host "Yes, remove former database"; $RemoveData=$false} 
-       N {Write-Host "No, keep existing database"; $RemoveData=$true} 
-       Default {Write-Host "Default, remove former database"; $RemoveData=$false} 
+		Write-host "Found an existing DATA folder ($DATA_PATH) Remove it? (Default is Yes)" -ForegroundColor Yellow
+    $Readhost = Read-Host " ( Y / n ) "
+    Switch ($ReadHost)
+     {
+       Y {Write-host "Yes, remove former database"; $RemoveData=$false}
+       N {Write-Host "No, keep existing database"; $RemoveData=$true}
+       Default {Write-Host "Default, remove former database"; $RemoveData=$false}
      }
 		if($RemoveData) {
 			Get-ChildItem $WORKDIR"\"$DATA_PATH -Recurse | Remove-Item -Force
 		}
 	}
 	# create or clean an existing SECRET folder
-	if(![System.IO.Directory]::Exists($WORKDIR+"\"+$SECRET_PATH)){ 
+	if(![System.IO.Directory]::Exists($WORKDIR+"\"+$SECRET_PATH)){
 		[System.IO.Directory]::CreateDirectory($WORKDIR+"\"+$SECRET_PATH)
 	} else {
-		Write-host "Found an existing SECRET folder ($SECRET_PATH) Remove it? (Default is Yes)" -ForegroundColor Yellow 
-    $Readhost = Read-Host " ( y / n ) " 
-    Switch ($ReadHost) 
-     { 
-       Y {Write-host "Yes, Remove former secrets"; $RemoveSecrets=$false} 
-       N {Write-Host "No, keep existing secrets"; $RemoveSecrets=$true} 
-       Default {Write-Host "Default, Remove former secrets"; $RemoveSecrets=$false} 
+		Write-host "Found an existing SECRET folder ($SECRET_PATH) Remove it? (Default is Yes)" -ForegroundColor Yellow
+    $Readhost = Read-Host " ( y / n ) "
+    Switch ($ReadHost)
+     {
+       Y {Write-host "Yes, Remove former secrets"; $RemoveSecrets=$false}
+       N {Write-Host "No, keep existing secrets"; $RemoveSecrets=$true}
+       Default {Write-Host "Default, Remove former secrets"; $RemoveSecrets=$false}
      }
 		if(!$RemoveSecrets) {
 			Get-ChildItem $WORKDIR"\"$SECRET_PATH -Recurse | Remove-Item -Force
@@ -185,13 +185,13 @@ if([System.IO.File]::Exists($MYCLI)){
 	$FIXED_PK = echo $FIXED_SK | & $MYCLI key to-public
 	$FIXED_ADDR= & $MYCLI address account ${ADDRTYPE} ${FIXED_PK}
 	write-host "Fixed keys: done" -ForegroundColor DarkGreen
-	
+
 	# leader
 	$LEADER_SK = & $MYCLI key generate --type=Ed25519
 	write-host "LEADER_SK" -ForegroundColor DarkGreen
 	$LEADER_PK = echo $LEADER_SK | & $MYCLI key to-public
 	write-host "LEADER_PK ($LEADER_PK)" -ForegroundColor DarkGreen
-	write-host "leader keys: done" -ForegroundColor DarkGreen 
+	write-host "leader keys: done" -ForegroundColor DarkGreen
 
 	# stake pool
 	$POOL_VRF_SK = & $MYCLI key generate --type=Curve25519_2HashDH
@@ -219,15 +219,15 @@ if([System.IO.File]::Exists($MYCLI)){
 	$STAKE_POOL_ID = echo $STAKEPOOLCERTSIGN | & $MYCLI certificate get-stake-pool-id
 	write-host "stake-pool-registration certificate: done" -ForegroundColor DarkGreen
 
-	$STAKEDELEGATION1 = & $MYCLI certificate new stake-delegation $STAKE_POOL_ID $FAUCET_PK 
+	$STAKEDELEGATION1 = & $MYCLI certificate new stake-delegation $FAUCET_PK $STAKE_POOL_ID
 	echo $STAKEDELEGATION1 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation1.cert -Encoding Oem
-	$STAKEDELEGATIONSIGN1 = $STAKEDELEGATION1 | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\stake_key.sk 
+	$STAKEDELEGATIONSIGN1 = $STAKEDELEGATION1 | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\stake_key.sk
 	echo $STAKEDELEGATIONSIGN1 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation1.signcert -Encoding Oem
 	write-host "stake-pool-delegation certificate 1: done" -ForegroundColor DarkGreen
 
-	$STAKEDELEGATION2 = & $MYCLI certificate new stake-delegation $STAKE_POOL_ID $FIXED_PK
+	$STAKEDELEGATION2 = & $MYCLI certificate new stake-delegation $FIXED_PK $STAKE_POOL_ID
 	echo $STAKEDELEGATION2 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation2.cert -Encoding Oem
-	$STAKEDELEGATIONSIGN2 = $STAKEDELEGATION2 | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\fixed_key.sk 
+	$STAKEDELEGATIONSIGN2 = $STAKEDELEGATION2 | & $MYCLI certificate sign -k $WORKDIR"\"$SECRET_PATH\fixed_key.sk
 	echo $STAKEDELEGATIONSIGN2 | Out-File $WORKDIR"\"$SECRET_PATH\stake_delegation2.signcert -Encoding Oem
 	write-host "stake-pool-delegation certificate 2: done" -ForegroundColor DarkGreen
 
@@ -274,7 +274,7 @@ p2p:
     messages: low
     blocks: normal" | Out-File $WORKDIR"\"$CONFIG_PATH\config.yaml -Encoding Oem
 		write-host "configuration file: done" -ForegroundColor DarkGreen
-	}	
+	}
 
 	if(!$KeepSecrets) {
 "genesis:
@@ -287,18 +287,18 @@ p2p:
 		write-host "genesis block binary encoded: done" -ForegroundColor DarkGreen
 	}
 
-    $Readhost = Read-Host "Do you want to start it now?  ( y / N ) " 
-    Switch ($ReadHost) 
-    { 
-		Y { 
+    $Readhost = Read-Host "Do you want to start it now?  ( y / N ) "
+    Switch ($ReadHost)
+    {
+		Y {
 			& $MYNODE --genesis-block $CONFIG_PATH\block-0.bin --config $CONFIG_PATH\config.yaml --secret $SECRET_PATH\poolsecret1.yaml
-		} 
-		Default { 	
+		}
+		Default {
 			write-host "OK. To manually start the node:"  -ForegroundColor GREEN
 			write-host "./$NODE --genesis-block $CONFIG_PATH\block-0.bin --config $CONFIG_PATH\config.yaml --secret $SECRET_PATH\poolsecret1.yaml" -ForegroundColor GREEN
-		} 
+		}
      }
 
-} else { 
+} else {
 	write-host "ERROR: $MYCLI not found" -ForegroundColor RED
 }

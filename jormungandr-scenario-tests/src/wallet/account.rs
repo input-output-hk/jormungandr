@@ -5,8 +5,8 @@ use chain_impl_mockchain::{
     certificate::{PoolId, SignedCertificate, StakeDelegation},
     fee::{FeeAlgorithm, LinearFee},
     transaction::{
-        AccountBindingSignature, AccountIdentifier, Balance, Input, InputOutputBuilder, Payload,
-        PayloadSlice, TransactionSignDataHash, TxBuilder, Witness,
+        AccountBindingSignature, Balance, Input, InputOutputBuilder, Payload, PayloadSlice,
+        TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier, Witness,
     },
 };
 use jormungandr_lib::{
@@ -63,8 +63,8 @@ impl Wallet {
         &self.internal_counter
     }
 
-    pub fn stake_key(&self) -> AccountIdentifier {
-        AccountIdentifier::from_single_account(self.identifier().clone().to_inner())
+    pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {
+        UnspecifiedAccountIdentifier::from_single_account(self.identifier().clone().to_inner())
     }
 
     pub fn identifier(&self) -> &Identifier {
@@ -86,7 +86,7 @@ impl Wallet {
             .set_witnesses(&[]);
         let auth_data = txb.get_auth_data();
 
-        let sig = AccountBindingSignature::new(self.signing_key.as_ref(), &auth_data);
+        let sig = AccountBindingSignature::new_single(self.signing_key.as_ref(), &auth_data);
         SignedCertificate::StakeDelegation(stake_delegation, sig)
     }
 

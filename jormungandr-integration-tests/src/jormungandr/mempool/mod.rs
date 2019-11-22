@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::{genesis_model::Fund, node_config_model::TrustedPeer},
+    configuration::genesis_model::Fund,
     jcli_wrapper::{self, JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, Starter},
     process_utils, startup,
@@ -10,8 +10,8 @@ use std::time::Duration;
 
 #[test]
 pub fn test_log_ttl() {
-    let mut sender = startup::create_new_account_address();
-    let mut reciever = startup::create_new_account_address();
+    let sender = startup::create_new_account_address();
+    let reciever = startup::create_new_account_address();
 
     let log_ttl_timeout = 15;
     let garbage_collection_interval = 2;

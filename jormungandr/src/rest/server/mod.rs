@@ -5,7 +5,6 @@ mod error;
 
 pub use self::error::Error;
 
-use crate::utils::drop_watchdog::{DropTripwire, DropWatchdog};
 use actix_net::server::Server as ActixServer;
 use actix_web::{
     actix::{Addr, System},
@@ -16,8 +15,6 @@ use std::{
     fs,
     net::{SocketAddr, ToSocketAddrs},
     path::PathBuf,
-    sync::mpsc::sync_channel,
-    thread,
 };
 
 pub type ServerResult<T> = Result<T, Error>;
@@ -25,44 +22,30 @@ pub type ServerResult<T> = Result<T, Error>;
 #[derive(Clone)]
 pub struct Server {
     addr: Addr<ActixServer>,
-    shutdown_watchdog: DropWatchdog,
 }
 
 impl Server {
-    pub fn start<F, H>(
+    pub fn run<F, H>(
         pkcs12: Option<PathBuf>,
         address: SocketAddr,
         handler: F,
-    ) -> ServerResult<Self>
+        server_receiver: impl FnOnce(Server),
+    ) -> ServerResult<()>
     where
         F: Fn() -> H + Clone + Send + 'static,
         H: IntoHttpHandler + 'static,
     {
         let tls = load_tls_acceptor(pkcs12)?;
-        let (sender, receiver) = sync_channel::<ServerResult<Server>>(0);
-        thread::spawn(move || {
-            let actix_system = System::builder().build();
-            let shutdown_tripwire = DropTripwire::new();
-            let server_res =
-                start_server_curr_actix_system(address, tls, handler).map(|addr| Server {
-                    addr,
-                    shutdown_watchdog: shutdown_tripwire.watchdog(),
-                });
-            let run_system = server_res.is_ok();
-            let _ = sender.send(server_res);
-            if run_system {
-                actix_system.run();
-            }
-        });
-        receiver.recv().unwrap()
+        let actix_system = System::builder().build();
+        let addr = start_server_curr_actix_system(address, tls, handler)?;
+        let server = Server { addr };
+        server_receiver(server);
+        actix_system.run();
+        Ok(())
     }
 
     pub fn stop(&self) {
         self.addr.do_send(StopServer { graceful: false })
-    }
-
-    pub fn wait_for_stop(&self) {
-        self.shutdown_watchdog.wait()
     }
 }
 

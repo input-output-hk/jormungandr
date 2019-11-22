@@ -1,0 +1,84 @@
+#!/bin/sh
+set -e
+set -u
+
+### TEMPLATE
+CLI="####CLI####"
+REST_URL="####REST_URL####"
+BLOCK0_HASH="####BLOCK0_HASH####"
+ADDRTYPE="####ADDRTYPE####"
+FEE_CONSTANT="####FEE_CONSTANT####"
+FEE_CERTIFICATE="####FEE_CERTIFICATE####"
+FEE_COEFFICIENT="####FEE_COEFFICIENT####"
+# tx is broadcasted by the faucet account
+BROADCASTER_SK="####FAUCET_SK####"
+
+if [ ${#} -gt 1 ]; then
+    echo "usage: ./faucet-send-certificate.sh [pool_leader_sk]"
+    echo "if a pool owner isnt provided, itll default to the faucet account"
+    exit 1
+fi
+
+if [ ${#} -eq 1 ]; then
+    LEADER_SK=${1}
+else
+    LEADER_SK=${BROADCASTER_SK}
+fi
+
+BROADCASTER_PK=$(echo ${BROADCASTER_SK} | $CLI key to-public)
+BROADCASTER_ADDR=$(echo "${BROADCASTER_PK}" | xargs $CLI address account "${ADDRTYPE}")
+BROADCASTER_SK_FILE="broadcaster.sk"
+echo ${BROADCASTER_SK} > ${BROADCASTER_SK_FILE}
+
+BROADCASTER_COUNTER=$($CLI rest v0 account get "${BROADCASTER_ADDR}" --host ${REST_URL}|grep counter |cut -f 2 -d ' ')
+
+# leader
+LEADER_SK=$($CLI key generate --type=Ed25519)
+LEADER_PK=$(echo "${LEADER_SK}" | $CLI key to-public)
+
+# stake pool
+POOL_VRF_SK=$($CLI key generate --type=Curve25519_2HashDH)
+POOL_KES_SK=$($CLI key generate --type=SumEd25519_12)
+
+POOL_VRF_PK=$(echo "${POOL_VRF_SK}" | $CLI key to-public)
+POOL_KES_PK=$(echo "${POOL_KES_SK}" | $CLI key to-public)
+
+LEADER_SK_FILE="stake_key.sk"
+echo "${LEADER_SK}" > ${LEADER_SK_FILE}
+
+$CLI certificate new stake-pool-registration \
+    --management-threshold 1 \
+    --start-validity 0 \
+    --owner "${LEADER_PK}" \
+    --kes-key "${POOL_KES_PK}" \
+    --vrf-key "${POOL_VRF_PK}" \
+    --serial 1010101010 > stake_pool.cert
+
+CERTIFICATE_FILE="stake_pool.cert"
+
+TRANSACTION_FILE=tx.staging
+WITNESS_FILE=transaction.witness
+
+# the fee to post the new certificate, the coefficient is just
+# multiplied by one because we only have one input
+POST_CERTIFICATE_FEE=$((FEE_CONSTANT + FEE_CERTIFICATE + FEE_COEFFICIENT))
+
+$CLI transaction new --staging=${TRANSACTION_FILE}
+$CLI transaction add-account --staging=${TRANSACTION_FILE} "${BROADCASTER_ADDR}" "${POST_CERTIFICATE_FEE}"
+$CLI transaction add-certificate --staging=${TRANSACTION_FILE} "$(cat "${CERTIFICATE_FILE}")"
+$CLI transaction finalize --staging=${TRANSACTION_FILE}
+
+TRANSACTION_ID=$($CLI transaction data-for-witness --staging=${TRANSACTION_FILE})
+
+# create the witness
+$CLI transaction make-witness "${TRANSACTION_ID}" \
+    --genesis-block-hash "${BLOCK0_HASH}" \
+    --type "account" --account-spending-counter "${BROADCASTER_COUNTER}" \
+    "${WITNESS_FILE}" "${BROADCASTER_SK_FILE}"
+$CLI transaction add-witness --staging=${TRANSACTION_FILE} "${WITNESS_FILE}"
+
+$CLI transaction seal --staging=${TRANSACTION_FILE}
+
+$CLI transaction auth --key=${LEADER_SK_FILE} --staging=${TRANSACTION_FILE}
+
+$CLI transaction to-message --staging ${TRANSACTION_FILE} | $CLI rest v0 message post -h "${REST_URL}"

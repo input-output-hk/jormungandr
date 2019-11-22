@@ -1,15 +1,18 @@
+use crate::jcli_app::transaction::{staging::Staging, Error};
 use chain_impl_mockchain::fee::LinearFee;
-use jcli_app::transaction::{staging::Staging, Error};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct CommonFees {
+    /// fee per transaction
     #[structopt(long = "fee-constant", default_value = "0")]
     pub constant: u64,
+    /// fee per every input and output
     #[structopt(long = "fee-coefficient", default_value = "0")]
     pub coefficient: u64,
+    /// fee per certificate
     #[structopt(long = "fee-certificate", default_value = "0")]
     pub certificate: u64,
 }

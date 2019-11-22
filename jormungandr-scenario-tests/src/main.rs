@@ -1,14 +1,12 @@
 #[macro_use]
 extern crate jormungandr_scenario_tests;
-
-#[macro_use]
 extern crate jormungandr_integration_tests;
 
 use jormungandr_scenario_tests::{
     node::{LeadershipMode, PersistenceMode},
-    prepare_command, style, Context, Seed,
+    prepare_command, style, Context, ScenariosRepository, Seed,
 };
-use std::{collections::HashMap, path::PathBuf, thread, time::Duration};
+use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -22,6 +20,8 @@ struct CommandArgs {
     #[structopt(long = "jcli", default_value = "jcli")]
     jcli: PathBuf,
 
+    #[structopt(long = "scenario", default_value = "*")]
+    scenario: String,
     /// set a directory in which the tests will be run, allowing every details
     /// to be save persistently. By default it will create temporary directories
     /// and will delete the files and documents
@@ -60,8 +60,9 @@ fn main() {
     );
 
     introduction(&context);
-
-    scenario_2(context.derive());
+    let scenarios_repo = ScenariosRepository::new(command_args.scenario);
+    let scenario_suite_result = scenarios_repo.run(&mut context);
+    println!("{}", scenario_suite_result.result_string())
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {

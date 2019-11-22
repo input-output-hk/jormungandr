@@ -1,5 +1,5 @@
+use crate::jcli_app::transaction::{common, Error};
 use chain_impl_mockchain::transaction::OutputPolicy;
-use jcli_app::transaction::{common, Error};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 

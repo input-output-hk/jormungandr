@@ -8,7 +8,10 @@ use std::{path::PathBuf, time::Duration};
 use jormungandr_lib::interfaces::Mempool;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Log {
+pub struct Log(pub Vec<LogEntry>);
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LogEntry {
     pub level: Option<String>,
     pub format: Option<String>,
 }
@@ -65,29 +68,27 @@ impl NodeConfig {
         let public_address_port = super::get_available_port();
         let storage_file = file_utils::get_path_in_temp("storage");
         let public_id = poldercast::Id::generate(&mut rand::rngs::OsRng::new().unwrap());
+        let log = Log(vec![LogEntry {
+            level: Some("info".to_string()),
+            format: Some("json".to_string()),
+        }]);
+        let grpc_address = format!(
+            "/ip4/{}/tcp/{}",
+            DEFAULT_HOST,
+            public_address_port.to_string()
+        );
 
         NodeConfig {
             storage: Some(String::from(storage_file.as_os_str().to_str().unwrap())),
-            log: Some(Log {
-                level: Some("info".to_string()),
-                format: Some("json".to_string()),
-            }),
+            log: Some(log),
             rest: Some(Rest {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string()),
             }),
             p2p: Peer2Peer {
                 trusted_peers: None,
-                public_address: format!(
-                    "/ip4/{}/tcp/{}",
-                    DEFAULT_HOST,
-                    public_address_port.to_string()
-                ),
+                public_address: grpc_address.clone(),
                 public_id: public_id.to_string(),
-                listen_address: format!(
-                    "/ip4/{}/tcp/{}",
-                    DEFAULT_HOST,
-                    public_address_port.to_string()
-                ),
+                listen_address: grpc_address.clone(),
                 topics_of_interest: TopicsOfInterest {
                     messages: String::from("high"),
                     blocks: String::from("high"),
@@ -116,6 +117,7 @@ impl NodeConfig {
             "/ip4/127.0.0.1/tcp/{}",
             super::get_available_port().to_string()
         );
+        self.p2p.listen_address = self.p2p.public_address.clone();
     }
 
     pub fn get_node_address(&self) -> String {

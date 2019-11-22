@@ -1,7 +1,7 @@
 mod message;
 
+use crate::jcli_app::utils::error::CustomErrorFiller;
 use hex::FromHexError;
-use jcli_app::utils::error::CustomErrorFiller;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

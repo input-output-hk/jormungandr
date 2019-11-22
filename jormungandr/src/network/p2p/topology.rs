@@ -1,7 +1,10 @@
 //! module defining the p2p topology management objects
 //!
 
-use crate::network::p2p::{Gossips, Id, Node, Policy, PolicyConfig};
+use crate::{
+    network::p2p::{Gossips, Id, Node, Policy, PolicyConfig},
+    settings::start::network::Configuration,
+};
 use poldercast::{
     custom_layers,
     poldercast::{Cyclon, Rings, Vicinity},
@@ -11,6 +14,7 @@ use slog::Logger;
 use std::sync::{Arc, RwLock};
 
 /// object holding the P2pTopology of the Node
+#[derive(Clone)]
 pub struct P2pTopology {
     lock: Arc<RwLock<Topology>>,
     logger: Logger,
@@ -52,9 +56,13 @@ impl P2pTopology {
         topology.add_layer(Cyclon::default());
     }
 
-    pub fn set_custom_modules(&mut self) {
+    pub fn set_custom_modules(&mut self, config: &Configuration) {
         let mut topology = self.lock.write().unwrap();
-        topology.add_layer(custom_layers::RandomDirectConnections::default());
+        if let Some(size) = config.max_unreachable_nodes_to_connect_per_event {
+            topology.add_layer(custom_layers::RandomDirectConnections::with_max_view_length(size))
+        } else {
+            topology.add_layer(custom_layers::RandomDirectConnections::default());
+        }
     }
 
     /// Returns a list of neighbors selected in this turn
@@ -87,6 +95,10 @@ impl P2pTopology {
 
     pub fn node(&self) -> NodeProfile {
         self.lock.read().unwrap().profile().clone()
+    }
+
+    pub fn force_reset_layers(&self) {
+        self.lock.write().unwrap().force_reset_layers()
     }
 
     /// register a strike against the given node id

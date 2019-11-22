@@ -1,4 +1,4 @@
-use jcli_app::utils::{io, key_parser};
+use crate::jcli_app::utils::{io, key_parser};
 use jormungandr_lib::interfaces::{self, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
@@ -32,6 +32,10 @@ custom_error! {pub Error
         = "secret key number {index} matching the expected public key has not been found",
     ExpectedSignedOrNotCertificate = "Invalid input, expected Signed Certificate or just Certificate",
     InvalidBech32 { source: bech32::Error } = "Invalid data",
+    PoolDelegationWithZeroWeight = "attempted to build delegation with zero weight",
+    InvalidPoolDelegationWeights { actual: u64, max: u64 } = "pool delegation rates sum up to {actual}, maximum is 255",
+    TooManyPoolDelegations { actual: usize, max: usize } = "attempted to build delegation to {actual} pools, maximum is {max}",
+    InvalidPoolDelegation = "failed to build pool delegation",
 }
 
 #[derive(StructOpt)]

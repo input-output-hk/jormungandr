@@ -1,8 +1,8 @@
-use crate::blockcfg::{Block, Epoch, Fragment, FragmentId, Header, HeaderHash};
+use crate::blockcfg::{Block, Fragment, FragmentId, Header, HeaderHash};
+use crate::blockchain::Checkpoints;
 use crate::network::p2p::comm::PeerStats;
 use crate::network::p2p::Id as NodeId;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
-use blockchain::Checkpoints;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
 use jormungandr_lib::interfaces::{FragmentOrigin, FragmentStatus};
@@ -258,7 +258,11 @@ where
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
             Ok(Async::Ready(Some(Err(e)))) => {
-                warn!(self.logger, "error while streaming response: {:?}", e);
+                info!(
+                    self.logger,
+                    "error while streaming response";
+                    "error" => ?e,
+                );
                 return Err(e.into());
             }
         }
@@ -303,13 +307,8 @@ pub struct RequestSink<T, R, E> {
 }
 
 impl<T, R> RequestStreamHandle<T, R> {
-    pub fn stream(&mut self) -> &mut MessageQueue<T> {
-        &mut self.receiver
-    }
-
-    /// Drops the request stream and returns the reply handle.
-    pub fn into_reply(self) -> ReplyHandle<R> {
-        self.reply
+    pub fn into_stream_and_reply(self) -> (MessageQueue<T>, ReplyHandle<R>) {
+        (self.receiver, self.reply)
     }
 }
 
@@ -449,15 +448,10 @@ impl Debug for ClientMsg {
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
-    /// Leadership process expect a new end of epoch
-    LeadershipExpectEndOfEpoch(Epoch),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, NodeId),
-    /// An untrusted Block has been received from the network task.
-    /// The reply handle must be used to enable continued streaming by
-    /// sending `Ok`, or to cancel the incoming stream with an error sent in
-    /// `Err`.
-    NetworkBlock(Block, ReplyHandle<()>),
+    /// A stream of untrusted blocks has been received from the network task.
+    NetworkBlocks(RequestStreamHandle<Block, ()>),
     /// The stream of headers for missing chain blocks has been received
     /// from the network in response to a PullHeaders request or a Missing
     /// solicitation event.

@@ -1,5 +1,5 @@
-use jcli_app::rest::Error;
-use jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender};
+use crate::jcli_app::rest::Error;
+use crate::jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender};
 use std::path::PathBuf;
 use structopt::StructOpt;
 

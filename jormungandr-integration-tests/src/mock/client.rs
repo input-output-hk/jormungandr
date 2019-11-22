@@ -7,14 +7,14 @@ extern crate hex;
 extern crate protobuf;
 
 use crate::mock::{
-    grpc::{ClientStubExt, Error as GrpcError, Metadata},
+    grpc::{ClientStubExt, Metadata},
     proto::{
         node::{
             Block, BlockIds, Fragment, FragmentIds, HandshakeRequest, HandshakeResponse, Header,
             PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
             UploadBlocksResponse,
         },
-        node_grpc::{Node, NodeClient, NodeServer},
+        node_grpc::{Node, NodeClient},
     },
     read_into,
 };

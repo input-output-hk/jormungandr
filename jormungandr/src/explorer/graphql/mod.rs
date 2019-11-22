@@ -3,12 +3,15 @@ mod error;
 mod scalars;
 use self::connections::{
     BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
-    TransactionConnection,
+    TransactionConnection, TransactionNodeFetchInfo,
 };
 use self::error::ErrorKind;
-use super::indexing::{BlockProducer, EpochData, ExplorerBlock, ExplorerTransaction};
+use super::indexing::{
+    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
+};
 use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
+use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
 pub use juniper::http::GraphQLRequest;
@@ -19,7 +22,7 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, IndexCursor, PoolId, PublicKey, Serial, Slot,
+    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Serial, Slot,
     TimeOffsetSeconds, Value,
 };
 
@@ -117,8 +120,13 @@ impl Block {
                     let to = usize::try_from(range.upper_bound).unwrap();
 
                     (from..=to)
-                        .map(|i| (transactions[i].id().clone(), i.try_into().unwrap()))
-                        .collect::<Vec<(FragmentId, u32)>>()
+                        .map(|i| {
+                            (
+                                TransactionNodeFetchInfo::Contents(transactions[i].clone()),
+                                i.try_into().unwrap(),
+                            )
+                        })
+                        .collect::<Vec<(TransactionNodeFetchInfo, u32)>>()
                 }
             },
         )
@@ -214,6 +222,7 @@ impl From<blockcfg::BlockDate> for BlockDate {
 struct Transaction {
     id: FragmentId,
     block_hash: Option<HeaderHash>,
+    contents: Option<ExplorerTransaction>,
 }
 
 impl Transaction {
@@ -231,6 +240,7 @@ impl Transaction {
         Ok(Transaction {
             id,
             block_hash: Some(block_hash),
+            contents: None,
         })
     }
 
@@ -238,6 +248,15 @@ impl Transaction {
         Transaction {
             id,
             block_hash: None,
+            contents: None,
+        }
+    }
+
+    fn from_contents(contents: ExplorerTransaction) -> Transaction {
+        Transaction {
+            id: contents.id,
+            block_hash: None,
+            contents: Some(contents),
         }
     }
 
@@ -263,14 +282,18 @@ impl Transaction {
     }
 
     fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
-        let block = self.get_block(context)?;
-        Ok(block
-            .transactions
-            .get(&self.id)
-            .ok_or(ErrorKind::InternalError(
-                "transaction was not found in respective block".to_owned(),
-            ))?
-            .clone())
+        if let Some(c) = &self.contents {
+            Ok(c.clone())
+        } else {
+            let block = self.get_block(context)?;
+            Ok(block
+                .transactions
+                .get(&self.id)
+                .ok_or(ErrorKind::InternalError(
+                    "transaction was not found in respective block".to_owned(),
+                ))?
+                .clone())
+        }
     }
 }
 
@@ -360,19 +383,22 @@ impl TransactionOutput {
 }
 
 struct Address {
-    id: chain_addr::Address,
+    id: ExplorerAddress,
 }
 
 impl Address {
     fn from_bech32(bech32: &String) -> FieldResult<Address> {
-        Ok(Address {
-            id: chain_addr::AddressReadable::from_string_anyprefix(bech32)?.to_address(),
-        })
+        let addr = chain_addr::AddressReadable::from_string_anyprefix(bech32)
+            .map(|adr| ExplorerAddress::New(adr.to_address()))
+            .or_else(|_| OldAddress::from_str(bech32).map(|a| ExplorerAddress::Old(a)))
+            .map_err(|_| ErrorKind::InvalidAddress(bech32.clone()))?;
+
+        Ok(Address { id: addr })
     }
 }
 
-impl From<&chain_addr::Address> for Address {
-    fn from(addr: &chain_addr::Address) -> Address {
+impl From<&ExplorerAddress> for Address {
+    fn from(addr: &ExplorerAddress) -> Address {
         Address { id: addr.clone() }
     }
 }
@@ -383,8 +409,14 @@ impl From<&chain_addr::Address> for Address {
 impl Address {
     /// The base32 representation of an address
     fn id(&self, context: &Context) -> String {
-        chain_addr::AddressReadable::from_address(&context.settings.address_bech32_prefix, &self.id)
-            .to_string()
+        match &self.id {
+            ExplorerAddress::New(addr) => chain_addr::AddressReadable::from_address(
+                &context.settings.address_bech32_prefix,
+                addr,
+            )
+            .to_string(),
+            ExplorerAddress::Old(addr) => format!("{}", addr),
+        }
     }
 
     fn delegation() -> FieldResult<Pool> {
@@ -403,9 +435,7 @@ impl Address {
             .db
             .get_transactions_by_address(&self.id)
             .wait()?
-            .ok_or(ErrorKind::InternalError(
-                "Expected address to be indexed".to_owned(),
-            ))?;
+            .unwrap_or(PersistentSequence::<FragmentId>::new());
 
         let boundaries = if transactions.len() > 0 {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
@@ -430,7 +460,11 @@ impl Address {
             |range: PaginationInterval<u64>| match range {
                 PaginationInterval::Empty => vec![],
                 PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                    .filter_map(|i| transactions.get(i).map(|h| ((*h).clone(), i.into())))
+                    .filter_map(|i| {
+                        transactions
+                            .get(i)
+                            .map(|h| (TransactionNodeFetchInfo::Id((*h).clone()), i.into()))
+                    })
                     .collect(),
             },
         )
@@ -468,10 +502,10 @@ impl StakeDelegation {
             .map(|single| {
                 chain_addr::Address(discrimination, chain_addr::Kind::Account(single.into()))
             })
-            .map(|addr| Address::from(&addr))
+            .map(|addr| Address::from(&ExplorerAddress::New(addr)))
     }
 
-    pub fn pool(&self, context: &Context) -> Vec<Pool> {
+    pub fn pools(&self, context: &Context) -> Vec<Pool> {
         use chain_impl_mockchain::account::DelegationType;
         use std::iter::FromIterator as _;
 
@@ -522,8 +556,8 @@ impl PoolRegistration {
 
     /// Management threshold for owners, this need to be <= #owners and > 0
     pub fn management_threshold(&self) -> i32 {
-        // XXX: u16 fits in i32, but maybe some kind of custom scalar is better?
-        self.registration.management_threshold.into()
+        // XXX: u8 fits in i32, but maybe some kind of custom scalar is better?
+        self.registration.management_threshold().into()
     }
 
     /// Owners of this pool
@@ -535,8 +569,85 @@ impl PoolRegistration {
             .collect()
     }
 
-    // TODO: rewards
-    // TODO: keys
+    pub fn operators(&self) -> Vec<PublicKey> {
+        self.registration
+            .operators
+            .iter()
+            .map(PublicKey::from)
+            .collect()
+    }
+
+    pub fn rewards(&self) -> TaxType {
+        TaxType(self.registration.rewards)
+    }
+
+    /// Reward account
+    pub fn reward_account(&self, context: &Context) -> Option<Address> {
+        use chain_impl_mockchain::transaction::AccountIdentifier;
+        let discrimination = context.db.blockchain_config.discrimination;
+
+        // FIXME: Move this transformation to a point earlier
+
+        self.registration
+            .reward_account
+            .clone()
+            .map(|acc_id| match acc_id {
+                AccountIdentifier::Single(d) => ExplorerAddress::New(chain_addr::Address(
+                    discrimination,
+                    chain_addr::Kind::Account(d.into()),
+                )),
+                AccountIdentifier::Multi(d) => {
+                    let mut bytes = [0u8; 32];
+                    bytes.copy_from_slice(&d.as_ref()[0..32]);
+                    ExplorerAddress::New(chain_addr::Address(
+                        discrimination,
+                        chain_addr::Kind::Multisig(bytes),
+                    ))
+                }
+            })
+            .map(|explorer_address| Address {
+                id: explorer_address,
+            })
+    }
+
+    // Genesis Praos keys
+    // pub keys: GenesisPraosLeader,
+}
+
+struct TaxType(chain_impl_mockchain::rewards::TaxType);
+
+#[juniper::object(
+    Context = Context,
+)]
+impl TaxType {
+    /// what get subtracted as fixed value
+    pub fn fixed(&self) -> Value {
+        Value(format!("{}", self.0.fixed))
+    }
+    /// Ratio of tax after fixed amout subtracted
+    pub fn ratio(&self) -> Ratio {
+        Ratio(self.0.ratio)
+    }
+
+    /// Max limit of tax
+    pub fn max_limit(&self) -> Option<NonZero> {
+        self.0.max_limit.map(|n| NonZero(format!("{}", n)))
+    }
+}
+
+struct Ratio(chain_impl_mockchain::rewards::Ratio);
+
+#[juniper::object(
+    Context = Context,
+)]
+impl Ratio {
+    pub fn numerator(&self) -> Value {
+        Value(format!("{}", self.0.numerator))
+    }
+
+    pub fn denominator(&self) -> NonZero {
+        NonZero(format!("{}", self.0.denominator))
+    }
 }
 
 struct OwnerStakeDelegation {
@@ -555,7 +666,7 @@ impl From<certificate::OwnerStakeDelegation> for OwnerStakeDelegation {
     Context = Context,
 )]
 impl OwnerStakeDelegation {
-    fn pool(&self) -> Vec<Pool> {
+    fn pools(&self) -> Vec<Pool> {
         use chain_impl_mockchain::account::DelegationType;
         use std::iter::FromIterator as _;
 
@@ -573,12 +684,63 @@ impl OwnerStakeDelegation {
     }
 }
 
+/// Retirement info for a pool
+struct PoolRetirement {
+    pool_retirement: certificate::PoolRetirement,
+}
+
+impl From<certificate::PoolRetirement> for PoolRetirement {
+    fn from(pool_retirement: certificate::PoolRetirement) -> PoolRetirement {
+        PoolRetirement { pool_retirement }
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl PoolRetirement {
+    pub fn pool_id(&self) -> PoolId {
+        PoolId(format!("{}", self.pool_retirement.pool_id))
+    }
+
+    pub fn retirement_time(&self) -> TimeOffsetSeconds {
+        self.pool_retirement.retirement_time.into()
+    }
+}
+
+struct PoolUpdate {
+    pool_update: certificate::PoolUpdate,
+}
+
+impl From<certificate::PoolUpdate> for PoolUpdate {
+    fn from(pool_update: certificate::PoolUpdate) -> PoolUpdate {
+        PoolUpdate { pool_update }
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl PoolUpdate {
+    pub fn pool_id(&self) -> PoolId {
+        PoolId(format!("{}", self.pool_update.pool_id))
+    }
+
+    pub fn start_validity(&self) -> TimeOffsetSeconds {
+        self.pool_update.start_validity.into()
+    }
+
+    // TODO: Previous keys?
+    // TODO: Updated keys?
+}
+
 // TODO can we use jormungandr-lib Certificate ?
 enum Certificate {
     StakeDelegation(StakeDelegation),
     OwnerStakeDelegation(OwnerStakeDelegation),
     PoolRegistration(PoolRegistration),
-    // TODO: PoolManagement
+    PoolRetirement(PoolRetirement),
+    PoolUpdate(PoolUpdate),
 }
 
 impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
@@ -596,8 +758,12 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::PoolRegistration(c) => {
                 Ok(Certificate::PoolRegistration(PoolRegistration::from(c)))
             }
-            certificate::Certificate::PoolRetirement(_) => Err(ErrorKind::Unimplemented.into()),
-            certificate::Certificate::PoolUpdate(_) => Err(ErrorKind::Unimplemented.into()),
+            certificate::Certificate::PoolRetirement(c) => {
+                Ok(Certificate::PoolRetirement(PoolRetirement::from(c)))
+            }
+            certificate::Certificate::PoolUpdate(c) => {
+                Ok(Certificate::PoolUpdate(PoolUpdate::from(c)))
+            }
         }
     }
 }
@@ -609,11 +775,14 @@ graphql_union!(Certificate: Context |&self| {
         &StakeDelegation => match *self { Certificate::StakeDelegation(ref c) => Some(c), _ => None },
         &OwnerStakeDelegation => match *self { Certificate::OwnerStakeDelegation(ref c) => Some(c), _ => None },
         &PoolRegistration => match *self { Certificate::PoolRegistration(ref c) => Some(c), _ => None },
+        &PoolUpdate => match *self { Certificate::PoolUpdate(ref c) => Some(c), _ => None},
+        &PoolRetirement => match *self { Certificate::PoolRetirement(ref c) => Some(c), _ => None}
     }
 });
 
 struct Pool {
     id: certificate::PoolId,
+    data: Option<StakePoolData>,
     blocks: Option<PersistentSequence<HeaderHash>>,
 }
 
@@ -625,14 +794,26 @@ impl Pool {
             .wait()
             .unwrap()
             .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+
+        let data = db
+            .get_stake_pool_data(&id)
+            .wait()
+            .unwrap()
+            .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+
         Ok(Pool {
             id,
+            data: Some(data),
             blocks: Some(blocks),
         })
     }
 
     fn from_valid_id(id: certificate::PoolId) -> Pool {
-        Pool { id, blocks: None }
+        Pool {
+            id,
+            blocks: None,
+            data: None,
+        }
     }
 }
 
@@ -690,6 +871,19 @@ impl Pool {
                 .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
                 .collect(),
         })
+    }
+
+    pub fn registration(&self, context: &Context) -> FieldResult<PoolRegistration> {
+        match &self.data {
+            Some(data) => Ok(data.registration.clone().into()),
+            None => context
+                .db
+                .get_stake_pool_data(&self.id)
+                .wait()
+                .unwrap()
+                .map(|data| PoolRegistration::from(data.registration.clone()))
+                .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
+        }
     }
 }
 

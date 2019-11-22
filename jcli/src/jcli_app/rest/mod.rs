@@ -1,8 +1,8 @@
 mod v0;
 
+use crate::jcli_app::utils::rest_api::{self, DESERIALIZATION_ERROR_MSG};
+use crate::jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
 use hex::FromHexError;
-use jcli_app::utils::rest_api::{self, DESERIALIZATION_ERROR_MSG};
-use jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
 use structopt::StructOpt;
 
 /// Send request to node REST API

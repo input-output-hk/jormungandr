@@ -38,6 +38,25 @@ SECRET_PATH="."
 CONFIG_PATH="."
 ADD_STARTUP_SCRIPT=0
 
+check_program_in_path () {
+    # check if the command exists
+    command -v $1 > /dev/null
+    # fail if the command does not exist and the argument is not a path to an
+    # executable
+    if [ $? -ne 0 ] && [ ! -f $1 ] ; then
+        echo "$1 is required but not found in \$PATH"
+        exit 1
+    fi
+}
+
+check_program_in_path $CLI
+check_program_in_path $NODE
+
+# exit on failure inside pipes (might be unavailable on some shells)
+set -o pipefail || true
+# exit on failure
+set -e
+
 while getopts 'bc:ghk:p:s:xCod:e:' c
 do
     case $c in
@@ -89,7 +108,7 @@ elif [ ${CLEAN} -eq 1 ] && [ -f ${STORAGE}/blocks.sqlite ]; then
     find ${STORAGE} -type f -exec rm {} \;
 fi
 
-if [ ! -d ${DPATH} ] || [ ! -w ${DPATH} ]; then
+if [ ! -d "${DPATH}" ] || [ ! -w "${DPATH}" ]; then
     echo "error: path to store (${DPATH}) sqlite files does not exist or your user does not have write permission"
     exit 1
 fi
@@ -140,8 +159,8 @@ echo ""
 TMPDIR=TMP.$$
 
 mkdir $TMPDIR
-mkdir -p ${CONFIG_PATH}
-mkdir -p ${SECRET_PATH}
+mkdir -p "${CONFIG_PATH}"
+mkdir -p "${SECRET_PATH}"
 
 ### MAKE EVERYTHING
 
@@ -190,19 +209,19 @@ STAKE_POOL_ID=$(cat ${TMPDIR}/stake_pool.signcert | $CLI certificate get-stake-p
 STAKE_POOL_CERT=$(cat ${TMPDIR}/stake_pool.signcert)
 
 $CLI certificate new stake-delegation \
-    ${STAKE_POOL_ID} \
-    ${FAUCET_PK} > ${TMPDIR}/stake_delegation1.cert
+    ${FAUCET_PK} \
+    ${STAKE_POOL_ID} > ${TMPDIR}/stake_delegation1.cert
 cat ${TMPDIR}/stake_delegation1.cert | $CLI certificate sign -k ${TMPDIR}/stake_key.sk > ${TMPDIR}/stake_delegation1.signcert
 STAKE_DELEGATION_CERT1=$(cat ${TMPDIR}/stake_delegation1.signcert)
 
 $CLI certificate new stake-delegation \
-    ${STAKE_POOL_ID} \
-    ${FIXED_PK} > ${TMPDIR}/stake_delegation2.cert
+    ${FIXED_PK} \
+    ${STAKE_POOL_ID} > ${TMPDIR}/stake_delegation2.cert
 cat ${TMPDIR}/stake_delegation2.cert | $CLI certificate sign -k ${TMPDIR}/fixed_key.sk > ${TMPDIR}/stake_delegation2.signcert
 STAKE_DELEGATION_CERT2=$(cat ${TMPDIR}/stake_delegation2.signcert)
 
 
-cat << EOF > ${CONFIG_PATH}/genesis.yaml
+cat << EOF > "${CONFIG_PATH}/genesis.yaml"
 blockchain_configuration:
   block0_date: $(date +%s)
   discrimination: test
@@ -230,7 +249,7 @@ initial:
   - cert: ${STAKE_DELEGATION_CERT2}
 EOF
 
-cat << EOF > ${SECRET_PATH}/pool-secret1.yaml
+cat << EOF > "${SECRET_PATH}/pool-secret1.yaml"
 genesis:
   sig_key: ${POOL_KES_SK}
   vrf_key: ${POOL_VRF_SK}
@@ -239,7 +258,7 @@ bft:
   signing_key: ${LEADER_SK}
 EOF
 
-cat << EOF > ${CONFIG_PATH}/config.yaml
+cat << EOF > "${CONFIG_PATH}/config.yaml"
 storage: "${STORAGE}/"
 
 rest:
@@ -253,13 +272,13 @@ p2p:
     blocks: normal
 EOF
 
-$CLI genesis encode --input ${CONFIG_PATH}/genesis.yaml --output ${CONFIG_PATH}/block-0.bin
+$CLI genesis encode --input "${CONFIG_PATH}/genesis.yaml" --output "${CONFIG_PATH}/block-0.bin"
 if [ $? -ne 0 ]; then
     echo "error: building the genesis block"
     exit 1
 fi
 
-BLOCK0_HASH=$($CLI genesis hash --input ${CONFIG_PATH}/block-0.bin)
+BLOCK0_HASH=$($CLI genesis hash --input "${CONFIG_PATH}/block-0.bin")
 
 ### PRINT
 
@@ -273,9 +292,9 @@ echo "block-0 hash: ${BLUE}${BLOCK0_HASH}${WHITE}"
 echo
 echo "To start the node:"
 if [ $ADD_STARTUP_SCRIPT -eq 1 ]; then
-    echo "$NODE --genesis-block ${CONFIG_PATH}/block-0.bin --config ${CONFIG_PATH}/config.yaml --secret ${SECRET_PATH}/pool-secret1.yaml" > startup_script.sh
+    echo "$NODE --genesis-block \"${CONFIG_PATH}/block-0.bin\" --config \"${CONFIG_PATH}/config.yaml\" --secret \"${SECRET_PATH}/pool-secret1.yaml\"" > startup_script.sh
 fi
-echo "  $NODE --genesis-block ${CONFIG_PATH}/block-0.bin --config ${CONFIG_PATH}/config.yaml --secret ${SECRET_PATH}/pool-secret1.yaml"
+echo "  $NODE --genesis-block \"${CONFIG_PATH}/block-0.bin\" --config \"${CONFIG_PATH}/config.yaml\" --secret \"${SECRET_PATH}/pool-secret1.yaml\""
 echo "To connect using CLI REST:"
 echo "  $CLI rest v0 <CMD> --host \"${REST_URL}\""
 echo "For example:"
@@ -312,5 +331,6 @@ else
     process_file "$SCRIPTPATH/faucet-send-money.shtempl" faucet-send-money.sh
     process_file "$SCRIPTPATH/faucet-send-certificate.shtempl" faucet-send-certificate.sh
     process_file "$SCRIPTPATH/create-account-and-delegate.shtempl" create-account-and-delegate.sh
+    process_file "$SCRIPTPATH/create-stakepool.shtempl" create-stakepool.sh
     exit 0
 fi

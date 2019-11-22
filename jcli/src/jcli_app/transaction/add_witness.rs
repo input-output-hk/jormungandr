@@ -1,8 +1,8 @@
+use crate::jcli_app::transaction::{common, Error};
+use crate::jcli_app::utils::io;
 use bech32::{Bech32, FromBase32 as _};
 use chain_core::mempack::{ReadBuf, Readable as _};
 use chain_impl_mockchain::transaction::Witness;
-use jcli_app::transaction::{common, Error};
-use jcli_app::utils::io;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

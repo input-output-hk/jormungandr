@@ -2,6 +2,7 @@ use super::error::ErrorKind;
 use super::scalars::{BlockCount, IndexCursor, TransactionCount};
 use super::{Block, Context, Transaction};
 use crate::blockcfg::HeaderHash;
+use crate::explorer::indexing::ExplorerTransaction;
 use juniper::FieldResult;
 use std::convert::TryFrom;
 
@@ -218,13 +219,21 @@ where
 pub type BlockConnection = Connection<BlockEdge, BlockCount>;
 pub type TransactionConnection = Connection<TransactionEdge, TransactionCount>;
 
+#[derive(Clone)]
+pub enum TransactionNodeFetchInfo {
+    Id(HeaderHash),
+    Contents(ExplorerTransaction),
+}
+
 impl Edge for TransactionEdge {
-    type Node = HeaderHash;
+    type Node = TransactionNodeFetchInfo;
     fn new(node: Self::Node, cursor: IndexCursor) -> TransactionEdge {
-        TransactionEdge {
-            node: Transaction::from_valid_id(node),
-            cursor,
-        }
+        let tx = match node {
+            TransactionNodeFetchInfo::Id(hash) => Transaction::from_valid_id(hash),
+            TransactionNodeFetchInfo::Contents(tx) => Transaction::from_contents(tx),
+        };
+
+        TransactionEdge { node: tx, cursor }
     }
 
     fn cursor(&self) -> &IndexCursor {

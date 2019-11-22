@@ -30,16 +30,23 @@ pub struct Config {
     pub p2p: P2pConfig,
 
     pub explorer: Option<Explorer>,
+
+    /// the time interval with no blockchain updates after which alerts are thrown
+    #[serde(default)]
+    pub no_blockchain_updates_warning_interval: Option<Duration>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct ConfigLogSettings {
+pub struct ConfigLogSettingsEntry {
     #[serde(with = "filter_level_opt_serde")]
     pub level: Option<FilterLevel>,
     pub format: Option<LogFormat>,
     pub output: Option<LogOutput>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ConfigLogSettings(pub Vec<ConfigLogSettingsEntry>);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -96,6 +103,31 @@ pub struct P2pConfig {
     /// setting for the policy
     #[serde(default)]
     pub policy: PolicyConfig,
+
+    /// set the maximum number of unreachable nodes to contact at a time for every
+    /// new notification. The default value is 20.
+    ///
+    /// Every time a new propagation event is triggered, the node will select
+    /// randomly a certain amount of unreachable nodes to connect to in addition
+    /// to the one selected by other p2p topology layer.
+    #[serde(default)]
+    pub max_unreachable_nodes_to_connect_per_event: Option<usize>,
+
+    /// interval to start gossiping with new nodes, changing the value will
+    /// affect the bandwidth. The more often the node will gossip the more
+    /// bandwidth the node will need. The less often the node gossips the less
+    /// good the resilience to node churn.
+    ///
+    /// The default value is 10seconds.
+    #[serde(default)]
+    pub gossip_interval: Option<Duration>,
+
+    /// If this value is set, it will trigger a force reset of the topology
+    /// layers. The default is to not do force the reset. It is recommended
+    /// to let the protocol handle it.
+    ///
+    #[serde(default)]
+    pub topology_force_reset_interval: Option<Duration>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,6 +188,9 @@ impl Default for P2pConfig {
             max_connections: None,
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
+            max_unreachable_nodes_to_connect_per_event: None,
+            gossip_interval: None,
+            topology_force_reset_interval: None,
         }
     }
 }

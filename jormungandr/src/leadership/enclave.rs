@@ -1,3 +1,4 @@
+pub use crate::secure::enclave::LeaderEvent;
 use crate::{
     blockcfg::{
         HeaderBft, HeaderBftBuilder, HeaderGenesisPraos, HeaderGenesisPraosBuilder,
@@ -5,13 +6,16 @@ use crate::{
     },
     secure::enclave::Enclave as SecureEnclave,
 };
+use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::{prelude::*, sync::lock::Lock};
 
-pub use crate::secure::enclave::LeaderEvent;
-use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
-
-error_chain! {}
+#[derive(Debug, Clone, Error)]
+pub enum EnclaveError {
+    #[error("This leader {id} is not in the enclave")]
+    NotInEnclave { id: LeaderId },
+}
 
 /// represent the client side of an enclave. From there we will query the
 /// actual enclave about schedules and signing blocks
@@ -44,7 +48,7 @@ impl Enclave {
         leadership: Arc<Leadership>,
         slot_start: u32,
         nb_slots: u32,
-    ) -> impl Future<Item = Vec<LeaderEvent>, Error = Error> {
+    ) -> impl Future<Item = Vec<LeaderEvent>, Error = EnclaveError> {
         let mut inner = self.inner.clone();
         future::poll_fn(move || Ok(inner.poll_lock()))
             .map(move |guard| guard.leadership_evaluate(&leadership, slot_start, nb_slots))
@@ -59,14 +63,14 @@ impl Enclave {
         &self,
         block_builder: HeaderBftBuilder<HeaderSetConsensusSignature>,
         id: LeaderId,
-    ) -> impl Future<Item = HeaderBft, Error = Error> {
+    ) -> impl Future<Item = HeaderBft, Error = EnclaveError> {
         let mut inner = self.inner.clone();
 
         future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
             if let Some(block) = guard.create_header_bft(block_builder, id) {
                 future::ok(block)
             } else {
-                future::err("Leader is not in the enclave to sign the block".into())
+                future::err(EnclaveError::NotInEnclave { id })
             }
         })
     }
@@ -80,14 +84,14 @@ impl Enclave {
         &self,
         block_builder: HeaderGenesisPraosBuilder<HeaderSetConsensusSignature>,
         id: LeaderId,
-    ) -> impl Future<Item = HeaderGenesisPraos, Error = Error> {
+    ) -> impl Future<Item = HeaderGenesisPraos, Error = EnclaveError> {
         let mut inner = self.inner.clone();
 
         future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
             if let Some(block) = guard.create_header_genesis_praos(block_builder, id) {
                 future::ok(block)
             } else {
-                future::err("Leader is not in the enclave to sign the block".into())
+                future::err(EnclaveError::NotInEnclave { id })
             }
         })
     }

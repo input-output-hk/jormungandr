@@ -45,7 +45,7 @@ pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: 
 }
 
 fn handle_get_block_tip(blockchain_tip: &Tip) -> Result<Header, Error> {
-    let blockchain_tip = blockchain_tip.get_ref().wait().unwrap();
+    let blockchain_tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
 
     Ok(blockchain_tip.header().clone())
 }
@@ -63,9 +63,9 @@ fn handle_get_headers_range(
         .map_err(|e| e.into())
         .and_then(move |maybe_ancestor| match maybe_ancestor {
             Some(from) => Either::A(storage.stream_from_to(from, to).map_err(|e| e.into())),
-            None => Either::B(future::err(Error::failed_precondition(
-                "none of the checkpoints found in the local storage are ancestors \
-                 of the requested end block",
+            None => Either::B(future::err(Error::not_found(
+                "none of the checkpoints found in the local storage \
+                 are ancestors of the requested end block",
             ))),
         })
         .and_then(move |stream| {
@@ -148,7 +148,7 @@ fn handle_pull_blocks_to_tip(
     checkpoints: Vec<HeaderHash>,
     reply: &mut ReplyStreamHandle<Block>,
 ) -> Result<(), Error> {
-    let tip = blockchain_tip.get_ref().wait().unwrap();
+    let tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
     let tip_hash = tip.hash();
 
     let future = storage
@@ -156,7 +156,7 @@ fn handle_pull_blocks_to_tip(
         .map_err(|e| e.into())
         .and_then(move |maybe_ancestor| match maybe_ancestor {
             Some(from) => Either::A(storage.stream_from_to(from, tip_hash).map_err(|e| e.into())),
-            None => Either::B(future::err(Error::failed_precondition(
+            None => Either::B(future::err(Error::not_found(
                 "none of the checkpoints found in the local storage \
                  are ancestors of the current tip",
             ))),

@@ -1,9 +1,14 @@
+// Rustc default type_length_limit is too low for complex futures, which generate deeply nested
+// monomorphized structured with long signatures. This value is enough for current project.
+#![type_length_limit = "10000000"]
+
 extern crate actix_net;
 extern crate actix_threadpool;
 extern crate actix_web;
 extern crate bech32;
 extern crate bincode;
 extern crate bytes;
+extern crate cardano_legacy_address;
 extern crate chain_addr;
 extern crate chain_core;
 extern crate chain_crypto;
@@ -55,7 +60,7 @@ extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
-    blockchain::Blockchain,
+    blockchain::{Blockchain, CandidateForest},
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -64,11 +69,11 @@ use futures::Future;
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use std::thread;
 use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
+pub mod blockchain_stuck_notifier;
 pub mod client;
 pub mod explorer;
 pub mod fragment;
@@ -99,11 +104,10 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    new_epoch_announcements: tokio::sync::mpsc::Sender<self::leadership::NewEpochToSchedule>,
-    new_epoch_notifier: tokio::sync::mpsc::Receiver<self::leadership::NewEpochToSchedule>,
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
+    services: Services,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
@@ -114,13 +118,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         context.set_node_state(NodeState::StartingWorkers)
     }
 
-    let mut services = Services::new(bootstrapped_node.logger.clone());
+    let mut services = bootstrapped_node.services;
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
-    let mut new_epoch_announcements = bootstrapped_node.new_epoch_announcements;
-    let new_epoch_notifier = bootstrapped_node.new_epoch_notifier;
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
     let leadership_logs =
@@ -183,15 +185,20 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let block_cache_ttl: Duration = Duration::from_secs(3600);
         let stats_counter = stats_counter.clone();
         services.spawn_future_with_inputs("block", move |info, input| {
+            let candidate_repo = CandidateForest::new(
+                blockchain.clone(),
+                block_cache_ttl,
+                info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull")),
+            );
             blockchain::handle_input(
                 info,
                 &mut blockchain,
                 &mut blockchain_tip,
+                &candidate_repo,
                 &stats_counter,
-                &mut new_epoch_announcements,
                 &mut network_msgbox,
                 &mut fragment_msgbox,
-                &mut explorer_msg_box,
+                explorer_msg_box.as_mut(),
                 input,
             )
         })
@@ -257,51 +264,54 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let enclave = leadership::Enclave::new(enclave.clone());
 
         services.spawn_future("leadership", move |info| {
-            leadership::LeadershipModule::start(
+            leadership::Module::new(
                 info,
                 leadership_logs,
                 leadership_garbage_collection_interval,
-                enclave,
-                fragment_pool,
                 blockchain_tip,
-                new_epoch_notifier,
+                fragment_pool,
+                enclave,
                 block_task,
             )
+            .and_then(|module| module.run())
             .map_err(|e| unimplemented!("error in leadership {}", e))
         });
     }
 
-    let rest_server = match bootstrapped_node.rest_context {
-        Some(rest_context) => {
-            let logger = bootstrapped_node
-                .logger
-                .new(o!(::log::KEY_TASK => "rest"))
-                .into_erased();
-            let full_context = rest::FullContext {
-                logger,
-                stats_counter,
-                blockchain,
-                blockchain_tip,
-                network_task: network_msgbox,
-                transaction_task: fragment_msgbox,
-                logs: pool_logs,
-                leadership_logs,
-                enclave,
-                explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
-            };
-            rest_context.set_full(full_context);
-            rest_context.set_node_state(NodeState::Running);
-            Some(rest_context.server())
-        }
-        None => None,
+    if let Some(rest_context) = bootstrapped_node.rest_context {
+        let full_context = rest::FullContext {
+            stats_counter,
+            blockchain,
+            blockchain_tip: blockchain_tip.clone(),
+            network_task: network_msgbox,
+            transaction_task: fragment_msgbox,
+            logs: pool_logs,
+            leadership_logs,
+            enclave,
+            explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+        };
+        rest_context.set_full(full_context);
+        rest_context.set_node_state(NodeState::Running);
     };
 
-    match rest_server {
-        Some(server) => server.wait_for_stop(),
-        None => thread::sleep(Duration::from_secs(u64::max_value())),
-    }
-    info!(bootstrapped_node.logger, "Shutting down node");
+    {
+        let blockchain_tip = blockchain_tip.clone();
+        let no_blockchain_updates_warning_interval = bootstrapped_node
+            .settings
+            .no_blockchain_updates_warning_interval
+            .clone();
 
+        services.spawn_future("blockchain_stuck_notifier", move |info| {
+            blockchain_stuck_notifier::check_last_block_time(
+                info,
+                blockchain_tip,
+                no_blockchain_updates_warning_interval,
+            )
+        });
+    }
+
+    services.wait_any_finished();
+    info!(bootstrapped_node.logger, "Shutting down node");
     Ok(())
 }
 
@@ -324,6 +334,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         storage,
         logger,
         rest_context,
+        services,
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
@@ -332,8 +343,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
-    let (new_epoch_announcements, new_epoch_notifier) = tokio::sync::mpsc::channel(100);
-
     let block0_hash = block0.header.hash();
 
     let block0_explorer = block0.clone();
@@ -341,12 +350,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     // TODO: we should get this value from the configuration
     let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
 
-    let (blockchain, blockchain_tip) = start_up::load_blockchain(
-        block0,
-        storage,
-        new_epoch_announcements.clone(),
-        block_cache_ttl,
-    )?;
+    let (blockchain, blockchain_tip) = start_up::load_blockchain(block0, storage, block_cache_ttl)?;
 
     let bootstrapped = network::bootstrap(
         &settings.network,
@@ -376,11 +380,10 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0_hash,
         blockchain,
         blockchain_tip,
-        new_epoch_announcements,
-        new_epoch_notifier,
         logger,
         explorer_db,
         rest_context,
+        services,
     })
 }
 
@@ -390,6 +393,7 @@ pub struct InitializedNode {
     pub storage: start_up::NodeStorage,
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
+    pub services: Services,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -411,7 +415,11 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     // The log crate is used by some libraries, e.g. tower-grpc.
     // Set up forwarding from log to slog, but only when trace log level is
     // requested, because the logs are very verbose.
-    if log_settings.level >= slog::FilterLevel::Trace {
+    if log_settings
+        .0
+        .iter()
+        .any(|entry| entry.level >= slog::FilterLevel::Trace)
+    {
         slog_scope::set_global_logger(logger.new(o!(log::KEY_SCOPE => "global"))).cancel_reset();
         slog_stdlog::init().unwrap();
     }
@@ -419,11 +427,18 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
     let settings = raw_settings.try_into_settings(&init_logger)?;
+    let mut services = Services::new(logger.clone());
 
-    let rest_context = match &settings.rest {
+    let rest_context = match settings.rest.clone() {
         Some(rest) => {
             let context = rest::Context::new();
-            rest::start_rest_server(rest, settings.explorer, &context)?;
+            let explorer = settings.explorer;
+            let server_context = context.clone();
+            services.spawn("rest", move |info| {
+                server_context.set_logger(info.into_logger());
+                rest::run_rest_server(rest, explorer, server_context)
+                    .expect("REST server critical failure")
+            });
             Some(context)
         }
         None => None,
@@ -451,6 +466,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         storage,
         logger,
         rest_context,
+        services,
     })
 }
 

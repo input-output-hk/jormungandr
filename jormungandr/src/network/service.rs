@@ -1,6 +1,5 @@
 use super::{
     buffer_sizes,
-    inbound::InboundProcessing,
     p2p::comm::{BlockEventSubscription, OutboundSubscription},
     p2p::{Gossip as NodeData, Id},
     subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor, Subscription},
@@ -28,7 +27,7 @@ impl NodeService {
             channels,
             logger: global_state
                 .logger()
-                .new(o!(::log::KEY_SUB_TASK => "server")),
+                .new(o!(crate::log::KEY_SUB_TASK => "server")),
             global_state,
         }
     }
@@ -89,7 +88,7 @@ impl BlockService for NodeService {
     type GetHeadersStream = ReplyStream<Header, core_error::Error>;
     type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
     type PushHeadersSink = RequestSink<Header, (), core_error::Error>;
-    type UploadBlocksSink = InboundProcessing<Block, BlockMsg>;
+    type UploadBlocksSink = RequestSink<Block, (), core_error::Error>;
     type BlockSubscription = Subscription<BlockAnnouncementProcessor, BlockEventSubscription>;
     type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
 
@@ -176,11 +175,25 @@ impl BlockService for NodeService {
     }
 
     fn upload_blocks(&mut self) -> Self::UploadBlocksSink {
-        InboundProcessing::with_unary(
-            self.channels.block_box.clone(),
-            self.logger.clone(),
-            |block, handle| BlockMsg::NetworkBlock(block, handle),
-        )
+        let logger = self.logger.new(o!("request" => "UploadBlocks"));
+        let (handle, sink) = intercom::stream_request(buffer_sizes::BLOCKS, logger.clone());
+        let block_box = self.channels.block_box.clone();
+        // TODO: make sure that a limit on the number of requests in flight
+        // per service connection prevents unlimited spawning of these tasks.
+        // https://github.com/input-output-hk/jormungandr/issues/1034
+        self.global_state.spawn(
+            block_box
+                .send(BlockMsg::NetworkBlocks(handle))
+                .map_err(move |e| {
+                    error!(
+                        logger,
+                        "failed to enqueue request for processing";
+                        "reason" => %e,
+                    );
+                })
+                .map(|_mbox| ()),
+        );
+        sink
     }
 
     fn block_subscription(&mut self, subscriber: Self::NodeId) -> Self::BlockSubscriptionFuture {

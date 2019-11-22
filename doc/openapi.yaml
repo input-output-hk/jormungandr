@@ -319,17 +319,85 @@ paths:
                       description: ID of leadership event that produced this log entry
                       type: integer
                       minimum: 0
-              example: |
-                [
-                  {
-                    "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
-                    "scheduled_at_time": "2019-08-19T23:18:35+00:00",
-                    "scheduled_at_date": "0.3923",
-                    "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
-                    "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
-                    "enclave_leader_id": 1
-                  }
-                ]
+                    status:
+                      description: Status of the leadership event
+                      oneOf:
+                        - description: Event is yet to be processed
+                          type: string
+                          enum: [Pending]
+                        - description: Event was rejected and won't be create a block
+                          type: object
+                          required: [Rejected]
+                          properties:
+                            Rejected:
+                              type: object
+                              required: [reason]
+                              properties:
+                                reason:
+                                  description: Reason for rejection
+                                  type: string
+                        - description: Event has successfully created a block
+                          type: object
+                          required: [Block]
+                          properties:
+                            InABlock:
+                              type: object
+                              required: [chain_length, block]
+                              properties:
+                                block:
+                                  description: Block hash that has been created
+                                  type: string
+                                  pattern: '[0-9]+\.[0-9]+'
+                                chain_length:
+                                  description: Block hash that has been created
+                                  type: number
+                                  minimum: 0
+              example:
+                Pending: |
+                  [
+                    {
+                      "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
+                      "scheduled_at_time": "2019-08-19T23:18:35+00:00",
+                      "scheduled_at_date": "0.3923",
+                      "wake_at_time": null,
+                      "finished_at_time": null,
+                      "enclave_leader_id": 1,
+                      "status": "Pending"
+                    }
+                  ]
+                Block: |
+                  [
+                    {
+                      "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
+                      "scheduled_at_time": "2019-08-19T23:18:35+00:00",
+                      "scheduled_at_date": "0.3923",
+                      "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
+                      "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
+                      "enclave_leader_id": 1,
+                      "status": {
+                        "Block": {
+                          "chain_length": 201910,
+                          "block": "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
+                        }
+                      }
+                    }
+                  ]
+                Rejected: |
+                  [
+                    {
+                      "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
+                      "scheduled_at_time": "2019-08-19T23:18:35+00:00",
+                      "scheduled_at_date": "0.3923",
+                      "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
+                      "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
+                      "enclave_leader_id": 1,
+                      "status": {
+                        "Rejected": {
+                          "reason": "Missed the deadline to compute the schedule",
+                        }
+                      }
+                    }
+                  ]
   /api/v0/leaders/{leader_id}:
     delete:
       description: Deletes leader

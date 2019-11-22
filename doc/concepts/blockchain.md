@@ -63,11 +63,11 @@ their stake to be elected to create a block. Each lottery draw is private to
 each stake pool, so that the overall network doesn't know in advance who can
 or cannot create blocks.
 
-In Genesis-Praos slot time duration is constant, however the frequency of 
-creating blocks is not stable, since the creation of blocks is a probability 
+In Genesis-Praos slot time duration is constant, however the frequency of
+creating blocks is not stable, since the creation of blocks is a probability
 that is linked to the stake and consensus_genesis_praos_active_slot_coeff.
 
-**Note**: In Genesis-Praos, if there is no stake in the system, no blocks will be 
+**Note**: In Genesis-Praos, if there is no stake in the system, no blocks will be
 created anymore starting with the next epoch.
 
 ## Leadership
@@ -99,7 +99,7 @@ coins being spent, and on the other side the outputs represent coins being recei
                          \           /
                           -----------
                                 100$
-                             --------- 
+                             ---------
                             /         \
     Outputs            Charlie (50$)  Dan (50$)
 ```

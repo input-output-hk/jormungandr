@@ -157,7 +157,9 @@ status:
 
 ```yaml
 status:                         # fragment was included in a block
-  InABlock: "6637.3"            # block epoch and slot ID formed as <epoch>.<slot_id>
+  InABlock:
+    date: "6637.3"            # block epoch and slot ID formed as <epoch>.<slot_id>
+    block: "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
 ```
 
 ## Blockchain tip
@@ -363,6 +365,33 @@ YAML printed on success
   scheduled_at_date: "0.3923"
   scheduled_at_time: "2019-08-19T23:18:35+00:00"
   wake_at_time: "2019-08-19T23:18:35.001254555+00:00"
+  status:
+    Block:
+      chain_length: 201018,
+      block: "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
+
+```
+
+Different value for the status:
+
+```yaml
+# meaning the action is still pending to happen
+status: Pending
+```
+
+```yaml
+# meaning the action successfully create the given block with the given hash
+status:
+  Block:
+    chain_length: 201018,
+    block: "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
+```
+
+```yaml
+# meaning the event has failed for some reasons
+status:
+  Rejected:
+    reason: "Missed the deadline to compute the schedule"
 ```
 
 ## Get stake pools

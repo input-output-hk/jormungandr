@@ -36,7 +36,7 @@ pub enum Error {
     #[error("failed to apply block to the blockchain")]
     ApplyBlockFailed { source: BlockchainError },
     #[error("failed to select the new tip")]
-    ChainSelectionFailed { source: blockchain::ProcessError },
+    ChainSelectionFailed { source: BlockchainError },
 }
 
 pub fn bootstrap_from_peer(
@@ -59,7 +59,7 @@ pub fn bootstrap_from_peer(
                 .ready()
                 .map_err(|e| Error::ClientNotReady { source: e })
         })
-        .join(branch.get_ref().map_err(|_| unreachable!()))
+        .join(branch.get_ref())
         .and_then(move |(mut client, tip)| {
             let tip_hash = tip.hash();
             debug!(logger, "pulling blocks starting from {}", tip_hash);

@@ -1,4 +1,4 @@
-use crate::{interfaces::BlockDate, time::SystemTime};
+use crate::{crypto::hash::Hash, interfaces::BlockDate, time::SystemTime};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -11,6 +11,14 @@ pub struct EnclaveLeaderId(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LeadershipLogId(EnclaveLeaderId, BlockDate);
 
+/// the status of a leadership log
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum LeadershipLogStatus {
+    Pending,
+    Rejected { reason: String },
+    Block { block: Hash, chain_length: u32 },
+}
+
 /// provides information regarding events in the leadership schedule
 ///
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +28,7 @@ pub struct LeadershipLog {
     scheduled_at_date: BlockDate,
     wake_at_time: Option<SystemTime>,
     finished_at_time: Option<SystemTime>,
+    status: LeadershipLogStatus,
     enclave_leader_id: EnclaveLeaderId,
 }
 
@@ -45,6 +54,7 @@ impl LeadershipLog {
             scheduled_at_date,
             wake_at_time: None,
             finished_at_time: None,
+            status: LeadershipLogStatus::Pending,
             enclave_leader_id,
         }
     }
@@ -71,6 +81,9 @@ impl LeadershipLog {
     }
     pub fn enclave_leader_id(&self) -> &EnclaveLeaderId {
         &self.enclave_leader_id
+    }
+    pub fn status(&self) -> &LeadershipLogStatus {
+        &self.status
     }
 
     /// make a leadership event as triggered.
@@ -100,6 +113,11 @@ impl LeadershipLog {
     pub fn mark_finished(&mut self) {
         debug_assert!(self.finished_at_time.is_none());
         self.finished_at_time = Some(SystemTime::now())
+    }
+
+    /// set the leadership log status.
+    pub fn set_status(&mut self, status: LeadershipLogStatus) {
+        self.status = status
     }
 }
 

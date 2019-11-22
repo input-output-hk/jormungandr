@@ -16,13 +16,14 @@ mod subscription;
 // Constants
 
 mod buffer_sizes {
-    // Size of chunks to split processing of chain pull streams.
-    // Apart from sizing data chunks for intercom messages, it also
-    // determines how many blocks will be requested per each GetBlocks request
-    // distributed between different peers.
-    //
-    // This may need to be made into a configuration parameter.
+    // Size of buffer for processing of header push/pull streams.
     pub const CHAIN_PULL: usize = 32;
+
+    // The maximum number of blocks to buffer from an incoming stream
+    // (GetBlocks response or an UploadBlocks request)
+    // while waiting for the block task to become ready to process
+    // the next block.
+    pub const BLOCKS: usize = 2;
 
     // The maximum number of fragments to buffer from an incoming subscription
     // while waiting for the fragment task to become ready to process them.
@@ -122,7 +123,7 @@ impl GlobalState {
     ) -> Self {
         let mut topology = P2pTopology::new(config.profile.clone(), logger.clone());
         topology.set_poldercast_modules();
-        topology.set_custom_modules();
+        topology.set_custom_modules(&config);
         topology.set_policy(config.policy.clone());
 
         // inject the trusted peers as initial gossips, this will make the node
@@ -254,8 +255,20 @@ pub fn start(
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
     let gossip_err_logger = global_state.logger.clone();
-    // TODO: get gossip propagation interval from configuration
-    let gossip = Interval::new_interval(Duration::from_secs(10))
+    let reset_err_logger = global_state.logger.clone();
+    let tp2p = global_state.topology.clone();
+
+    if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
+        global_state.spawn(
+            Interval::new_interval(interval)
+                .map_err(move |e| {
+                    error!(reset_err_logger, "interval timer error: {:?}", e);
+                })
+                .for_each(move |_| Ok(tp2p.force_reset_layers())),
+        );
+    }
+
+    let gossip = Interval::new_interval(global_state.config.gossip_interval.clone())
         .map_err(move |e| {
             error!(gossip_err_logger, "interval timer error: {:?}", e);
         })
@@ -374,7 +387,7 @@ fn connect_and_propagate_with<F>(
     let conn_err_state = state.clone();
     let cf = connecting
         .map_err(move |e| {
-            match e {
+            let benign = match e {
                 ConnectError::Connect(e) => {
                     if let Some(e) = e.connect_error() {
                         info!(conn_logger, "failed to connect to peer"; "reason" => %e);
@@ -383,13 +396,21 @@ fn connect_and_propagate_with<F>(
                     } else {
                         info!(conn_logger, "gRPC connection to peer failed"; "reason" => %e);
                     }
+                    false
+                }
+                ConnectError::Canceled => {
+                    debug!(conn_logger, "connection to peer has been canceled");
+                    true
                 }
                 _ => {
                     info!(conn_logger, "connection to peer failed"; "reason" => %e);
+                    false
                 }
+            };
+            if !benign {
+                conn_err_state.peers.remove_peer(node_id);
+                conn_err_state.topology.report_node(node_id, StrikeReason::CannotConnect);
             }
-            conn_err_state.peers.remove_peer(node_id);
-            conn_err_state.topology.report_node(node_id, StrikeReason::CannotConnect);
         })
         .and_then(move |client| {
             let connected_node_id = client.remote_node_id();

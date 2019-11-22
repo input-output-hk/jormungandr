@@ -6,7 +6,8 @@ mod persistent_sequence;
 use self::error::{Error, ErrorKind, Result};
 use self::graphql::Context;
 use self::indexing::{
-    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerBlock, StakePools, Transactions,
+    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock, StakePool,
+    StakePoolBlocks, StakePoolData, Transactions,
 };
 use self::persistent_sequence::PersistentSequence;
 
@@ -18,7 +19,7 @@ use crate::blockcfg::{
 use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
 use crate::utils::task::{Input, TokioServiceInfo};
-use chain_addr::{Address, Discrimination};
+use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::multiverse::GCRoot;
@@ -72,7 +73,8 @@ struct State {
     addresses: Addresses,
     epochs: Epochs,
     chain_lengths: ChainLengths,
-    stake_pools: StakePools,
+    stake_pool_data: StakePool,
+    stake_pool_blocks: StakePoolBlocks,
 }
 
 #[derive(Clone)]
@@ -159,7 +161,8 @@ impl ExplorerDB {
         let chain_lengths = apply_block_to_chain_lengths(ChainLengths::new(), &block)?;
         let transactions = apply_block_to_transactions(Transactions::new(), &block)?;
         let addresses = apply_block_to_addresses(Addresses::new(), &block)?;
-        let stake_pools = apply_block_to_stake_pools(StakePools::new(), &block);
+        let (stake_pool_data, stake_pool_blocks) =
+            apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
 
         let initial_state = State {
             blocks,
@@ -167,7 +170,8 @@ impl ExplorerDB {
             chain_lengths,
             transactions,
             addresses,
-            stake_pools,
+            stake_pool_data,
+            stake_pool_blocks,
         };
 
         let multiverse = Multiverse::<State>::new();
@@ -236,7 +240,8 @@ impl ExplorerDB {
                         addresses,
                         epochs,
                         chain_lengths,
-                        stake_pools,
+                        stake_pool_data,
+                        stake_pool_blocks,
                     } = state;
 
                     let explorer_block =
@@ -248,7 +253,11 @@ impl ExplorerDB {
                         apply_block_to_addresses(addresses, &explorer_block)?,
                         apply_block_to_epochs(epochs, &explorer_block),
                         apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
-                        apply_block_to_stake_pools(stake_pools, &explorer_block),
+                        apply_block_to_stake_pools(
+                            stake_pool_data,
+                            stake_pool_blocks,
+                            &explorer_block,
+                        ),
                     ))
                 }
                 None => Err(Error::from(ErrorKind::AncestorNotFound(format!(
@@ -260,6 +269,7 @@ impl ExplorerDB {
                 move |(transactions, blocks, addresses, epochs, chain_lengths, stake_pools)| {
                     let chain_length = chain_length.clone();
                     let block_id = block_id.clone();
+                    let (stake_pool_data, stake_pool_blocks) = stake_pools;
                     multiverse
                         .insert(
                             chain_length,
@@ -270,7 +280,8 @@ impl ExplorerDB {
                                 addresses,
                                 epochs,
                                 chain_lengths,
-                                stake_pools,
+                                stake_pool_data,
+                                stake_pool_blocks,
                             },
                         )
                         .map_err(|_: Infallible| unreachable!())
@@ -335,7 +346,7 @@ impl ExplorerDB {
 
     pub fn get_transactions_by_address(
         &self,
-        address: &Address,
+        address: &ExplorerAddress,
     ) -> impl Future<Item = Option<PersistentSequence<FragmentId>>, Error = Infallible> {
         let address = address.clone();
         self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
@@ -369,7 +380,17 @@ impl ExplorerDB {
         pool: &PoolId,
     ) -> impl Future<Item = Option<PersistentSequence<HeaderHash>>, Error = Infallible> {
         let pool = pool.clone();
-        self.with_latest_state(move |state| state.stake_pools.lookup(&pool).map(|i| i.clone()))
+        self.with_latest_state(move |state| {
+            state.stake_pool_blocks.lookup(&pool).map(|i| i.clone())
+        })
+    }
+
+    pub fn get_stake_pool_data(
+        &self,
+        pool: &PoolId,
+    ) -> impl Future<Item = Option<StakePoolData>, Error = Infallible> {
+        let pool = pool.clone();
+        self.with_latest_state(move |state| state.stake_pool_data.lookup(&pool).map(|i| i.clone()))
     }
 
     /// run given function with the longest branch's state
@@ -485,9 +506,13 @@ fn apply_block_to_chain_lengths(
         })
 }
 
-fn apply_block_to_stake_pools(stake_pools: StakePools, block: &ExplorerBlock) -> StakePools {
-    let mut stake_pools = match &block.producer() {
-        indexing::BlockProducer::StakePool(id) => stake_pools
+fn apply_block_to_stake_pools(
+    data: StakePool,
+    blocks: StakePoolBlocks,
+    block: &ExplorerBlock,
+) -> (StakePool, StakePoolBlocks) {
+    let mut blocks = match &block.producer() {
+        indexing::BlockProducer::StakePool(id) => blocks
             .update(
                 &id,
                 |array: &PersistentSequence<HeaderHash>| -> std::result::Result<_, Infallible> {
@@ -496,21 +521,34 @@ fn apply_block_to_stake_pools(stake_pools: StakePools, block: &ExplorerBlock) ->
             )
             .expect("block to be created by registered stake pool"),
         indexing::BlockProducer::BftLeader(_) => unimplemented!(),
-        indexing::BlockProducer::None => stake_pools,
+        indexing::BlockProducer::None => blocks,
     };
+
+    let mut data = data;
 
     for tx in block.transactions.values() {
         if let Some(cert) = &tx.certificate {
-            stake_pools = match cert {
-                Certificate::PoolRegistration(registration) => stake_pools
+            blocks = match cert {
+                Certificate::PoolRegistration(registration) => blocks
                     .insert(registration.to_id(), PersistentSequence::new())
-                    .expect("same pool registration to happen only once"),
-                _ => stake_pools,
-            }
+                    .expect("pool was registered more than once"),
+                _ => blocks,
+            };
+            data = match cert {
+                Certificate::PoolRegistration(registration) => data
+                    .insert(
+                        registration.to_id(),
+                        StakePoolData {
+                            registration: registration.clone(),
+                        },
+                    )
+                    .expect("pool was registered more than once"),
+                _ => data,
+            };
         }
     }
 
-    stake_pools
+    (data, blocks)
 }
 
 impl BlockchainConfig {

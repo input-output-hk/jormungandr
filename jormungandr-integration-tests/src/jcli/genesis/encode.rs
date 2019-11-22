@@ -6,7 +6,6 @@ use crate::common::{
     file_utils, jcli_wrapper, startup,
 };
 use chain_addr::Discrimination;
-use jormungandr_lib::interfaces::Value;
 
 #[test]
 pub fn test_genesis_block_is_built_from_correct_yaml() {

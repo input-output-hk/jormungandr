@@ -8,7 +8,7 @@ Like in the passive node case, two things are needed to connect to an existing n
    of truth of the blockchain. It is 64 hexadecimal characters.
 2. the **trusted peers** identifiers and access points.
 
-The node configuration could be the same as that for [running a passive node](./01_passive_node.md). 
+The node configuration could be the same as that for [running a passive node](./02_passive_node.md).
 
 There are some differences depending if you are connecting to a network running a genesis or bft consensus protocol.
 
@@ -16,11 +16,11 @@ There are some differences depending if you are connecting to a network running 
 
 #### Registering a stake pool
 
-In order to be able to generate blocks in an existing genesis network, a [registered stake pool](../../stake_pool/registering_stake_pool) is needed.
+In order to be able to generate blocks in an existing genesis network, a [registered stake pool](../stake_pool/registering_stake_pool.md) is needed.
 
 #### Creating the secrets file
 
-Put the node id and private keys in a yaml file in the following way:  
+Put the node id and private keys in a yaml file in the following way:
 
 ##### Example
 
@@ -33,7 +33,7 @@ genesis:
   node_id: Content of stake_pool.id file
 ```
 
-#### Starting the node 
+#### Starting the node
 
 ```sh
 jormungandr --genesis-block-hash asdf1234... --config config.yaml --secret node_secret.yaml

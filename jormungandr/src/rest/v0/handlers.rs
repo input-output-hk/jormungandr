@@ -41,10 +41,7 @@ fn chain_tip_fut<'a>(context: &State<Context>) -> impl Future<Item = Arc<Ref>, E
 }
 
 fn chain_tip_fut_raw<'a>(context: &FullContext) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    context
-        .blockchain_tip
-        .get_ref()
-        .map_err(|infallible| match infallible {})
+    context.blockchain_tip.get_ref()
 }
 
 pub fn get_account_state(context: State<Context>, account_id_hex: Path<String>) -> ActixFuture!() {
@@ -317,7 +314,7 @@ pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
     // Server finishes ongoing tasks before stopping, so user will get response to this request
     // Node should be shutdown automatically when server stopping is finished
     context.try_full()?;
-    context.server().stop();
+    context.server()?.stop();
     Ok(HttpResponse::Ok().finish())
 }
 
@@ -372,10 +369,11 @@ pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
 }
 
 pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
-    context.try_full_fut().and_then(|context| {
-        let (reply_handle, reply_future) =
-            intercom::unary_reply::<_, intercom::Error>(context.logger.clone());
-        context
+    context.try_full_fut()
+        .and_then(move |full_context| context.logger().map(|logger| (full_context, logger)))
+        .and_then(|(full_context, logger)| {
+        let (reply_handle, reply_future) = intercom::unary_reply::<_, intercom::Error>(logger);
+        full_context
             .network_task
             .clone()
             .try_send(NetworkMsg::PeerStats(reply_handle))

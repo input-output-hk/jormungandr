@@ -7,14 +7,17 @@ use slog_gelf::Gelf;
 use slog_journald::JournaldDrain;
 #[cfg(unix)]
 use slog_syslog::Facility;
-use slog_term::TermDecorator;
+use slog_term::{PlainDecorator, TermDecorator};
 use std::error;
 use std::fmt::{self, Display};
+use std::fs;
 use std::io;
 use std::str::FromStr;
 
+pub struct LogSettings(pub Vec<LogSettingsEntry>);
+
 #[derive(Debug)]
-pub struct LogSettings {
+pub struct LogSettingsEntry {
     pub level: FilterLevel,
     pub format: LogFormat,
     pub output: LogOutput,
@@ -53,6 +56,7 @@ pub enum LogOutput {
         backend: String,
         log_id: String,
     },
+    File(String),
 }
 
 impl FromStr for LogFormat {
@@ -83,15 +87,49 @@ impl FromStr for LogOutput {
     }
 }
 
+#[derive(Debug)]
+struct DrainMux<D>(Vec<D>);
+
+impl<D> DrainMux<D> {
+    pub fn new(d: Vec<D>) -> Self {
+        Self(d)
+    }
+}
+
+impl<D: Drain> Drain for DrainMux<D> {
+    type Ok = ();
+    type Err = D::Err;
+
+    fn log(
+        &self,
+        record: &slog::Record,
+        values: &slog::OwnedKVList,
+    ) -> Result<Self::Ok, Self::Err> {
+        self.0
+            .iter()
+            .try_for_each(|drain| drain.log(record, values).map(|_| ()))
+    }
+}
+
 impl LogSettings {
     pub fn to_logger(&self) -> Result<Logger, Error> {
+        let mut drains = Vec::new();
+        for config in self.0.iter() {
+            drains.push(config.to_logger()?);
+        }
+        let common_drain = DrainMux::new(drains).fuse();
+        Ok(slog::Logger::root(common_drain, o!()))
+    }
+}
+
+impl LogSettingsEntry {
+    pub fn to_logger(&self) -> Result<slog::Filter<Async, impl slog::FilterFn>, Error> {
         let filter_level = self.level;
         let drain = self
             .output
             .to_logger(&self.format)?
-            .filter(move |record| filter_level.accepts(record.level()))
-            .fuse();
-        Ok(slog::Logger::root(drain, o!()))
+            .filter(move |record| filter_level.accepts(record.level()));
+        Ok(drain)
     }
 }
 
@@ -104,14 +142,14 @@ impl LogOutput {
             LogOutput::Syslog => {
                 format.require_plain()?;
                 match slog_syslog::unix_3164(Facility::LOG_USER) {
-                    Ok(drain) => Ok(drain.async()),
+                    Ok(drain) => Ok(drain.into_async()),
                     Err(e) => Err(Error::SyslogAccessFailed(e)),
                 }
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
                 format.require_plain()?;
-                Ok(JournaldDrain.async())
+                Ok(JournaldDrain.into_async())
             }
             #[cfg(feature = "gelf")]
             LogOutput::Gelf {
@@ -128,10 +166,16 @@ impl LogOutput {
                 };
                 let gelf_drain = Gelf::new(graylog_source, graylog_host_port)
                     .map_err(Error::GelfConnectionFailed)?;
-                // We also log to stderr otherwise users see no logs.
-                // TODO: remove when multiple output is properly supported.
-                let stderr_drain = format.decorate_stderr();
-                Ok(slog::Duplicate(gelf_drain, stderr_drain).async())
+                Ok(gelf_drain.into_async())
+            }
+            LogOutput::File(path) => {
+                let file = fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .append(true)
+                    .open(path)
+                    .map_err(Error::FileError)?;
+                Ok(format.decorate_writer(file))
             }
         }
     }
@@ -155,18 +199,25 @@ impl LogFormat {
     fn decorate_stdout(&self) -> Async {
         match self {
             LogFormat::Plain => {
-                term_drain_with_decorator(TermDecorator::new().stdout().build()).async()
+                term_drain_with_decorator(TermDecorator::new().stdout().build()).into_async()
             }
-            LogFormat::Json => slog_json::Json::default(io::stdout()).async(),
+            LogFormat::Json => slog_json::Json::default(io::stdout()).into_async(),
         }
     }
 
     fn decorate_stderr(&self) -> Async {
         match self {
             LogFormat::Plain => {
-                term_drain_with_decorator(TermDecorator::new().stderr().build()).async()
+                term_drain_with_decorator(TermDecorator::new().stderr().build()).into_async()
             }
-            LogFormat::Json => slog_json::Json::default(io::stderr()).async(),
+            LogFormat::Json => slog_json::Json::default(io::stderr()).into_async(),
+        }
+    }
+
+    fn decorate_writer<T: io::Write + Send + 'static>(&self, w: T) -> Async {
+        match self {
+            LogFormat::Plain => term_drain_with_decorator(PlainDecorator::new(w)).into_async(),
+            LogFormat::Json => slog_json::Json::default(w).into_async(),
         }
     }
 }
@@ -180,6 +231,7 @@ pub enum Error {
     SyslogAccessFailed(io::Error),
     #[cfg(feature = "gelf")]
     GelfConnectionFailed(io::Error),
+    FileError(io::Error),
 }
 
 impl Display for Error {
@@ -194,6 +246,7 @@ impl Display for Error {
             Error::SyslogAccessFailed(_) => write!(f, "syslog access failed"),
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(_) => write!(f, "GELF connection failed"),
+            Error::FileError(e) => write!(f, "failed to open the log file: {}", e),
         }
     }
 }
@@ -206,6 +259,7 @@ impl error::Error for Error {
             Error::SyslogAccessFailed(err) => Some(err),
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(err) => Some(err),
+            Error::FileError(err) => Some(err),
         }
     }
 }

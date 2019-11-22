@@ -8,9 +8,10 @@ pub mod v0;
 pub use self::server::{Error, Server};
 
 use actix_web::dev::Resource;
-use actix_web::error::{Error as ActixError, ErrorServiceUnavailable};
+use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServiceUnavailable};
 use actix_web::middleware::cors::Cors;
 use actix_web::App;
+
 use futures::{Future, IntoFuture};
 use slog::Logger;
 use std::sync::{Arc, RwLock};
@@ -32,6 +33,7 @@ pub struct Context {
     full: Arc<RwLock<Option<Arc<FullContext>>>>,
     server: Arc<RwLock<Option<Arc<Server>>>>,
     node_state: Arc<RwLock<NodeState>>,
+    logger: Arc<RwLock<Option<Logger>>>,
 }
 
 impl Context {
@@ -40,6 +42,7 @@ impl Context {
             full: Default::default(),
             server: Default::default(),
             node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
+            logger: Default::default(),
         }
     }
 
@@ -63,12 +66,12 @@ impl Context {
         *self.server.write().expect("Context server poisoned") = Some(Arc::new(server));
     }
 
-    pub fn server(&self) -> Arc<Server> {
+    pub fn server(&self) -> Result<Arc<Server>, ActixError> {
         self.server
             .read()
             .expect("Context server poisoned")
             .clone()
-            .expect("Context server not set")
+            .ok_or_else(|| ErrorInternalServerError("Server not set in  REST context"))
     }
 
     pub fn set_node_state(&self, node_state: NodeState) {
@@ -84,11 +87,22 @@ impl Context {
             .expect("Context node state poisoned")
             .clone()
     }
+
+    pub fn set_logger(&self, logger: Logger) {
+        *self.logger.write().expect("Context logger poisoned") = Some(logger);
+    }
+
+    pub fn logger(&self) -> Result<Logger, ActixError> {
+        self.logger
+            .read()
+            .expect("Context logger poisoned")
+            .clone()
+            .ok_or_else(|| ErrorInternalServerError("Logger not set in  REST context"))
+    }
 }
 
 #[derive(Clone)]
 pub struct FullContext {
-    pub logger: Logger,
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
@@ -100,14 +114,14 @@ pub struct FullContext {
     pub explorer: Option<crate::explorer::Explorer>,
 }
 
-pub fn start_rest_server(
-    config: &Rest,
+pub fn run_rest_server(
+    config: Rest,
     explorer_enabled: bool,
-    context: &Context,
+    context: Context,
 ) -> Result<(), ConfigError> {
     let app_context = context.clone();
-    let cors_cfg = config.cors.clone();
-    let server = Server::start(config.pkcs12.clone(), config.listen.clone(), move || {
+    let cors_cfg = config.cors;
+    let handlers = move || {
         let mut apps = vec![build_app(
             app_context.clone(),
             "/api/v0",
@@ -125,9 +139,9 @@ pub fn start_rest_server(
         }
 
         apps
-    })?;
-    context.set_server(server);
-    Ok(())
+    };
+    let server_receiver = move |server| context.set_server(server);
+    Server::run(config.pkcs12, config.listen, handlers, server_receiver).map_err(Into::into)
 }
 
 fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>

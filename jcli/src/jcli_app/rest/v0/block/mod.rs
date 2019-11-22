@@ -1,4 +1,4 @@
-use jcli_app::rest::Error;
+use crate::jcli_app::rest::Error;
 use structopt::StructOpt;
 
 mod next_id;
