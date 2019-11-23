@@ -73,7 +73,7 @@ $CLI transaction add-account "${FAUCET_ADDR}" "${ACCOUNT_AMOUNT}" --staging "${S
 $CLI transaction add-output "${DESTINATION_ADDRESS}" "${DESTINATION_AMOUNT}" --staging "${STAGING_FILE}"
 $CLI transaction finalize --staging ${STAGING_FILE}
 
-TRANSACTION_ID=$($CLI transaction id --staging ${STAGING_FILE})
+TRANSACTION_ID=$($CLI transaction data-for-witness --staging ${STAGING_FILE})
 
 # Create the witness for the 1 input (add-account) and add it
 WITNESS_SECRET_FILE="witness.secret.$$"
