@@ -3,12 +3,13 @@ use crate::{
     header::HeaderId,
     testing::{ledger::TestLedger, KeysDb, data::AddressDataValue, builders::witness_builder::make_witness},
     transaction::{
-        Input, NoExtra, Output, Transaction, TxBuilder, Witness,
+        Input, NoExtra, Output, Transaction, TxBuilder, Witness, TransactionSlice, OutputsSlice,TransactionSignDataHash,WitnessesSlice
     },
     value::Value,
     fee::FeeAlgorithm,
 };
 use chain_addr::Address;
+
 
 pub struct TestTxBuilder {
     block0_hash: HeaderId,
@@ -33,8 +34,24 @@ impl TestTx {
         Fragment::Transaction(self.tx)
     }
 
+    pub fn hash(&self) -> TransactionSignDataHash {
+        self.clone().get_tx().hash()
+    }
+
     pub fn get_tx(self) -> Transaction<NoExtra> {
         self.tx
+    }
+
+    pub fn witnesses<'a>(&'a self) -> WitnessesSlice<'a> {
+        self.as_slice().witnesses()
+    }
+
+    pub fn as_slice<'a>(&'a self) -> TransactionSlice<'a,NoExtra>{
+        self.tx.as_slice()
+    }
+
+    pub fn get_tx_outputs<'a>(&'a self) -> OutputsSlice<'a> {
+        self.as_slice().outputs()
     }
 }
 
@@ -45,7 +62,7 @@ impl TestTxBuilder {
         }
     }
 
-    pub fn move_from_faucet(self, test_ledger: &mut TestLedger, destination: &Address, value: &Value) -> TestTx {
+    pub fn move_from_faucet(&self,test_ledger: &mut TestLedger, destination: &Address, value: &Value) -> TestTx {
         assert_eq!(test_ledger.faucets.len(),1,"method can be used only for single faucet ledger");
         let mut faucet = test_ledger.faucets.iter().cloned().next().as_mut().expect("test ledger with no faucet configured").clone();
         let fee = test_ledger.fee().fees_for_inputs_outputs(1u8,1u8);
@@ -65,7 +82,7 @@ impl TestTxBuilder {
         TestTx { tx }
     }
 
-    pub fn move_to_outputs_from_faucet(self, test_ledger: &mut TestLedger, destination: &[Output<Address>]) -> TestTx {
+    pub fn move_to_outputs_from_faucet(&self,test_ledger: &mut TestLedger, destination: &[Output<Address>]) -> TestTx {
         assert_eq!(test_ledger.faucets.len(),1,"method can be used only for single faucet ledger");
         let mut faucet = test_ledger.faucets.iter().next().as_mut().expect("test ledger with no faucet configured").clone();
         let input_val = Value::sum(destination.iter().map(|o| o.value)).unwrap();
@@ -83,14 +100,14 @@ impl TestTxBuilder {
         TestTx { tx }
     }
 
-    pub fn move_all_funds(self, test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue) -> TestTx {
+    pub fn move_all_funds(&self,test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue) -> TestTx {
         let mut keys_db = KeysDb::empty();
         keys_db.add_key(source.private_key());
         keys_db.add_key(destination.private_key());
         self.move_funds(test_ledger,&source,&destination,&source.value)
     }
 
-    pub fn move_funds(self, test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue, value: &Value) -> TestTx {
+    pub fn move_funds(&self,test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue, value: &Value) -> TestTx {
         let fee = test_ledger.fee();
         let fee_value = (fee.fees_for_inputs_outputs(1u8,1u8) + Value(fee.constant)).unwrap();
         let output_value = (*value - fee_value).expect("input value is smaller than fee");
@@ -99,7 +116,7 @@ impl TestTxBuilder {
         self.move_funds_multiple(test_ledger, &sources, &destinations)
     }
     
-    pub fn move_funds_multiple(self,test_ledger: &mut TestLedger, sources: &Vec<AddressDataValue>, destinations: &Vec<AddressDataValue>) -> TestTx {
+    pub fn move_funds_multiple(&self,test_ledger: &mut TestLedger, sources: &Vec<AddressDataValue>, destinations: &Vec<AddressDataValue>) -> TestTx {
         let inputs: Vec<Input>  = sources.iter().cloned().map(|x| {
                     let optional_utxo = test_ledger.find_utxo_for_address(&x.address_data());
                     x.make_input(optional_utxo)
@@ -114,7 +131,7 @@ impl TestTxBuilder {
             make_witness(
                 &self.block0_hash,
                 &source.address_data(),
-                auth_data_hash,
+                &auth_data_hash,
             )}
         ).collect();
 

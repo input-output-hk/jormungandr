@@ -28,9 +28,13 @@ pub struct TestGen;
 
 impl TestGen {
     pub fn hash() -> Hash {
+        Hash::from_bytes(Self::bytes())
+    }
+
+    pub fn bytes() -> [u8;32] {
         let mut random_bytes: [u8; 32] = [0; 32];
         rand_os::OsRng::new().unwrap().fill_bytes(&mut random_bytes);
-        Hash::from_bytes(random_bytes)
+        random_bytes
     }
 
     pub fn leader_pair() -> LeaderPair {

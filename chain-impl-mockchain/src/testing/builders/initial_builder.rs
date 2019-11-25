@@ -6,7 +6,7 @@ use crate::{
             StakePool,Wallet
         }        
     },
-    certificate::{Certificate, PoolOwnersSigned,PoolSignature},
+    certificate::Certificate,
     transaction::*, 
     key::EitherEd25519SecretKey,
 };
