@@ -14,7 +14,6 @@ jcli certificate new stake-pool-registration \
     --management-threshold <THRESHOLD> \
     --owner <owner-public-key> \
     [--operator <operator-public-key>] \
-    --serial <node-serial> \
     [<output-file>]
 ```
 

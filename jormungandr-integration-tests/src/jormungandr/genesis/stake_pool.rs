@@ -44,7 +44,6 @@ pub fn create_delegate_retire_stake_pool() {
 
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
-        "1234",
         &block0_hash,
         &jormungandr.rest_address(),
         &Default::default(),
@@ -67,7 +66,6 @@ pub fn create_delegate_retire_stake_pool() {
 
 pub fn create_new_stake_pool(
     account: &mut Account,
-    node_id: &str,
     genesis_block_hash: &str,
     jormungandr_rest_address: &str,
     wait: &Wait,
@@ -86,7 +84,6 @@ pub fn create_new_stake_pool(
 
     let stake_pool_certificate = certificate_wrapper.assert_new_stake_pool_registration(
         &vrf.identifier().to_bech32_str(),
-        node_id,
         &kes.identifier().to_bech32_str(),
         0u32,
         1u32,

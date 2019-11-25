@@ -54,8 +54,7 @@ jcli certificate new stake-pool-registration \
     --vrf-key $(cat stake_pool_vrf.pub) \
     --start-validity 0 \
     --management-threshold 1 \
-    --owner $(cat owner_key.pub) \
-    --serial 1010101010 > stake_pool.cert
+    --owner $(cat owner_key.pub) > stake_pool.cert
 ```
 
 The `--operator` flag is optional.

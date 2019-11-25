@@ -29,7 +29,6 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
 
     let stake_pool_signcert_file = jcli_certificate.assert_new_signed_stake_pool_cert(
         &pool_kes.identifier().to_bech32_str(),
-        "1010101010",
         &pool_vrf.identifier().to_bech32_str(),
         &stake_key_file,
         0,
@@ -100,7 +99,6 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
 
     let stake_pool_signcert_file = jcli_certificate.assert_new_signed_stake_pool_cert(
         &pool_kes.identifier().to_bech32_str(),
-        "1010101010",
         &pool_vrf.identifier().to_bech32_str(),
         &owner_key_file,
         0,
