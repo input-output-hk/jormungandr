@@ -399,15 +399,32 @@ impl Ledger {
                 }
                 AccountIdentifier::Multi(_multi_account) => unimplemented!(),
             },
-            None => panic!("rewards to owners not implemented"),
+            None => {
+                let splitted = distr.taxed.split_in(pool.owners.len());
+                for owner in pool.owners {
+                    self.add_value_or_create_account(&single_account, splitted.parts)?;
+                }
+                // pool owners 0 get potentially an extra sweetener of value 1 to #owners - 1
+                if splitted.remaining > Value::zero() {
+                    self.accounts.add_value(pool.owners[0], splitted.remaining)?;
+                }
+            }
         }
 
         // distribute the rest to delegators
-        let total_stake = distribution.total;
+        let mut leftover_reward = distr.after_tax;
+        let mut total_stake = distribution.total;
         for (account, stake) in distribution.stake_owners.iter() {
-            let r = Value(1);
+            let ps = PercentStake::new(stake, total_stake);
+            let r = ps.scale_value(distr.after_tax);
+            leftover_reward = (leftover_reward - r).unwrap();
             self.add_value_or_create_account(account, r)?;
         }
+
+        if leftover_reward > 0 {
+            self.pots.treasury_add(leftover_reward)?;
+        }
+
         Ok(())
     }
 
