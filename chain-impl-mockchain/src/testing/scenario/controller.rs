@@ -118,7 +118,7 @@ mod tests {
             .with_config(
                 ConfigBuilder::new(0)
                     .with_discrimination(Discrimination::Test)
-                    .with_fee(LinearFee::new(1,1,1))
+                    .with_fee(LinearFee::new(1, 1, 1))
             )
             .with_initials(
                 vec![

@@ -63,6 +63,7 @@ impl Settings {
 
     pub fn apply(&self, changes: &ConfigParams) -> Result<Self, Error> {
         let mut new_state = self.clone();
+        let mut per_certificate_fees = None;
 
         for param in changes.iter() {
             match param {
@@ -125,7 +126,16 @@ impl Settings {
                 ConfigParam::TreasuryParams(rp) => {
                     new_state.treasury_params = Some(rp.clone());
                 }
+                ConfigParam::PerCertificateFees(pcf) => {
+                    per_certificate_fees = Some(pcf);
+                }
             }
+        }
+
+        if let Some(pcf) = per_certificate_fees {
+            Arc::get_mut(&mut new_state.linear_fees)
+                .unwrap()
+                .per_certificate_fees(*pcf);
         }
 
         Ok(new_state)

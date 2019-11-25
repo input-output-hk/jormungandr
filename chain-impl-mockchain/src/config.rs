@@ -2,7 +2,10 @@ use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
 use crate::rewards::TaxType;
 use crate::value::Value;
-use crate::{block::ConsensusVersion, fee::LinearFee};
+use crate::{
+    block::ConsensusVersion,
+    fee::{LinearFee, PerCertificateFee},
+};
 use chain_addr::Discrimination;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::packer::Codec;
@@ -69,6 +72,7 @@ pub enum ConfigParam {
     TreasuryParams(TaxType),
     RewardPot(Value),
     RewardParams(RewardParams),
+    PerCertificateFees(PerCertificateFee),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -116,6 +120,8 @@ pub enum Tag {
     RewardPot = 19,
     #[strum(to_string = "reward-params")]
     RewardParams = 20,
+    #[strum(to_string = "per-certificate-fees")]
+    PerCertificateFees = 21,
 }
 
 impl Tag {
@@ -139,6 +145,7 @@ impl Tag {
             18 => Some(Tag::TreasuryParams),
             19 => Some(Tag::RewardPot),
             20 => Some(Tag::RewardParams),
+            21 => Some(Tag::PerCertificateFees),
             _ => None,
         }
     }
@@ -167,6 +174,7 @@ impl<'a> From<&'a ConfigParam> for Tag {
             ConfigParam::TreasuryParams(_) => Tag::TreasuryParams,
             ConfigParam::RewardPot(_) => Tag::RewardPot,
             ConfigParam::RewardParams(_) => Tag::RewardParams,
+            ConfigParam::PerCertificateFees(_) => Tag::PerCertificateFees,
         }
     }
 }
@@ -222,6 +230,9 @@ impl Readable for ConfigParam {
             Tag::RewardParams => {
                 ConfigParamVariant::from_payload(bytes).map(ConfigParam::RewardParams)
             }
+            Tag::PerCertificateFees => {
+                ConfigParamVariant::from_payload(bytes).map(ConfigParam::PerCertificateFees)
+            }
         }
         .map_err(Into::into)
     }
@@ -251,6 +262,7 @@ impl property::Serialize for ConfigParam {
             ConfigParam::TreasuryParams(data) => data.to_payload(),
             ConfigParam::RewardPot(data) => data.to_payload(),
             ConfigParam::RewardParams(data) => data.to_payload(),
+            ConfigParam::PerCertificateFees(data) => data.to_payload(),
         };
         let taglen = TagLen::new(tag, bytes.len()).ok_or_else(|| {
             io::Error::new(
@@ -478,6 +490,27 @@ impl ConfigParamVariant for LinearFee {
             constant: u64::from_payload(&payload[0..8])?,
             coefficient: u64::from_payload(&payload[8..16])?,
             certificate: u64::from_payload(&payload[16..24])?,
+            per_certificate_fees: None,
+        })
+    }
+}
+
+impl ConfigParamVariant for PerCertificateFee {
+    fn to_payload(&self) -> Vec<u8> {
+        let mut v = self.certificate_pool_registration.to_payload();
+        v.extend(self.certificate_stake_delegation.to_payload());
+        v.extend(self.certificate_owner_stake_delegation.to_payload());
+        v
+    }
+
+    fn from_payload(payload: &[u8]) -> Result<Self, Error> {
+        if payload.len() != 3 * 8 {
+            return Err(Error::SizeInvalid);
+        }
+        Ok(PerCertificateFee {
+            certificate_pool_registration: u64::from_payload(&payload[0..8])?,
+            certificate_stake_delegation: u64::from_payload(&payload[0..8])?,
+            certificate_owner_stake_delegation: u64::from_payload(&payload[0..8])?,
         })
     }
 }
