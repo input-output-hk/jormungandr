@@ -10,7 +10,7 @@ use crate::fragment::{Fragment, FragmentId};
 use crate::header::{BlockDate, ChainLength, HeaderContentEvalContext, HeaderId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::rewards;
-use crate::stake::{PoolError, PoolsState, PoolStakeInformation, StakeDistribution};
+use crate::stake::{PoolError, PoolStakeInformation, PoolsState, StakeDistribution};
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -348,15 +348,20 @@ impl Ledger {
         for (pool_id, pool_blocks) in leaders_log.iter() {
             let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
 
-            match (new_ledger
+            match (
+                new_ledger
                     .delegation
                     .stake_pool_get(&pool_id)
                     .map(|reg| reg.clone()),
-                distribution.to_pools.get(pool_id))
-            {
+                distribution.to_pools.get(pool_id),
+            ) {
                 (Ok(pool_reg), Some(pool_distribution)) => {
                     //let distr = rewards::tax_cut(pool_total_reward, &pool_reg.rewards).unwrap();
-                    new_ledger.distribute_poolid_rewards(&pool_reg, pool_total_reward, pool_distribution)?;
+                    new_ledger.distribute_poolid_rewards(
+                        &pool_reg,
+                        pool_total_reward,
+                        pool_distribution,
+                    )?;
                 }
                 _ => {
                     // dump reward to treasury
