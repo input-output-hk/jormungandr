@@ -49,6 +49,11 @@ pub enum LogOutput {
     Stderr,
     #[cfg(unix)]
     Syslog,
+    #[cfg(unix)]
+    SyslogUdp {
+        host: String,
+        hostname: String,
+    },
     #[cfg(feature = "systemd")]
     Journald,
     #[cfg(feature = "gelf")]
@@ -146,6 +151,36 @@ impl LogOutput {
                     Err(e) => Err(Error::SyslogAccessFailed(e)),
                 }
             }
+            #[cfg(unix)]
+            LogOutput::SyslogUdp { host, hostname } => {
+                use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+                format.require_plain()?;
+
+                let mut local_port = 30_000;
+                let host = host.parse().map_err(Error::SyslogInvalidHost)?;
+
+                // automatically select local port
+                loop {
+                    let local =
+                        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), local_port);
+                    let res = slog_syslog::SyslogBuilder::new()
+                        .facility(Facility::LOG_USER)
+                        .udp(local, host, hostname)
+                        .start();
+                    match res {
+                        Ok(drain) => break Ok(drain.into_async()),
+                        Err(e) => {
+                            if e.kind() == std::io::ErrorKind::AddrInUse && local_port < 65_535 {
+                                local_port += 1;
+                                continue;
+                            }
+
+                            break Err(Error::SyslogAccessFailed(e));
+                        }
+                    }
+                }
+            }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
                 format.require_plain()?;
@@ -229,6 +264,8 @@ pub enum Error {
     },
     #[cfg(unix)]
     SyslogAccessFailed(io::Error),
+    #[cfg(unix)]
+    SyslogInvalidHost(std::net::AddrParseError),
     #[cfg(feature = "gelf")]
     GelfConnectionFailed(io::Error),
     FileError(io::Error),
@@ -244,6 +281,8 @@ impl Display for Error {
             ),
             #[cfg(unix)]
             Error::SyslogAccessFailed(_) => write!(f, "syslog access failed"),
+            #[cfg(unix)]
+            Error::SyslogInvalidHost(_) => write!(f, "invalid syslog host address"),
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(_) => write!(f, "GELF connection failed"),
             Error::FileError(e) => write!(f, "failed to open the log file: {}", e),
@@ -257,6 +296,8 @@ impl error::Error for Error {
             Error::PlainFormatRequired { .. } => None,
             #[cfg(unix)]
             Error::SyslogAccessFailed(err) => Some(err),
+            #[cfg(unix)]
+            Error::SyslogInvalidHost(err) => Some(err),
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(err) => Some(err),
             Error::FileError(err) => Some(err),
