@@ -329,14 +329,21 @@ impl Ledger {
         // grab the total contribution in the system
         // with all the stake pools and start rewarding them
 
-        let total_reward = rewards::rewards_contribution_calculation(
+        let expected_epoch_reward = rewards::rewards_contribution_calculation(
             new_ledger.date.epoch + 1,
             &ledger_params.reward_params,
         );
 
-        //let new_ledger.pots.treasury
-        let rw = new_ledger.pots.rewards;
-        //new_ledger.post
+        let mut total_reward = new_ledger.pots.draw_reward(expected_epoch_reward);
+
+        // Move fees in the rewarding pots for distribution or depending on settings
+        // to the treasury directly
+        if true {
+            total_reward = (total_reward + new_ledger.pots.siphon_fees()).unwrap();
+        } else {
+            let fees = new_ledger.pots.siphon_fees();
+            new_ledger.pots.treasury_add(fees)?
+        }
 
         let mut leaders_log = LeadersParticipationRecord::new();
         swap(&mut new_ledger.leaders_log, &mut leaders_log);
@@ -356,7 +363,6 @@ impl Ledger {
                 distribution.to_pools.get(pool_id),
             ) {
                 (Ok(pool_reg), Some(pool_distribution)) => {
-                    //let distr = rewards::tax_cut(pool_total_reward, &pool_reg.rewards).unwrap();
                     new_ledger.distribute_poolid_rewards(
                         &pool_reg,
                         pool_total_reward,
