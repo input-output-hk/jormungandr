@@ -3,9 +3,9 @@ use crate::{
         arbitrary::kind_type::KindTypeWithoutMultisig,
         arbitrary::AverageValue,
         data::{AddressData, AddressDataValue},
+        ledger::TestLedger
     },
     transaction::{Input, Output},
-    utxo::Ledger,
     value::Value,
 };
 use chain_addr::{Address, Discrimination, Kind};
@@ -61,18 +61,16 @@ impl ArbitraryAddressDataValueVec {
         Value::sum(self.iter().map(|input| input.value)).unwrap()
     }
 
-    pub fn make_inputs(&self, utxos: Ledger<Address>) -> Vec<Input> {
+    pub fn make_inputs(&self, ledger: &TestLedger) -> Vec<Input> {
         self.iter()
             .map(|x| {
-                let utxos_iter = utxos.clone();
-                let utxo = utxos_iter.iter().find(|y| {
-                    y.output.address == x.address_data.address && y.output.value == x.value
-                });
+                let utxo = ledger.find_utxo_for_address(&x.clone().into());
                 x.make_input(utxo)
             })
             .collect()
     }
 }
+
 impl Arbitrary for AddressData {
     fn arbitrary<G: Gen>(gen: &mut G) -> Self {
         let kind_without_multisig = KindTypeWithoutMultisig::arbitrary(gen);
