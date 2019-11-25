@@ -3,7 +3,7 @@ use crate::accounting::account::DelegationType;
 use crate::certificate::PoolId;
 use crate::{utxo, value::Value};
 use chain_addr::{Address, Kind};
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map};
 
 use super::delegation::PoolsState;
 
@@ -61,6 +61,10 @@ impl PoolStakeDistribution {
     pub fn to_total(&self) -> Value {
         Value::sum(self.accounts.values().copied())
             .expect("cannot sum stake properly: internal error related to value")
+    }
+    
+    pub fn iter(&self) -> hash_map::Iter<'_, account::Identifier, Value> {
+        self.accounts.iter()
     }
 }
 
