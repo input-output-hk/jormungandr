@@ -32,13 +32,6 @@ use structopt::StructOpt;
 ///
 #[derive(Debug, StructOpt)]
 pub struct StakePoolRegistration {
-    /// serial code for the stake pool certificate
-    ///
-    /// This value is arbitrary and does not need to be unique in the whole blockchain.
-    /// It can be used for stake pool owners or operators to differentiate multiple
-    /// stake pools they control.
-    #[structopt(long = "serial", name = "SERIAL")]
-    pub serial: u128,
     /// management threshold
     ///
     /// This is the number of owners keys that are required to update the stake
@@ -136,7 +129,7 @@ impl StakePoolRegistration {
         };
 
         let content = PoolRegistration {
-            serial: self.serial,
+            serial: 0,
             owners: self.owners.clone(),
             operators: self.operators.clone().into(),
             permissions: PoolPermissions::new(self.management_threshold.get()),
