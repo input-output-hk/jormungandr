@@ -10,6 +10,7 @@ use crate::fragment::{Fragment, FragmentId};
 use crate::header::{BlockDate, ChainLength, HeaderContentEvalContext, HeaderId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::rewards;
+use crate::stake::{PoolError, PoolsState, PoolStakeInformation, StakeDistribution};
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -17,6 +18,7 @@ use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo
 use chain_addr::{Address, Discrimination, Kind};
 use chain_crypto::Verification;
 use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
+use std::mem::swap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
@@ -57,6 +59,7 @@ pub struct Ledger {
     pub(crate) chain_length: ChainLength,
     pub(crate) era: TimeEra,
     pub(crate) pots: Pots,
+    pub(crate) leaders_log: LeadersParticipationRecord,
 }
 
 custom_error! {
@@ -313,6 +316,89 @@ impl Ledger {
         Ok(ledger)
     }
 
+    /// This need to be called before the *first* block of a new epoch
+    ///
+    /// * Reset the leaders log
+    pub fn distribute_rewards<'a>(
+        &'a self,
+        distribution: &StakeDistribution,
+        ledger_params: &LedgerParameters,
+    ) -> Result<Self, Error> {
+        let mut new_ledger = self.clone();
+
+        // grab the total contribution in the system
+        // with all the stake pools and start rewarding them
+
+        let total_reward = rewards::rewards_contribution_calculation(
+            new_ledger.date.epoch + 1,
+            &ledger_params.reward_params,
+        );
+
+        //let new_ledger.pots.treasury
+        let rw = new_ledger.pots.rewards;
+        //new_ledger.post
+
+        let mut leaders_log = LeadersParticipationRecord::new();
+        swap(&mut new_ledger.leaders_log, &mut leaders_log);
+
+        let total_blocks = leaders_log.total();
+        let reward_unit = total_reward.split_in(total_blocks);
+        //let mut remaining = total_reward;
+
+        for (pool_id, pool_blocks) in leaders_log.iter() {
+            let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
+
+            match (new_ledger
+                    .delegation
+                    .stake_pool_get(&pool_id)
+                    .map(|reg| reg.clone()),
+                distribution.to_pools.get(pool_id))
+            {
+                (Ok(pool_reg), Some(pool_distribution)) => {
+                    //let distr = rewards::tax_cut(pool_total_reward, &pool_reg.rewards).unwrap();
+                    new_ledger.distribute_poolid_rewards(&pool_reg, pool_total_reward, pool_distribution)?;
+                }
+                _ => {
+                    // dump reward to treasury
+                }
+            }
+        }
+
+        if reward_unit.remaining > Value::zero() {
+            // put it in treasury
+        }
+
+        unimplemented!();
+        Ok(new_ledger)
+    }
+
+    fn distribute_poolid_rewards(
+        &mut self,
+        reg: &certificate::PoolRegistration,
+        total_reward: Value,
+        distribution: &PoolStakeInformation,
+    ) -> Result<(), Error> {
+        let distr = rewards::tax_cut(total_reward, &reg.rewards).unwrap();
+
+        // distribute to pool owners (or the reward account)
+        match &reg.reward_account {
+            Some(reward_account) => match reward_account {
+                AccountIdentifier::Single(single_account) => {
+                    self.add_value_or_create_account(&single_account, distr.taxed)?;
+                }
+                AccountIdentifier::Multi(_multi_account) => unimplemented!(),
+            },
+            None => panic!("rewards to owners not implemented"),
+        }
+
+        // distribute the rest to delegators
+        let total = distribution.total;
+        for (account, stake) in distribution.stake_owners.iter() {
+            // TODO
+        }
+        Ok(())
+    }
+
     /// Try to apply messages to a State, and return the new State if succesful
     pub fn apply_block<'a, I>(
         &'a self,
@@ -327,6 +413,7 @@ impl Ledger {
 
         new_ledger.chain_length = self.chain_length.increase();
 
+        // Check if the metadata (date/heigth) check out compared to the current state
         if metadata.chain_length != new_ledger.chain_length {
             return Err(Error::WrongChainLength {
                 actual: metadata.chain_length,
@@ -341,6 +428,14 @@ impl Ledger {
             });
         }
 
+        // double check that if we had an epoch transition, distribute_rewards has been called
+        if metadata.block_date.epoch > new_ledger.date.epoch {
+            if self.leaders_log.total() > 0 {
+                panic!("internal error: apply_block called after epoch transition, but distribute_rewards has not been called")
+            }
+        }
+
+        // Process Update proposals if needed
         let (updates, settings) = new_ledger.updates.process_proposals(
             new_ledger.settings,
             new_ledger.date,
@@ -349,6 +444,7 @@ impl Ledger {
         new_ledger.updates = updates;
         new_ledger.settings = settings;
 
+        // Apply all the fragments
         for content in contents {
             new_ledger = new_ledger.apply_fragment(ledger_params, content, metadata)?;
         }
