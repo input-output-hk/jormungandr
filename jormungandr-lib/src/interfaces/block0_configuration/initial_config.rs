@@ -184,6 +184,7 @@ impl BlockchainConfiguration {
         let mut kes_update_speed = None;
         let mut treasury = None;
         let mut rewards = None;
+        let mut per_certificate_fees = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -235,9 +236,18 @@ impl BlockchainConfiguration {
                 ConfigParam::TreasuryParams(_) => unimplemented!(),
                 ConfigParam::RewardPot(param) => rewards.replace(param.0).map(|_| "reward-pot"),
                 ConfigParam::RewardParams(_) => unimplemented!(),
+                ConfigParam::PerCertificateFees(param) => per_certificate_fees
+                    .replace(param)
+                    .map(|_| "per_certificate_fees"),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
+        }
+
+        if let Some(linear_fees) = &mut linear_fees {
+            if let Some(per_certificate_fees) = per_certificate_fees {
+                linear_fees.per_certificate_fees(per_certificate_fees);
+            }
         }
 
         Ok(BlockchainConfiguration {

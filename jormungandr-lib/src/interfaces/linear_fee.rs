@@ -1,4 +1,4 @@
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -7,4 +7,10 @@ pub struct LinearFeeDef {
     constant: u64,
     coefficient: u64,
     certificate: u64,
+    #[serde(skip, default = "per_certificate_fees_default")]
+    per_certificate_fees: Option<PerCertificateFee>,
+}
+
+fn per_certificate_fees_default() -> Option<PerCertificateFee> {
+    None
 }

@@ -917,6 +917,7 @@ impl Status {
             constant,
             coefficient,
             certificate,
+            per_certificate_fees,
         } = context.db.blockchain_config.fees;
 
         FeeSettings {
