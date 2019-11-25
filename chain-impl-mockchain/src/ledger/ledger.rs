@@ -3,10 +3,11 @@
 
 use super::check::{self, TxVerifyError};
 use super::pots::Pots;
+use crate::block::{ConsensusVersion, LeadersParticipationRecord};
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
-use crate::header::HeaderId;
+use crate::header::{BlockDate, ChainLength, HeaderContentEvalContext, HeaderId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::rewards;
 use crate::transaction::*;
@@ -158,6 +159,7 @@ impl Ledger {
             chain_length: ChainLength(0),
             era,
             pots,
+            leaders_log: LeadersParticipationRecord::new(),
         }
     }
 
@@ -351,11 +353,21 @@ impl Ledger {
             new_ledger = new_ledger.apply_fragment(ledger_params, content, metadata)?;
         }
 
+        // Update the ledger metadata related to eval context
         new_ledger.date = metadata.block_date;
-        metadata
-            .nonce
-            .as_ref()
-            .map(|n| new_ledger.settings.consensus_nonce.hash_with(n));
+        match metadata.gp_content {
+            None => {}
+            Some(ref gp_content) => {
+                new_ledger
+                    .settings
+                    .consensus_nonce
+                    .hash_with(&gp_content.nonce);
+                new_ledger
+                    .leaders_log
+                    .increase_for(&gp_content.pool_creator);
+            }
+        };
+
         Ok(new_ledger)
     }
 
