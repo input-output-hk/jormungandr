@@ -20,6 +20,12 @@ impl From<[u8; 32]> for Identifier {
     }
 }
 
+impl From<Identifier> for [u8; 32] {
+    fn from(a: Identifier) -> Self {
+        a.0.into()
+    }
+}
+
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
     pub DeclarationError
