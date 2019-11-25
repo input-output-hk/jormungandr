@@ -154,6 +154,16 @@ impl Block {
                 BlockProducer::None => None,
             })
     }
+
+    pub fn total_input(&self, context: &Context) -> FieldResult<Value> {
+        self.get_explorer_block(&context.db)
+            .map(|block| Value(format!("{}", block.total_input)))
+    }
+
+    pub fn total_output(&self, context: &Context) -> FieldResult<Value> {
+        self.get_explorer_block(&context.db)
+            .map(|block| Value(format!("{}", block.total_output)))
+    }
 }
 
 struct BftLeader {

@@ -44,6 +44,8 @@ pub struct ExplorerBlock {
     pub chain_length: ChainLength,
     pub parent_hash: HeaderHash,
     pub producer: BlockProducer,
+    pub total_input: Value,
+    pub total_output: Value,
 }
 
 #[derive(Clone)]
@@ -115,7 +117,7 @@ impl ExplorerBlock {
         let id = block.id();
         let chain_length = block.chain_length();
 
-        let transactions = fragments
+        let transactions: HashMap<FragmentId, ExplorerTransaction> = fragments
             .enumerate()
             .filter_map(|(offset, fragment)| {
                 let fragment_id = fragment.id();
@@ -227,6 +229,20 @@ impl ExplorerBlock {
             Proof::None => BlockProducer::None,
         };
 
+        let total_input = Value::sum(
+            transactions
+                .values()
+                .flat_map(|tx| tx.inputs.iter().map(|i| i.value)),
+        )
+        .expect("Couldn't compute block's total input");
+
+        let total_output = Value::sum(
+            transactions
+                .values()
+                .flat_map(|tx| tx.outputs.iter().map(|o| o.value)),
+        )
+        .expect("Couldn't compute block's total output");
+
         ExplorerBlock {
             id,
             transactions,
@@ -234,6 +250,8 @@ impl ExplorerBlock {
             date: block.header.block_date(),
             parent_hash: block.parent_id(),
             producer,
+            total_input,
+            total_output,
         }
     }
 
