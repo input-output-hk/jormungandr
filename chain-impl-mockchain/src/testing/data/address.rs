@@ -86,7 +86,6 @@ impl AddressData {
         AddressData::new(sk, Some(spending_counter.into()), user_address)
     }
 
-
     pub fn delegation(discrimination: Discrimination) -> Self {
         let (single_sk, single_pk) =
             AddressData::generate_key_pair::<Ed25519Extended>().into_keys();

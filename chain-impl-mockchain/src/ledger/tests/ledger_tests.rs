@@ -5,9 +5,6 @@ use crate::{
     config::ConfigParam,
     fragment::{config::ConfigParams, Fragment},
     ledger::{
-        check::TxVerifyError,
-        Entry,
-        Error::TransactionMalformed,
         Ledger,
         ledger::{Block0Error,Error::{Block0,ExpectingInitialMessage}}
     },
@@ -15,9 +12,9 @@ use crate::{
         arbitrary::{
             AccountStatesVerifier, ArbitraryValidTransactionData, UtxoVerifier,
         },
-        data::{AddressData, AddressDataValue},
-        ledger::{self, ConfigBuilder, LedgerBuilder},
-        builders::{self,OldAddressBuilder,TestTxBuilder},
+        data::AddressDataValue,
+        ledger::{ConfigBuilder, LedgerBuilder},
+        builders::{OldAddressBuilder,TestTxBuilder},
         TestGen,
     },
 };
@@ -201,7 +198,6 @@ pub fn ledger_new_no_kes_update_speed() {
 
 #[test]
 pub fn ledger_new_no_bft_leader() {
-    let leader_pair = TestGen::leader_pair();
     let header_id = TestGen::hash();
     let mut ie = ConfigParams::new();
     ie.push(ConfigParam::Discrimination(Discrimination::Test));
