@@ -14,6 +14,7 @@ use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::error::Error as StorageError;
 
 use crate::blockchain::Ref;
+use crate::chain_crypto::bech32::Bech32;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
@@ -414,6 +415,41 @@ pub fn get_utxo(context: State<Context>, path_params: Path<(String, u8)>) -> Act
                 Ok(Json(json!({
                     "address": Address::from(output.address.clone()),
                     "value": output.value.0,
+                })))
+            })
+        })
+}
+
+pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> ActixFuture!() {
+    pool_id_hex
+        .parse()
+        .map_err(ErrorBadRequest)
+        .into_future()
+        .and_then(move |pool_id| {
+            chain_tip_fut(&context).and_then(move |blockchain_tip| {
+                let ledger = blockchain_tip.ledger();
+                let pool_reg = ledger.delegation().lookup(&pool_id).ok_or_else(|| {
+                    ErrorNotFound(format!("Stake pool '{}' not found", pool_id_hex))
+                })?;
+                let total_stake: u64 = ledger
+                    .get_stake_distribution()
+                    .to_pools
+                    .get(&pool_id)
+                    .map(|pool| pool.total.total_stake.into())
+                    .unwrap_or(0);
+                let tax = &pool_reg.rewards;
+                Ok(Json(json!({
+                    "kesPublicKey": pool_reg.keys.kes_public_key.to_bech32_str(),
+                    "vrfPublicKey": pool_reg.keys.vrf_public_key.to_bech32_str(),
+                    "total_stake": total_stake,
+                    "tax": {
+                        "fixed": tax.fixed.0,
+                        "ratio": {
+                            "numerator": tax.ratio.numerator,
+                            "denominator": tax.ratio.denominator,
+                        },
+                        "max": tax.max_limit,
+                    }
                 })))
             })
         })
