@@ -3,12 +3,13 @@ use crate::{
     header::HeaderId,
     testing::{ledger::TestLedger, KeysDb, data::AddressDataValue, builders::witness_builder::make_witness},
     transaction::{
-        Input, NoExtra, Output, Transaction, TxBuilder, Witness,
+        Input, NoExtra, Output, Transaction, TxBuilder, Witness, TransactionSlice, OutputsSlice,TransactionSignDataHash,WitnessesSlice
     },
     value::Value,
     fee::FeeAlgorithm,
 };
 use chain_addr::Address;
+
 
 pub struct TestTxBuilder {
     block0_hash: HeaderId,
@@ -33,8 +34,24 @@ impl TestTx {
         Fragment::Transaction(self.tx)
     }
 
+    pub fn hash(&self) -> TransactionSignDataHash {
+        self.clone().get_tx().hash()
+    }
+
     pub fn get_tx(self) -> Transaction<NoExtra> {
         self.tx
+    }
+
+    pub fn witnesses<'a>(&'a self) -> WitnessesSlice<'a> {
+        self.as_slice().witnesses()
+    }
+
+    pub fn as_slice<'a>(&'a self) -> TransactionSlice<'a,NoExtra>{
+        self.tx.as_slice()
+    }
+
+    pub fn get_tx_outputs<'a>(&'a self) -> OutputsSlice<'a> {
+        self.as_slice().outputs()
     }
 }
 
