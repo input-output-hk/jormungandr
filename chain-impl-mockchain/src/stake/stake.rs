@@ -45,6 +45,12 @@ impl Stake {
     }
 }
 
+impl From<Stake> for u64 {
+    fn from(s: Stake) -> u64 {
+        s.0
+    }
+}
+
 impl StakeUnit {
     pub fn scale(&self, n: u32) -> Stake {
         Stake((self.0).0.checked_mul(n as u64).unwrap())
@@ -59,6 +65,17 @@ impl PercentStake {
 
     pub fn as_float(&self) -> f64 {
         (self.stake.0 as f64) / (self.total.0 as f64)
+    }
+
+    /// Apply this ratio to a value
+    /// 
+    /// STAKE
+    /// ----- * Value = Returned-Value
+    /// TOTAL 
+    /// 
+    pub fn scale_value(&self, v: Value) -> Value {
+        let x = v.0 / self.total.0;
+        x * self.stake.0;
     }
 }
 
