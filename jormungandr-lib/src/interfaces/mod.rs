@@ -1,3 +1,4 @@
+mod account_identifier;
 mod account_state;
 mod address;
 mod block0_configuration;
@@ -17,6 +18,7 @@ mod transaction_witness;
 mod utxo_info;
 mod value;
 
+pub use self::account_identifier::AccountIdentifier;
 pub use self::account_state::AccountState;
 pub use self::address::Address;
 pub use self::block0_configuration::*;

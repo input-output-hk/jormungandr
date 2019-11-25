@@ -5,7 +5,7 @@ use std::{fmt, str::FromStr};
 /// Display/FromStr interfaces.
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Address(String, chain_addr::Address);
+pub struct Address(pub(crate) String, pub(crate) chain_addr::Address);
 
 /* ---------------- Display ------------------------------------------------ */
 
