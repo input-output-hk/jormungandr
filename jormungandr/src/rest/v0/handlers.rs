@@ -259,16 +259,18 @@ pub fn get_stake_distribution(context: State<Context>) -> ActixFuture!() {
         let last_epoch = blockchain_tip.block_date().epoch;
         if let LeadershipConsensus::GenesisPraos(gp) = leadership.consensus() {
             let stake = gp.distribution();
-            let pools: Vec<_> = stake
+            let unassigned: u64 = stake.unassigned.into();
+            let dangling: u64 = stake.dangling.into();
+            let pools: Vec<(String, u64)> = stake
                 .to_pools
                 .iter()
-                .map(|(h, p)| (format!("{}", h), p.total.total_stake.0))
+                .map(|(h, p)| (format!("{}", h), p.total.total_stake.into()))
                 .collect();
             Json(json!({
                 "epoch": last_epoch,
                 "stake": {
-                    "unassigned": stake.unassigned.0,
-                    "dangling": stake.dangling.0,
+                    "unassigned": unassigned,
+                    "dangling": dangling,
                     "pools": pools,
                 }
             }))
