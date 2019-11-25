@@ -908,9 +908,18 @@ impl Status {
             .map(|b| Block::from(&b))
     }
 
-    pub fn fee_settings(&self) -> FieldResult<FeeSettings> {
-        // TODO: Where can I get this?
-        Err(ErrorKind::Unimplemented.into())
+    pub fn fee_settings(&self, context: &Context) -> FeeSettings {
+        let chain_impl_mockchain::fee::LinearFee {
+            constant,
+            coefficient,
+            certificate,
+        } = context.db.blockchain_config.fees;
+
+        FeeSettings {
+            constant: Value(format!("{}", constant)),
+            coefficient: Value(format!("{}", coefficient)),
+            certificate: Value(format!("{}", certificate)),
+        }
     }
 }
 
