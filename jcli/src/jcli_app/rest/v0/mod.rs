@@ -7,6 +7,7 @@ mod node;
 mod settings;
 mod shutdown;
 mod stake;
+mod stake_pool;
 mod stake_pools;
 mod tip;
 mod utxo;
@@ -33,6 +34,8 @@ pub enum V0 {
     Settings(settings::Settings),
     /// Stake information
     Stake(stake::Stake),
+    /// Stake pool operations
+    StakePool(stake_pool::StakePool),
     /// Stake pools operations
     StakePools(stake_pools::StakePools),
     /// Shutdown node
@@ -54,6 +57,7 @@ impl V0 {
             V0::Node(node) => node.exec(),
             V0::Settings(settings) => settings.exec(),
             V0::Stake(stake) => stake.exec(),
+            V0::StakePool(stake_pool) => stake_pool.exec(),
             V0::StakePools(stake_pools) => stake_pools.exec(),
             V0::Shutdown(shutdown) => shutdown.exec(),
             V0::Tip(tip) => tip.exec(),
