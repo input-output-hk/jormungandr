@@ -105,7 +105,6 @@ pub fn handle_input(
 fn get_block_tip(blockchain_tip: &Tip) -> impl Future<Item = Header, Error = Error> {
     blockchain_tip
         .get_ref()
-        .map_err(|never| match never {})
         .and_then(|tip| Ok(tip.header().clone()))
 }
 
@@ -190,7 +189,6 @@ fn handle_pull_blocks_to_tip(
 ) -> impl Future<Item = (), Error = ()> {
     blockchain_tip
         .get_ref()
-        .map_err(|never| match never {})
         .and_then(move |tip| {
             let tip_hash = tip.hash();
             storage

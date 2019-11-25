@@ -112,18 +112,16 @@ impl Module {
 
         service_info.spawn(purge_logs);
 
-        tip.get_ref()
-            .map_err(|never| match never {})
-            .map(move |tip_ref| Self {
-                schedule: Schedule::default(),
-                service_info,
-                logs,
-                tip_ref,
-                tip,
-                pool,
-                enclave,
-                block_message,
-            })
+        tip.get_ref().map(move |tip_ref| Self {
+            schedule: Schedule::default(),
+            service_info,
+            logs,
+            tip_ref,
+            tip,
+            pool,
+            enclave,
+            block_message,
+        })
     }
 
     pub fn run(self) -> impl Future<Item = (), Error = LeadershipError> {
@@ -259,7 +257,7 @@ impl Module {
             .and_then(|deadline| {
                 Delay::new(deadline).map_err(|source| LeadershipError::AwaitError { source })
             })
-            .and_then(move |()| tip.get_ref().map_err(|never| match never {}))
+            .and_then(move |()| tip.get_ref())
             .map(|tip_ref| {
                 self.tip_ref = tip_ref;
                 self

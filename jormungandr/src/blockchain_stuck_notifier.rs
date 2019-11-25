@@ -22,7 +22,7 @@ pub fn check_last_block_time(
 
     Interval::new_interval(notification_period)
         .map_err(move |e| error!(err_logger, "timer error: {}", e))
-        .and_then(move |_| blockchain_tip.get_ref().map_err(|never| match never {}))
+        .and_then(move |_| blockchain_tip.get_ref())
         .for_each(move |tip| {
             let tip_date = tip.block_date();
             let slot = tip
