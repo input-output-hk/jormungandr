@@ -6,7 +6,7 @@ use super::{
     Channels, GlobalStateR,
 };
 use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
-use crate::intercom::{self, BlockMsg, ClientMsg, ReplyFuture, ReplyStream, RequestSink};
+use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream, RequestFuture, RequestSink};
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use network_core::error as core_error;
@@ -76,7 +76,7 @@ impl BlockService for NodeService {
     type BlockId = HeaderHash;
     type BlockDate = BlockDate;
     type Block = Block;
-    type TipFuture = ReplyFuture<Header, core_error::Error>;
+    type TipFuture = RequestFuture<ClientMsg, Header, core_error::Error>;
     type Header = Header;
     type PullBlocksStream = ReplyStream<Block, core_error::Error>;
     type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
@@ -97,34 +97,50 @@ impl BlockService for NodeService {
     }
 
     fn tip(&mut self) -> Self::TipFuture {
-        let (handle, future) = intercom::unary_reply(self.logger().clone());
-        self.channels
-            .client_box
-            .send_to(ClientMsg::GetBlockTip(handle));
-        future
+        intercom::unary_future(
+            self.channels.client_box.clone(),
+            self.logger().new(o!("request" => "Tip")),
+            ClientMsg::GetBlockTip,
+        )
     }
 
     fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
-        let (handle, stream) = intercom::stream_reply(self.logger().clone());
-        self.channels
-            .client_box
-            .send_to(ClientMsg::PullBlocksToTip(from.into(), handle));
+        let logger = self.logger().new(o!("request" => "PullBlocksToTip"));
+        let (handle, stream) =
+            intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
+        let client_box = self.channels.client_box.clone();
+        // TODO: make sure that a limit on the number of requests in flight
+        // per service connection prevents unlimited spawning of these tasks.
+        // https://github.com/input-output-hk/jormungandr/issues/1034
+        self.global_state.spawn(
+            client_box.into_send_task(ClientMsg::PullBlocksToTip(from.into(), handle), logger),
+        );
         future::ok(stream)
     }
 
     fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture {
-        let (handle, stream) = intercom::stream_reply(self.logger().clone());
-        self.channels
-            .client_box
-            .send_to(ClientMsg::GetBlocks(ids.into(), handle));
+        let logger = self.logger().new(o!("request" => "GetBlocks"));
+        let (handle, stream) =
+            intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
+        let client_box = self.channels.client_box.clone();
+        // TODO: make sure that a limit on the number of requests in flight
+        // per service connection prevents unlimited spawning of these tasks.
+        // https://github.com/input-output-hk/jormungandr/issues/1034
+        self.global_state
+            .spawn(client_box.into_send_task(ClientMsg::GetBlocks(ids.into(), handle), logger));
         future::ok(stream)
     }
 
     fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture {
-        let (handle, stream) = intercom::stream_reply(self.logger().clone());
-        self.channels
-            .client_box
-            .send_to(ClientMsg::GetHeaders(ids.into(), handle));
+        let logger = self.logger().new(o!("request" => "GetHeaders"));
+        let (handle, stream) =
+            intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
+        let client_box = self.channels.client_box.clone();
+        // TODO: make sure that a limit on the number of requests in flight
+        // per service connection prevents unlimited spawning of these tasks.
+        // https://github.com/input-output-hk/jormungandr/issues/1034
+        self.global_state
+            .spawn(client_box.into_send_task(ClientMsg::GetHeaders(ids.into(), handle), logger));
         future::ok(stream)
     }
 
@@ -141,10 +157,16 @@ impl BlockService for NodeService {
         from: &[Self::BlockId],
         to: &Self::BlockId,
     ) -> Self::PullHeadersFuture {
-        let (handle, stream) = intercom::stream_reply(self.logger().clone());
-        self.channels
-            .client_box
-            .send_to(ClientMsg::GetHeadersRange(from.into(), *to, handle));
+        let logger = self.logger().new(o!("request" => "PullHeaders"));
+        let (handle, stream) =
+            intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
+        let client_box = self.channels.client_box.clone();
+        // TODO: make sure that a limit on the number of requests in flight
+        // per service connection prevents unlimited spawning of these tasks.
+        // https://github.com/input-output-hk/jormungandr/issues/1034
+        self.global_state.spawn(
+            client_box.into_send_task(ClientMsg::GetHeadersRange(from.into(), *to, handle), logger),
+        );
         future::ok(stream)
     }
 
@@ -154,7 +176,8 @@ impl BlockService for NodeService {
 
     fn push_headers(&mut self) -> Self::PushHeadersSink {
         let logger = self.logger.new(o!("request" => "PushHeaders"));
-        let (handle, sink) = intercom::stream_request(buffer_sizes::CHAIN_PULL, logger.clone());
+        let (handle, sink) =
+            intercom::stream_request(buffer_sizes::inbound::HEADERS, logger.clone());
         let block_box = self.channels.block_box.clone();
         // TODO: make sure that a limit on the number of requests in flight
         // per service connection prevents unlimited spawning of these tasks.
@@ -176,7 +199,8 @@ impl BlockService for NodeService {
 
     fn upload_blocks(&mut self) -> Self::UploadBlocksSink {
         let logger = self.logger.new(o!("request" => "UploadBlocks"));
-        let (handle, sink) = intercom::stream_request(buffer_sizes::BLOCKS, logger.clone());
+        let (handle, sink) =
+            intercom::stream_request(buffer_sizes::inbound::BLOCKS, logger.clone());
         let block_box = self.channels.block_box.clone();
         // TODO: make sure that a limit on the number of requests in flight
         // per service connection prevents unlimited spawning of these tasks.
@@ -219,7 +243,7 @@ impl FragmentService for NodeService {
     type Fragment = Fragment;
     type FragmentId = FragmentId;
     type GetFragmentsStream = ReplyStream<Self::Fragment, core_error::Error>;
-    type GetFragmentsFuture = ReplyFuture<Self::GetFragmentsStream, core_error::Error>;
+    type GetFragmentsFuture = FutureResult<Self::GetFragmentsStream, core_error::Error>;
     type FragmentSubscription = Subscription<FragmentProcessor, OutboundSubscription<Fragment>>;
     type FragmentSubscriptionFuture = FutureResult<Self::FragmentSubscription, core_error::Error>;
 

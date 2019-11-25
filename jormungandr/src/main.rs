@@ -211,7 +211,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             blockchain_tip: blockchain_tip.clone(),
         };
 
-        services.spawn_with_inputs("client-query", move |info, input| {
+        services.spawn_future_with_inputs("client-query", move |info, input| {
             client::handle_input(info, &mut task_data, input)
         })
     };

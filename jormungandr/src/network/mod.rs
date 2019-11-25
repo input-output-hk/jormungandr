@@ -16,18 +16,29 @@ mod subscription;
 // Constants
 
 mod buffer_sizes {
-    // Size of buffer for processing of header push/pull streams.
-    pub const CHAIN_PULL: usize = 32;
+    pub mod inbound {
+        // Size of buffer for processing of header push/pull streams.
+        pub const HEADERS: usize = 32;
 
-    // The maximum number of blocks to buffer from an incoming stream
-    // (GetBlocks response or an UploadBlocks request)
-    // while waiting for the block task to become ready to process
-    // the next block.
-    pub const BLOCKS: usize = 2;
+        // The maximum number of blocks to buffer from an incoming stream
+        // (GetBlocks response or an UploadBlocks request)
+        // while waiting for the block task to become ready to process
+        // the next block.
+        pub const BLOCKS: usize = 2;
 
-    // The maximum number of fragments to buffer from an incoming subscription
-    // while waiting for the fragment task to become ready to process them.
-    pub const FRAGMENTS: usize = 128;
+        // The maximum number of fragments to buffer from an incoming subscription
+        // while waiting for the fragment task to become ready to process them.
+        pub const FRAGMENTS: usize = 128;
+    }
+    pub mod outbound {
+        // Size of buffer for outbound header streams.
+        pub const HEADERS: usize = 32;
+
+        // The maximum number of blocks to buffer for an outbound stream
+        // (GetBlocks response or an UploadBlocks request)
+        // before the client request task producing them gets preempted.
+        pub const BLOCKS: usize = 2;
+    }
 }
 
 use self::client::ConnectError;
@@ -41,7 +52,7 @@ use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, Transaction
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
-    task::{TaskMessageBox, TokioServiceInfo},
+    task::TokioServiceInfo,
 };
 use futures::future;
 use futures::prelude::*;
@@ -86,7 +97,7 @@ pub enum BlockConfig {}
 
 /// all the different channels the network may need to talk to
 pub struct Channels {
-    pub client_box: TaskMessageBox<ClientMsg>,
+    pub client_box: MessageBox<ClientMsg>,
     pub transaction_box: MessageBox<TransactionMsg>,
     pub block_box: MessageBox<BlockMsg>,
 }

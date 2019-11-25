@@ -322,7 +322,7 @@ impl Sink for FragmentProcessor {
     type SinkError = core_error::Error;
 
     fn start_send(&mut self, fragment: Fragment) -> StartSend<Fragment, core_error::Error> {
-        if self.buffered_fragments.len() >= buffer_sizes::FRAGMENTS {
+        if self.buffered_fragments.len() >= buffer_sizes::inbound::FRAGMENTS {
             return Ok(AsyncSink::NotReady(fragment));
         }
         trace!(
