@@ -68,14 +68,14 @@ impl PercentStake {
     }
 
     /// Apply this ratio to a value
-    /// 
+    ///
     /// STAKE
     /// ----- * Value = Returned-Value
-    /// TOTAL 
-    /// 
+    /// TOTAL
+    ///
     pub fn scale_value(&self, v: Value) -> Value {
         let x = v.0 / self.total.0;
-        x * self.stake.0;
+        Value(x * self.stake.0)
     }
 }
 

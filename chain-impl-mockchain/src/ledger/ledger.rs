@@ -10,7 +10,7 @@ use crate::fragment::{Fragment, FragmentId};
 use crate::header::{BlockDate, ChainLength, HeaderContentEvalContext, HeaderId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::rewards;
-use crate::stake::{PoolError, PoolStakeInformation, PoolsState, StakeDistribution};
+use crate::stake::{PercentStake, PoolError, PoolStakeInformation, PoolsState, StakeDistribution};
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -400,28 +400,28 @@ impl Ledger {
                 AccountIdentifier::Multi(_multi_account) => unimplemented!(),
             },
             None => {
-                let splitted = distr.taxed.split_in(pool.owners.len());
-                for owner in pool.owners {
-                    self.add_value_or_create_account(&single_account, splitted.parts)?;
+                let splitted = distr.taxed.split_in(reg.owners.len() as u32);
+                for owner in &reg.owners {
+                    self.add_value_or_create_account(&owner.clone().into(), splitted.parts)?;
                 }
                 // pool owners 0 get potentially an extra sweetener of value 1 to #owners - 1
                 if splitted.remaining > Value::zero() {
-                    self.accounts.add_value(pool.owners[0], splitted.remaining)?;
+                    self.accounts
+                        .add_value(&reg.owners[0].clone().into(), splitted.remaining)?;
                 }
             }
         }
 
         // distribute the rest to delegators
         let mut leftover_reward = distr.after_tax;
-        let mut total_stake = distribution.total;
         for (account, stake) in distribution.stake_owners.iter() {
-            let ps = PercentStake::new(stake, total_stake);
+            let ps = PercentStake::new(*stake, distribution.total.total_stake);
             let r = ps.scale_value(distr.after_tax);
             leftover_reward = (leftover_reward - r).unwrap();
             self.add_value_or_create_account(account, r)?;
         }
 
-        if leftover_reward > 0 {
+        if leftover_reward > Value::zero() {
             self.pots.treasury_add(leftover_reward)?;
         }
 
