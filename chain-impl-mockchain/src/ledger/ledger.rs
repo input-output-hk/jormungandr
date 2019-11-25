@@ -446,7 +446,7 @@ impl Ledger {
 
         // Apply all the fragments
         for content in contents {
-            new_ledger = new_ledger.apply_fragment(ledger_params, content, metadata)?;
+            new_ledger = new_ledger.apply_fragment(ledger_params, content, metadata.block_date)?;
         }
 
         // Update the ledger metadata related to eval context
@@ -476,7 +476,7 @@ impl Ledger {
         &self,
         ledger_params: &LedgerParameters,
         content: &Fragment,
-        metadata: &HeaderContentEvalContext,
+        block_date: BlockDate,
     ) -> Result<Self, Error> {
         let mut new_ledger = self.clone();
 
@@ -559,11 +559,8 @@ impl Ledger {
                 if true {
                     return Err(Error::UpdateNotAllowedYet);
                 }
-                new_ledger = new_ledger.apply_update_proposal(
-                    fragment_id,
-                    &update_proposal,
-                    metadata.block_date,
-                )?;
+                new_ledger =
+                    new_ledger.apply_update_proposal(fragment_id, &update_proposal, block_date)?;
             }
             Fragment::UpdateVote(vote) => {
                 if true {
