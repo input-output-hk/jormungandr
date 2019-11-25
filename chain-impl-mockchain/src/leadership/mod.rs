@@ -3,6 +3,7 @@ use crate::{
     certificate::PoolId,
     date::Epoch,
     ledger::{Ledger, LedgerParameters},
+    stake::StakeDistribution,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SecretKey, SumEd25519_12};
 use chain_time::era::TimeEra;
@@ -156,6 +157,13 @@ impl Leadership {
     #[inline]
     pub fn epoch(&self) -> Epoch {
         self.epoch
+    }
+
+    pub fn stake_distribution(&self) -> Option<&StakeDistribution> {
+        match &self.inner {
+            LeadershipConsensus::Bft(_) => None,
+            LeadershipConsensus::GenesisPraos(inner) => Some(inner.distribution()),
+        }
     }
 
     /// Create a Block date given a leadership and a relative epoch slot
