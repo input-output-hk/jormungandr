@@ -6,8 +6,8 @@ use crate::{
         },
         value::Value,
         stake::StakeDistribution,
-        ledger::ledger::Ledger,
-        utxo
+        ledger::{ledger::Ledger,Pots},
+        utxo,
     };
     use chain_addr::Address;
   
@@ -126,7 +126,26 @@ pub struct LedgerStateVerifier {
                 }
             }
         }
+
+        pub fn pots(&self) -> PotsVerifier {
+            PotsVerifier::new(self.ledger.pots.clone())
+        }
     }
+
+    pub struct PotsVerifier {
+        pots: Pots
+    }
+    
+    impl PotsVerifier {
+        pub fn new(pots: Pots) -> Self {
+            PotsVerifier { pots}
+        }
+
+        pub fn has_fee_equal_to(&self, value: &Value) {
+            assert_eq!(self.pots.fees,*value,"incorrect pot fee value");
+        }
+    }
+
 
     pub struct DistributionVerifier{
         stake_distribution: StakeDistribution
