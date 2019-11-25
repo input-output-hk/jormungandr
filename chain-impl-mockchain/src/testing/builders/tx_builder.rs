@@ -62,7 +62,7 @@ impl TestTxBuilder {
         }
     }
 
-    pub fn move_from_faucet(self, test_ledger: &mut TestLedger, destination: &Address, value: &Value) -> TestTx {
+    pub fn move_from_faucet(&self,test_ledger: &mut TestLedger, destination: &Address, value: &Value) -> TestTx {
         assert_eq!(test_ledger.faucets.len(),1,"method can be used only for single faucet ledger");
         let mut faucet = test_ledger.faucets.iter().cloned().next().as_mut().expect("test ledger with no faucet configured").clone();
         let fee = test_ledger.fee().fees_for_inputs_outputs(1u8,1u8);
@@ -82,7 +82,7 @@ impl TestTxBuilder {
         TestTx { tx }
     }
 
-    pub fn move_to_outputs_from_faucet(self, test_ledger: &mut TestLedger, destination: &[Output<Address>]) -> TestTx {
+    pub fn move_to_outputs_from_faucet(&self,test_ledger: &mut TestLedger, destination: &[Output<Address>]) -> TestTx {
         assert_eq!(test_ledger.faucets.len(),1,"method can be used only for single faucet ledger");
         let mut faucet = test_ledger.faucets.iter().next().as_mut().expect("test ledger with no faucet configured").clone();
         let input_val = Value::sum(destination.iter().map(|o| o.value)).unwrap();
@@ -100,14 +100,14 @@ impl TestTxBuilder {
         TestTx { tx }
     }
 
-    pub fn move_all_funds(self, test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue) -> TestTx {
+    pub fn move_all_funds(&self,test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue) -> TestTx {
         let mut keys_db = KeysDb::empty();
         keys_db.add_key(source.private_key());
         keys_db.add_key(destination.private_key());
         self.move_funds(test_ledger,&source,&destination,&source.value)
     }
 
-    pub fn move_funds(self, test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue, value: &Value) -> TestTx {
+    pub fn move_funds(&self,test_ledger: &mut TestLedger, source: &AddressDataValue, destination: &AddressDataValue, value: &Value) -> TestTx {
         let fee = test_ledger.fee();
         let fee_value = (fee.fees_for_inputs_outputs(1u8,1u8) + Value(fee.constant)).unwrap();
         let output_value = (*value - fee_value).expect("input value is smaller than fee");
@@ -116,7 +116,7 @@ impl TestTxBuilder {
         self.move_funds_multiple(test_ledger, &sources, &destinations)
     }
     
-    pub fn move_funds_multiple(self,test_ledger: &mut TestLedger, sources: &Vec<AddressDataValue>, destinations: &Vec<AddressDataValue>) -> TestTx {
+    pub fn move_funds_multiple(&self,test_ledger: &mut TestLedger, sources: &Vec<AddressDataValue>, destinations: &Vec<AddressDataValue>) -> TestTx {
         let inputs: Vec<Input>  = sources.iter().cloned().map(|x| {
                     let optional_utxo = test_ledger.find_utxo_for_address(&x.address_data());
                     x.make_input(optional_utxo)
@@ -131,7 +131,7 @@ impl TestTxBuilder {
             make_witness(
                 &self.block0_hash,
                 &source.address_data(),
-                auth_data_hash,
+                &auth_data_hash,
             )}
         ).collect();
 
