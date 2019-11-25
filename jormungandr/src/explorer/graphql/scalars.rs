@@ -30,9 +30,6 @@ pub struct BlockCount(pub String);
 pub struct TransactionCount(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
-pub struct Serial(pub String);
-
-#[derive(juniper::GraphQLScalarValue)]
 pub struct PublicKey(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
@@ -108,12 +105,6 @@ impl From<u64> for BlockCount {
 impl From<u32> for BlockCount {
     fn from(number: u32) -> BlockCount {
         BlockCount(format!("{}", number))
-    }
-}
-
-impl From<u128> for Serial {
-    fn from(number: u128) -> Serial {
-        Serial(format!("{}", number))
     }
 }
 

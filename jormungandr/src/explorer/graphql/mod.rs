@@ -22,7 +22,7 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Serial, Slot,
+    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Slot,
     TimeOffsetSeconds, Value,
 };
 
@@ -540,12 +540,6 @@ impl From<certificate::PoolRegistration> for PoolRegistration {
 impl PoolRegistration {
     pub fn pool(&self, context: &Context) -> Pool {
         Pool::from_valid_id(self.registration.to_id())
-    }
-
-    /// A random value, for user purpose similar to a UUID.
-    /// it may not be unique over a blockchain, so shouldn't be used a unique identifier
-    pub fn serial(&self) -> Serial {
-        self.registration.serial.into()
     }
 
     /// Beginning of validity for this pool, this is used
