@@ -538,7 +538,7 @@ pub fn fetch_block(
                 warn!(logger, "failed to download block"; "error" => ?e);
             }
             Ok(b) => {
-                info!(logger, "initial bootstrap completed");
+                info!(logger, "genesis block fetched");
                 block = Some(b);
                 break;
             }
