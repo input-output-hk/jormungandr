@@ -463,7 +463,7 @@ impl Address {
                     .filter_map(|i| {
                         transactions
                             .get(i)
-                            .map(|h| (TransactionNodeFetchInfo::Id((*h).clone()), i.into()))
+                            .map(|h| (TransactionNodeFetchInfo::Id(h.as_ref().clone()), i.into()))
                     })
                     .collect(),
             },
@@ -868,7 +868,7 @@ impl Pool {
         BlockConnection::new(bounds, pagination_arguments, |range| match range {
             PaginationInterval::Empty => vec![],
             PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
+                .filter_map(|i| blocks.get(i).map(|h| (h.as_ref().clone(), i)))
                 .collect(),
         })
     }
