@@ -323,12 +323,17 @@ impl Ledger {
     /// This need to be called before the *first* block of a new epoch
     ///
     /// * Reset the leaders log
+    /// * Distribute the contribution (rewards + fees) to pools and their delegatees
     pub fn distribute_rewards<'a>(
         &'a self,
         distribution: &StakeDistribution,
         ledger_params: &LedgerParameters,
     ) -> Result<Self, Error> {
         let mut new_ledger = self.clone();
+
+        if self.leaders_log.total() == 0 {
+            return Ok(new_ledger);
+        }
 
         // grab the total contribution in the system
         // with all the stake pools and start rewarding them
@@ -434,7 +439,7 @@ impl Ledger {
 
     /// Try to apply messages to a State, and return the new State if succesful
     pub fn apply_block<'a, I>(
-        &'a self,
+        &self,
         ledger_params: &LedgerParameters,
         contents: I,
         metadata: &HeaderContentEvalContext,
