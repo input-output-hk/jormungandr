@@ -22,6 +22,10 @@ impl Nonce {
         Nonce([0u8; 32])
     }
 
+    /// Change the nonce to be the result of the hash of the current nonce
+    /// and the new supplied nonce.
+    ///
+    /// Effectively: Self = H(Self, Supplied-Hash)
     pub fn hash_with(&mut self, other: &Self) {
         let mut buf = [0; 64];
         buf[0..32].copy_from_slice(&self.0);

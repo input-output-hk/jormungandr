@@ -1,7 +1,7 @@
 use super::components::{ChainLength, HeaderId, VrfProof};
 use super::cstruct;
 use super::deconstruct::{BftProof, Common, GenesisPraosProof, Proof};
-use super::eval::HeaderContentEvalContext;
+use super::eval::{HeaderContentEvalContext, HeaderGPContentEvalContext};
 use super::version::BlockVersion;
 
 use crate::certificate::PoolId;
@@ -190,19 +190,24 @@ impl Header {
     }
 
     pub fn to_content_eval_context(&self) -> HeaderContentEvalContext {
-        let nonce = match self.block_version() {
+        let gp_content = match self.block_version() {
             BlockVersion::KesVrfproof => {
-                let vrf_proof = VrfProof(self.get_cstruct().gp_vrf_proof());
-                vrf_proof
+                let nonce = VrfProof(self.get_cstruct().gp_vrf_proof())
                     .to_vrf_proof()
-                    .and_then(|p| Some(leadership::genesis::witness_to_nonce(&p)))
+                    .map(|p| leadership::genesis::witness_to_nonce(&p))
+                    .expect("internal-error: content_eval_context: vrf proof invalid: shouldn't be trying get an header content application context");
+                let node_id = self.get_cstruct().gp_node_id();
+                Some(HeaderGPContentEvalContext {
+                    nonce,
+                    pool_creator: node_id.into(),
+                })
             }
             _ => None,
         };
         HeaderContentEvalContext {
             block_date: self.block_date(),
             chain_length: self.chain_length(),
-            nonce: nonce,
+            gp_content,
         }
     }
 }

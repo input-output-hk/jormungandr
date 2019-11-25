@@ -3,13 +3,12 @@
 
 use super::check::{self, TxVerifyError};
 use super::pots::Pots;
-use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext};
-use crate::config::{self, ConfigParam, RewardParams};
+use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
 use crate::header::HeaderId;
 use crate::leadership::genesis::ActiveSlotsCoeffError;
-use crate::stake::{PoolError, PoolsState, StakeDistribution};
+use crate::rewards;
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -33,7 +32,7 @@ pub struct LedgerStaticParameters {
 #[derive(Debug, Clone)]
 pub struct LedgerParameters {
     pub fees: LinearFee,
-    pub reward_params: Option<RewardParams>,
+    pub reward_params: rewards::Parameters,
 }
 
 /// Overall ledger structure.
@@ -664,7 +663,7 @@ impl Ledger {
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,
-            reward_params: self.settings.reward_params.clone(),
+            reward_params: self.settings.to_reward_params(),
         }
     }
 
