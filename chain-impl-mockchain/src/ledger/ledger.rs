@@ -403,7 +403,7 @@ impl Ledger {
         }
 
         // distribute the rest to delegators
-        let total = distribution.total;
+        let total_stake = distribution.total;
         for (account, stake) in distribution.stake_owners.iter() {
             let r = Value(1);
             self.add_value_or_create_account(account, r)?;

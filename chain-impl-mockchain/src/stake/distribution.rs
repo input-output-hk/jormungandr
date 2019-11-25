@@ -1,9 +1,10 @@
+use super::stake::Stake;
 use crate::account;
 use crate::accounting::account::DelegationType;
 use crate::certificate::PoolId;
-use crate::{utxo, value::Value};
+use crate::utxo;
 use chain_addr::{Address, Kind};
-use std::collections::{HashMap, hash_map};
+use std::collections::{hash_map, HashMap};
 
 use super::delegation::PoolsState;
 
@@ -14,9 +15,9 @@ use super::delegation::PoolsState;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StakeDistribution {
     // single address values
-    pub unassigned: Value,
+    pub unassigned: Stake,
     // group or account that doesn't have a valid stake pool assigned
-    pub dangling: Value,
+    pub dangling: Stake,
     /// For each stake pool, the total stake value, and the value for the
     /// stake pool members.
     pub to_pools: HashMap<PoolId, PoolStakeInformation>,
@@ -29,26 +30,21 @@ pub struct PoolStakeInformation {
 }
 
 impl PoolStakeInformation {
-    pub fn add_value(&mut self, id: &account::Identifier, v: Value) {
-        let account_stake = self
-            .stake_owners
-            .accounts
-            .entry(id.clone())
-            .or_insert(Value::zero());
-        *account_stake = (*account_stake + v).expect("internal error: stake sum not valid");
-        self.total.total_stake =
-            (self.total.total_stake + v).expect("internal error: total amount of stake overflow");
+    pub fn add_value(&mut self, id: &account::Identifier, s: Stake) {
+        let account_stake = self.stake_owners.accounts.entry(id.clone()).or_insert(s);
+        *account_stake = *account_stake + s;
+        self.total.total_stake = self.total.total_stake + s;
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PoolStakeTotal {
-    pub total_stake: Value,
+    pub total_stake: Stake,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoolStakeDistribution {
-    pub accounts: HashMap<account::Identifier, Value>,
+    pub accounts: HashMap<account::Identifier, Stake>,
 }
 
 impl PoolStakeDistribution {
@@ -58,12 +54,11 @@ impl PoolStakeDistribution {
         }
     }
 
-    pub fn to_total(&self) -> Value {
-        Value::sum(self.accounts.values().copied())
-            .expect("cannot sum stake properly: internal error related to value")
+    pub fn to_total(&self) -> Stake {
+        Stake::sum(self.accounts.values().copied())
     }
-    
-    pub fn iter(&self) -> hash_map::Iter<'_, account::Identifier, Value> {
+
+    pub fn iter(&self) -> hash_map::Iter<'_, account::Identifier, Stake> {
         self.accounts.iter()
     }
 }
@@ -71,8 +66,8 @@ impl PoolStakeDistribution {
 impl StakeDistribution {
     pub fn empty() -> Self {
         StakeDistribution {
-            unassigned: Value::zero(),
-            dangling: Value::zero(),
+            unassigned: Stake::zero(),
+            dangling: Stake::zero(),
             to_pools: HashMap::new(),
         }
     }
@@ -83,12 +78,11 @@ impl StakeDistribution {
     }
 
     /// Return the total stake held by the eligible stake pools.
-    pub fn total_stake(&self) -> Value {
-        Value::sum(self.to_pools.iter().map(|(_, pool)| pool.total.total_stake))
-            .expect("cannot sum stake properly: internal error related to value")
+    pub fn total_stake(&self) -> Stake {
+        Stake::sum(self.to_pools.iter().map(|(_, pool)| pool.total.total_stake))
     }
 
-    pub fn get_stake_for(&self, poolid: &PoolId) -> Option<Value> {
+    pub fn get_stake_for(&self, poolid: &PoolId) -> Option<Stake> {
         self.to_pools.get(poolid).map(|psd| psd.total.total_stake)
     }
 
@@ -101,15 +95,15 @@ fn assign_account_value(
     sd: &mut StakeDistribution,
     account_identifier: &account::Identifier,
     delegation_type: &DelegationType,
-    value: Value,
+    value: Stake,
 ) {
     match delegation_type {
-        DelegationType::NonDelegated => sd.unassigned = (sd.unassigned + value).unwrap(),
+        DelegationType::NonDelegated => sd.unassigned += value,
         DelegationType::Full(ref pool_id) => {
             // if the pool exists, we add value to this pool distribution,
             // otherwise it get added to the dangling sum
             match sd.to_pools.get_mut(pool_id) {
-                None => sd.dangling = (sd.dangling + value).unwrap(),
+                None => sd.dangling += value,
                 Some(pool_info) => pool_info.add_value(&account_identifier, value),
             }
         }
@@ -122,24 +116,21 @@ fn assign_account_value(
                 let mut r = sin.remaining;
                 for (pool_id, ratio) in dr.pools().iter() {
                     match sd.to_pools.get_mut(pool_id) {
-                        None => sd.dangling = (sd.dangling + value).unwrap(),
+                        None => sd.dangling += value,
                         Some(pool_info) => {
-                            let pool_value = sin
-                                .parts
-                                .scale(*ratio as u32)
-                                .expect("internal error: impossible overflow in ratio calculation");
-                            let pool_value = (pool_value + r).unwrap();
-                            r = Value::zero();
+                            let pool_value = sin.parts.scale(*ratio as u32);
+                            let pool_value = pool_value + r;
+                            r = Stake::zero();
                             pool_info.add_value(&account_identifier, pool_value);
                         }
                     }
                     // if r is not zero already, then we fail to assign it to anything, so just considered it dangling
-                    if r > Value::zero() {
-                        sd.dangling = (sd.dangling + value).unwrap()
+                    if r > Stake::zero() {
+                        sd.dangling += value
                     }
                 }
             } else {
-                sd.unassigned = (sd.unassigned + value).unwrap()
+                sd.unassigned += value
             }
         }
     }
@@ -160,14 +151,14 @@ pub fn get_distribution(
 
     let p0 = PoolStakeInformation {
         total: PoolStakeTotal {
-            total_stake: Value::zero(),
+            total_stake: Stake::zero(),
         },
         stake_owners: PoolStakeDistribution::new(),
     };
 
     let mut distribution = StakeDistribution {
-        unassigned: Value::zero(),
-        dangling: Value::zero(),
+        unassigned: Stake::zero(),
+        dangling: Stake::zero(),
         to_pools: HashMap::from_iter(
             dstate
                 .stake_pools
@@ -181,7 +172,7 @@ pub fn get_distribution(
             &mut distribution,
             identifier,
             &account_state.delegation(),
-            account_state.value(),
+            Stake::from_value(account_state.value()),
         )
     }
 
@@ -202,13 +193,11 @@ pub fn get_distribution(
                         &mut distribution,
                         &identifier,
                         &st.delegation(),
-                        output.value,
+                        Stake::from_value(output.value),
                     ),
                 }
             }
-            Kind::Single(_) => {
-                distribution.unassigned = (distribution.unassigned + output.value).unwrap();
-            }
+            Kind::Single(_) => distribution.unassigned += Stake::from_value(output.value),
         }
     }
 
@@ -219,7 +208,7 @@ pub fn get_distribution(
 mod tests {
     use crate::account;
     use crate::accounting::account::DelegationType;
-    use crate::stake::delegation::PoolsState;
+    use crate::stake::{delegation::PoolsState, Stake};
     use crate::{
         account::{AccountAlg, Identifier},
         certificate::PoolRegistration,
@@ -350,33 +339,31 @@ mod tests {
     }
 
     impl StakeDistributionArbitraryData {
-        pub fn calculate_unassigned(&self) -> Value {
-            Value(
-                self.get_sum_from_utxo_type(&self.utxos)
-                    + self.get_sum_from_account_type(&self.unassigned_accounts),
-            )
+        pub fn calculate_unassigned(&self) -> Stake {
+            self.get_sum_from_utxo_type(&self.utxos)
+                + self.get_sum_from_account_type(&self.unassigned_accounts)
         }
 
-        pub fn calculate_dangling(&self) -> Value {
-            Value(self.get_sum_from_account_type(&self.dangling_accounts))
+        pub fn calculate_dangling(&self) -> Stake {
+            self.get_sum_from_account_type(&self.dangling_accounts)
         }
 
-        pub fn pools_total(&self) -> u64 {
+        pub fn pools_total(&self) -> Stake {
             self.get_sum_from_account_type(&self.assigned_accounts)
                 + self.get_sum_from_utxo_type(&self.groups)
                 + self.get_sum_from_utxo_type(&self.groups_single_account)
-                + (&self.single_account.1).0
+                + Stake::from_value(self.single_account.1)
         }
 
         fn get_sum_from_utxo_type(
             &self,
             utxos: &Vec<(FragmentId, TransactionIndex, Output<Address>)>,
-        ) -> u64 {
-            utxos.iter().map(|(_, _, x)| x.value.0).sum::<u64>()
+        ) -> Stake {
+            Stake::sum(utxos.iter().map(|(_, _, x)| Stake::from_value(x.value)))
         }
 
-        fn get_sum_from_account_type(&self, accounts: &Vec<(Identifier, Value)>) -> u64 {
-            accounts.iter().map(|(_, x)| x.0).sum::<u64>()
+        fn get_sum_from_account_type(&self, accounts: &Vec<(Identifier, Value)>) -> Stake {
+            Stake::sum(accounts.iter().map(|(_, x)| Stake::from_value(*x)))
         }
     }
 
@@ -485,11 +472,8 @@ mod tests {
             ));
         }
 
-        let pools_total_stake = distribution
-            .to_pools
-            .values()
-            .map(|x| x.total.total_stake.0)
-            .sum::<u64>();
+        let pools_total_stake: Stake =
+            Stake::sum(distribution.to_pools.values().map(|x| x.total.total_stake));
         if pools_total_stake != stake_distribution_data.pools_total() {
             return TestResult::error(format!(
                 "Wrong Unassigned value. expected: {} but got {}",
