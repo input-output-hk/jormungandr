@@ -316,6 +316,10 @@ impl Ledger {
         Ok(ledger)
     }
 
+    pub fn can_distribute_reward(&self) -> bool {
+        self.leaders_log.total() != 0
+    }
+
     /// This need to be called before the *first* block of a new epoch
     ///
     /// * Reset the leaders log
