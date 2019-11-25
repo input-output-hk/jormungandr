@@ -1,7 +1,7 @@
 use crate::{
     blockcfg::{
-        Block, BlockVersion, Contents, HeaderBuilderNew, HeaderContentEvalContext, LeaderOutput,
-        Leadership, Ledger, LedgerParameters,
+        Block, BlockDate, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput, Leadership,
+        Ledger, LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, Ref, Tip},
     fragment,
@@ -447,13 +447,7 @@ impl Module {
             return Either::B(tell_user_about_failure);
         };
 
-        let eval_context = HeaderContentEvalContext {
-            block_date: event.date,
-            chain_length,
-            nonce: None,
-        };
-
-        let preparation = prepare_block(pool, eval_context, &ledger, ledger_parameters);
+        let preparation = prepare_block(pool, event.date, &ledger, ledger_parameters);
 
         let event_logs_error = event_logs.clone();
         let signing = preparation.and_then(move |contents| {
@@ -663,7 +657,7 @@ impl Schedule {
 
 fn prepare_block(
     mut fragment_pool: fragment::Pool,
-    eval_context: HeaderContentEvalContext,
+    block_date: BlockDate,
     ledger: &Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
 ) -> impl Future<Item = Contents, Error = LeadershipError> {
@@ -673,7 +667,7 @@ fn prepare_block(
     fragment_pool
         .select(
             ledger.as_ref().clone(),
-            eval_context,
+            block_date,
             epoch_parameters.as_ref().clone(),
             selection_algorithm,
         )

@@ -1,7 +1,7 @@
 use super::logs::internal::Logs;
 use super::pool::internal::Pool;
 use crate::{
-    blockcfg::{Contents, ContentsBuilder, HeaderContentEvalContext, Ledger, LedgerParameters},
+    blockcfg::{BlockDate, Contents, ContentsBuilder, Ledger, LedgerParameters},
     fragment::FragmentId,
 };
 use chain_core::property::Fragment as _;
@@ -19,7 +19,7 @@ pub trait FragmentSelectionAlgorithm {
         &mut self,
         ledger: &Ledger,
         ledger_params: &LedgerParameters,
-        metadata: &HeaderContentEvalContext,
+        block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
     );
@@ -50,7 +50,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         &mut self,
         ledger: &Ledger,
         ledger_params: &LedgerParameters,
-        metadata: &HeaderContentEvalContext,
+        block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
     ) {
@@ -59,7 +59,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
 
         while let Some(fragment) = pool.remove_oldest() {
             let id = fragment.id();
-            match ledger_simulation.apply_fragment(ledger_params, &fragment, metadata) {
+            match ledger_simulation.apply_fragment(ledger_params, &fragment, block_date) {
                 Ok(ledger_new) => {
                     self.builder.push(fragment);
                     total += 1;

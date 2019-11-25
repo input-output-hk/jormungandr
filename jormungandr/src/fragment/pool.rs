@@ -1,5 +1,5 @@
 use crate::{
-    blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
+    blockcfg::{BlockDate, Ledger, LedgerParameters},
     fragment::{selection::FragmentSelectionAlgorithm, Fragment, FragmentId, Logs},
     intercom::{NetworkMsg, PropagateMsg},
     utils::async_msg::MessageBox,
@@ -112,7 +112,7 @@ impl Pool {
     pub fn select<SelectAlg>(
         &mut self,
         ledger: Ledger,
-        metadata: HeaderContentEvalContext,
+        block_date: BlockDate,
         ledger_params: LedgerParameters,
         mut selection_alg: SelectAlg,
     ) -> impl Future<Item = SelectAlg, Error = ()>
@@ -126,7 +126,7 @@ impl Pool {
         future::poll_fn(move || Ok(lock.poll_lock()))
             .and_then(move |pool| logs.inner().map(|logs| (pool, logs)))
             .and_then(move |(mut pool, mut logs)| {
-                selection_alg.select(&ledger, &ledger_params, &metadata, &mut logs, &mut pool);
+                selection_alg.select(&ledger, &ledger_params, block_date, &mut logs, &mut pool);
                 future::ok(selection_alg)
             })
     }
