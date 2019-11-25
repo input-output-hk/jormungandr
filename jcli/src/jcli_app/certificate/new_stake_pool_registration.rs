@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
     rewards,
 };
 use chain_time::DurationSeconds;
-use jormungandr_lib::interfaces::{Ratio, Value};
+use jormungandr_lib::interfaces::{AccountIdentifier, Ratio, Value};
 use std::ops::Deref;
 use std::{
     num::{NonZeroU64, NonZeroU8},
@@ -116,6 +116,12 @@ pub struct StakePoolRegistration {
     #[structopt(long = "tax-limit", name = "TAX_LIMIT")]
     pub tax_limit: Option<NonZeroU64>,
 
+    /// the account to reward the stake pool tax too
+    ///
+    /// If this value is set, instead of distributing the rewards to the owners
+    /// the rewards will be distributed to this account.
+    pub reward_account: Option<AccountIdentifier>,
+
     /// print the output signed certificate in the given file, if no file given
     /// the output will be printed in the standard output
     pub output: Option<PathBuf>,
@@ -136,7 +142,7 @@ impl StakePoolRegistration {
             permissions: PoolPermissions::new(self.management_threshold.get()),
             start_validity: DurationSeconds::from(self.start_validity).into(),
             rewards,
-            reward_account: None,
+            reward_account: self.reward_account.map(Into::into),
             keys: GenesisPraosLeader {
                 kes_public_key: self.kes_key,
                 vrf_public_key: self.vrf_key,
