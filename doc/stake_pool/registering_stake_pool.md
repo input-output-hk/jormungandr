@@ -55,7 +55,6 @@ jcli certificate new stake-pool-registration \
     --start-validity 0 \
     --management-threshold 1 \
     --owner $(cat owner_key.pub) \
-    --operator $(cat operator_key.pub) \
     --serial 1010101010 > stake_pool.cert
 ```
 

@@ -21,6 +21,15 @@ use structopt::StructOpt;
 /// data. Once registered and accepted the users can delegate stake to the stake pool
 /// by referring the stake pool id.
 ///
+/// `--tax-*` parameters allow to set the rewards the stake pool will take before
+/// serving the stake delegators. If the total reward for a stake pool is `Y`. The
+/// stake pool will take a fixed (`--tax-fixed`) first: `X`. Then will take a percentage
+/// of the remaining rewards (`--tax-ratio`): `R`. The total of the tax `X + R`
+/// can be capped by an optional `--tax-limit`: `L` where the actual tax `T` is the minimum of
+/// `L` and `X + R`.
+///
+/// Delegators will then receive a share of the remaining rewards: `Y - T`.
+///
 #[derive(Debug, StructOpt)]
 pub struct StakePoolRegistration {
     /// serial code for the stake pool certificate
@@ -32,7 +41,7 @@ pub struct StakePoolRegistration {
     pub serial: u128,
     /// management threshold
     ///
-    /// This is the number of operating keys that are required to update the stake
+    /// This is the number of owners keys that are required to update the stake
     /// pools parameter (the tax, update the keys, the threshold itsef...).
     #[structopt(long = "management-threshold", name = "THRESHOLD")]
     pub management_threshold: NonZeroU8,
@@ -45,6 +54,12 @@ pub struct StakePoolRegistration {
     pub start_validity: u64,
 
     /// public key of the owner(s)
+    ///
+    /// Owner can change any of the stake pool parameters as long as there
+    /// is <THRESHOLD> number of owners to sign the stake pool parameters update.
+    ///
+    /// Owner will receive a share of the fixed and ratio tax too. unless a reward
+    /// account is specified for the stake pool.
     #[structopt(
         long = "owner",
         name = "OWNER_KEY",
@@ -54,6 +69,9 @@ pub struct StakePoolRegistration {
     pub owners: Vec<PublicKey<Ed25519>>,
 
     /// public key of the operators(s)
+    ///
+    /// Owners can allow an operator to update some or all of the stake pool parameters.
+    /// Different operators can have different permissions.
     #[structopt(
         long = "operator",
         name = "OPERATOR_KEY",
