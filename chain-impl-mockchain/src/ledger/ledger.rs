@@ -350,7 +350,6 @@ impl Ledger {
 
         let total_blocks = leaders_log.total();
         let reward_unit = total_reward.split_in(total_blocks);
-        //let mut remaining = total_reward;
 
         for (pool_id, pool_blocks) in leaders_log.iter() {
             let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
@@ -371,15 +370,16 @@ impl Ledger {
                 }
                 _ => {
                     // dump reward to treasury
+                    new_ledger.pots.treasury_add(pool_total_reward)?;
                 }
             }
         }
 
         if reward_unit.remaining > Value::zero() {
-            // put it in treasury
+            // if anything remaining, put it in treasury
+            new_ledger.pots.treasury_add(reward_unit.remaining)?;
         }
 
-        unimplemented!();
         Ok(new_ledger)
     }
 
@@ -405,7 +405,8 @@ impl Ledger {
         // distribute the rest to delegators
         let total = distribution.total;
         for (account, stake) in distribution.stake_owners.iter() {
-            // TODO
+            let r = Value(1);
+            self.add_value_or_create_account(account, r)?;
         }
         Ok(())
     }

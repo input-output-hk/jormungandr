@@ -118,6 +118,22 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
             .map_err(|e| e.into())
     }
 
+    /// Add value to an existing account.
+    ///
+    /// If the account doesn't exist, it creates it with the value
+    pub fn add_value_or_account(
+        &self,
+        identifier: &ID,
+        value: Value,
+        extra: Extra,
+    ) -> Result<Self, ValueError> {
+        self.0
+            .insert_or_update(identifier.clone(), AccountState::new(value, extra), |st| {
+                st.add_value(value).map(Some)
+            })
+            .map(Ledger)
+    }
+
     /// Subtract value to an existing account.
     ///
     /// If the account doesn't exist, or that the value would become negative, errors out.
