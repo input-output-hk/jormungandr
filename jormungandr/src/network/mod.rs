@@ -24,7 +24,7 @@ mod buffer_sizes {
         // (GetBlocks response or an UploadBlocks request)
         // while waiting for the block task to become ready to process
         // the next block.
-        pub const BLOCKS: usize = 2;
+        pub const BLOCKS: usize = 8;
 
         // The maximum number of fragments to buffer from an incoming subscription
         // while waiting for the fragment task to become ready to process them.
@@ -37,7 +37,7 @@ mod buffer_sizes {
         // The maximum number of blocks to buffer for an outbound stream
         // (GetBlocks response or an UploadBlocks request)
         // before the client request task producing them gets preempted.
-        pub const BLOCKS: usize = 2;
+        pub const BLOCKS: usize = 8;
     }
 }
 
@@ -538,7 +538,7 @@ pub fn fetch_block(
                 warn!(logger, "failed to download block"; "error" => ?e);
             }
             Ok(b) => {
-                info!(logger, "initial bootstrap completed");
+                info!(logger, "genesis block fetched");
                 block = Some(b);
                 break;
             }

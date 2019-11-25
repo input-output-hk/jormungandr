@@ -228,6 +228,12 @@ pub struct PostCheckedHeader {
     previous_epoch_state: Option<Arc<Ref>>,
 }
 
+impl PostCheckedHeader {
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
+}
+
 impl Blockchain {
     pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
