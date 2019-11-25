@@ -7,17 +7,24 @@ use crate::{
 };
 use chain_addr::Kind;
 
+
+pub fn make_witnesses(block0: &HeaderId,
+    addresses_data: Vec<&AddressData>,
+    transaction_hash: &TransactionSignDataHash) -> Vec<Witness> {
+    addresses_data.iter().map(|x| make_witness(block0,x,transaction_hash)).collect()
+}
+
 pub fn make_witness(
     block0: &HeaderId,
     addres_data: &AddressData,
-    transaction_hash: TransactionSignDataHash,
+    transaction_hash: &TransactionSignDataHash,
 ) -> Witness {
     match addres_data.address.kind() {
         Kind::Account(_) => self::make_account_witness(
             block0,
             &addres_data.spending_counter.unwrap(),
             &addres_data.private_key(),
-            &transaction_hash,
+            transaction_hash,
         ),
         _ => self::make_utxo_witness(block0, &addres_data.private_key(), &transaction_hash),
     }

@@ -205,7 +205,7 @@ impl AddressData {
     }
 
     pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
-        let witness = make_witness(block0_hash,&self,tad.hash());
+        let witness = make_witness(block0_hash,&self,&tad.hash());
         self.confirm_transaction();
         witness
     }
