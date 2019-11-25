@@ -808,13 +808,7 @@ impl Ledger {
                 Kind::Account(identifier) => {
                     // don't have a way to make a newtype ref from the ref so .clone()
                     let account = identifier.clone().into();
-                    self.accounts = match self.accounts.add_value(&account, output.value) {
-                        Ok(accounts) => accounts,
-                        Err(account::LedgerError::NonExistent) => {
-                            self.accounts.add_account(&account, output.value, ())?
-                        }
-                        Err(error) => return Err(error.into()),
-                    };
+                    self.add_value_or_create_account(&account, output.value)?;
                 }
                 Kind::Multisig(identifier) => {
                     let identifier = multisig::Identifier::from(identifier.clone());
@@ -826,6 +820,21 @@ impl Ledger {
             self.utxos = self.utxos.add(&fragment_id, &new_utxos)?;
         }
         Ok(self)
+    }
+
+    fn add_value_or_create_account(
+        &mut self,
+        account: &account::Identifier,
+        value: Value,
+    ) -> Result<(), Error> {
+        self.accounts = match self.accounts.add_value(account, value) {
+            Ok(accounts) => accounts,
+            Err(account::LedgerError::NonExistent) => {
+                self.accounts.add_account(account, value, ())?
+            }
+            Err(error) => return Err(error.into()),
+        };
+        Ok(())
     }
 
     fn apply_tx_fee(mut self, fee: Value) -> Result<Self, Error> {
