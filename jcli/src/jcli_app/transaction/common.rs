@@ -1,5 +1,5 @@
 use crate::jcli_app::transaction::{staging::Staging, Error};
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -15,6 +15,15 @@ pub struct CommonFees {
     /// fee per certificate
     #[structopt(long = "fee-certificate", default_value = "0")]
     pub certificate: u64,
+    /// fee per pool registration (default: fee-certificate)
+    #[structopt(long = "fee-pool-registration")]
+    pub certificate_pool_registration: Option<u64>,
+    /// fee per stake delegation (default: fee-certificate)
+    #[structopt(long = "fee-stake-delegation")]
+    pub certificate_stake_delegation: Option<u64>,
+    /// fee per owner stake delegation (default: fee-certificate)
+    #[structopt(long = "fee-owner-stake-delegation")]
+    pub certificate_owner_stake_delegation: Option<u64>,
 }
 
 #[derive(StructOpt)]
@@ -31,7 +40,22 @@ pub struct CommonTransaction {
 
 impl CommonFees {
     pub fn linear_fee(&self) -> LinearFee {
-        LinearFee::new(self.constant, self.coefficient, self.certificate)
+        let mut fees = LinearFee::new(self.constant, self.coefficient, self.certificate);
+        if self.certificate_pool_registration.is_some()
+            || self.certificate_stake_delegation.is_some()
+            || self.certificate_owner_stake_delegation.is_some()
+        {
+            let per_certificate_fees = PerCertificateFee::new(
+                self.certificate_pool_registration
+                    .unwrap_or(self.certificate),
+                self.certificate_stake_delegation
+                    .unwrap_or(self.certificate),
+                self.certificate_owner_stake_delegation
+                    .unwrap_or(self.certificate),
+            );
+            fees.per_certificate_fees(per_certificate_fees);
+        }
+        fees
     }
 }
 

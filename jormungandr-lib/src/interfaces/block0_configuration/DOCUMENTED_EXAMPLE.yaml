@@ -60,6 +60,11 @@ blockchain_configuration:
     coefficient: 1
     # the additional fee to pay if the transaction embeds a certificate
     certificate: 4
+    # (optional) fees for different types of certificates
+    per_certificate_fees:
+      certificate_pool_registration: 5
+      certificate_stake_delegation: 2
+      certificate_owner_stake_delegation: 4
 
   # The speed to update the KES Key in seconds
   #
