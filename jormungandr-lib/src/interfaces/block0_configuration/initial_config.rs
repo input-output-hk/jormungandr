@@ -301,6 +301,10 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::from(consensus_genesis_praos_active_slot_coeff));
         params.push(ConfigParam::from(bft_slots_ratio));
 
+        if let Some(per_certificate_fees) = linear_fees.per_certificate_fees {
+            params.push(ConfigParam::PerCertificateFees(per_certificate_fees))
+        }
+
         if let Some(max_number_of_transactions_per_block) = max_number_of_transactions_per_block {
             params.push(ConfigParam::MaxNumberOfTransactionsPerBlock(
                 max_number_of_transactions_per_block,
