@@ -3,7 +3,7 @@ use crate::{
     start_up::NodeStorage,
 };
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
-use std::ops::Deref as _;
+use tokio::prelude::future::Either;
 use tokio::prelude::*;
 use tokio::sync::lock::{Lock, LockGuard};
 
@@ -16,6 +16,10 @@ pub struct Storage {
 
 pub struct BlockStream {
     lock: Lock<NodeStorage>,
+    state: BlockIterState,
+}
+
+struct BlockIterState {
     to_depth: u64,
     cur_depth: u64,
     pending_infos: Vec<BlockInfo<HeaderHash>>,
@@ -142,13 +146,62 @@ impl Storage {
                     Err(error) => future::err(error),
                     Ok(to_info) => future::ok(BlockStream {
                         lock: inner_2,
-                        to_depth: to_info.depth,
-                        cur_depth: to_info.depth - distance,
-                        pending_infos: vec![to_info],
+                        state: BlockIterState::new(to_info, distance),
                     }),
                 },
             }
         })
+    }
+
+    /// Like `stream_from_to` with the same error meanings, but using buffering
+    /// in the sink to reduce lock contention.
+    pub fn send_from_to<S, E>(
+        &self,
+        from: HeaderHash,
+        to: HeaderHash,
+        sink: S,
+    ) -> impl Future<Item = (), Error = S::SinkError>
+    where
+        S: Sink<SinkItem = Result<Block, E>>,
+        E: From<StorageError>,
+    {
+        let mut inner = self.inner.clone();
+        let mut inner_2 = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock()))
+            .and_then(move |store| {
+                store
+                    .is_ancestor(&from, &to)
+                    .and_then(|ancestry| match ancestry {
+                        None => Err(StorageError::CannotIterate),
+                        Some(distance) => store
+                            .get_block_info(&to)
+                            .map(|to_info| BlockIterState::new(to_info, distance)),
+                    })
+            })
+            .then(move |res| match res {
+                Ok(iter) => {
+                    let mut state = SendState {
+                        sink,
+                        iter,
+                        pending: None,
+                    };
+                    let fut = future::poll_fn(move || {
+                        while try_ready!(state.poll_continue()) {
+                            let mut store = try_ready!(Ok(inner_2.poll_lock()));
+                            try_ready!(state.fill_sink(&mut store));
+                        }
+                        Ok(().into())
+                    });
+                    Either::A(fut)
+                }
+                Err(e) => {
+                    let fut = sink
+                        .send_all(stream::once(Ok(Err(e.into()))))
+                        .map(|(_, _)| ());
+                    Either::B(fut)
+                }
+            })
     }
 
     pub fn get_checkpoints(
@@ -211,12 +264,34 @@ impl Stream for BlockStream {
     type Item = Block;
     type Error = StorageError;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        if self.cur_depth >= self.to_depth {
+    fn poll(&mut self) -> Poll<Option<Block>, Self::Error> {
+        if !self.state.has_next() {
             return Ok(Async::Ready(None));
         }
 
-        let guard = try_ready!(Ok(self.lock.poll_lock()));
+        let mut store = try_ready!(Ok(self.lock.poll_lock()));
+
+        self.state
+            .get_next(&mut store)
+            .map(|block| Async::Ready(Some(block)))
+    }
+}
+
+impl BlockIterState {
+    fn new(to_info: BlockInfo<HeaderHash>, distance: u64) -> Self {
+        BlockIterState {
+            to_depth: to_info.depth,
+            cur_depth: to_info.depth - distance,
+            pending_infos: vec![to_info],
+        }
+    }
+
+    fn has_next(&self) -> bool {
+        self.cur_depth < self.to_depth
+    }
+
+    fn get_next(&mut self, store: &mut NodeStorage) -> Result<Block, StorageError> {
+        assert!(self.has_next());
 
         self.cur_depth += 1;
 
@@ -224,8 +299,8 @@ impl Stream for BlockStream {
 
         if block_info.depth == self.cur_depth {
             // We've seen this block on a previous ancestor traversal.
-            let (block, _block_info) = guard.get_block(&block_info.block_hash)?;
-            Ok(Async::Ready(Some(block)))
+            let (block, _block_info) = store.get_block(&block_info.block_hash)?;
+            Ok(block)
         } else {
             // We don't have this block yet, so search back from
             // the furthest block that we do have.
@@ -234,7 +309,7 @@ impl Stream for BlockStream {
             let parent = block_info.parent_id();
             self.pending_infos.push(block_info);
             let block_info = for_path_to_nth_ancestor(
-                guard.deref().deref(),
+                &*store,
                 &parent,
                 depth - self.cur_depth - 1,
                 |new_info| {
@@ -242,8 +317,61 @@ impl Stream for BlockStream {
                 },
             )?;
 
-            let (block, _block_info) = guard.get_block(&block_info.block_hash)?;
-            Ok(Async::Ready(Some(block)))
+            let (block, _block_info) = store.get_block(&block_info.block_hash)?;
+            Ok(block)
+        }
+    }
+}
+
+struct SendState<S, E> {
+    sink: S,
+    iter: BlockIterState,
+    pending: Option<Result<Block, E>>,
+}
+
+impl<S, E> SendState<S, E>
+where
+    S: Sink<SinkItem = Result<Block, E>>,
+    E: From<StorageError>,
+{
+    fn poll_continue(&mut self) -> Poll<bool, S::SinkError> {
+        if let Some(item) = self.pending.take() {
+            match self.sink.start_send(item)? {
+                AsyncSink::Ready => {}
+                AsyncSink::NotReady(item) => {
+                    self.pending = Some(item);
+                    return Ok(Async::NotReady);
+                }
+            }
+        }
+
+        let has_next = self.iter.has_next();
+
+        if has_next {
+            // Flush the sink before locking to send more blocks
+            try_ready!(self.sink.poll_complete());
+        } else {
+            try_ready!(self.sink.close());
+        }
+
+        Ok(has_next.into())
+    }
+
+    fn fill_sink(&mut self, store: &mut NodeStorage) -> Poll<(), S::SinkError> {
+        assert!(self.iter.has_next());
+        loop {
+            let item = self.iter.get_next(store).map_err(Into::into);
+            match self.sink.start_send(item)? {
+                AsyncSink::Ready => {
+                    if !self.iter.has_next() {
+                        return Ok(().into());
+                    }
+                }
+                AsyncSink::NotReady(item) => {
+                    self.pending = Some(item);
+                    return Ok(Async::NotReady);
+                }
+            }
         }
     }
 }
