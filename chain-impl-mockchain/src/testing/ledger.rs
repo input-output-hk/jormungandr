@@ -4,7 +4,7 @@ use crate::{
     config::ConfigParam,
     fee::LinearFee,
     fragment::{config::ConfigParams, Fragment, FragmentId},
-    header::{BlockDate, HeaderContentEvalContext},
+    header::BlockDate,
     leadership::bft::LeaderId,
     ledger::{Error, Ledger, LedgerParameters},
     milli::Milli,

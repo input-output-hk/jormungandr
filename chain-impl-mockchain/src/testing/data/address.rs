@@ -86,7 +86,6 @@ impl AddressData {
         AddressData::new(sk, Some(spending_counter.into()), user_address)
     }
 
-
     pub fn delegation(discrimination: Discrimination) -> Self {
         let (single_sk, single_pk) =
             AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
@@ -206,7 +205,7 @@ impl AddressData {
     }
 
     pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
-        let witness = make_witness(block0_hash,&self,tad.hash());
+        let witness = make_witness(block0_hash,&self,&tad.hash());
         self.confirm_transaction();
         witness
     }

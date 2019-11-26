@@ -30,7 +30,7 @@ impl<'a> TestTxCertBuilder<'a> {
         //utxo not supported yet
         let input = funder.make_input_with_value(&self.fee());
         let builder = builder.set_ios(&[input], &[]);
-        let witness = make_witness(self.block0_hash(),&funder.as_account_data(),builder.get_auth_data_for_witness().hash());
+        let witness = make_witness(self.block0_hash(),&funder.as_account_data(),&builder.get_auth_data_for_witness().hash());
         builder.set_witnesses(&[witness])
     }
 

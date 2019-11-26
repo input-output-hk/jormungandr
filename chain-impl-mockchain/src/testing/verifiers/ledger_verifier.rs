@@ -1,13 +1,14 @@
 use crate::{
     account::Identifier,
     accounting::account::account_state::AccountState,
-    ledger::ledger::Ledger,
+    ledger::{ledger::Ledger, Pots},
     stake::{Stake, StakeDistribution},
     testing::data::AddressData,
     utxo,
     value::Value,
 };
 use chain_addr::Address;
+
 pub struct LedgerStateVerifier {
     ledger: Ledger,
 }
@@ -121,10 +122,28 @@ impl LedgerStateVerifier {
             }
         }
     }
+
+    pub fn pots(&self) -> PotsVerifier {
+        PotsVerifier::new(self.ledger.pots.clone())
+    }
 }
 
 pub struct DistributionVerifier {
     stake_distribution: StakeDistribution,
+}
+
+pub struct PotsVerifier {
+    pots: Pots,
+}
+
+impl PotsVerifier {
+    pub fn new(pots: Pots) -> Self {
+        PotsVerifier { pots }
+    }
+
+    pub fn has_fee_equal_to(&self, value: &Value) {
+        assert_eq!(self.pots.fees, *value, "incorrect pot fee value");
+    }
 }
 
 impl DistributionVerifier {
