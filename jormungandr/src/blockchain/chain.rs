@@ -758,10 +758,22 @@ pub fn new_epoch_leadership_from(
             if parent_ledger_state.consensus_version() == ConsensusVersion::GenesisPraos {
                 // if there is no parent state available this might be because it is not
                 // available in memory or it is the epoch0 or epoch1
-                parent
+                let epoch_state = parent
                     .last_ref_previous_epoch()
                     .map(|r| r.ledger().clone())
-                    .unwrap_or(parent_ledger_state.clone())
+                    .unwrap_or(parent_ledger_state.clone());
+
+                Arc::new(
+                    epoch_state
+                        .distribute_rewards(
+                            parent
+                                .epoch_leadership_schedule()
+                                .stake_distribution()
+                                .expect("ConsensusVersion::GenesisPraos has a stake distribution"),
+                            &parent.epoch_ledger_parameters(),
+                        )
+                        .expect("Distribution of rewards will not overflow"),
+                )
             } else {
                 parent_ledger_state.clone()
             };

@@ -22,7 +22,7 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Serial, Slot,
+    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Slot,
     TimeOffsetSeconds, Value,
 };
 
@@ -463,7 +463,7 @@ impl Address {
                     .filter_map(|i| {
                         transactions
                             .get(i)
-                            .map(|h| (TransactionNodeFetchInfo::Id((*h).clone()), i.into()))
+                            .map(|h| (TransactionNodeFetchInfo::Id(h.as_ref().clone()), i.into()))
                     })
                     .collect(),
             },
@@ -540,12 +540,6 @@ impl From<certificate::PoolRegistration> for PoolRegistration {
 impl PoolRegistration {
     pub fn pool(&self, context: &Context) -> Pool {
         Pool::from_valid_id(self.registration.to_id())
-    }
-
-    /// A random value, for user purpose similar to a UUID.
-    /// it may not be unique over a blockchain, so shouldn't be used a unique identifier
-    pub fn serial(&self) -> Serial {
-        self.registration.serial.into()
     }
 
     /// Beginning of validity for this pool, this is used
@@ -868,7 +862,7 @@ impl Pool {
         BlockConnection::new(bounds, pagination_arguments, |range| match range {
             PaginationInterval::Empty => vec![],
             PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
+                .filter_map(|i| blocks.get(i).map(|h| (h.as_ref().clone(), i)))
                 .collect(),
         })
     }

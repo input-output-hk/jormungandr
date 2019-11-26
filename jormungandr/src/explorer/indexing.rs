@@ -12,11 +12,11 @@ use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration};
 use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
-use std::convert::TryInto;
+use std::{convert::TryInto, sync::Arc};
 
 use cardano_legacy_address::Addr as OldAddress;
 
-pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
+pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
 
 pub type Transactions = Hamt<FragmentId, HeaderHash>;
 pub type Blocks = Hamt<HeaderHash, ExplorerBlock>;

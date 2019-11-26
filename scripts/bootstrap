@@ -203,8 +203,7 @@ $CLI certificate new stake-pool-registration \
     --start-validity 0 \
     --owner ${LEADER_PK} \
     --kes-key ${POOL_KES_PK} \
-    --vrf-key ${POOL_VRF_PK} \
-    --serial 1010101010 > ${TMPDIR}/stake_pool.cert
+    --vrf-key ${POOL_VRF_PK} > ${TMPDIR}/stake_pool.cert
 
 cat ${TMPDIR}/stake_pool.cert | $CLI certificate sign -k ${TMPDIR}/leader.sk > ${TMPDIR}/stake_pool.signcert
 

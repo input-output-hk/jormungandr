@@ -1,3 +1,4 @@
+mod account_identifier;
 mod account_state;
 mod address;
 mod block0_configuration;
@@ -8,6 +9,7 @@ mod fragment_log;
 mod leadership_log;
 mod linear_fee;
 mod old_address;
+mod ratio;
 mod settings;
 mod stats;
 mod transaction_input;
@@ -16,6 +18,7 @@ mod transaction_witness;
 mod utxo_info;
 mod value;
 
+pub use self::account_identifier::AccountIdentifier;
 pub use self::account_state::AccountState;
 pub use self::address::Address;
 pub use self::block0_configuration::*;
@@ -31,6 +34,7 @@ pub use self::leadership_log::{
 };
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
+pub use self::ratio::{ParseRatioError, Ratio};
 pub use self::settings::*;
 pub use self::stats::{NodeState, Stats};
 pub use self::transaction_input::{TransactionInput, TransactionInputType};

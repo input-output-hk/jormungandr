@@ -308,7 +308,9 @@ impl ExplorerDB {
         block_id: &HeaderHash,
     ) -> impl Future<Item = Option<ExplorerBlock>, Error = Infallible> {
         let block_id = block_id.clone();
-        self.with_latest_state(move |state| state.blocks.lookup(&block_id).map(|b| (*b).clone()))
+        self.with_latest_state(move |state| {
+            state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
+        })
     }
 
     pub fn get_epoch(
@@ -316,7 +318,7 @@ impl ExplorerDB {
         epoch: Epoch,
     ) -> impl Future<Item = Option<EpochData>, Error = Infallible> {
         let epoch = epoch.clone();
-        self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| (*e).clone()))
+        self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| e.as_ref().clone()))
     }
 
     pub fn find_block_by_chain_length(
@@ -327,7 +329,7 @@ impl ExplorerDB {
             state
                 .chain_lengths
                 .lookup(&chain_length)
-                .map(|b| (*b).clone())
+                .map(|b| b.as_ref().clone())
         })
     }
 
@@ -340,7 +342,7 @@ impl ExplorerDB {
             state
                 .transactions
                 .lookup(&transaction_id)
-                .map(|id| id.clone())
+                .map(|id| id.as_ref().clone())
         })
     }
 
@@ -349,7 +351,12 @@ impl ExplorerDB {
         address: &ExplorerAddress,
     ) -> impl Future<Item = Option<PersistentSequence<FragmentId>>, Error = Infallible> {
         let address = address.clone();
-        self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
+        self.with_latest_state(move |state| {
+            state
+                .addresses
+                .lookup(&address)
+                .map(|set| set.as_ref().clone())
+        })
     }
 
     // Get the hashes of all blocks in the range [from, to)
@@ -369,7 +376,7 @@ impl ExplorerDB {
                     state
                         .chain_lengths
                         .lookup(&i.into())
-                        .map(|b| ((*b).clone(), i.into()))
+                        .map(|b| (b.as_ref().clone(), i.into()))
                 })
                 .collect()
         })
@@ -381,7 +388,10 @@ impl ExplorerDB {
     ) -> impl Future<Item = Option<PersistentSequence<HeaderHash>>, Error = Infallible> {
         let pool = pool.clone();
         self.with_latest_state(move |state| {
-            state.stake_pool_blocks.lookup(&pool).map(|i| i.clone())
+            state
+                .stake_pool_blocks
+                .lookup(&pool)
+                .map(|i| i.as_ref().clone())
         })
     }
 
@@ -390,7 +400,12 @@ impl ExplorerDB {
         pool: &PoolId,
     ) -> impl Future<Item = Option<StakePoolData>, Error = Infallible> {
         let pool = pool.clone();
-        self.with_latest_state(move |state| state.stake_pool_data.lookup(&pool).map(|i| i.clone()))
+        self.with_latest_state(move |state| {
+            state
+                .stake_pool_data
+                .lookup(&pool)
+                .map(|i| i.as_ref().clone())
+        })
     }
 
     /// run given function with the longest branch's state
@@ -414,16 +429,15 @@ fn get_lock<L>(lock: &Lock<L>) -> impl Future<Item = LockGuard<L>, Error = Infal
 }
 
 fn apply_block_to_transactions(
-    transactions: Transactions,
+    mut transactions: Transactions,
     block: &ExplorerBlock,
 ) -> Result<Transactions> {
     let block_id = block.id();
     let ids = block.transactions.values().map(|tx| tx.id());
 
-    let mut transactions = transactions;
     for id in ids {
         transactions = transactions
-            .insert(id, block_id)
+            .insert(id, Arc::new(block_id.clone()))
             .map_err(|_| ErrorKind::TransactionAlreadyExists(format!("{}", id)))?;
     }
 
@@ -433,12 +447,11 @@ fn apply_block_to_transactions(
 fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks> {
     let block_id = block.id();
     blocks
-        .insert(block_id, (*block).clone())
+        .insert(block_id, Arc::new(block.clone()))
         .map_err(|_| Error::from(ErrorKind::BlockAlreadyExists(format!("{}", block_id))))
 }
 
-fn apply_block_to_addresses(addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
-    let mut addresses = addresses;
+fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
     let transactions = block.transactions.values();
 
     for tx in transactions {
@@ -446,10 +459,10 @@ fn apply_block_to_addresses(addresses: Addresses, block: &ExplorerBlock) -> Resu
         for output in tx.outputs() {
             addresses = addresses.insert_or_update_simple(
                 output.address.clone(),
-                PersistentSequence::new().append(id.clone()),
+                Arc::new(PersistentSequence::new().append(id.clone())),
                 |set| {
                     let new_set = set.append(id.clone());
-                    Some(new_set)
+                    Some(Arc::new(new_set))
                 },
             )
         }
@@ -457,10 +470,10 @@ fn apply_block_to_addresses(addresses: Addresses, block: &ExplorerBlock) -> Resu
         for input in tx.inputs() {
             addresses = addresses.insert_or_update_simple(
                 input.address.clone(),
-                PersistentSequence::new().append(id.clone()),
+                Arc::new(PersistentSequence::new().append(id.clone())),
                 |set| {
                     let new_set = set.append(id.clone());
-                    Some(new_set)
+                    Some(Arc::new(new_set))
                 },
             )
         }
@@ -475,17 +488,17 @@ fn apply_block_to_epochs(epochs: Epochs, block: &ExplorerBlock) -> Epochs {
 
     epochs.insert_or_update_simple(
         epoch_id,
-        EpochData {
+        Arc::new(EpochData {
             first_block: block_id,
             last_block: block_id,
             total_blocks: 0,
-        },
+        }),
         |data| {
-            Some(EpochData {
+            Some(Arc::new(EpochData {
+                first_block: data.first_block,
                 last_block: block_id,
                 total_blocks: data.total_blocks + 1,
-                ..*data
-            })
+            }))
         },
     )
 }
@@ -497,7 +510,7 @@ fn apply_block_to_chain_lengths(
     let new_block_chain_length = block.chain_length();
     let new_block_hash = block.id();
     chain_lengths
-        .insert(new_block_chain_length, new_block_hash)
+        .insert(new_block_chain_length, Arc::new(new_block_hash))
         .map_err(|_| {
             // I think this shouldn't happen
             Error::from(ErrorKind::ChainLengthBlockAlreadyExists(u32::from(
@@ -515,8 +528,8 @@ fn apply_block_to_stake_pools(
         indexing::BlockProducer::StakePool(id) => blocks
             .update(
                 &id,
-                |array: &PersistentSequence<HeaderHash>| -> std::result::Result<_, Infallible> {
-                    Ok(Some(array.append(block.id())))
+                |array: &Arc<PersistentSequence<HeaderHash>>| -> std::result::Result<_, Infallible> {
+                    Ok(Some(Arc::new(array.append(block.id()))))
                 },
             )
             .expect("block to be created by registered stake pool"),
@@ -530,7 +543,7 @@ fn apply_block_to_stake_pools(
         if let Some(cert) = &tx.certificate {
             blocks = match cert {
                 Certificate::PoolRegistration(registration) => blocks
-                    .insert(registration.to_id(), PersistentSequence::new())
+                    .insert(registration.to_id(), Arc::new(PersistentSequence::new()))
                     .expect("pool was registered more than once"),
                 _ => blocks,
             };
@@ -538,9 +551,9 @@ fn apply_block_to_stake_pools(
                 Certificate::PoolRegistration(registration) => data
                     .insert(
                         registration.to_id(),
-                        StakePoolData {
+                        Arc::new(StakePoolData {
                             registration: registration.clone(),
-                        },
+                        }),
                     )
                     .expect("pool was registered more than once"),
                 _ => data,

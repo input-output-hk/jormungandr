@@ -55,7 +55,21 @@ pub enum Certificate {
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum NewArgs {
-    /// build a stake pool registration certificate
+    /// create the stake pool registration certificate.
+    ///
+    /// This contains all the declaration data of a stake pool. Including the management
+    /// data. Once registered and accepted the users can delegate stake to the stake pool
+    /// by referring the stake pool id.
+    ///
+    /// `--tax-*` parameters allow to set the rewards the stake pool will take before
+    /// serving the stake delegators. If the total reward for a stake pool is `Y`. The
+    /// stake pool will take a fixed (`--tax-fixed`) first: `X`. Then will take a percentage
+    /// of the remaining rewards (`--tax-ratio`): `R`. The total of the tax `X + R`
+    /// can be capped by an optional `--tax-limit`: `L` where the actual tax `T` is the minimum of
+    /// `L` and `X + R`.
+    ///
+    /// Delegators will then receive a share of the remaining rewards: `Y - T`.
+    ///
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
     /// build a stake delegation certificate
     StakeDelegation(new_stake_delegation::StakeDelegation),
