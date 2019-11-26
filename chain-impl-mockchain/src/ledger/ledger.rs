@@ -481,7 +481,7 @@ impl Ledger {
     {
         check::valid_transaction_ios_number(tx)?;
         let fee = calculate_fee(tx, dyn_params);
-        tx.into_owned().verify_strictly_balanced(fee)?;
+        tx.verify_strictly_balanced(fee)?;
         self = self.apply_tx_inputs(tx)?;
         self = self.apply_tx_outputs(*fragment_id, tx.outputs())?;
         self = self.apply_tx_fee(fee)?;
@@ -607,7 +607,7 @@ impl Ledger {
             }
         };
 
-        let fee = dyn_params.fees.calculate_tx(&tx.into_owned());
+        let fee = dyn_params.fees.calculate_tx(tx);
         if fee != value {
             return Err(Error::NotBalanced {
                 inputs: value,
@@ -919,7 +919,7 @@ fn calculate_fee<'a, Extra: Payload>(
     tx: &TransactionSlice<'a, Extra>,
     dyn_params: &LedgerParameters,
 ) -> Value {
-    dyn_params.fees.calculate_tx(&tx.into_owned())
+    dyn_params.fees.calculate_tx(tx)
 }
 
 pub enum MatchingIdentifierWitness<'a> {
