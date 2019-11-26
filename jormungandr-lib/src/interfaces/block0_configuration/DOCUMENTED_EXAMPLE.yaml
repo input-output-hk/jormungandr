@@ -60,7 +60,11 @@ blockchain_configuration:
     coefficient: 1
     # the additional fee to pay if the transaction embeds a certificate
     certificate: 4
-    # (optional) fees for different types of certificates
+    # (optional) fees for different types of certificates, to override the one
+    # given in `certificate` just above
+    #
+    # here: all certificate fees are set to `4` except for pool registration
+    # and stake delegation which are respectively `5` and `2`.
     per_certificate_fees:
       certificate_pool_registration: 5
       certificate_stake_delegation: 2
