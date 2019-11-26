@@ -255,18 +255,20 @@ impl Starter {
                 });
             }
             if self.success() {
+                println!("jormungandr is up");
                 return Ok(JormungandrProcess::from_config(
                     process,
                     self.config.clone(),
                 ));
             }
-            if self.stop() {
+            self.custom_errors_found()?;
+            /* if self.stop() {
+                println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
                     log_content: file_utils::read_file(&self.config.log_file_path),
                 });
-            }
-            self.custom_errors_found()?;
+            }*/
             process_utils::sleep(self.sleep);
         }
     }
