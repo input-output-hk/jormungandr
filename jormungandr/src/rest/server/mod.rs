@@ -84,13 +84,6 @@ impl Future for Server {
     }
 }
 
-impl Drop for Server {
-    fn drop(&mut self) {
-        self.stopper.stop();
-        let _ = self.wait();
-    }
-}
-
 impl ServerStopper {
     pub fn stop(&self) {
         self.addr.do_send(StopServer { graceful: false })
