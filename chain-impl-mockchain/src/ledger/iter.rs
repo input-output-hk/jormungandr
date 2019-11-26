@@ -1,7 +1,8 @@
 use super::ledger::{Error, Ledger, LedgerStaticParameters};
 use super::pots::{self, Pots};
-use crate::block::{BlockDate, ChainLength};
+use crate::block::LeadersParticipationRecord;
 use crate::config::ConfigParam;
+use crate::header::{BlockDate, ChainLength};
 use crate::stake::PoolsState;
 use crate::{account, legacy, multisig, setting, update, utxo};
 use chain_addr::Address;
@@ -44,6 +45,7 @@ pub enum Entry<'a> {
             &'a crate::certificate::PoolRegistration,
         ),
     ),
+    LeaderParticipation((&'a crate::certificate::PoolId, &'a u32)),
 }
 
 pub struct Globals {
@@ -74,6 +76,7 @@ enum IterState<'a> {
         imhamt::HamtIter<'a, crate::certificate::PoolId, crate::certificate::PoolRegistration>,
     ),
     Pots(pots::Entries<'a>),
+    LeaderParticipations(imhamt::HamtIter<'a, crate::certificate::PoolId, u32>),
     Done,
 }
 
@@ -156,10 +159,17 @@ impl<'a> Iterator for LedgerIterator<'a> {
             },
             IterState::Pots(iter) => match iter.next() {
                 None => {
-                    self.state = IterState::Done;
+                    self.state = IterState::LeaderParticipations(self.ledger.leaders_log.iter());
                     self.next()
                 }
                 Some(x) => Some(Entry::Pot(x)),
+            },
+            IterState::LeaderParticipations(iter) => match iter.next() {
+                None => {
+                    self.state = IterState::Done;
+                    self.next()
+                }
+                Some(x) => Some(Entry::LeaderParticipation(x)),
             },
             IterState::Done => None,
         }
@@ -187,6 +197,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
         let delegation = PoolsState::new();
         let mut globals = None;
         let mut pots = Pots::zero();
+        let mut leaders_log = LeadersParticipationRecord::new();
 
         for entry in iter {
             match entry {
@@ -230,6 +241,9 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
                         .unwrap();
                 }
                 Entry::Pot(ent) => pots.set_from_entry(&ent),
+                Entry::LeaderParticipation((pool_id, pool_participation)) => leaders_log
+                    .set_for(pool_id.clone(), *pool_participation)
+                    .unwrap(),
             }
         }
 
@@ -248,6 +262,7 @@ impl<'a> std::iter::FromIterator<Entry<'a>> for Result<Ledger, Error> {
             chain_length: globals.chain_length,
             era: globals.era,
             pots: pots,
+            leaders_log,
         })
     }
 }
@@ -334,6 +349,9 @@ mod tests {
                 }
                 Entry::Pot(entry) => {
                     println!("Pot {:?}", entry);
+                }
+                Entry::LeaderParticipation((pool_id, pool_record)) => {
+                    println!("LeaderParticipation {} {}", pool_id, pool_record);
                 }
             }
         }

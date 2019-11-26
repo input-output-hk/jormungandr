@@ -4,8 +4,8 @@ use crate::transaction::*;
 use crate::value::Value;
 use chain_addr::Address;
 
-const CHECK_TX_MAXIMUM_INPUTS: u8 = 255;
-const CHECK_TX_MAXIMUM_OUTPUTS: u8 = 254;
+pub const CHECK_TX_MAXIMUM_INPUTS: u8 = 255;
+pub const CHECK_TX_MAXIMUM_OUTPUTS: u8 = 254;
 const CHECK_POOL_REG_MAXIMUM_OWNERS: usize = 31;
 const CHECK_POOL_REG_MAXIMUM_OPERATORS: usize = 3;
 

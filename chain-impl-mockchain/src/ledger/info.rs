@@ -16,6 +16,7 @@ impl Ledger {
             chain_length: _,
             era: _,
             pots: _,
+            leaders_log: _,
         } = self;
 
         vec![
@@ -56,6 +57,7 @@ impl Ledger {
             chain_length: chain_length1,
             era: era1,
             pots: pots1,
+            leaders_log: leaders_log1,
         } = self;
 
         let Ledger {
@@ -71,6 +73,7 @@ impl Ledger {
             chain_length: chain_length2,
             era: era2,
             pots: pots2,
+            leaders_log: leaders_log2,
         } = other;
 
         vec![
@@ -86,6 +89,7 @@ impl Ledger {
             format!("date-same: {}", date1 == date2),
             format!("era-same: {}", era1 == era2),
             format!("pots-same: {}", pots1 == pots2),
+            format!("leaders-log-same: {}", leaders_log1 == leaders_log2),
         ]
     }
 }

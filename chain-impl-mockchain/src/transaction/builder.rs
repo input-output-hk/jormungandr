@@ -179,3 +179,65 @@ impl<P: Payload> TxBuilderState<SetAuthData<P>> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        testing::{
+            builders::witness_builder::make_witness,
+            data::{AddressData, AddressDataValue},
+            TestGen,
+        },
+        value::Value,
+    };
+    use chain_addr::Discrimination;
+
+    #[test]
+    #[should_panic]
+    pub fn test_internal_apply_transaction_witnesses_count_are_grater_than_inputs() {
+        let faucets = vec![
+            AddressDataValue::account(Discrimination::Test, Value(2)),
+            AddressDataValue::account(Discrimination::Test, Value(1)),
+        ];
+        let reciever = AddressDataValue::utxo(Discrimination::Test, Value(2));
+        let block0_hash = TestGen::hash();
+        let tx_builder = TxBuilder::new()
+            .set_payload(&NoExtra)
+            .set_ios(&[faucets[0].make_input(None)], &[reciever.make_output()]);
+
+        let witness1 = make_witness(
+            &block0_hash,
+            &faucets[0].clone().into(),
+            &tx_builder.get_auth_data_for_witness().hash(),
+        );
+        let witness2 = make_witness(
+            &block0_hash,
+            &faucets[1].clone().into(),
+            &tx_builder.get_auth_data_for_witness().hash(),
+        );
+        tx_builder.set_witnesses(&[witness1, witness2]);
+    }
+
+    #[test]
+    #[should_panic]
+    pub fn test_internal_apply_transaction_witnesses_count_are_smaller_than_inputs() {
+        let faucets = vec![
+            AddressDataValue::account(Discrimination::Test, Value(1)),
+            AddressDataValue::account(Discrimination::Test, Value(1)),
+        ];
+        let reciever = AddressData::utxo(Discrimination::Test);
+        let block0_hash = TestGen::hash();
+        let tx_builder = TxBuilder::new().set_payload(&NoExtra).set_ios(
+            &[faucets[0].make_input(None), faucets[1].make_input(None)],
+            &[reciever.make_output(&Value(2))],
+        );
+
+        let witness = make_witness(
+            &block0_hash,
+            &faucets[0].clone().into(),
+            &tx_builder.get_auth_data_for_witness().hash(),
+        );
+        tx_builder.set_witnesses(&[witness]);
+    }
+}

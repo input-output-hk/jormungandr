@@ -13,6 +13,7 @@ use crate::{
     rewards,
 };
 use std::convert::TryFrom;
+use std::num::NonZeroU64;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -173,6 +174,36 @@ impl Settings {
         debug_assert_eq!(self, &Settings::new().apply(&params).unwrap());
 
         params
+    }
+
+    pub fn to_reward_params(&self) -> rewards::Parameters {
+        let mut p = match self.reward_params {
+            None => rewards::Parameters::zero(),
+            Some(RewardParams::Halving(start, num, denom)) => rewards::Parameters {
+                treasury_tax: rewards::TaxType::zero(),
+                rewards_initial_value: start,
+                rewards_reducement_ratio: rewards::Ratio {
+                    numerator: num,
+                    denominator: denom,
+                },
+                reducing_type: rewards::ReducingType::Halvening,
+                reducing_epoch_rate: NonZeroU64::new(u64::max_value()).unwrap(),
+            },
+            Some(RewardParams::Linear(start, num, denom)) => rewards::Parameters {
+                treasury_tax: rewards::TaxType::zero(),
+                rewards_initial_value: start,
+                rewards_reducement_ratio: rewards::Ratio {
+                    numerator: num,
+                    denominator: denom,
+                },
+                reducing_type: rewards::ReducingType::Linear,
+                reducing_epoch_rate: NonZeroU64::new(u64::max_value()).unwrap(),
+            },
+        };
+        p.treasury_tax = self
+            .treasury_params
+            .unwrap_or_else(|| rewards::TaxType::zero());
+        p
     }
 }
 

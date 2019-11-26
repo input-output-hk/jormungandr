@@ -4,14 +4,14 @@ use crate::{
     config::ConfigParam,
     fee::LinearFee,
     fragment::{config::ConfigParams, Fragment, FragmentId},
+    header::BlockDate,
     leadership::bft::LeaderId,
     ledger::{Error, Ledger, LedgerParameters},
     milli::Milli,
+    testing::data::{AddressData, AddressDataValue},
     transaction::{Output, TxBuilder},
+    utxo::{Entry, Iter},
     value::Value,
-    utxo::{Entry,Iter},
-    testing::data::{AddressData,AddressDataValue},
-    header::HeaderContentEvalContext
 };
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
@@ -128,7 +128,7 @@ impl UtxoDb {
     pub fn find_fragments(&self, decl: &UtxoDeclaration) -> Vec<(FragmentId, u8)> {
         self.db
             .iter()
-            .filter_map(|(k,v)| if v == decl { Some(k.clone()) } else { None })
+            .filter_map(|(k, v)| if v == decl { Some(k.clone()) } else { None })
             .collect()
     }
 
@@ -147,7 +147,7 @@ impl LedgerBuilder {
             faucets: Vec::new(),
             utxo_declaration: Vec::new(),
             fragments: Vec::new(),
-            certs: Vec::new()
+            certs: Vec::new(),
         }
     }
 
@@ -190,7 +190,10 @@ impl LedgerBuilder {
     }
 
     pub fn faucet_value(mut self, value: Value) -> Self {
-        self.faucets.push(AddressDataValue::account(self.cfg_builder.discrimination,value));
+        self.faucets.push(AddressDataValue::account(
+            self.cfg_builder.discrimination,
+            value,
+        ));
         self
     }
 
@@ -222,7 +225,7 @@ impl LedgerBuilder {
 
     pub fn utxos(mut self, decls: &[UtxoDeclaration]) -> Self {
         self.utxo_declaration.extend_from_slice(decls);
-        self 
+        self
     }
 
     pub fn build(mut self) -> Result<TestLedger, Error> {
@@ -269,14 +272,19 @@ impl LedgerBuilder {
         Ledger::new(block0_hash, &fragments).map(|ledger| {
             let parameters = ledger.get_ledger_parameters();
             TestLedger {
-                cfg, faucets, ledger, block0_hash, utxodb, parameters,
+                cfg,
+                faucets,
+                ledger,
+                block0_hash,
+                utxodb,
+                parameters,
             }
         })
     }
 }
 
 pub struct TestLedger {
-    pub block0_hash: HeaderId, 
+    pub block0_hash: HeaderId,
     pub cfg: ConfigParams,
     pub faucets: Vec<AddressDataValue>,
     pub ledger: Ledger,
@@ -285,13 +293,15 @@ pub struct TestLedger {
 }
 
 impl TestLedger {
-    pub fn apply_transaction(&mut self, fragment: Fragment)
-        -> Result<(), Error>
-    {
+    pub fn apply_transaction(&mut self, fragment: Fragment) -> Result<(), Error> {
         let fragment_id = fragment.hash();
         match fragment {
             Fragment::Transaction(tx) => {
-                match self.ledger.clone().apply_transaction(&fragment_id, &tx.as_slice(), &self.parameters) {
+                match self.ledger.clone().apply_transaction(
+                    &fragment_id,
+                    &tx.as_slice(),
+                    &self.parameters,
+                ) {
                     Err(err) => Err(err),
                     Ok((ledger, _)) => {
                         // TODO more bookkeeping for accounts and utxos
@@ -299,21 +309,17 @@ impl TestLedger {
                         Ok(())
                     }
                 }
-            },
-            _ => {
-                panic!("test ledger apply transaction only supports transaction type for now")
             }
+            _ => panic!("test ledger apply transaction only supports transaction type for now"),
         }
     }
 
-    pub fn apply_fragment(&mut self, fragment: &Fragment, metadata: &HeaderContentEvalContext) -> Result<(),Error> {
-        match self.ledger.clone().apply_fragment(&self.parameters, fragment, metadata) {
-            Err(err) => Err(err),
-            Ok(ledger) => {
-                self.ledger = ledger;
-                Ok(())
-            }
-        }
+    pub fn apply_fragment(&mut self, fragment: &Fragment, date: BlockDate) -> Result<(), Error> {
+        self.ledger = self
+            .ledger
+            .clone()
+            .apply_fragment(&self.parameters, fragment, date)?;
+        Ok(())
     }
 
     pub fn total_funds(&self) -> Value {
@@ -324,9 +330,11 @@ impl TestLedger {
 
     pub fn find_utxo_for_address<'a>(
         &'a self,
-        address_data: &AddressData
+        address_data: &AddressData,
     ) -> Option<Entry<'a, Address>> {
-        let entry = self.utxos().find(|x| x.output.address == address_data.address);
+        let entry = self
+            .utxos()
+            .find(|x| x.output.address == address_data.address);
         entry
     }
 
