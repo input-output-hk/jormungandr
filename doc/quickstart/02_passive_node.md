@@ -49,6 +49,9 @@ Description of the fields:
       - `stdout`: standard output
       - `stderr`: standard error
       - `syslog`: syslog (only available on Unix systems)
+      - `syslogudp`: remote syslog  (only available on Unix systems)
+        - `host`: address and port of a syslog server
+        - `hostname`: hostname to attach to syslog messages
       - `journald`: journald service (only available on Linux with systemd,
         (if jormungandr is built with the `systemd` feature)
       - `gelf`: Configuration fields for GELF (Graylog) network logging protocol
