@@ -1,5 +1,27 @@
 # Change Log
 
+## [v0.7.2](https://github.com/input-output-hk/jormungandr/tree/v0.7.2) (2019-11-25)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.1...v0.7.2)
+
+**Implemented enhancements:**
+
+- Expose the parameters of the stake pool in the graphQL data [\#1158](https://github.com/input-output-hk/jormungandr/issues/1158)
+- Convert the client task to async, use bounded channels in intercom [\#1178](https://github.com/input-output-hk/jormungandr/pull/1178)
+
+**Closed issues:**
+
+- 0.7.1 Node startup fails with logging options in config [\#1184](https://github.com/input-output-hk/jormungandr/issues/1184)
+- bootstrap script to create accounts with error [\#1182](https://github.com/input-output-hk/jormungandr/issues/1182)
+- Discordant results between jcli and janalyze about leadership stats [\#1176](https://github.com/input-output-hk/jormungandr/issues/1176)
+- Convert the client task to full async and remove the header pull limit [\#1160](https://github.com/input-output-hk/jormungandr/issues/1160)
+
+**Merged pull requests:**
+
+- Detect if `set -o pipefail` is available [\#1186](https://github.com/input-output-hk/jormungandr/pull/1186)
+- \[Jormungandr-scenario-test\] fix failing tests from nighly run [\#1168](https://github.com/input-output-hk/jormungandr/pull/1168)
+- regenerate grpc port after unsuccessful jormungandr bootstrap [\#1088](https://github.com/input-output-hk/jormungandr/pull/1088)
+
 ## [v0.7.1](https://github.com/input-output-hk/jormungandr/tree/v0.7.1) (2019-11-21)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0...v0.7.1)
 
