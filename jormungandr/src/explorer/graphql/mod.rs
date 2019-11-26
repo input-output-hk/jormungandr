@@ -854,6 +854,8 @@ impl Pool {
                 lower_bound: 0u32,
                 upper_bound: blocks
                     .len()
+                    .checked_sub(1)
+                    .unwrap()
                     .try_into()
                     .expect("Tried to paginate more than 2^32 blocks"),
             })
