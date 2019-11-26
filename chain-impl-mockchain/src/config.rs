@@ -10,6 +10,7 @@ use chain_core::property;
 use chain_crypto::PublicKey;
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, Write};
+use std::num::NonZeroU64;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 use typed_bytes::ByteBuilder;
 
@@ -73,8 +74,8 @@ pub enum ConfigParam {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RewardParams {
-    Linear(u64, u64, u64),
-    Halving(u64, u64, u64),
+    Linear(u64, u64, NonZeroU64),
+    Halving(u64, u64, NonZeroU64),
 }
 
 // Discriminants can NEVER be 1024 or higher
@@ -299,12 +300,16 @@ impl ConfigParamVariant for TaxType {
 impl ConfigParamVariant for RewardParams {
     fn to_payload(&self) -> Vec<u8> {
         let bb: ByteBuilder<RewardParams> = match self {
-            RewardParams::Linear(start, num, denom) => {
-                ByteBuilder::new().u8(1).u64(*start).u64(*num).u64(*denom)
-            }
-            RewardParams::Halving(start, num, denom) => {
-                ByteBuilder::new().u8(2).u64(*start).u64(*num).u64(*denom)
-            }
+            RewardParams::Linear(start, num, denom) => ByteBuilder::new()
+                .u8(1)
+                .u64(*start)
+                .u64(*num)
+                .u64(denom.get()),
+            RewardParams::Halving(start, num, denom) => ByteBuilder::new()
+                .u8(2)
+                .u64(*start)
+                .u64(*num)
+                .u64(denom.get()),
         };
         bb.finalize_as_vec()
     }
@@ -315,14 +320,14 @@ impl ConfigParamVariant for RewardParams {
             1 => {
                 let start = rb.get_u64()?;
                 let num = rb.get_u64()?;
-                let denom = rb.get_u64()?;
+                let denom = rb.get_nz_u64()?;
                 rb.expect_end()?;
                 Ok(RewardParams::Linear(start, num, denom))
             }
             2 => {
                 let start = rb.get_u64()?;
                 let num = rb.get_u64()?;
-                let denom = rb.get_u64()?;
+                let denom = rb.get_nz_u64()?;
                 rb.expect_end()?;
                 Ok(RewardParams::Halving(start, num, denom))
             }
@@ -541,12 +546,12 @@ mod test {
                 false => RewardParams::Linear(
                     Arbitrary::arbitrary(g),
                     Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
+                    NonZeroU64::new(Arbitrary::arbitrary(g)).unwrap_or(NonZeroU64::new(1).unwrap()),
                 ),
                 true => RewardParams::Halving(
                     Arbitrary::arbitrary(g),
                     Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
+                    NonZeroU64::new(Arbitrary::arbitrary(g)).unwrap_or(NonZeroU64::new(1).unwrap()),
                 ),
             }
         }

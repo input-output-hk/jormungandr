@@ -117,9 +117,9 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
     ///
     /// If the element is not present, then V is added, otherwise the closure F is apply
     /// to the found element. If the closure returns None, then the key is deleted
-    pub fn insert_or_update<F, U>(&self, k: K, v: V, f: F) -> Result<Self, UpdateError<U>>
+    pub fn insert_or_update<F, E>(&self, k: K, v: V, f: F) -> Result<Self, E>
     where
-        F: FnOnce(&V) -> Result<Option<V>, U>,
+        F: FnOnce(&V) -> Result<Option<V>, E>,
         V: Clone,
     {
         match self.update(&k, f) {
@@ -129,7 +129,7 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
             {
                 Ok(self.insert(k, v).unwrap())
             }
-            Err(err) => Err(err),
+            Err(UpdateError::ValueCallbackError(x)) => Err(x),
         }
     }
 

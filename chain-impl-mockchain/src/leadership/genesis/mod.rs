@@ -7,8 +7,7 @@ use crate::{
     key::deserialize_public_key,
     leadership::{Error, ErrorKind, Verification},
     ledger::Ledger,
-    stake::{PoolsState, StakeDistribution},
-    value::Value,
+    stake::{PercentStake, PoolsState, Stake, StakeDistribution},
 };
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_crypto::Verification as SigningVerification;
@@ -17,8 +16,8 @@ use chain_crypto::{
 };
 use typed_bytes::ByteBuilder;
 pub(crate) use vrfeval::witness_to_nonce;
+use vrfeval::VrfEvaluator;
 pub use vrfeval::{ActiveSlotsCoeff, ActiveSlotsCoeffError, Nonce, Witness, WitnessOutput};
-use vrfeval::{PercentStake, VrfEvaluator};
 
 /// Praos Leader consisting of the KES public key and VRF public key
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -95,9 +94,9 @@ impl LeadershipData {
             None => Ok(None),
             Some(stake) => {
                 // Calculate the total stake.
-                let total_stake: Value = stake_snapshot.total_stake();
+                let total_stake: Stake = stake_snapshot.total_stake();
 
-                if total_stake == Value::zero() {
+                if total_stake == Stake::zero() {
                     return Err(Error::new_(
                         ErrorKind::Failure,
                         GenesisError::TotalStakeIsZero,
@@ -142,12 +141,9 @@ impl LeadershipData {
                 ) {
                     (Some(stake), Some(pool_info)) => {
                         // Calculate the total stake.
-                        let total_stake: Value = stake_snapshot.total_stake();
+                        let total_stake = stake_snapshot.total_stake();
 
-                        let percent_stake = PercentStake {
-                            stake: stake,
-                            total: total_stake,
-                        };
+                        let percent_stake = PercentStake::new(stake, total_stake);
 
                         let proof = match genesis_praos_proof.vrf_proof.to_vrf_proof() {
                             None => {
@@ -236,7 +232,7 @@ mod tests {
         slots_per_epoch: u32,
         active_slots_coeff: f32,
         pools_count: usize,
-        value: Value,
+        value: Stake,
     }
 
     impl Arbitrary for GenesisPraosLeader {
@@ -271,7 +267,7 @@ mod tests {
                 slots_per_epoch: 1700,
                 active_slots_coeff: active_slots_coeff,
                 pools_count: pools_count,
-                value: Value(100),
+                value: Stake::from_value(Value(100)),
             }
         }
 
@@ -280,13 +276,13 @@ mod tests {
         }
     }
 
-    type Pools = HashMap<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>;
+    type Pools = HashMap<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Stake)>;
 
     fn make_leadership_with_pools(ledger: &Ledger, pools: &Pools) -> LeadershipData {
         let mut selection = LeadershipData::new(0, &ledger);
 
         for (pool_id, (_, _, value)) in pools {
-            update_stake_pool_total_value(&mut selection, pool_id, value);
+            update_stake_pool_total_value(&mut selection, pool_id, *value);
         }
         selection
     }
@@ -294,14 +290,12 @@ mod tests {
     fn update_stake_pool_total_value(
         selection: &mut LeadershipData,
         pool_id: &PoolId,
-        value: &Value,
+        value: Stake,
     ) {
         selection.distribution.to_pools.insert(
             pool_id.clone(),
             PoolStakeInformation {
-                total: PoolStakeTotal {
-                    total_stake: *value,
-                },
+                total: PoolStakeTotal { total_stake: value },
                 stake_owners: PoolStakeDistribution {
                     accounts: HashMap::new(),
                 },
@@ -322,17 +316,13 @@ mod tests {
             .expect("cannot build test ledger")
             .ledger;
 
-        let mut pools = HashMap::<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Value)>::new();
+        let mut pools = HashMap::<PoolId, (SecretKey<Curve25519_2HashDH>, u64, Stake)>::new();
 
         for _i in 0..leader_election_parameters.pools_count {
             let (pool_id, pool_vrf_private_key) = make_pool(&mut ledger);
             pools.insert(
                 pool_id.clone(),
-                (
-                    pool_vrf_private_key,
-                    0,
-                    leader_election_parameters.value.clone(),
-                ),
+                (pool_vrf_private_key, 0, leader_election_parameters.value),
             );
         }
 
@@ -378,7 +368,7 @@ mod tests {
             let pool_election_percentage = (*times_selected as f32) / (total_election_count as f32);
             println!(
                 "pool id={}, stake={}, slots %={}",
-                pool_id, stake.0, pool_election_percentage
+                pool_id, stake, pool_election_percentage
             );
 
             assert!(
@@ -412,14 +402,14 @@ mod tests {
         let (big_pool_id, big_pool_vrf_private_key) = make_pool(&mut ledger);
         pools.insert(
             big_pool_id.clone(),
-            (big_pool_vrf_private_key, 0, Value(1000)),
+            (big_pool_vrf_private_key, 0, Stake::from_value(Value(1000))),
         );
 
         for _i in 0..10 {
             let (small_pool_id, small_pool_vrf_private_key) = make_pool(&mut ledger);
             pools.insert(
                 small_pool_id.clone(),
-                (small_pool_vrf_private_key, 0, Value(100)),
+                (small_pool_vrf_private_key, 0, Stake::from_value(Value(100))),
             );
         }
 
@@ -445,7 +435,7 @@ mod tests {
                     Some(_witness) => {
                         any_found = true;
                         *times_selected += 1;
-                        if value.0 == 100 {
+                        if *value == Stake::from_value(Value(100)) {
                             any_small = true;
                         }
                     }
@@ -463,7 +453,7 @@ mod tests {
         for (pool_id, (_pool_vrf_private_key, times_selected, stake)) in pools.iter_mut() {
             println!(
                 "pool id={} stake={} slots={}",
-                pool_id, stake.0, times_selected
+                pool_id, stake, times_selected
             );
         }
         println!("empty slots = {}", empty_slots);
@@ -499,7 +489,11 @@ mod tests {
             .register_stake_pool(stake_pool.info())
             .expect("cannot register stake pool");
         let mut selection = LeadershipData::new(selection_epoch, &ledger);
-        update_stake_pool_total_value(&mut selection, &stake_pool.id(), &Value(100));
+        update_stake_pool_total_value(
+            &mut selection,
+            &stake_pool.id(),
+            Stake::from_value(Value(100)),
+        );
 
         assert!(selection
             .leader(&stake_pool.id(), &stake_pool.vrf().private_key(), date)
@@ -543,7 +537,7 @@ mod tests {
             .register_stake_pool(stake_pool.info())
             .expect("cannot register stake pool");
         let mut selection = LeadershipData::new(date.epoch, &ledger);
-        update_stake_pool_total_value(&mut selection, &stake_pool.id(), &Value(0));
+        update_stake_pool_total_value(&mut selection, &stake_pool.id(), Stake::zero());
 
         assert!(selection
             .leader(&stake_pool.id(), &stake_pool.vrf().private_key(), date)
@@ -648,7 +642,7 @@ mod tests {
             .register_stake_pool(stake_pool.info())
             .expect("cannot register stake pool");
         let mut selection = LeadershipData::new(date.epoch, &ledger);
-        update_stake_pool_total_value(&mut selection, &stake_pool.id(), &Value(0));
+        update_stake_pool_total_value(&mut selection, &stake_pool.id(), Stake::zero());
 
         let block = GenesisPraosBlockBuilder::new()
             .with_date(date)

@@ -3,13 +3,14 @@
 
 use super::check::{self, TxVerifyError};
 use super::pots::Pots;
-use crate::block::{BlockDate, ChainLength, ConsensusVersion, HeaderContentEvalContext};
-use crate::config::{self, ConfigParam, RewardParams};
+use crate::block::{ConsensusVersion, LeadersParticipationRecord};
+use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
-use crate::header::HeaderId;
+use crate::header::{BlockDate, ChainLength, HeaderContentEvalContext, HeaderId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
-use crate::stake::{PoolError, PoolsState, StakeDistribution};
+use crate::rewards;
+use crate::stake::{PercentStake, PoolError, PoolStakeInformation, PoolsState, StakeDistribution};
 use crate::transaction::*;
 use crate::treasury::Treasury;
 use crate::value::*;
@@ -17,6 +18,7 @@ use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo
 use chain_addr::{Address, Discrimination, Kind};
 use chain_crypto::Verification;
 use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
+use std::mem::swap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
@@ -33,7 +35,7 @@ pub struct LedgerStaticParameters {
 #[derive(Debug, Clone)]
 pub struct LedgerParameters {
     pub fees: LinearFee,
-    pub reward_params: Option<RewardParams>,
+    pub reward_params: rewards::Parameters,
 }
 
 /// Overall ledger structure.
@@ -57,6 +59,7 @@ pub struct Ledger {
     pub(crate) chain_length: ChainLength,
     pub(crate) era: TimeEra,
     pub(crate) pots: Pots,
+    pub(crate) leaders_log: LeadersParticipationRecord,
 }
 
 custom_error! {
@@ -159,6 +162,7 @@ impl Ledger {
             chain_length: ChainLength(0),
             era,
             pots,
+            leaders_log: LeadersParticipationRecord::new(),
         }
     }
 
@@ -312,9 +316,130 @@ impl Ledger {
         Ok(ledger)
     }
 
+    pub fn can_distribute_reward(&self) -> bool {
+        self.leaders_log.total() != 0
+    }
+
+    /// This need to be called before the *first* block of a new epoch
+    ///
+    /// * Reset the leaders log
+    /// * Distribute the contribution (rewards + fees) to pools and their delegatees
+    pub fn distribute_rewards<'a>(
+        &'a self,
+        distribution: &StakeDistribution,
+        ledger_params: &LedgerParameters,
+    ) -> Result<Self, Error> {
+        let mut new_ledger = self.clone();
+
+        if self.leaders_log.total() == 0 {
+            return Ok(new_ledger);
+        }
+
+        // grab the total contribution in the system
+        // with all the stake pools and start rewarding them
+
+        let expected_epoch_reward = rewards::rewards_contribution_calculation(
+            new_ledger.date.epoch + 1,
+            &ledger_params.reward_params,
+        );
+
+        let mut total_reward = new_ledger.pots.draw_reward(expected_epoch_reward);
+
+        // Move fees in the rewarding pots for distribution or depending on settings
+        // to the treasury directly
+        if true {
+            total_reward = (total_reward + new_ledger.pots.siphon_fees()).unwrap();
+        } else {
+            let fees = new_ledger.pots.siphon_fees();
+            new_ledger.pots.treasury_add(fees)?
+        }
+
+        let mut leaders_log = LeadersParticipationRecord::new();
+        swap(&mut new_ledger.leaders_log, &mut leaders_log);
+
+        let total_blocks = leaders_log.total();
+        let reward_unit = total_reward.split_in(total_blocks);
+
+        for (pool_id, pool_blocks) in leaders_log.iter() {
+            let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
+
+            match (
+                new_ledger
+                    .delegation
+                    .stake_pool_get(&pool_id)
+                    .map(|reg| reg.clone()),
+                distribution.to_pools.get(pool_id),
+            ) {
+                (Ok(pool_reg), Some(pool_distribution)) => {
+                    new_ledger.distribute_poolid_rewards(
+                        &pool_reg,
+                        pool_total_reward,
+                        pool_distribution,
+                    )?;
+                }
+                _ => {
+                    // dump reward to treasury
+                    new_ledger.pots.treasury_add(pool_total_reward)?;
+                }
+            }
+        }
+
+        if reward_unit.remaining > Value::zero() {
+            // if anything remaining, put it in treasury
+            new_ledger.pots.treasury_add(reward_unit.remaining)?;
+        }
+
+        Ok(new_ledger)
+    }
+
+    fn distribute_poolid_rewards(
+        &mut self,
+        reg: &certificate::PoolRegistration,
+        total_reward: Value,
+        distribution: &PoolStakeInformation,
+    ) -> Result<(), Error> {
+        let distr = rewards::tax_cut(total_reward, &reg.rewards).unwrap();
+
+        // distribute to pool owners (or the reward account)
+        match &reg.reward_account {
+            Some(reward_account) => match reward_account {
+                AccountIdentifier::Single(single_account) => {
+                    self.add_value_or_create_account(&single_account, distr.taxed)?;
+                }
+                AccountIdentifier::Multi(_multi_account) => unimplemented!(),
+            },
+            None => {
+                let splitted = distr.taxed.split_in(reg.owners.len() as u32);
+                for owner in &reg.owners {
+                    self.add_value_or_create_account(&owner.clone().into(), splitted.parts)?;
+                }
+                // pool owners 0 get potentially an extra sweetener of value 1 to #owners - 1
+                if splitted.remaining > Value::zero() {
+                    self.accounts
+                        .add_value(&reg.owners[0].clone().into(), splitted.remaining)?;
+                }
+            }
+        }
+
+        // distribute the rest to delegators
+        let mut leftover_reward = distr.after_tax;
+        for (account, stake) in distribution.stake_owners.iter() {
+            let ps = PercentStake::new(*stake, distribution.total.total_stake);
+            let r = ps.scale_value(distr.after_tax);
+            leftover_reward = (leftover_reward - r).unwrap();
+            self.add_value_or_create_account(account, r)?;
+        }
+
+        if leftover_reward > Value::zero() {
+            self.pots.treasury_add(leftover_reward)?;
+        }
+
+        Ok(())
+    }
+
     /// Try to apply messages to a State, and return the new State if succesful
     pub fn apply_block<'a, I>(
-        &'a self,
+        &self,
         ledger_params: &LedgerParameters,
         contents: I,
         metadata: &HeaderContentEvalContext,
@@ -326,6 +451,7 @@ impl Ledger {
 
         new_ledger.chain_length = self.chain_length.increase();
 
+        // Check if the metadata (date/heigth) check out compared to the current state
         if metadata.chain_length != new_ledger.chain_length {
             return Err(Error::WrongChainLength {
                 actual: metadata.chain_length,
@@ -340,6 +466,14 @@ impl Ledger {
             });
         }
 
+        // double check that if we had an epoch transition, distribute_rewards has been called
+        if metadata.block_date.epoch > new_ledger.date.epoch {
+            if self.leaders_log.total() > 0 {
+                panic!("internal error: apply_block called after epoch transition, but distribute_rewards has not been called")
+            }
+        }
+
+        // Process Update proposals if needed
         let (updates, settings) = new_ledger.updates.process_proposals(
             new_ledger.settings,
             new_ledger.date,
@@ -348,15 +482,26 @@ impl Ledger {
         new_ledger.updates = updates;
         new_ledger.settings = settings;
 
+        // Apply all the fragments
         for content in contents {
-            new_ledger = new_ledger.apply_fragment(ledger_params, content, metadata)?;
+            new_ledger = new_ledger.apply_fragment(ledger_params, content, metadata.block_date)?;
         }
 
+        // Update the ledger metadata related to eval context
         new_ledger.date = metadata.block_date;
-        metadata
-            .nonce
-            .as_ref()
-            .map(|n| new_ledger.settings.consensus_nonce.hash_with(n));
+        match metadata.gp_content {
+            None => {}
+            Some(ref gp_content) => {
+                new_ledger
+                    .settings
+                    .consensus_nonce
+                    .hash_with(&gp_content.nonce);
+                new_ledger
+                    .leaders_log
+                    .increase_for(&gp_content.pool_creator);
+            }
+        };
+
         Ok(new_ledger)
     }
 
@@ -369,7 +514,7 @@ impl Ledger {
         &self,
         ledger_params: &LedgerParameters,
         content: &Fragment,
-        metadata: &HeaderContentEvalContext,
+        block_date: BlockDate,
     ) -> Result<Self, Error> {
         let mut new_ledger = self.clone();
 
@@ -452,11 +597,8 @@ impl Ledger {
                 if true {
                     return Err(Error::UpdateNotAllowedYet);
                 }
-                new_ledger = new_ledger.apply_update_proposal(
-                    fragment_id,
-                    &update_proposal,
-                    metadata.block_date,
-                )?;
+                new_ledger =
+                    new_ledger.apply_update_proposal(fragment_id, &update_proposal, block_date)?;
             }
             Fragment::UpdateVote(vote) => {
                 if true {
@@ -664,7 +806,7 @@ impl Ledger {
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,
-            reward_params: self.settings.reward_params.clone(),
+            reward_params: self.settings.to_reward_params(),
         }
     }
 
@@ -797,13 +939,7 @@ impl Ledger {
                 Kind::Account(identifier) => {
                     // don't have a way to make a newtype ref from the ref so .clone()
                     let account = identifier.clone().into();
-                    self.accounts = match self.accounts.add_value(&account, output.value) {
-                        Ok(accounts) => accounts,
-                        Err(account::LedgerError::NonExistent) => {
-                            self.accounts.add_account(&account, output.value, ())?
-                        }
-                        Err(error) => return Err(error.into()),
-                    };
+                    self.add_value_or_create_account(&account, output.value)?;
                 }
                 Kind::Multisig(identifier) => {
                     let identifier = multisig::Identifier::from(identifier.clone());
@@ -815,6 +951,21 @@ impl Ledger {
             self.utxos = self.utxos.add(&fragment_id, &new_utxos)?;
         }
         Ok(self)
+    }
+
+    fn add_value_or_create_account(
+        &mut self,
+        account: &account::Identifier,
+        value: Value,
+    ) -> Result<(), Error> {
+        self.accounts = match self.accounts.add_value(account, value) {
+            Ok(accounts) => accounts,
+            Err(account::LedgerError::NonExistent) => {
+                self.accounts.add_account(account, value, ())?
+            }
+            Err(error) => return Err(error.into()),
+        };
+        Ok(())
     }
 
     fn apply_tx_fee(mut self, fee: Value) -> Result<Self, Error> {

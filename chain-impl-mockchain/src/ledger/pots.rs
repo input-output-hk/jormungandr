@@ -1,6 +1,7 @@
 use crate::ledger::Error;
 use crate::treasury::Treasury;
 use crate::value::{Value, ValueError};
+use std::cmp;
 
 /// Special pots of money
 #[derive(Clone, PartialEq, Eq)]
@@ -119,6 +120,27 @@ impl Pots {
     pub fn append_fees(&mut self, fees: Value) -> Result<(), Error> {
         self.fees = (self.fees + fees).map_err(|error| Error::PotValueInvalid { error })?;
         Ok(())
+    }
+
+    /// Draw rewards from the pot
+    #[must_use]
+    pub fn draw_reward(&mut self, expected_reward: Value) -> Value {
+        let to_draw = cmp::min(self.rewards, expected_reward);
+        self.rewards = (self.rewards - to_draw).unwrap();
+        to_draw
+    }
+
+    /// Siphon all the fees
+    #[must_use]
+    pub fn siphon_fees(&mut self) -> Value {
+        let siphoned = self.fees;
+        self.fees = Value::zero();
+        siphoned
+    }
+
+    /// Draw
+    pub fn treasury_add(&mut self, value: Value) -> Result<(), Error> {
+        self.treasury.add(value)
     }
 
     pub fn set_from_entry(&mut self, e: &Entry) {

@@ -16,6 +16,15 @@ pub struct Ratio {
     pub denominator: NonZeroU64,
 }
 
+impl Ratio {
+    pub fn zero() -> Self {
+        Ratio {
+            numerator: 0,
+            denominator: NonZeroU64::new(1).unwrap(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TaxType {
     // what get subtracted as fixed value
@@ -30,10 +39,7 @@ impl TaxType {
     pub fn zero() -> Self {
         TaxType {
             fixed: Value(0),
-            ratio: Ratio {
-                numerator: 0,
-                denominator: NonZeroU64::new(1).unwrap(),
-            },
+            ratio: Ratio::zero(),
             max_limit: None,
         }
     }
@@ -83,20 +89,32 @@ impl TaxType {
 pub struct Parameters {
     /// Tax cut of the treasury which is applied straight after the reward pot
     /// is fully known
-    treasury_tax: TaxType,
+    pub(crate) treasury_tax: TaxType,
 
     //pool_owners_tax: TaxType,
     /// This is an initial_value for the linear or halvening function.
     /// In the case of the linear function it is the value that is going to be calculated
     /// from the contribution.
-    rewards_initial_value: u64,
+    pub(crate) rewards_initial_value: u64,
     /// This is the ratio used by either the linear or the halvening function.
     /// The semantic and result of this is deeply linked to either.
-    rewards_reducement_ratio: Ratio,
+    pub(crate) rewards_reducement_ratio: Ratio,
     /// The type of reduction
-    reducing_type: ReducingType,
+    pub(crate) reducing_type: ReducingType,
     /// Number of epoch between reduction phase, cannot be 0
-    reducing_epoch_rate: u64,
+    pub(crate) reducing_epoch_rate: NonZeroU64,
+}
+
+impl Parameters {
+    pub fn zero() -> Self {
+        Parameters {
+            treasury_tax: TaxType::zero(),
+            rewards_initial_value: 0,
+            rewards_reducement_ratio: Ratio::zero(),
+            reducing_type: ReducingType::Linear,
+            reducing_epoch_rate: NonZeroU64::new(u64::max_value()).unwrap(),
+        }
+    }
 }
 
 /// A value distributed between tax and remaining
@@ -111,8 +129,8 @@ pub struct TaxDistribution {
 /// Note that the contribution in the system is still bounded by the remaining
 /// rewards pot, which is not taken in considering for this calculation.
 pub fn rewards_contribution_calculation(epoch: Epoch, params: &Parameters) -> Value {
-    assert!(params.reducing_epoch_rate != 0);
-    let zone = epoch as u64 / params.reducing_epoch_rate;
+    assert!(params.reducing_epoch_rate.get() != 0);
+    let zone = epoch as u64 / params.reducing_epoch_rate.get();
     match params.reducing_type {
         ReducingType::Linear => {
             // C - rratio * (#epoch / erate)

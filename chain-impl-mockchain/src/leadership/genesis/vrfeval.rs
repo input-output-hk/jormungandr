@@ -3,7 +3,7 @@
 use crate::date::SlotId;
 use crate::key::Hash;
 use crate::milli::Milli;
-use crate::value::Value;
+use crate::stake::PercentStake;
 use chain_crypto::{
     vrf_evaluate_and_prove, vrf_verified_get_output, vrf_verify, Curve25519_2HashDH, PublicKey,
     SecretKey, VRFVerification, VerifiableRandomFunction,
@@ -22,6 +22,10 @@ impl Nonce {
         Nonce([0u8; 32])
     }
 
+    /// Change the nonce to be the result of the hash of the current nonce
+    /// and the new supplied nonce.
+    ///
+    /// Effectively: Self = H(Self, Supplied-Hash)
     pub fn hash_with(&mut self, other: &Self) {
         let mut buf = [0; 64];
         buf[0..32].copy_from_slice(&self.0);
@@ -95,12 +99,6 @@ impl Threshold {
             | (v[7] as u64);
         Threshold((v64 as f64) / 18446744073709551616.0)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PercentStake {
-    pub stake: Value,
-    pub total: Value,
 }
 
 /// previous epoch nonce and the slotid encoded in big endian
@@ -182,8 +180,7 @@ fn above_stake_threshold(
 }
 
 fn phi(active_slots_coeff: ActiveSlotsCoeff, rs: &PercentStake) -> Threshold {
-    assert!(rs.stake <= rs.total);
-    let t = (rs.stake.0 as f64) / (rs.total.0 as f64);
+    let t = rs.as_float();
     let f: f64 = active_slots_coeff.into();
     Threshold(1.0 - (1.0 - f).powf(t))
 }

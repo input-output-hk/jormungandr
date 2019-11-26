@@ -113,6 +113,14 @@ impl<Extra> AccountState<Extra> {
 }
 
 impl<Extra: Clone> AccountState<Extra> {
+    /// Same as add() except use a ValueError
+    pub fn add_value(&self, v: Value) -> Result<Self, ValueError> {
+        let new_value = (self.value + v)?;
+        let mut st = self.clone();
+        st.value = new_value;
+        Ok(st)
+    }
+
     /// Add a value to an account state
     ///
     /// Only error if value is overflowing
