@@ -2001,7 +2001,7 @@ mod tests {
         }
 
         let mut test_ledger =
-            LedgerBuilder::from_config(ConfigBuilder::new(0).with_fee(LinearFee::new(0, 0, 0)))
+            LedgerBuilder::from_config(ConfigBuilder::new(0).with_fee(LinearFee::new(fee.0, 0, 0)))
                 .faucets(&input_addresses.values())
                 .build()
                 .unwrap();
