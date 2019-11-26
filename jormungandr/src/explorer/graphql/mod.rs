@@ -154,6 +154,16 @@ impl Block {
                 BlockProducer::None => None,
             })
     }
+
+    pub fn total_input(&self, context: &Context) -> FieldResult<Value> {
+        self.get_explorer_block(&context.db)
+            .map(|block| Value(format!("{}", block.total_input)))
+    }
+
+    pub fn total_output(&self, context: &Context) -> FieldResult<Value> {
+        self.get_explorer_block(&context.db)
+            .map(|block| Value(format!("{}", block.total_output)))
+    }
 }
 
 struct BftLeader {
@@ -902,9 +912,18 @@ impl Status {
             .map(|b| Block::from(&b))
     }
 
-    pub fn fee_settings(&self) -> FieldResult<FeeSettings> {
-        // TODO: Where can I get this?
-        Err(ErrorKind::Unimplemented.into())
+    pub fn fee_settings(&self, context: &Context) -> FeeSettings {
+        let chain_impl_mockchain::fee::LinearFee {
+            constant,
+            coefficient,
+            certificate,
+        } = context.db.blockchain_config.fees;
+
+        FeeSettings {
+            constant: Value(format!("{}", constant)),
+            coefficient: Value(format!("{}", coefficient)),
+            certificate: Value(format!("{}", certificate)),
+        }
     }
 }
 

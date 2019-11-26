@@ -22,6 +22,7 @@ use crate::utils::task::{Input, TokioServiceInfo};
 use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
+use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse::GCRoot;
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -61,6 +62,7 @@ pub struct BlockchainConfig {
     /// inputs
     discrimination: Discrimination,
     consensus_version: ConsensusVersion,
+    fees: LinearFee,
 }
 
 /// Inmutable data structure used to represent the explorer's state at a given Block
@@ -584,9 +586,19 @@ impl BlockchainConfig {
             .next()
             .expect("consensus version to be present");
 
+        let fees = params
+            .iter()
+            .filter_map(|param| match param {
+                ConfigParam::LinearFee(fee) => Some(fee.clone()),
+                _ => None,
+            })
+            .next()
+            .expect("fee is not in config params");
+
         BlockchainConfig {
             discrimination,
             consensus_version,
+            fees,
         }
     }
 }
