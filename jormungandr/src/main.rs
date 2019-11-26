@@ -73,7 +73,6 @@ use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
-pub mod blockchain_stuck_notifier;
 pub mod client;
 pub mod explorer;
 pub mod fragment;
@@ -87,6 +86,7 @@ pub mod settings;
 pub mod start_up;
 pub mod state;
 mod stats_counter;
+pub mod stuck_notifier;
 pub mod utils;
 
 use stats_counter::StatsCounter;
@@ -301,8 +301,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .no_blockchain_updates_warning_interval
             .clone();
 
-        services.spawn_future("blockchain_stuck_notifier", move |info| {
-            blockchain_stuck_notifier::check_last_block_time(
+        services.spawn_future("stuck_notifier", move |info| {
+            stuck_notifier::check_last_block_time(
                 info,
                 blockchain_tip,
                 no_blockchain_updates_warning_interval,
