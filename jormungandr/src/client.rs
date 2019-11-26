@@ -1,6 +1,6 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::{Storage, Tip};
-use crate::intercom::{ClientMsg, Error, ReplyStreamHandle};
+use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_core::property::HasHeader;
 
@@ -116,20 +116,22 @@ fn handle_get_headers_range(
 ) -> impl Future<Item = (), Error = ()> {
     storage
         .find_closest_ancestor(checkpoints, to)
-        .map_err(Into::into)
-        .and_then(move |maybe_ancestor| match maybe_ancestor {
-            Some(from) => Either::A(storage.stream_from_to(from, to).map_err(Into::into)),
-            None => Either::B(future::err(Error::not_found(
+        .then(move |res| match res {
+            Ok(Some(from)) => {
+                let fut = storage
+                    .send_from_to(
+                        from,
+                        to,
+                        handle.with(|res: Result<Block, _>| Ok(res.map(|block| block.header()))),
+                    )
+                    .map_err(|_: ReplySendError| ());
+                Either::A(fut)
+            }
+            Ok(None) => Either::B(handle.async_error(Error::not_found(
                 "none of the checkpoints found in the local storage \
                  are ancestors of the requested end block",
             ))),
-        })
-        .then(move |res| match res {
-            Ok(stream) => {
-                let stream = stream.map_err(Into::into).map(move |block| block.header());
-                Either::A(handle.async_reply(stream))
-            }
-            Err(e) => Either::B(handle.async_error(e)),
+            Err(e) => Either::B(handle.async_error(e.into())),
         })
 }
 
@@ -139,13 +141,7 @@ fn handle_get_blocks_range(
     to: HeaderHash,
     handle: ReplyStreamHandle<Block>,
 ) -> impl Future<Item = (), Error = ()> {
-    storage.stream_from_to(from, to).then(move |res| match res {
-        Ok(stream) => {
-            let stream = stream.map_err(Into::into);
-            Either::A(handle.async_reply(stream))
-        }
-        Err(e) => Either::B(handle.async_error(e.into())),
-    })
+    storage.send_from_to(from, to, handle).map_err(|_| ())
 }
 
 fn get_blocks(storage: Storage, ids: Vec<HeaderHash>) -> impl Stream<Item = Block, Error = Error> {
@@ -193,21 +189,16 @@ fn handle_pull_blocks_to_tip(
             let tip_hash = tip.hash();
             storage
                 .find_closest_ancestor(checkpoints, tip_hash)
-                .map_err(Into::into)
                 .map(move |maybe_ancestor| (storage, maybe_ancestor, tip_hash))
         })
-        .and_then(move |(storage, maybe_ancestor, to)| match maybe_ancestor {
-            Some(from) => Either::A(storage.stream_from_to(from, to).map_err(Into::into)),
-            None => Either::B(future::err(Error::not_found(
+        .then(move |res| match res {
+            Ok((storage, Some(from), to)) => {
+                Either::A(storage.send_from_to(from, to, handle).map_err(|_| ()))
+            }
+            Ok((_, None, _)) => Either::B(handle.async_error(Error::not_found(
                 "none of the checkpoints found in the local storage \
                  are ancestors of the current tip",
             ))),
-        })
-        .then(move |res| match res {
-            Ok(stream) => {
-                let stream = stream.map_err(Into::into);
-                Either::A(handle.async_reply(stream))
-            }
-            Err(e) => Either::B(handle.async_error(e)),
+            Err(e) => Either::B(handle.async_error(e.into())),
         })
 }
