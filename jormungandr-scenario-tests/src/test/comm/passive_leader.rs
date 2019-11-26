@@ -34,9 +34,9 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     controller.monitor_nodes();
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    leader.wait_for_bootstrap()?;
     let passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
-    leader.wait_for_bootstrap()?;
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -153,12 +153,13 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-
     leader.wait_for_bootstrap()?;
+
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
