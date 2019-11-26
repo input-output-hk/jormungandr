@@ -584,18 +584,22 @@ paths:
                         description: Fee per certificate used in witness
                         type: integer
                         minimum: 0
-                      certificate_pool_registration:
-                        description: Fee per pool registration
-                        type: integer
-                        minimum: 0
-                      certificate_stake_delegation:
-                        description: Fee per stake delegation 
-                        type: integer
-                        minimum: 0
-                      certificate_owner_stake_delegation:
-                        description: Fee per pool owner stake delegation
-                        type: integer
-                        minimum: 0
+                      per_certificate_fees:
+                        type: object
+                        required: [certificate_pool_registration, certificate_stake_delegation, certificate_owner_stake_delegation]
+                        properties:
+                          certificate_pool_registration:
+                            description: Fee per pool registration
+                            type: integer
+                            minimum: 0
+                          certificate_stake_delegation:
+                            description: Fee per stake delegation 
+                            type: integer
+                            minimum: 0
+                          certificate_owner_stake_delegation:
+                            description: Fee per pool owner stake delegation
+                            type: integer
+                            minimum: 0
                       coefficient:
                         description: Fee per every input and output of transaction
                         type: integer
@@ -624,9 +628,11 @@ paths:
                   "currSlotStartTime": "2019-07-18T22:01:17+00:00",
                   "fees": {
                     "certificate": 4,
-                    "certificate_pool_registration": 5,
-                    "certificate_stake_delegation": 3,
-                    "certificate_owner_stake_delegation": 4,
+                    "per_certificate_fees": {
+                      "certificate_pool_registration": 5,
+                      "certificate_stake_delegation": 3,
+                      "certificate_owner_stake_delegation": 4,
+                    }
                     "coefficient": 1,
                     "constant": 2
                   },
