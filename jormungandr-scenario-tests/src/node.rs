@@ -65,7 +65,7 @@ error_chain! {
 
         FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration) {
             description("fragment is pending for too long"),
-            display("fragment '{}' is pending for tool long ({} s)", fragment_id, duration.as_secs()),
+            display("fragment '{}' is pending for too long ({} s)", fragment_id, duration.as_secs()),
         }
     }
 }
