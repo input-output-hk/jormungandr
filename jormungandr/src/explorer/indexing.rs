@@ -293,9 +293,15 @@ impl ExplorerTransaction {
                     let address = ExplorerAddress::New(Address(discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
-                (InputEnum::AccountInput(_id, _value), Witness::Multisig(_)) => {
-                    // TODO
-                    None
+                (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
+                    let kind = chain_addr::Kind::Multisig(
+                        id.to_multi_account()
+                            .as_ref()
+                            .try_into()
+                            .expect("multisig identifier size doesn't match address kind"),
+                    );
+                    let address = ExplorerAddress::New(Address(discrimination, kind));
+                    Some(ExplorerInput { address, value })
                 }
                 (InputEnum::UtxoInput(utxo_pointer), _witness) => {
                     let tx = utxo_pointer.transaction_id;
