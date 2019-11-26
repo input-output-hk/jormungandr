@@ -116,7 +116,7 @@ to. The simplest way to start such a node is:
 
     jormungandr --block0-hash <HASH> --trusted-peers <IPs>
     
-In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool WSorkgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
+In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
 
 # Documentation
 
