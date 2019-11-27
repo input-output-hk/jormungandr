@@ -318,11 +318,13 @@ impl Blockchain {
                             .map_err(|e| {
                                 Error::with_chain(e, "cannot check if the block is in the storage")
                             })
-                            .and_then(|block_exists| {
-                                if block_exists {
-                                    unimplemented!(
-                                        "method to load a Ref from the storage is not yet there"
-                                    )
+                            .and_then(|_block_exists| {
+                                if _block_exists {
+                                    // TODO: we have the block in the storage but it is missing
+                                    // from the state management. Force the node to fall through
+                                    // reloading the blocks from the storage to allow fast
+                                    // from storage reload
+                                    future::ok(None)
                                 } else {
                                     future::ok(None)
                                 }
