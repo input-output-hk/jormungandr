@@ -1,7 +1,7 @@
 use crate::header::Epoch;
 use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
-use crate::rewards::TaxType;
+use crate::rewards::{Ratio, TaxType};
 use crate::value::Value;
 use crate::{
     block::ConsensusVersion,
@@ -81,15 +81,13 @@ pub enum ConfigParam {
 pub enum RewardParams {
     Linear {
         constant: u64,
-        ratio_num: u64,
-        ratio_denom: NonZeroU64,
+        ratio: Ratio,
         epoch_start: Epoch,
         epoch_rate: NonZeroU32,
     },
     Halving {
         constant: u64,
-        ratio_num: u64,
-        ratio_denom: NonZeroU64,
+        ratio: Ratio,
         epoch_start: Epoch,
         epoch_rate: NonZeroU32,
     },
@@ -327,28 +325,26 @@ impl ConfigParamVariant for RewardParams {
         let bb: ByteBuilder<RewardParams> = match self {
             RewardParams::Linear {
                 constant,
-                ratio_num,
-                ratio_denom,
+                ratio,
                 epoch_start,
                 epoch_rate,
             } => ByteBuilder::new()
                 .u8(1)
                 .u64(*constant)
-                .u64(*ratio_num)
-                .u64(ratio_denom.get())
+                .u64(ratio.numerator)
+                .u64(ratio.denominator.get())
                 .u32(*epoch_start)
                 .u32(epoch_rate.get()),
             RewardParams::Halving {
                 constant,
-                ratio_num,
-                ratio_denom,
+                ratio,
                 epoch_start,
                 epoch_rate,
             } => ByteBuilder::new()
                 .u8(2)
                 .u64(*constant)
-                .u64(*ratio_num)
-                .u64(ratio_denom.get())
+                .u64(ratio.numerator)
+                .u64(ratio.denominator.get())
                 .u32(*epoch_start)
                 .u32(epoch_rate.get()),
         };
@@ -367,8 +363,10 @@ impl ConfigParamVariant for RewardParams {
                 rb.expect_end()?;
                 Ok(RewardParams::Linear {
                     constant: start,
-                    ratio_num: num,
-                    ratio_denom: denom,
+                    ratio: Ratio {
+                        numerator: num,
+                        denominator: denom,
+                    },
                     epoch_start: estart,
                     epoch_rate: erate,
                 })
@@ -382,8 +380,10 @@ impl ConfigParamVariant for RewardParams {
                 rb.expect_end()?;
                 Ok(RewardParams::Halving {
                     constant: start,
-                    ratio_num: num,
-                    ratio_denom: denom,
+                    ratio: Ratio {
+                        numerator: num,
+                        denominator: denom,
+                    },
                     epoch_start: estart,
                     epoch_rate: erate,
                 })
@@ -648,22 +648,28 @@ mod test {
         }
     }
 
+    impl Arbitrary for Ratio {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Ratio {
+                numerator: Arbitrary::arbitrary(g),
+                denominator: NonZeroU64::new(Arbitrary::arbitrary(g))
+                    .unwrap_or(NonZeroU64::new(1).unwrap()),
+            }
+        }
+    }
+
     impl Arbitrary for RewardParams {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             match bool::arbitrary(g) {
                 false => RewardParams::Linear {
                     constant: Arbitrary::arbitrary(g),
-                    ratio_num: Arbitrary::arbitrary(g),
-                    ratio_denom: NonZeroU64::new(Arbitrary::arbitrary(g))
-                        .unwrap_or(NonZeroU64::new(1).unwrap()),
+                    ratio: Arbitrary::arbitrary(g),
                     epoch_start: Arbitrary::arbitrary(g),
                     epoch_rate: NonZeroU32::new(20).unwrap(),
                 },
                 true => RewardParams::Halving {
                     constant: Arbitrary::arbitrary(g),
-                    ratio_num: Arbitrary::arbitrary(g),
-                    ratio_denom: NonZeroU64::new(Arbitrary::arbitrary(g))
-                        .unwrap_or(NonZeroU64::new(1).unwrap()),
+                    ratio: Arbitrary::arbitrary(g),
                     epoch_start: Arbitrary::arbitrary(g),
                     epoch_rate: NonZeroU32::new(20).unwrap(),
                 },

@@ -13,7 +13,6 @@ use crate::{
     rewards,
 };
 use std::convert::TryFrom;
-use std::num::NonZeroU64;
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -181,34 +180,26 @@ impl Settings {
             None => rewards::Parameters::zero(),
             Some(RewardParams::Halving {
                 constant,
-                ratio_num,
-                ratio_denom,
+                ratio,
                 epoch_start,
                 epoch_rate,
             }) => rewards::Parameters {
                 treasury_tax: rewards::TaxType::zero(),
                 initial_value: constant,
-                compounding_ratio: rewards::Ratio {
-                    numerator: ratio_num,
-                    denominator: ratio_denom,
-                },
+                compounding_ratio: ratio,
                 compounding_type: rewards::CompoundingType::Halvening,
                 epoch_start,
                 epoch_rate,
             },
             Some(RewardParams::Linear {
                 constant,
-                ratio_num,
-                ratio_denom,
+                ratio,
                 epoch_start,
                 epoch_rate,
             }) => rewards::Parameters {
                 treasury_tax: rewards::TaxType::zero(),
                 initial_value: constant,
-                compounding_ratio: rewards::Ratio {
-                    numerator: ratio_num,
-                    denominator: ratio_denom,
-                },
+                compounding_ratio: ratio,
                 compounding_type: rewards::CompoundingType::Linear,
                 epoch_start,
                 epoch_rate,

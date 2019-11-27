@@ -81,7 +81,7 @@ The escrow amount is adjusted as such:
 
 #### Example 1 : constant
 
-With C = 10000, ratio = 1/1, estart=10, rate=1, using the linear formula, contribution before epoch 10 will be 0
+With C = 10000, ratio = 1/1, estart=10, rate=1, using the halving formula, contribution before epoch 10 will be 0
 and then will be constant at 10000 coins per epoch.
 
     | epoch | contribution |
