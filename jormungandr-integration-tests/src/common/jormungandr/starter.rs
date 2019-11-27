@@ -108,7 +108,7 @@ impl StartupVerification for LogStartupVerification {
     fn check_if_succeed(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger
-            .message_logged_multiple_times("initial bootstrap completed", 2)
+            .contains_message("genesis block fetched")
             .unwrap_or_else(|_| false)
     }
 }
@@ -128,7 +128,7 @@ impl Starter {
             timeout: Duration::from_secs(300),
             sleep: 2,
             role: Role::Leader,
-            verification_mode: StartupVerificationMode::Log,
+            verification_mode: StartupVerificationMode::Rest,
             on_fail: OnFail::RetryUnlimitedOnPortOccupied,
             config: ConfigurationBuilder::new().build(),
         }
