@@ -495,16 +495,30 @@ impl ConfigParamVariant for LinearFee {
             constant: u64::from_payload(&payload[0..8])?,
             coefficient: u64::from_payload(&payload[8..16])?,
             certificate: u64::from_payload(&payload[16..24])?,
-            per_certificate_fees: None,
+            per_certificate_fees: PerCertificateFee::default(),
         })
     }
 }
 
 impl ConfigParamVariant for PerCertificateFee {
     fn to_payload(&self) -> Vec<u8> {
-        let mut v = self.certificate_pool_registration.to_payload();
-        v.extend(self.certificate_stake_delegation.to_payload());
-        v.extend(self.certificate_owner_stake_delegation.to_payload());
+        let mut v = self
+            .certificate_pool_registration
+            .map(|v| v.get())
+            .unwrap_or(0)
+            .to_payload();
+        v.extend(
+            self.certificate_stake_delegation
+                .map(|v| v.get())
+                .unwrap_or(0)
+                .to_payload(),
+        );
+        v.extend(
+            self.certificate_owner_stake_delegation
+                .map(|v| v.get())
+                .unwrap_or(0)
+                .to_payload(),
+        );
         v
     }
 
@@ -513,9 +527,9 @@ impl ConfigParamVariant for PerCertificateFee {
             return Err(Error::SizeInvalid);
         }
         Ok(PerCertificateFee {
-            certificate_pool_registration: u64::from_payload(&payload[0..8])?,
-            certificate_stake_delegation: u64::from_payload(&payload[0..8])?,
-            certificate_owner_stake_delegation: u64::from_payload(&payload[0..8])?,
+            certificate_pool_registration: NonZeroU64::new(u64::from_payload(&payload[0..8])?),
+            certificate_stake_delegation: NonZeroU64::new(u64::from_payload(&payload[0..8])?),
+            certificate_owner_stake_delegation: NonZeroU64::new(u64::from_payload(&payload[0..8])?),
         })
     }
 }
