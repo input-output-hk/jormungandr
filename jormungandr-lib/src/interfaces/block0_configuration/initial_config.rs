@@ -1,7 +1,7 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BFTSlotsRatio, ConsensusLeaderId, KESUpdateSpeed, LinearFeeDef,
-        NumberOfSlotsPerEpoch, SlotDuration,
+        NumberOfSlotsPerEpoch, SlotDuration, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -11,7 +11,6 @@ use chain_impl_mockchain::{
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     fragment::config::ConfigParams,
-    value,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -108,11 +107,11 @@ pub struct BlockchainConfiguration {
 
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
     #[serde(default)]
-    pub treasury: Option<u64>,
+    pub treasury: Option<Value>,
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
     #[serde(default)]
-    pub rewards: Option<u64>,
+    pub rewards: Option<Value>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -232,9 +231,13 @@ impl BlockchainConfiguration {
                 ConfigParam::EpochStabilityDepth(param) => epoch_stability_depth
                     .replace(param)
                     .map(|_| "epoch_stability_depth"),
-                ConfigParam::TreasuryAdd(param) => treasury.replace(param.0).map(|_| "treasury"),
+                ConfigParam::TreasuryAdd(param) => {
+                    treasury.replace(param.into()).map(|_| "treasury")
+                }
                 ConfigParam::TreasuryParams(_) => unimplemented!(),
-                ConfigParam::RewardPot(param) => rewards.replace(param.0).map(|_| "reward-pot"),
+                ConfigParam::RewardPot(param) => {
+                    rewards.replace(param.into()).map(|_| "reward-pot")
+                }
                 ConfigParam::RewardParams(_) => unimplemented!(),
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
@@ -315,10 +318,10 @@ impl BlockchainConfiguration {
         }
 
         if let Some(treasury) = treasury {
-            params.push(ConfigParam::TreasuryAdd(value::Value(treasury)));
+            params.push(ConfigParam::TreasuryAdd(treasury.into()));
         }
         if let Some(rewards) = rewards {
-            params.push(ConfigParam::RewardPot(value::Value(rewards)));
+            params.push(ConfigParam::RewardPot(rewards.into()));
         }
 
         consensus_leader_ids
