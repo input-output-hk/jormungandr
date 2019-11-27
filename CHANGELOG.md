@@ -1,5 +1,14 @@
 # Change Log
 
+## [v0.7.3](https://github.com/input-output-hk/jormungandr/tree/v0.7.3) (2019-11-27)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.2...v0.7.3)
+
+**Implemented enhancements:**
+
+- Optimize locking with Storage::send_from_to [\#1209](https://github.com/input-output-hk/jormungandr/pull/1209)
+- Small network fixes, improve logging [\#1194](https://github.com/input-output-hk/jormungandr/pull/1194)
+
 ## [v0.7.2](https://github.com/input-output-hk/jormungandr/tree/v0.7.2) (2019-11-25)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.1...v0.7.2)
