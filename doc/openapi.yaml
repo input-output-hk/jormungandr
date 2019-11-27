@@ -662,6 +662,68 @@ paths:
                   type: string
                   pattern: '[0-9a-fA-F]+'
               example: [ "5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f" ]
+  /api/v0/stake_pool:
+    get:
+      description: Gets stake pool details
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: Stake pool details
+                type: object
+                required: [tax, total_stake, kesPublicKey, vrfPublicKey]
+                properies:
+                  tax:
+                    description: Pool reward
+                    type: object
+                    required: [fixed, ratio, max]
+                    properties:
+                      fixed:
+                        description: What get subtracted as fixed value
+                        type: integer
+                        minimum: 0
+                      ratio:
+                        description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      max:
+                        description: Limit of tax
+                        type: integer
+                        minimum: 1
+                        nullable: true
+                  total_stake:
+                    description: Total stake pool value
+                    type: integer
+                    minimum: 0
+                  vrfPublicKey:
+                    description: Bech32-encoded stake pool KES key
+                    type: string
+                  vrfPublicKey:
+                    description: Bech32-encoded stake pool VRF key
+                    type: string
+              example: |
+                {
+                  "tax": {
+                    "fixed": 5,
+                    "ratio": {
+                      "numerator": 1
+                      "denominator": 10000,
+                    }
+                    "max": 100,
+                  },
+                  "total_stake": 2000000000000,
+                  "kesPublicKey": "kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r",
+                  "vrfPublicKey": "vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l"
+                }
   /api/v0/stake:
     get:
       description: Gets stake distribution

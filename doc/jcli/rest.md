@@ -477,3 +477,36 @@ YAML printed on success
   # timestamp of last time gossip was received from node if ever (optional)
   lastGossipReceived: "2019-10-14T00:45:59.419496188+00:00"
 ```
+
+## Get stake pool details
+
+Fetches stake pool details
+
+```
+jcli rest v0 stake-pool get <pool-id> <options>
+```
+
+<pool-id> - hex-encoded pool ID
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+YAML printed on success
+
+```yaml
+---
+tax:                        # pool reward
+  fixed: 5                  # what get subtracted as fixed value
+  ratio:                    # ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+    numerator: 1
+    denominator: 10000
+  max: 100                  # limit of tax (optional)
+total_stake: 2000000000000  # total stake pool value
+# bech32-encoded stake pool KES key
+kesPublicKey: kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r
+# bech32-encoded stake pool VRF key
+vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
+```
