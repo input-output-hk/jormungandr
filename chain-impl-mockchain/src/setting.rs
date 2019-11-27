@@ -179,25 +179,39 @@ impl Settings {
     pub fn to_reward_params(&self) -> rewards::Parameters {
         let mut p = match self.reward_params {
             None => rewards::Parameters::zero(),
-            Some(RewardParams::Halving(start, num, denom)) => rewards::Parameters {
+            Some(RewardParams::Halving {
+                constant,
+                ratio_num,
+                ratio_denom,
+                epoch_start,
+                epoch_rate,
+            }) => rewards::Parameters {
                 treasury_tax: rewards::TaxType::zero(),
-                rewards_initial_value: start,
-                rewards_reducement_ratio: rewards::Ratio {
-                    numerator: num,
-                    denominator: denom,
+                initial_value: constant,
+                compounding_ratio: rewards::Ratio {
+                    numerator: ratio_num,
+                    denominator: ratio_denom,
                 },
-                reducing_type: rewards::ReducingType::Halvening,
-                reducing_epoch_rate: NonZeroU64::new(u64::max_value()).unwrap(),
+                compounding_type: rewards::CompoundingType::Halvening,
+                epoch_start,
+                epoch_rate,
             },
-            Some(RewardParams::Linear(start, num, denom)) => rewards::Parameters {
+            Some(RewardParams::Linear {
+                constant,
+                ratio_num,
+                ratio_denom,
+                epoch_start,
+                epoch_rate,
+            }) => rewards::Parameters {
                 treasury_tax: rewards::TaxType::zero(),
-                rewards_initial_value: start,
-                rewards_reducement_ratio: rewards::Ratio {
-                    numerator: num,
-                    denominator: denom,
+                initial_value: constant,
+                compounding_ratio: rewards::Ratio {
+                    numerator: ratio_num,
+                    denominator: ratio_denom,
                 },
-                reducing_type: rewards::ReducingType::Linear,
-                reducing_epoch_rate: NonZeroU64::new(u64::max_value()).unwrap(),
+                compounding_type: rewards::CompoundingType::Linear,
+                epoch_start,
+                epoch_rate,
             },
         };
         p.treasury_tax = self
