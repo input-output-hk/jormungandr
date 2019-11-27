@@ -43,12 +43,12 @@ pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
         assert_equals(
             &expected_block_hashes,
             &all_block_hashes,
-            "nodes are out of sync (different bock hashes)",
+            "nodes are out of sync (different block hashes)",
         )?;
         assert_equals(
             &block_height,
             &node.stats()?.last_block_height,
-            "nodes are out of sync (different bock height)",
+            "nodes are out of sync (different block height)",
         )?;
     }
     Ok(())
