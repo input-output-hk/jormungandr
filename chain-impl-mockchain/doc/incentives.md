@@ -68,9 +68,8 @@ where
   point of the contribution at #epoch=0, whereas in halving formula is used as
   starting constant for the calculation.
 * `ratio` is the tweaking ratio.
-  In both formulas, with an effective value between 0.0 to 1.0 it indicate a reducing contribution, whereas above 1.0 it indicate an acceleration of contribution. Further requirement is that this ratio is expressed in fractional form (e.g. 1/2), which allow calculation in integer form (see implementation details).
-* `erate` is the rate at which the contribution is reduce. e.g. erate=100 means that
-  every 100 epochs, the calculation is reduce further.
+  In the halving formula, an effective value between 0.0 to 1.0 indicates a reducing contribution, whereas above 1.0 it indicate an acceleration of contribution. However in linear formula the meaning is just a scaling factor for the epoch zone (`current_epoch - start_epoch / erate`). Further requirement is that this ratio is expressed in fractional form (e.g. 1/2), which allow calculation in integer form (see implementation details).
+* `epoch_rate` is the rate at which the contribution is tweaked related to epoch.
 
 And the actual contribution into the epoch reward is:
 
