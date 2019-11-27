@@ -73,8 +73,9 @@ blockchain_configuration:
       # the one set by linear_fees.certificate
       certificate_stake_delegation: 2
       # (optional) if not specified, the owner delegation certificate fee will be
-      # the one set by linear_fees.certificate
-      certificate_owner_stake_delegation: 4
+      # the one set by linear_fees.certificate. Uncomment to set the owner stake
+      # delegation to `1` instead of default `4`:
+      # certificate_owner_stake_delegation: 1
 
   # The speed to update the KES Key in seconds
   #
