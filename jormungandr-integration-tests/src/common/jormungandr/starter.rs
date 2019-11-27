@@ -45,8 +45,8 @@ pub enum Role {
 }
 
 pub trait StartupVerification {
-    fn check_if_stopped(&self) -> bool;
-    fn check_if_succeed(&self) -> bool;
+    fn if_stopped(&self) -> bool;
+    fn if_succeed(&self) -> bool;
 }
 
 #[derive(Clone, Debug)]
@@ -61,12 +61,12 @@ impl RestStartupVerification {
 }
 
 impl StartupVerification for RestStartupVerification {
-    fn check_if_stopped(&self) -> bool {
+    fn if_stopped(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
-    fn check_if_succeed(&self) -> bool {
+    fn if_succeed(&self) -> bool {
         let output = process_utils::run_process_and_get_output(
             jcli_commands::get_rest_stats_command(&self.config.get_node_address()),
         );
@@ -100,12 +100,12 @@ impl LogStartupVerification {
 }
 
 impl StartupVerification for LogStartupVerification {
-    fn check_if_stopped(&self) -> bool {
+    fn if_stopped(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
-    fn check_if_succeed(&self) -> bool {
+    fn if_succeed(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger
             .contains_message("genesis block fetched")
@@ -212,24 +212,24 @@ impl Starter {
         process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
     }
 
-    fn check_if_succeed(&self) -> bool {
+    fn if_succeed(&self) -> bool {
         match self.verification_mode {
             StartupVerificationMode::Rest => {
-                RestStartupVerification::new(self.config.clone()).check_if_succeed()
+                RestStartupVerification::new(self.config.clone()).if_succeed()
             }
             StartupVerificationMode::Log => {
-                LogStartupVerification::new(self.config.clone()).check_if_succeed()
+                LogStartupVerification::new(self.config.clone()).if_succeed()
             }
         }
     }
 
-    fn check_if_stopped(&self) -> bool {
+    fn if_stopped(&self) -> bool {
         match self.verification_mode {
             StartupVerificationMode::Rest => {
-                RestStartupVerification::new(self.config.clone()).check_if_stopped()
+                RestStartupVerification::new(self.config.clone()).if_stopped()
             }
             StartupVerificationMode::Log => {
-                LogStartupVerification::new(self.config.clone()).check_if_stopped()
+                LogStartupVerification::new(self.config.clone()).if_stopped()
             }
         }
     }
@@ -256,7 +256,7 @@ impl Starter {
                     log_content: file_utils::read_file(&self.config.log_file_path),
                 });
             }
-            if self.check_if_succeed() {
+            if self.if_succeed() {
                 println!("jormungandr is up");
                 return Ok(JormungandrProcess::from_config(
                     process,
@@ -264,7 +264,7 @@ impl Starter {
                 ));
             }
             self.custom_errors_found()?;
-            if self.check_if_stopped() {
+            if self.if_stopped() {
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
