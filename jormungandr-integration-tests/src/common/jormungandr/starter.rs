@@ -45,8 +45,8 @@ pub enum Role {
 }
 
 pub trait StartupVerification {
-    fn stop(&self) -> bool;
-    fn success(&self) -> bool;
+    fn check_if_stopped(&self) -> bool;
+    fn check_if_success(&self) -> bool;
 }
 
 #[derive(Clone, Debug)]
@@ -61,12 +61,12 @@ impl RestStartupVerification {
 }
 
 impl StartupVerification for RestStartupVerification {
-    fn stop(&self) -> bool {
+    fn check_if_stopped(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
-    fn success(&self) -> bool {
+    fn check_if_success(&self) -> bool {
         let output = process_utils::run_process_and_get_output(
             jcli_commands::get_rest_stats_command(&self.config.get_node_address()),
         );
@@ -100,12 +100,12 @@ impl LogStartupVerification {
 }
 
 impl StartupVerification for LogStartupVerification {
-    fn stop(&self) -> bool {
+    fn check_if_stopped(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
-    fn success(&self) -> bool {
+    fn check_if_success(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
         logger
             .message_logged_multiple_times("initial bootstrap completed", 2)
