@@ -84,49 +84,49 @@ The escrow amount is adjusted as such:
 With C = 10000, ratio = 1/1, estart=10, rate=1, using the halving formula, contribution before epoch 10 will be 0
 and then will be constant at 10000 coins per epoch.
 
-    | epoch | contribution |
-    | ----- | ------------ |
-    | < 10  | 0            |
-    | >= 10 | 10000        |
+| epoch | contribution |
+| ----- | ------------ |
+| < 10  | 0            |
+| >= 10 | 10000        |
 
 #### Example 2 : linear
 
 with C = 10000, ratio = 1000/1, estart=10, rate=2, using the linear formula: contribution before epoch 10 will be 0
 
-    | epoch | contribution |
-    | ----- | ------------ |
-    | < 10  | 0            |
-    | 10    | 10000        |
-    | 11    | 10000        |
-    | 12    | 9000         |
-    | 13    | 9000         |
-    | 14    | 8000         |
+| epoch | contribution |
+| ----- | ------------ |
+| < 10  | 0            |
+| 10    | 10000        |
+| 11    | 10000        |
+| 12    | 9000         |
+| 13    | 9000         |
+| 14    | 8000         |
 
 #### Example 3 : halving
 
 with C = 10000, ratio = 1/2, epoch-start=10, epoch-rate=2, using the halving formula: contribution before epoch 10 will be 0
 
-    | epoch | contribution |
-    | ----- | ------------ |
-    | < 10  | 0            |
-    | 10    | 10000        |
-    | 11    | 10000        |
-    | 12    | 5000         |
-    | 13    | 5000         |
-    | 14    | 2500         |
+| epoch | contribution |
+| ----- | ------------ |
+| < 10  | 0            |
+| 10    | 10000        |
+| 11    | 10000        |
+| 12    | 5000         |
+| 13    | 5000         |
+| 14    | 2500         |
 
 #### Example 4 : 2 of 3
 
 with C = 10000, ratio = 2/3, epoch-start=10, epoch-rate=2, using the halving formula: contribution before epoch 10 will be 0
 
-    | epoch | contribution |
-    | ----- | ------------ |
-    | < 10  | 0            |
-    | 10    | 10000        |
-    | 11    | 10000        |
-    | 12    | 6666         |
-    | 13    | 6666         |
-    | 14    | 4444         |
+| epoch | contribution |
+| ----- | ------------ |
+| < 10  | 0            |
+| 10    | 10000        |
+| 11    | 10000        |
+| 12    | 6666         |
+| 13    | 6666         |
+| 14    | 4444         |
 
 ### Epoch Fees
 
