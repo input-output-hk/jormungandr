@@ -82,6 +82,27 @@ blockchain_configuration:
   # default value: {default_kes_update_speed}
   kes_update_speed: {default_kes_update_speed}
 
+  # initial value the treasury will start with, if not set the treasury
+  # starts at 0
+  treasury: 1000000000000
+
+  # set the treasury parameters, this is the tax type, just as in stake pool
+  # registration certificate parameters.
+  #
+  # When distributing the rewards, the treasury will be first serve as per
+  # the incentive specification document
+  #
+  # if not set, the treasury will not grow
+  treasury_parameters:
+    # the fix value the treasury will take from the total reward pot of the epoch
+    fixed: 1000
+    # the extra percentage the the treasury will take from the reward pot of the epoch
+    ratio: "1/10"
+    # It is possible to add a max bound to the total value the treasury takes
+    # at each reward distribution. For example, one could cap the treasury tax
+    # to 10000. Uncomment the following line to apply a max limit:
+    # max_limit: 10000
+
 # Initial state of the ledger. Each item is applied in order of this list
 initial:
   # Initial deposits present in the blockchain

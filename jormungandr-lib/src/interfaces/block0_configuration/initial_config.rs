@@ -1,7 +1,7 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BFTSlotsRatio, ConsensusLeaderId, KESUpdateSpeed, LinearFeeDef,
-        NumberOfSlotsPerEpoch, SlotDuration,
+        NumberOfSlotsPerEpoch, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -11,7 +11,6 @@ use chain_impl_mockchain::{
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     fragment::config::ConfigParams,
-    value,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -108,11 +107,16 @@ pub struct BlockchainConfiguration {
 
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
     #[serde(default)]
-    pub treasury: Option<u64>,
+    pub treasury: Option<Value>,
+
+    /// set the treasure parameters, i.e. the first value the treasury will take from the
+    /// rewards pot and fees.
+    #[serde(default)]
+    pub treasury_parameters: Option<TaxType>,
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
     #[serde(default)]
-    pub rewards: Option<u64>,
+    pub rewards: Option<Value>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -161,6 +165,7 @@ impl BlockchainConfiguration {
             max_number_of_transactions_per_block: None,
             epoch_stability_depth: None,
             treasury: None,
+            treasury_parameters: None,
             rewards: None,
         }
     }
@@ -183,6 +188,7 @@ impl BlockchainConfiguration {
         let mut linear_fees = None;
         let mut kes_update_speed = None;
         let mut treasury = None;
+        let mut treasury_parameters = None;
         let mut rewards = None;
         let mut per_certificate_fees = None;
 
@@ -232,9 +238,15 @@ impl BlockchainConfiguration {
                 ConfigParam::EpochStabilityDepth(param) => epoch_stability_depth
                     .replace(param)
                     .map(|_| "epoch_stability_depth"),
-                ConfigParam::TreasuryAdd(param) => treasury.replace(param.0).map(|_| "treasury"),
-                ConfigParam::TreasuryParams(_) => unimplemented!(),
-                ConfigParam::RewardPot(param) => rewards.replace(param.0).map(|_| "reward-pot"),
+                ConfigParam::TreasuryAdd(param) => {
+                    treasury.replace(param.into()).map(|_| "treasury")
+                }
+                ConfigParam::TreasuryParams(param) => treasury_parameters
+                    .replace(param.into())
+                    .map(|_| "treasury_parameters"),
+                ConfigParam::RewardPot(param) => {
+                    rewards.replace(param.into()).map(|_| "reward-pot")
+                }
                 ConfigParam::RewardParams(_) => unimplemented!(),
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
@@ -267,6 +279,7 @@ impl BlockchainConfiguration {
             consensus_leader_ids,
             max_number_of_transactions_per_block,
             treasury,
+            treasury_parameters,
             rewards,
         })
     }
@@ -286,6 +299,7 @@ impl BlockchainConfiguration {
             max_number_of_transactions_per_block,
             epoch_stability_depth,
             treasury,
+            treasury_parameters,
             rewards,
         } = self;
 
@@ -315,10 +329,15 @@ impl BlockchainConfiguration {
         }
 
         if let Some(treasury) = treasury {
-            params.push(ConfigParam::TreasuryAdd(value::Value(treasury)));
+            params.push(ConfigParam::TreasuryAdd(treasury.into()));
         }
+
+        if let Some(treasury_parameters) = treasury_parameters {
+            params.push(ConfigParam::TreasuryParams(treasury_parameters.into()));
+        }
+
         if let Some(rewards) = rewards {
-            params.push(ConfigParam::RewardPot(value::Value(rewards)));
+            params.push(ConfigParam::RewardPot(rewards.into()));
         }
 
         consensus_leader_ids
@@ -384,6 +403,7 @@ mod test {
                 max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
                 treasury: Arbitrary::arbitrary(g),
+                treasury_parameters: Arbitrary::arbitrary(g),
                 rewards: Arbitrary::arbitrary(g),
             }
         }
