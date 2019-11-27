@@ -295,15 +295,14 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::Discrimination(discrimination));
         params.push(ConfigParam::ConsensusVersion(block0_consensus));
         params.push(ConfigParam::LinearFee(linear_fees));
+        params.push(ConfigParam::PerCertificateFees(
+            linear_fees.per_certificate_fees,
+        ));
         params.push(ConfigParam::from(slots_per_epoch));
         params.push(ConfigParam::from(slot_duration));
         params.push(ConfigParam::from(kes_update_speed));
         params.push(ConfigParam::from(consensus_genesis_praos_active_slot_coeff));
         params.push(ConfigParam::from(bft_slots_ratio));
-
-        if let Some(per_certificate_fees) = linear_fees.per_certificate_fees {
-            params.push(ConfigParam::PerCertificateFees(per_certificate_fees))
-        }
 
         if let Some(max_number_of_transactions_per_block) = max_number_of_transactions_per_block {
             params.push(ConfigParam::MaxNumberOfTransactionsPerBlock(
@@ -349,10 +348,20 @@ enum ConsensusVersionDef {
 #[cfg(test)]
 mod test {
     use super::*;
+    use chain_impl_mockchain::fee::PerCertificateFee;
     use quickcheck::{Arbitrary, Gen};
+    use std::num::NonZeroU64;
 
     impl Arbitrary for BlockchainConfiguration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut linear_fees =
+                LinearFee::new(u64::arbitrary(g), u64::arbitrary(g), u64::arbitrary(g));
+            linear_fees.per_certificate_fees(PerCertificateFee::new(
+                NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
+            ));
+
             BlockchainConfiguration {
                 block0_date: SecondsSinceUnixEpoch::arbitrary(g),
                 discrimination: if bool::arbitrary(g) {
@@ -365,11 +374,7 @@ mod test {
                 } else {
                     ConsensusVersion::GenesisPraos
                 },
-                linear_fees: LinearFee::new(
-                    u64::arbitrary(g),
-                    u64::arbitrary(g),
-                    u64::arbitrary(g),
-                ),
+                linear_fees,
                 consensus_leader_ids: Arbitrary::arbitrary(g),
                 slots_per_epoch: NumberOfSlotsPerEpoch::arbitrary(g),
                 slot_duration: SlotDuration::arbitrary(g),

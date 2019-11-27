@@ -7,7 +7,6 @@ use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
-use chain_impl_mockchain::fee::PerCertificateFee;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
@@ -291,31 +290,27 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
             let consensus_version = ledger.consensus_version();
             let current_params = blockchain_tip.epoch_ledger_parameters();
             let fees = current_params.fees;
-            let per_certificate_fees = fees.per_certificate_fees.unwrap_or(PerCertificateFee::new(fees.certificate, fees.certificate, fees.certificate));
             let slot_duration = blockchain_tip.time_frame().slot_duration();
             let slots_per_epoch = blockchain_tip
                 .epoch_leadership_schedule()
                 .era()
                 .slots_per_epoch();
-            Json(json!({
-                "block0Hash": static_params.block0_initial_hash.to_string(),
-                "block0Time": SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
-                "currSlotStartTime": context.stats_counter.slot_start_time().map(SystemTime::from),
-                "consensusVersion": consensus_version.to_string(),
-                "fees":{
-                    "constant": fees.constant,
-                    "coefficient": fees.coefficient,
-                    "certificate": fees.certificate,
-                    "per_certificate_fees": {
-                        "certificate_pool_registration": per_certificate_fees.certificate_pool_registration,
-                        "certificate_stake_delegation": per_certificate_fees.certificate_stake_delegation,
-                        "certificate_owner_stake_delegation": per_certificate_fees.certificate_owner_stake_delegation,
-                    },
-                },
-                "maxTxsPerBlock": 255, // TODO?
-                "slotDuration": slot_duration,
-                "slotsPerEpoch": slots_per_epoch,
-            }))
+
+            let settings = jormungandr_lib::interfaces::SettingsDto {
+                block0_hash: static_params.block0_initial_hash.to_string(),
+                block0_time: SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
+                curr_slot_start_time: context
+                    .stats_counter
+                    .slot_start_time()
+                    .map(SystemTime::from),
+                consensus_version: consensus_version.to_string(),
+                fees: fees,
+                max_txs_per_block: 255, // TODO?
+                slot_duration: Some(slot_duration),
+                slots_per_epoch: Some(slots_per_epoch),
+            };
+
+            Json(json!(settings))
         })
 }
 
