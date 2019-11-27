@@ -528,8 +528,10 @@ impl ConfigParamVariant for PerCertificateFee {
         }
         Ok(PerCertificateFee {
             certificate_pool_registration: NonZeroU64::new(u64::from_payload(&payload[0..8])?),
-            certificate_stake_delegation: NonZeroU64::new(u64::from_payload(&payload[0..8])?),
-            certificate_owner_stake_delegation: NonZeroU64::new(u64::from_payload(&payload[0..8])?),
+            certificate_stake_delegation: NonZeroU64::new(u64::from_payload(&payload[8..16])?),
+            certificate_owner_stake_delegation: NonZeroU64::new(u64::from_payload(
+                &payload[16..24],
+            )?),
         })
     }
 }
@@ -571,6 +573,20 @@ mod test {
             assert_eq!(Ok(tag), tag_len.get_tag(), "Invalid tag");
             assert_eq!(len, tag_len.get_len(), "Invalid len");
             TestResult::passed()
+        }
+
+        fn linear_fee_to_payload_from_payload(fee: LinearFee) -> TestResult {
+            let payload = fee.to_payload();
+            let decoded = LinearFee::from_payload(&payload).unwrap();
+
+            TestResult::from_bool(fee == decoded)
+        }
+
+        fn per_certificate_fee_to_payload_from_payload(fee: PerCertificateFee) -> TestResult {
+            let payload = fee.to_payload();
+            let decoded = PerCertificateFee::from_payload(&payload).unwrap();
+
+            TestResult::from_bool(fee == decoded)
         }
     }
 
