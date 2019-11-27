@@ -2,10 +2,32 @@
 
 ## how to create the delegation certificate
 
-Stake is concentrated in accounts, and you will need your account public key to
-delegate its associated stake.
+Stake is concentrated in accounts, and you will need account public key to delegate its associated stake.
 
-You will need your:
+### for own account
+
+You will need:
+
+* the Stake Pool ID: an hexadecimal string identifying the stake pool you want
+  to delegate your stake to.
+
+```sh
+jcli certificate new owned-stake-delegation STAKE_POOL_ID > stake_delegation.cert
+```
+
+Note that the certificate is in blaco, there's no account key used for its creation.
+In order for delegation to work it must be submitted to a node inside a very specific transaction:
+
+* Transaction must have exactly 1 input
+* The input must be from account
+* The input value must be strictly equal to fee of the transaction
+* Transaction must have 0 outputs
+
+The account used for input will have its stake delegated to the stake pool
+
+### for any account
+
+You will need:
 
 * account public key: a bech32 string of a public key
 * the Stake Pool ID: an hexadecimal string identifying the stake pool you want
