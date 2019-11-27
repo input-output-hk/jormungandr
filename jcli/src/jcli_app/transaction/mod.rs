@@ -131,6 +131,11 @@ custom_error! { pub Error
     ExpectingOnlyOneSigningKey { got: usize }
         = "expecting only one signing keys but got {got}",
     CertificateError { error: certificate::Error } = "certificate error {error}",
+
+    TxWithOwnerStakeDelegationMultiInputs { inputs: usize }
+        = "transaction has owner stake delegation, but has {inputs} inputs, should have 1",
+    TxWithOwnerStakeDelegationHasUtxoInput = "transaction has owner stake delegation, but has UTxO input",
+    TxWithOwnerStakeDelegationHasOutputs = "transaction has owner stake delegation, but has outputs",
 }
 
 /*

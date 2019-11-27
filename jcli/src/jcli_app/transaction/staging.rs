@@ -192,7 +192,7 @@ impl Staging {
         payload: &P,
         fee_algorithm: &FA,
         output_policy: chain::transaction::OutputPolicy,
-    ) -> Result<chain::transaction::Balance, Error>
+    ) -> Result<Balance, Error>
     where
         FA: FeeAlgorithm,
         P: Payload,
@@ -215,7 +215,7 @@ impl Staging {
         &mut self,
         fee_algorithm: &FA,
         output_policy: chain::transaction::OutputPolicy,
-    ) -> Result<chain::transaction::Balance, Error>
+    ) -> Result<Balance, Error>
     where
         FA: FeeAlgorithm,
     {
@@ -241,7 +241,24 @@ impl Staging {
                     self.finalize_payload(&c, fee_algorithm, output_policy)
                 }
                 Certificate::OwnerStakeDelegation(c) => {
-                    self.finalize_payload(&c, fee_algorithm, output_policy)
+                    let balance = self.finalize_payload(&c, fee_algorithm, output_policy)?;
+                    match self.inputs() {
+                        [input] => match input.input {
+                            interfaces::TransactionInputType::Account(_) => (),
+                            interfaces::TransactionInputType::Utxo(_, _) => {
+                                return Err(Error::TxWithOwnerStakeDelegationHasUtxoInput)
+                            }
+                        },
+                        inputs @ _ => {
+                            return Err(Error::TxWithOwnerStakeDelegationMultiInputs {
+                                inputs: inputs.len(),
+                            })
+                        }
+                    };
+                    if self.outputs().is_empty() == false {
+                        return Err(Error::TxWithOwnerStakeDelegationHasOutputs);
+                    }
+                    Ok(balance)
                 }
             },
         }
