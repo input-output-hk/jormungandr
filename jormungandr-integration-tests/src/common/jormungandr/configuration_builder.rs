@@ -2,7 +2,7 @@ use crate::common::{
     configuration::{
         genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
         jormungandr_config::JormungandrConfig,
-        node_config_model::{Log, NodeConfig, TrustedPeer},
+        node_config_model::{Log, LogEntry, NodeConfig, TrustedPeer},
         secret_model::SecretModel,
     },
     file_utils, jcli_wrapper,
@@ -45,7 +45,10 @@ impl ConfigurationBuilder {
             slots_per_epoch: None,
             slot_duration: None,
             epoch_stability_depth: None,
-            log: None,
+            log: Some(Log(vec![LogEntry {
+                level: Some("info".to_string()),
+                format: Some("json".to_string()),
+            }])),
             linear_fees: LinearFees {
                 constant: 0,
                 coefficient: 0,

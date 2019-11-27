@@ -4,10 +4,6 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-fn set_json_logger(command: &mut Command) {
-    command.arg("--log-format").arg("json");
-}
-
 pub fn get_start_jormungandr_as_leader_node_command(
     config_path: &PathBuf,
     genesis_block_path: &PathBuf,
@@ -15,7 +11,6 @@ pub fn get_start_jormungandr_as_leader_node_command(
     log_file_path: &PathBuf,
 ) -> Command {
     let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
-    set_json_logger(&mut command);
     command
         .arg("--secret")
         .arg(secret_path.as_os_str())
@@ -34,7 +29,6 @@ pub fn get_start_jormungandr_as_passive_node_command(
     log_file_path: &PathBuf,
 ) -> Command {
     let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
-    set_json_logger(&mut command);
     command
         .arg("--config")
         .arg(config_path.as_os_str())
