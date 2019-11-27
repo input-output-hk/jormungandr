@@ -1,6 +1,7 @@
+use crate::header::Epoch;
 use crate::leadership::bft::LeaderId;
 use crate::milli::Milli;
-use crate::rewards::TaxType;
+use crate::rewards::{Ratio, TaxType};
 use crate::value::Value;
 use crate::{
     block::ConsensusVersion,
@@ -13,7 +14,7 @@ use chain_core::property;
 use chain_crypto::PublicKey;
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, Write};
-use std::num::NonZeroU64;
+use std::num::{NonZeroU32, NonZeroU64};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 use typed_bytes::ByteBuilder;
 
@@ -78,8 +79,18 @@ pub enum ConfigParam {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RewardParams {
-    Linear(u64, u64, NonZeroU64),
-    Halving(u64, u64, NonZeroU64),
+    Linear {
+        constant: u64,
+        ratio: Ratio,
+        epoch_start: Epoch,
+        epoch_rate: NonZeroU32,
+    },
+    Halving {
+        constant: u64,
+        ratio: Ratio,
+        epoch_start: Epoch,
+        epoch_rate: NonZeroU32,
+    },
 }
 
 // Discriminants can NEVER be 1024 or higher
@@ -312,16 +323,30 @@ impl ConfigParamVariant for TaxType {
 impl ConfigParamVariant for RewardParams {
     fn to_payload(&self) -> Vec<u8> {
         let bb: ByteBuilder<RewardParams> = match self {
-            RewardParams::Linear(start, num, denom) => ByteBuilder::new()
+            RewardParams::Linear {
+                constant,
+                ratio,
+                epoch_start,
+                epoch_rate,
+            } => ByteBuilder::new()
                 .u8(1)
-                .u64(*start)
-                .u64(*num)
-                .u64(denom.get()),
-            RewardParams::Halving(start, num, denom) => ByteBuilder::new()
+                .u64(*constant)
+                .u64(ratio.numerator)
+                .u64(ratio.denominator.get())
+                .u32(*epoch_start)
+                .u32(epoch_rate.get()),
+            RewardParams::Halving {
+                constant,
+                ratio,
+                epoch_start,
+                epoch_rate,
+            } => ByteBuilder::new()
                 .u8(2)
-                .u64(*start)
-                .u64(*num)
-                .u64(denom.get()),
+                .u64(*constant)
+                .u64(ratio.numerator)
+                .u64(ratio.denominator.get())
+                .u32(*epoch_start)
+                .u32(epoch_rate.get()),
         };
         bb.finalize_as_vec()
     }
@@ -333,15 +358,35 @@ impl ConfigParamVariant for RewardParams {
                 let start = rb.get_u64()?;
                 let num = rb.get_u64()?;
                 let denom = rb.get_nz_u64()?;
+                let estart = rb.get_u32()?;
+                let erate = rb.get_nz_u32()?;
                 rb.expect_end()?;
-                Ok(RewardParams::Linear(start, num, denom))
+                Ok(RewardParams::Linear {
+                    constant: start,
+                    ratio: Ratio {
+                        numerator: num,
+                        denominator: denom,
+                    },
+                    epoch_start: estart,
+                    epoch_rate: erate,
+                })
             }
             2 => {
                 let start = rb.get_u64()?;
                 let num = rb.get_u64()?;
                 let denom = rb.get_nz_u64()?;
+                let estart = rb.get_u32()?;
+                let erate = rb.get_nz_u32()?;
                 rb.expect_end()?;
-                Ok(RewardParams::Halving(start, num, denom))
+                Ok(RewardParams::Halving {
+                    constant: start,
+                    ratio: Ratio {
+                        numerator: num,
+                        denominator: denom,
+                    },
+                    epoch_start: estart,
+                    epoch_rate: erate,
+                })
             }
             _ => Err(Error::InvalidTag),
         }
@@ -603,19 +648,31 @@ mod test {
         }
     }
 
+    impl Arbitrary for Ratio {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Ratio {
+                numerator: Arbitrary::arbitrary(g),
+                denominator: NonZeroU64::new(Arbitrary::arbitrary(g))
+                    .unwrap_or(NonZeroU64::new(1).unwrap()),
+            }
+        }
+    }
+
     impl Arbitrary for RewardParams {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             match bool::arbitrary(g) {
-                false => RewardParams::Linear(
-                    Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
-                    NonZeroU64::new(Arbitrary::arbitrary(g)).unwrap_or(NonZeroU64::new(1).unwrap()),
-                ),
-                true => RewardParams::Halving(
-                    Arbitrary::arbitrary(g),
-                    Arbitrary::arbitrary(g),
-                    NonZeroU64::new(Arbitrary::arbitrary(g)).unwrap_or(NonZeroU64::new(1).unwrap()),
-                ),
+                false => RewardParams::Linear {
+                    constant: Arbitrary::arbitrary(g),
+                    ratio: Arbitrary::arbitrary(g),
+                    epoch_start: Arbitrary::arbitrary(g),
+                    epoch_rate: NonZeroU32::new(20).unwrap(),
+                },
+                true => RewardParams::Halving {
+                    constant: Arbitrary::arbitrary(g),
+                    ratio: Arbitrary::arbitrary(g),
+                    epoch_start: Arbitrary::arbitrary(g),
+                    epoch_rate: NonZeroU32::new(20).unwrap(),
+                },
             }
         }
     }

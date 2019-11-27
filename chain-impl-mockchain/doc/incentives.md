@@ -42,14 +42,15 @@ A fix amount of total reward is commited at genesis time to rewards
 participants in the system. This is escrowed in a special account until it
 has been drained completely.
 
-At each epoch, a specific configurable amount if contributed towards the
+At each epoch, a specific configurable amount is contributed towards the
 epoch rewards. As there's only a specific known amount of value in the system
 once this pot is depleted, then no contributions are made.
 
 The usual expectations is that at start of the system, the fees collected
 by usage (transactions, etc) is going to be small depending on adoption rate,
 so as early incentives to contribute into the network, the initial
-contribution starts at a specific value, then is reduce as time progress.
+contribution starts at a specific value, then it might be reduced/increased
+as time progress.
 
 Genesis creators have full control on the specific amount and rates,
 and each specific values are inscribed into block0 initial values.
@@ -57,25 +58,75 @@ and each specific values are inscribed into block0 initial values.
 There's fundamentally many potential choices for how rewards are contributed back,
 and here's two potential valid examples:
 
-* Linear formula: `calc = C - rratio * (#epoch / erate)`
-* Halving formula: `calc = C * rratio ^ (#epoch / erate)`
+* Linear formula: `C - ratio * (#epoch after epoch_start / epoch_rate)`
+* Halving formula: `C * ratio ^ (#epoch after epoch_start / epoch_rate)`
 
 where
 
-* `C` is a constant representing the starting point of the contribution. note that it only gives the amount at epoch=0 in the special linear case.
-* `rratio` is the reducing ratio and need to between 0.0 and 1.0.
-  Further requirement is that this ratio is expressed in fractional form (e.g. 1/2),which allow calculation in integer form (see implementation details).
-  Intuitively, it represent the contribution reducing factor.
-* `erate` is the rate at which the contribution is reduce. e.g. erate=100 means that
-  every 100 epochs, the calculation is reduce further.
+* `epoch_start` is the setting that indicate when this contribution start. note that if the epoch is not the same or after the epoch_start, the overall contribution is zero.
+* `C` is a constant factor. In the linear formula, it represents the starting
+  point of the contribution at #epoch=0, whereas in halving formula is used as
+  starting constant for the calculation.
+* `ratio` is the tweaking ratio.
+  In the halving formula, an effective value between 0.0 to 1.0 indicates a reducing contribution, whereas above 1.0 it indicate an acceleration of contribution. However in linear formula the meaning is just a scaling factor for the epoch zone (`current_epoch - start_epoch / erate`). Further requirement is that this ratio is expressed in fractional form (e.g. 1/2), which allow calculation in integer form (see implementation details).
+* `epoch_rate` is the rate at which the contribution is tweaked related to epoch.
 
 And the actual contribution into the epoch reward is:
 
-    contribution = MIN(reward_escrow, MAX(0, calc))
+    contribution = MIN(reward_escrow, MAX(0, formula_result))
 
 The escrow amount is adjusted as such:
 
     reward_escrow -= contribution
+
+#### Example 1 : constant
+
+With C = 10000, ratio = 1/1, estart=10, rate=1, using the halving formula, contribution before epoch 10 will be 0
+and then will be constant at 10000 coins per epoch.
+
+    | epoch | contribution |
+    | ----- | ------------ |
+    | < 10  | 0            |
+    | >= 10 | 10000        |
+
+#### Example 2 : linear
+
+with C = 10000, ratio = 1000/1, estart=10, rate=2, using the linear formula: contribution before epoch 10 will be 0
+
+    | epoch | contribution |
+    | ----- | ------------ |
+    | < 10  | 0            |
+    | 10    | 10000        |
+    | 11    | 10000        |
+    | 12    | 9000         |
+    | 13    | 9000         |
+    | 14    | 8000         |
+
+#### Example 3 : halving
+
+with C = 10000, ratio = 1/2, epoch-start=10, epoch-rate=2, using the halving formula: contribution before epoch 10 will be 0
+
+    | epoch | contribution |
+    | ----- | ------------ |
+    | < 10  | 0            |
+    | 10    | 10000        |
+    | 11    | 10000        |
+    | 12    | 5000         |
+    | 13    | 5000         |
+    | 14    | 2500         |
+
+#### Example 4 : 2 of 3
+
+with C = 10000, ratio = 2/3, epoch-start=10, epoch-rate=2, using the halving formula: contribution before epoch 10 will be 0
+
+    | epoch | contribution |
+    | ----- | ------------ |
+    | < 10  | 0            |
+    | 10    | 10000        |
+    | 11    | 10000        |
+    | 12    | 6666         |
+    | 13    | 6666         |
+    | 14    | 4444         |
 
 ### Epoch Fees
 
