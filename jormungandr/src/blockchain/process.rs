@@ -230,14 +230,18 @@ pub fn run_handle_input(
         }
         BlockMsg::ChainHeaders(handle) => {
             let (stream, reply) = handle.into_stream_and_reply();
-            let future = candidate_forest.advance_branch(stream);
+            let logger = info.logger().clone();
 
-            let future = future.then(|resp| match resp {
+            let future = candidate_forest.advance_branch(stream);
+            let future = future.then(move |resp| match resp {
                 Err(e) => {
+                    info!(
+                        logger,
+                        "error processing an incoming header stream";
+                        "reason" => %e,
+                    );
                     reply.reply_error(chain_header_error_into_reply(e));
-                    Either::A(future::err::<(), Error>(
-                        format!("Error processing ChainHeader handling").into(),
-                    ))
+                    Either::A(future::ok(()))
                 }
                 Ok((hashes, maybe_remainder)) => {
                     if hashes.is_empty() {
