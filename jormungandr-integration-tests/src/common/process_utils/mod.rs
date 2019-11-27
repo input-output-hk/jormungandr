@@ -97,7 +97,8 @@ pub fn run_process_until_exited_successfully(
         }
 
         println!(
-            "non-zero status with message(). waiting {} s and trying again ({} of {})",
+            "non-zero status with message(). {}. waiting {} s and trying again ({} of {})",
+            command_description,
             &timeout,
             &max_attempts - &attempts + 1,
             &max_attempts
