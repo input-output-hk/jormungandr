@@ -3,7 +3,7 @@ mod error;
 mod scalars;
 use self::connections::{
     BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
-    TransactionConnection, TransactionNodeFetchInfo,
+    PoolConnection, TransactionConnection, TransactionNodeFetchInfo,
 };
 use self::error::ErrorKind;
 use super::indexing::{
@@ -793,7 +793,8 @@ graphql_union!(Certificate: Context |&self| {
     }
 });
 
-struct Pool {
+#[derive(Clone)]
+pub struct Pool {
     id: certificate::PoolId,
     data: Option<StakePoolData>,
     blocks: Option<PersistentSequence<HeaderHash>>,
@@ -826,6 +827,14 @@ impl Pool {
             id,
             blocks: None,
             data: None,
+        }
+    }
+
+    fn new_with_data(id: certificate::PoolId, data: StakePoolData) -> Self {
+        Pool {
+            id,
+            blocks: None,
+            data: Some(data),
         }
     }
 }
@@ -1195,6 +1204,67 @@ impl Query {
 
     pub fn stake_pool(id: PoolId, context: &Context) -> FieldResult<Pool> {
         Pool::from_string_id(&id.0, &context.db)
+    }
+
+    pub fn all_stake_pools(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<PoolConnection> {
+        let mut stake_pools = context.db.get_stake_pools().wait()?;
+
+        // Although it's probably not a big performance concern
+        // There are a few alternatives to not have to sort this 
+        // - A separate data structure can be used to track InsertionOrder -> PoolId
+        // (or any other order)
+        // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea) 
+        stake_pools.sort_unstable_by_key(|(id, data)| id.clone());
+
+        let boundaries = if stake_pools.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: stake_pools
+                    .len()
+                    .checked_sub(1)
+                    .unwrap()
+                    .try_into()
+                    .expect("tried to paginate more than 2^32 elements"),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
+
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        PoolConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => {
+                let from = range.lower_bound.into();
+                let to = range.upper_bound.into();
+
+                (from..=to)
+                    .map(|i: u32| {
+                        let (pool_id, stake_pool_data) = &stake_pools[usize::try_from(i).unwrap()];
+                        (
+                            Pool::new_with_data(
+                                certificate::PoolId::clone(pool_id),
+                                StakePoolData::clone(stake_pool_data),
+                            ),
+                            i.try_into().unwrap(),
+                        )
+                    })
+                    .collect::<Vec<(Pool, u32)>>()
+            }
+        })
     }
 
     pub fn status() -> FieldResult<Status> {
