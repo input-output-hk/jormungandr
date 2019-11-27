@@ -23,9 +23,10 @@ we recommend to use the most recent stable version of the rust compiler.
 4. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
 5. Enter the repository directory: `cd jormungandr`
 6. Check latest release tag on https://github.com/input-output-hk/jormungandr/releases/latest
-7. checkout this tag ` git checkout tags/<latest release tag>`
-8. install **jormungandr**: `cargo install --path jormungandr`
-9. install **jcli**: `cargo install --path jcli`
+7. Checkout this tag: `git checkout tags/<latest release tag>`
+8. Update submodules: `git submodule update`
+9. Install **jormungandr**: `cargo install --path jormungandr`
+10. Install **jcli**: `cargo install --path jcli`
 
 Note:
 
