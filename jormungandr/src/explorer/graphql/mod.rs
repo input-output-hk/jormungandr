@@ -13,7 +13,6 @@ use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
-use chain_impl_mockchain::fee::PerCertificateFee;
 use chain_impl_mockchain::leadership::bft;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
@@ -921,27 +920,30 @@ impl Status {
             per_certificate_fees,
         } = context.db.blockchain_config.fees;
 
-        let per_certificate_fees = per_certificate_fees.unwrap_or(PerCertificateFee::new(
-            certificate,
-            certificate,
-            certificate,
-        ));
-
         FeeSettings {
             constant: Value(format!("{}", constant)),
             coefficient: Value(format!("{}", coefficient)),
             certificate: Value(format!("{}", certificate)),
             certificate_pool_registration: Value(format!(
                 "{}",
-                per_certificate_fees.certificate_pool_registration
+                per_certificate_fees
+                    .certificate_pool_registration
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
             )),
             certificate_stake_delegation: Value(format!(
                 "{}",
-                per_certificate_fees.certificate_stake_delegation
+                per_certificate_fees
+                    .certificate_stake_delegation
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
             )),
             certificate_owner_stake_delegation: Value(format!(
                 "{}",
-                per_certificate_fees.certificate_owner_stake_delegation
+                per_certificate_fees
+                    .certificate_owner_stake_delegation
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
             )),
         }
     }

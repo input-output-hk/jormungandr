@@ -66,9 +66,16 @@ blockchain_configuration:
     # here: all certificate fees are set to `4` except for pool registration
     # and stake delegation which are respectively `5` and `2`.
     per_certificate_fees:
+      # (optional) if not specified, the pool registration certificate fee will be
+      # the one set by linear_fees.certificate
       certificate_pool_registration: 5
+      # (optional) if not specified, the delegation certificate fee will be
+      # the one set by linear_fees.certificate
       certificate_stake_delegation: 2
-      certificate_owner_stake_delegation: 4
+      # (optional) if not specified, the owner delegation certificate fee will be
+      # the one set by linear_fees.certificate. Uncomment to set the owner stake
+      # delegation to `1` instead of default `4`:
+      # certificate_owner_stake_delegation: 1
 
   # The speed to update the KES Key in seconds
   #
