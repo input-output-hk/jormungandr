@@ -24,6 +24,8 @@ custom_error! {pub Error
     Block0InFuture = "Block 0 is set to start in the future",
     ExplorerBootstrapError { source: explorer::error::Error } = "Error while loading the explorer from storage",
     ServiceTerminatedWithError = "A service has terminated with an error",
+    #[cfg(unix)]
+    DiagnosticError { source: nix::Error } = "Unable to get system limits: {source}",
 }
 
 impl Error {
@@ -43,6 +45,8 @@ impl Error {
             Error::NetworkBootstrapError { .. } => 10,
             Error::ExplorerBootstrapError { .. } => 11,
             Error::ServiceTerminatedWithError => 12,
+            #[cfg(unix)]
+            Error::DiagnosticError { .. } => 13,
         }
     }
 }

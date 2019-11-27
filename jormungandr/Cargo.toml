@@ -63,6 +63,8 @@ bech32 = "0.7"
 versionisator = "1.0.2"
 
 [target.'cfg(unix)'.dependencies]
+libc = "0.2.54"
+nix = "0.15.0"
 slog-syslog = "0.12.0"
 
 [features]

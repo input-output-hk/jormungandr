@@ -1,7 +1,9 @@
 use jormungandr_lib::interfaces::*;
 use jormungandr_lib::time::SystemTime;
 
-use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
+use actix_web::error::{
+    ErrorBadRequest, ErrorInternalServerError, ErrorNotFound, ErrorServiceUnavailable,
+};
 use actix_web::{Error, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
@@ -455,4 +457,15 @@ pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> Act
                 })))
             })
         })
+}
+
+pub fn get_diagnostic(context: State<Context>) -> Result<impl Responder, Error> {
+    let full_context = context.try_full()?;
+    match full_context.diagnostic.as_ref() {
+        Some(diagnostic) => Ok(Json(json!({
+            "open_files_limit": diagnostic.open_files_limit,
+            "cpu_usage_limit": diagnostic.cpu_usage_limit,
+        }))),
+        None => Err(ErrorServiceUnavailable("available only on UNIX")),
+    }
 }

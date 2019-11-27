@@ -1,5 +1,6 @@
 mod account;
 mod block;
+mod diagnostic;
 mod leaders;
 mod message;
 mod network;
@@ -44,6 +45,8 @@ pub enum V0 {
     Tip(tip::Tip),
     /// UTXO information
     Utxo(utxo::Utxo),
+    /// System diagnostic information
+    Diagnostic(diagnostic::Diagnostic),
 }
 
 impl V0 {
@@ -62,6 +65,7 @@ impl V0 {
             V0::Shutdown(shutdown) => shutdown.exec(),
             V0::Tip(tip) => tip.exec(),
             V0::Utxo(utxo) => utxo.exec(),
+            V0::Diagnostic(diagnostic) => diagnostic.exec(),
         }
     }
 }

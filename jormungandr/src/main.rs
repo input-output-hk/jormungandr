@@ -61,6 +61,7 @@ extern crate tokio;
 use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::{Blockchain, CandidateForest},
+    diagnostic::Diagnostic,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -74,6 +75,7 @@ use std::time::Duration;
 pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
+pub mod diagnostic;
 pub mod explorer;
 pub mod fragment;
 pub mod intercom;
@@ -108,6 +110,7 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
     services: Services,
+    diagnostic: Option<Diagnostic>,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
@@ -289,6 +292,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             leadership_logs,
             enclave,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+            diagnostic: bootstrapped_node.diagnostic,
         };
         rest_context.set_full(full_context);
         rest_context.set_node_state(NodeState::Running);
@@ -353,6 +357,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         rest_context,
         services,
+        diagnostic,
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
@@ -402,6 +407,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         services,
+        diagnostic,
     })
 }
 
@@ -412,6 +418,7 @@ pub struct InitializedNode {
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
     pub services: Services,
+    pub diagnostic: Option<Diagnostic>,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -444,6 +451,16 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
+
+    let mut diagnostic = None;
+
+    #[cfg(unix)]
+    {
+        let diagnostic_value = Diagnostic::new()?;
+        debug!(init_logger, "system settings are: {}", diagnostic_value);
+        diagnostic = Some(diagnostic_value);
+    }
+
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let mut services = Services::new(logger.clone());
 
@@ -485,6 +502,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         logger,
         rest_context,
         services,
+        diagnostic,
     })
 }
 
