@@ -1,5 +1,13 @@
 # Change Log
 
+## [v0.7.4](https://github.com/input-output-hk/jormungandr/tree/v0.7.4) (2019-11-27)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.3...v0.7.4)
+
+**Fixed bugs**
+
+- not yet implemented: method to load a Ref from the storage is not yet there (#788)
+
 ## [v0.7.3](https://github.com/input-output-hk/jormungandr/tree/v0.7.3) (2019-11-27)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.2...v0.7.3)
