@@ -109,8 +109,12 @@ mod test {
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for PerCertificateFee {
-        fn arbitrary<G: Gen>(_g: &mut G) -> Self {
-            PerCertificateFee::default()
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            PerCertificateFee::new(
+                NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
+            )
         }
     }
 
@@ -120,7 +124,7 @@ mod test {
                 constant: Arbitrary::arbitrary(g),
                 coefficient: Arbitrary::arbitrary(g),
                 certificate: Arbitrary::arbitrary(g),
-                per_certificate_fees: Arbitrary::arbitrary(g),
+                per_certificate_fees: PerCertificateFee::new(None, None, None),
             }
         }
     }
