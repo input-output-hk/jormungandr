@@ -622,7 +622,7 @@ mod test {
 
     impl Arbitrary for ConfigParam {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            match u8::arbitrary(g) % 15 {
+            match u8::arbitrary(g) % 16 {
                 0 => ConfigParam::Block0Date(Arbitrary::arbitrary(g)),
                 1 => ConfigParam::Discrimination(Arbitrary::arbitrary(g)),
                 2 => ConfigParam::ConsensusVersion(Arbitrary::arbitrary(g)),
@@ -638,6 +638,7 @@ mod test {
                 12 => ConfigParam::TreasuryAdd(Arbitrary::arbitrary(g)),
                 13 => ConfigParam::RewardPot(Arbitrary::arbitrary(g)),
                 14 => ConfigParam::RewardParams(Arbitrary::arbitrary(g)),
+                15 => ConfigParam::PerCertificateFees(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }
