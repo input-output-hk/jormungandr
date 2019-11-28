@@ -10,6 +10,7 @@ mod leadership_log;
 mod linear_fee;
 mod old_address;
 mod ratio;
+mod reward_parameters;
 mod settings;
 mod stats;
 mod tax_type;
@@ -36,6 +37,7 @@ pub use self::leadership_log::{
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
 pub use self::ratio::{ParseRatioError, Ratio};
+pub use self::reward_parameters::RewardParams;
 pub use self::settings::*;
 pub use self::stats::{NodeState, Stats};
 pub use self::tax_type::TaxType;
