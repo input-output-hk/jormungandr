@@ -180,6 +180,7 @@ impl Services {
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
+        let panic_logger = logger.clone();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
@@ -192,8 +193,14 @@ impl Services {
         // its content is never used in executor thread
         let future = AssertUnwindSafe(f(future_service_info))
             .catch_unwind()
-            .map_err(move |error| log_service_panic(&logger, &*error))
-            .then(|_| Ok(finish_notifier.notify()));
+            .map_err(move |error| log_service_panic(&panic_logger, &*error))
+            .then(move |res| {
+                if let Ok(res) = res {
+                    info!(logger, "service finished with {:?}", res);
+                }
+                finish_notifier.notify();
+                Ok(())
+            });
 
         runtime.spawn(future);
 
