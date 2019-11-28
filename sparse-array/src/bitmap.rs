@@ -75,7 +75,7 @@ impl BitmapIndex {
     }
 
     #[inline]
-    #[cfg_attr(target_arch = "x86_64", target_feature(enable = "bmi1"))]
+    // #[cfg_attr(target_arch = "x86_64", target_feature(enable = "bmi1"))]
     unsafe fn get_first_index_impl(&self) -> Option<u8> {
         let trailing_zeros0 = self.0.trailing_zeros();
         let trailing_zeros1 = self.1.trailing_zeros();
