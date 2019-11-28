@@ -94,7 +94,7 @@ pub fn e2e_stake_pool() {
         .config(testnet_config.make_config())
         .timeout(Duration::from_secs(1000))
         .passive()
-        .verify_by(StartupVerificationMode::Log)
+        .verify_by(StartupVerificationMode::Rest)
         .start()
         .unwrap();
 
@@ -106,7 +106,6 @@ pub fn e2e_stake_pool() {
     //register stake pool
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
-        "1234",
         &block0_hash,
         &jormungandr.rest_address(),
         &long_wait,
