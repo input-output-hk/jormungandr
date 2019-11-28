@@ -34,8 +34,14 @@ impl Display for Diagnostic {
     }
 }
 
+#[cfg(target_os = "macos")]
+type RlimitResource = i32;
+
+#[cfg(all(unix, not(target_os = "macos")))]
+type RlimitResource = u32;
+
 #[cfg(unix)]
-fn getrlimit(resource: i32) -> Result<u64, nix::Error> {
+fn getrlimit(resource: RlimitResource) -> Result<u64, nix::Error> {
     use libc::rlimit;
 
     let mut limits = rlimit {
