@@ -7,9 +7,11 @@ use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 mod get_stake_pool_id;
+mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod sign;
+mod weighted_pool_ids;
 
 pub(crate) use self::sign::{pool_owner_sign, stake_delegation_account_binding_sign};
 
@@ -73,6 +75,8 @@ pub enum NewArgs {
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
     /// build a stake delegation certificate
     StakeDelegation(new_stake_delegation::StakeDelegation),
+    /// build an owner stake delegation certificate
+    OwnerStakeDelegation(new_owner_stake_delegation::OwnerStakeDelegation),
 }
 
 #[derive(StructOpt)]
@@ -98,6 +102,7 @@ impl NewArgs {
         match self {
             NewArgs::StakePoolRegistration(args) => args.exec()?,
             NewArgs::StakeDelegation(args) => args.exec()?,
+            NewArgs::OwnerStakeDelegation(args) => args.exec()?,
         }
         Ok(())
     }
