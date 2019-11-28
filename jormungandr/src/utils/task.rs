@@ -9,9 +9,7 @@ use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use std::{
     any::Any,
-    panic::{catch_unwind, AssertUnwindSafe},
     sync::mpsc::{self, Receiver, Sender},
-    thread,
     time::{Duration, Instant},
 };
 use tokio::prelude::{stream, Future, IntoFuture, Stream};
@@ -96,20 +94,20 @@ impl Services {
         F: FnOnce(TokioServiceInfo) -> T,
         T: Future<Item = (), Error = ()> + Send + 'static,
     {
-        let mut runtime = runtime::Builder::new()
-            .keep_alive(None)
-            .name_prefix(name)
-            .build()
-            .unwrap();
-
-        let executor = runtime.executor();
-
-        let now = Instant::now();
         let logger = self
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
         let panic_logger = logger.clone();
+        let mut runtime = runtime::Builder::new()
+            .keep_alive(None)
+            .name_prefix(name)
+            .panic_handler(move |error| log_service_panic(&panic_logger, &*error))
+            .build()
+            .unwrap();
+
+        let executor = runtime.executor();
+        let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
@@ -118,18 +116,16 @@ impl Services {
         };
 
         let finish_notifier = self.finish_listener.notifier();
-        // This AssertUnwindSafe is safe, because after `catch_unwind`
-        // its content is never used in executor thread
-        let future = AssertUnwindSafe(f(future_service_info))
-            .catch_unwind()
-            .map_err(move |error| log_service_panic(&panic_logger, &*error))
-            .then(move |res| {
-                if let Ok(res) = res {
-                    info!(logger, "service finished with {:?}", res);
-                }
-                finish_notifier.notify();
-                Ok(())
-            });
+        let future = f(future_service_info).then(move |res| {
+            let outcome = match res {
+                Ok(_) => "successfully",
+                Err(_) => "with error",
+            };
+            info!(logger, "service finished {}", outcome);
+            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
+            std::mem::drop(finish_notifier);
+            Ok(())
+        });
 
         runtime.spawn(future);
 
@@ -283,6 +279,7 @@ struct ServiceFinishListener {
     receiver: Receiver<()>,
 }
 
+/// Sends notification when dropped
 struct ServiceFinishNotifier {
     sender: Sender<()>,
 }
@@ -312,8 +309,8 @@ impl ServiceFinishListener {
     }
 }
 
-impl ServiceFinishNotifier {
-    pub fn notify(self) {
+impl Drop for ServiceFinishNotifier {
+    fn drop(&mut self) {
         let _ = self.sender.send(());
     }
 }
