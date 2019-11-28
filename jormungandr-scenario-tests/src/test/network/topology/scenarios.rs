@@ -478,13 +478,13 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let leader7 =
         controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    leader7.wait_for_bootstrap()?;
-    leader6.wait_for_bootstrap()?;
-    leader5.wait_for_bootstrap()?;
-    leader4.wait_for_bootstrap()?;
-    leader3.wait_for_bootstrap()?;
-    leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
+    leader2.wait_for_bootstrap()?;
+    leader3.wait_for_bootstrap()?;
+    leader4.wait_for_bootstrap()?;
+    leader5.wait_for_bootstrap()?;
+    leader6.wait_for_bootstrap()?;
+    leader7.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("delegated1")?;
     let mut wallet2 = controller.wallet("delegated2")?;
