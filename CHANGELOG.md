@@ -1,51 +1,5 @@
 # Change Log
 
-## [v0.8.0-rc1](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc1) (2019-11-28)
-
-[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.5...v0.8.0-rc1)
-
-**Breaking changes:**
-
-- update to latest chain-deps: add incentive [\#1193](https://github.com/input-output-hk/jormungandr/pull/1193)
-- Certificate fees [\#1191](https://github.com/input-output-hk/jormungandr/pull/1191)
-
-**Implemented enhancements:**
-
-- Add owner stake deletagion cert creation tool to JCLI [\#1202](https://github.com/input-output-hk/jormungandr/issues/1202)
-- Pull from block 0 if no checkpoints intersect [\#1225](https://github.com/input-output-hk/jormungandr/pull/1225)
-- Add owner stake deletagion cert creation tool to JCLI [\#1224](https://github.com/input-output-hk/jormungandr/pull/1224)
-- Allow setting treasury in the genesis file [\#1213](https://github.com/input-output-hk/jormungandr/pull/1213)
-- Add input output to block and initial fees [\#1198](https://github.com/input-output-hk/jormungandr/pull/1198)
-- Add multisignature to address in explorer [\#1197](https://github.com/input-output-hk/jormungandr/pull/1197)
-- remote syslog via UDP [\#1196](https://github.com/input-output-hk/jormungandr/pull/1196)
-- Add stake pool details getter to REST [\#1195](https://github.com/input-output-hk/jormungandr/pull/1195)
-- Small network fixes, improve logging [\#1194](https://github.com/input-output-hk/jormungandr/pull/1194)
-
-**Fixed bugs:**
-
-- update chain-libs, include fix for osx mbi1 [\#1226](https://github.com/input-output-hk/jormungandr/pull/1226)
-- Header chain validation errors are not fatal [\#1218](https://github.com/input-output-hk/jormungandr/pull/1218)
-- mitigate issue with loading existing state from storage [\#1214](https://github.com/input-output-hk/jormungandr/pull/1214)
-- Fix per certificate fees and APIs [\#1212](https://github.com/input-output-hk/jormungandr/pull/1212)
-- fix stake pool blocks query off by one [\#1205](https://github.com/input-output-hk/jormungandr/pull/1205)
-
-**Closed issues:**
-
-- 0.7.3-0.7.4, error compiling jormungandr-lib v0.7.3-0.7.4 [\#1217](https://github.com/input-output-hk/jormungandr/issues/1217)
-
-**Merged pull requests:**
-
-- Add `git submodule update` to "How to install from sources" [\#1219](https://github.com/input-output-hk/jormungandr/pull/1219)
-- Update doc [\#1210](https://github.com/input-output-hk/jormungandr/pull/1210)
-- Optimize locking with Storage::send\_from\_to [\#1209](https://github.com/input-output-hk/jormungandr/pull/1209)
-- rename blockchain\_stuck\_notifier [\#1208](https://github.com/input-output-hk/jormungandr/pull/1208)
-- \[Tests\] Jts timeout fix [\#1207](https://github.com/input-output-hk/jormungandr/pull/1207)
-- Disgraceful REST shutdown [\#1203](https://github.com/input-output-hk/jormungandr/pull/1203)
-- \[Tests\] another attempt to stabilize tests [\#1199](https://github.com/input-output-hk/jormungandr/pull/1199)
-- README.md: typo [\#1181](https://github.com/input-output-hk/jormungandr/pull/1181)
-- \[Tests\]\[Testnet\] more logging for testnet test [\#1177](https://github.com/input-output-hk/jormungandr/pull/1177)
-- Transform REST server into Tokio service [\#1173](https://github.com/input-output-hk/jormungandr/pull/1173)
-
 ## [v0.7.2](https://github.com/input-output-hk/jormungandr/tree/v0.7.2) (2019-11-25)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.1...v0.7.2)
