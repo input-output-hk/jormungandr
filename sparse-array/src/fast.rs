@@ -124,7 +124,14 @@ impl<'a, V> Iterator for FastSparseArrayIter<'a, V> {
         match self.bitmap.get_first_index() {
             Some(idx) => {
                 self.bitmap.remove_index(idx);
-                Some((idx, self.sparse_array.get(idx).unwrap()))
+                if let Some(item) = self.sparse_array.get(idx) {
+                    Some((idx, item))
+                } else {
+                    panic!(
+                        "FastSparseArray does not contains item at index {idx}",
+                        idx = idx
+                    )
+                }
             }
             None => None,
         }
