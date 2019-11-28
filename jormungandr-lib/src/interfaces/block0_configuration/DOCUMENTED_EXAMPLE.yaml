@@ -103,6 +103,42 @@ blockchain_configuration:
     # to 10000. Uncomment the following line to apply a max limit:
     # max_limit: 10000
 
+  # Set the total reward supply available for monetary creation
+  #
+  # if not set there is no monetary creation
+  # once emptied, there is no more monetary creation
+  total_reward_supply: 100000000000000
+
+  # set the reward supply consumption. These parameters will define how the
+  # total_reward_supply is consumed for the stake pool reward
+  #
+  # There's fundamentally many potential choices for how rewards are contributed back, and here's two potential valid examples:
+  #
+  # Linear formula: constant - ratio * (#epoch after epoch_start / epoch_rate)
+  # Halving formula: constant * ratio ^ (#epoch after epoch_start / epoch_rate)
+  #
+  reward_parameters:
+    halving: # or use "linear" for the linear formula
+      # In the linear formula, it represents the starting point of the contribution
+      # at #epoch=0, whereas in halving formula is used as starting constant for
+      # the calculation.
+      constant: 100
+
+      # In the halving formula, an effective value between 0.0 to 1.0 indicates a
+      # reducing contribution, whereas above 1.0 it indicate an acceleration of contribution.
+      #
+      # However in linear formula the meaning is just a scaling factor for the epoch zone
+      # (current_epoch - start_epoch / epoch_rate). Further requirement is that this ratio
+      # is expressed in fractional form (e.g. 1/2), which allow calculation in integer form.
+      ratio: "13/19"
+
+      # indicates when this contribution start. note that if the epoch is not
+      # the same or after the epoch_start, the overall contribution is zero.
+      epoch_start: 1
+
+      # the rate at which the contribution is tweaked related to epoch.
+      epoch_rate: 3
+
 # Initial state of the ledger. Each item is applied in order of this list
 initial:
   # Initial deposits present in the blockchain

@@ -1,7 +1,7 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BFTSlotsRatio, ConsensusLeaderId, KESUpdateSpeed, LinearFeeDef,
-        NumberOfSlotsPerEpoch, SlotDuration, TaxType, Value,
+        NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -116,7 +116,12 @@ pub struct BlockchainConfiguration {
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
     #[serde(default)]
-    pub rewards: Option<Value>,
+    pub total_reward_supply: Option<Value>,
+
+    /// The reward settings for the reward policy. No reward settings means no reward
+    /// distributed at all.
+    #[serde(default)]
+    pub reward_parameters: Option<RewardParams>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -166,7 +171,8 @@ impl BlockchainConfiguration {
             epoch_stability_depth: None,
             treasury: None,
             treasury_parameters: None,
-            rewards: None,
+            total_reward_supply: None,
+            reward_parameters: None,
         }
     }
 
@@ -189,7 +195,8 @@ impl BlockchainConfiguration {
         let mut kes_update_speed = None;
         let mut treasury = None;
         let mut treasury_parameters = None;
-        let mut rewards = None;
+        let mut total_reward_supply = None;
+        let mut reward_parameters = None;
         let mut per_certificate_fees = None;
 
         for param in params.iter().cloned() {
@@ -244,10 +251,12 @@ impl BlockchainConfiguration {
                 ConfigParam::TreasuryParams(param) => treasury_parameters
                     .replace(param.into())
                     .map(|_| "treasury_parameters"),
-                ConfigParam::RewardPot(param) => {
-                    rewards.replace(param.into()).map(|_| "reward-pot")
-                }
-                ConfigParam::RewardParams(_) => unimplemented!(),
+                ConfigParam::RewardPot(param) => total_reward_supply
+                    .replace(param.into())
+                    .map(|_| "total_reward_supply"),
+                ConfigParam::RewardParams(param) => reward_parameters
+                    .replace(param.into())
+                    .map(|_| "reward_parameters"),
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
                     .map(|_| "per_certificate_fees"),
@@ -280,7 +289,8 @@ impl BlockchainConfiguration {
             max_number_of_transactions_per_block,
             treasury,
             treasury_parameters,
-            rewards,
+            total_reward_supply,
+            reward_parameters,
         })
     }
 
@@ -300,7 +310,8 @@ impl BlockchainConfiguration {
             epoch_stability_depth,
             treasury,
             treasury_parameters,
-            rewards,
+            total_reward_supply,
+            reward_parameters,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -336,8 +347,12 @@ impl BlockchainConfiguration {
             params.push(ConfigParam::TreasuryParams(treasury_parameters.into()));
         }
 
-        if let Some(rewards) = rewards {
-            params.push(ConfigParam::RewardPot(rewards.into()));
+        if let Some(total_reward_supply) = total_reward_supply {
+            params.push(ConfigParam::RewardPot(total_reward_supply.into()));
+        }
+
+        if let Some(reward_parameters) = reward_parameters {
+            params.push(ConfigParam::RewardParams(reward_parameters.into()));
         }
 
         consensus_leader_ids
@@ -404,7 +419,8 @@ mod test {
                 epoch_stability_depth: Arbitrary::arbitrary(g),
                 treasury: Arbitrary::arbitrary(g),
                 treasury_parameters: Arbitrary::arbitrary(g),
-                rewards: Arbitrary::arbitrary(g),
+                total_reward_supply: Arbitrary::arbitrary(g),
+                reward_parameters: Arbitrary::arbitrary(g),
             }
         }
     }
