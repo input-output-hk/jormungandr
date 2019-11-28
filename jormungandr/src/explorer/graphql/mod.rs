@@ -1217,10 +1217,10 @@ impl Query {
         let mut stake_pools = context.db.get_stake_pools().wait()?;
 
         // Although it's probably not a big performance concern
-        // There are a few alternatives to not have to sort this 
+        // There are a few alternatives to not have to sort this
         // - A separate data structure can be used to track InsertionOrder -> PoolId
         // (or any other order)
-        // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea) 
+        // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea)
         stake_pools.sort_unstable_by_key(|(id, data)| id.clone());
 
         let boundaries = if stake_pools.len() > 0 {
