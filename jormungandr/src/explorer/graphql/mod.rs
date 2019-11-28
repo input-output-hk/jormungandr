@@ -46,10 +46,13 @@ impl Block {
     }
 
     fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
-        db.get_block(&self.hash).wait()?.ok_or(
-            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
-                .into(),
-        )
+        db.get_block(&self.hash)
+            .wait()
+            .unwrap_or_else(|e| match e {})
+            .ok_or(
+                ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
+                    .into(),
+            )
     }
 }
 
@@ -283,12 +286,17 @@ impl Transaction {
                 ))?,
         };
 
-        context.db.get_block(&block_id).wait()?.ok_or(
-            ErrorKind::InternalError(
-                "transaction is in explorer but couldn't find its block".to_owned(),
+        context
+            .db
+            .get_block(&block_id)
+            .wait()
+            .unwrap_or_else(|e| match e {})
+            .ok_or(
+                ErrorKind::InternalError(
+                    "transaction is in explorer but couldn't find its block".to_owned(),
+                )
+                .into(),
             )
-            .into(),
-        )
     }
 
     fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
@@ -444,7 +452,8 @@ impl Address {
         let transactions = context
             .db
             .get_transactions_by_address(&self.id)
-            .wait()?
+            .wait()
+            .unwrap_or_else(|e| match e {})
             .unwrap_or(PersistentSequence::<FragmentId>::new());
 
         let boundaries = if transactions.len() > 0 {
@@ -909,7 +918,8 @@ impl Status {
             .db
             .get_latest_block_hash()
             .and_then(|hash| context.db.get_block(&hash))
-            .wait()?
+            .wait()
+            .unwrap_or_else(|e| match e {})
             .ok_or(ErrorKind::InternalError("tip is not in explorer".to_owned()).into())
             .map(|b| Block::from(&b))
     }
@@ -1008,13 +1018,15 @@ impl Epoch {
             .db
             .get_block(&epoch_data.first_block)
             .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
-            .wait()?;
+            .wait()
+            .unwrap_or_else(|e| match e {});
 
         let epoch_upper_bound = context
             .db
             .get_block(&epoch_data.last_block)
             .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
-            .wait()?;
+            .wait()
+            .unwrap_or_else(|e| match e {});
 
         let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
             lower_bound: 0,
@@ -1110,7 +1122,8 @@ impl Query {
         Ok(context
             .db
             .find_block_by_chain_length(length.try_into()?)
-            .wait()?
+            .wait()
+            .unwrap_or_else(|e| match e {})
             .map(Block::from_valid_hash))
     }
 
@@ -1127,7 +1140,8 @@ impl Query {
             .db
             .get_latest_block_hash()
             .and_then(|hash| context.db.get_block(&hash))
-            .wait()?
+            .wait()
+            .unwrap_or_else(|e| match e {})
             .ok_or(ErrorKind::InternalError(
                 "tip is not in explorer".to_owned(),
             ))
