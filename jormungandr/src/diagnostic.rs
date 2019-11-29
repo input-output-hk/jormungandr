@@ -1,6 +1,12 @@
 use crate::start_up::Error;
 use std::fmt::{self, Display, Formatter};
 
+#[cfg(unix)]
+pub type DiagnosticError = nix::Error;
+
+#[cfg(not(unix))]
+custom_error! {pub DiagnosticError {} = "diagnostic error"}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
     pub open_files_limit: Option<u64>,
@@ -8,8 +14,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    #[cfg(unix)]
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Self, DiagnosticError> {
         #[cfg(unix)]
         {
             Ok(Self {
@@ -53,7 +58,7 @@ type RlimitResource = i32;
 type RlimitResource = u32;
 
 #[cfg(unix)]
-fn getrlimit(resource: RlimitResource) -> Result<u64, Error> {
+fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     use libc::rlimit;
 
     let mut limits = rlimit {
@@ -62,7 +67,7 @@ fn getrlimit(resource: RlimitResource) -> Result<u64, Error> {
     };
 
     let retcode = unsafe { libc::getrlimit(resource, &mut limits as *mut rlimit) };
-    nix::errno::Errno::result(retcode).map_err(|e| Error::DiagnosticError { source: e })?;
+    nix::errno::Errno::result(retcode)?;
 
     Ok(limits.rlim_cur)
 }
