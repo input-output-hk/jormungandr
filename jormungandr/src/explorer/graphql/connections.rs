@@ -1,6 +1,6 @@
 use super::error::ErrorKind;
-use super::scalars::{BlockCount, IndexCursor, TransactionCount};
-use super::{Block, Context, Transaction};
+use super::scalars::{BlockCount, IndexCursor, PoolCount, TransactionCount};
+use super::{Block, Context, Pool, Transaction};
 use crate::blockcfg::HeaderHash;
 use crate::explorer::indexing::ExplorerTransaction;
 use juniper::FieldResult;
@@ -56,6 +56,20 @@ impl TransactionEdge {
 }
 
 #[juniper::object(
+    Context = Context
+)]
+impl PoolEdge {
+    pub fn node(&self) -> &Pool {
+        &self.node
+    }
+
+    /// A cursor for use in pagination
+    pub fn cursor(&self) -> &IndexCursor {
+        &self.cursor
+    }
+}
+
+#[juniper::object(
     Context = Context,
     name = "BlockConnection"
 )]
@@ -93,6 +107,25 @@ impl TransactionConnection {
     }
 }
 
+#[juniper::object(
+    Context = Context,
+    name = "PoolConnection"
+)]
+impl PoolConnection {
+    pub fn page_info(&self) -> &PageInfo {
+        &self.page_info
+    }
+
+    pub fn edges(&self) -> &Vec<PoolEdge> {
+        &self.edges
+    }
+
+    /// A count of the total number of objects in this connection, ignoring pagination.
+    pub fn total_count(&self) -> &PoolCount {
+        &self.total_count
+    }
+}
+
 pub struct PageInfo {
     pub has_next_page: bool,
     pub has_previous_page: bool,
@@ -113,6 +146,11 @@ pub struct TransactionEdge {
 
 pub struct BlockEdge {
     pub node: Block,
+    pub cursor: IndexCursor,
+}
+
+pub struct PoolEdge {
+    node: Pool,
     pub cursor: IndexCursor,
 }
 
@@ -218,6 +256,7 @@ where
 
 pub type BlockConnection = Connection<BlockEdge, BlockCount>;
 pub type TransactionConnection = Connection<TransactionEdge, TransactionCount>;
+pub type PoolConnection = Connection<PoolEdge, PoolCount>;
 
 #[derive(Clone)]
 pub enum TransactionNodeFetchInfo {
@@ -248,6 +287,17 @@ impl Edge for BlockEdge {
             node: Block::from_valid_hash(node),
             cursor,
         }
+    }
+
+    fn cursor<'a>(&'a self) -> &'a IndexCursor {
+        &self.cursor
+    }
+}
+
+impl Edge for PoolEdge {
+    type Node = Pool;
+    fn new(node: Self::Node, cursor: IndexCursor) -> Self {
+        PoolEdge { node, cursor }
     }
 
     fn cursor<'a>(&'a self) -> &'a IndexCursor {

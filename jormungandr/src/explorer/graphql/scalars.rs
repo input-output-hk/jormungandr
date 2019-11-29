@@ -30,6 +30,9 @@ pub struct BlockCount(pub String);
 pub struct TransactionCount(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
+pub struct PoolCount(pub String);
+
+#[derive(juniper::GraphQLScalarValue)]
 pub struct PublicKey(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
@@ -123,6 +126,12 @@ impl From<chain_time::TimeOffsetSeconds> for TimeOffsetSeconds {
 impl From<u64> for TransactionCount {
     fn from(n: u64) -> TransactionCount {
         TransactionCount(format!("{}", n))
+    }
+}
+
+impl From<u64> for PoolCount {
+    fn from(n: u64) -> PoolCount {
+        PoolCount(format!("{}", n))
     }
 }
 

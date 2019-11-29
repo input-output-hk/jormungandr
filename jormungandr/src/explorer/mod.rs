@@ -410,6 +410,18 @@ impl ExplorerDB {
         })
     }
 
+    pub fn get_stake_pools(
+        &self,
+    ) -> impl Future<Item = Vec<(PoolId, Arc<StakePoolData>)>, Error = Infallible> {
+        self.with_latest_state(move |state| {
+            state
+                .stake_pool_data
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect()
+        })
+    }
+
     /// run given function with the longest branch's state
     fn with_latest_state<T>(
         &self,
