@@ -448,13 +448,14 @@ impl<'a, P> TransactionSlice<'a, P> {
         self.tstruct.nb_inputs
     }
 
+    pub fn nb_outputs(&self) -> u8 {
+        self.tstruct.nb_outputs
+    }
+
     // pretend that the construction doesn't enforce #inputs == #witness by
     // exposing another accessor for general purpose
     pub fn nb_witnesses(&self) -> u8 {
         self.tstruct.nb_inputs
-    }
-    pub fn nb_outputs(&self) -> u8 {
-        self.tstruct.nb_outputs
     }
 
     pub fn inputs(&self) -> InputsSlice<'a> {
@@ -487,6 +488,28 @@ impl<'a, P> TransactionSlice<'a, P> {
         P: Payload,
     {
         PayloadAuthSlice(&self.data[self.tstruct.payload_auth..], PhantomData)
+    }
+
+    pub fn total_input(&self) -> Result<Value, ValueError> {
+        Value::sum(self.inputs().iter().map(|input| input.value()))
+    }
+
+    pub fn total_output(&self) -> Result<Value, ValueError> {
+        Value::sum(self.outputs().iter().map(|output| output.value))
+    }
+
+    pub fn verify_strictly_balanced(&self, fee: Value) -> Result<(), BalanceError> {
+        let inputs = self
+            .total_input()
+            .map_err(|source| BalanceError::InputsTotalFailed { source, filler: () })?;
+        let outputs = self
+            .total_output()
+            .and_then(|out| out + fee)
+            .map_err(|source| BalanceError::OutputsTotalFailed { source, filler: () })?;
+        if inputs != outputs {
+            Err(BalanceError::NotBalanced { inputs, outputs })?;
+        };
+        Ok(())
     }
 }
 

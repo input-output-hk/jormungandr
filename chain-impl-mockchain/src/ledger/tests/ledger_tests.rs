@@ -67,7 +67,7 @@ pub fn total_funds_are_const_in_ledger(
     let total_funds_after = ledger.total_funds();
     let fee = transaction_data
                 .fee
-                .calculate_tx(&signed_tx.get_tx());
+                .calculate_tx(&signed_tx.get_tx().as_slice());
 
     if total_funds_before != (total_funds_after + fee).unwrap() {
         return TestResult::error(format!(

@@ -75,9 +75,9 @@ pub trait FeeAlgorithm {
             .saturating_add(cert.map_or(Value::zero(), |c| self.fees_for_certificate(c)))
     }
 
-    fn calculate_tx<P: tx::Payload>(&self, tx: &tx::Transaction<P>) -> Value {
+    fn calculate_tx<P: tx::Payload>(&self, tx: &tx::TransactionSlice<P>) -> Value {
         self.calculate(
-            tx.as_slice().payload().to_certificate_slice(),
+            tx.payload().to_certificate_slice(),
             tx.nb_inputs(),
             tx.nb_outputs(),
         )
