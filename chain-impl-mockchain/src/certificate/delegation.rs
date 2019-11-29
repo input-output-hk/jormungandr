@@ -10,7 +10,7 @@ use chain_core::{
     property,
 };
 use std::marker::PhantomData;
-use typed_bytes::ByteBuilder;
+use typed_bytes::{ByteArray, ByteBuilder};
 
 /// A self delegation to a specific StakePoolId.
 ///
@@ -24,6 +24,9 @@ pub struct OwnerStakeDelegation {
 impl OwnerStakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.sub(|sb| serialize_delegation_type(&self.delegation, sb))
+    }
+    pub fn serialize(&self) -> ByteArray<Self> {
+        self.serialize_in(ByteBuilder::new()).finalize()
     }
 
     pub fn get_delegation_type(&self) -> &DelegationType {
@@ -41,6 +44,9 @@ impl StakeDelegation {
     pub fn serialize_in(&self, bb: ByteBuilder<Self>) -> ByteBuilder<Self> {
         bb.bytes(self.account_id.as_ref())
             .sub(|sb| serialize_delegation_type(&self.delegation, sb))
+    }
+    pub fn serialize(&self) -> ByteArray<Self> {
+        self.serialize_in(ByteBuilder::new()).finalize()
     }
 
     pub fn get_delegation_type(&self) -> &DelegationType {
