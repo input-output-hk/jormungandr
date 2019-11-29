@@ -110,7 +110,7 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
     services: Services,
-    diagnostic: Option<Diagnostic>,
+    diagnostic: Diagnostic,
 }
 
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
@@ -418,7 +418,7 @@ pub struct InitializedNode {
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
     pub services: Services,
-    pub diagnostic: Option<Diagnostic>,
+    pub diagnostic: Diagnostic,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -452,14 +452,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
 
-    let mut diagnostic = None;
-
-    #[cfg(unix)]
-    {
-        let diagnostic_value = Diagnostic::new()?;
-        debug!(init_logger, "system settings are: {}", diagnostic_value);
-        diagnostic = Some(diagnostic_value);
-    }
+    let diagnostic = Diagnostic::new()?;
+    debug!(init_logger, "system settings are: {}", diagnostic);
 
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let mut services = Services::new(logger.clone());
