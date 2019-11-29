@@ -97,6 +97,29 @@ paths:
           description: Block ID malformed
         404:
           description: Block with given ID was not found in chain of the tip
+  /api/v0/diagnostic:
+    get:
+      description: Get system diagnostic information
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+              type: object
+              properties:
+                open_files_limit:
+                  description: The allowed number of open file descriptors on UNIX platforms (RLIMIT_NOFILE)
+                  type: integer
+                cpu_usage_limit:
+                  description: The amount of CPU time this process can consume (RLIMIT_CPU)
+                  type: integer
+                examples:
+                  unix: |
+                    {
+                      "open_files_limit": 256,
+                      "cpu_usage_limit": 9223372036854775807
+                    }
   /api/v0/fragment/logs:
     get:
       description: Gets logs from node message pool
