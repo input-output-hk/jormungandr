@@ -292,14 +292,11 @@ impl<T> ReplyStreamHandle<T> {
     where
         S: Stream<Item = T, Error = Error>,
     {
-        self.sender
-            .send_all(stream.then(Ok))
-            .map(|(_, _)| ())
-            .map_err(|_| ())
+        self.sender.send_all(stream.then(Ok)).then(|_| Ok(()))
     }
 
     pub fn async_error(self, err: Error) -> impl Future<Item = (), Error = ()> {
-        self.sender.send(Err(err)).map(|_| ()).map_err(|_| ())
+        self.sender.send(Err(err)).then(|_| Ok(()))
     }
 }
 

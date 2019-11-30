@@ -135,7 +135,9 @@ fn handle_get_blocks_range(
     to: HeaderHash,
     handle: ReplyStreamHandle<Block>,
 ) -> impl Future<Item = (), Error = ()> {
-    storage.send_from_to(from, to, handle).map_err(|_| ())
+    storage
+        .send_from_to(from, to, handle)
+        .map_err(|_: ReplySendError| ())
 }
 
 fn get_blocks(storage: Storage, ids: Vec<HeaderHash>) -> impl Stream<Item = Block, Error = Error> {
@@ -190,9 +192,11 @@ fn handle_pull_blocks_to_tip(
                 })
         })
         .then(move |res| match res {
-            Ok((storage, from, to)) => {
-                Either::A(storage.send_from_to(from, to, handle).map_err(|_| ()))
-            }
+            Ok((storage, from, to)) => Either::A(
+                storage
+                    .send_from_to(from, to, handle)
+                    .map_err(|_: ReplySendError| ()),
+            ),
             Err(e) => Either::B(handle.async_error(e.into())),
         })
 }
