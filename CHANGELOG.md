@@ -1,5 +1,28 @@
 # Change Log
 
+## [v0.8.0-rc2](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc2) (2019-11-30)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc1...v0.8.0-rc2)
+
+**Implemented enhancements:**
+
+- Log which service has finished and how [\#1230](https://github.com/input-output-hk/jormungandr/pull/1230)
+- Implement all stake pools graphql query [\#1223](https://github.com/input-output-hk/jormungandr/pull/1223)
+
+**Fixed bugs:**
+
+- intercom: Make reply not fatal if receiver goes away [\#1233](https://github.com/input-output-hk/jormungandr/pull/1233)
+
+**Closed issues:**
+
+- 0.8.0-rc1: shutdowns, stability issues [\#1232](https://github.com/input-output-hk/jormungandr/issues/1232)
+- From BIP39 private key to Ed25519 [\#1211](https://github.com/input-output-hk/jormungandr/issues/1211)
+
+**Merged pull requests:**
+
+- Task unwind safety [\#1231](https://github.com/input-output-hk/jormungandr/pull/1231)
+- Switch Circle-CI from Rust nightly to beta [\#1229](https://github.com/input-output-hk/jormungandr/pull/1229)
+
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.5...v0.8.0-rc1)
 
 **Breaking changes:**
