@@ -1,5 +1,25 @@
 # Change Log
 
+## [v0.8.0-rc3](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc3) (2019-12-01)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc2...v0.8.0-rc3)
+
+**Implemented enhancements:**
+
+- don't add the block0 per-certificate fee if they are all not set (0) [\#1239](https://github.com/input-output-hk/jormungandr/pull/1239)
+
+**Fixed bugs:**
+
+- 0.8 rc2 - rewards not being paid out as expected \(private testnet\) [\#1237](https://github.com/input-output-hk/jormungandr/issues/1237)
+- Node shutdowns are classified at wrong priority and exit successful [\#1236](https://github.com/input-output-hk/jormungandr/issues/1236)
+- make the node actually return an error if a service was stopped because of error [\#1240](https://github.com/input-output-hk/jormungandr/pull/1240)
+- don't fail the stuck notifier task if time is set in the future [\#1241](https://github.com/input-output-hk/jormungandr/pull/1241)
+
+**Breaking changes:**
+
+- apply the reward to a transition_state and keep it for the safe keeping [\#1238](https://github.com/input-output-hk/jormungandr/pull/1238)
+
+
 ## [v0.8.0-rc2](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc2) (2019-11-30)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc1...v0.8.0-rc2)
