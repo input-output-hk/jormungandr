@@ -320,14 +320,19 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::Discrimination(discrimination));
         params.push(ConfigParam::ConsensusVersion(block0_consensus));
         params.push(ConfigParam::LinearFee(linear_fees));
-        params.push(ConfigParam::PerCertificateFees(
-            linear_fees.per_certificate_fees,
-        ));
         params.push(ConfigParam::from(slots_per_epoch));
         params.push(ConfigParam::from(slot_duration));
         params.push(ConfigParam::from(kes_update_speed));
         params.push(ConfigParam::from(consensus_genesis_praos_active_slot_coeff));
         params.push(ConfigParam::from(bft_slots_ratio));
+
+        if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(
+            &linear_fees.per_certificate_fees,
+        ) {
+            params.push(ConfigParam::PerCertificateFees(
+                linear_fees.per_certificate_fees,
+            ));
+        }
 
         if let Some(max_number_of_transactions_per_block) = max_number_of_transactions_per_block {
             params.push(ConfigParam::MaxNumberOfTransactionsPerBlock(
