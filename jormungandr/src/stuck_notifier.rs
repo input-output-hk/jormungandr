@@ -35,19 +35,24 @@ pub fn check_last_block_time(
             let tip_time = tip.time_frame().slot_to_systemtime(slot).ok_or_else(|| {
                 error!(logger, "cannot convert the block tip date to system time");
             })?;
-            let period_since_last_block =
-                SystemTime::now().duration_since(tip_time).map_err(|e| {
+            match SystemTime::now().duration_since(tip_time) {
+                Ok(period_since_last_block) => {
+                    if period_since_last_block > check_period {
+                        warn!(
+                            logger,
+                            "blockchain is not moving up, the last block was {} seconds ago",
+                            period_since_last_block.as_secs()
+                        );
+                    }
+                }
+                Err(e) => {
+                    // don't make the future fail because of this error. This can happen only
+                    // if the tip has just been updated
                     error!(
                         logger,
                         "cannot compute the time passed since the last block: {}", e
                     );
-                })?;
-            if period_since_last_block > check_period {
-                warn!(
-                    logger,
-                    "blockchain is not moving up, the last block was {} seconds ago",
-                    period_since_last_block.as_secs()
-                );
+                }
             }
             Ok(())
         })
