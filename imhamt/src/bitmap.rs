@@ -68,14 +68,9 @@ impl SmallBitmap {
         self.0 == 0
     }
 
-    #[cfg_attr(target_arch = "x86", target_feature(enable = "popcnt"))]
-    unsafe fn present_fast(&self) -> usize {
-        self.0.count_ones() as usize
-    }
-
     #[inline]
     pub fn present(&self) -> usize {
-        unsafe { self.present_fast() }
+        self.0.count_ones() as usize
     }
 
     #[inline]
@@ -86,8 +81,7 @@ impl SmallBitmap {
 
     /// Get the sparse array index from a level index
     #[inline]
-    #[cfg_attr(target_arch = "x86", target_feature(enable = "popcnt"))]
-    unsafe fn get_index_sparse_fast(&self, b: LevelIndex) -> ArrayIndex {
+    pub fn get_index_sparse(&self, b: LevelIndex) -> ArrayIndex {
         let mask = b.mask();
         if self.0 & mask == 0 {
             ArrayIndex::not_found()
@@ -96,22 +90,11 @@ impl SmallBitmap {
         }
     }
 
-    #[inline]
-    pub fn get_index_sparse(&self, b: LevelIndex) -> ArrayIndex {
-        unsafe { self.get_index_sparse_fast(b) }
-    }
-
-    #[inline]
-    #[cfg_attr(target_arch = "x86", target_feature(enable = "popcnt"))]
-    unsafe fn get_sparse_pos_fast(&self, b: LevelIndex) -> ArrayIndex {
-        let mask = b.mask();
-        ArrayIndex::create((self.0 & (mask - 1)).count_ones() as usize)
-    }
-
     /// Get the position of a level index in the sparse array for insertion
     #[inline]
     pub fn get_sparse_pos(&self, b: LevelIndex) -> ArrayIndex {
-        unsafe { self.get_sparse_pos_fast(b) }
+        let mask = b.mask();
+        ArrayIndex::create((self.0 & (mask - 1)).count_ones() as usize)
     }
 
     /// Check if the element exist
