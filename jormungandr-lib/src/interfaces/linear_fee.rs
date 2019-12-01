@@ -31,7 +31,7 @@ pub struct LinearFeeDef {
     per_certificate_fees: PerCertificateFee,
 }
 
-fn per_certificate_fee_is_zero(fee: &PerCertificateFee) -> bool {
+pub(crate) fn per_certificate_fee_is_zero(fee: &PerCertificateFee) -> bool {
     fee.certificate_stake_delegation.is_none()
         && fee.certificate_owner_stake_delegation.is_none()
         && fee.certificate_pool_registration.is_none()
