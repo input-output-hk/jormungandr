@@ -552,7 +552,7 @@ impl Module {
         ));
 
         if epoch_tip < current_slot_position.epoch {
-            let (leadership, _, _, _) =
+            let (_, leadership, _, _, _) =
                 new_epoch_leadership_from(current_slot_position.epoch.0, Arc::clone(&self.tip_ref));
 
             let slot_start = current_slot_position.slot.0 + 1;

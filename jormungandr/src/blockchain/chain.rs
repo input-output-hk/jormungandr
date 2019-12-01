@@ -415,12 +415,15 @@ impl Blockchain {
         header: Header,
         parent: Arc<Ref>,
     ) -> impl Future<Item = PostCheckedHeader, Error = Error> {
-        let parent_ledger_state = parent.ledger().clone();
-
         let current_date = header.block_date();
 
-        let (epoch_leadership_schedule, epoch_ledger_parameters, time_frame, previous_epoch_state) =
-            new_epoch_leadership_from(current_date.epoch, parent);
+        let (
+            parent_ledger_state,
+            epoch_leadership_schedule,
+            epoch_ledger_parameters,
+            time_frame,
+            previous_epoch_state,
+        ) = new_epoch_leadership_from(current_date.epoch, parent);
 
         match epoch_leadership_schedule.verify(&header) {
             Verification::Success => future::ok(PostCheckedHeader {
@@ -738,6 +741,7 @@ pub fn new_epoch_leadership_from(
     epoch: Epoch,
     parent: Arc<Ref>,
 ) -> (
+    Arc<Ledger>,
     Arc<Leadership>,
     Arc<LedgerParameters>,
     Arc<TimeFrame>,
@@ -756,34 +760,37 @@ pub fn new_epoch_leadership_from(
         //       for the blockchain
         use chain_impl_mockchain::block::ConsensusVersion;
 
-        let epoch_state =
-            if parent_ledger_state.consensus_version() == ConsensusVersion::GenesisPraos {
-                // if there is no parent state available this might be because it is not
-                // available in memory or it is the epoch0 or epoch1
-                let epoch_state = parent
-                    .last_ref_previous_epoch()
-                    .map(|r| r.ledger().clone())
-                    .unwrap_or(parent_ledger_state.clone());
-
+        // 1. distribute the rewards (if any) This will give us the transition state
+        let transition_state =
+            if let Some(distribution) = parent.epoch_leadership_schedule().stake_distribution() {
                 Arc::new(
-                    epoch_state
-                        .distribute_rewards(
-                            parent
-                                .epoch_leadership_schedule()
-                                .stake_distribution()
-                                .expect("ConsensusVersion::GenesisPraos has a stake distribution"),
-                            &parent.epoch_ledger_parameters(),
-                        )
+                    parent_ledger_state
+                        .distribute_rewards(distribution, &parent.epoch_ledger_parameters())
                         .expect("Distribution of rewards will not overflow"),
                 )
             } else {
                 parent_ledger_state.clone()
             };
 
+        // 2. now that the rewards have been distributed, prepare the schedule
+        //    for the next leader
+        let epoch_state = if transition_state.consensus_version() == ConsensusVersion::GenesisPraos
+        {
+            // if there is no parent state available this might be because it is not
+            // available in memory or it is the epoch0 or epoch1
+            parent
+                .last_ref_previous_epoch()
+                .map(|r| r.ledger().clone())
+                .unwrap_or(parent_ledger_state.clone())
+        } else {
+            transition_state.clone()
+        };
+
         let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
         let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
         let previous_epoch_state = Some(parent);
         (
+            transition_state,
             leadership,
             ledger_parameters,
             parent_time_frame,
@@ -791,6 +798,7 @@ pub fn new_epoch_leadership_from(
         )
     } else {
         (
+            parent_ledger_state,
             parent_epoch_leadership_schedule,
             parent_epoch_ledger_parameters,
             parent_time_frame,
