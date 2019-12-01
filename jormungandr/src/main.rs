@@ -310,9 +310,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    services.wait_any_finished();
-    info!(bootstrapped_node.logger, "Shutting down node");
-    Ok(())
+    if let Err(err) = services.wait_any_finished() {
+        crit!(
+            bootstrapped_node.logger,
+            "Service has terminated with an error"
+        );
+        Err(start_up::Error::ServiceTerminatedWithError)
+    } else {
+        info!(bootstrapped_node.logger, "Shutting down node");
+        Ok(())
+    }
 }
 
 /// # Bootstrap phase

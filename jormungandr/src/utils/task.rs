@@ -9,7 +9,7 @@ use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use std::{
     any::Any,
-    sync::mpsc::{self, Receiver, Sender},
+    sync::mpsc::{self, Receiver, RecvError, Sender},
     time::{Duration, Instant},
 };
 use tokio::prelude::{stream, Future, IntoFuture, Stream};
@@ -122,6 +122,10 @@ impl Services {
                 Err(_) => "with error",
             };
             info!(logger, "service finished {}", outcome);
+            // send the finish notifier if the service finished with an error.
+            // this will allow to finish the node with an error code instead
+            // of an success error code
+            let _ = finish_notifier.sender.send(res.is_ok());
             // Holds finish notifier, so it's dropped when whole future finishes or is dropped
             std::mem::drop(finish_notifier);
             Ok(())
@@ -158,8 +162,8 @@ impl Services {
     }
 
     /// select on all the started services. this function will block until first services returns
-    pub fn wait_any_finished(&self) {
-        self.finish_listener.wait_any_finished();
+    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
+        self.finish_listener.wait_any_finished()
     }
 }
 
@@ -275,13 +279,13 @@ impl<Msg> TaskMessageBox<Msg> {
 }
 
 struct ServiceFinishListener {
-    sender: Sender<()>,
-    receiver: Receiver<()>,
+    sender: Sender<bool>,
+    receiver: Receiver<bool>,
 }
 
 /// Sends notification when dropped
 struct ServiceFinishNotifier {
-    sender: Sender<()>,
+    sender: Sender<bool>,
 }
 
 impl ServiceFinishListener {
@@ -296,8 +300,8 @@ impl ServiceFinishListener {
         }
     }
 
-    pub fn wait_any_finished(&self) {
-        let _ = self.receiver.recv();
+    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
+        self.receiver.recv()
     }
 
     #[allow(dead_code)]
@@ -311,7 +315,7 @@ impl ServiceFinishListener {
 
 impl Drop for ServiceFinishNotifier {
     fn drop(&mut self) {
-        let _ = self.sender.send(());
+        let _ = self.sender.send(true);
     }
 }
 
