@@ -55,6 +55,8 @@ state: Running
 txRecvCnt: 5440
 # Node uptime in seconds
 uptime: 20032
+# Node app version
+version: jormungandr 0.8.0-rc4-67477249
 ```
 
 ## Get UTxO

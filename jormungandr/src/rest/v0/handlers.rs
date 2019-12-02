@@ -102,6 +102,7 @@ pub fn get_tip(context: State<Context>) -> ActixFuture!() {
 
 #[derive(Serialize)]
 struct NodeStatsDto {
+    version: &'static str,
     state: NodeState,
     #[serde(flatten)]
     stats: Option<serde_json::Value>,
@@ -175,6 +176,7 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
     }
     .map(move |stats| {
         Json(NodeStatsDto {
+            version: env!("SIMPLE_VERSION"),
             state: context.node_state(),
             stats,
         })
