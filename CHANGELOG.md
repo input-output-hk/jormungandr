@@ -1,5 +1,27 @@
 # Change Log
 
+## [v0.8.0-rc4](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc4) (2019-12-02)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc3...v0.8.0-rc4)
+
+**Fixed bugs:**
+
+- 0.8 rc3 - rewards still not working due to leader\_logs.total or subsequent panic [\#1242](https://github.com/input-output-hk/jormungandr/issues/1242)
+- update chain-deps and fix reward distribution panic [\#1246](https://github.com/input-output-hk/jormungandr/pull/1246)
+- properly report error and failures of the terminating service [\#1243](https://github.com/input-output-hk/jormungandr/pull/1243)
+
+**Closed issues:**
+
+- bootstrap.sh - error: The following required arguments were not provided:     --serial \<SERIAL\> [\#1244](https://github.com/input-output-hk/jormungandr/issues/1244)
+
+**Merged pull requests:**
+
+- don't run test on appveyor PRs [\#1245](https://github.com/input-output-hk/jormungandr/pull/1245)
+
+**Breaking changes:**
+
+- update chain-deps and changed the UTxO signature [\#1246](https://github.com/input-output-hk/jormungandr/pull/1246)
+
 ## [v0.8.0-rc3](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc3) (2019-12-01)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc2...v0.8.0-rc3)
