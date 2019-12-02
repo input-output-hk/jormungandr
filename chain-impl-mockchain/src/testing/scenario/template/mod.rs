@@ -2,7 +2,10 @@ mod builders;
 
 pub use builders::*;
 
-use crate::value::Value;
+use crate::{
+    value::Value,
+    certificate::PoolPermissions
+};
 use chain_crypto::{PublicKey,Ed25519};
 
 
@@ -61,3 +64,19 @@ impl StakePoolTemplate {
         self.owners.clone()
     }
 }
+
+#[derive(Clone,Debug)]
+pub struct StakePoolDef {
+    pub name: String,
+    pub permissions_threshold: Option<u8>,
+}
+
+impl StakePoolDef {
+    pub fn pool_permission(&self) -> Option<PoolPermissions> {
+        match self.permissions_threshold {
+            Some(permissions_threshold) => Some(PoolPermissions::new(permissions_threshold)),
+            None => None
+        }
+    }
+}
+

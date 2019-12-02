@@ -18,6 +18,11 @@ pub struct Wallet {
 }
 
 impl Wallet {
+
+    pub fn from_value(initial_value: Value) ->Self {
+        Wallet::new("",initial_value)
+    }
+
     pub fn new(alias: &str, initial_value: Value) -> Self {
         Wallet {
             alias: alias.to_owned(),
@@ -73,5 +78,4 @@ impl Wallet {
     pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
         self.as_account().make_witness(block0_hash,tad)
     }
-
 }

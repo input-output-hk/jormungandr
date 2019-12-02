@@ -60,13 +60,21 @@ impl<'a> TestTxCertBuilder<'a> {
                     let tx = builder.set_payload_auth(&signature);
                     Fragment::PoolUpdate(tx)
                 }
-                Certificate::OwnerStakeDelegation(_) => unreachable!(),
+                Certificate::OwnerStakeDelegation(s) =>  {
+                    let builder = self.set_initial_ios(TxBuilder::new().set_payload(s),&funder);
+                    let tx = builder.set_payload_auth(&());
+                    Fragment::OwnerStakeDelegation(tx)
+                }
             }
     }
 
     pub fn make_transaction(self, signers: &[&Wallet], certificate: &Certificate) -> Fragment {
+        self.make_transaction_different_signers(&signers[0],signers,certificate)
+    }
+
+    pub fn make_transaction_different_signers(self, funder: &Wallet, signers: &[&Wallet], certificate: &Certificate) -> Fragment {
         let keys = signers.iter().cloned().map(|owner| owner.private_key()).collect();
-        self.fragment(certificate,keys,&signers[0])
+        self.fragment(certificate,keys,funder)
     }
 }
 
@@ -74,12 +82,18 @@ pub fn pool_owner_sign<P: Payload>(
         keys: &[EitherEd25519SecretKey],
         builder: &TxBuilderState<SetAuthData<P>>
     ) -> PoolSignature {
-        let auth_data = builder.get_auth_data();
-        let mut sigs = Vec::new();
-        for (i, key) in keys.iter().enumerate() {
-            let sig = SingleAccountBindingSignature::new(key, &auth_data);
-            sigs.push((i as u8, sig))
-        }
-        let pool_owner = PoolOwnersSigned { signatures: sigs };
+        let pool_owner = pool_owner_signed(keys,builder);
         PoolSignature::Owners(pool_owner)
+}
+
+pub fn pool_owner_signed<P: Payload>(
+        keys: &[EitherEd25519SecretKey],
+        builder: &TxBuilderState<SetAuthData<P>>) -> PoolOwnersSigned {
+    let auth_data = builder.get_auth_data();
+    let mut sigs = Vec::new();
+    for (i, key) in keys.iter().enumerate() {
+        let sig = SingleAccountBindingSignature::new(key, &auth_data);
+        sigs.push((i as u8, sig))
     }
+    PoolOwnersSigned { signatures: sigs }
+}

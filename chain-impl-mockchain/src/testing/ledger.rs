@@ -8,10 +8,11 @@ use crate::{
     leadership::bft::LeaderId,
     ledger::{Error, Ledger, LedgerParameters},
     milli::Milli,
-    testing::data::{AddressData, AddressDataValue},
+    testing::data::{AddressData, AddressDataValue,Wallet},
     transaction::{Output, TxBuilder},
     utxo::{Entry, Iter},
     value::Value,
+    stake::PoolsState
 };
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
@@ -120,6 +121,7 @@ pub struct LedgerBuilder {
 
 pub type UtxoDeclaration = Output<Address>;
 
+#[derive(Clone)]
 pub struct UtxoDb {
     db: HashMap<(FragmentId, u8), UtxoDeclaration>,
 }
@@ -218,6 +220,11 @@ impl LedgerBuilder {
         self
     }
 
+    pub fn faucets_wallets(mut self, faucets: Vec<&Wallet>) -> Self {
+        self.faucets.extend(faucets.iter().cloned().map(|x| x.as_account()));
+        self
+    }
+
     pub fn faucets(mut self, faucets: &Vec<AddressDataValue>) -> Self {
         self.faucets.extend(faucets.iter().cloned());
         self
@@ -282,7 +289,7 @@ impl LedgerBuilder {
         })
     }
 }
-
+#[derive(Clone)]
 pub struct TestLedger {
     pub block0_hash: HeaderId,
     pub cfg: ConfigParams,
@@ -348,6 +355,11 @@ impl TestLedger {
 
     pub fn fee(&self) -> LinearFee {
         self.parameters.fees
+    }
+
+    pub fn delegation(&self) -> PoolsState{
+        self.ledger.delegation().clone()
+        
     }
 }
 

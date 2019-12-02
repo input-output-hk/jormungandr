@@ -449,3 +449,317 @@ impl Readable for PoolSignature {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::{PoolOwnersSigned, PoolPermissions};
+    use crate::{
+        header::HeaderId,
+        key::EitherEd25519SecretKey,
+        testing::{
+            builders::{make_witness, StakePoolBuilder},
+            data::AddressData,
+            TestGen,
+        },
+        transaction::{
+            Input, NoExtra, SingleAccountBindingSignature, TransactionSignDataHash, TxBuilder,
+            Witness,
+        },
+        value::Value,
+    };
+    use chain_addr::Discrimination;
+    use chain_crypto::{Ed25519, PublicKey, Verification};
+    use std::iter;
+
+    #[derive(Clone, Debug)]
+    pub struct PoolOwnersWithSignatures {
+        pub owners: Vec<AddressData>,
+        pub signatories: Vec<(u8, AddressData)>,
+    }
+
+    impl PoolOwnersWithSignatures {
+        pub fn new(owners: Vec<AddressData>, signatories: Vec<(u8, AddressData)>) -> Self {
+            PoolOwnersWithSignatures {
+                owners,
+                signatories,
+            }
+        }
+
+        pub fn owners_pks(&self) -> Vec<PublicKey<Ed25519>> {
+            self.owners
+                .iter()
+                .cloned()
+                .map(|x| x.public_key())
+                .collect()
+        }
+
+        pub fn indexed_signatories_sks(&self) -> Vec<(u8, EitherEd25519SecretKey)> {
+            self.signatories
+                .iter()
+                .cloned()
+                .map(|(i, x)| (i, x.private_key()))
+                .collect()
+        }
+
+        pub fn witnesses(
+            &self,
+            block0_hash: HeaderId,
+            transaction_hash: &TransactionSignDataHash,
+        ) -> Vec<Witness> {
+            self.signatories
+                .iter()
+                .map(|(_, x)| make_witness(&block0_hash, x, transaction_hash))
+                .collect()
+        }
+
+        pub fn inputs(&self) -> Vec<Input> {
+            self.signatories
+                .iter()
+                .map(|(_, x)| x.make_input(&Value::zero(), None))
+                .collect()
+        }
+    }
+
+    /// Signatures count is grater than pool permissions and signatories have correct indexes
+    #[test]
+    pub fn pool_owners_correct_signature() {
+        let owners_len = 8;
+        let pool_permissions = PoolPermissions::new(4);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![
+            (0u8, owners[0].clone()),
+            (1u8, owners[1].clone()),
+            (2u8, owners[2].clone()),
+            (3u8, owners[3].clone()),
+        ];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(
+            pool_owner_with_sign,
+            pool_permissions,
+            true,
+            "verification should succeed because signatories are larger than pool permissions",
+        );
+    }
+
+    /// duplicated owner, which cause that signatures are less than owners
+    #[test]
+    pub fn pool_owners_signature_duplicated_owner() {
+        let owners_len = 8;
+        let pool_permissions = PoolPermissions::new(4);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![
+            (0u8, owners[0].clone()),
+            (0u8, owners[0].clone()),
+            (2u8, owners[2].clone()),
+            (3u8, owners[3].clone()),
+        ];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(pool_owner_with_sign, pool_permissions, false, "verification should fail because one of signature is duplicated which cause that we have only
+        3 valid signatures, while 4 are needed");
+    }
+
+    /// duplicated owner, but signatures are ok
+    #[test]
+    pub fn pool_owners_signature_extra_duplicated_signature() {
+        let owners_len = 8;
+        let pool_permissions = PoolPermissions::new(4);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![
+            (0u8, owners[0].clone()),
+            (0u8, owners[0].clone()),
+            (1u8, owners[1].clone()),
+            (2u8, owners[2].clone()),
+            (3u8, owners[3].clone()),
+        ];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(pool_owner_with_sign, pool_permissions, false, "verification should fail there is duplicated signature even if unique signatures count is larger than
+        permission threshold");
+    }
+
+    #[test]
+    pub fn pool_owners_signature_wrong_signature() {
+        let owners_len = 2;
+        let pool_permissions = PoolPermissions::new(1);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![
+            (0u8, AddressData::account(Discrimination::Test)),
+            (1u8, owners[1].clone()),
+        ];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(
+            pool_owner_with_sign,
+            pool_permissions,
+            false,
+            "verification should fail due to invalid signature",
+        );
+    }
+
+    #[test]
+    pub fn pool_owners_signature_too_many_signatures() {
+        let owners_len = 2;
+        let pool_permissions = PoolPermissions::new(1);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![
+            (0u8, owners[0].clone()),
+            (1u8, owners[1].clone()),
+            (2u8, AddressData::account(Discrimination::Test)),
+        ];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(
+            pool_owner_with_sign,
+            pool_permissions,
+            false,
+            "verification should fail due to extraordinary signature",
+        );
+    }
+
+    #[test]
+    pub fn pool_owners_signature_too_few_signatures() {
+        let owners_len = 4;
+        let pool_permissions = PoolPermissions::new(2);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![(0u8, owners[0].clone())];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(
+            pool_owner_with_sign,
+            pool_permissions,
+            false,
+            "verification should fail due to non sufficient signatures",
+        );
+    }
+
+    #[test]
+    pub fn pool_owners_signature_different_order() {
+        let owners_len = 8;
+        let pool_permissions = PoolPermissions::new(4);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![
+            (0u8, owners[4].clone()),
+            (1u8, owners[3].clone()),
+            (2u8, owners[1].clone()),
+            (3u8, owners[2].clone()),
+        ];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(
+            pool_owner_with_sign,
+            pool_permissions,
+            false,
+            "verification should fail due to incorrect signatures indexes",
+        );
+    }
+
+    #[test]
+    pub fn pool_owners_signature_no_owners() {
+        let owners_len = 0;
+        let pool_permissions = PoolPermissions::new(0);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(
+            pool_owner_with_sign,
+            pool_permissions,
+            true,
+            "verification should fail due no owners",
+        );
+    }
+
+    #[test]
+    pub fn pool_owners_signature_zero_permissions() {
+        let owners_len = 8;
+        let pool_permissions = PoolPermissions::new(0);
+        let owners: Vec<AddressData> =
+            iter::from_fn(|| Some(AddressData::account(Discrimination::Test)))
+                .take(owners_len)
+                .collect();
+
+        let signatories: Vec<(u8, AddressData)> = vec![(0u8, owners[0].clone())];
+
+        let pool_owner_with_sign = PoolOwnersWithSignatures::new(owners, signatories);
+        test_verify(
+            pool_owner_with_sign,
+            pool_permissions,
+            true,
+            "verification should fail due to 0 limit for permissions",
+        );
+    }
+
+    /// For given pool_owner_with_sign (which contains pool registration owners and subset of signatures derived from them)
+    /// and given pool_permissions limit it tests verify method for PoolOwnersSigned struct
+    fn test_verify(
+        pool_owner_with_sign: PoolOwnersWithSignatures,
+        pool_permissions: PoolPermissions,
+        should_pass: bool,
+        info: &str,
+    ) {
+        let stake_pool = StakePoolBuilder::new()
+            .with_owners(pool_owner_with_sign.owners_pks())
+            .with_pool_permissions(pool_permissions)
+            .build();
+
+        let builder = TxBuilder::new()
+            .set_payload(&NoExtra)
+            .set_ios(&pool_owner_with_sign.inputs(), &[]);
+        let auth_data_hash = builder.get_auth_data_for_witness().hash();
+        let builder = builder
+            .set_witnesses(&pool_owner_with_sign.witnesses(TestGen::hash(), &auth_data_hash));
+
+        let auth_data = builder.get_auth_data();
+        let mut sigs = Vec::new();
+        for (i, key) in pool_owner_with_sign.indexed_signatories_sks() {
+            let sig = SingleAccountBindingSignature::new(&key, &auth_data);
+            sigs.push((i as u8, sig))
+        }
+        let pool_owner_signed = PoolOwnersSigned { signatures: sigs };
+        let verification = match should_pass {
+            true => Verification::Success,
+            false => Verification::Failed,
+        };
+        assert_eq!(
+            pool_owner_signed.verify(&stake_pool.info(), &builder.get_auth_data()),
+            verification,
+            "{}",
+            info
+        );
+    }
+}

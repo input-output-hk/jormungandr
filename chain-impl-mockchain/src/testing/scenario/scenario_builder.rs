@@ -6,10 +6,13 @@ use crate::{
             create_initial_stake_pool_registration,
             create_initial_stake_pool_delegation,
             StakePoolBuilder
-        }
+        },
+        scenario::template::StakePoolDef
     },
+    fee::LinearFee,
     fragment::Fragment,
 };
+use chain_addr::Discrimination;
 
 use super::{
     template::{StakePoolTemplateBuilder,WalletTemplateBuilder,WalletTemplate,StakePoolTemplate},
@@ -27,27 +30,39 @@ custom_error! {
 
 
 pub struct ScenarioBuilder {
-    config: Option<ConfigBuilder>,
-    initials: Option<Vec<WalletTemplateBuilder>>
+    config: ConfigBuilder,
+    initials: Option<Vec<WalletTemplateBuilder>>,
+    stake_pools_info_def: Vec<StakePoolDef>
 }
 
 
 pub fn prepare_scenario() -> ScenarioBuilder {
+
+    let default_config_builder = ConfigBuilder::new(0)
+        .with_discrimination(Discrimination::Test)
+        .with_fee(LinearFee::new(1, 1, 1));
+
     ScenarioBuilder{
-        config: None,
-        initials: None
+        config: default_config_builder,
+        initials: None,
+        stake_pools_info_def: Vec::new()
     }
 }
 
 impl ScenarioBuilder {
 
     pub fn with_config(&mut self, config: ConfigBuilder) -> &mut Self {
-        self.config = Some(config);
+        self.config = config;
         self
     }
 
     pub fn with_initials(&mut self, initials: Vec<&mut WalletTemplateBuilder>) -> &mut Self {
         self.initials = Some(initials.iter().map(|x| (**x).clone()).collect());
+        self
+    }
+
+    pub fn with_stake_pools(&mut self, stake_pools_info_def: Vec<StakePoolDef>)-> &mut Self {
+        self.stake_pools_info_def.extend(stake_pools_info_def.iter().cloned());
         self
     }
 
@@ -58,19 +73,15 @@ impl ScenarioBuilder {
         }
 
         let initials: Result<Vec<WalletTemplate>,ScenarioBuilderError> = self.initials.clone().unwrap().iter().cloned().map(|x| x.build()).collect();
-        let config = self.config.clone().ok_or(ScenarioBuilderError::UndefinedConfig)?;
         let initials: Vec<WalletTemplate> = initials?;
         let wallets: Vec<Wallet> = initials.iter().cloned().map(|x| self.build_wallet(x)).collect();
         let stake_pools_wallet_map = StakePoolTemplateBuilder::new(&initials);
         let stake_pool_templates: Vec<StakePoolTemplate> = stake_pools_wallet_map.build_stake_pool_templates(wallets.clone())?;
-
         let stake_pools = self.build_stake_pools(stake_pool_templates);
-
-        let mut messages = self.build_stake_pools_fragments(&initials,&stake_pools,&wallets);
+        let mut messages = self.build_stake_pools_fragments(&stake_pools,&wallets);
         messages.extend(self.build_delegation_fragments(&initials,&stake_pools,&wallets));
-
         let faucets: Vec<AddressDataValue> = wallets.iter().cloned().map(|x| x.as_account()).collect();
-        let test_ledger = LedgerBuilder::from_config(config)
+        let test_ledger = LedgerBuilder::from_config(self.config.clone())
             .faucets(&faucets)
             .certs(&messages)
             .build()
@@ -85,17 +96,12 @@ impl ScenarioBuilder {
         }))
     }
 
-    fn build_stake_pools_fragments(&self,initials: &Vec<WalletTemplate>, stake_pools: &Vec<StakePool>, wallets: &Vec<Wallet> ) -> Vec<Fragment> {
-        initials.iter().cloned().filter(|x| x.owns_stake_pool().is_some())
-            .map(|wallet_template|
-                {
-                    let stake_pool_alias = wallet_template.owns_stake_pool().unwrap();
-                    let stake_pool = stake_pools.iter().find(|sp| sp.alias() == stake_pool_alias).unwrap();
-                    let wallet_allias = wallet_template.alias();
-                    let owners: Vec<Wallet> = wallets.iter().cloned().filter(|w| w.alias() == wallet_allias).collect();
-                    create_initial_stake_pool_registration(&stake_pool,&owners)
-                })
-            .collect()
+    fn build_stake_pools_fragments(&self, stake_pools: &Vec<StakePool>, wallets: &Vec<Wallet> ) -> Vec<Fragment> {
+        stake_pools.iter().cloned().map(|stake_pool| {
+            let owners_keys = stake_pool.info().owners;
+            let owners: Vec<Wallet> = owners_keys.iter().cloned().map(|pk| wallets.iter().cloned().find(|x| x.public_key() == pk).expect("unknown key")).collect();
+            create_initial_stake_pool_registration(&stake_pool,&owners)
+        }).collect()
     }
 
     fn build_delegation_fragments(&self,initials: &Vec<WalletTemplate>, stake_pools: &Vec<StakePool>, wallets: &Vec<Wallet> ) -> Vec<Fragment> {
@@ -120,10 +126,18 @@ impl ScenarioBuilder {
     }
 
     fn build_stake_pool(&self, template: StakePoolTemplate) -> StakePool {
-        StakePoolBuilder::new()
-            .with_owners(template.owners())
-            .with_alias(&template.alias())
-            .build()
+        let stake_pool_def_opt = self.stake_pools_info_def.iter().find(|x| x.name == template.alias);
+        let mut builder = StakePoolBuilder::new();
+        builder.with_owners(template.owners());
+        builder.with_alias(&template.alias());
+        
+        if let Some(stake_pool_def) = stake_pool_def_opt {
+            if let Some(pool_permission) = stake_pool_def.pool_permission() {
+                builder.with_pool_permissions(pool_permission);
+            }
+            
+        }
+        builder.build()
     }
 }
 

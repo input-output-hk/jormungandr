@@ -6,8 +6,8 @@ use chain_addr::Address;
 
 pub const CHECK_TX_MAXIMUM_INPUTS: u8 = 255;
 pub const CHECK_TX_MAXIMUM_OUTPUTS: u8 = 254;
-const CHECK_POOL_REG_MAXIMUM_OWNERS: usize = 31;
-const CHECK_POOL_REG_MAXIMUM_OPERATORS: usize = 3;
+pub const CHECK_POOL_REG_MAXIMUM_OWNERS: usize = 31;
+pub const CHECK_POOL_REG_MAXIMUM_OPERATORS: usize = 3;
 
 // if condition, then fail_with
 //

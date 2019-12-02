@@ -26,9 +26,21 @@ pub fn build_stake_pool_registration_cert(stake_pool: &PoolRegistration) -> Cert
     Certificate::PoolRegistration(stake_pool.clone())
 }
 
-pub fn build_owner_stake_delegation(stake_pool: PoolId) -> Certificate {
+pub fn build_owner_stake_full_delegation(stake_pool: PoolId) -> Certificate {
     Certificate::OwnerStakeDelegation(OwnerStakeDelegation {
         delegation: DelegationType::Full(stake_pool),
+    })
+}
+
+pub fn build_no_stake_delegation() -> Certificate {
+    Certificate::OwnerStakeDelegation(OwnerStakeDelegation {
+        delegation: DelegationType::NonDelegated
+    })
+}
+
+pub fn build_owner_stake_delegation(delegation_type: DelegationType) -> Certificate {
+    Certificate::OwnerStakeDelegation(OwnerStakeDelegation {
+        delegation: delegation_type
     })
 }
 

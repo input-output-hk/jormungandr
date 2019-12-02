@@ -3,19 +3,55 @@ use crate::{
     accounting::account::account_state::AccountState,
     ledger::{ledger::Ledger, Pots},
     stake::{Stake, StakeDistribution},
-    testing::data::AddressData,
+    testing::data::{AddressData,StakePool},
     utxo,
     value::Value,
+    stake::PoolsState
 };
 use chain_addr::Address;
+use std::fmt;
+
+#[derive(Clone)]
+pub struct Info{
+    info: Option<String>,
+}
+
+impl fmt::Display for Info {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self.info {
+            Some(info) => write!(f, "{}", info),
+            None => write!(f, ""),
+        }
+    }
+}
+
+impl Info {
+    pub fn from_str<S: Into<String>>(info: S) -> Self {
+        Info {
+            info: Some(info.into())
+        }
+    }
+
+    pub fn empty() -> Self {
+        Info {
+            info: None
+        }
+    }
+}
 
 pub struct LedgerStateVerifier {
     ledger: Ledger,
+    info: Info,
 }
 
 impl LedgerStateVerifier {
     pub fn new(ledger: Ledger) -> Self {
-        LedgerStateVerifier { ledger: ledger }
+        LedgerStateVerifier { ledger: ledger, info: Info::empty() }
+    }
+
+    pub fn info<S: Into<String>>(&mut self, info: S) -> &mut Self {
+        self.info = Info::from_str(info);
+        self
     }
 
     pub fn utxo_contains(&self, entry: &utxo::Entry<Address>) -> &Self {
@@ -44,8 +80,8 @@ impl LedgerStateVerifier {
         assert_eq!(
             self.ledger.utxos.iter().count(),
             count,
-            "Utxo count should be equal to {:?}",
-            count
+            "Utxo count should be equal to {:?} {}",
+            count,self.info
         );
         self
     }
@@ -54,8 +90,8 @@ impl LedgerStateVerifier {
         assert_eq!(
             self.ledger.accounts.iter().count(),
             count,
-            "Utxo count should be equal to {:?}",
-            count
+            "Utxo count should be equal to {:?} {}",
+            count,self.info
         );
         self
     }
@@ -67,7 +103,11 @@ impl LedgerStateVerifier {
     }
 
     pub fn distribution(&self) -> DistributionVerifier {
-        DistributionVerifier::new(self.ledger.get_stake_distribution())
+        DistributionVerifier::new(self.ledger.get_stake_distribution(),self.info.clone())
+    }
+
+    pub fn stake_pools(&self) -> StakePoolsVerifier {
+        StakePoolsVerifier::new(self.ledger.delegation.clone(),self.info.clone())
     }
 
     pub fn total_value_is(&self, value: Value) -> &Self {
@@ -80,8 +120,8 @@ impl LedgerStateVerifier {
             Value::sum(totals.iter().cloned()).expect("cannot sum up ledger total value");
         assert_eq!(
             value, actual_value,
-            "Expected value {:?} vs {:?} of actual",
-            value, actual_value
+            "Expected value {:?} vs {:?} of actual {}",
+            value, actual_value, self.info
         );
         self
     }
@@ -124,39 +164,62 @@ impl LedgerStateVerifier {
     }
 
     pub fn pots(&self) -> PotsVerifier {
-        PotsVerifier::new(self.ledger.pots.clone())
+        PotsVerifier::new(self.ledger.pots.clone(),self.info.clone())
+    }
+}
+
+pub struct PotsVerifier {
+    pots: Pots,
+    info: Info
+}
+
+impl PotsVerifier {
+    pub fn new(pots: Pots, info: Info) -> Self {
+        PotsVerifier { pots, info }
+    }
+
+    pub fn has_fee_equal_to(&self, value: &Value) {
+        assert_eq!(self.pots.fees, *value, "incorrect pot fee value {}", self.info);
+    }
+}
+
+pub struct StakePoolsVerifier {
+    delegation: PoolsState,
+    info: Info
+}
+
+impl StakePoolsVerifier {
+    pub fn new(delegation: PoolsState, info: Info) -> Self {
+        StakePoolsVerifier {
+            delegation, info
+        }
+    }
+
+    pub fn is_retired(&self, stake_pool: &StakePool) {
+        assert!(!self.delegation.stake_pool_exists(&stake_pool.id()),"stake pool {} should be retired ({}), but it is not", stake_pool.alias(),self.info);
+    }
+
+    pub fn is_not_retired(&self, stake_pool: &StakePool) {
+        assert!(self.delegation.stake_pool_exists(&stake_pool.id()),"stake pool {} should be active ({}), but it is retired", stake_pool.alias(),self.info);
     }
 }
 
 pub struct DistributionVerifier {
     stake_distribution: StakeDistribution,
-}
-
-pub struct PotsVerifier {
-    pots: Pots,
-}
-
-impl PotsVerifier {
-    pub fn new(pots: Pots) -> Self {
-        PotsVerifier { pots }
-    }
-
-    pub fn has_fee_equal_to(&self, value: &Value) {
-        assert_eq!(self.pots.fees, *value, "incorrect pot fee value");
-    }
+    info: Info
 }
 
 impl DistributionVerifier {
-    pub fn new(stake_distribution: StakeDistribution) -> Self {
+    pub fn new(stake_distribution: StakeDistribution, info: Info) -> Self {
         DistributionVerifier {
-            stake_distribution: stake_distribution,
+            stake_distribution,info
         }
     }
 
     pub fn dangling_is(&self, dangling: Stake) -> &Self {
         assert_eq!(
             dangling, self.stake_distribution.dangling,
-            "wrong unassigned distribution value"
+            "wrong unassigned distribution value {}", self.info
         );
         self
     }
@@ -168,7 +231,7 @@ impl DistributionVerifier {
     pub fn unassigned_is(&self, unassigned: Stake) -> &Self {
         assert_eq!(
             unassigned, self.stake_distribution.unassigned,
-            "wrong unassigned distribution value"
+            "wrong unassigned distribution value {}", self.info
         );
         self
     }
@@ -177,7 +240,7 @@ impl DistributionVerifier {
         assert_eq!(
             pools_total,
             self.stake_distribution.total_stake(),
-            "wrong total stake"
+            "wrong total stake {}",self.info
         );
         self
     }
