@@ -1,4 +1,7 @@
-use crate::{interfaces::LinearFeeDef, time::SystemTime};
+use crate::{
+    interfaces::{LinearFeeDef, Value},
+    time::SystemTime,
+};
 use chain_impl_mockchain::fee::LinearFee;
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +17,8 @@ pub struct SettingsDto {
     pub max_txs_per_block: u32,
     pub slot_duration: u64,
     pub slots_per_epoch: u32,
+    pub treasury_tax: Value,
+    pub reward: Value,
 }
 
 impl PartialEq<SettingsDto> for SettingsDto {
@@ -25,5 +30,7 @@ impl PartialEq<SettingsDto> for SettingsDto {
             && self.max_txs_per_block == other.max_txs_per_block
             && self.slot_duration == other.slot_duration
             && self.slots_per_epoch == other.slots_per_epoch
+            && self.treasury_tax == other.treasury_tax
+            && self.reward == other.reward
     }
 }

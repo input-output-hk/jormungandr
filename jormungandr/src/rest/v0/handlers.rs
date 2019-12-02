@@ -12,6 +12,7 @@ use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
+use chain_impl_mockchain::rewards;
 use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::error::Error as StorageError;
 
@@ -289,7 +290,7 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
     context
         .try_full_fut()
         .and_then(|context| chain_tip_fut_raw(&context).map(move |tip| (context, tip)))
-        .map(|(context, blockchain_tip)| {
+        .and_then(|(context, blockchain_tip)| {
             let ledger = blockchain_tip.ledger();
             let static_params = ledger.get_static_parameters();
             let consensus_version = ledger.consensus_version();
@@ -299,6 +300,15 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
                 .epoch_leadership_schedule()
                 .era()
                 .slots_per_epoch();
+
+            let next_slot_epoch = ledger.date().next(ledger.era()).epoch;
+            let reward = rewards::rewards_contribution_calculation(
+                next_slot_epoch,
+                &current_params.reward_params,
+            );
+            let reward_taxed =
+                rewards::tax_cut(reward, &current_params.reward_params.treasury_tax())
+                    .map_err(ErrorInternalServerError)?;
 
             let settings = jormungandr_lib::interfaces::SettingsDto {
                 block0_hash: static_params.block0_initial_hash.to_string(),
@@ -312,9 +322,11 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
                 max_txs_per_block: 255, // TODO?
                 slot_duration: blockchain_tip.time_frame().slot_duration(),
                 slots_per_epoch,
+                treasury_tax: reward_taxed.taxed.into(),
+                reward: reward_taxed.after_tax.into(),
             };
 
-            Json(json!(settings))
+            Ok(Json(json!(settings)))
         })
 }
 
