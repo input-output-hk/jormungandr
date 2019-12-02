@@ -8,7 +8,7 @@ use crate::transaction::{Payload, PayloadData, PayloadSlice};
 
 pub use delegation::{OwnerStakeDelegation, StakeDelegation};
 pub use pool::{
-    GenesisProasLeaderHash, IndexSignatures, ManagementThreshold, PoolId, PoolOwnersSigned,
+    GenesisPraosLeaderHash, IndexSignatures, ManagementThreshold, PoolId, PoolOwnersSigned,
     PoolPermissions, PoolRegistration, PoolRetirement, PoolSignature, PoolUpdate,
 };
 

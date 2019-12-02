@@ -19,7 +19,7 @@ use typed_bytes::{ByteArray, ByteBuilder};
 pub type PoolId = DigestOf<Blake2b256, PoolRegistration>;
 
 /// Hash of keys used for pool
-pub type GenesisProasLeaderHash = DigestOf<Blake2b256, GenesisPraosLeader>;
+pub type GenesisPraosLeaderHash = DigestOf<Blake2b256, GenesisPraosLeader>;
 
 /// signatures with indices
 pub type IndexSignatures = Vec<(u8, SingleAccountBindingSignature)>;
@@ -82,7 +82,7 @@ impl PoolPermissions {
 pub struct PoolUpdate {
     pub pool_id: PoolId,
     pub start_validity: TimeOffsetSeconds,
-    pub previous_keys: GenesisProasLeaderHash,
+    pub previous_keys: GenesisPraosLeaderHash,
     pub updated_keys: GenesisPraosLeader,
 }
 
