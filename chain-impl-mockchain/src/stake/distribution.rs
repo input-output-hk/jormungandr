@@ -31,8 +31,11 @@ pub struct PoolStakeInformation {
 
 impl PoolStakeInformation {
     pub fn add_value(&mut self, id: &account::Identifier, s: Stake) {
-        let account_stake = self.stake_owners.accounts.entry(id.clone()).or_insert(s);
-        *account_stake = *account_stake + s;
+        self.stake_owners
+            .accounts
+            .entry(id.clone())
+            .and_modify(|c| *c += s)
+            .or_insert(s);
         self.total.total_stake = self.total.total_stake + s;
     }
 }
