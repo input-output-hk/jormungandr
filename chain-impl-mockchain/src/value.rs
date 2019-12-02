@@ -1,3 +1,4 @@
+use crate::stake::Stake;
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use std::convert::TryFrom;
@@ -143,5 +144,11 @@ impl TryFrom<&[u8]> for Value {
             buf.copy_from_slice(slice);
             Ok(Value(u64::from_be_bytes(buf)))
         }
+    }
+}
+
+impl Into<Stake> for Value {
+    fn into(self) -> Stake {
+        Stake::from_value(self)
     }
 }

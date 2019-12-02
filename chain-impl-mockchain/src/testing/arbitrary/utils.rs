@@ -6,6 +6,19 @@ use std::{
     hash::Hash,
 };
 
+pub fn factorize<G: Gen>(number: u32, gen: &mut G) -> Vec<u32> 
+{
+    let mut current_remainder = number;
+    let mut output = Vec::new();
+
+    while current_remainder > 0 {
+        let part = cmp::max(u32::arbitrary(gen) % current_remainder,1);
+        output.push(part);
+        current_remainder = current_remainder - part;
+    }
+    output
+}
+
 pub fn split_vec<G: Gen, T>(source: &Vec<T>, gen: &mut G, number_of_splits: usize) -> Vec<Vec<T>>
 where
     T: std::clone::Clone,

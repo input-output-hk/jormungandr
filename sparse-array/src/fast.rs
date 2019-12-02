@@ -1,6 +1,5 @@
 ///! Wrapper for sparse arrays that doesn't delete anything from the memory
 ///! unless `shrink` is called.
-
 use crate::{bitmap::BitmapIndex, SparseArray, SparseArrayBuilder};
 use std::sync::Arc;
 

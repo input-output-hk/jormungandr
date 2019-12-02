@@ -6,7 +6,8 @@ use crate::{
     testing::data::{AddressData,StakePool},
     utxo,
     value::Value,
-    stake::PoolsState
+    stake::PoolsState,
+    certificate::PoolId,
 };
 use chain_addr::Address;
 use std::fmt;
@@ -243,5 +244,15 @@ impl DistributionVerifier {
             "wrong total stake {}",self.info
         );
         self
+    }
+
+    pub fn pools_distribution_is(&self, expected_distribution: Vec<(PoolId,Value)>) -> &Self {
+        for (pool_id, value) in expected_distribution {
+            let stake = self.stake_distribution.get_stake_for(&pool_id);
+            assert!(stake.is_some(),"pool with id {:?} does not exist {}",pool_id, self.info);
+            let stake = stake.unwrap();
+            assert_eq!(stake,Stake::from_value(value),"wrong total stake for pool with id {} {}", pool_id,self.info);
+        }
+        self 
     }
 }

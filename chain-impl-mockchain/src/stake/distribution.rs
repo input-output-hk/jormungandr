@@ -1,8 +1,5 @@
 use super::stake::Stake;
-use crate::account;
-use crate::accounting::account::DelegationType;
-use crate::certificate::PoolId;
-use crate::utxo;
+use crate::{account, accounting::account::DelegationType, certificate::PoolId, utxo};
 use chain_addr::{Address, Kind};
 use std::collections::{hash_map, HashMap};
 
@@ -209,17 +206,19 @@ pub fn get_distribution(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::account;
     use crate::accounting::account::DelegationType;
     use crate::stake::{delegation::PoolsState, Stake};
     use crate::{
-        account::{AccountAlg, Identifier},
+        account::{AccountAlg, DelegationRatio, Identifier},
         certificate::PoolRegistration,
         fragment::FragmentId,
         testing::{
-            arbitrary::utils as arbitrary_utils,
-            arbitrary::ArbitraryAddressDataValueVec,
+            arbitrary::{utils as arbitrary_utils, ArbitraryAddressDataValueVec},
+            builders::StakePoolBuilder,
             data::{AddressData, AddressDataValue},
+            TestGen,
         },
         transaction::{Output, TransactionIndex},
         utxo,
@@ -485,5 +484,149 @@ mod tests {
             ));
         }
         TestResult::passed()
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct CorrectDelegationType(DelegationType);
+
+    impl Arbitrary for CorrectDelegationType {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let option: u8 = u8::arbitrary(g) % 3u8;
+            let delegation_type = match option {
+                0 => DelegationType::NonDelegated,
+                1 => {
+                    let pool_id = PoolRegistration::arbitrary(g).to_id();
+                    DelegationType::Full(pool_id)
+                }
+                2 => {
+                    let no_of_parts = 8u8;
+                    let parts = arbitrary_utils::factorize(no_of_parts as u32, g);
+                    let pool_parts: Vec<(PoolId, u8)> = parts
+                        .iter()
+                        .cloned()
+                        .map(|x| (PoolRegistration::arbitrary(g).to_id(), x as u8))
+                        .collect();
+
+                    let delegation_ratio = DelegationRatio::new(no_of_parts, pool_parts)
+                        .expect("incorrect delgation ratio");
+                    DelegationType::Ratio(delegation_ratio)
+                }
+                _ => unreachable!(),
+            };
+            CorrectDelegationType(delegation_type)
+        }
+    }
+
+    impl CorrectDelegationType {
+        pub fn get_pools(&self) -> HashMap<PoolId, PoolStakeInformation> {
+            let p0 = PoolStakeInformation {
+                total: PoolStakeTotal {
+                    total_stake: Stake::zero(),
+                },
+                stake_owners: PoolStakeDistribution::new(),
+            };
+
+            match &self.0 {
+                DelegationType::NonDelegated => HashMap::new(),
+                DelegationType::Full(pool_id) => {
+                    let mut pools = HashMap::new();
+                    pools.insert(pool_id.clone(), p0.clone());
+                    pools
+                }
+                DelegationType::Ratio(delegation_ratio) => {
+                    let mut pools = HashMap::new();
+                    for pool_id in delegation_ratio.pools().iter().cloned().map(|x| x.0) {
+                        pools.insert(pool_id.clone(), p0.clone());
+                    }
+                    pools
+                }
+            }
+        }
+    }
+
+    #[quickcheck]
+    pub fn assign_account_value_is_consitent_with_stake_distribution(
+        account_identifier: account::Identifier,
+        delegation_type: CorrectDelegationType,
+        value: Stake,
+    ) -> TestResult {
+        let mut stake_distribution = StakeDistribution::empty();
+        stake_distribution.to_pools = delegation_type.get_pools();
+        assign_account_value(
+            &mut stake_distribution,
+            &account_identifier,
+            &delegation_type.0,
+            value,
+        );
+        match delegation_type.0 {
+            DelegationType::NonDelegated => {
+                assert_distribution(stake_distribution, value, Stake::zero(), Stake::zero())
+            }
+            DelegationType::Full(_pool_id) => {
+                assert_distribution(stake_distribution, Stake::zero(), Stake::zero(), value)
+            }
+            DelegationType::Ratio(_ratio) => {
+                assert_distribution(stake_distribution, Stake::zero(), Stake::zero(), value)
+            }
+        }
+    }
+
+    pub fn assert_distribution(
+        stake_distribution: StakeDistribution,
+        unassigned: Stake,
+        dangling: Stake,
+        pools: Stake,
+    ) -> TestResult {
+        if stake_distribution.unassigned != unassigned {
+            return TestResult::error(&format!(
+                "wrong unassigned {} vs {}",
+                stake_distribution.unassigned, unassigned
+            ));
+        }
+        if stake_distribution.dangling != dangling {
+            return TestResult::error(&format!(
+                "wrong dangling {} vs {}",
+                stake_distribution.dangling, dangling
+            ));
+        }
+        if stake_distribution.total_stake() != pools {
+            return TestResult::error(&format!(
+                "wrong to_pools {} vs {}",
+                stake_distribution.total_stake(),
+                pools
+            ));
+        }
+        TestResult::passed()
+    }
+
+    #[test]
+    pub fn dangling_stake_multiplied() {
+        let mut stake_distribution = StakeDistribution::empty();
+        let value = Value(10);
+        let stake = Stake::from_value(value.clone());
+        let account_identifier = TestGen::identifier();
+        let no_of_parts = 8u8;
+        let parts = [1, 2, 2, 3];
+        let pool_parts: Vec<(PoolId, u8)> = parts
+            .iter()
+            .cloned()
+            .map(|x| (StakePoolBuilder::new().build().id(), x as u8))
+            .collect();
+
+        let delegation_ratio =
+            DelegationRatio::new(no_of_parts, pool_parts).expect("incorrect delgation ratio");
+        let delegation_type = DelegationType::Ratio(delegation_ratio);
+        assign_account_value(
+            &mut stake_distribution,
+            &account_identifier,
+            &delegation_type,
+            stake,
+        );
+        //assertion should be replaced after fix:
+        //assert_eq!(stake_distribution.dangling,stake);
+        assert_eq!(
+            stake_distribution.dangling,
+            Stake::from_value(Value(value.0 * 2u64 * parts.len() as u64))
+        );
     }
 }

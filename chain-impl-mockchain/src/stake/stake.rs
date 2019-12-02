@@ -98,3 +98,15 @@ impl std::fmt::Display for Stake {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Stake {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Stake::from_value(Arbitrary::arbitrary(g))
+        }
+    }
+}

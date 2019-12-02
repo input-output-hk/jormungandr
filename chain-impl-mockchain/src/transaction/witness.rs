@@ -56,7 +56,11 @@ impl std::fmt::Display for Witness {
 pub struct WitnessUtxoData(Vec<u8>);
 
 impl WitnessUtxoData {
-    pub fn new(block0: &HeaderId, transaction_id: &TransactionSignDataHash, is_legacy: bool) -> Self {
+    pub fn new(
+        block0: &HeaderId,
+        transaction_id: &TransactionSignDataHash,
+        is_legacy: bool,
+    ) -> Self {
         let mut v = Vec::with_capacity(65);
         let tag = match is_legacy {
             true => WITNESS_TAG_OLDUTXO,
