@@ -1,11 +1,14 @@
-use crate::start_up::Error;
 use std::fmt::{self, Display, Formatter};
+use thiserror::Error;
 
-#[cfg(unix)]
-pub type DiagnosticError = nix::Error;
-
-#[cfg(not(unix))]
-custom_error! {pub DiagnosticError {} = "diagnostic error"}
+#[derive(Debug, Error)]
+pub enum DiagnosticError {
+    #[cfg(unix)]
+    #[error("while performing a UNIX syscall {0}")]
+    UnixError(#[source] nix::Error),
+    #[error("unknown diagnostic error")]
+    UnknownError,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
@@ -67,7 +70,7 @@ fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     };
 
     let retcode = unsafe { libc::getrlimit(resource, &mut limits as *mut rlimit) };
-    nix::errno::Errno::result(retcode)?;
+    nix::errno::Errno::result(retcode).map_err(DiagnosticError::UnixError)?;
 
     Ok(limits.rlim_cur)
 }
