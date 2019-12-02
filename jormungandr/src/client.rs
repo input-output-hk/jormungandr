@@ -122,7 +122,8 @@ fn handle_get_headers_range(
                         to,
                         handle.with(|res: Result<Block, _>| Ok(res.map(|block| block.header()))),
                     )
-                    .map_err(|_: ReplySendError| ());
+                    .map_err(|_: ReplySendError| ())
+                    .then(|_| Ok(()));
                 Either::A(fut)
             }
             Err(e) => Either::B(handle.async_error(e.into())),
@@ -138,6 +139,7 @@ fn handle_get_blocks_range(
     storage
         .send_from_to(from, to, handle)
         .map_err(|_: ReplySendError| ())
+        .then(|_| Ok(()))
 }
 
 fn get_blocks(storage: Storage, ids: Vec<HeaderHash>) -> impl Stream<Item = Block, Error = Error> {
@@ -195,7 +197,8 @@ fn handle_pull_blocks_to_tip(
             Ok((storage, from, to)) => Either::A(
                 storage
                     .send_from_to(from, to, handle)
-                    .map_err(|_: ReplySendError| ()),
+                    .map_err(|_: ReplySendError| ())
+                    .then(|_| Ok(())),
             ),
             Err(e) => Either::B(handle.async_error(e.into())),
         })
