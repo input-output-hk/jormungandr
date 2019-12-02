@@ -310,15 +310,26 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    if let Err(err) = services.wait_any_finished() {
-        crit!(
-            bootstrapped_node.logger,
-            "Service has terminated with an error"
-        );
-        Err(start_up::Error::ServiceTerminatedWithError)
-    } else {
-        info!(bootstrapped_node.logger, "Shutting down node");
-        Ok(())
+    match services.wait_any_finished() {
+        Err(err) => {
+            crit!(
+                bootstrapped_node.logger,
+                "Service notifier failed to wait for services to shutdown" ;
+                "reason" => err.to_string()
+            );
+            Err(start_up::Error::ServiceTerminatedWithError)
+        }
+        Ok(true) => {
+            info!(bootstrapped_node.logger, "Shutting down node");
+            Ok(())
+        }
+        Ok(false) => {
+            crit!(
+                bootstrapped_node.logger,
+                "Service has terminated with an error"
+            );
+            Err(start_up::Error::ServiceTerminatedWithError)
+        }
     }
 }
 
