@@ -51,5 +51,6 @@ pub fn resources() -> Vec<(
         ("/utxo/{fragment_id}/{output_index}", &|r| {
             r.get().with_async(handlers::get_utxo)
         }),
+        ("/diagnostic", &|r| r.get().with(handlers::get_diagnostic)),
     ]
 }

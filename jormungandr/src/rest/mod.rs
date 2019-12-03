@@ -115,6 +115,7 @@ pub struct FullContext {
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
     pub explorer: Option<crate::explorer::Explorer>,
+    pub diagnostic: crate::diagnostic::Diagnostic,
 }
 
 pub fn start_rest_server(

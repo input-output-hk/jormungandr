@@ -1,5 +1,7 @@
 use crate::{
-    blockcfg, blockchain, explorer, network, secure,
+    blockcfg, blockchain,
+    diagnostic::DiagnosticError,
+    explorer, network, secure,
     settings::{self, logging},
 };
 use chain_storage::error::Error as StorageError;
@@ -24,6 +26,7 @@ custom_error! {pub Error
     Block0InFuture = "Block 0 is set to start in the future",
     ExplorerBootstrapError { source: explorer::error::Error } = "Error while loading the explorer from storage",
     ServiceTerminatedWithError = "A service has terminated with an error",
+    DiagnosticError { source: DiagnosticError } = "Unable to get system limits: {source}",
 }
 
 impl Error {
@@ -43,6 +46,7 @@ impl Error {
             Error::NetworkBootstrapError { .. } => 10,
             Error::ExplorerBootstrapError { .. } => 11,
             Error::ServiceTerminatedWithError => 12,
+            Error::DiagnosticError { .. } => 13,
         }
     }
 }
