@@ -1,5 +1,39 @@
 # Change Log
 
+## [v0.8.0-rc5](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc5) (2019-12-03)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc4...v0.8.0-rc5)
+
+**Breaking changes:**
+
+- change how to set the reward account in the jcli command line parameter [\#1259](https://github.com/input-output-hk/jormungandr/pull/1259)
+
+**Implemented enhancements:**
+
+- detect node's environment/system settings at boot or on demand [\#1215](https://github.com/input-output-hk/jormungandr/issues/1215)
+- return stake-pools public VRF key [\#1163](https://github.com/input-output-hk/jormungandr/issues/1163)
+- fix reward distribution and expose the rewards in the REST API [\#1269](https://github.com/input-output-hk/jormungandr/pull/1269)
+- Add version to REST node stats [\#1265](https://github.com/input-output-hk/jormungandr/pull/1265)
+- Resolve the ancestor once for chain streaming [\#1258](https://github.com/input-output-hk/jormungandr/pull/1258)
+- Don't panic on network task error [\#1255](https://github.com/input-output-hk/jormungandr/pull/1255)
+- Expose resource usage limits on UNIX systems [\#1222](https://github.com/input-output-hk/jormungandr/pull/1222)
+
+**Fixed bugs:**
+
+- 0.8 rc4 - standalone delegators not getting paid rewards after pool owners/operators got their tax cut [\#1250](https://github.com/input-output-hk/jormungandr/issues/1250)
+- fix rlimit builds on different libc impls [\#1267](https://github.com/input-output-hk/jormungandr/pull/1267)
+- Yield the task after retrieving each block to send [\#1264](https://github.com/input-output-hk/jormungandr/pull/1264)
+- don't fail on error in the client task [\#1249](https://github.com/input-output-hk/jormungandr/pull/1249)
+
+**Closed issues:**
+
+- logging improvement epoch.block time [\#1251](https://github.com/input-output-hk/jormungandr/issues/1251)
+
+**Merged pull requests:**
+
+- Rest node stats REST cert fees [\#1266](https://github.com/input-output-hk/jormungandr/pull/1266)
+- add documentation regarding the stake pool Tax [\#1257](https://github.com/input-output-hk/jormungandr/pull/1257)
+
 ## [v0.8.0-rc4](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc4) (2019-12-02)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc3...v0.8.0-rc4)
