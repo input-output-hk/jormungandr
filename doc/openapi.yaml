@@ -513,7 +513,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime]
+                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
@@ -556,6 +556,9 @@ paths:
                     description: Node uptime in seconds
                     type: integer
                     minimum: 0
+                  version:
+                    description: Node app version
+                    type: string
               example: |
                 {
                   "blockRecvCnt": 1102,
@@ -568,7 +571,8 @@ paths:
                   "lastBlockTx": 2,
                   "state": "Running",
                   "txRecvCnt": 5440,
-                  "uptime": 20032
+                  "uptime": 20032,
+                  "version": "jormungandr 0.8.0-rc4-67477249"
                 }
   /api/v0/settings:
     get:
@@ -616,7 +620,7 @@ paths:
                             type: integer
                             minimum: 0
                           certificate_stake_delegation:
-                            description: Fee per stake delegation 
+                            description: Fee per stake delegation
                             type: integer
                             minimum: 0
                           certificate_owner_stake_delegation:
