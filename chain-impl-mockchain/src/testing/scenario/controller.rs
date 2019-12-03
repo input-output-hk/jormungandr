@@ -1,13 +1,14 @@
 use crate::{
+    accounting::account::{DelegationRatio, DelegationType},
     certificate::Certificate,
+    certificate::PoolId,
     date::BlockDate,
     key::Hash,
     ledger::Error as LedgerError,
-    accounting::account::{DelegationType,DelegationRatio},
-    certificate::PoolId,
     testing::{
         builders::{
-            build_owner_stake_full_delegation, build_stake_delegation_cert,build_no_stake_delegation,build_owner_stake_delegation,
+            build_no_stake_delegation, build_owner_stake_delegation,
+            build_owner_stake_full_delegation, build_stake_delegation_cert,
             build_stake_pool_registration_cert, build_stake_pool_retirement_cert, TestTxBuilder,
             TestTxCertBuilder,
         },
@@ -102,14 +103,37 @@ impl Controller {
         self.apply_transaction_with_cert(&[from], cert, ledger)
     }
 
-    pub fn removes_delegation(&self, from: &Wallet,ledger: &mut TestLedger) -> Result<(), LedgerError> {
+    pub fn delegates_different_funder(
+        &self,
+        funder: &Wallet,
+        delegation: &Wallet,
+        stake_pool: &StakePool,
+        ledger: &mut TestLedger,
+    ) -> Result<(), LedgerError> {
+        let cert = build_stake_delegation_cert(&stake_pool.info(), &delegation.as_account_data());
+        self.apply_transaction_with_cert(&[funder], cert, ledger)
+    }
+
+    pub fn removes_delegation(
+        &self,
+        from: &Wallet,
+        ledger: &mut TestLedger,
+    ) -> Result<(), LedgerError> {
         let cert = build_no_stake_delegation();
         self.apply_transaction_with_cert(&[from], cert, ledger)
     }
 
-    pub fn delegates_to_many(&self, from: &Wallet, distribution: &[(&StakePool,u8)],ledger: &mut TestLedger) -> Result<(), LedgerError> {
-        let pools_ratio_sum: u8 = distribution.iter().map(|(_st,ratio)| *ratio as u8 ).sum();
-        let pools: Vec<(PoolId,u8)> = distribution.iter().map(|(st,ratio)| (st.info().to_id().clone(),*ratio)).collect();
+    pub fn delegates_to_many(
+        &self,
+        from: &Wallet,
+        distribution: &[(&StakePool, u8)],
+        ledger: &mut TestLedger,
+    ) -> Result<(), LedgerError> {
+        let pools_ratio_sum: u8 = distribution.iter().map(|(_st, ratio)| *ratio as u8).sum();
+        let pools: Vec<(PoolId, u8)> = distribution
+            .iter()
+            .map(|(st, ratio)| (st.info().to_id().clone(), *ratio))
+            .collect();
 
         let delegation_ratio = DelegationRatio::new(pools_ratio_sum, pools);
         let delegation_type = DelegationType::Ratio(delegation_ratio.unwrap());
@@ -155,7 +179,9 @@ mod tests {
     use crate::{
         fee::LinearFee,
         stake::Stake,
-        testing::{ledger::ConfigBuilder, verifiers::LedgerStateVerifier, scenario::template::StakePoolDef},
+        testing::{
+            ledger::ConfigBuilder, scenario::template::StakePoolDef, verifiers::LedgerStateVerifier,
+        },
         value::Value,
     };
 
@@ -165,19 +191,17 @@ mod tests {
             .with_config(
                 ConfigBuilder::new(0)
                     .with_discrimination(Discrimination::Test)
-                    .with_fee(LinearFee::new(1, 1, 1))
+                    .with_fee(LinearFee::new(1, 1, 1)),
             )
             .with_initials(vec![
                 wallet("Alice").with(1_000).delegates_to("stake_pool"),
                 wallet("Bob").with(1_000),
                 wallet("Clarice").with(1_000).owns("stake_pool"),
             ])
-            .with_stake_pools(vec![
-                StakePoolDef{
-                    name: "stake_pool".to_owned(),
-                    permissions_threshold: Some(1u8)
-                },
-            ])
+            .with_stake_pools(vec![StakePoolDef {
+                name: "stake_pool".to_owned(),
+                permissions_threshold: Some(1u8),
+            }])
             .build()
             .unwrap();
         let mut alice = controller.wallet("Alice").unwrap();
