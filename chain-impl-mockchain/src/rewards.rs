@@ -117,6 +117,10 @@ impl Parameters {
             epoch_start: 0,
         }
     }
+
+    pub fn treasury_tax(&self) -> TaxType {
+        self.treasury_tax
+    }
 }
 
 /// A value distributed between tax and remaining
