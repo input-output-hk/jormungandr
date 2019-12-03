@@ -9,24 +9,15 @@ use tokio::prelude::*;
 
 pub struct TaskData {
     pub storage: Storage,
-    pub block0_hash: HeaderHash,
     pub blockchain_tip: Tip,
 }
 
-enum TaskAction<
-    GetBlockTip,
-    GetHeaders,
-    GetHeadersRange,
-    GetBlocks,
-    GetBlocksRange,
-    PullBlocksToTip,
-> {
+enum TaskAction<GetBlockTip, GetHeaders, GetHeadersRange, GetBlocks, PullBlocksToTip> {
     Shutdown(FutureResult<(), ()>),
     GetBlockTip(GetBlockTip),
     GetHeaders(GetHeaders),
     GetHeadersRange(GetHeadersRange),
     GetBlocks(GetBlocks),
-    GetBlocksRange(GetBlocksRange),
     PullBlocksToTip(PullBlocksToTip),
 }
 
@@ -35,17 +26,8 @@ impl<
         GetHeaders: Future<Item = (), Error = ()>,
         GetHeadersRange: Future<Item = (), Error = ()>,
         GetBlocks: Future<Item = (), Error = ()>,
-        GetBlocksRange: Future<Item = (), Error = ()>,
         PullBlocksToTip: Future<Item = (), Error = ()>,
-    > Future
-    for TaskAction<
-        GetBlockTip,
-        GetHeaders,
-        GetHeadersRange,
-        GetBlocks,
-        GetBlocksRange,
-        PullBlocksToTip,
-    >
+    > Future for TaskAction<GetBlockTip, GetHeaders, GetHeadersRange, GetBlocks, PullBlocksToTip>
 {
     type Item = ();
     type Error = ();
@@ -59,7 +41,6 @@ impl<
             GetHeaders(fut) => fut.poll(),
             GetHeadersRange(fut) => fut.poll(),
             GetBlocks(fut) => fut.poll(),
-            GetBlocksRange(fut) => fut.poll(),
             PullBlocksToTip(fut) => fut.poll(),
         }
     }
@@ -88,9 +69,6 @@ pub fn handle_input(
         ClientMsg::GetBlocks(ids, handle) => {
             TaskAction::GetBlocks(handle.async_reply(get_blocks(task_data.storage.clone(), ids)))
         }
-        ClientMsg::GetBlocksRange(from, to, handle) => TaskAction::GetBlocksRange(
-            handle_get_blocks_range(&task_data.storage, from, to, handle),
-        ),
         ClientMsg::PullBlocksToTip(from, handle) => {
             TaskAction::PullBlocksToTip(handle_pull_blocks_to_tip(task_data, from, handle))
         }
@@ -110,36 +88,23 @@ fn handle_get_headers_range(
     handle: ReplyStreamHandle<Header>,
 ) -> impl Future<Item = (), Error = ()> {
     let storage = task_data.storage.clone();
-    let block0_hash = task_data.block0_hash;
     storage
         .find_closest_ancestor(checkpoints, to)
         .then(move |res| match res {
             Ok(maybe_ancestor) => {
-                let from = maybe_ancestor.unwrap_or(block0_hash);
+                let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
                 let fut = storage
-                    .send_from_to(
-                        from,
+                    .send_branch(
                         to,
-                        handle.with(|res: Result<Block, _>| Ok(res.map(|block| block.header()))),
+                        depth,
+                        handle
+                            .with(|res: Result<Block, Error>| Ok(res.map(|block| block.header()))),
                     )
-                    .map_err(|_: ReplySendError| ())
-                    .then(|_| Ok(()));
+                    .then(|_: Result<_, ReplySendError>| Ok(()));
                 Either::A(fut)
             }
             Err(e) => Either::B(handle.async_error(e.into())),
         })
-}
-
-fn handle_get_blocks_range(
-    storage: &Storage,
-    from: HeaderHash,
-    to: HeaderHash,
-    handle: ReplyStreamHandle<Block>,
-) -> impl Future<Item = (), Error = ()> {
-    storage
-        .send_from_to(from, to, handle)
-        .map_err(|_: ReplySendError| ())
-        .then(|_| Ok(()))
 }
 
 fn get_blocks(storage: Storage, ids: Vec<HeaderHash>) -> impl Stream<Item = Block, Error = Error> {
@@ -181,7 +146,6 @@ fn handle_pull_blocks_to_tip(
     handle: ReplyStreamHandle<Block>,
 ) -> impl Future<Item = (), Error = ()> {
     let storage = task_data.storage.clone();
-    let block0_hash = task_data.block0_hash;
     task_data
         .blockchain_tip
         .get_ref()
@@ -190,16 +154,14 @@ fn handle_pull_blocks_to_tip(
             storage
                 .find_closest_ancestor(checkpoints, tip_hash)
                 .map(move |maybe_ancestor| {
-                    (storage, maybe_ancestor.unwrap_or(block0_hash), tip_hash)
+                    let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
+                    (storage, tip_hash, depth)
                 })
         })
         .then(move |res| match res {
-            Ok((storage, from, to)) => Either::A(
-                storage
-                    .send_from_to(from, to, handle)
-                    .map_err(|_: ReplySendError| ())
-                    .then(|_| Ok(())),
-            ),
+            Ok((storage, to, depth)) => {
+                Either::A(storage.send_branch(to, depth, handle).then(|_| Ok(())))
+            }
             Err(e) => Either::B(handle.async_error(e.into())),
         })
 }

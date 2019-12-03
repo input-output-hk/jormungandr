@@ -19,6 +19,11 @@ pub struct BlockStream {
     state: BlockIterState,
 }
 
+pub struct Ancestor {
+    pub header_hash: HeaderHash,
+    pub distance: u64,
+}
+
 struct BlockIterState {
     to_depth: u64,
     cur_depth: u64,
@@ -153,12 +158,14 @@ impl Storage {
         })
     }
 
-    /// Like `stream_from_to` with the same error meanings, but using buffering
-    /// in the sink to reduce lock contention.
-    pub fn send_from_to<S, E>(
+    /// Stream a branch ending at `to` and starting from the ancestor
+    /// at `depth` or at the genesis block if `depth` is given as `None`.
+    ///
+    /// This function uses buffering in the sink to reduce lock contention.
+    pub fn send_branch<S, E>(
         &self,
-        from: HeaderHash,
         to: HeaderHash,
+        depth: Option<u64>,
         sink: S,
     ) -> impl Future<Item = (), Error = S::SinkError>
     where
@@ -170,14 +177,10 @@ impl Storage {
 
         future::poll_fn(move || Ok(inner.poll_lock()))
             .and_then(move |store| {
-                store
-                    .is_ancestor(&from, &to)
-                    .and_then(|ancestry| match ancestry {
-                        None => Err(StorageError::CannotIterate),
-                        Some(distance) => store
-                            .get_block_info(&to)
-                            .map(|to_info| BlockIterState::new(to_info, distance)),
-                    })
+                store.get_block_info(&to).map(|to_info| {
+                    let depth = depth.unwrap_or(to_info.depth);
+                    BlockIterState::new(to_info, depth)
+                })
             })
             .then(move |res| match res {
                 Ok(iter) => {
@@ -224,7 +227,7 @@ impl Storage {
         &self,
         checkpoints: Vec<HeaderHash>,
         descendant: HeaderHash,
-    ) -> impl Future<Item = Option<HeaderHash>, Error = StorageError> {
+    ) -> impl Future<Item = Option<Ancestor>, Error = StorageError> {
         let mut inner = self.inner.clone();
         future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
             let mut ancestor = None;
@@ -254,8 +257,10 @@ impl Storage {
                     }
                 }
             }
-            // Could return the distance alongside in a struct?
-            Ok(ancestor)
+            Ok(ancestor.map(|header_hash| Ancestor {
+                header_hash,
+                distance: closest_found,
+            }))
         })
     }
 }

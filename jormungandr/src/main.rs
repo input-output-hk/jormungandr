@@ -207,7 +207,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let client_task = {
         let mut task_data = client::TaskData {
             storage: blockchain.storage().clone(),
-            block0_hash: bootstrapped_node.block0_hash,
             blockchain_tip: blockchain_tip.clone(),
         };
 
