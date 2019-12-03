@@ -370,6 +370,13 @@ where
                 AsyncSink::Ready => {
                     if !self.iter.has_next() {
                         return Ok(().into());
+                    } else {
+                        // FIXME: have to yield and release the storage lock
+                        // because .get_next() may block on database access,
+                        // starving other storage access queries.
+                        // https://github.com/input-output-hk/jormungandr/issues/1263
+                        task::current().notify();
+                        return Ok(Async::NotReady);
                     }
                 }
                 AsyncSink::NotReady(item) => {
