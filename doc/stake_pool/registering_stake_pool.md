@@ -54,7 +54,7 @@ There are 3 values you can set to configure the stake pool's **Tax**:
 * `tax-limit`: a value that can be set to limit the pool's **Tax**.
 
 All of these values are optionals, if not set, they will be set to `0`. This will mean
-no tax for the stake pool. Rewards are all distributed to the delegators.
+no tax for the stake pool: rewards are all distributed to the delegators.
 
 ### So how does this works
 
