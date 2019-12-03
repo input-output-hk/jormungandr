@@ -584,7 +584,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch]
+                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, reward, slotDuration, slotsPerEpoch, treasuryTax]
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -640,12 +640,20 @@ paths:
                     description: Maximum number of transactions in block
                     type: integer
                     minimum: 0
+                  reward:
+                    description: Contribution reward for next slot
+                    type: integer
+                    minimum: 0
                   slotDuration:
                     description: Slot duration in seconds
                     type: integer
                     minimum: 0
                   slotsPerEpoch:
                     description: Number of slots per epoch
+                    type: integer
+                    minimum: 0
+                  treasuryTax:
+                    description: Treasury pot reward for next slot
                     type: integer
                     minimum: 0
               example: |
@@ -665,8 +673,10 @@ paths:
                     "constant": 2
                   },
                   "maxTxsPerBlock": 100,
+                  "reward": 250,
                   "slotDuration": 10,
-                  "slotsPerEpoch": 60
+                  "slotsPerEpoch": 60,
+                  "treasuryTax": 8
                 }
   /api/v0/shutdown:
     get:
