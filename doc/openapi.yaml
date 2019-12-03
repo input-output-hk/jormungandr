@@ -35,11 +35,28 @@ paths:
                     description: Number of transactions performed with this account
                     type: integer
                     minimum: 0
+                  last_rewards:
+                    description: the last rewards
+                    type: object
+                    properties:
+                      epoch:
+                        description: the last epoch that distributed rewards to this account
+                        type: integer
+                        minimum: 0
+                      reward:
+                        description: the total amount of rewards received for the associated epoch
+                        type: integer
+                        minimum: 0
               example: |
                 {
                   "counter": 1,
                   "delegation": "c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356",
-                  "value": 990
+                  "value": 990,
+                  "last_rewards":
+                    {
+                      "epoch": 42,
+                      "reward": 2028
+                    }
                 }
         404:
           description: Account with given ID was not found
@@ -702,7 +719,7 @@ paths:
                 description: Stake pool details
                 type: object
                 required: [tax, total_stake, kesPublicKey, vrfPublicKey]
-                properies:
+                properties:
                   tax:
                     description: Pool reward
                     type: object
@@ -732,6 +749,22 @@ paths:
                     description: Total stake pool value
                     type: integer
                     minimum: 0
+                  rewards:
+                    type: object
+                    description: the reward received by the stake pool during the associated epoch
+                    properties:
+                      epoch:
+                        description: the epoch the reward has been distributed to this stake pool for the last time
+                        type: integer
+                        minimum: 0
+                      value_taxed:
+                        description: the total value taxed for the stake pool
+                        type: integer
+                        minimum: 0
+                      value_for_stakers:
+                        description: the value remaining to distribute amongst the delegators to this stake pool
+                        type: integer
+                        minimum: 0
                   vrfPublicKey:
                     description: Bech32-encoded stake pool KES key
                     type: string
@@ -747,6 +780,11 @@ paths:
                       "denominator": 10000,
                     }
                     "max": 100,
+                  },
+                  "rewards": {
+                    "epoch": 42,
+                    "value_taxed": 2901,
+                    "value_for_stakers": 2028
                   },
                   "total_stake": 2000000000000,
                   "kesPublicKey": "kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r",
