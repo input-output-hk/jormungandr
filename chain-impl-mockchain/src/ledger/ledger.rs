@@ -4,6 +4,7 @@
 use super::check::{self, TxVerifyError};
 use super::pots::Pots;
 use crate::block::{ConsensusVersion, LeadersParticipationRecord};
+use crate::certificate::PoolId;
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
@@ -388,6 +389,7 @@ impl Ledger {
                     (Ok(pool_reg), Some(pool_distribution)) => {
                         new_ledger.distribute_poolid_rewards(
                             epoch,
+                            &pool_id,
                             &pool_reg,
                             pool_total_reward,
                             pool_distribution,
@@ -412,11 +414,15 @@ impl Ledger {
     fn distribute_poolid_rewards(
         &mut self,
         epoch: Epoch,
+        pool_id: &PoolId,
         reg: &certificate::PoolRegistration,
         total_reward: Value,
         distribution: &PoolStakeInformation,
     ) -> Result<(), Error> {
         let distr = rewards::tax_cut(total_reward, &reg.rewards).unwrap();
+
+        self.delegation
+            .stake_pool_set_rewards(pool_id, epoch, distr.taxed, distr.after_tax)?;
 
         // distribute to pool owners (or the reward account)
         match &reg.reward_account {

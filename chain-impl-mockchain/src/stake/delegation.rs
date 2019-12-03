@@ -1,4 +1,6 @@
 use crate::certificate::{PoolId, PoolRegistration};
+use crate::header::Epoch;
+use crate::value::Value;
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
@@ -17,13 +19,32 @@ pub enum PoolError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoolLastRewards {
+    pub epoch: Epoch,
+    pub value_taxed: Value,
+    pub value_for_stakers: Value,
+}
+
+impl PoolLastRewards {
+    pub fn default() -> Self {
+        PoolLastRewards {
+            epoch: 0,
+            value_taxed: Value::zero(),
+            value_for_stakers: Value::zero(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoolState {
+    pub last_rewards: PoolLastRewards,
     pub registration: Arc<PoolRegistration>,
 }
 
 impl PoolState {
     pub fn new(reg: PoolRegistration) -> Self {
         PoolState {
+            last_rewards: PoolLastRewards::default(),
             registration: Arc::new(reg),
         }
     }
@@ -91,6 +112,29 @@ impl PoolsState {
             .lookup(pool_id)
             .ok_or(PoolError::NotFound(pool_id.clone()))
             .map(|s| s.registration.as_ref())
+    }
+
+    pub fn stake_pool_set_rewards(
+        &mut self,
+        pool_id: &PoolId,
+        epoch: Epoch,
+        value_taxed: Value,
+        value_for_stakers: Value,
+    ) -> Result<(), PoolError> {
+        let rw = PoolLastRewards {
+            epoch,
+            value_taxed,
+            value_for_stakers,
+        };
+        self.stake_pools = self
+            .stake_pools
+            .replace_with(pool_id, |st| {
+                let mut st = st.clone();
+                st.last_rewards = rw;
+                st
+            })
+            .map_err(|_| PoolError::NotFound(pool_id.clone()))?;
+        Ok(())
     }
 
     pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, PoolError> {
