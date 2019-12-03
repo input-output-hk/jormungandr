@@ -1,9 +1,7 @@
 use jormungandr_lib::interfaces::*;
 use jormungandr_lib::time::SystemTime;
 
-use actix_web::error::{
-    ErrorBadRequest, ErrorInternalServerError, ErrorNotFound, ErrorServiceUnavailable,
-};
+use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::{Error, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
@@ -433,7 +431,7 @@ pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> Act
         .and_then(move |pool_id| {
             chain_tip_fut(&context).and_then(move |blockchain_tip| {
                 let ledger = blockchain_tip.ledger();
-                let pool_reg = ledger.delegation().lookup(&pool_id).ok_or_else(|| {
+                let pool = ledger.delegation().lookup(&pool_id).ok_or_else(|| {
                     ErrorNotFound(format!("Stake pool '{}' not found", pool_id_hex))
                 })?;
                 let total_stake: u64 = ledger
@@ -442,11 +440,16 @@ pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> Act
                     .get(&pool_id)
                     .map(|pool| pool.total.total_stake.into())
                     .unwrap_or(0);
-                let tax = &pool_reg.rewards;
+                let tax = &pool.registration.rewards;
                 Ok(Json(json!({
-                    "kesPublicKey": pool_reg.keys.kes_public_key.to_bech32_str(),
-                    "vrfPublicKey": pool_reg.keys.vrf_public_key.to_bech32_str(),
+                    "kesPublicKey": pool.registration.keys.kes_public_key.to_bech32_str(),
+                    "vrfPublicKey": pool.registration.keys.vrf_public_key.to_bech32_str(),
                     "total_stake": total_stake,
+                    "rewards": {
+                        "epoch": pool.last_rewards.epoch,
+                        "value_taxed": pool.last_rewards.value_taxed.as_ref(),
+                        "value_for_stakers": pool.last_rewards.value_for_stakers.as_ref(),
+                    },
                     "tax": {
                         "fixed": tax.fixed.0,
                         "ratio": {
