@@ -149,6 +149,12 @@ custom_error! {
         UpdateNotAllowedYet = "Update not yet allowed",
 }
 
+impl LedgerParameters {
+    pub fn treasury_tax(&self) -> rewards::TaxType {
+        self.treasury_tax
+    }
+}
+
 impl Ledger {
     fn empty(
         settings: setting::Settings,
