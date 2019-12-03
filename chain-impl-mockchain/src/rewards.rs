@@ -255,4 +255,36 @@ mod tests {
             }
         }
     }
+
+    impl Arbitrary for Parameters {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let epoch_rate = {
+                let mut number = u32::arbitrary(g);
+                if number == 0 {
+                    number = number + 1;
+                }
+                NonZeroU32::new(number).unwrap()
+            };
+
+            Parameters {
+                treasury_tax: Arbitrary::arbitrary(g),
+                initial_value: u64::arbitrary(g),
+                compounding_ratio: Ratio::arbitrary(g),
+                compounding_type: CompoundingType::arbitrary(g),
+                epoch_rate: epoch_rate,
+                epoch_start: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for CompoundingType {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let option: u8 = u8::arbitrary(g) % 2;
+            match option {
+                0 => CompoundingType::Linear,
+                2 => CompoundingType::Halvening,
+                _ => unreachable!(),
+            }
+        }
+    }
 }
