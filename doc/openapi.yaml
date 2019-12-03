@@ -612,21 +612,22 @@ paths:
                         type: integer
                         minimum: 0
                       per_certificate_fees:
+                        description: Fee per certificate operations, all zero if this object absent
                         type: object
-                        required: [certificate_pool_registration, certificate_stake_delegation, certificate_owner_stake_delegation]
+                        required: []
                         properties:
                           certificate_pool_registration:
-                            description: Fee per pool registration
+                            description: Fee per pool registration, zero if absent
                             type: integer
-                            minimum: 0
+                            minimum: 1
                           certificate_stake_delegation:
-                            description: Fee per stake delegation
+                            description: Fee per stake delegation, zero if absent
                             type: integer
-                            minimum: 0
+                            minimum: 1
                           certificate_owner_stake_delegation:
-                            description: Fee per pool owner stake delegation
+                            description: Fee per pool owner stake delegation, zero if absent
                             type: integer
-                            minimum: 0
+                            minimum: 1
                       coefficient:
                         description: Fee per every input and output of transaction
                         type: integer

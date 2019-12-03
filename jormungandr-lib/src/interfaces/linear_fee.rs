@@ -9,11 +9,11 @@ use std::num::NonZeroU64;
     remote = "PerCertificateFee"
 )]
 pub struct PerCertificateFeeDef {
-    #[serde(default, skip_serializing_if = "is_none_or_zero")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub certificate_pool_registration: Option<NonZeroU64>,
-    #[serde(default, skip_serializing_if = "is_none_or_zero")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub certificate_stake_delegation: Option<NonZeroU64>,
-    #[serde(default, skip_serializing_if = "is_none_or_zero")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub certificate_owner_stake_delegation: Option<NonZeroU64>,
 }
 
@@ -35,8 +35,4 @@ pub(crate) fn per_certificate_fee_is_zero(fee: &PerCertificateFee) -> bool {
     fee.certificate_stake_delegation.is_none()
         && fee.certificate_owner_stake_delegation.is_none()
         && fee.certificate_pool_registration.is_none()
-}
-
-fn is_none_or_zero(opt_nz: &Option<NonZeroU64>) -> bool {
-    !opt_nz.map(|_| true).unwrap_or(false)
 }

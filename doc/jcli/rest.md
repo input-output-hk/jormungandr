@@ -267,7 +267,13 @@ fees:                                           # transaction fee configuration
   certificate: 4                                # fee per certificate
   coefficient: 1                                # fee per every input and output
   constant: 2                                   # fee per transaction
+  per_certificate_fees:                         # Fee per certificate operations, all zero if this object absent (optional)
+    certificate_pool_registration: 5            # Fee per pool registration, zero if absent (optional)
+    certificate_stake_delegation: 15            # Fee per stake delegation, zero if absent (optional)
+    certificate_owner_stake_delegation: 2       # Fee per pool owner stake delegation, zero if absent (optional)
 maxTxsPerBlock: 100                             # maximum number of transactions in block
+slotDuration: 5                                 # slot duration in seconds
+slotsPerEpoch: 720                              # number of slots per epoch
 ```
 
 ## Node shutdown
