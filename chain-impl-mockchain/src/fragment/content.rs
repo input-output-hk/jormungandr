@@ -56,6 +56,7 @@ impl Contents {
     }
 }
 
+#[derive(Clone)]
 pub struct ContentsBuilder {
     fragments: Vec<Fragment>,
 }
