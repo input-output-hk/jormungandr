@@ -113,6 +113,7 @@ pub struct StakePoolRegistration {
     ///
     /// If this value is set, instead of distributing the rewards to the owners
     /// the rewards will be distributed to this account.
+    #[structopt(long = "reward-account", name = "REWARD_ACCOUNT")]
     pub reward_account: Option<AccountIdentifier>,
 
     /// print the output signed certificate in the given file, if no file given
