@@ -238,6 +238,17 @@ mod tests {
         }
     }
 
+    #[test]
+    fn rewards_contribution_calculation_epoch_start_smaller_than_epoch() {
+        let mut params = Parameters::zero();
+        params.epoch_start = 1;
+        let epoch = 0;
+        assert_eq!(
+            rewards_contribution_calculation(epoch, &params),
+            Value::zero()
+        );
+    }
+
     impl Arbitrary for TaxType {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let fixed = Arbitrary::arbitrary(gen);
