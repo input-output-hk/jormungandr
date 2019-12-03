@@ -151,7 +151,7 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
             .insert_or_update(
                 identifier.clone(),
                 AccountState::new_reward(epoch, value, extra),
-                |st| st.add_value(value).map(Some),
+                |st| st.add_rewards(epoch, value).map(Some),
             )
             .map(Ledger)
     }
