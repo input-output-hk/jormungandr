@@ -35,7 +35,12 @@ pub struct LedgerStaticParameters {
 // parameters to validate ledger
 #[derive(Debug, Clone)]
 pub struct LedgerParameters {
+    /// Fees expected for transactions and certificates
     pub fees: LinearFee,
+    /// Tax cut of the treasury which is applied straight after the reward pot
+    /// is fully known
+    pub treasury_tax: rewards::TaxType,
+    /// Reward contribution parameters for this epoch
     pub reward_params: rewards::Parameters,
 }
 
@@ -355,40 +360,50 @@ impl Ledger {
             new_ledger.pots.treasury_add(fees)?
         }
 
+        // Take treasury cut
+        total_reward = {
+            let treasury_distr = rewards::tax_cut(total_reward, &ledger_params.treasury_tax)?;
+            new_ledger.pots.treasury_add(treasury_distr.taxed)?;
+            treasury_distr.after_tax
+        };
+
+        // distribute the rest to all leaders now
         let mut leaders_log = LeadersParticipationRecord::new();
         swap(&mut new_ledger.leaders_log, &mut leaders_log);
 
-        let total_blocks = leaders_log.total();
-        let reward_unit = total_reward.split_in(total_blocks);
+        if total_reward > Value::zero() {
+            let total_blocks = leaders_log.total();
+            let reward_unit = total_reward.split_in(total_blocks);
 
-        for (pool_id, pool_blocks) in leaders_log.iter() {
-            let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
+            for (pool_id, pool_blocks) in leaders_log.iter() {
+                let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
 
-            match (
-                new_ledger
-                    .delegation
-                    .stake_pool_get(&pool_id)
-                    .map(|reg| reg.clone()),
-                distribution.to_pools.get(pool_id),
-            ) {
-                (Ok(pool_reg), Some(pool_distribution)) => {
-                    new_ledger.distribute_poolid_rewards(
-                        epoch,
-                        &pool_reg,
-                        pool_total_reward,
-                        pool_distribution,
-                    )?;
-                }
-                _ => {
-                    // dump reward to treasury
-                    new_ledger.pots.treasury_add(pool_total_reward)?;
+                match (
+                    new_ledger
+                        .delegation
+                        .stake_pool_get(&pool_id)
+                        .map(|reg| reg.clone()),
+                    distribution.to_pools.get(pool_id),
+                ) {
+                    (Ok(pool_reg), Some(pool_distribution)) => {
+                        new_ledger.distribute_poolid_rewards(
+                            epoch,
+                            &pool_reg,
+                            pool_total_reward,
+                            pool_distribution,
+                        )?;
+                    }
+                    _ => {
+                        // dump reward to treasury
+                        new_ledger.pots.treasury_add(pool_total_reward)?;
+                    }
                 }
             }
-        }
 
-        if reward_unit.remaining > Value::zero() {
-            // if anything remaining, put it in treasury
-            new_ledger.pots.treasury_add(reward_unit.remaining)?;
+            if reward_unit.remaining > Value::zero() {
+                // if anything remaining, put it in treasury
+                new_ledger.pots.treasury_add(reward_unit.remaining)?;
+            }
         }
 
         Ok(new_ledger)
@@ -823,6 +838,10 @@ impl Ledger {
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,
+            treasury_tax: self
+                .settings
+                .treasury_params
+                .unwrap_or_else(|| rewards::TaxType::zero()),
             reward_params: self.settings.to_reward_params(),
         }
     }
@@ -1220,6 +1239,7 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             LedgerParameters {
                 fees: Arbitrary::arbitrary(g),
+                treasury_tax: Arbitrary::arbitrary(g),
                 reward_params: Arbitrary::arbitrary(g),
             }
         }
@@ -1665,6 +1685,7 @@ mod tests {
 
             let dyn_params = LedgerParameters {
                 fees: fees,
+                treasury_tax: rewards::TaxType::zero(),
                 reward_params: rewards::Parameters::zero(),
             };
             InternalApplyTransactionTestParams {
