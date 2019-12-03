@@ -137,7 +137,7 @@ impl LeadershipData {
                 let node_id = &genesis_praos_proof.node_id;
                 match (
                     stake_snapshot.get_stake_for(node_id),
-                    self.nodes.lookup(node_id),
+                    self.nodes.lookup_reg(node_id),
                 ) {
                     (Some(stake), Some(pool_info)) => {
                         // Calculate the total stake.

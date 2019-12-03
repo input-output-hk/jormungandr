@@ -2,17 +2,31 @@ use crate::certificate::{PoolId, PoolRegistration};
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
+use std::sync::Arc;
 
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Clone, PartialEq, Eq)]
 pub struct PoolsState {
-    pub(crate) stake_pools: Hamt<DefaultHasher, PoolId, PoolRegistration>,
+    pub(crate) stake_pools: Hamt<DefaultHasher, PoolId, PoolState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PoolError {
     AlreadyExists(PoolId),
     NotFound(PoolId),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoolState {
+    pub registration: Arc<PoolRegistration>,
+}
+
+impl PoolState {
+    pub fn new(reg: PoolRegistration) -> Self {
+        PoolState {
+            registration: Arc::new(reg),
+        }
+    }
 }
 
 impl Debug for PoolsState {
@@ -23,7 +37,7 @@ impl Debug for PoolsState {
             self.stake_pools
                 .iter()
                 .map(|(id, stake)| (id.clone(), stake.clone()))
-                .collect::<Vec<(PoolId, PoolRegistration)>>()
+                .collect::<Vec<(PoolId, PoolState)>>()
         )
     }
 }
@@ -54,8 +68,12 @@ impl PoolsState {
         }
     }
 
-    pub fn lookup(&self, id: &PoolId) -> Option<&PoolRegistration> {
+    pub fn lookup(&self, id: &PoolId) -> Option<&PoolState> {
         self.stake_pools.lookup(id)
+    }
+
+    pub fn lookup_reg(&self, id: &PoolId) -> Option<&PoolRegistration> {
+        self.stake_pools.lookup(id).map(|x| x.registration.as_ref())
     }
 
     pub fn stake_pool_ids<'a>(&'a self) -> impl Iterator<Item = PoolId> + 'a {
@@ -72,13 +90,14 @@ impl PoolsState {
         self.stake_pools
             .lookup(pool_id)
             .ok_or(PoolError::NotFound(pool_id.clone()))
+            .map(|s| s.registration.as_ref())
     }
 
     pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, PoolError> {
         let id = owner.to_id();
         let new_pools = self
             .stake_pools
-            .insert(id.clone(), owner)
+            .insert(id.clone(), PoolState::new(owner))
             .map_err(|_| PoolError::AlreadyExists(id))?;
         Ok(PoolsState {
             stake_pools: new_pools,
