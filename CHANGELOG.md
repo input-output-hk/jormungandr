@@ -1,5 +1,14 @@
 # Change Log
 
+## [v0.8.0-rc6](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc6) (2019-12-03)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc5...v0.8.0-rc6)
+
+**Fixed bugs:**
+
+- Neither delegatee nor delegator are getting rewards - 0.8.0-rc5 [\#1271](https://github.com/input-output-hk/jormungandr/issues/1271)
+- update chain deps to include fixes on the delegation [\#1272](https://github.com/input-output-hk/jormungandr/pull/1272)
+
 ## [v0.8.0-rc5](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc5) (2019-12-03)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc4...v0.8.0-rc5)
