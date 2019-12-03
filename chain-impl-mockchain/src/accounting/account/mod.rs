@@ -4,6 +4,7 @@
 //! which contains a non negative value representing your balance with the
 //! identifier of this account as key.
 
+use crate::header::Epoch;
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
@@ -133,6 +134,25 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
             .insert_or_update(identifier.clone(), AccountState::new(value, extra), |st| {
                 st.add_value(value).map(Some)
             })
+            .map(Ledger)
+    }
+
+    /// Add rewards to an existing account.
+    ///
+    /// If the account doesn't exist, it creates it with the value
+    pub fn add_rewards_to_account(
+        &self,
+        identifier: &ID,
+        epoch: Epoch,
+        value: Value,
+        extra: Extra,
+    ) -> Result<Self, ValueError> {
+        self.0
+            .insert_or_update(
+                identifier.clone(),
+                AccountState::new_reward(epoch, value, extra),
+                |st| st.add_value(value).map(Some),
+            )
             .map(Ledger)
     }
 

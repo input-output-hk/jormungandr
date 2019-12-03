@@ -7,7 +7,7 @@ use crate::block::{ConsensusVersion, LeadersParticipationRecord};
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
-use crate::header::{BlockDate, ChainLength, HeaderContentEvalContext, HeaderId};
+use crate::header::{BlockDate, ChainLength, Epoch, HeaderContentEvalContext, HeaderId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::rewards;
 use crate::stake::{PercentStake, PoolError, PoolStakeInformation, PoolsState, StakeDistribution};
@@ -17,7 +17,8 @@ use crate::value::*;
 use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_crypto::Verification;
-use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
+use chain_time::Epoch as TimeEpoch;
+use chain_time::{SlotDuration, TimeEra, TimeFrame, Timeline};
 use std::mem::swap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -245,7 +246,7 @@ impl Ledger {
             let tf = TimeFrame::new(timeline, SlotDuration::from_secs(slot_duration as u32));
             let slot0 = tf.slot0();
 
-            let era = TimeEra::new(slot0, Epoch(0), slots_per_epoch);
+            let era = TimeEra::new(slot0, TimeEpoch(0), slots_per_epoch);
 
             let settings = setting::Settings::new().apply(&regular_ents)?;
 
@@ -338,10 +339,10 @@ impl Ledger {
         // grab the total contribution in the system
         // with all the stake pools and start rewarding them
 
-        let expected_epoch_reward = rewards::rewards_contribution_calculation(
-            new_ledger.date.epoch + 1,
-            &ledger_params.reward_params,
-        );
+        let epoch = new_ledger.date.epoch + 1;
+
+        let expected_epoch_reward =
+            rewards::rewards_contribution_calculation(epoch, &ledger_params.reward_params);
 
         let mut total_reward = new_ledger.pots.draw_reward(expected_epoch_reward);
 
@@ -372,6 +373,7 @@ impl Ledger {
             ) {
                 (Ok(pool_reg), Some(pool_distribution)) => {
                     new_ledger.distribute_poolid_rewards(
+                        epoch,
                         &pool_reg,
                         pool_total_reward,
                         pool_distribution,
@@ -394,6 +396,7 @@ impl Ledger {
 
     fn distribute_poolid_rewards(
         &mut self,
+        epoch: Epoch,
         reg: &certificate::PoolRegistration,
         total_reward: Value,
         distribution: &PoolStakeInformation,
@@ -404,19 +407,33 @@ impl Ledger {
         match &reg.reward_account {
             Some(reward_account) => match reward_account {
                 AccountIdentifier::Single(single_account) => {
-                    self.add_value_or_create_account(&single_account, distr.taxed)?;
+                    self.accounts.add_rewards_to_account(
+                        &single_account,
+                        epoch,
+                        distr.taxed,
+                        (),
+                    )?;
                 }
                 AccountIdentifier::Multi(_multi_account) => unimplemented!(),
             },
             None => {
                 let splitted = distr.taxed.split_in(reg.owners.len() as u32);
                 for owner in &reg.owners {
-                    self.add_value_or_create_account(&owner.clone().into(), splitted.parts)?;
+                    self.accounts.add_rewards_to_account(
+                        &owner.clone().into(),
+                        epoch,
+                        splitted.parts,
+                        (),
+                    )?;
                 }
                 // pool owners 0 get potentially an extra sweetener of value 1 to #owners - 1
                 if splitted.remaining > Value::zero() {
-                    self.accounts
-                        .add_value(&reg.owners[0].clone().into(), splitted.remaining)?;
+                    self.accounts.add_rewards_to_account(
+                        &reg.owners[0].clone().into(),
+                        epoch,
+                        splitted.remaining,
+                        (),
+                    )?;
                 }
             }
         }
@@ -427,7 +444,7 @@ impl Ledger {
             let ps = PercentStake::new(*stake, distribution.total.total_stake);
             let r = ps.scale_value(distr.after_tax);
             leftover_reward = (leftover_reward - r).unwrap();
-            self.add_value_or_create_account(account, r)?;
+            self.accounts.add_rewards_to_account(account, 0, r, ())?;
         }
 
         if leftover_reward > Value::zero() {
@@ -1610,7 +1627,7 @@ mod tests {
         let tf0 = TimeFrame::new(t0, f0);
         let t1 = now + Duration::from_secs(10);
         let slot1 = tf0.slot_at(&t1).unwrap();
-        TimeEra::new(slot1, Epoch(2), 4)
+        TimeEra::new(slot1, TimeEpoch(2), 4)
     }
 
     fn should_expect_success(

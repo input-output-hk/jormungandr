@@ -1,4 +1,5 @@
 use crate::certificate::PoolId;
+use crate::header::Epoch;
 use crate::value::*;
 use imhamt::HamtIter;
 
@@ -95,6 +96,12 @@ impl<Extra> AccountState<Extra> {
         }
     }
 
+    pub fn new_reward(epoch: Epoch, v: Value, extra: Extra) -> Self {
+        let mut st = Self::new(v, extra);
+        st.last_rewards.add_for(epoch, v);
+        st
+    }
+
     /// Get referencet to delegation setting
     pub fn delegation(&self) -> &DelegationType {
         &self.delegation
@@ -130,6 +137,15 @@ impl<Extra: Clone> AccountState<Extra> {
         let new_value = (self.value + v)?;
         let mut st = self.clone();
         st.value = new_value;
+        Ok(st)
+    }
+
+    /// Add Rewards to the account value but also as the last_reward
+    pub fn add_rewards(&self, e: Epoch, v: Value) -> Result<Self, ValueError> {
+        let new_value = (self.value + v)?;
+        let mut st = self.clone();
+        st.value = new_value;
+        st.last_rewards.add_for(e, v);
         Ok(st)
     }
 
