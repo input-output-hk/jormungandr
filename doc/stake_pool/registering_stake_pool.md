@@ -67,6 +67,9 @@ Before distributing the `10_000` among the delegators, `SP` will take its **Tax*
    then we stop there, there is no more rewards to distribute.
 2. with what remains the `SP` extracts its `tax-ratio` and checks the total **tax** is not
    greater than `tax-limit`: if it is the total tax will be `tax-limit`.
+3. the total `SP` rewards will then be distributed equally to the owners (O1 and O2).
+   Note that if the `--reward-account` is set, the rewards for `SP` are then distributed
+   to that account and nothing to `O1` and `O2`.
 
 For example:
 
