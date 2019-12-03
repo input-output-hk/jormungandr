@@ -21,8 +21,8 @@ impl Diagnostic {
         #[cfg(unix)]
         {
             Ok(Self {
-                open_files_limit: Some(getrlimit(libc::RLIMIT_NOFILE)?),
-                cpu_usage_limit: Some(getrlimit(libc::RLIMIT_CPU)?),
+                open_files_limit: Some(getrlimit(RlimitResource::NoFile)?),
+                cpu_usage_limit: Some(getrlimit(RlimitResource::CPU)?),
             })
         }
         #[cfg(not(unix))]
@@ -54,11 +54,11 @@ impl Display for Diagnostic {
     }
 }
 
-#[cfg(target_os = "macos")]
-type RlimitResource = i32;
-
-#[cfg(all(unix, not(target_os = "macos")))]
-type RlimitResource = u32;
+#[cfg(unix)]
+enum RlimitResource {
+    NoFile,
+    CPU,
+}
 
 #[cfg(unix)]
 fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
@@ -69,8 +69,13 @@ fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
         rlim_max: 0,
     };
 
+    let resource = match resource {
+        RlimitResource::NoFile => libc::RLIMIT_NOFILE,
+        RlimitResource::CPU => libc::RLIMIT_CPU,
+    };
+
     let retcode = unsafe { libc::getrlimit(resource, &mut limits as *mut rlimit) };
     nix::errno::Errno::result(retcode).map_err(DiagnosticError::UnixError)?;
 
-    Ok(limits.rlim_cur)
+    Ok(limits.rlim_cur.into())
 }
