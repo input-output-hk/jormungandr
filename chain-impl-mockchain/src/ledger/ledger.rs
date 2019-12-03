@@ -434,7 +434,7 @@ impl Ledger {
         match &reg.reward_account {
             Some(reward_account) => match reward_account {
                 AccountIdentifier::Single(single_account) => {
-                    self.accounts.add_rewards_to_account(
+                    self.accounts = self.accounts.add_rewards_to_account(
                         &single_account,
                         epoch,
                         distr.taxed,
@@ -446,7 +446,7 @@ impl Ledger {
             None => {
                 let splitted = distr.taxed.split_in(reg.owners.len() as u32);
                 for owner in &reg.owners {
-                    self.accounts.add_rewards_to_account(
+                    self.accounts = self.accounts.add_rewards_to_account(
                         &owner.clone().into(),
                         epoch,
                         splitted.parts,
@@ -455,7 +455,7 @@ impl Ledger {
                 }
                 // pool owners 0 get potentially an extra sweetener of value 1 to #owners - 1
                 if splitted.remaining > Value::zero() {
-                    self.accounts.add_rewards_to_account(
+                    self.accounts = self.accounts.add_rewards_to_account(
                         &reg.owners[0].clone().into(),
                         epoch,
                         splitted.remaining,
@@ -471,7 +471,9 @@ impl Ledger {
             let ps = PercentStake::new(*stake, distribution.total.total_stake);
             let r = ps.scale_value(distr.after_tax);
             leftover_reward = (leftover_reward - r).unwrap();
-            self.accounts.add_rewards_to_account(account, 0, r, ())?;
+            self.accounts = self
+                .accounts
+                .add_rewards_to_account(account, epoch, r, ())?;
         }
 
         if leftover_reward > Value::zero() {
