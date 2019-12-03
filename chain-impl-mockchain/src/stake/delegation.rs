@@ -1,18 +1,53 @@
 use crate::certificate::{PoolId, PoolRegistration};
+use crate::header::Epoch;
+use crate::value::Value;
 use imhamt::Hamt;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
+use std::sync::Arc;
 
 /// A structure that keeps track of stake keys and stake pools.
 #[derive(Clone, PartialEq, Eq)]
 pub struct PoolsState {
-    pub(crate) stake_pools: Hamt<DefaultHasher, PoolId, PoolRegistration>,
+    pub(crate) stake_pools: Hamt<DefaultHasher, PoolId, PoolState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PoolError {
     AlreadyExists(PoolId),
     NotFound(PoolId),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoolLastRewards {
+    pub epoch: Epoch,
+    pub value_taxed: Value,
+    pub value_for_stakers: Value,
+}
+
+impl PoolLastRewards {
+    pub fn default() -> Self {
+        PoolLastRewards {
+            epoch: 0,
+            value_taxed: Value::zero(),
+            value_for_stakers: Value::zero(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PoolState {
+    pub last_rewards: PoolLastRewards,
+    pub registration: Arc<PoolRegistration>,
+}
+
+impl PoolState {
+    pub fn new(reg: PoolRegistration) -> Self {
+        PoolState {
+            last_rewards: PoolLastRewards::default(),
+            registration: Arc::new(reg),
+        }
+    }
 }
 
 impl Debug for PoolsState {
@@ -23,7 +58,7 @@ impl Debug for PoolsState {
             self.stake_pools
                 .iter()
                 .map(|(id, stake)| (id.clone(), stake.clone()))
-                .collect::<Vec<(PoolId, PoolRegistration)>>()
+                .collect::<Vec<(PoolId, PoolState)>>()
         )
     }
 }
@@ -54,8 +89,12 @@ impl PoolsState {
         }
     }
 
-    pub fn lookup(&self, id: &PoolId) -> Option<&PoolRegistration> {
+    pub fn lookup(&self, id: &PoolId) -> Option<&PoolState> {
         self.stake_pools.lookup(id)
+    }
+
+    pub fn lookup_reg(&self, id: &PoolId) -> Option<&PoolRegistration> {
+        self.stake_pools.lookup(id).map(|x| x.registration.as_ref())
     }
 
     pub fn stake_pool_ids<'a>(&'a self) -> impl Iterator<Item = PoolId> + 'a {
@@ -72,13 +111,37 @@ impl PoolsState {
         self.stake_pools
             .lookup(pool_id)
             .ok_or(PoolError::NotFound(pool_id.clone()))
+            .map(|s| s.registration.as_ref())
+    }
+
+    pub fn stake_pool_set_rewards(
+        &mut self,
+        pool_id: &PoolId,
+        epoch: Epoch,
+        value_taxed: Value,
+        value_for_stakers: Value,
+    ) -> Result<(), PoolError> {
+        let rw = PoolLastRewards {
+            epoch,
+            value_taxed,
+            value_for_stakers,
+        };
+        self.stake_pools = self
+            .stake_pools
+            .replace_with(pool_id, |st| {
+                let mut st = st.clone();
+                st.last_rewards = rw;
+                st
+            })
+            .map_err(|_| PoolError::NotFound(pool_id.clone()))?;
+        Ok(())
     }
 
     pub fn register_stake_pool(&self, owner: PoolRegistration) -> Result<Self, PoolError> {
         let id = owner.to_id();
         let new_pools = self
             .stake_pools
-            .insert(id.clone(), owner)
+            .insert(id.clone(), PoolState::new(owner))
             .map_err(|_| PoolError::AlreadyExists(id))?;
         Ok(PoolsState {
             stake_pools: new_pools,

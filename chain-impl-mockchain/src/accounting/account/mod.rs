@@ -4,14 +4,17 @@
 //! which contains a non negative value representing your balance with the
 //! identifier of this account as key.
 
+use crate::header::Epoch;
 use crate::value::*;
 use imhamt::{Hamt, InsertError, UpdateError};
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
 use std::hash::Hash;
 pub mod account_state;
+pub mod last_rewards;
 
 pub use account_state::*;
+pub use last_rewards::LastRewards;
 
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
@@ -134,6 +137,25 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> Ledger<ID, Extra> {
             .map(Ledger)
     }
 
+    /// Add rewards to an existing account.
+    ///
+    /// If the account doesn't exist, it creates it with the value
+    pub fn add_rewards_to_account(
+        &self,
+        identifier: &ID,
+        epoch: Epoch,
+        value: Value,
+        extra: Extra,
+    ) -> Result<Self, ValueError> {
+        self.0
+            .insert_or_update(
+                identifier.clone(),
+                AccountState::new_reward(epoch, value, extra),
+                |st| st.add_value(value).map(Some),
+            )
+            .map(Ledger)
+    }
+
     /// Subtract value to an existing account.
     ///
     /// If the account doesn't exist, or that the value would become negative, errors out.
@@ -190,9 +212,9 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountSt
 #[cfg(test)]
 mod tests {
 
+    use super::*;
     use crate::{
         account::{Identifier, Ledger},
-        accounting::account::account_state::{AccountState, DelegationType, SpendingCounter},
         certificate::{PoolId, PoolRegistration},
         testing::{arbitrary::utils as arbitrary_utils, arbitrary::AverageValue},
         value::Value,
@@ -338,6 +360,7 @@ mod tests {
             Ok(account_state) => {
                 let expected_account_state = AccountState {
                     counter: SpendingCounter::zero(),
+                    last_rewards: LastRewards::default(),
                     delegation: DelegationType::Full(stake_pool_id),
                     value: Value(value.0 * 2),
                     extra: (),

@@ -39,12 +39,7 @@ pub enum Entry<'a> {
             &'a crate::multisig::Declaration,
         ),
     ),
-    StakePool(
-        (
-            &'a crate::certificate::PoolId,
-            &'a crate::certificate::PoolRegistration,
-        ),
-    ),
+    StakePool((&'a crate::certificate::PoolId, &'a crate::stake::PoolState)),
     LeaderParticipation((&'a crate::certificate::PoolId, &'a u32)),
 }
 
@@ -72,9 +67,7 @@ enum IterState<'a> {
     MultisigDeclarations(
         imhamt::HamtIter<'a, crate::multisig::Identifier, crate::multisig::Declaration>,
     ),
-    StakePools(
-        imhamt::HamtIter<'a, crate::certificate::PoolId, crate::certificate::PoolRegistration>,
-    ),
+    StakePools(imhamt::HamtIter<'a, crate::certificate::PoolId, crate::stake::PoolState>),
     Pots(pots::Entries<'a>),
     LeaderParticipations(imhamt::HamtIter<'a, crate::certificate::PoolId, u32>),
     Done,
@@ -341,7 +334,8 @@ mod tests {
                         decl.total(),
                     );
                 }
-                Entry::StakePool((id, info)) => {
+                Entry::StakePool((id, state)) => {
+                    let info = state.registration.as_ref();
                     println!(
                         "StakePool {} {} {:?} {:?}",
                         id, info.serial, info.owners, info.keys,

@@ -176,7 +176,7 @@ impl Settings {
     }
 
     pub fn to_reward_params(&self) -> rewards::Parameters {
-        let mut p = match self.reward_params {
+        match self.reward_params {
             None => rewards::Parameters::zero(),
             Some(RewardParams::Halving {
                 constant,
@@ -184,7 +184,6 @@ impl Settings {
                 epoch_start,
                 epoch_rate,
             }) => rewards::Parameters {
-                treasury_tax: rewards::TaxType::zero(),
                 initial_value: constant,
                 compounding_ratio: ratio,
                 compounding_type: rewards::CompoundingType::Halvening,
@@ -197,18 +196,13 @@ impl Settings {
                 epoch_start,
                 epoch_rate,
             }) => rewards::Parameters {
-                treasury_tax: rewards::TaxType::zero(),
                 initial_value: constant,
                 compounding_ratio: ratio,
                 compounding_type: rewards::CompoundingType::Linear,
                 epoch_start,
                 epoch_rate,
             },
-        };
-        p.treasury_tax = self
-            .treasury_params
-            .unwrap_or_else(|| rewards::TaxType::zero());
-        p
+        }
     }
 }
 

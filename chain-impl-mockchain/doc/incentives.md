@@ -140,53 +140,67 @@ to the total fees collected so far at each block application.
 Once the reward pot is composed, the treasury takes a cut on the total,
 and then each pool get reward related by their stake in the system
 
-    UPSCALE(x) = x * 10^9
-    DOWNSCALE(x) = x / 10^9
+```javascript
+UPSCALE(x) = x * 10^9
+DOWNSCALE(x) = x / 10^9
 
-    treasury_contribution = TREASURY_CONTRIBUTION(reward_total)
-    pool_contribution = reward_total - treasury_contribution
+treasury_contribution = TREASURY_CONTRIBUTION(reward_total)
+pools_contribution = reward_total - treasury_contribution
+TREASURY += treasury_contribution
 
-    TREASURY += treasury_contribution
+unit_reward = UPSCALE(pools_contribution) / #blocks_epoch
 
-    unit_reward = UPSCALE(pool_contribution) / #blocks_epoch
-    remaining = UPSCALE(pool_contribution) % #blocks_epoch
-
-    for each pool
-        pool.account = DOWNSCALE(unit_reward * #pool.blocks_created)
+for pool in pools
+    pool_reward = DOWNSCALE(unit_reward * #pool.blocks_created)
+    pools_contribution -= pool_reward
+    DISTRIBUTE_TO(pool, pool_reward)
+TREASURY += pools_contribution
+```
     
 Any non null amount could be arbitrarily gifted further to the treasury, or
 could be considered a bootstrap contribution toward the next epoch reward pot.
 
 ### Pool distribution
 
-For each pool, we split each `pool.account` into a owner part and the stake reward part. Further:
+For each pool, we split each `pool_reward` into a owner part and the stake
+reward part. Further:
 
-    UPSCALE_STAKE(x) = x * 10^18
-    DOWNSCALE_STAKE(x) = x / 10^18
+```javascript
+UPSCALE_STAKE(x) = x * 10^18
+DOWNSCALE_STAKE(x) = x / 10^18
 
-    UPSCALE_OWNER(x) = x * 10^9
-    DOWNSCALE_OWNER(x) = x / 10^9
+UPSCALE_OWNER(x) = x * 10^9
+DOWNSCALE_OWNER(x) = x / 10^9
 
-    owners_contribution += OWNER_CONTRIBUTION(pool.account)
-    stake_contribution = pool.account - owner_contribution
+owners_contribution = OWNER_CONTRIBUTION(pool_reward)
 
-    stake_unit_reward = UPSCALE_STAKE(stake_contribution) / pool.stake
-    stake_remainder = UPSCALE_STAKE(stake_contribution) % pool.stake
+if pool.reward_account
+    pool.reward_account = owner_contribution
+else
+    owner_unit_reward = owner_contribution / pool.owners
+    owner_remainder = owner_contribution % pool.owners
 
-    owner_unit_reward = UPSCALE_OWNER(owner_contribution) / pool.owners
-    owner_remainder = UPSCALE_OWNER(owner_contribution) % pool.owners
-
-    for each owner
+    for owner in owners
         owner.account += owner_unit_reward
-    owner[BLOCK_DEPTH % #owners].account += owner_remainder
-    for each contributor
-        contributor.account += (contributor.stake * stake_unit_reward)
-    contributor.
+    owners[0].account += owner_remainder
+
+stakers_contribution = pool_reward - owner_contribution
+
+staker_unit_reward = UPSCALE_STAKE(stakers_contribution) / pool.stake
+
+for each contributor
+    contributor_reward = DOWNSCALE_STAKE(contributor.stake * staker_unit_reward)
+    contributor.account += contributor_reward
+    stakers_contribution -= contributor_reward
+TREASURY += stakers_contribution 
+```
 
 Note: The stake scaling is stronger here as the precision required is also more
 important here and the values can be much smaller than the previous algorithm.
 
-Note: We rewards an arbitrary owner of the pool with the 
+Note: We rewards the first owner of the pool with the division remainder.
+
+Note: The treasury gets all reward what doesn't get assigned
 
 ## General implementation details
 

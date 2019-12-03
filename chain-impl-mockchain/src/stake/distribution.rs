@@ -115,19 +115,18 @@ fn assign_account_value(
                 let sin = value.split_in(dr.parts() as u32);
                 let mut r = sin.remaining;
                 for (pool_id, ratio) in dr.pools().iter() {
+                    let pool_value = sin.parts.scale(*ratio as u32);
                     match sd.to_pools.get_mut(pool_id) {
-                        None => sd.dangling += value,
+                        None => sd.dangling += pool_value,
                         Some(pool_info) => {
-                            let pool_value = sin.parts.scale(*ratio as u32);
-                            let pool_value = pool_value + r;
+                            pool_info.add_value(&account_identifier, pool_value + r);
                             r = Stake::zero();
-                            pool_info.add_value(&account_identifier, pool_value);
                         }
                     }
-                    // if r is not zero already, then we fail to assign it to anything, so just considered it dangling
-                    if r > Stake::zero() {
-                        sd.dangling += value
-                    }
+                }
+                // if r is not zero already, then we failed to assign it to anything, so just consider it as dangling
+                if r > Stake::zero() {
+                    sd.dangling += r
                 }
             } else {
                 sd.unassigned += value
@@ -622,11 +621,6 @@ mod tests {
             &delegation_type,
             stake,
         );
-        //assertion should be replaced after fix:
-        //assert_eq!(stake_distribution.dangling,stake);
-        assert_eq!(
-            stake_distribution.dangling,
-            Stake::from_value(Value(value.0 * 2u64 * parts.len() as u64))
-        );
+        assert_eq!(stake_distribution.dangling, stake);
     }
 }

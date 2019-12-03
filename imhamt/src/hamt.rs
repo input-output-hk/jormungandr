@@ -1,7 +1,7 @@
 use super::hash::{Hash, HashedKey, Hasher};
 use super::node::{
-    insert_rec, lookup_one, remove_eq_rec, remove_rec, replace_rec, size_rec, update_rec, Entry,
-    LookupRet, Node, NodeIter,
+    insert_rec, lookup_one, remove_eq_rec, remove_rec, replace_rec, replace_with_rec, size_rec,
+    update_rec, Entry, LookupRet, Node, NodeIter,
 };
 pub use super::operation::{InsertError, RemoveError, ReplaceError, UpdateError};
 use std::iter::FromIterator;
@@ -89,6 +89,20 @@ impl<H: Hasher + Default, K: Eq + Hash + Clone, V: Clone> Hamt<H, K, V> {
             },
             oldv,
         ))
+    }
+
+    /// Replace the element at the key by the v and return the new tree
+    /// and the old value.
+    pub fn replace_with<F>(&self, k: &K, f: F) -> Result<Self, ReplaceError>
+    where
+        F: FnOnce(&V) -> V,
+    {
+        let h = HashedKey::compute(self.hasher, &k);
+        let newroot = replace_with_rec(&self.root, h, 0, k, f)?;
+        Ok(Hamt {
+            root: newroot,
+            hasher: PhantomData,
+        })
     }
 }
 

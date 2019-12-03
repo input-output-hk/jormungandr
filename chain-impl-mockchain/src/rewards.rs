@@ -87,10 +87,6 @@ impl TaxType {
 /// * Treasury cuts
 #[derive(Debug, Clone)]
 pub struct Parameters {
-    /// Tax cut of the treasury which is applied straight after the reward pot
-    /// is fully known
-    pub(crate) treasury_tax: TaxType,
-
     /// This is an initial_value for the linear or halvening function.
     /// In the case of the linear function it is the value that is going to be calculated
     /// from the contribution.
@@ -109,7 +105,6 @@ pub struct Parameters {
 impl Parameters {
     pub fn zero() -> Self {
         Parameters {
-            treasury_tax: TaxType::zero(),
             initial_value: 0,
             compounding_ratio: Ratio::zero(),
             compounding_type: CompoundingType::Linear,

@@ -4,10 +4,11 @@
 use super::check::{self, TxVerifyError};
 use super::pots::Pots;
 use crate::block::{ConsensusVersion, LeadersParticipationRecord};
+use crate::certificate::PoolId;
 use crate::config::{self, ConfigParam};
 use crate::fee::{FeeAlgorithm, LinearFee};
 use crate::fragment::{Fragment, FragmentId};
-use crate::header::{BlockDate, ChainLength, HeaderContentEvalContext, HeaderId};
+use crate::header::{BlockDate, ChainLength, Epoch, HeaderContentEvalContext, HeaderId};
 use crate::leadership::genesis::ActiveSlotsCoeffError;
 use crate::rewards;
 use crate::stake::{PercentStake, PoolError, PoolStakeInformation, PoolsState, StakeDistribution};
@@ -17,7 +18,8 @@ use crate::value::*;
 use crate::{account, certificate, legacy, multisig, setting, stake, update, utxo};
 use chain_addr::{Address, Discrimination, Kind};
 use chain_crypto::Verification;
-use chain_time::{Epoch, SlotDuration, TimeEra, TimeFrame, Timeline};
+use chain_time::Epoch as TimeEpoch;
+use chain_time::{SlotDuration, TimeEra, TimeFrame, Timeline};
 use std::mem::swap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
@@ -34,7 +36,12 @@ pub struct LedgerStaticParameters {
 // parameters to validate ledger
 #[derive(Debug, Clone)]
 pub struct LedgerParameters {
+    /// Fees expected for transactions and certificates
     pub fees: LinearFee,
+    /// Tax cut of the treasury which is applied straight after the reward pot
+    /// is fully known
+    pub treasury_tax: rewards::TaxType,
+    /// Reward contribution parameters for this epoch
     pub reward_params: rewards::Parameters,
 }
 
@@ -245,7 +252,7 @@ impl Ledger {
             let tf = TimeFrame::new(timeline, SlotDuration::from_secs(slot_duration as u32));
             let slot0 = tf.slot0();
 
-            let era = TimeEra::new(slot0, Epoch(0), slots_per_epoch);
+            let era = TimeEra::new(slot0, TimeEpoch(0), slots_per_epoch);
 
             let settings = setting::Settings::new().apply(&regular_ents)?;
 
@@ -338,10 +345,10 @@ impl Ledger {
         // grab the total contribution in the system
         // with all the stake pools and start rewarding them
 
-        let expected_epoch_reward = rewards::rewards_contribution_calculation(
-            new_ledger.date.epoch + 1,
-            &ledger_params.reward_params,
-        );
+        let epoch = new_ledger.date.epoch + 1;
+
+        let expected_epoch_reward =
+            rewards::rewards_contribution_calculation(epoch, &ledger_params.reward_params);
 
         let mut total_reward = new_ledger.pots.draw_reward(expected_epoch_reward);
 
@@ -354,39 +361,51 @@ impl Ledger {
             new_ledger.pots.treasury_add(fees)?
         }
 
+        // Take treasury cut
+        total_reward = {
+            let treasury_distr = rewards::tax_cut(total_reward, &ledger_params.treasury_tax)?;
+            new_ledger.pots.treasury_add(treasury_distr.taxed)?;
+            treasury_distr.after_tax
+        };
+
+        // distribute the rest to all leaders now
         let mut leaders_log = LeadersParticipationRecord::new();
         swap(&mut new_ledger.leaders_log, &mut leaders_log);
 
-        let total_blocks = leaders_log.total();
-        let reward_unit = total_reward.split_in(total_blocks);
+        if total_reward > Value::zero() {
+            let total_blocks = leaders_log.total();
+            let reward_unit = total_reward.split_in(total_blocks);
 
-        for (pool_id, pool_blocks) in leaders_log.iter() {
-            let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
+            for (pool_id, pool_blocks) in leaders_log.iter() {
+                let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
 
-            match (
-                new_ledger
-                    .delegation
-                    .stake_pool_get(&pool_id)
-                    .map(|reg| reg.clone()),
-                distribution.to_pools.get(pool_id),
-            ) {
-                (Ok(pool_reg), Some(pool_distribution)) => {
-                    new_ledger.distribute_poolid_rewards(
-                        &pool_reg,
-                        pool_total_reward,
-                        pool_distribution,
-                    )?;
-                }
-                _ => {
-                    // dump reward to treasury
-                    new_ledger.pots.treasury_add(pool_total_reward)?;
+                match (
+                    new_ledger
+                        .delegation
+                        .stake_pool_get(&pool_id)
+                        .map(|reg| reg.clone()),
+                    distribution.to_pools.get(pool_id),
+                ) {
+                    (Ok(pool_reg), Some(pool_distribution)) => {
+                        new_ledger.distribute_poolid_rewards(
+                            epoch,
+                            &pool_id,
+                            &pool_reg,
+                            pool_total_reward,
+                            pool_distribution,
+                        )?;
+                    }
+                    _ => {
+                        // dump reward to treasury
+                        new_ledger.pots.treasury_add(pool_total_reward)?;
+                    }
                 }
             }
-        }
 
-        if reward_unit.remaining > Value::zero() {
-            // if anything remaining, put it in treasury
-            new_ledger.pots.treasury_add(reward_unit.remaining)?;
+            if reward_unit.remaining > Value::zero() {
+                // if anything remaining, put it in treasury
+                new_ledger.pots.treasury_add(reward_unit.remaining)?;
+            }
         }
 
         Ok(new_ledger)
@@ -394,29 +413,48 @@ impl Ledger {
 
     fn distribute_poolid_rewards(
         &mut self,
+        epoch: Epoch,
+        pool_id: &PoolId,
         reg: &certificate::PoolRegistration,
         total_reward: Value,
         distribution: &PoolStakeInformation,
     ) -> Result<(), Error> {
         let distr = rewards::tax_cut(total_reward, &reg.rewards).unwrap();
 
+        self.delegation
+            .stake_pool_set_rewards(pool_id, epoch, distr.taxed, distr.after_tax)?;
+
         // distribute to pool owners (or the reward account)
         match &reg.reward_account {
             Some(reward_account) => match reward_account {
                 AccountIdentifier::Single(single_account) => {
-                    self.add_value_or_create_account(&single_account, distr.taxed)?;
+                    self.accounts.add_rewards_to_account(
+                        &single_account,
+                        epoch,
+                        distr.taxed,
+                        (),
+                    )?;
                 }
                 AccountIdentifier::Multi(_multi_account) => unimplemented!(),
             },
             None => {
                 let splitted = distr.taxed.split_in(reg.owners.len() as u32);
                 for owner in &reg.owners {
-                    self.add_value_or_create_account(&owner.clone().into(), splitted.parts)?;
+                    self.accounts.add_rewards_to_account(
+                        &owner.clone().into(),
+                        epoch,
+                        splitted.parts,
+                        (),
+                    )?;
                 }
                 // pool owners 0 get potentially an extra sweetener of value 1 to #owners - 1
                 if splitted.remaining > Value::zero() {
-                    self.accounts
-                        .add_value(&reg.owners[0].clone().into(), splitted.remaining)?;
+                    self.accounts.add_rewards_to_account(
+                        &reg.owners[0].clone().into(),
+                        epoch,
+                        splitted.remaining,
+                        (),
+                    )?;
                 }
             }
         }
@@ -427,7 +465,7 @@ impl Ledger {
             let ps = PercentStake::new(*stake, distribution.total.total_stake);
             let r = ps.scale_value(distr.after_tax);
             leftover_reward = (leftover_reward - r).unwrap();
-            self.add_value_or_create_account(account, r)?;
+            self.accounts.add_rewards_to_account(account, 0, r, ())?;
         }
 
         if leftover_reward > Value::zero() {
@@ -806,6 +844,10 @@ impl Ledger {
     pub fn get_ledger_parameters(&self) -> LedgerParameters {
         LedgerParameters {
             fees: *self.settings.linear_fees,
+            treasury_tax: self
+                .settings
+                .treasury_params
+                .unwrap_or_else(|| rewards::TaxType::zero()),
             reward_params: self.settings.to_reward_params(),
         }
     }
@@ -1157,7 +1199,7 @@ mod tests {
     use super::*;
     use crate::{
         account::{Identifier, SpendingCounter},
-        accounting::account::{account_state::AccountState, DelegationType},
+        accounting::account::account_state::AccountState,
         fee::LinearFee,
         key::Hash,
         multisig,
@@ -1203,6 +1245,7 @@ mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             LedgerParameters {
                 fees: Arbitrary::arbitrary(g),
+                treasury_tax: Arbitrary::arbitrary(g),
                 reward_params: Arbitrary::arbitrary(g),
             }
         }
@@ -1610,7 +1653,7 @@ mod tests {
         let tf0 = TimeFrame::new(t0, f0);
         let t1 = now + Duration::from_secs(10);
         let slot1 = tf0.slot_at(&t1).unwrap();
-        TimeEra::new(slot1, Epoch(2), 4)
+        TimeEra::new(slot1, TimeEpoch(2), 4)
     }
 
     fn should_expect_success(
@@ -1648,6 +1691,7 @@ mod tests {
 
             let dyn_params = LedgerParameters {
                 fees: fees,
+                treasury_tax: rewards::TaxType::zero(),
                 reward_params: rewards::Parameters::zero(),
             };
             InternalApplyTransactionTestParams {
@@ -1666,13 +1710,7 @@ mod tests {
         }
 
         pub fn expected_account_with_value(&self, value: Value) -> AccountState<()> {
-            let account_state = AccountState {
-                counter: 0.into(),
-                delegation: DelegationType::NonDelegated,
-                value: value,
-                extra: (),
-            };
-            account_state
+            AccountState::new(value, ())
         }
 
         pub fn expected_utxo_entry<'a>(
