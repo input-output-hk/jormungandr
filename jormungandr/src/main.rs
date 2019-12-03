@@ -236,8 +236,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 channels,
             };
             network::start(info, params)
-                // FIXME: more graceful error reporting
-                .map_err(|e| panic!(e))
         });
     }
 
