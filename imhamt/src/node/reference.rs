@@ -118,6 +118,22 @@ impl<K: Clone + PartialEq, V: Clone> Collision<K, V> {
         ));
         Ok((newcol, oldv.clone()))
     }
+
+    pub fn replace_with<F>(&self, k: &K, f: F) -> Result<Self, ReplaceError>
+    where
+        F: FnOnce(&V) -> V,
+    {
+        let (pos, (_, oldv)) = self
+            .get_record_and_pos(k)
+            .ok_or(ReplaceError::KeyNotFound)?;
+        let v = f(oldv);
+        let newcol = Collision::from_box(helper::clone_array_and_set_at_pos(
+            &self.0,
+            (k.clone(), v),
+            pos,
+        ));
+        Ok(newcol)
+    }
 }
 
 pub enum Entry<K, V> {
@@ -478,6 +494,45 @@ pub fn replace_rec<K: PartialEq + Clone, V: Clone>(
                 let (newsub, oldv) = replace_rec(sub, h, lvl + 1, k, v)?;
                 let e = Entry::SubNode(newsub);
                 Ok((node.replace_at(idx, SharedRef::new(e)), oldv))
+            }
+        }
+    }
+}
+
+// recursively try to replace a key's value.
+pub fn replace_with_rec<K: PartialEq + Clone, V: Clone, F>(
+    node: &Node<K, V>,
+    h: HashedKey,
+    lvl: usize,
+    k: &K,
+    f: F,
+) -> Result<Node<K, V>, ReplaceError>
+where
+    F: FnOnce(&V) -> V,
+{
+    let level_hash = h.level_index(lvl);
+    let idx = node.bitmap.get_index_sparse(level_hash);
+    if idx.is_not_found() {
+        Err(ReplaceError::KeyNotFound)
+    } else {
+        match &(node.get_child(idx)).as_ref() {
+            &Entry::Leaf(lh, lk, lv) => {
+                if *lh == h && lk == k {
+                    let new_ent = SharedRef::new(Entry::Leaf(*lh, lk.clone(), f(lv)));
+                    Ok(node.replace_at(idx, new_ent))
+                } else {
+                    Err(ReplaceError::KeyNotFound)
+                }
+            }
+            &Entry::LeafMany(lh, col) => {
+                assert_eq!(*lh, h);
+                let replacement = col.replace_with(k, f)?;
+                Ok(node.replace_at(idx, SharedRef::new(Entry::LeafMany(*lh, replacement))))
+            }
+            &Entry::SubNode(sub) => {
+                let newsub = replace_with_rec(sub, h, lvl + 1, k, f)?;
+                let e = Entry::SubNode(newsub);
+                Ok(node.replace_at(idx, SharedRef::new(e)))
             }
         }
     }

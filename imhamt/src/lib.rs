@@ -38,6 +38,7 @@ mod tests {
         Update(usize),
         UpdateRemoval(usize),
         Replace(usize, V),
+        ReplaceWith(usize),
     }
 
     #[derive(Debug, Clone)]
@@ -47,17 +48,18 @@ mod tests {
 
     impl<K: Arbitrary + Clone + Send, V: Arbitrary + Clone + Send> Arbitrary for Plan<K, V> {
         fn arbitrary<G: Gen>(g: &mut G) -> Plan<K, V> {
-            let nb_ops = 100 + cmp::min(SIZE_LIMIT, Arbitrary::arbitrary(g));
+            let nb_ops = 1000 + cmp::min(SIZE_LIMIT, Arbitrary::arbitrary(g));
             let mut v = Vec::new();
             for _ in 0..nb_ops {
                 let op_nb: u32 = Arbitrary::arbitrary(g);
-                let op = match op_nb % 6u32 {
+                let op = match op_nb % 7u32 {
                     0 => PlanOperation::Insert(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
                     1 => PlanOperation::DeleteOne(Arbitrary::arbitrary(g)),
                     2 => PlanOperation::DeleteOneMatching(Arbitrary::arbitrary(g)),
                     3 => PlanOperation::Update(Arbitrary::arbitrary(g)),
                     4 => PlanOperation::UpdateRemoval(Arbitrary::arbitrary(g)),
                     5 => PlanOperation::Replace(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)),
+                    6 => PlanOperation::ReplaceWith(Arbitrary::arbitrary(g)),
                     _ => panic!("test internal error: quickcheck tag code is invalid"),
                 };
                 v.push(op)
@@ -341,14 +343,16 @@ mod tests {
         Some(keys.nth(n % keys_nb).unwrap().clone())
     }
 
-    fn arbitrary_hamt_and_btree<K, V, F>(
+    fn arbitrary_hamt_and_btree<K, V, F, G>(
         xs: Plan<K, V>,
         update_f: F,
+        replace_with_f: G,
     ) -> (Hamt<DefaultHasher, K, V>, BTreeMap<K, V>)
     where
         K: Hash + Clone + Eq + Ord + Sync,
         V: Clone + PartialEq + Sync,
         F: Fn(&V) -> Result<Option<V>, ()> + Copy,
+        G: Fn(&V) -> V + Copy,
     {
         let mut reference = BTreeMap::new();
         let mut h: Hamt<DefaultHasher, K, V> = Hamt::new();
@@ -386,6 +390,15 @@ mod tests {
                         h = h.replace(&k, newv.clone()).unwrap().0;
                     }
                 },
+                PlanOperation::ReplaceWith(r) => match get_key_nth(&reference, *r) {
+                    None => continue,
+                    Some(k) => {
+                        let v = reference.get_mut(&k).unwrap();
+                        *v = replace_with_f(v);
+
+                        h = h.replace_with(&k, replace_with_f).unwrap();
+                    }
+                },
                 PlanOperation::Update(r) => match get_key_nth(&reference, *r) {
                     None => continue,
                     Some(k) => {
@@ -414,14 +427,14 @@ mod tests {
 
     #[quickcheck]
     fn plan_equivalent(xs: Plan<String, u32>) -> bool {
-        let (h, reference) = arbitrary_hamt_and_btree(xs, next_u32);
+        let (h, reference) = arbitrary_hamt_and_btree(xs, next_u32, |v| v.wrapping_mul(2));
         property_btreemap_eq(&reference, &h)
     }
 
     #[quickcheck]
     fn iter_equivalent(xs: Plan<String, u32>) -> bool {
         use std::iter::FromIterator;
-        let (h, reference) = arbitrary_hamt_and_btree(xs, next_u32);
+        let (h, reference) = arbitrary_hamt_and_btree(xs, next_u32, |v| v.wrapping_mul(2));
         let after_iter = BTreeMap::from_iter(h.iter().map(|(k, v)| (k.clone(), v.clone())));
         reference == after_iter
     }
