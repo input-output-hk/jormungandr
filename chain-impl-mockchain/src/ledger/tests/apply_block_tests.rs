@@ -1,25 +1,20 @@
 #![cfg(test)]
 use crate::{
     accounting::account::LedgerError::ValueError,
-    testing::{
-        builders::{GenesisPraosBlockBuilder,TestTxBuilder},
-        scenario::{wallet,prepare_scenario}
-    },
-    ledger::{
-        ledger::Error::Account,
-        Error as LedgerError
-    },
-    header::ChainLength,
     date::BlockDate,
-    value::{Value,ValueError::NegativeAmount},
+    header::ChainLength,
+    ledger::{ledger::Error::Account, Error as LedgerError},
+    testing::{
+        builders::{GenesisPraosBlockBuilder, TestTxBuilder},
+        scenario::{prepare_scenario, wallet},
+    },
+    value::{Value, ValueError::NegativeAmount},
 };
 
 #[test]
 pub fn apply_block_increases_leaders_log() {
     let (mut ledger, controller) = prepare_scenario()
-        .with_initials(vec![
-            wallet("Bob").with(1_000).owns("stake_pool"),
-        ])
+        .with_initials(vec![wallet("Bob").with(1_000).owns("stake_pool")])
         .build()
         .unwrap();
 
@@ -33,18 +28,27 @@ pub fn apply_block_increases_leaders_log() {
         .with_chain_length(ledger.chain_length())
         .with_parent_id(ledger.block0_hash)
         .build(&stake_pool, ledger.era());
-    
+
     assert!(ledger.apply_block(block).is_ok());
-    assert_eq!(ledger.leaders_log().total(),1,"record should be increased by 1");
-    assert!(ledger.leaders_log().iter().find(|x| *x.0 == stake_pool.id()).is_some(),"pool should appear in record");
+    assert_eq!(
+        ledger.leaders_log().total(),
+        1,
+        "record should be increased by 1"
+    );
+    assert!(
+        ledger
+            .leaders_log()
+            .iter()
+            .find(|x| *x.0 == stake_pool.id())
+            .is_some(),
+        "pool should appear in record"
+    );
 }
 
 #[test]
 pub fn apply_block_wrong_chain_length() {
     let (mut ledger, controller) = prepare_scenario()
-        .with_initials(vec![
-            wallet("Bob").with(1_000).owns("stake_pool"),
-        ])
+        .with_initials(vec![wallet("Bob").with(1_000).owns("stake_pool")])
         .build()
         .unwrap();
 
@@ -68,13 +72,10 @@ pub fn apply_block_wrong_chain_length() {
     );
 }
 
-
 #[test]
 pub fn apply_block_wrong_date() {
-        let (mut ledger, controller) = prepare_scenario()
-        .with_initials(vec![
-            wallet("Bob").with(1_000).owns("stake_pool"),
-        ])
+    let (mut ledger, controller) = prepare_scenario()
+        .with_initials(vec![wallet("Bob").with(1_000).owns("stake_pool")])
         .build()
         .unwrap();
 
@@ -97,11 +98,11 @@ pub fn apply_block_wrong_date() {
 
     assert_err!(
         LedgerError::NonMonotonicDate {
-                block_date: BlockDate {
-                    epoch: 0,
-                    slot_id: 1,
-                },
-                chain_date: ledger.date().clone(),
+            block_date: BlockDate {
+                epoch: 0,
+                slot_id: 1,
+            },
+            chain_date: ledger.date().clone(),
         },
         ledger.apply_block(block)
     );
@@ -111,9 +112,7 @@ pub fn apply_block_wrong_date() {
 #[should_panic]
 pub fn apply_block_epoch_transition_without_rewards_distribution() {
     let (mut ledger, controller) = prepare_scenario()
-        .with_initials(vec![
-            wallet("Bob").with(1_000).owns("stake_pool"),
-        ])
+        .with_initials(vec![wallet("Bob").with(1_000).owns("stake_pool")])
         .build()
         .unwrap();
 
@@ -131,7 +130,6 @@ pub fn apply_block_epoch_transition_without_rewards_distribution() {
     ledger.increase_leader_log(&stake_pool.id());
     ledger.apply_block(block).unwrap();
 }
-
 
 #[test]
 pub fn apply_block_incorrect_fragment() {
@@ -152,7 +150,6 @@ pub fn apply_block_incorrect_fragment() {
         slot_id: 0,
     };
 
-
     let fragment = TestTxBuilder::new(&ledger.block0_hash)
         .move_funds(
             &mut ledger,
@@ -170,7 +167,11 @@ pub fn apply_block_incorrect_fragment() {
         .build(&stake_pool, ledger.era());
 
     assert_err!(
-        Account { source: ValueError { source: NegativeAmount } },
+        Account {
+            source: ValueError {
+                source: NegativeAmount
+            }
+        },
         ledger.apply_block(block)
     );
 }

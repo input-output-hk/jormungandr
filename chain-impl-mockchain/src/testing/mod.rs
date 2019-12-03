@@ -1,10 +1,10 @@
 pub mod arbitrary;
 pub mod builders;
 pub mod data;
-pub mod ledger;
-pub mod verifiers;
-pub mod scenario;
 pub mod e2e;
+pub mod ledger;
+pub mod scenario;
+pub mod verifiers;
 pub use arbitrary::*;
 pub use builders::*;
 pub use data::KeysDb;
@@ -23,7 +23,7 @@ use crate::{
     testing::data::{AddressData, LeaderPair},
 };
 
-use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, KeyPair};
+use chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey};
 use std::iter;
 
 pub struct TestGen;
@@ -33,7 +33,7 @@ impl TestGen {
         Hash::from_bytes(Self::bytes())
     }
 
-    pub fn bytes() -> [u8;32] {
+    pub fn bytes() -> [u8; 32] {
         let mut random_bytes: [u8; 32] = [0; 32];
         rand_os::OsRng::new().unwrap().fill_bytes(&mut random_bytes);
         random_bytes
@@ -45,7 +45,9 @@ impl TestGen {
     }
 
     pub fn public_key() -> PublicKey<Ed25519> {
-        AddressData::generate_key_pair::<Ed25519>().public_key().clone()
+        AddressData::generate_key_pair::<Ed25519>()
+            .public_key()
+            .clone()
     }
 
     pub fn leader_pair() -> LeaderPair {

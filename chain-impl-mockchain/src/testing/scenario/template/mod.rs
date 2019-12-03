@@ -2,20 +2,15 @@ mod builders;
 
 pub use builders::*;
 
-use crate::{
-    value::Value,
-    certificate::PoolPermissions
-};
-use chain_crypto::{PublicKey,Ed25519};
+use crate::{certificate::PoolPermissions, value::Value};
+use chain_crypto::{Ed25519, PublicKey};
 
-
-
-#[derive(Clone,Debug,Hash)]
+#[derive(Clone, Debug, Hash)]
 pub struct WalletTemplate {
     pub alias: String,
     pub stake_pool_delegate_alias: Option<String>,
     pub stake_pool_owner_alias: Option<String>,
-    pub initial_value: Value
+    pub initial_value: Value,
 }
 
 impl PartialEq for WalletTemplate {
@@ -32,7 +27,7 @@ impl WalletTemplate {
             alias: alias.to_owned(),
             stake_pool_delegate_alias: None,
             stake_pool_owner_alias: None,
-            initial_value: initial_value
+            initial_value: initial_value,
         }
     }
 
@@ -49,7 +44,7 @@ impl WalletTemplate {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct StakePoolTemplate {
     pub alias: String,
     pub owners: Vec<PublicKey<Ed25519>>,
@@ -65,7 +60,7 @@ impl StakePoolTemplate {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct StakePoolDef {
     pub name: String,
     pub permissions_threshold: Option<u8>,
@@ -75,8 +70,7 @@ impl StakePoolDef {
     pub fn pool_permission(&self) -> Option<PoolPermissions> {
         match self.permissions_threshold {
             Some(permissions_threshold) => Some(PoolPermissions::new(permissions_threshold)),
-            None => None
+            None => None,
         }
     }
 }
-

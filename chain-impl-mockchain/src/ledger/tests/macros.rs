@@ -1,4 +1,3 @@
-
 // assert_err( ExpectedErrorExpression , Expression )
 //
 // succeed if Expression's value returns a value equal to Err(ExpectedErrorExpression),
@@ -33,13 +32,18 @@ macro_rules! assert_err {
 macro_rules! assert_err_match {
     ($left: pat, $right: expr) => {
         match &($right) {
-            Err(e) => {
-                match e {
-                    $left => {},
-                    _ => panic!("assertion failed: error mismatch got: `{:?}` but expecting {}", *e, stringify!($left))
-                }
-            }
-            Ok(_) => panic!("assertion failed: expected error {:?} but got success", stringify!($left)),
+            Err(e) => match e {
+                $left => {}
+                _ => panic!(
+                    "assertion failed: error mismatch got: `{:?}` but expecting {}",
+                    *e,
+                    stringify!($left)
+                ),
+            },
+            Ok(_) => panic!(
+                "assertion failed: expected error {:?} but got success",
+                stringify!($left)
+            ),
         }
     };
 }

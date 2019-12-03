@@ -1,5 +1,7 @@
 use crate::{
-    certificate::{PoolRegistration, PoolPermissions}, leadership::genesis::GenesisPraosLeader, rewards::TaxType,
+    certificate::{PoolPermissions, PoolRegistration},
+    leadership::genesis::GenesisPraosLeader,
+    rewards::TaxType,
     testing::data::StakePool,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, KeyPair, PublicKey, SumEd25519_12};
@@ -9,16 +11,16 @@ pub struct StakePoolBuilder {
     owners: Vec<PublicKey<Ed25519>>,
     operators: Vec<PublicKey<Ed25519>>,
     pool_permissions: Option<PoolPermissions>,
-    alias: String
+    alias: String,
 }
 
 impl StakePoolBuilder {
     pub fn new() -> Self {
-        StakePoolBuilder { 
-            owners: Vec::new(), 
-            operators: Vec::new(), 
-            alias: "".to_owned(), 
-            pool_permissions: None 
+        StakePoolBuilder {
+            owners: Vec::new(),
+            operators: Vec::new(),
+            alias: "".to_owned(),
+            pool_permissions: None,
         }
     }
 
@@ -50,7 +52,7 @@ impl StakePoolBuilder {
 
         let permissions = match &self.pool_permissions {
             Some(pool_permissions) => pool_permissions.clone(),
-            None => PoolPermissions::new(std::cmp::max(self.owners.len() as u8 / 2, 1))
+            None => PoolPermissions::new(std::cmp::max(self.owners.len() as u8 / 2, 1)),
         };
 
         let pool_info = PoolRegistration {
@@ -66,6 +68,12 @@ impl StakePoolBuilder {
                 kes_public_key: pool_kes.public_key().clone(),
             },
         };
-        StakePool::new(&self.alias,pool_info.to_id(), pool_vrf, pool_kes, pool_info)
+        StakePool::new(
+            &self.alias,
+            pool_info.to_id(),
+            pool_vrf,
+            pool_kes,
+            pool_info,
+        )
     }
 }

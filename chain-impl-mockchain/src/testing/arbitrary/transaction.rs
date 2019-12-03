@@ -3,9 +3,9 @@ use crate::{
     account::Ledger as AccountLedger,
     fee::LinearFee,
     testing::{
-        ledger::TestLedger,
         arbitrary::{utils as arbitrary_utils, AverageValue},
-        data::{AddressData, AddressDataValue}
+        data::{AddressData, AddressDataValue},
+        ledger::TestLedger,
     },
     transaction::{Input, Output},
     value::*,
@@ -123,7 +123,7 @@ impl ArbitraryValidTransactionData {
     fn make_single_input(
         &self,
         address_data_value: AddressDataValue,
-        ledger: &TestLedger
+        ledger: &TestLedger,
     ) -> Input {
         let utxo_option = ledger.find_utxo_for_address(&address_data_value.address_data);
         address_data_value.make_input(utxo_option)
@@ -133,7 +133,7 @@ impl ArbitraryValidTransactionData {
         self.input_addresses
             .iter()
             .cloned()
-            .map(|x| self.make_single_input(x,ledger))
+            .map(|x| self.make_single_input(x, ledger))
             .collect()
     }
 

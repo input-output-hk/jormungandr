@@ -278,7 +278,6 @@ mod tests {
             };
 
             Parameters {
-                treasury_tax: Arbitrary::arbitrary(g),
                 initial_value: u64::arbitrary(g),
                 compounding_ratio: Ratio::arbitrary(g),
                 compounding_type: CompoundingType::arbitrary(g),

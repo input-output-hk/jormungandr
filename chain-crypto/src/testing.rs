@@ -24,7 +24,7 @@ impl Arbitrary for TestCryptoGen {
 impl TestCryptoGen {
     /// get the nth deterministic RNG
     pub fn get_rng(&self, idx: u32) -> ChaChaRng {
-        ChaChaRng::seed_from_u64(idx as u64 * 2^12 + self.0)
+        ChaChaRng::seed_from_u64(idx as u64 * 2 ^ 12 + self.0)
     }
 
     /// Get the nth deterministic secret key
@@ -40,7 +40,10 @@ impl TestCryptoGen {
 
 #[allow(dead_code)]
 pub fn arbitrary_public_key<A: AsymmetricKey, G: Gen>(g: &mut G) -> PublicKey<A::PubAlg> {
-    TestCryptoGen::arbitrary(g).keypair::<A>(0).public_key().clone()
+    TestCryptoGen::arbitrary(g)
+        .keypair::<A>(0)
+        .public_key()
+        .clone()
 }
 
 pub fn arbitrary_secret_key<A, G>(g: &mut G) -> SecretKey<A>
@@ -104,7 +107,7 @@ impl Arbitrary for Sha3_256 {
     }
 }
 
-impl<H: digest::DigestAlg+'static> Arbitrary for digest::Digest<H> {
+impl<H: digest::DigestAlg + 'static> Arbitrary for digest::Digest<H> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes: Vec<_> = std::iter::repeat_with(|| u8::arbitrary(g))
             .take(26) // actual number doesn't really matter
@@ -113,7 +116,7 @@ impl<H: digest::DigestAlg+'static> Arbitrary for digest::Digest<H> {
     }
 }
 
-impl<H: digest::DigestAlg+'static, T: 'static> Arbitrary for digest::DigestOf<H, T> {
+impl<H: digest::DigestAlg + 'static, T: 'static> Arbitrary for digest::DigestOf<H, T> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes: Vec<_> = std::iter::repeat_with(|| u8::arbitrary(g))
             .take(26) // actual number doesn't really matter
