@@ -1157,7 +1157,7 @@ mod tests {
     use super::*;
     use crate::{
         account::{Identifier, SpendingCounter},
-        accounting::account::{account_state::AccountState, DelegationType},
+        accounting::account::account_state::AccountState,
         fee::LinearFee,
         key::Hash,
         multisig,
@@ -1666,13 +1666,7 @@ mod tests {
         }
 
         pub fn expected_account_with_value(&self, value: Value) -> AccountState<()> {
-            let account_state = AccountState {
-                counter: 0.into(),
-                delegation: DelegationType::NonDelegated,
-                value: value,
-                extra: (),
-            };
-            account_state
+            AccountState::new(value, ())
         }
 
         pub fn expected_utxo_entry<'a>(

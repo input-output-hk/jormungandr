@@ -10,8 +10,10 @@ use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Debug};
 use std::hash::Hash;
 pub mod account_state;
+pub mod last_rewards;
 
 pub use account_state::*;
+pub use last_rewards::LastRewards;
 
 custom_error! {
     #[derive(Clone, PartialEq, Eq)]
@@ -190,9 +192,9 @@ impl<ID: Clone + Eq + Hash, Extra: Clone> std::iter::FromIterator<(ID, AccountSt
 #[cfg(test)]
 mod tests {
 
+    use super::*;
     use crate::{
         account::{Identifier, Ledger},
-        accounting::account::account_state::{AccountState, DelegationType, SpendingCounter},
         certificate::{PoolId, PoolRegistration},
         testing::{arbitrary::utils as arbitrary_utils, arbitrary::AverageValue},
         value::Value,
@@ -338,6 +340,7 @@ mod tests {
             Ok(account_state) => {
                 let expected_account_state = AccountState {
                     counter: SpendingCounter::zero(),
+                    last_rewards: LastRewards::default(),
                     delegation: DelegationType::Full(stake_pool_id),
                     value: Value(value.0 * 2),
                     extra: (),

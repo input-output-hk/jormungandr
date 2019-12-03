@@ -2,7 +2,7 @@ use crate::certificate::PoolId;
 use crate::value::*;
 use imhamt::HamtIter;
 
-use super::LedgerError;
+use super::{LastRewards, LedgerError};
 
 /// Set the choice of delegation:
 ///
@@ -79,6 +79,7 @@ pub struct AccountState<Extra> {
     pub counter: SpendingCounter,
     pub delegation: DelegationType,
     pub value: Value,
+    pub last_rewards: LastRewards,
     pub extra: Extra,
 }
 
@@ -89,6 +90,7 @@ impl<Extra> AccountState<Extra> {
             counter: SpendingCounter(0),
             delegation: DelegationType::NonDelegated,
             value: v,
+            last_rewards: LastRewards::default(),
             extra: e,
         }
     }
@@ -137,7 +139,7 @@ impl<Extra: Clone> AccountState<Extra> {
     /// for spending.
     ///
     /// If the counter is also reaching the extremely rare of max, we only authorise
-    /// a total withdrawal of fund otherwise the fund will be stuck forever in limbo.
+    /// a total withdrawal of fund otherwise the fund would be stuck forever in limbo.
     pub fn sub(&self, v: Value) -> Result<Option<Self>, LedgerError> {
         let new_value = (self.value - v)?;
         match self.counter.increment() {
@@ -148,12 +150,12 @@ impl<Extra: Clone> AccountState<Extra> {
                     Err(LedgerError::NeedTotalWithdrawal)
                 }
             }
-            Some(new_counter) => Ok(Some(Self {
-                counter: new_counter,
-                delegation: self.delegation.clone(),
-                value: new_value,
-                extra: self.extra.clone(),
-            })),
+            Some(new_counter) => {
+                let mut r = self.clone();
+                r.counter = new_counter;
+                r.value = new_value;
+                Ok(Some(r))
+            }
         }
     }
 
@@ -213,7 +215,8 @@ impl<'a, ID, Extra> Iterator for Iter<'a, ID, Extra> {
 #[cfg(test)]
 mod tests {
     use super::{
-        AccountState, DelegationRatio, DelegationType, SpendingCounter, DELEGATION_RATIO_MAX_DECLS,
+        AccountState, DelegationRatio, DelegationType, LastRewards, SpendingCounter,
+        DELEGATION_RATIO_MAX_DECLS,
     };
     use crate::{certificate::PoolId, testing::builders::StakePoolBuilder, value::Value};
     use quickcheck::{Arbitrary, Gen, TestResult};
@@ -232,6 +235,7 @@ mod tests {
                 counter: Arbitrary::arbitrary(gen),
                 delegation: DelegationType::Full(Arbitrary::arbitrary(gen)),
                 value: Arbitrary::arbitrary(gen),
+                last_rewards: LastRewards::default(),
                 extra: (),
             }
         }
@@ -342,6 +346,7 @@ mod tests {
                 counter: SpendingCounter(result_spending_counter),
                 delegation: delegation,
                 value: result_value,
+                last_rewards: LastRewards::default(),
                 extra: (),
             }
         }
