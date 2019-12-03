@@ -2,9 +2,10 @@ use crate::ledger::Error;
 use crate::treasury::Treasury;
 use crate::value::{Value, ValueError};
 use std::cmp;
+use std::fmt::Debug;
 
 /// Special pots of money
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Pots {
     pub(crate) fees: Value,
     pub(crate) treasury: Treasury,
@@ -154,8 +155,10 @@ impl Pots {
 
 #[cfg(test)]
 mod tests {
-    use super::Pots;
-    use quickcheck::{Arbitrary, Gen};
+    use super::*;
+    use crate::value::Value;
+    use quickcheck::{Arbitrary, Gen, TestResult};
+    use quickcheck_macros::quickcheck;
 
     impl Arbitrary for Pots {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -165,5 +168,79 @@ mod tests {
                 rewards: Arbitrary::arbitrary(g),
             }
         }
+    }
+
+    #[test]
+    pub fn zero_pots() {
+        let pots = Pots::zero();
+        assert_eq!(pots.fees, Value::zero());
+        assert_eq!(pots.treasury, Treasury::initial(Value::zero()));
+        assert_eq!(pots.rewards, Value::zero());
+    }
+
+    #[quickcheck]
+    pub fn entries(pots: Pots) -> TestResult {
+        for item in pots.entries() {
+            match item {
+                Entry::Fees(fees) => {
+                    assert_eq!(pots.fees, fees);
+                }
+                Entry::Treasury(treasury) => {
+                    assert_eq!(pots.treasury.value(), treasury);
+                }
+                Entry::Rewards(rewards) => {
+                    assert_eq!(pots.rewards, rewards);
+                }
+            }
+        }
+        TestResult::passed()
+    }
+
+    #[quickcheck]
+    pub fn append_fees(mut pots: Pots, value: Value) -> TestResult {
+        if (value + pots.fees).is_err() {
+            return TestResult::discard();
+        }
+        let before = pots.fees;
+        pots.append_fees(value).unwrap();
+        TestResult::from_bool((before + value).unwrap() == pots.fees)
+    }
+
+    #[quickcheck]
+    pub fn siphon_fees(mut pots: Pots) -> TestResult {
+        let before_siphon = pots.fees;
+        let siphoned = pots.siphon_fees();
+        if siphoned != before_siphon {
+            TestResult::error(format!("{} is not equal to {}", siphoned, before_siphon));
+        }
+        TestResult::from_bool(pots.fees == Value::zero())
+    }
+
+    #[quickcheck]
+    pub fn draw_reward(mut pots: Pots, expected_reward: Value) -> TestResult {
+        if (expected_reward + pots.rewards).is_err() {
+            return TestResult::discard();
+        }
+
+        let before_reward = pots.rewards;
+        let to_draw = pots.draw_reward(expected_reward);
+        let draw_reward = cmp::min(before_reward, expected_reward);
+        if to_draw != draw_reward {
+            TestResult::error(format!(
+                "{} is not equal to smallest of pair({},{})",
+                to_draw, before_reward, expected_reward
+            ));
+        }
+        TestResult::from_bool(pots.rewards == (before_reward - to_draw).unwrap())
+    }
+
+    #[quickcheck]
+    pub fn treasury_add(mut pots: Pots, value: Value) -> TestResult {
+        if (value + pots.rewards).is_err() {
+            return TestResult::discard();
+        }
+        let before_add = pots.treasury.value();
+        pots.treasury_add(value).unwrap();
+        TestResult::from_bool(pots.treasury.value() == (before_add + value).unwrap())
     }
 }
