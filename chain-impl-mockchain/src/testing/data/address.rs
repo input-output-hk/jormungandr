@@ -1,11 +1,11 @@
 use crate::{
     account::{Identifier, SpendingCounter},
+    header::HeaderId,
     key::EitherEd25519SecretKey,
-    transaction::{Input, Output, Witness, TransactionAuthData},
+    testing::builders::make_witness,
+    transaction::{Input, Output, TransactionAuthData, Witness},
     utxo::Entry,
     value::Value,
-    testing::builders::make_witness,
-    header::HeaderId
 };
 use chain_addr::{Address, AddressReadable, Discrimination, Kind, KindType};
 use chain_crypto::{
@@ -43,7 +43,6 @@ impl PartialEq for AddressData {
 }
 
 impl AddressData {
-
     pub fn new(
         private_key: EitherEd25519SecretKey,
         spending_counter: Option<SpendingCounter>,
@@ -76,10 +75,13 @@ impl AddressData {
     }
 
     pub fn account(discrimination: Discrimination) -> Self {
-        AddressData::account_with_spending_counter(discrimination,0u32)
+        AddressData::account_with_spending_counter(discrimination, 0u32)
     }
 
-    pub fn account_with_spending_counter(discrimination: Discrimination, spending_counter: u32) -> Self {
+    pub fn account_with_spending_counter(
+        discrimination: Discrimination,
+        spending_counter: u32,
+    ) -> Self {
         let (sk, pk) = AddressData::generate_key_pair::<Ed25519Extended>().into_keys();
         let sk = EitherEd25519SecretKey::Extended(sk);
         let user_address = Address(discrimination.clone(), Kind::Account(pk.clone()));
@@ -204,8 +206,12 @@ impl AddressData {
         AddressData::new(other.private_key, other.spending_counter, user_address)
     }
 
-    pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
-        let witness = make_witness(block0_hash,&self,&tad.hash());
+    pub fn make_witness<'a>(
+        &mut self,
+        block0_hash: &HeaderId,
+        tad: TransactionAuthData<'a>,
+    ) -> Witness {
+        let witness = make_witness(block0_hash, &self, &tad.hash());
         self.confirm_transaction();
         witness
     }
@@ -231,33 +237,41 @@ impl AddressDataValue {
     pub fn new(address_data: AddressData, value: Value) -> Self {
         AddressDataValue {
             address_data: address_data,
-            value: value
+            value: value,
         }
     }
 
     pub fn utxo(discrimination: Discrimination, value: Value) -> Self {
-        AddressDataValue::new(AddressData::utxo(discrimination),value)
+        AddressDataValue::new(AddressData::utxo(discrimination), value)
     }
 
     pub fn account(discrimination: Discrimination, value: Value) -> Self {
-        AddressDataValue::new(AddressData::account(discrimination),value)
+        AddressDataValue::new(AddressData::account(discrimination), value)
     }
 
-    pub fn account_with_spending_counter(discrimination: Discrimination, spending_counter: u32, value: Value) -> Self {
-       let address_data = AddressData::account_with_spending_counter(discrimination, spending_counter);
-       Self::new(address_data, value)
+    pub fn account_with_spending_counter(
+        discrimination: Discrimination,
+        spending_counter: u32,
+        value: Value,
+    ) -> Self {
+        let address_data =
+            AddressData::account_with_spending_counter(discrimination, spending_counter);
+        Self::new(address_data, value)
     }
 
     pub fn delegation(discrimination: Discrimination, value: Value) -> Self {
-        AddressDataValue::new(AddressData::delegation(discrimination),value)
+        AddressDataValue::new(AddressData::delegation(discrimination), value)
     }
 
     pub fn from_discrimination_and_kind_type(
         discrimination: Discrimination,
         kind: &KindType,
-        value: Value
+        value: Value,
     ) -> Self {
-        AddressDataValue::new(AddressData::from_discrimination_and_kind_type(discrimination,kind),value)
+        AddressDataValue::new(
+            AddressData::from_discrimination_and_kind_type(discrimination, kind),
+            value,
+        )
     }
 
     pub fn to_id(&self) -> Identifier {
@@ -273,7 +287,7 @@ impl AddressDataValue {
     }
 
     pub fn make_input(&self, utxo: Option<Entry<Address>>) -> Input {
-        self.make_input_with_value(utxo,&self.value)
+        self.make_input_with_value(utxo, &self.value)
     }
 
     pub fn make_input_with_value(&self, utxo: Option<Entry<Address>>, value: &Value) -> Input {
@@ -292,8 +306,12 @@ impl AddressDataValue {
         let counter: u32 = self.address_data.spending_counter.unwrap().into();
         self.address_data.spending_counter = Some((counter + 1u32).into());
     }
-    pub fn make_witness<'a>(&mut self, block0_hash: &HeaderId, tad: TransactionAuthData<'a>) -> Witness {
-        self.address_data.make_witness(block0_hash,tad)
+    pub fn make_witness<'a>(
+        &mut self,
+        block0_hash: &HeaderId,
+        tad: TransactionAuthData<'a>,
+    ) -> Witness {
+        self.address_data.make_witness(block0_hash, tad)
     }
 
     pub fn confirm_transaction(&mut self) {
@@ -306,8 +324,8 @@ impl AddressDataValue {
 
     pub fn is_utxo(&self) -> bool {
         match self.kind() {
-            Kind::Single{..} | Kind::Group{..} => true,
-            _ => false
+            Kind::Single { .. } | Kind::Group { .. } => true,
+            _ => false,
         }
     }
 

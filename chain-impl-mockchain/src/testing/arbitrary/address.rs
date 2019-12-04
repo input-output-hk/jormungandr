@@ -3,7 +3,7 @@ use crate::{
         arbitrary::kind_type::KindTypeWithoutMultisig,
         arbitrary::AverageValue,
         data::{AddressData, AddressDataValue},
-        ledger::TestLedger
+        ledger::TestLedger,
     },
     transaction::{Input, Output},
     value::Value,

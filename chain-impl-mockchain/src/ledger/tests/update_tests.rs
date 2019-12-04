@@ -1,15 +1,15 @@
 use crate::{
     block::Block,
-    fragment::Contents,
-    header::{BlockVersion, HeaderId, HeaderBuilderNew},
     date::BlockDate,
+    fragment::Contents,
+    header::{BlockVersion, HeaderBuilderNew, HeaderId},
     ledger::ledger::Ledger,
     testing::arbitrary::update_proposal::UpdateProposalData,
     testing::{ConfigBuilder, LedgerBuilder},
 };
 use chain_core::property::ChainLength as ChainLengthProperty;
 use chain_crypto::{Ed25519, SecretKey};
-use quickcheck::{TestResult};
+use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
 #[quickcheck]
@@ -18,7 +18,9 @@ pub fn ledger_adopt_settings_from_update_proposal(
 ) -> TestResult {
     let cb = ConfigBuilder::new(0).with_leaders(&update_proposal_data.leaders_ids());
 
-    let testledger = LedgerBuilder::from_config(cb).build().expect("cannot build test ledger");
+    let testledger = LedgerBuilder::from_config(cb)
+        .build()
+        .expect("cannot build test ledger");
     let mut ledger = testledger.ledger;
 
     // apply proposal
@@ -65,8 +67,10 @@ pub fn ledger_adopt_settings_from_update_proposal(
     }
 
     if !ledger.updates.proposals.is_empty() {
-        return TestResult::error(format!("Error: proposal collection should be empty but contains:{:?}",
-                                ledger.updates.proposals));
+        return TestResult::error(format!(
+            "Error: proposal collection should be empty but contains:{:?}",
+            ledger.updates.proposals
+        ));
     }
 
     match all_settings_equal {

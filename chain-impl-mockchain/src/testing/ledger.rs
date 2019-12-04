@@ -1,21 +1,23 @@
 use crate::{
     account::Ledger as AccountLedger,
-    block::{ConsensusVersion, HeaderId},
+    block::{Block, ConsensusVersion, HeaderId, LeadersParticipationRecord},
+    certificate::PoolId,
     config::ConfigParam,
     fee::LinearFee,
     fragment::{config::ConfigParams, Fragment, FragmentId},
-    header::BlockDate,
+    header::{BlockDate, ChainLength},
     leadership::bft::LeaderId,
     ledger::{Error, Ledger, LedgerParameters},
     milli::Milli,
-    testing::data::{AddressData, AddressDataValue,Wallet},
+    stake::PoolsState,
+    testing::data::{AddressData, AddressDataValue, Wallet},
     transaction::{Output, TxBuilder},
     utxo::{Entry, Iter},
     value::Value,
-    stake::PoolsState
 };
 use chain_addr::{Address, Discrimination};
 use chain_crypto::*;
+use chain_time::TimeEra;
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -221,7 +223,8 @@ impl LedgerBuilder {
     }
 
     pub fn faucets_wallets(mut self, faucets: Vec<&Wallet>) -> Self {
-        self.faucets.extend(faucets.iter().cloned().map(|x| x.as_account()));
+        self.faucets
+            .extend(faucets.iter().cloned().map(|x| x.as_account()));
         self
     }
 
@@ -329,6 +332,16 @@ impl TestLedger {
         Ok(())
     }
 
+    pub fn apply_block(&mut self, block: Block) -> Result<(), Error> {
+        let header_meta = block.header.to_content_eval_context();
+        self.ledger = self.ledger.clone().apply_block(
+            &self.ledger.get_ledger_parameters(),
+            block.contents.iter(),
+            &header_meta,
+        )?;
+        Ok(())
+    }
+
     pub fn total_funds(&self) -> Value {
         let utxo_total = Value(self.ledger.utxos().map(|x| x.output.value.0).sum::<u64>());
         let accounts_total = self.ledger.accounts().get_total_value().unwrap();
@@ -357,9 +370,34 @@ impl TestLedger {
         self.parameters.fees
     }
 
-    pub fn delegation(&self) -> PoolsState{
+    pub fn chain_length(&self) -> ChainLength {
+        self.ledger.chain_length()
+    }
+
+    pub fn era(&self) -> &TimeEra {
+        self.ledger.era()
+    }
+
+    pub fn delegation(&self) -> PoolsState {
         self.ledger.delegation().clone()
-        
+    }
+
+    pub fn date(&self) -> BlockDate {
+        self.ledger.date()
+    }
+
+    // use it only for negative testing since it introduce bad state in ledger
+    pub fn set_date(&mut self, date: BlockDate) {
+        self.ledger.date = date;
+    }
+
+    pub fn leaders_log(&self) -> LeadersParticipationRecord {
+        self.ledger.leaders_log.clone()
+    }
+
+    // use it only for negative testing since it introduce bad state in ledger
+    pub fn increase_leader_log(&mut self, pool_id: &PoolId) {
+        self.ledger.leaders_log.increase_for(pool_id);
     }
 }
 

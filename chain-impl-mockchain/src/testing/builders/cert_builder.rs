@@ -34,20 +34,17 @@ pub fn build_owner_stake_full_delegation(stake_pool: PoolId) -> Certificate {
 
 pub fn build_no_stake_delegation() -> Certificate {
     Certificate::OwnerStakeDelegation(OwnerStakeDelegation {
-        delegation: DelegationType::NonDelegated
+        delegation: DelegationType::NonDelegated,
     })
 }
 
 pub fn build_owner_stake_delegation(delegation_type: DelegationType) -> Certificate {
     Certificate::OwnerStakeDelegation(OwnerStakeDelegation {
-        delegation: delegation_type
+        delegation: delegation_type,
     })
 }
 
-pub fn build_stake_pool_retirement_cert(
-    pool_id: PoolId,
-    start_validity: u64,
-) -> Certificate {
+pub fn build_stake_pool_retirement_cert(pool_id: PoolId, start_validity: u64) -> Certificate {
     let retirement = PoolRetirement {
         pool_id: pool_id,
         retirement_time: DurationSeconds(start_validity).into(),

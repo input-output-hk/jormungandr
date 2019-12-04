@@ -238,6 +238,17 @@ mod tests {
         }
     }
 
+    #[test]
+    fn rewards_contribution_calculation_epoch_start_smaller_than_epoch() {
+        let mut params = Parameters::zero();
+        params.epoch_start = 1;
+        let epoch = 0;
+        assert_eq!(
+            rewards_contribution_calculation(epoch, &params),
+            Value::zero()
+        );
+    }
+
     impl Arbitrary for TaxType {
         fn arbitrary<G: Gen>(gen: &mut G) -> Self {
             let fixed = Arbitrary::arbitrary(gen);
@@ -252,6 +263,37 @@ mod tests {
                     denominator: NonZeroU64::new(denominator).unwrap(),
                 },
                 max_limit,
+            }
+        }
+    }
+
+    impl Arbitrary for Parameters {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let epoch_rate = {
+                let mut number = u32::arbitrary(g);
+                if number == 0 {
+                    number = number + 1;
+                }
+                NonZeroU32::new(number).unwrap()
+            };
+
+            Parameters {
+                initial_value: u64::arbitrary(g),
+                compounding_ratio: Ratio::arbitrary(g),
+                compounding_type: CompoundingType::arbitrary(g),
+                epoch_rate: epoch_rate,
+                epoch_start: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for CompoundingType {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let option: u8 = u8::arbitrary(g) % 2;
+            match option {
+                0 => CompoundingType::Linear,
+                2 => CompoundingType::Halvening,
+                _ => unreachable!(),
             }
         }
     }

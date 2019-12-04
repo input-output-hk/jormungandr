@@ -6,13 +6,12 @@ use std::{
     hash::Hash,
 };
 
-pub fn factorize<G: Gen>(number: u32, gen: &mut G) -> Vec<u32> 
-{
+pub fn factorize<G: Gen>(number: u32, gen: &mut G) -> Vec<u32> {
     let mut current_remainder = number;
     let mut output = Vec::new();
 
     while current_remainder > 0 {
-        let part = cmp::max(u32::arbitrary(gen) % current_remainder,1);
+        let part = cmp::max(u32::arbitrary(gen) % current_remainder, 1);
         output.push(part);
         current_remainder = current_remainder - part;
     }
@@ -129,6 +128,10 @@ impl Verify {
     }
 
     pub fn get_result(&self) -> TestResult {
-        self.0.iter().cloned().find(TestResult::is_failure).unwrap_or_else(TestResult::passed)
+        self.0
+            .iter()
+            .cloned()
+            .find(TestResult::is_failure)
+            .unwrap_or_else(TestResult::passed)
     }
 }

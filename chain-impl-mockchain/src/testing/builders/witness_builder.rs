@@ -7,11 +7,15 @@ use crate::{
 };
 use chain_addr::Kind;
 
-
-pub fn make_witnesses(block0: &HeaderId,
+pub fn make_witnesses(
+    block0: &HeaderId,
     addresses_data: Vec<&AddressData>,
-    transaction_hash: &TransactionSignDataHash) -> Vec<Witness> {
-    addresses_data.iter().map(|x| make_witness(block0,x,transaction_hash)).collect()
+    transaction_hash: &TransactionSignDataHash,
+) -> Vec<Witness> {
+    addresses_data
+        .iter()
+        .map(|x| make_witness(block0, x, transaction_hash))
+        .collect()
 }
 
 pub fn make_witness(

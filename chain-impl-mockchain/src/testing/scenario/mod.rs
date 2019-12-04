@@ -1,7 +1,7 @@
-pub mod template;
 mod controller;
 mod scenario_builder;
+pub mod template;
 
 pub use controller::Controller;
 
-pub use scenario_builder::{wallet,prepare_scenario};
+pub use scenario_builder::{prepare_scenario, wallet};

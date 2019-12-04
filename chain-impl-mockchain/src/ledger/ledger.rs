@@ -1243,12 +1243,6 @@ mod tests {
         }
     }
 
-    impl Arbitrary for rewards::Parameters {
-        fn arbitrary<G: Gen>(_: &mut G) -> Self {
-            rewards::Parameters::zero()
-        }
-    }
-
     impl Arbitrary for LedgerParameters {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             LedgerParameters {
