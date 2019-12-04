@@ -23,6 +23,8 @@ use chain_time::{SlotDuration, TimeEra, TimeFrame, Timeline};
 use std::mem::swap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
+use std::cmp;
+use std::num::NonZeroU32;
 
 // static parameters, effectively this is constant in the parameter of the blockchain
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -353,14 +355,20 @@ impl Ledger {
 
         let epoch = new_ledger.date.epoch + 1;
 
+        // changed to scale rewards calculation
         let expected_epoch_reward =
-            rewards::rewards_contribution_calculation(epoch, &ledger_params.reward_params);
+            rewards::rewards_contribution_calculation_scaled(
+            epoch, &ledger_params.reward_params,
+            // Pass total stake for all pools from distribution -- KH
+            distribution.total_stake(),
+        );
 
         let mut total_reward = new_ledger.pots.draw_reward(expected_epoch_reward);
 
+        // Changed from true to false -- rewards *must* accrue to the treasury in the testnet.   KH
         // Move fees in the rewarding pots for distribution or depending on settings
         // to the treasury directly
-        if true {
+        if false {
             total_reward = (total_reward + new_ledger.pots.siphon_fees()).unwrap();
         } else {
             let fees = new_ledger.pots.siphon_fees();
@@ -381,6 +389,12 @@ impl Ledger {
         if total_reward > Value::zero() {
             let total_blocks = leaders_log.total();
             let reward_unit = total_reward.split_in(total_blocks);
+            let mut pool_count = 0;
+
+            // Is there a neater way to do this?
+            for (pool_id, pool_blocks) in leaders_log.iter() {
+                pool_count = pool_count + 1;
+            }
 
             for (pool_id, pool_blocks) in leaders_log.iter() {
                 let pool_total_reward = reward_unit.parts.scale(*pool_blocks).unwrap();
@@ -399,6 +413,10 @@ impl Ledger {
                             &pool_reg,
                             pool_total_reward,
                             pool_distribution,
+                            ledger_params.reward_params.npools,
+                            ledger_params.reward_params.npools_threshold,
+                            pool_count,
+                            total_reward,
                         )?;
                     }
                     _ => {
@@ -424,7 +442,23 @@ impl Ledger {
         reg: &certificate::PoolRegistration,
         total_reward: Value,
         distribution: &PoolStakeInformation,
+        npools: NonZeroU32,
+        npools_threshold: NonZeroU32,
+        pool_count: u32,
+        overall_reward: Value,
     ) -> Result<(), Error> {
+
+        // Limit the rewards according to the pools parameter and total delegated stake
+        let mut max_deleg_reward = overall_reward.0;
+
+        // Only apply the limit once the threshold is reached
+        if pool_count >= u32::from(npools_threshold) {
+                  let max_deleg_reward = overall_reward.0 / (u32::from(npools) as u64);
+        }
+
+
+        let capped_reward = cmp::min(total_reward,Value(max_deleg_reward));
+
         let distr = rewards::tax_cut(total_reward, &reg.rewards).unwrap();
 
         self.delegation

@@ -3,6 +3,8 @@ use crate::value::{Value, ValueError};
 use chain_core::mempack::{ReadBuf, ReadError};
 use std::num::{NonZeroU32, NonZeroU64};
 use typed_bytes::ByteBuilder;
+use crate::stake::{Stake};
+use std::cmp;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompoundingType {
@@ -96,10 +98,16 @@ pub struct Parameters {
     pub(crate) compounding_ratio: Ratio,
     /// The type of compounding
     pub(crate) compounding_type: CompoundingType,
+    /// The limiting factor for rewards - 100% = no limit, 0% = no rewards
+    pub(crate) rewards_limit: Ratio,
     /// Number of epoch between reduction phase, cannot be 0
     pub(crate) epoch_rate: NonZeroU32,
     /// When to start
     pub(crate) epoch_start: Epoch,
+    /// Limit on Number of Pools
+    pub(crate) npools: NonZeroU32,
+    /// Dynamic Lower Limit below which npools is not applied
+    pub(crate) npools_threshold: NonZeroU32,
 }
 
 impl Parameters {
@@ -108,8 +116,11 @@ impl Parameters {
             initial_value: 0,
             compounding_ratio: Ratio::zero(),
             compounding_type: CompoundingType::Linear,
+            rewards_limit: Ratio::zero(),
             epoch_rate: NonZeroU32::new(u32::max_value()).unwrap(),
             epoch_start: 0,
+            npools: NonZeroU32::new(1).unwrap(),
+            npools_threshold: NonZeroU32::new(1).unwrap(),
         }
     }
 }
@@ -162,6 +173,25 @@ pub fn rewards_contribution_calculation(epoch: Epoch, params: &Parameters) -> Va
         }
     }
 }
+
+/// Added new function to ensure rewards calculation complies with research -- KH
+/// Scale the total rewards in proportion to the total delegated stake
+pub fn rewards_contribution_calculation_scaled(epoch: Epoch, params: &Parameters, total_delegated: Stake) -> Value {
+    let r = rewards_contribution_calculation(
+            epoch,
+            params,
+          );
+
+    // limit the rewards if necessary
+    let rl = &params.rewards_limit;
+    const SCALE: u128 = 10 ^ 18;
+
+    let limit_scaled = u64::from(total_delegated) as u128 * SCALE;
+    let limit =  limit_scaled / rl.denominator.get() as u128;
+    cmp::min(Value((limit / SCALE) as u64),r)
+}
+
+
 
 /// Tax some value into the tax value and what is remaining
 pub fn tax_cut(v: Value, tax_type: &TaxType) -> Result<TaxDistribution, ValueError> {

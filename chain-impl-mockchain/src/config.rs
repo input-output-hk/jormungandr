@@ -84,12 +84,18 @@ pub enum RewardParams {
         ratio: Ratio,
         epoch_start: Epoch,
         epoch_rate: NonZeroU32,
+        rewards_limit: Ratio,
+        npools: NonZeroU32,
+        npools_threshold: NonZeroU32,
     },
     Halving {
         constant: u64,
         ratio: Ratio,
         epoch_start: Epoch,
         epoch_rate: NonZeroU32,
+        rewards_limit: Ratio,
+        npools: NonZeroU32,
+        npools_threshold: NonZeroU32,
     },
 }
 
@@ -328,25 +334,39 @@ impl ConfigParamVariant for RewardParams {
                 ratio,
                 epoch_start,
                 epoch_rate,
+                rewards_limit,
+                npools,
+                npools_threshold,
             } => ByteBuilder::new()
                 .u8(1)
                 .u64(*constant)
                 .u64(ratio.numerator)
                 .u64(ratio.denominator.get())
                 .u32(*epoch_start)
-                .u32(epoch_rate.get()),
+                .u32(epoch_rate.get())
+                .u64(rewards_limit.numerator)
+                .u64(rewards_limit.denominator.get())
+                .u32(npools.get())
+                .u32(npools_threshold.get()),
             RewardParams::Halving {
                 constant,
                 ratio,
                 epoch_start,
                 epoch_rate,
+                rewards_limit,
+                npools,
+                npools_threshold,
             } => ByteBuilder::new()
                 .u8(2)
                 .u64(*constant)
                 .u64(ratio.numerator)
                 .u64(ratio.denominator.get())
                 .u32(*epoch_start)
-                .u32(epoch_rate.get()),
+                .u32(epoch_rate.get())
+                .u64(rewards_limit.numerator)
+                .u64(rewards_limit.denominator.get())
+                .u32(npools.get())
+                .u32(npools.get()),
         };
         bb.finalize_as_vec()
     }
@@ -360,6 +380,10 @@ impl ConfigParamVariant for RewardParams {
                 let denom = rb.get_nz_u64()?;
                 let estart = rb.get_u32()?;
                 let erate = rb.get_nz_u32()?;
+                let rnum = rb.get_u64()?;
+                let rdenom = rb.get_nz_u64()?;
+                let npools = rb.get_nz_u32()?;
+                let npools_threshold = rb.get_nz_u32()?;
                 rb.expect_end()?;
                 Ok(RewardParams::Linear {
                     constant: start,
@@ -369,6 +393,12 @@ impl ConfigParamVariant for RewardParams {
                     },
                     epoch_start: estart,
                     epoch_rate: erate,
+                    rewards_limit: Ratio {
+                        numerator: rnum,
+                        denominator: rdenom,
+                    },
+                    npools: npools,
+                    npools_threshold: npools_threshold,
                 })
             }
             2 => {
@@ -377,6 +407,10 @@ impl ConfigParamVariant for RewardParams {
                 let denom = rb.get_nz_u64()?;
                 let estart = rb.get_u32()?;
                 let erate = rb.get_nz_u32()?;
+                let rnum = rb.get_u64()?;
+                let rdenom = rb.get_nz_u64()?;
+                let npools = rb.get_nz_u32()?;
+                let npools_threshold = rb.get_nz_u32()?;
                 rb.expect_end()?;
                 Ok(RewardParams::Halving {
                     constant: start,
@@ -386,6 +420,12 @@ impl ConfigParamVariant for RewardParams {
                     },
                     epoch_start: estart,
                     epoch_rate: erate,
+                    rewards_limit: Ratio {
+                        numerator: rnum,
+                        denominator: rdenom,
+                    },
+                    npools: npools,
+                    npools_threshold: npools_threshold,
                 })
             }
             _ => Err(Error::InvalidTag),
@@ -666,12 +706,18 @@ mod test {
                     ratio: Arbitrary::arbitrary(g),
                     epoch_start: Arbitrary::arbitrary(g),
                     epoch_rate: NonZeroU32::new(20).unwrap(),
+                    rewards_limit: Arbitrary::arbitrary(g),
+                    npools: NonZeroU32::new(20).unwrap(),
+                    npools_threshold: NonZeroU32::new(20).unwrap(),
                 },
                 true => RewardParams::Halving {
                     constant: Arbitrary::arbitrary(g),
                     ratio: Arbitrary::arbitrary(g),
                     epoch_start: Arbitrary::arbitrary(g),
                     epoch_rate: NonZeroU32::new(20).unwrap(),
+                    rewards_limit: Arbitrary::arbitrary(g),
+                    npools: NonZeroU32::new(20).unwrap(),
+                    npools_threshold: NonZeroU32::new(20).unwrap(),
                 },
             }
         }
