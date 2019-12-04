@@ -71,10 +71,10 @@ impl PercentStake {
     ///
     /// Returned Value = (Value / Total) * Stake
     ///
-    /// note that we augment the precision by 10^9 to prevent
+    /// note that we augment the precision by 10^18 to prevent
     /// early zeroing, as we do the operation using fixed sized integers
     pub fn scale_value(&self, v: Value) -> Value {
-        const SCALE: u128 = 10 ^ 18;
+        const SCALE: u128 = 1_000_000_000_000_000_000;
         let scaled_divided = (v.0 as u128) * SCALE / self.total.0 as u128;
         let r = (scaled_divided * self.stake.0 as u128) / SCALE;
         Value(r as u64)
