@@ -1,5 +1,19 @@
 # Change Log
 
+## [v0.8.0-rc7](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc7) (2019-12-04)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc6...v0.8.0-rc7)
+
+**Implemented enhancements:**
+
+- Don't thrash slow connections in propagation [\#1277](https://github.com/input-output-hk/jormungandr/pull/1277)
+
+**Fixed bugs:**
+
+- No rewards received - 0.8.0-RC6 - local cluster 2 nodes [\#1275](https://github.com/input-output-hk/jormungandr/issues/1275)
+- 0.8 rc6 - delegator accounts \(standalone\) still not getting paid rewards [\#1274](https://github.com/input-output-hk/jormungandr/issues/1274)
+- update chain-deps and include a fix in the delegators reward distribution [\#1276](https://github.com/input-output-hk/jormungandr/pull/1276)
+
 ## [v0.8.0-rc6](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc6) (2019-12-03)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc5...v0.8.0-rc6)
