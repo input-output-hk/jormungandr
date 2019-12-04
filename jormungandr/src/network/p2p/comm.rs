@@ -1,5 +1,7 @@
 mod peer_map;
 
+use peer_map::CommStatus;
+
 use crate::blockcfg::{Block, Fragment, Header, HeaderHash};
 use crate::network::{
     client::ConnectHandle,
@@ -429,7 +431,7 @@ impl Peers {
 
     fn propagate_with<T, F>(&self, nodes: Vec<NodeRef>, f: F) -> Result<(), Vec<NodeRef>>
     where
-        F: Fn(&mut PeerComms) -> Result<(), PropagateError<T>>,
+        for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
         let mut map = self.mutex.lock().unwrap();
         let unreached_nodes = nodes
@@ -437,7 +439,7 @@ impl Peers {
             .filter(|node| {
                 let id = node.id();
                 if let Some(mut entry) = map.entry(id) {
-                    match f(entry.updated_comms()) {
+                    match f(entry.update_comm_status()) {
                         Ok(()) => false,
                         Err(e) => {
                             debug!(
@@ -468,8 +470,12 @@ impl Peers {
             "propagating block";
             "hash" => %header.hash(),
         );
-        self.propagate_with(nodes, |handles| {
-            handles.try_send_block_announcement(header.clone())
+        self.propagate_with(nodes, |status| match status {
+            CommStatus::Established(comms) => comms.try_send_block_announcement(header.clone()),
+            CommStatus::Connecting(comms) => {
+                comms.set_pending_block_announcement(header.clone());
+                Ok(())
+            }
         })
     }
 
@@ -482,7 +488,13 @@ impl Peers {
             self.logger,
             "propagating fragment";
         );
-        self.propagate_with(nodes, |handles| handles.try_send_fragment(fragment.clone()))
+        self.propagate_with(nodes, |status| match status {
+            CommStatus::Established(comms) => comms.try_send_fragment(fragment.clone()),
+            CommStatus::Connecting(comms) => {
+                comms.set_pending_fragment(fragment.clone());
+                Ok(())
+            }
+        })
     }
 
     pub fn propagate_gossip_to(
@@ -497,9 +509,12 @@ impl Peers {
         );
         let mut map = self.mutex.lock().unwrap();
         if let Some(mut entry) = map.entry(target) {
-            let res = {
-                let handles = entry.updated_comms();
-                handles.try_send_gossip(gossip)
+            let res = match entry.update_comm_status() {
+                CommStatus::Established(comms) => comms.try_send_gossip(gossip),
+                CommStatus::Connecting(comms) => {
+                    comms.set_pending_gossip(gossip);
+                    Ok(())
+                }
             };
             res.map_err(|e| {
                 debug!(
@@ -518,7 +533,7 @@ impl Peers {
 
     pub fn refresh_peer_on_block(&self, node_id: Id) -> bool {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer(node_id) {
+        match map.refresh_peer(&node_id) {
             Some(stats) => {
                 stats.last_block_received = Some(SystemTime::now());
                 true
@@ -529,7 +544,7 @@ impl Peers {
 
     pub fn refresh_peer_on_fragment(&self, node_id: Id) -> bool {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer(node_id) {
+        match map.refresh_peer(&node_id) {
             Some(stats) => {
                 stats.last_fragment_received = Some(SystemTime::now());
                 true
@@ -540,7 +555,7 @@ impl Peers {
 
     pub fn refresh_peer_on_gossip(&self, node_id: Id) -> bool {
         let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer(node_id) {
+        match map.refresh_peer(&node_id) {
             Some(stats) => {
                 stats.last_gossip_received = Some(SystemTime::now());
                 true
@@ -568,7 +583,7 @@ impl Peers {
 
     pub fn solicit_blocks(&self, node_id: Id, hashes: Vec<HeaderHash>) {
         let mut map = self.mutex.lock().unwrap();
-        match map.peer_comms(node_id) {
+        match map.peer_comms(&node_id) {
             Some(comms) => {
                 debug!(self.logger, "sending block solicitation to {}", node_id;
                        "hashes" => ?hashes);
@@ -596,7 +611,7 @@ impl Peers {
 
     pub fn pull_headers(&self, node_id: Id, from: Vec<HeaderHash>, to: HeaderHash) {
         let mut map = self.mutex.lock().unwrap();
-        match map.peer_comms(node_id) {
+        match map.peer_comms(&node_id) {
             Some(comms) => {
                 debug!(self.logger, "pulling headers";
                        "node_id" => %node_id,
