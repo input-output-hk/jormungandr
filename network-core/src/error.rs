@@ -35,6 +35,10 @@ impl Error {
         }
     }
 
+    pub fn unimplemented() -> Self {
+        Error::new(Code::Unimplemented, "not yet implemented")
+    }
+
     pub fn code(&self) -> Code {
         self.code
     }
