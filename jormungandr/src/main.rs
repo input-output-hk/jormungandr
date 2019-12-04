@@ -113,6 +113,7 @@ pub struct BootstrappedNode {
     diagnostic: Diagnostic,
 }
 
+const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 
@@ -125,6 +126,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let (block_msgbox, block_queue) = async_msg::channel(BLOCK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
@@ -178,34 +180,33 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         }
     };
 
-    let block_task = {
+    {
         let mut blockchain = blockchain.clone();
         let mut blockchain_tip = blockchain_tip.clone();
         let mut network_msgbox = network_msgbox.clone();
         let mut fragment_msgbox = fragment_msgbox.clone();
-        let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
+        let mut explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(3600);
         let stats_counter = stats_counter.clone();
-        services.spawn_future_with_inputs("block", move |info, input| {
-            let candidate_repo = CandidateForest::new(
+        services.spawn_future("block", move |info| {
+            let candidate_forest = CandidateForest::new(
                 blockchain.clone(),
                 block_cache_ttl,
                 info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull")),
             );
-            blockchain::handle_input(
-                info,
-                &mut blockchain,
-                &mut blockchain_tip,
-                &candidate_repo,
-                &stats_counter,
-                &mut network_msgbox,
-                &mut fragment_msgbox,
-                explorer_msg_box.as_mut(),
-                input,
-            )
-        })
-    };
+            let process = blockchain::Process {
+                blockchain,
+                blockchain_tip,
+                candidate_forest,
+                stats_counter,
+                network_msgbox,
+                fragment_msgbox,
+                explorer_msgbox,
+            };
+            process.start(info, block_queue)
+        });
+    }
 
     let client_task = {
         let mut task_data = client::TaskData {
@@ -221,7 +222,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     {
         let client_msgbox = client_task.clone();
         let fragment_msgbox = fragment_msgbox.clone();
-        let block_msgbox = block_task.clone();
+        let block_msgbox = block_msgbox.clone();
         let block0_hash = bootstrapped_node.block0_hash;
         let config = bootstrapped_node.settings.network.clone();
         let channels = network::Channels {
@@ -259,7 +260,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     {
         let leadership_logs = leadership_logs.clone();
         let fragment_pool = fragment_pool.clone();
-        let block_task = block_task.clone();
+        let block_msgbox = block_msgbox.clone();
         let blockchain_tip = blockchain_tip.clone();
         let enclave = leadership::Enclave::new(enclave.clone());
 
@@ -271,7 +272,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 blockchain_tip,
                 fragment_pool,
                 enclave,
-                block_task,
+                block_msgbox,
             )
             .and_then(|module| module.run())
             .map_err(|e| unimplemented!("error in leadership {}", e))
