@@ -61,10 +61,6 @@ impl Logs {
         })
     }
 
-    pub fn remove(&mut self, fragment_id: FragmentId) -> impl Future<Item = (), Error = ()> {
-        self.run_on_inner(move |inner| inner.remove(&fragment_id.into()))
-    }
-
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
         self.inner()
             .and_then(move |mut guard| future::poll_fn(move || guard.poll_purge()))
@@ -185,12 +181,6 @@ pub(super) mod internal {
                         ));
                     }
                 }
-            }
-        }
-
-        pub fn remove(&mut self, fragment_id: &Hash) {
-            if let Some((_, cache_key)) = self.entries.remove(fragment_id) {
-                self.expirations.remove(&cache_key);
             }
         }
 
