@@ -1,4 +1,6 @@
-use jormungandr_lib::interfaces::*;
+use jormungandr_lib::interfaces::{
+    AccountState, Address, EnclaveLeaderId, FragmentOrigin, TaxTypeSerde,
+};
 use jormungandr_lib::time::SystemTime;
 
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
@@ -310,6 +312,8 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
                 max_txs_per_block: 255, // TODO?
                 slot_duration: blockchain_tip.time_frame().slot_duration(),
                 slots_per_epoch,
+                treasury_tax: current_params.treasury_tax,
+                reward_params: current_params.reward_params.clone(),
             };
 
             Json(json!(settings))
@@ -440,7 +444,6 @@ pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> Act
                     .get(&pool_id)
                     .map(|pool| pool.total.total_stake.into())
                     .unwrap_or(0);
-                let tax = &pool.registration.rewards;
                 Ok(Json(json!({
                     "kesPublicKey": pool.registration.keys.kes_public_key.to_bech32_str(),
                     "vrfPublicKey": pool.registration.keys.vrf_public_key.to_bech32_str(),
@@ -450,14 +453,7 @@ pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> Act
                         "value_taxed": pool.last_rewards.value_taxed.as_ref(),
                         "value_for_stakers": pool.last_rewards.value_for_stakers.as_ref(),
                     },
-                    "tax": {
-                        "fixed": tax.fixed.0,
-                        "ratio": {
-                            "numerator": tax.ratio.numerator,
-                            "denominator": tax.ratio.denominator,
-                        },
-                        "max": tax.max_limit,
-                    }
+                    "tax": TaxTypeSerde(pool.registration.rewards),
                 })))
             })
         })
