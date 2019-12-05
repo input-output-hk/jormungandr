@@ -21,9 +21,19 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::future::{Either, Loop};
 use slog::Logger;
-use tokio::prelude::*;
+use tokio::{
+    prelude::*,
+    timer::{timeout, Timeout},
+};
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
+
+type TimeoutError = timeout::Error<Error>;
+
+const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
+const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
+const DEFAULT_TIMEOUT_PROCESS_BLOCKS: u64 = 60;
+const DEFAULT_TIMEOUT_PROCESS_HEADERS: u64 = 60;
 
 pub struct Process {
     pub blockchain: Blockchain,
@@ -41,24 +51,13 @@ impl Process {
         service_info: TokioServiceInfo,
         input: MessageQueue<BlockMsg>,
     ) -> impl Future<Item = (), Error = ()> {
-        let logger = service_info.logger().clone();
         input.for_each(move |msg| {
-            let logger = logger.clone();
-            self.handle_input(&service_info, msg).map_err(move |e| {
-                error!(
-                    logger,
-                    "cannot process block event";
-                    "reason" => %e,
-                );
-            })
+            self.handle_input(&service_info, msg);
+            future::ok(())
         })
     }
 
-    fn handle_input(
-        &mut self,
-        info: &TokioServiceInfo,
-        input: BlockMsg,
-    ) -> impl Future<Item = (), Error = Error> {
+    fn handle_input(&mut self, info: &TokioServiceInfo, input: BlockMsg) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
@@ -93,7 +92,7 @@ impl Process {
                 let process_new_ref = update_mempool.and_then(move |new_block_ref| {
                     debug!(logger3, "processing the new block and propagating");
                     process_and_propagate_new_ref(
-                        logger,
+                        logger3,
                         blockchain,
                         blockchain_tip,
                         Arc::clone(&new_block_ref),
@@ -114,7 +113,12 @@ impl Process {
                     }
                 });
 
-                Either::A(Either::A(notify_explorer))
+                info.spawn(
+                    Timeout::new(notify_explorer, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP))
+                        .map_err(move |err: TimeoutError| {
+                            error!(logger, "cannot process leadership block" ; "reason" => err.to_string())
+                        })
+                )
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
                 let logger = info.logger().new(o!(
@@ -131,10 +135,12 @@ impl Process {
                     header,
                     node_id,
                     network_msg_box.clone(),
-                    logger,
+                    logger.clone(),
                 );
 
-                Either::A(Either::B(future))
+                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT)).map_err(move |err: TimeoutError| {
+                    error!(logger, "cannot process block announcement" ; "reason" => err.to_string())
+                }))
             }
             BlockMsg::NetworkBlocks(handle) => {
                 struct State<S> {
@@ -147,6 +153,7 @@ impl Process {
 
                 let logger = info.logger().clone();
                 let logger_fold = logger.clone();
+                let logger_err = logger.clone();
                 let blockchain_fold = blockchain.clone();
                 let (stream, reply) = handle.into_stream_and_reply();
                 let stream =
@@ -220,13 +227,16 @@ impl Process {
                     None => Either::B(future::ok(())),
                 });
 
-                Either::B(Either::A(future))
+                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS)).map_err(move |err: TimeoutError| {
+                    error!(logger_err, "cannot process network blocks" ; "reason" => err.to_string())
+                }))
             }
             BlockMsg::ChainHeaders(handle) => {
                 info!(info.logger(), "receiving header stream from network");
 
                 let (stream, reply) = handle.into_stream_and_reply();
                 let logger = info.logger().clone();
+                let logger_err = info.logger().clone();
 
                 let future = candidate_forest.advance_branch(stream);
                 let future = future.then(move |resp| match resp {
@@ -255,7 +265,9 @@ impl Process {
                     }
                 });
 
-                Either::B(Either::B(future))
+                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS)).map_err(move |err: TimeoutError| {
+                    error!(logger_err, "cannot process network headers" ; "reason" => err.to_string())
+                }))
             }
         }
     }
