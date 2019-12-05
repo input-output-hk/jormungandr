@@ -21,9 +21,19 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::future::{Either, Loop};
 use slog::Logger;
-use tokio::prelude::*;
+use tokio::{
+    prelude::*,
+    timer::{timeout, Timeout},
+};
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
+
+type TimeoutError = timeout::Error<Error>;
+
+const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
+const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
+const DEFAULT_TIMEOUT_PROCESS_BLOCKS: u64 = 60;
+const DEFAULT_TIMEOUT_PROCESS_HEADERS: u64 = 60;
 
 pub struct Process {
     pub blockchain: Blockchain,
@@ -103,9 +113,12 @@ impl Process {
                     }
                 });
 
-                info.spawn(notify_explorer.map_err(move |err: Error| {
-                    error!(logger, "cannot process leadership block" ; "reason" => err.to_string())
-                }))
+                info.spawn(
+                    Timeout::new(notify_explorer, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP))
+                        .map_err(move |err: TimeoutError| {
+                            error!(logger, "cannot process leadership block" ; "reason" => err.to_string())
+                        })
+                )
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
                 let logger = info.logger().new(o!(
@@ -125,7 +138,7 @@ impl Process {
                     logger.clone(),
                 );
 
-                info.spawn(future.map_err(move |err: Error| {
+                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT)).map_err(move |err: TimeoutError| {
                     error!(logger, "cannot process block announcement" ; "reason" => err.to_string())
                 }))
             }
@@ -214,7 +227,7 @@ impl Process {
                     None => Either::B(future::ok(())),
                 });
 
-                info.spawn(future.map_err(move |err: Error| {
+                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS)).map_err(move |err: TimeoutError| {
                     error!(logger_err, "cannot process network blocks" ; "reason" => err.to_string())
                 }))
             }
@@ -252,7 +265,7 @@ impl Process {
                     }
                 });
 
-                info.spawn(future.map_err(move |err: Error| {
+                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS)).map_err(move |err: TimeoutError| {
                     error!(logger_err, "cannot process network headers" ; "reason" => err.to_string())
                 }))
             }
