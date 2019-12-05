@@ -73,6 +73,10 @@ impl Process {
                     "hash" => block.header.hash().to_string(),
                     "parent" => block.header.parent_id().to_string(),
                     "date" => block.header.block_date().to_string()));
+                let logger2 = logger.clone();
+                let logger3 = logger.clone();
+
+                info!(logger, "receiving block from leadership service");
 
                 let process_new_block =
                     process_leadership_block(logger.clone(), blockchain.clone(), block.clone());
@@ -80,15 +84,14 @@ impl Process {
                 let fragments = block.fragments().map(|f| f.id()).collect();
 
                 let update_mempool = process_new_block.and_then(move |new_block_ref| {
+                    debug!(logger2, "updating fragment's log");
                     try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
                         .map_err(|_| "cannot remove fragments from pool".into())
-                        .map(|_| {
-                            stats_counter.add_block_recv_cnt(1);
-                            new_block_ref
-                        })
+                        .map(|_| new_block_ref)
                 });
 
                 let process_new_ref = update_mempool.and_then(move |new_block_ref| {
+                    debug!(logger3, "processing the new block and propagating");
                     process_and_propagate_new_ref(
                         logger,
                         blockchain,
@@ -120,6 +123,8 @@ impl Process {
                     "date" => header.block_date().to_string(),
                     "from_node_id" => node_id.to_string()));
 
+                info!(logger, "receiving block announcement from network");
+
                 let future = process_block_announcement(
                     blockchain.clone(),
                     blockchain_tip.clone(),
@@ -137,6 +142,8 @@ impl Process {
                     reply: ReplyHandle<()>,
                     candidate: Option<Arc<Ref>>,
                 }
+
+                info!(info.logger(), "receiving block stream from network");
 
                 let logger = info.logger().clone();
                 let logger_fold = logger.clone();
@@ -216,6 +223,8 @@ impl Process {
                 Either::B(Either::A(future))
             }
             BlockMsg::ChainHeaders(handle) => {
+                info!(info.logger(), "receiving header stream from network");
+
                 let (stream, reply) = handle.into_stream_and_reply();
                 let logger = info.logger().clone();
 
@@ -325,9 +334,10 @@ fn process_and_propagate_new_ref(
     new_block_ref: Arc<Ref>,
     network_msg_box: MessageBox<NetworkMsg>,
 ) -> impl Future<Item = (), Error = Error> {
-    let process_new_ref = process_new_ref(logger, blockchain, tip, new_block_ref.clone());
+    let process_new_ref = process_new_ref(logger.clone(), blockchain, tip, new_block_ref.clone());
 
     process_new_ref.and_then(move |()| {
+        debug!(logger, "propagating block to the network");
         let header = new_block_ref.header().clone();
         network_msg_box
             .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
@@ -345,6 +355,7 @@ pub fn process_leadership_block(
     let header = block.header();
     let parent_hash = block.parent_id();
     let logger1 = logger.clone();
+    let logger2 = logger.clone();
     // This is a trusted block from the leadership task,
     // so we can skip pre-validation.
     blockchain
@@ -363,7 +374,10 @@ pub fn process_leadership_block(
                 ))
             }
         })
-        .and_then(move |post_checked| end_blockchain.apply_and_store_block(post_checked, block))
+        .and_then(move |post_checked| {
+            debug!(logger2, "apply and store block");
+            end_blockchain.apply_and_store_block(post_checked, block)
+        })
         .map_err(|err| Error::with_chain(err, "cannot process leadership block"))
         .map(move |e| {
             info!(logger, "block from leader event successfully stored");
