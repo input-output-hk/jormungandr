@@ -29,10 +29,15 @@ pub struct Pool {
 }
 
 impl Pool {
-    pub fn new(ttl: Duration, logs: Logs, network_msg_box: MessageBox<NetworkMsg>) -> Self {
+    pub fn new(
+        max_entries: usize,
+        ttl: Duration,
+        logs: Logs,
+        network_msg_box: MessageBox<NetworkMsg>,
+    ) -> Self {
         Pool {
             logs,
-            pool: Lock::new(internal::Pool::new(ttl)),
+            pool: Lock::new(internal::Pool::new(max_entries, ttl)),
             network_msg_box,
         }
     }
@@ -164,6 +169,7 @@ pub(super) mod internal {
     use tokio::timer::{delay_queue, DelayQueue};
 
     pub struct Pool {
+        max_entries: usize,
         entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
         entries_by_time: VecDeque<FragmentId>,
         expirations: DelayQueue<FragmentId>,
@@ -171,8 +177,9 @@ pub(super) mod internal {
     }
 
     impl Pool {
-        pub fn new(ttl: Duration) -> Self {
+        pub fn new(max_entries: usize, ttl: Duration) -> Self {
             Pool {
+                max_entries,
                 entries: HashMap::new(),
                 entries_by_time: VecDeque::new(),
                 expirations: DelayQueue::new(),
@@ -182,16 +189,20 @@ pub(super) mod internal {
 
         /// Returns clone of fragment if it was registered
         pub fn insert(&mut self, fragment: Fragment) -> Option<Fragment> {
-            let fragment_id = fragment.id();
-            let entry = match self.entries.entry(fragment_id) {
-                Entry::Occupied(_) => return None,
-                Entry::Vacant(vacant) => vacant,
-            };
-            let pool_entry = Arc::new(PoolEntry::new(&fragment));
-            let delay = self.expirations.insert(fragment_id, self.ttl);
-            entry.insert((pool_entry, fragment.clone(), delay));
-            self.entries_by_time.push_back(fragment_id);
-            Some(fragment)
+            if self.max_entries < self.entries.len() {
+                None
+            } else {
+                let fragment_id = fragment.id();
+                let entry = match self.entries.entry(fragment_id) {
+                    Entry::Occupied(_) => return None,
+                    Entry::Vacant(vacant) => vacant,
+                };
+                let pool_entry = Arc::new(PoolEntry::new(&fragment));
+                let delay = self.expirations.insert(fragment_id, self.ttl);
+                entry.insert((pool_entry, fragment.clone(), delay));
+                self.entries_by_time.push_back(fragment_id);
+                Some(fragment)
+            }
         }
 
         /// Returns clones of registered fragments
@@ -201,6 +212,11 @@ pub(super) mod internal {
         ) -> Vec<Fragment> {
             fragments
                 .into_iter()
+                .take(
+                    self.max_entries
+                        .checked_sub(self.entries.len())
+                        .unwrap_or(0),
+                )
                 .filter_map(|fragment| self.insert(fragment))
                 .collect()
         }

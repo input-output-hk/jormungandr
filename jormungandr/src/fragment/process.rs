@@ -25,6 +25,7 @@ pub struct Process {
 
 impl Process {
     pub fn new(
+        pool_max_entries: usize,
         pool_ttl: Duration,
         logs_ttl: Duration,
         garbage_collection_interval: Duration,
@@ -32,7 +33,7 @@ impl Process {
     ) -> Self {
         let logs = Logs::new(logs_ttl);
         Process {
-            pool: Pool::new(pool_ttl, logs.clone(), network_msg_box),
+            pool: Pool::new(pool_max_entries, pool_ttl, logs.clone(), network_msg_box),
             logs,
             garbage_collection_interval,
         }
