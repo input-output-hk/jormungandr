@@ -27,11 +27,12 @@ impl Process {
     pub fn new(
         pool_max_entries: usize,
         pool_ttl: Duration,
+        logs_max_entries: usize,
         logs_ttl: Duration,
         garbage_collection_interval: Duration,
         network_msg_box: MessageBox<NetworkMsg>,
     ) -> Self {
-        let logs = Logs::new(logs_ttl);
+        let logs = Logs::new(logs_max_entries, logs_ttl);
         Process {
             pool: Pool::new(pool_max_entries, pool_ttl, logs.clone(), network_msg_box),
             logs,
