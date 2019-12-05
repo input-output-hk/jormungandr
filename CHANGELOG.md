@@ -1,5 +1,25 @@
 # Change Log
 
+## [v0.8.0-rc8](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc8) (2019-12-05)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc7...v0.8.0-rc8)
+
+**Implemented enhancements:**
+
+- add in more logs in the block event handling [\#1287](https://github.com/input-output-hk/jormungandr/pull/1287)
+- Fragment pool boundaries [\#1285](https://github.com/input-output-hk/jormungandr/pull/1285)
+- Remove unimplemented! in protocol request handlers. [\#1280](https://github.com/input-output-hk/jormungandr/pull/1280)
+- blockchain: Rework task state [\#1279](https://github.com/input-output-hk/jormungandr/pull/1279)
+
+**Fixed bugs:**
+
+- Downloading data on incentivized node is very slowly [\#1262](https://github.com/input-output-hk/jormungandr/issues/1262)
+- little fix in the reward calculation [\#1283](https://github.com/input-output-hk/jormungandr/pull/1283)
+
+**Closed issues:**
+
+- Rewards for the current epoch are allocated at the beginning of the epoch - 0.8.0-RC7 [\#1282](https://github.com/input-output-hk/jormungandr/issues/1282)
+
 ## [v0.8.0-rc7](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc7) (2019-12-04)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc6...v0.8.0-rc7)
