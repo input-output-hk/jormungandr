@@ -160,6 +160,7 @@ pub(super) mod internal {
         }
 
         pub fn modify(&mut self, fragment_id: &Hash, status: FragmentStatus) {
+            let len = self.entries.len();
             match self.entries.entry(fragment_id.clone()) {
                 Entry::Occupied(mut entry) => {
                     entry.get_mut().0.modify(status);
@@ -173,11 +174,16 @@ pub(super) mod internal {
                     // we can mark the status of the transaction so newly received transaction
                     // be stored.
 
-                    let delay = self.expirations.insert(*fragment_id, self.ttl);
-                    entry.insert((
-                        FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network),
-                        delay,
-                    ));
+                    if self.max_entries < len {
+                        let delay = self.expirations.insert(*fragment_id, self.ttl);
+                        entry.insert((
+                            FragmentLog::new(
+                                fragment_id.clone().into_hash(),
+                                FragmentOrigin::Network,
+                            ),
+                            delay,
+                        ));
+                    }
                 }
             }
         }
