@@ -12,8 +12,8 @@ use crate::{
     network::p2p::Id as NodeId,
     stats_counter::StatsCounter,
     utils::{
-        async_msg::{self, MessageBox},
-        task::{Input, TokioServiceInfo},
+        async_msg::{self, MessageBox, MessageQueue},
+        task::TokioServiceInfo,
     },
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
@@ -25,241 +25,229 @@ use tokio::prelude::*;
 
 use std::sync::Arc;
 
-pub fn handle_input(
-    info: &TokioServiceInfo,
-    blockchain: &mut Blockchain,
-    blockchain_tip: &mut Tip,
-    candidate_forest: &CandidateForest,
-    stats_counter: &StatsCounter,
-    network_msg_box: &mut MessageBox<NetworkMsg>,
-    tx_msg_box: &mut MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
-    input: Input<BlockMsg>,
-) -> impl Future<Item = (), Error = ()> {
-    match input {
-        Input::Shutdown => {
-            // TODO: is there some work to do here to clean up the
-            //       the state and make sure all state is saved properly
-            Either::A(future::ok(()))
-        }
-        Input::Input(msg) => {
-            let logger = info.logger().clone();
-            Either::B(
-                run_handle_input(
-                    info,
-                    blockchain.clone(),
-                    blockchain_tip.clone(),
-                    candidate_forest.clone(),
-                    stats_counter.clone(),
-                    network_msg_box.clone(),
-                    tx_msg_box.clone(),
-                    explorer_msg_box.cloned(),
-                    msg,
-                )
-                .map_err(move |e| {
-                    error!(
-                        logger,
-                        "Cannot process block event" ;
-                        "reason" => %e,
-                    );
-                }),
-            )
-        }
-    }
+pub struct Process {
+    pub blockchain: Blockchain,
+    pub blockchain_tip: Tip,
+    pub candidate_forest: CandidateForest,
+    pub stats_counter: StatsCounter,
+    pub network_msgbox: MessageBox<NetworkMsg>,
+    pub fragment_msgbox: MessageBox<TransactionMsg>,
+    pub explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
 }
 
-pub fn run_handle_input(
-    info: &TokioServiceInfo,
-    blockchain: Blockchain,
-    blockchain_tip: Tip,
-    candidate_forest: CandidateForest,
-    stats_counter: StatsCounter,
-    network_msg_box: MessageBox<NetworkMsg>,
-    mut tx_msg_box: MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    input: BlockMsg,
-) -> impl Future<Item = (), Error = Error> {
-    match input {
-        BlockMsg::LeadershipBlock(block) => {
-            let logger = info.logger().new(o!(
-                "hash" => block.header.hash().to_string(),
-                "parent" => block.header.parent_id().to_string(),
-                "date" => block.header.block_date().to_string()));
-
-            let process_new_block =
-                process_leadership_block(logger.clone(), blockchain.clone(), block.clone());
-
-            let fragments = block.fragments().map(|f| f.id()).collect();
-
-            let update_mempool = process_new_block.and_then(move |new_block_ref| {
-                try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
-                    .map_err(|_| "cannot remove fragments from pool".into())
-                    .map(|_| {
-                        stats_counter.add_block_recv_cnt(1);
-                        new_block_ref
-                    })
-            });
-
-            let process_new_ref = update_mempool.and_then(move |new_block_ref| {
-                process_and_propagate_new_ref(
+impl Process {
+    pub fn start(
+        mut self,
+        service_info: TokioServiceInfo,
+        input: MessageQueue<BlockMsg>,
+    ) -> impl Future<Item = (), Error = ()> {
+        let logger = service_info.logger().clone();
+        input.for_each(move |msg| {
+            let logger = logger.clone();
+            self.handle_input(&service_info, msg).map_err(move |e| {
+                error!(
                     logger,
-                    blockchain,
-                    blockchain_tip,
-                    Arc::clone(&new_block_ref),
-                    network_msg_box,
-                )
-            });
-
-            let notify_explorer = process_new_ref.and_then(move |()| {
-                if let Some(msg_box) = explorer_msg_box {
-                    Either::A(
-                        msg_box
-                            .send(ExplorerMsg::NewBlock(block))
-                            .map_err(|_| "Cannot propagate block to explorer".into())
-                            .map(|_| ()),
-                    )
-                } else {
-                    Either::B(future::ok(()))
-                }
-            });
-
-            Either::A(Either::A(notify_explorer))
-        }
-        BlockMsg::AnnouncedBlock(header, node_id) => {
-            let logger = info.logger().new(o!(
-                "hash" => header.hash().to_string(),
-                "parent" => header.parent_id().to_string(),
-                "date" => header.block_date().to_string(),
-                "from_node_id" => node_id.to_string()));
-
-            let future = process_block_announcement(
-                blockchain.clone(),
-                blockchain_tip.clone(),
-                header,
-                node_id,
-                network_msg_box.clone(),
-                logger,
-            );
-
-            Either::A(Either::B(future))
-        }
-        BlockMsg::NetworkBlocks(handle) => {
-            struct State<S> {
-                stream: S,
-                reply: ReplyHandle<()>,
-                candidate: Option<Arc<Ref>>,
-            }
-
-            let logger = info.logger().clone();
-            let logger_fold = logger.clone();
-            let blockchain_fold = blockchain.clone();
-            let (stream, reply) = handle.into_stream_and_reply();
-            let stream =
-                stream.map_err(|()| Error::from("Error while processing block input stream"));
-            let state = State {
-                stream,
-                reply,
-                candidate: None,
-            };
-            let future = future::loop_fn(state, move |state| {
-                let blockchain = blockchain_fold.clone();
-                let candidate_forest = candidate_forest.clone();
-                let tx_msg_box = tx_msg_box.clone();
-                let explorer_msg_box = explorer_msg_box.clone();
-                let stats_counter = stats_counter.clone();
-                let logger = logger_fold.clone();
-                let State {
-                    stream,
-                    reply,
-                    candidate,
-                } = state;
-                stream
-                    .into_future()
-                    .map_err(|(e, _)| e)
-                    .and_then(move |(maybe_block, stream)| match maybe_block {
-                        Some(block) => Either::A(
-                            process_network_block(
-                                blockchain,
-                                candidate_forest,
-                                block,
-                                tx_msg_box,
-                                explorer_msg_box,
-                                logger.clone(),
-                            )
-                            .then(move |res| match res {
-                                Ok(candidate) => {
-                                    stats_counter.add_block_recv_cnt(1);
-                                    Ok(Loop::Continue(State {
-                                        stream,
-                                        reply,
-                                        candidate,
-                                    }))
-                                }
-                                Err(e) => {
-                                    info!(
-                                        logger,
-                                        "validation of an incoming block failed";
-                                        "reason" => %e,
-                                    );
-                                    reply.reply_error(network_block_error_into_reply(e));
-                                    Ok(Loop::Break(candidate))
-                                }
-                            }),
-                        ),
-                        None => {
-                            reply.reply_ok(());
-                            Either::B(future::ok(Loop::Break(candidate)))
-                        }
-                    })
+                    "cannot process block event";
+                    "reason" => %e,
+                );
             })
-            .and_then(move |maybe_updated| match maybe_updated {
-                Some(new_block_ref) => {
-                    let future = process_and_propagate_new_ref(
+        })
+    }
+
+    fn handle_input(
+        &mut self,
+        info: &TokioServiceInfo,
+        input: BlockMsg,
+    ) -> impl Future<Item = (), Error = Error> {
+        let blockchain = self.blockchain.clone();
+        let blockchain_tip = self.blockchain_tip.clone();
+        let network_msg_box = self.network_msgbox.clone();
+        let explorer_msg_box = self.explorer_msgbox.clone();
+        let candidate_forest = self.candidate_forest.clone();
+        let mut tx_msg_box = self.fragment_msgbox.clone();
+        let stats_counter = self.stats_counter.clone();
+
+        match input {
+            BlockMsg::LeadershipBlock(block) => {
+                let logger = info.logger().new(o!(
+                    "hash" => block.header.hash().to_string(),
+                    "parent" => block.header.parent_id().to_string(),
+                    "date" => block.header.block_date().to_string()));
+
+                let process_new_block =
+                    process_leadership_block(logger.clone(), blockchain.clone(), block.clone());
+
+                let fragments = block.fragments().map(|f| f.id()).collect();
+
+                let update_mempool = process_new_block.and_then(move |new_block_ref| {
+                    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
+                        .map_err(|_| "cannot remove fragments from pool".into())
+                        .map(|_| {
+                            stats_counter.add_block_recv_cnt(1);
+                            new_block_ref
+                        })
+                });
+
+                let process_new_ref = update_mempool.and_then(move |new_block_ref| {
+                    process_and_propagate_new_ref(
                         logger,
                         blockchain,
                         blockchain_tip,
                         Arc::clone(&new_block_ref),
                         network_msg_box,
-                    );
-                    Either::A(future)
-                }
-                None => Either::B(future::ok(())),
-            });
+                    )
+                });
 
-            Either::B(Either::A(future))
-        }
-        BlockMsg::ChainHeaders(handle) => {
-            let (stream, reply) = handle.into_stream_and_reply();
-            let logger = info.logger().clone();
-
-            let future = candidate_forest.advance_branch(stream);
-            let future = future.then(move |resp| match resp {
-                Err(e) => {
-                    info!(
-                        logger,
-                        "error processing an incoming header stream";
-                        "reason" => %e,
-                    );
-                    reply.reply_error(chain_header_error_into_reply(e));
-                    Either::A(future::ok(()))
-                }
-                Ok((hashes, maybe_remainder)) => {
-                    if hashes.is_empty() {
-                        Either::A(future::ok(()))
-                    } else {
-                        Either::B(
-                            network_msg_box
-                                .send(NetworkMsg::GetBlocks(hashes))
-                                .map_err(|_| "cannot request blocks from network".into())
-                                .map(|_| reply.reply_ok(())),
+                let notify_explorer = process_new_ref.and_then(move |()| {
+                    if let Some(msg_box) = explorer_msg_box {
+                        Either::A(
+                            msg_box
+                                .send(ExplorerMsg::NewBlock(block))
+                                .map_err(|_| "Cannot propagate block to explorer".into())
+                                .map(|_| ()),
                         )
-                        // TODO: if the stream is not ended, resume processing
-                        // after more blocks arrive
+                    } else {
+                        Either::B(future::ok(()))
                     }
-                }
-            });
+                });
 
-            Either::B(Either::B(future))
+                Either::A(Either::A(notify_explorer))
+            }
+            BlockMsg::AnnouncedBlock(header, node_id) => {
+                let logger = info.logger().new(o!(
+                    "hash" => header.hash().to_string(),
+                    "parent" => header.parent_id().to_string(),
+                    "date" => header.block_date().to_string(),
+                    "from_node_id" => node_id.to_string()));
+
+                let future = process_block_announcement(
+                    blockchain.clone(),
+                    blockchain_tip.clone(),
+                    header,
+                    node_id,
+                    network_msg_box.clone(),
+                    logger,
+                );
+
+                Either::A(Either::B(future))
+            }
+            BlockMsg::NetworkBlocks(handle) => {
+                struct State<S> {
+                    stream: S,
+                    reply: ReplyHandle<()>,
+                    candidate: Option<Arc<Ref>>,
+                }
+
+                let logger = info.logger().clone();
+                let logger_fold = logger.clone();
+                let blockchain_fold = blockchain.clone();
+                let (stream, reply) = handle.into_stream_and_reply();
+                let stream =
+                    stream.map_err(|()| Error::from("Error while processing block input stream"));
+                let state = State {
+                    stream,
+                    reply,
+                    candidate: None,
+                };
+                let future = future::loop_fn(state, move |state| {
+                    let blockchain = blockchain_fold.clone();
+                    let candidate_forest = candidate_forest.clone();
+                    let tx_msg_box = tx_msg_box.clone();
+                    let explorer_msg_box = explorer_msg_box.clone();
+                    let stats_counter = stats_counter.clone();
+                    let logger = logger_fold.clone();
+                    let State {
+                        stream,
+                        reply,
+                        candidate,
+                    } = state;
+                    stream.into_future().map_err(|(e, _)| e).and_then(
+                        move |(maybe_block, stream)| match maybe_block {
+                            Some(block) => Either::A(
+                                process_network_block(
+                                    blockchain,
+                                    candidate_forest,
+                                    block,
+                                    tx_msg_box,
+                                    explorer_msg_box,
+                                    logger.clone(),
+                                )
+                                .then(move |res| match res {
+                                    Ok(candidate) => {
+                                        stats_counter.add_block_recv_cnt(1);
+                                        Ok(Loop::Continue(State {
+                                            stream,
+                                            reply,
+                                            candidate,
+                                        }))
+                                    }
+                                    Err(e) => {
+                                        info!(
+                                            logger,
+                                            "validation of an incoming block failed";
+                                            "reason" => %e,
+                                        );
+                                        reply.reply_error(network_block_error_into_reply(e));
+                                        Ok(Loop::Break(candidate))
+                                    }
+                                }),
+                            ),
+                            None => {
+                                reply.reply_ok(());
+                                Either::B(future::ok(Loop::Break(candidate)))
+                            }
+                        },
+                    )
+                })
+                .and_then(move |maybe_updated| match maybe_updated {
+                    Some(new_block_ref) => {
+                        let future = process_and_propagate_new_ref(
+                            logger,
+                            blockchain,
+                            blockchain_tip,
+                            Arc::clone(&new_block_ref),
+                            network_msg_box,
+                        );
+                        Either::A(future)
+                    }
+                    None => Either::B(future::ok(())),
+                });
+
+                Either::B(Either::A(future))
+            }
+            BlockMsg::ChainHeaders(handle) => {
+                let (stream, reply) = handle.into_stream_and_reply();
+                let logger = info.logger().clone();
+
+                let future = candidate_forest.advance_branch(stream);
+                let future = future.then(move |resp| match resp {
+                    Err(e) => {
+                        info!(
+                            logger,
+                            "error processing an incoming header stream";
+                            "reason" => %e,
+                        );
+                        reply.reply_error(chain_header_error_into_reply(e));
+                        Either::A(future::ok(()))
+                    }
+                    Ok((hashes, maybe_remainder)) => {
+                        if hashes.is_empty() {
+                            Either::A(future::ok(()))
+                        } else {
+                            Either::B(
+                                network_msg_box
+                                    .send(NetworkMsg::GetBlocks(hashes))
+                                    .map_err(|_| "cannot request blocks from network".into())
+                                    .map(|_| reply.reply_ok(())),
+                            )
+                            // TODO: if the stream is not ended, resume processing
+                            // after more blocks arrive
+                        }
+                    }
+                });
+
+                Either::B(Either::B(future))
+            }
         }
     }
 }
