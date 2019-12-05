@@ -923,14 +923,7 @@ impl Status {
     }
 
     pub fn latest_block(&self, context: &Context) -> FieldResult<Block> {
-        context
-            .db
-            .get_latest_block_hash()
-            .and_then(|hash| context.db.get_block(&hash))
-            .wait()
-            .unwrap_or_else(|e| match e {})
-            .ok_or(ErrorKind::InternalError("tip is not in explorer".to_owned()).into())
-            .map(|b| Block::from(&b))
+        latest_block(context).map(|b| Block::from(&b))
     }
 
     pub fn fee_settings(&self, context: &Context) -> FeeSettings {
@@ -1145,16 +1138,7 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
-        let longest_chain = context
-            .db
-            .get_latest_block_hash()
-            .and_then(|hash| context.db.get_block(&hash))
-            .wait()
-            .unwrap_or_else(|e| match e {})
-            .ok_or(ErrorKind::InternalError(
-                "tip is not in explorer".to_owned(),
-            ))
-            .map(|block| block.chain_length)?;
+        let longest_chain = latest_block(context)?.chain_length;
 
         let block0 = 0u32;
 
@@ -1283,4 +1267,15 @@ pub type Schema = RootNode<'static, Query, EmptyMutation<Context>>;
 
 pub fn create_schema() -> Schema {
     Schema::new(Query {}, EmptyMutation::new())
+}
+
+fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
+    context
+        .db
+        .get_latest_block_hash()
+        .and_then(|hash| context.db.get_block(&hash))
+        .wait()
+        .unwrap_or_else(|e| match e {})
+        .ok_or_else(|| ErrorKind::InternalError("tip is not in explorer".to_owned()))
+        .map_err(Into::into)
 }
