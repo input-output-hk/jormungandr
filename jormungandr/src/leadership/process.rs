@@ -663,7 +663,7 @@ fn prepare_block(
 ) -> impl Future<Item = Contents, Error = LeadershipError> {
     use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};
 
-    let selection_algorithm = OldestFirst::new(250 /* TODO!! */);
+    let selection_algorithm = OldestFirst::new();
     fragment_pool
         .select(
             ledger.as_ref().clone(),

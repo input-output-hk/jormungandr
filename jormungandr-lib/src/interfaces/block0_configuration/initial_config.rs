@@ -1,7 +1,8 @@
 use crate::{
     interfaces::{
-        ActiveSlotCoefficient, BFTSlotsRatio, ConsensusLeaderId, KESUpdateSpeed, LinearFeeDef,
-        NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType, Value,
+        ActiveSlotCoefficient, BFTSlotsRatio, BlockContentMaxSize, ConsensusLeaderId,
+        KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType,
+        Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -92,11 +93,9 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     pub bft_slots_ratio: BFTSlotsRatio,
 
-    /// TODO: need some love
-    /// this value is left for compatibility only but should be removed or
-    /// replaced by something more meaningful: max block size (in bytes)
+    /// set the block content maximal size
     #[serde(default)]
-    pub max_number_of_transactions_per_block: Option<u32>,
+    pub block_content_max_size: BlockContentMaxSize,
 
     /// TODO: need some love
     /// this value is left for compatibility only be should be removed
@@ -167,7 +166,7 @@ impl BlockchainConfiguration {
             kes_update_speed: KESUpdateSpeed::default(),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             bft_slots_ratio: BFTSlotsRatio::default(),
-            max_number_of_transactions_per_block: None,
+            block_content_max_size: BlockContentMaxSize::default(),
             epoch_stability_depth: None,
             treasury: None,
             treasury_parameters: None,
@@ -189,7 +188,7 @@ impl BlockchainConfiguration {
         let mut epoch_stability_depth = None;
         let mut consensus_leader_ids = vec![];
         let mut consensus_genesis_praos_active_slot_coeff = None;
-        let mut max_number_of_transactions_per_block = None;
+        let mut block_content_max_size = None;
         let mut bft_slots_ratio = None;
         let mut linear_fees = None;
         let mut kes_update_speed = None;
@@ -237,11 +236,9 @@ impl BlockchainConfiguration {
                     panic!("block 0 attempts to remove a BFT leader")
                 }
                 ConfigParam::ProposalExpiration(_param) => unimplemented!(),
-                ConfigParam::MaxNumberOfTransactionsPerBlock(param) => {
-                    max_number_of_transactions_per_block
-                        .replace(param)
-                        .map(|_| "max_number_of_transactions_per_block")
-                }
+                ConfigParam::BlockContentMaxSize(param) => block_content_max_size
+                    .replace(param.into())
+                    .map(|_| "block_content_max_size"),
                 ConfigParam::EpochStabilityDepth(param) => epoch_stability_depth
                     .replace(param)
                     .map(|_| "epoch_stability_depth"),
@@ -286,7 +283,8 @@ impl BlockchainConfiguration {
             kes_update_speed: kes_update_speed.ok_or(param_missing_error("kes_update_speed"))?,
             epoch_stability_depth,
             consensus_leader_ids,
-            max_number_of_transactions_per_block,
+            block_content_max_size: block_content_max_size
+                .ok_or(param_missing_error("block_content_max_size"))?,
             treasury,
             treasury_parameters,
             total_reward_supply,
@@ -306,7 +304,7 @@ impl BlockchainConfiguration {
             kes_update_speed,
             consensus_genesis_praos_active_slot_coeff,
             bft_slots_ratio,
-            max_number_of_transactions_per_block,
+            block_content_max_size,
             epoch_stability_depth,
             treasury,
             treasury_parameters,
@@ -325,18 +323,15 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::from(kes_update_speed));
         params.push(ConfigParam::from(consensus_genesis_praos_active_slot_coeff));
         params.push(ConfigParam::from(bft_slots_ratio));
+        params.push(ConfigParam::BlockContentMaxSize(
+            block_content_max_size.into(),
+        ));
 
         if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(
             &linear_fees.per_certificate_fees,
         ) {
             params.push(ConfigParam::PerCertificateFees(
                 linear_fees.per_certificate_fees,
-            ));
-        }
-
-        if let Some(max_number_of_transactions_per_block) = max_number_of_transactions_per_block {
-            params.push(ConfigParam::MaxNumberOfTransactionsPerBlock(
-                max_number_of_transactions_per_block,
             ));
         }
 
@@ -420,7 +415,7 @@ mod test {
                 kes_update_speed: KESUpdateSpeed::arbitrary(g),
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::arbitrary(g),
                 bft_slots_ratio: BFTSlotsRatio::arbitrary(g),
-                max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
+                block_content_max_size: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
                 treasury: Arbitrary::arbitrary(g),
                 treasury_parameters: Arbitrary::arbitrary(g),

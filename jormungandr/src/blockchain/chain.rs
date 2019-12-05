@@ -461,7 +461,7 @@ impl Blockchain {
 
         future::result(
             ledger
-                .apply_block(&epoch_ledger_parameters, block.contents.iter(), &metadata)
+                .apply_block(&epoch_ledger_parameters, &block.contents, &metadata)
                 .chain_err(|| ErrorKind::CannotApplyBlock),
         )
         .and_then(move |new_ledger| {
