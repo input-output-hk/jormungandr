@@ -247,7 +247,7 @@ impl JCLITransactionWrapper {
         &mut self,
         private_key: &str,
         transaction_type: &str,
-        spending_key: Option<u64>,
+        spending_key: Option<u32>,
     ) -> &mut Self {
         let witness = self.create_witness_from_key(&private_key, &transaction_type, spending_key);
         self.assert_make_witness(&witness);
@@ -270,7 +270,7 @@ impl JCLITransactionWrapper {
         &mut self,
         private_key: &str,
         transaction_type: &str,
-        spending_key: Option<u64>,
+        spending_key: Option<u32>,
     ) -> &mut Self {
         let witness = self.create_witness_from_key(&private_key, &transaction_type, spending_key);
         self.seal_with_witness(&witness);
@@ -316,7 +316,7 @@ impl JCLITransactionWrapper {
         &self,
         private_key: &str,
         addr_type: &str,
-        spending_key: Option<u64>,
+        spending_key: Option<u32>,
     ) -> Witness {
         let transaction_id = self.get_transaction_id();
         let witness = Witness::new(
@@ -329,7 +329,7 @@ impl JCLITransactionWrapper {
         witness
     }
 
-    pub fn create_witness_default(&self, addr_type: &str, spending_key: Option<u64>) -> Witness {
+    pub fn create_witness_default(&self, addr_type: &str, spending_key: Option<u32>) -> Witness {
         let private_key = jcli_wrapper::assert_key_generate_default();
         self.create_witness_from_key(&private_key, &addr_type, spending_key)
     }

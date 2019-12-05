@@ -10,7 +10,7 @@ pub struct Witness {
     pub transaction_id: Hash,
     pub addr_type: String,
     pub private_key_path: PathBuf,
-    pub spending_account_counter: Option<u64>,
+    pub spending_account_counter: Option<u32>,
     pub file: PathBuf,
 }
 
@@ -20,7 +20,7 @@ impl Witness {
         transaction_id: &Hash,
         addr_type: &str,
         private_key: &str,
-        spending_account_counter: Option<u64>,
+        spending_account_counter: Option<u32>,
     ) -> Witness {
         let temp_folder_path = file_utils::get_temp_folder();
         Witness {

@@ -98,6 +98,12 @@ pub fn e2e_stake_pool() {
         .start()
         .unwrap();
 
+    let account_state = jcli_wrapper::assert_rest_account_get_stats(
+        &actor_account.address,
+        &jormungandr.rest_address(),
+    );
+    actor_account.spending_key = account_state.counter();
+
     let long_wait = WaitBuilder::new()
         .tries(100)
         .sleep_between_tries(120)
