@@ -267,13 +267,27 @@ fees:                                           # transaction fee configuration
   certificate: 4                                # fee per certificate
   coefficient: 1                                # fee per every input and output
   constant: 2                                   # fee per transaction
-  per_certificate_fees:                         # Fee per certificate operations, all zero if this object absent (optional)
-    certificate_pool_registration: 5            # Fee per pool registration, zero if absent (optional)
-    certificate_stake_delegation: 15            # Fee per stake delegation, zero if absent (optional)
-    certificate_owner_stake_delegation: 2       # Fee per pool owner stake delegation, zero if absent (optional)
+  per_certificate_fees:                         # fee per certificate operations, all zero if this object absent (optional)
+    certificate_pool_registration: 5            # fee per pool registration, zero if absent (optional)
+    certificate_stake_delegation: 15            # fee per stake delegation, zero if absent (optional)
+    certificate_owner_stake_delegation: 2       # fee per pool owner stake delegation, zero if absent (optional)
 maxTxsPerBlock: 100                             # maximum number of transactions in block
+rewardParams:                                   # parameters for rewards calculation
+  compoundingRatio:                             # speed at which reward is reduced. Expressed as numerator/denominator
+    denominator: 1024
+    numerator: 1
+  compoundingType: Linear                       # reward reduction algorithm. Possible values: "Linear" and "Halvening"
+  epochRate: 100                                # number of epochs between reward reductions
+  epochStart: 0                                 # epoch when rewarding starts
+  initialValue: 10000                           # initial reward
 slotDuration: 5                                 # slot duration in seconds
 slotsPerEpoch: 720                              # number of slots per epoch
+treasuryTax:                                    # tax from reward that goes to pot
+  fixed: 5                                      # what get subtracted as fixed value
+  ratio:                                        # ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+    numerator: 1
+    denominator: 10000
+  max: 100                                      # limit of tax (optional)
 ```
 
 ## Node shutdown
