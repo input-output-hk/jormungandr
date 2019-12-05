@@ -4,75 +4,111 @@ use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_core::property::HasHeader;
 
-use futures::future::{Either, FutureResult};
+use futures::future::Either;
 use tokio::prelude::*;
+use tokio::timer::Timeout;
+
+use std::time::Duration;
+
+const PROCESS_TIMEOUT_GET_BLOCK_TIP: u64 = 5;
+const PROCESS_TIMEOUT_GET_HEADERS: u64 = 5 * 60;
+const PROCESS_TIMEOUT_GET_HEADERS_RANGE: u64 = 5 * 60;
+const PROCESS_TIMEOUT_GET_BLOCKS: u64 = 10 * 60;
+const PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP: u64 = 60 * 60;
 
 pub struct TaskData {
     pub storage: Storage,
     pub blockchain_tip: Tip,
 }
 
-enum TaskAction<GetBlockTip, GetHeaders, GetHeadersRange, GetBlocks, PullBlocksToTip> {
-    Shutdown(FutureResult<(), ()>),
-    GetBlockTip(GetBlockTip),
-    GetHeaders(GetHeaders),
-    GetHeadersRange(GetHeadersRange),
-    GetBlocks(GetBlocks),
-    PullBlocksToTip(PullBlocksToTip),
-}
-
-impl<
-        GetBlockTip: Future<Item = (), Error = ()>,
-        GetHeaders: Future<Item = (), Error = ()>,
-        GetHeadersRange: Future<Item = (), Error = ()>,
-        GetBlocks: Future<Item = (), Error = ()>,
-        PullBlocksToTip: Future<Item = (), Error = ()>,
-    > Future for TaskAction<GetBlockTip, GetHeaders, GetHeadersRange, GetBlocks, PullBlocksToTip>
-{
-    type Item = ();
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<(), ()> {
-        use self::TaskAction::*;
-
-        match self {
-            Shutdown(fut) => fut.poll(),
-            GetBlockTip(fut) => fut.poll(),
-            GetHeaders(fut) => fut.poll(),
-            GetHeadersRange(fut) => fut.poll(),
-            GetBlocks(fut) => fut.poll(),
-            PullBlocksToTip(fut) => fut.poll(),
-        }
-    }
-}
-
 pub fn handle_input(
-    _info: &TokioServiceInfo,
+    info: &TokioServiceInfo,
     task_data: &mut TaskData,
     input: Input<ClientMsg>,
-) -> impl Future<Item = (), Error = ()> {
+) -> Result<(), ()> {
     let cquery = match input {
-        Input::Shutdown => return TaskAction::Shutdown(Ok(()).into()),
+        Input::Shutdown => return Ok(()),
         Input::Input(msg) => msg,
     };
 
     match cquery {
         ClientMsg::GetBlockTip(handle) => {
-            TaskAction::GetBlockTip(handle.async_reply(get_block_tip(&task_data.blockchain_tip)))
+            let fut = handle.async_reply(get_block_tip(&task_data.blockchain_tip));
+            let logger = info.logger().new(o!("request" => "GetBlockTip"));
+            info.spawn(
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCK_TIP)).map_err(
+                    move |e| {
+                        error!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
         }
         ClientMsg::GetHeaders(ids, handle) => {
-            TaskAction::GetHeaders(handle.async_reply(get_headers(task_data.storage.clone(), ids)))
+            let fut = handle.async_reply(get_headers(task_data.storage.clone(), ids));
+            let logger = info.logger().new(o!("request" => "GetHeaders"));
+            info.spawn(
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
         }
-        ClientMsg::GetHeadersRange(checkpoints, to, handle) => TaskAction::GetHeadersRange(
-            handle_get_headers_range(task_data, checkpoints, to, handle),
-        ),
+        ClientMsg::GetHeadersRange(checkpoints, to, handle) => {
+            let fut = handle_get_headers_range(task_data, checkpoints, to, handle);
+            let logger = info.logger().new(o!("request" => "GetHeadersRange"));
+            info.spawn(
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS_RANGE)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
+        }
         ClientMsg::GetBlocks(ids, handle) => {
-            TaskAction::GetBlocks(handle.async_reply(get_blocks(task_data.storage.clone(), ids)))
+            let fut = handle.async_reply(get_blocks(task_data.storage.clone(), ids));
+            let logger = info.logger().new(o!("request" => "GetBlocks"));
+            info.spawn(
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCKS)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
         }
         ClientMsg::PullBlocksToTip(from, handle) => {
-            TaskAction::PullBlocksToTip(handle_pull_blocks_to_tip(task_data, from, handle))
+            let fut = handle_pull_blocks_to_tip(task_data, from, handle);
+            let logger = info.logger().new(o!("request" => "PullBlocksToTip"));
+            info.spawn(
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
         }
     }
+    Ok(())
 }
 
 fn get_block_tip(blockchain_tip: &Tip) -> impl Future<Item = Header, Error = Error> {
