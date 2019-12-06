@@ -47,6 +47,11 @@ blockchain_configuration:
     - {leader_1}
     - {leader_2}
 
+  # Epoch stability depth
+  #
+  # Optional: default value {default_epoch_stability_depth}
+  epoch_stability_depth: {default_epoch_stability_depth}
+
   # Genesis praos active slot coefficient
   # Determines minimum stake required to try becoming slot leader, must be in range (0,1]
   #

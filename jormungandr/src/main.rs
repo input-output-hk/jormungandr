@@ -183,11 +183,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     {
-        let mut blockchain = blockchain.clone();
-        let mut blockchain_tip = blockchain_tip.clone();
-        let mut network_msgbox = network_msgbox.clone();
-        let mut fragment_msgbox = fragment_msgbox.clone();
-        let mut explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
+        let blockchain = blockchain.clone();
+        let blockchain_tip = blockchain_tip.clone();
+        let network_msgbox = network_msgbox.clone();
+        let fragment_msgbox = fragment_msgbox.clone();
+        let explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(3600);
         let stats_counter = stats_counter.clone();
