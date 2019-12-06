@@ -49,6 +49,8 @@ lastBlockSum: 51604
 lastBlockTime: 2019-08-12T11:20:52.316544007+00:00
 # Number of transactions in last block
 lastBlockTx: 2
+# Size in bytes of all transactions in last block
+lastBlockTxSize: 484
 # State of the node
 state: Running
 # Number of transactions received by node

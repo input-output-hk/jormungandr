@@ -166,6 +166,7 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
                         "lastBlockDate": tip_header.block_date().to_string(),
                         "lastBlockTime": stats.slot_start_time().map(SystemTime::from),
                         "lastBlockTx": block_tx_count,
+                        "lastBlockTxSize": tip_header.block_content_size(),
                         "lastBlockSum": block_input_sum.0,
                         "lastBlockFees": block_fee_sum.0,
                     })))

@@ -530,7 +530,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
+                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, lastBlockTxSize, state, txRecvCnt, uptime, version]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
@@ -559,6 +559,10 @@ paths:
                       format: date-time
                   lastBlockTx:
                     description: Number of transactions in last block
+                    type: integer
+                    minimum: 0
+                  lastBlockTxSize:
+                    description: Size in bytes of all transactions in last block
                     type: integer
                     minimum: 0
                   state:
