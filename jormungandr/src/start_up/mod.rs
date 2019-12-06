@@ -8,7 +8,7 @@ use crate::{
     settings::start::Settings,
 };
 use chain_storage::{memory::MemoryBlockStore, store::BlockStore};
-use chain_storage_sqlite::SQLiteBlockStore;
+use chain_storage_sqlite_old::SQLiteBlockStore;
 use slog::Logger;
 use std::time::Duration;
 
