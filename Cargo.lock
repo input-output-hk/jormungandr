@@ -1419,7 +1419,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "jcli"
-version = "0.8.0-rc8"
+version = "0.8.0-rc9"
 dependencies = [
  "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1509,7 +1509,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-integration-tests"
-version = "0.8.0-r8"
+version = "0.8.0-rc9"
 dependencies = [
  "assert_cmd 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "assert_fs 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1530,7 +1530,7 @@ dependencies = [
  "galvanic-test 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpc 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "jcli 0.8.0-rc8",
+ "jcli 0.8.0-rc9",
  "jormungandr 0.8.0-rc9",
  "jormungandr-lib 0.8.0-rc9",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1580,7 +1580,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-scenario-tests"
-version = "0.8.0-rc8"
+version = "0.8.0-rc9"
 dependencies = [
  "bawawa 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1593,7 +1593,7 @@ dependencies = [
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "indicatif 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "jormungandr-integration-tests 0.8.0-r8",
+ "jormungandr-integration-tests 0.8.0-rc9",
  "jormungandr-lib 0.8.0-rc9",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
