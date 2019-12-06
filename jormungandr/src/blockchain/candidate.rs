@@ -236,7 +236,7 @@ impl ChainAdvance {
                     let parent_candidate = forest
                         .candidate_map
                         .get_mut(&parent_hash)
-                        .expect("parent candidate should be in the map");
+                        .ok_or(Error::MissingParentBlock(parent_hash.clone()))?;
                     // TODO: replace with a Blockchain method call
                     // when that can pre-validate headers without
                     // up-to-date ledger.
