@@ -47,7 +47,6 @@ pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
 
     let mut config = ConfigurationBuilder::new()
         .with_block0_consensus("genesis_praos")
-        .with_bft_slots_ratio("0".to_owned())
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(vec![leader.identifier().to_bech32_str()])
         .with_kes_update_speed(43200)
@@ -118,7 +117,6 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
 
     let mut config = ConfigurationBuilder::new()
         .with_block0_consensus("genesis_praos")
-        .with_bft_slots_ratio("0".to_owned())
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(vec![leader.identifier().to_bech32_str()])
         .with_kes_update_speed(43200)

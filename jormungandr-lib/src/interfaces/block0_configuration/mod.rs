@@ -1,5 +1,4 @@
 mod active_slot_coefficient;
-mod bft_slots_ratio;
 mod block_content_max_size;
 mod default_values;
 mod initial_config;
@@ -10,7 +9,6 @@ mod number_of_slots_per_epoch;
 mod slots_duration;
 
 pub use self::active_slot_coefficient::ActiveSlotCoefficient;
-pub use self::bft_slots_ratio::BFTSlotsRatio;
 pub use self::block_content_max_size::BlockContentMaxSize;
 pub use self::default_values::*;
 pub use self::initial_config::BlockchainConfiguration;
@@ -114,7 +112,6 @@ pub fn block0_configuration_documented_example() -> String {
         default_block0_date = crate::time::SecondsSinceUnixEpoch::default(),
         default_slots_per_epoch = NumberOfSlotsPerEpoch::default(),
         default_slot_duration = SlotDuration::default(),
-        default_bft_slots_ratio = BFTSlotsRatio::default(),
         default_consensus_genesis_praos_active_slot_coeff = ActiveSlotCoefficient::default(),
         default_kes_update_speed = KESUpdateSpeed::default(),
         default_block_content_max_size = BlockContentMaxSize::default(),

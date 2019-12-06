@@ -65,7 +65,6 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
         }])
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_block0_consensus("bft")
-        .with_bft_slots_ratio("0".to_owned())
         .with_kes_update_speed(43200)
         .with_slots_per_epoch(5)
         .with_slot_duration(2)

@@ -1,8 +1,7 @@
 use crate::{
     interfaces::{
-        ActiveSlotCoefficient, BFTSlotsRatio, BlockContentMaxSize, ConsensusLeaderId,
-        KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType,
-        Value,
+        ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, KESUpdateSpeed,
+        LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -86,13 +85,6 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     pub consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
 
-    /// allow BFT and Genesis Praos to live together by allocating some
-    /// slots to the `consensus_leader_ids` (the BFT Leaders).
-    ///
-    /// default value is 0.22.
-    #[serde(default)]
-    pub bft_slots_ratio: BFTSlotsRatio,
-
     /// set the block content maximal size
     #[serde(default)]
     pub block_content_max_size: BlockContentMaxSize,
@@ -138,7 +130,6 @@ custom_error! {pub FromConfigParamsError
     SlotDuration { source: super::slots_duration::TryFromSlotDurationError } = "Invalid slot duration value",
     ConsensusLeaderId { source: super::leader_id::TryFromConsensusLeaderIdError } = "Invalid consensus leader id",
     ActiveSlotCoefficient { source: super::active_slot_coefficient::TryFromActiveSlotCoefficientError } = "Invalid active slot coefficient value",
-    BFTSlotsRatio { source: super::bft_slots_ratio::TryFromBFTSlotsRatioError } = "Invalid BFT Slot ratio",
     KESUpdateSpeed { source: super::kes_update_speed::TryFromKESUpdateSpeedError } = "Invalid KES Update speed value",
 }
 
@@ -165,7 +156,6 @@ impl BlockchainConfiguration {
             slot_duration: SlotDuration::default(),
             kes_update_speed: KESUpdateSpeed::default(),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
-            bft_slots_ratio: BFTSlotsRatio::default(),
             block_content_max_size: BlockContentMaxSize::default(),
             epoch_stability_depth: None,
             treasury: None,
@@ -189,7 +179,6 @@ impl BlockchainConfiguration {
         let mut consensus_leader_ids = vec![];
         let mut consensus_genesis_praos_active_slot_coeff = None;
         let mut block_content_max_size = None;
-        let mut bft_slots_ratio = None;
         let mut linear_fees = None;
         let mut kes_update_speed = None;
         let mut treasury = None;
@@ -224,9 +213,6 @@ impl BlockchainConfiguration {
                         .replace(ActiveSlotCoefficient::try_from(cp)?)
                         .map(|_| "consensus_genesis_praos_active_slot_coeff")
                 }
-                cp @ ConfigParam::BftSlotsRatio(_) => bft_slots_ratio
-                    .replace(BFTSlotsRatio::try_from(cp)?)
-                    .map(|_| "bft_slots_ratio"),
                 ConfigParam::LinearFee(param) => linear_fees.replace(param).map(|_| "linear_fees"),
                 cp @ ConfigParam::KESUpdateSpeed(_) => kes_update_speed
                     .replace(KESUpdateSpeed::try_from(cp)?)
@@ -278,7 +264,6 @@ impl BlockchainConfiguration {
                 .ok_or(param_missing_error(
                     "consensus_genesis_praos_active_slot_coeff",
                 ))?,
-            bft_slots_ratio: bft_slots_ratio.ok_or(param_missing_error("bft_slots_ratio"))?,
             linear_fees: linear_fees.ok_or(param_missing_error("linear_fees"))?,
             kes_update_speed: kes_update_speed.ok_or(param_missing_error("kes_update_speed"))?,
             epoch_stability_depth,
@@ -303,7 +288,6 @@ impl BlockchainConfiguration {
             slot_duration,
             kes_update_speed,
             consensus_genesis_praos_active_slot_coeff,
-            bft_slots_ratio,
             block_content_max_size,
             epoch_stability_depth,
             treasury,
@@ -322,7 +306,6 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::from(slot_duration));
         params.push(ConfigParam::from(kes_update_speed));
         params.push(ConfigParam::from(consensus_genesis_praos_active_slot_coeff));
-        params.push(ConfigParam::from(bft_slots_ratio));
         params.push(ConfigParam::BlockContentMaxSize(
             block_content_max_size.into(),
         ));
@@ -414,7 +397,6 @@ mod test {
                 slot_duration: SlotDuration::arbitrary(g),
                 kes_update_speed: KESUpdateSpeed::arbitrary(g),
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::arbitrary(g),
-                bft_slots_ratio: BFTSlotsRatio::arbitrary(g),
                 block_content_max_size: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
                 treasury: Arbitrary::arbitrary(g),
