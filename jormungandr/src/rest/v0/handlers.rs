@@ -297,6 +297,7 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
             let current_params = blockchain_tip.epoch_ledger_parameters();
             let fees = current_params.fees;
             let block_content_max_size = current_params.block_content_max_size;
+            let epoch_stability_depth = current_params.epoch_stability_depth;
             let slots_per_epoch = blockchain_tip
                 .epoch_leadership_schedule()
                 .era()
@@ -312,6 +313,7 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
                 consensus_version: consensus_version.to_string(),
                 fees: fees,
                 block_content_max_size: block_content_max_size,
+                epoch_stability_depth: epoch_stability_depth,
                 slot_duration: blockchain_tip.time_frame().slot_duration(),
                 slots_per_epoch,
                 treasury_tax: current_params.treasury_tax,

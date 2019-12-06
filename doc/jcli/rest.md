@@ -266,6 +266,7 @@ block0Time: "2019-07-09T12:32:51+00:00"         # block 0 creation time of
 blockContentMaxSize: 102400                     # the block content's max size in bytes
 consensusVersion: bft                           # currently used consensus
 currSlotStartTime: "2019-07-09T12:55:11+00:00"  # current slot start time
+epochStabilityDepth: 102400                     # the depth, number of blocks, to which we consider the blockchain to be stable and prevent rollback beyond that depth
 fees:                                           # transaction fee configuration
   certificate: 4                                # fee per certificate
   coefficient: 1                                # fee per every input and output

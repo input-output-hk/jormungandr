@@ -605,7 +605,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, blockContentMaxSize, consensusVersion, fees, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
+                required: [block0Hash, block0Time, blockContentMaxSize, consensusVersion, epochStabilityDepth, fees, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -627,6 +627,10 @@ paths:
                     description: When current slot was opened, not set if none is currently open
                     type: string
                     format: date-time
+                  epochStabilityDepth:
+                    description: The depth, number of blocks, to which we consider the blockchain to be stable and prevent rollback beyond that depth
+                    type: integer
+                    minimum: 1
                   fees:
                     description: Linear fees configuration
                     type: object
