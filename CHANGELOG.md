@@ -1,5 +1,37 @@
 # Change Log
 
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc8...v0.8.0-rc9)
+
+**Breaking changes:**
+
+- remove useless block0 parameter: BFT Slots Ratio [\#1293](https://github.com/input-output-hk/jormungandr/pull/1293)
+- BlockContent Size: finally set the right value for number of fragments [\#1288](https://github.com/input-output-hk/jormungandr/pull/1288)
+
+**Implemented enhancements:**
+
+- Add proper depth [\#1295](https://github.com/input-output-hk/jormungandr/pull/1295)
+- spawn blockchain process to allow for more concurrent action to happen [\#1290](https://github.com/input-output-hk/jormungandr/pull/1290)
+
+**Fixed bugs:**
+
+- jormungandr v0.8.0-rc7 got stuck on synchronisation [\#1284](https://github.com/input-output-hk/jormungandr/issues/1284)
+- jormungandr 0.8.0-rc5-cecea4d got stuck on synchronisation [\#1273](https://github.com/input-output-hk/jormungandr/issues/1273)
+- Spamming the test net appears to break it or at least cause multiple node stalls long after the spamming stops [\#1235](https://github.com/input-output-hk/jormungandr/issues/1235)
+- 0.7.5 \(or nightly testnet\) - generated blocks are not added to the blockchain [\#1221](https://github.com/input-output-hk/jormungandr/issues/1221)
+- 0.7.4 - Blocks not getting added to chain [\#1220](https://github.com/input-output-hk/jormungandr/issues/1220)
+- 0.7.1 Frequent Warning - WARN blockchain is not moving up.... [\#1183](https://github.com/input-output-hk/jormungandr/issues/1183)
+- prevent panic if the given chain advance is removed from concurrent processing [\#1296](https://github.com/input-output-hk/jormungandr/pull/1296)
+
+**Closed issues:**
+
+- 0.8.0-rc2 - Node still shutting down on beta testnet [\#1234](https://github.com/input-output-hk/jormungandr/issues/1234)
+- 0.7.1 - Error processing ChainHeader handling [\#1179](https://github.com/input-output-hk/jormungandr/issues/1179)
+
+**Merged pull requests:**
+
+- Spawn client processing in tasks [\#1292](https://github.com/input-output-hk/jormungandr/pull/1292)
+- Fix mismatch step number [\#1289](https://github.com/input-output-hk/jormungandr/pull/1289)
+
 ## [v0.8.0-rc8](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc8) (2019-12-05)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc7...v0.8.0-rc8)
