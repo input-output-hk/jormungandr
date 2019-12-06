@@ -261,6 +261,7 @@ YAML printed on success
 ---
 block0Hash: 8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7  # block 0 hash of
 block0Time: "2019-07-09T12:32:51+00:00"         # block 0 creation time of
+blockContentMaxSize: 102400                     # the block content's max size in bytes
 consensusVersion: bft                           # currently used consensus
 currSlotStartTime: "2019-07-09T12:55:11+00:00"  # current slot start time
 fees:                                           # transaction fee configuration
@@ -271,7 +272,6 @@ fees:                                           # transaction fee configuration
     certificate_pool_registration: 5            # fee per pool registration, zero if absent (optional)
     certificate_stake_delegation: 15            # fee per stake delegation, zero if absent (optional)
     certificate_owner_stake_delegation: 2       # fee per pool owner stake delegation, zero if absent (optional)
-maxTxsPerBlock: 100                             # maximum number of transactions in block
 rewardParams:                                   # parameters for rewards calculation
   compoundingRatio:                             # speed at which reward is reduced. Expressed as numerator/denominator
     denominator: 1024

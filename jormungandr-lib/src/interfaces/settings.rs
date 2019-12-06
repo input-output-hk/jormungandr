@@ -18,7 +18,7 @@ pub struct SettingsDto {
     pub consensus_version: String,
     #[serde(with = "LinearFeeDef")]
     pub fees: LinearFee,
-    pub max_txs_per_block: u32,
+    pub block_content_max_size: u32,
     pub slot_duration: u64,
     pub slots_per_epoch: u32,
     #[serde(with = "TaxTypeDef")]
@@ -76,7 +76,7 @@ impl PartialEq<SettingsDto> for SettingsDto {
             && self.block0_time == other.block0_time
             && self.consensus_version == other.consensus_version
             && self.fees == other.fees
-            && self.max_txs_per_block == other.max_txs_per_block
+            && self.block_content_max_size == other.block_content_max_size
             && self.slot_duration == other.slot_duration
             && self.slots_per_epoch == other.slots_per_epoch
             && self.treasury_tax == other.treasury_tax
