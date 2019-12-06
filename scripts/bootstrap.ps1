@@ -247,7 +247,6 @@ if([System.IO.File]::Exists($MYCLI)){
     coefficient: $FEE_COEFFICIENT
     certificate: $FEE_CERTIFICATE
   block0_consensus: $CONSENSUS
-  bft_slots_ratio: 0
   kes_update_speed: 43200 # 12hours
 initial:
   - fund:

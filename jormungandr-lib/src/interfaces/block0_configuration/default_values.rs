@@ -8,13 +8,6 @@ pub const MINIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 0_001;
 /// maximum active slot coefficient in milli `1.000`
 pub const MAXIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 1_000;
 
-/// default BFT Slot ratio in milli `0.220`
-pub const DEFAULT_BFT_SLOTS_RATIO: u64 = 0_220;
-/// minimum BFT Slot ratio in milli `0.000`
-pub const MINIMUM_BFT_SLOTS_RATIO: u64 = 0_000;
-/// maximum BFT Slot ratio in milli `1.000`
-pub const MAXIMUM_BFT_SLOTS_RATIO: u64 = 1_000;
-
 /// default KES Update speed (in seconds): 12hours
 pub const DEFAULT_KES_SPEED_UPDATE: u32 = 12 * 3600;
 /// minimum KES Update speed (in seconds): 1minute

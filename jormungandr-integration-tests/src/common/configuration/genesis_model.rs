@@ -36,8 +36,6 @@ pub struct BlockchainConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub consensus_leader_ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bft_slots_ratio: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub consensus_genesis_praos_active_slot_coeff: Option<String>,
     pub linear_fees: LinearFees,
     pub kes_update_speed: u32,
@@ -151,7 +149,6 @@ impl GenesisYaml {
                     String::from(leader_1_pk),
                     String::from(leader_2_pk),
                 ]),
-                bft_slots_ratio: Some("0.222".to_owned()),
                 consensus_genesis_praos_active_slot_coeff: Some("0.444".to_owned()),
                 linear_fees: LinearFees {
                     constant: 0,
