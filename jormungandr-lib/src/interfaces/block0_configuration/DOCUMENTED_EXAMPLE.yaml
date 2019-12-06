@@ -33,6 +33,14 @@ blockchain_configuration:
   # default value is {default_slot_duration}
   slot_duration: {default_slot_duration}
 
+  # set the block content max size
+  #
+  # This is the size, in bytes, of all the contents of the block (excluding the
+  # block header).
+  #
+  # default value is {default_block_content_max_size}
+  block_content_max_size: {default_block_content_max_size}
+
   # A list of Ed25519 PublicKey that represents the
   # BFT leaders encoded as bech32. The order in the list matters.
   consensus_leader_ids:

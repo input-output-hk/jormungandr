@@ -29,6 +29,9 @@ pub const MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1;
 /// maximum number of slots per epoch
 pub const MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1_000_000;
 
+/// the default value for block content max size
+pub const DEFAULT_BLOCK_CONTENT_MAX_SIZE: u32 = 102_400;
+
 /// default slot duration in seconds
 pub const DEFAULT_SLOT_DURATION: u8 = 5;
 /// minimum slot duration in seconds
