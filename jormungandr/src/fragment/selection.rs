@@ -54,7 +54,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         logs: &mut Logs,
         pool: &mut Pool,
     ) {
-        let mut total = 0usize;
         let mut ledger_simulation = ledger.clone();
 
         while let Some(fragment) = pool.remove_oldest() {
@@ -67,7 +66,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 match ledger_simulation.apply_fragment(ledger_params, &fragment, block_date) {
                     Ok(ledger_new) => {
                         self.builder.push(fragment);
-                        total += 1;
                         ledger_simulation = ledger_new;
                     }
                     Err(error) => {

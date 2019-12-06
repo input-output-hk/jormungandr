@@ -1,7 +1,8 @@
 use crate::{
     interfaces::{
-        ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, KESUpdateSpeed,
-        LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType, Value,
+        ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, EpochStabilityDepth,
+        KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType,
+        Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -89,12 +90,11 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     pub block_content_max_size: BlockContentMaxSize,
 
-    /// TODO: need some love
     /// this value is left for compatibility only be should be removed
     /// or replaced by something more meaningful or merged with
     /// `slots_per_epoch`.
     #[serde(default)]
-    pub epoch_stability_depth: Option<u32>,
+    pub epoch_stability_depth: EpochStabilityDepth,
 
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
     #[serde(default)]
@@ -157,7 +157,7 @@ impl BlockchainConfiguration {
             kes_update_speed: KESUpdateSpeed::default(),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             block_content_max_size: BlockContentMaxSize::default(),
-            epoch_stability_depth: None,
+            epoch_stability_depth: EpochStabilityDepth::default(),
             treasury: None,
             treasury_parameters: None,
             total_reward_supply: None,
@@ -226,7 +226,7 @@ impl BlockchainConfiguration {
                     .replace(param.into())
                     .map(|_| "block_content_max_size"),
                 ConfigParam::EpochStabilityDepth(param) => epoch_stability_depth
-                    .replace(param)
+                    .replace(param.into())
                     .map(|_| "epoch_stability_depth"),
                 ConfigParam::TreasuryAdd(param) => {
                     treasury.replace(param.into()).map(|_| "treasury")
@@ -266,7 +266,8 @@ impl BlockchainConfiguration {
                 ))?,
             linear_fees: linear_fees.ok_or(param_missing_error("linear_fees"))?,
             kes_update_speed: kes_update_speed.ok_or(param_missing_error("kes_update_speed"))?,
-            epoch_stability_depth,
+            epoch_stability_depth: epoch_stability_depth
+                .ok_or(param_missing_error("epoch_stability_depth"))?,
             consensus_leader_ids,
             block_content_max_size: block_content_max_size
                 .ok_or(param_missing_error("block_content_max_size"))?,
@@ -309,6 +310,9 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::BlockContentMaxSize(
             block_content_max_size.into(),
         ));
+        params.push(ConfigParam::EpochStabilityDepth(
+            epoch_stability_depth.into(),
+        ));
 
         if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(
             &linear_fees.per_certificate_fees,
@@ -316,10 +320,6 @@ impl BlockchainConfiguration {
             params.push(ConfigParam::PerCertificateFees(
                 linear_fees.per_certificate_fees,
             ));
-        }
-
-        if let Some(epoch_stability_depth) = epoch_stability_depth {
-            params.push(ConfigParam::EpochStabilityDepth(epoch_stability_depth));
         }
 
         if let Some(treasury) = treasury {

@@ -1,6 +1,7 @@
 mod active_slot_coefficient;
 mod block_content_max_size;
 mod default_values;
+mod epoch_stability_depth;
 mod initial_config;
 mod initial_fragment;
 mod kes_update_speed;
@@ -11,6 +12,7 @@ mod slots_duration;
 pub use self::active_slot_coefficient::ActiveSlotCoefficient;
 pub use self::block_content_max_size::BlockContentMaxSize;
 pub use self::default_values::*;
+pub use self::epoch_stability_depth::EpochStabilityDepth;
 pub use self::initial_config::BlockchainConfiguration;
 pub use self::initial_fragment::{Initial, InitialUTxO, LegacyUTxO};
 pub use self::kes_update_speed::KESUpdateSpeed;
@@ -115,6 +117,7 @@ pub fn block0_configuration_documented_example() -> String {
         default_consensus_genesis_praos_active_slot_coeff = ActiveSlotCoefficient::default(),
         default_kes_update_speed = KESUpdateSpeed::default(),
         default_block_content_max_size = BlockContentMaxSize::default(),
+        default_epoch_stability_depth = EpochStabilityDepth::default(),
         leader_1 = leader_1_pk,
         leader_2 = leader_2_pk,
         initial_funds_address = initial_funds_address
