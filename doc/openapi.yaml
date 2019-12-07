@@ -601,7 +601,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch]
+                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -657,6 +657,42 @@ paths:
                     description: Maximum number of transactions in block
                     type: integer
                     minimum: 0
+                  rewardParams:
+                    description: Parameters for rewards calculation
+                    type: object
+                    required: [compoundingRatio, compoundingType, epochRate, epochStart, initialValue]
+                    properties:
+                      compoundingRatio:
+                        description: Speed at which reward is reduced. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      compoundingType:
+                        description: Reward reduction algorithm
+                        type: string
+                        enum: [Linear, Halvening]
+                      epochRate:
+                        description: Number of epochs between reward
+                        type: integer
+                        minimum: 1
+                      epochStart:
+                        description: Epoch when rewarding starts
+                        type: integer
+                        minimum: 0
+                      epochStart:
+                        description: Epoch when rewarding starts
+                        type: integer
+                        minimum: 0
+                      initialValue:
+                        description: Initial reward
+                        type: integer
+                        minimum: 0
                   slotDuration:
                     description: Slot duration in seconds
                     type: integer
@@ -665,6 +701,31 @@ paths:
                     description: Number of slots per epoch
                     type: integer
                     minimum: 0
+                  treasuryTax:
+                    description: Tax from reward that goes to pot
+                    type: object
+                    required: [fixed, ratio, max]
+                    properties:
+                      fixed:
+                        description: What get subtracted as fixed value
+                        type: integer
+                        minimum: 0
+                      ratio:
+                        description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      max:
+                        description: Limit of tax
+                        type: integer
+                        minimum: 1
+                        nullable: true
               example: |
                 {
                   "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
@@ -682,8 +743,26 @@ paths:
                     "constant": 2
                   },
                   "maxTxsPerBlock": 100,
+                  "rewardParams": {
+                      "compoundingRatio": {
+                          "denominator": 1024,
+                          "numerator": 1
+                      },
+                      "compoundingType": "Linear",
+                      "epochRate": 100,
+                      "epochStart": 0,
+                      "initialValue": 10000
+                  },
                   "slotDuration": 10,
-                  "slotsPerEpoch": 60
+                  "slotsPerEpoch": 60,
+                  "treasuryTax": {
+                    "fixed": 5,
+                    "ratio": {
+                      "numerator": 1
+                      "denominator": 10000,
+                    }
+                    "max": 100,
+                  }
                 }
   /api/v0/shutdown:
     get:
