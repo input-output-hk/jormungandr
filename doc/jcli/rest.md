@@ -35,6 +35,8 @@ YAML printed on success
 ---
 # Number of blocks received by node
 blockRecvCnt: 1102
+# Size in bytes of all transactions in last block
+lastBlockContentSize: 484
 # The Epoch and slot Number of the block (optional)
 lastBlockDate: "20.29"
 # Sum of all fee values in all transactions in last block
@@ -49,8 +51,6 @@ lastBlockSum: 51604
 lastBlockTime: 2019-08-12T11:20:52.316544007+00:00
 # Number of transactions in last block
 lastBlockTx: 2
-# Size in bytes of all transactions in last block
-lastBlockTxSize: 484
 # State of the node
 state: Running
 # Number of transactions received by node
