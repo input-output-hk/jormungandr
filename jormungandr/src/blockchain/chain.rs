@@ -228,6 +228,12 @@ pub struct PostCheckedHeader {
     previous_epoch_state: Option<Arc<Ref>>,
 }
 
+impl PostCheckedHeader {
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
+}
+
 impl Blockchain {
     pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
@@ -312,11 +318,13 @@ impl Blockchain {
                             .map_err(|e| {
                                 Error::with_chain(e, "cannot check if the block is in the storage")
                             })
-                            .and_then(|block_exists| {
-                                if block_exists {
-                                    unimplemented!(
-                                        "method to load a Ref from the storage is not yet there"
-                                    )
+                            .and_then(|_block_exists| {
+                                if _block_exists {
+                                    // TODO: we have the block in the storage but it is missing
+                                    // from the state management. Force the node to fall through
+                                    // reloading the blocks from the storage to allow fast
+                                    // from storage reload
+                                    future::ok(None)
                                 } else {
                                     future::ok(None)
                                 }
@@ -407,12 +415,15 @@ impl Blockchain {
         header: Header,
         parent: Arc<Ref>,
     ) -> impl Future<Item = PostCheckedHeader, Error = Error> {
-        let parent_ledger_state = parent.ledger().clone();
-
         let current_date = header.block_date();
 
-        let (epoch_leadership_schedule, epoch_ledger_parameters, time_frame, previous_epoch_state) =
-            new_epoch_leadership_from(current_date.epoch, parent);
+        let (
+            parent_ledger_state,
+            epoch_leadership_schedule,
+            epoch_ledger_parameters,
+            time_frame,
+            previous_epoch_state,
+        ) = new_epoch_leadership_from(current_date.epoch, parent);
 
         match epoch_leadership_schedule.verify(&header) {
             Verification::Success => future::ok(PostCheckedHeader {
@@ -450,7 +461,7 @@ impl Blockchain {
 
         future::result(
             ledger
-                .apply_block(&epoch_ledger_parameters, block.contents.iter(), &metadata)
+                .apply_block(&epoch_ledger_parameters, &block.contents, &metadata)
                 .chain_err(|| ErrorKind::CannotApplyBlock),
         )
         .and_then(move |new_ledger| {
@@ -730,6 +741,7 @@ pub fn new_epoch_leadership_from(
     epoch: Epoch,
     parent: Arc<Ref>,
 ) -> (
+    Arc<Ledger>,
     Arc<Leadership>,
     Arc<LedgerParameters>,
     Arc<TimeFrame>,
@@ -748,22 +760,37 @@ pub fn new_epoch_leadership_from(
         //       for the blockchain
         use chain_impl_mockchain::block::ConsensusVersion;
 
-        let epoch_state =
-            if parent_ledger_state.consensus_version() == ConsensusVersion::GenesisPraos {
-                // if there is no parent state available this might be because it is not
-                // available in memory or it is the epoch0 or epoch1
-                parent
-                    .last_ref_previous_epoch()
-                    .map(|r| r.ledger().clone())
-                    .unwrap_or(parent_ledger_state.clone())
+        // 1. distribute the rewards (if any) This will give us the transition state
+        let transition_state =
+            if let Some(distribution) = parent.epoch_leadership_schedule().stake_distribution() {
+                Arc::new(
+                    parent_ledger_state
+                        .distribute_rewards(distribution, &parent.epoch_ledger_parameters())
+                        .expect("Distribution of rewards will not overflow"),
+                )
             } else {
                 parent_ledger_state.clone()
             };
+
+        // 2. now that the rewards have been distributed, prepare the schedule
+        //    for the next leader
+        let epoch_state = if transition_state.consensus_version() == ConsensusVersion::GenesisPraos
+        {
+            // if there is no parent state available this might be because it is not
+            // available in memory or it is the epoch0 or epoch1
+            parent
+                .last_ref_previous_epoch()
+                .map(|r| r.ledger().clone())
+                .unwrap_or(parent_ledger_state.clone())
+        } else {
+            transition_state.clone()
+        };
 
         let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
         let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
         let previous_epoch_state = Some(parent);
         (
+            transition_state,
             leadership,
             ledger_parameters,
             parent_time_frame,
@@ -771,6 +798,7 @@ pub fn new_epoch_leadership_from(
         )
     } else {
         (
+            parent_ledger_state,
             parent_epoch_leadership_schedule,
             parent_epoch_ledger_parameters,
             parent_time_frame,

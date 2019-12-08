@@ -3,7 +3,7 @@
 extern crate serde_derive;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
 use jormungandr_lib::interfaces::Mempool;
 
@@ -94,11 +94,7 @@ impl NodeConfig {
                     blocks: String::from("high"),
                 },
             },
-            mempool: Mempool {
-                fragment_ttl: Duration::from_secs(30 * 60).into(),
-                log_ttl: Duration::from_secs(60 * 60).into(),
-                garbage_collection_interval: Duration::from_secs(15 * 60).into(),
-            },
+            mempool: Mempool::default(),
         }
     }
 

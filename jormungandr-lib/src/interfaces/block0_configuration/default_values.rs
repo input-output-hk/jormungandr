@@ -8,13 +8,6 @@ pub const MINIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 0_001;
 /// maximum active slot coefficient in milli `1.000`
 pub const MAXIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 1_000;
 
-/// default BFT Slot ratio in milli `0.220`
-pub const DEFAULT_BFT_SLOTS_RATIO: u64 = 0_220;
-/// minimum BFT Slot ratio in milli `0.000`
-pub const MINIMUM_BFT_SLOTS_RATIO: u64 = 0_000;
-/// maximum BFT Slot ratio in milli `1.000`
-pub const MAXIMUM_BFT_SLOTS_RATIO: u64 = 1_000;
-
 /// default KES Update speed (in seconds): 12hours
 pub const DEFAULT_KES_SPEED_UPDATE: u32 = 12 * 3600;
 /// minimum KES Update speed (in seconds): 1minute
@@ -28,6 +21,12 @@ pub const DEFAULT_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 720;
 pub const MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1;
 /// maximum number of slots per epoch
 pub const MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1_000_000;
+
+/// the default value for epoch stability depth
+pub const DEFAULT_EPOCH_STABILITY_DEPTH: u32 = 102_400;
+
+/// the default value for block content max size
+pub const DEFAULT_BLOCK_CONTENT_MAX_SIZE: u32 = 102_400;
 
 /// default slot duration in seconds
 pub const DEFAULT_SLOT_DURATION: u8 = 5;

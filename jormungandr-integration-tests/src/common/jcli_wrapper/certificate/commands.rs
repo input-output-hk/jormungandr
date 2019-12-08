@@ -31,7 +31,6 @@ impl CertificateCommands {
     pub fn get_stake_pool_registration_command(
         &self,
         kes_key: &str,
-        serial_id: &str,
         vrf_key: &str,
         start_validity: u32,
         management_threshold: u32,
@@ -46,8 +45,6 @@ impl CertificateCommands {
             .arg(&kes_key)
             .arg("--vrf-key")
             .arg(&vrf_key)
-            .arg("--serial")
-            .arg(&serial_id)
             .arg("--start-validity")
             .arg(&start_validity.to_string())
             .arg("--management-threshold")

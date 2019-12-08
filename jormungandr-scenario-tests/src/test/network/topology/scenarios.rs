@@ -15,6 +15,7 @@ const LEADER_5: &str = "Leader5";
 const LEADER_6: &str = "Leader6";
 const LEADER_7: &str = "Leader7";
 
+const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";
 const RELAY_NODE_2: &str = "Relay2";
 
@@ -412,8 +413,9 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         "T3007-Relay",
         &mut context,
         topology [
-            RELAY_NODE_1 -> RELAY_NODE_2,
-            RELAY_NODE_2 -> RELAY_NODE_1,
+            CORE_NODE,
+            RELAY_NODE_1 -> CORE_NODE,
+            RELAY_NODE_2 -> CORE_NODE,
             LEADER_1 -> RELAY_NODE_1,
             LEADER_2 -> RELAY_NODE_1,
             LEADER_3 -> RELAY_NODE_1,
@@ -441,6 +443,26 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context.clone())?;
 
+    let core =
+        controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+
+    controller.monitor_nodes();
+    core.wait_for_bootstrap()?;
+
+    let relay1 = controller.spawn_node(
+        RELAY_NODE_1,
+        LeadershipMode::Passive,
+        PersistenceMode::InMemory,
+    )?;
+    let relay2 = controller.spawn_node(
+        RELAY_NODE_2,
+        LeadershipMode::Passive,
+        PersistenceMode::InMemory,
+    )?;
+
+    relay2.wait_for_bootstrap()?;
+    relay1.wait_for_bootstrap()?;
+
     let leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     let leader2 =
@@ -455,21 +477,7 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         controller.spawn_node(LEADER_6, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     let leader7 =
         controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let relay1 = controller.spawn_node(
-        RELAY_NODE_1,
-        LeadershipMode::Passive,
-        PersistenceMode::InMemory,
-    )?;
-    let relay2 = controller.spawn_node(
-        RELAY_NODE_2,
-        LeadershipMode::Passive,
-        PersistenceMode::InMemory,
-    )?;
 
-    controller.monitor_nodes();
-
-    relay2.wait_for_bootstrap()?;
-    relay1.wait_for_bootstrap()?;
     leader7.wait_for_bootstrap()?;
     leader6.wait_for_bootstrap()?;
     leader5.wait_for_bootstrap()?;

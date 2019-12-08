@@ -303,7 +303,6 @@ impl Settings {
         // TODO blockchain_configuration.linear_fees = ;
         // TODO blockchain_configuration.kes_update_speed = ;
         // TODO blockchain_configuration.consensus_genesis_praos_active_slot_coeff = ;
-        // TODO blockchain_configuration.bft_slots_ratio = ;
     }
 
     fn populate_trusted_peers(&mut self) {

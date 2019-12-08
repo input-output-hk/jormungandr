@@ -55,6 +55,8 @@ state: Running
 txRecvCnt: 5440
 # Node uptime in seconds
 uptime: 20032
+# Node app version
+version: jormungandr 0.8.0-rc4-67477249
 ```
 
 ## Get UTxO
@@ -265,7 +267,27 @@ fees:                                           # transaction fee configuration
   certificate: 4                                # fee per certificate
   coefficient: 1                                # fee per every input and output
   constant: 2                                   # fee per transaction
+  per_certificate_fees:                         # fee per certificate operations, all zero if this object absent (optional)
+    certificate_pool_registration: 5            # fee per pool registration, zero if absent (optional)
+    certificate_stake_delegation: 15            # fee per stake delegation, zero if absent (optional)
+    certificate_owner_stake_delegation: 2       # fee per pool owner stake delegation, zero if absent (optional)
 maxTxsPerBlock: 100                             # maximum number of transactions in block
+rewardParams:                                   # parameters for rewards calculation
+  compoundingRatio:                             # speed at which reward is reduced. Expressed as numerator/denominator
+    denominator: 1024
+    numerator: 1
+  compoundingType: Linear                       # reward reduction algorithm. Possible values: "Linear" and "Halvening"
+  epochRate: 100                                # number of epochs between reward reductions
+  epochStart: 0                                 # epoch when rewarding starts
+  initialValue: 10000                           # initial reward
+slotDuration: 5                                 # slot duration in seconds
+slotsPerEpoch: 720                              # number of slots per epoch
+treasuryTax:                                    # tax from reward that goes to pot
+  fixed: 5                                      # what get subtracted as fixed value
+  ratio:                                        # ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+    numerator: 1
+    denominator: 10000
+  max: 100                                      # limit of tax (optional)
 ```
 
 ## Node shutdown
@@ -476,4 +498,37 @@ YAML printed on success
   lastFragmentReceived: "2019-10-14T00:45:58.419496150+00:00"
   # timestamp of last time gossip was received from node if ever (optional)
   lastGossipReceived: "2019-10-14T00:45:59.419496188+00:00"
+```
+
+## Get stake pool details
+
+Fetches stake pool details
+
+```
+jcli rest v0 stake-pool get <pool-id> <options>
+```
+
+<pool-id> - hex-encoded pool ID
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+YAML printed on success
+
+```yaml
+---
+tax:                        # pool reward
+  fixed: 5                  # what get subtracted as fixed value
+  ratio:                    # ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+    numerator: 1
+    denominator: 10000
+  max: 100                  # limit of tax (optional)
+total_stake: 2000000000000  # total stake pool value
+# bech32-encoded stake pool KES key
+kesPublicKey: kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r
+# bech32-encoded stake pool VRF key
+vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 ```

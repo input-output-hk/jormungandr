@@ -352,14 +352,23 @@ pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str, wait: &Wa
             let fragments: Vec<FragmentLog> =
                 serde_yaml::from_str(&content).expect("Cannot parse fragment logs");
             match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
-                Some(x) => !x.is_pending(),
-                None => false,
+                Some(x) => {
+                    println!("Transaction found in mempool. {:?}", x);
+                    !x.is_pending()
+                }
+                None => {
+                    println!("Transaction with hash {} not found in mempool", fragment_id);
+                    false
+                }
             }
         },
         wait.sleep_duration().as_secs(),
         wait.attempts(),
-        "Waiting for last transaction to be inBlock or rejected",
-        "transaction is pending for too long",
+        &format!(
+            "Waiting for transaction: '{}' to be inBlock or rejected",
+            fragment_id
+        ),
+        &format!("transaction: '{}' is pending for too long", fragment_id),
     )
     .expect("internal error while waiting until last transaction is processed");
 }

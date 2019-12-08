@@ -71,7 +71,7 @@ impl MkWitness {
             }
             WitnessType::OldUTxO => {
                 let secret_key = read_secret_key_from_file(&self.secret)?;
-                Witness::new_old_utxo(&self.genesis_block_hash, &self.sign_data_hash, secret_key)
+                Witness::new_old_utxo(&self.genesis_block_hash, &self.sign_data_hash, &secret_key)
             }
             WitnessType::Account => {
                 let account_spending_counter = self

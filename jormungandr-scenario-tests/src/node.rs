@@ -65,7 +65,7 @@ error_chain! {
 
         FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration) {
             description("fragment is pending for too long"),
-            display("fragment '{}' is pending for tool long ({} s)", fragment_id, duration.as_secs()),
+            display("fragment '{}' is pending for too long ({} s)", fragment_id, duration.as_secs()),
         }
     }
 }
@@ -284,7 +284,7 @@ impl NodeController {
     }
 
     pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
-        let max_try = 20;
+        let max_try = 50;
         for _ in 0..max_try {
             let logs = self.fragment_logs()?;
 
@@ -335,8 +335,8 @@ impl NodeController {
     }
 
     pub fn wait_for_bootstrap(&self) -> Result<()> {
-        let max_try = 20;
-        let sleep = Duration::from_secs(1);
+        let max_try = 40;
+        let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
             let stats = self.stats();
             if let Ok(stats) = stats {

@@ -125,6 +125,12 @@ fn handle_block(
                 .map_err(|e| Error::HeaderCheckFailed { source: e })
         })
         .and_then(move |post_checked| {
+            debug!(
+                logger,
+                "validated block";
+                "hash" => %post_checked.header().hash(),
+                "block_date" => %post_checked.header().block_date(),
+            );
             end_blockchain
                 .apply_and_store_block(post_checked, block)
                 .map_err(|e| Error::ApplyBlockFailed { source: e })

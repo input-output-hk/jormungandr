@@ -109,9 +109,9 @@ jobs:
           name: Test
           command: cargo test --release --offline --verbose
 
-  test_nightly:
+  test_beta:
     docker:
-      - image: rustlang/rust:nightly
+      - image: instrumentisto/rust:beta
     environment:
       CARGO_INCREMENTAL: 0
     working_directory: /mnt/crate
@@ -154,7 +154,7 @@ workflows:
           requires:
             - rustfmt
             - cargo_fetch
-      - test_nightly:
+      - test_beta:
           requires:
             - rustfmt
             - cargo_fetch

@@ -61,6 +61,7 @@ extern crate tokio;
 use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::{Blockchain, CandidateForest},
+    diagnostic::Diagnostic,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -73,8 +74,8 @@ use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
-pub mod blockchain_stuck_notifier;
 pub mod client;
+pub mod diagnostic;
 pub mod explorer;
 pub mod fragment;
 pub mod intercom;
@@ -87,6 +88,7 @@ pub mod settings;
 pub mod start_up;
 pub mod state;
 mod stats_counter;
+pub mod stuck_notifier;
 pub mod utils;
 
 use stats_counter::StatsCounter;
@@ -108,8 +110,10 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
     services: Services,
+    diagnostic: Diagnostic,
 }
 
+const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 
@@ -122,6 +126,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let (block_msgbox, block_queue) = async_msg::channel(BLOCK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
@@ -135,7 +140,9 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let (fragment_pool, pool_logs) = {
         let stats_counter = stats_counter.clone();
         let process = fragment::Process::new(
+            bootstrapped_node.settings.mempool.pool_max_entries.into(),
             bootstrapped_node.settings.mempool.fragment_ttl.into(),
+            bootstrapped_node.settings.mempool.log_max_entries.into(),
             bootstrapped_node.settings.mempool.log_ttl.into(),
             bootstrapped_node
                 .settings
@@ -175,43 +182,41 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         }
     };
 
-    let block_task = {
-        let mut blockchain = blockchain.clone();
-        let mut blockchain_tip = blockchain_tip.clone();
-        let mut network_msgbox = network_msgbox.clone();
-        let mut fragment_msgbox = fragment_msgbox.clone();
-        let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
+    {
+        let blockchain = blockchain.clone();
+        let blockchain_tip = blockchain_tip.clone();
+        let network_msgbox = network_msgbox.clone();
+        let fragment_msgbox = fragment_msgbox.clone();
+        let explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(3600);
         let stats_counter = stats_counter.clone();
-        services.spawn_future_with_inputs("block", move |info, input| {
-            let candidate_repo = CandidateForest::new(
+        services.spawn_future("block", move |info| {
+            let candidate_forest = CandidateForest::new(
                 blockchain.clone(),
                 block_cache_ttl,
                 info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull")),
             );
-            blockchain::handle_input(
-                info,
-                &mut blockchain,
-                &mut blockchain_tip,
-                &candidate_repo,
-                &stats_counter,
-                &mut network_msgbox,
-                &mut fragment_msgbox,
-                explorer_msg_box.as_mut(),
-                input,
-            )
-        })
-    };
+            let process = blockchain::Process {
+                blockchain,
+                blockchain_tip,
+                candidate_forest,
+                stats_counter,
+                network_msgbox,
+                fragment_msgbox,
+                explorer_msgbox,
+            };
+            process.start(info, block_queue)
+        });
+    }
 
     let client_task = {
         let mut task_data = client::TaskData {
             storage: blockchain.storage().clone(),
-            block0_hash: bootstrapped_node.block0_hash,
             blockchain_tip: blockchain_tip.clone(),
         };
 
-        services.spawn_with_inputs("client-query", move |info, input| {
+        services.spawn_future_with_inputs("client-query", move |info, input| {
             client::handle_input(info, &mut task_data, input)
         })
     };
@@ -219,7 +224,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     {
         let client_msgbox = client_task.clone();
         let fragment_msgbox = fragment_msgbox.clone();
-        let block_msgbox = block_task.clone();
+        let block_msgbox = block_msgbox.clone();
         let block0_hash = bootstrapped_node.block0_hash;
         let config = bootstrapped_node.settings.network.clone();
         let channels = network::Channels {
@@ -236,8 +241,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 channels,
             };
             network::start(info, params)
-                // FIXME: more graceful error reporting
-                .map_err(|e| panic!(e))
         });
     }
 
@@ -259,7 +262,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     {
         let leadership_logs = leadership_logs.clone();
         let fragment_pool = fragment_pool.clone();
-        let block_task = block_task.clone();
+        let block_msgbox = block_msgbox.clone();
         let blockchain_tip = blockchain_tip.clone();
         let enclave = leadership::Enclave::new(enclave.clone());
 
@@ -271,7 +274,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 blockchain_tip,
                 fragment_pool,
                 enclave,
-                block_task,
+                block_msgbox,
             )
             .and_then(|module| module.run())
             .map_err(|e| unimplemented!("error in leadership {}", e))
@@ -289,6 +292,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             leadership_logs,
             enclave,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+            diagnostic: bootstrapped_node.diagnostic,
         };
         rest_context.set_full(full_context);
         rest_context.set_node_state(NodeState::Running);
@@ -301,8 +305,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .no_blockchain_updates_warning_interval
             .clone();
 
-        services.spawn_future("blockchain_stuck_notifier", move |info| {
-            blockchain_stuck_notifier::check_last_block_time(
+        services.spawn_future("stuck_notifier", move |info| {
+            stuck_notifier::check_last_block_time(
                 info,
                 blockchain_tip,
                 no_blockchain_updates_warning_interval,
@@ -310,9 +314,27 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    services.wait_any_finished();
-    info!(bootstrapped_node.logger, "Shutting down node");
-    Ok(())
+    match services.wait_any_finished() {
+        Err(err) => {
+            crit!(
+                bootstrapped_node.logger,
+                "Service notifier failed to wait for services to shutdown" ;
+                "reason" => err.to_string()
+            );
+            Err(start_up::Error::ServiceTerminatedWithError)
+        }
+        Ok(true) => {
+            info!(bootstrapped_node.logger, "Shutting down node");
+            Ok(())
+        }
+        Ok(false) => {
+            crit!(
+                bootstrapped_node.logger,
+                "Service has terminated with an error"
+            );
+            Err(start_up::Error::ServiceTerminatedWithError)
+        }
+    }
 }
 
 /// # Bootstrap phase
@@ -335,6 +357,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         rest_context,
         services,
+        diagnostic,
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
@@ -384,6 +407,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         services,
+        diagnostic,
     })
 }
 
@@ -394,6 +418,7 @@ pub struct InitializedNode {
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
     pub services: Services,
+    pub diagnostic: Diagnostic,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -426,18 +451,22 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
+
+    let diagnostic = Diagnostic::new()?;
+    debug!(init_logger, "system settings are: {}", diagnostic);
+
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let mut services = Services::new(logger.clone());
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
             let context = rest::Context::new();
+            let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_context = context.clone();
-            services.spawn("rest", move |info| {
-                server_context.set_logger(info.into_logger());
-                rest::run_rest_server(rest, explorer, server_context)
-                    .expect("REST server critical failure")
+            let server_handler = rest::start_rest_server(rest, explorer, &context)?;
+            services.spawn_future("rest", move |info| {
+                service_context.set_logger(info.into_logger());
+                server_handler
             });
             Some(context)
         }
@@ -467,6 +496,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         logger,
         rest_context,
         services,
+        diagnostic,
     })
 }
 

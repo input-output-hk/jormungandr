@@ -53,7 +53,10 @@ check_program_in_path $CLI
 check_program_in_path $NODE
 
 # exit on failure inside pipes (might be unavailable on some shells)
-set -o pipefail || true
+set -o | grep 'pipefail' > /dev/null
+if [ $? -eq 0 ]; then
+  set -o pipefail
+fi
 # exit on failure
 set -e
 
@@ -200,8 +203,11 @@ $CLI certificate new stake-pool-registration \
     --start-validity 0 \
     --owner ${LEADER_PK} \
     --kes-key ${POOL_KES_PK} \
-    --vrf-key ${POOL_VRF_PK} \
-    --serial 1010101010 > ${TMPDIR}/stake_pool.cert
+    --tax-fixed 10 \
+    --tax-limit 1000000000 \
+    --tax-ratio "1/10" \
+    --reward-account ${FAUCET_ADDR} \
+    --vrf-key ${POOL_VRF_PK} > ${TMPDIR}/stake_pool.cert
 
 cat ${TMPDIR}/stake_pool.cert | $CLI certificate sign -k ${TMPDIR}/leader.sk > ${TMPDIR}/stake_pool.signcert
 
@@ -236,8 +242,18 @@ blockchain_configuration:
     coefficient: ${FEE_COEFFICIENT}
     certificate: ${FEE_CERTIFICATE}
   block0_consensus: ${CONSENSUS}
-  bft_slots_ratio: 0
   kes_update_speed: 43200 # 12hours
+  total_reward_supply: 100000000000000
+  reward_parameters:
+    halving:
+      constant: 1000
+      ratio: "1/1"
+      epoch_start: 0
+      epoch_rate: 1
+  treasury: 0
+  treasury_parameters:
+    fixed: 0
+    ratio: "0/1"
 initial:
   - fund:
       - address: ${FAUCET_ADDR}

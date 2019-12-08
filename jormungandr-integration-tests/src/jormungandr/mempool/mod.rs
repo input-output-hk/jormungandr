@@ -23,7 +23,9 @@ pub fn test_log_ttl() {
             address: sender.address.clone(),
         }])
         .with_mempool(Mempool {
+            pool_max_entries: 10_000usize.into(),
             fragment_ttl: Duration::from_secs(10).into(),
+            log_max_entries: 100_000usize.into(),
             log_ttl: Duration::from_secs(log_ttl_timeout).into(),
             garbage_collection_interval: Duration::from_secs(garbage_collection_interval).into(),
         })

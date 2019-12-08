@@ -1,5 +1,247 @@
 # Change Log
 
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc8...v0.8.0-rc9)
+
+**Breaking changes:**
+
+- remove useless block0 parameter: BFT Slots Ratio [\#1293](https://github.com/input-output-hk/jormungandr/pull/1293)
+- BlockContent Size: finally set the right value for number of fragments [\#1288](https://github.com/input-output-hk/jormungandr/pull/1288)
+
+**Implemented enhancements:**
+
+- Add proper depth [\#1295](https://github.com/input-output-hk/jormungandr/pull/1295)
+- spawn blockchain process to allow for more concurrent action to happen [\#1290](https://github.com/input-output-hk/jormungandr/pull/1290)
+
+**Fixed bugs:**
+
+- jormungandr v0.8.0-rc7 got stuck on synchronisation [\#1284](https://github.com/input-output-hk/jormungandr/issues/1284)
+- jormungandr 0.8.0-rc5-cecea4d got stuck on synchronisation [\#1273](https://github.com/input-output-hk/jormungandr/issues/1273)
+- Spamming the test net appears to break it or at least cause multiple node stalls long after the spamming stops [\#1235](https://github.com/input-output-hk/jormungandr/issues/1235)
+- 0.7.5 \(or nightly testnet\) - generated blocks are not added to the blockchain [\#1221](https://github.com/input-output-hk/jormungandr/issues/1221)
+- 0.7.4 - Blocks not getting added to chain [\#1220](https://github.com/input-output-hk/jormungandr/issues/1220)
+- 0.7.1 Frequent Warning - WARN blockchain is not moving up.... [\#1183](https://github.com/input-output-hk/jormungandr/issues/1183)
+- prevent panic if the given chain advance is removed from concurrent processing [\#1296](https://github.com/input-output-hk/jormungandr/pull/1296)
+
+**Closed issues:**
+
+- 0.8.0-rc2 - Node still shutting down on beta testnet [\#1234](https://github.com/input-output-hk/jormungandr/issues/1234)
+- 0.7.1 - Error processing ChainHeader handling [\#1179](https://github.com/input-output-hk/jormungandr/issues/1179)
+
+**Merged pull requests:**
+
+- Spawn client processing in tasks [\#1292](https://github.com/input-output-hk/jormungandr/pull/1292)
+- Fix mismatch step number [\#1289](https://github.com/input-output-hk/jormungandr/pull/1289)
+
+## [v0.8.0-rc8](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc8) (2019-12-05)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc7...v0.8.0-rc8)
+
+**Implemented enhancements:**
+
+- add in more logs in the block event handling [\#1287](https://github.com/input-output-hk/jormungandr/pull/1287)
+- Fragment pool boundaries [\#1285](https://github.com/input-output-hk/jormungandr/pull/1285)
+- Remove unimplemented! in protocol request handlers. [\#1280](https://github.com/input-output-hk/jormungandr/pull/1280)
+- blockchain: Rework task state [\#1279](https://github.com/input-output-hk/jormungandr/pull/1279)
+
+**Fixed bugs:**
+
+- Downloading data on incentivized node is very slowly [\#1262](https://github.com/input-output-hk/jormungandr/issues/1262)
+- little fix in the reward calculation [\#1283](https://github.com/input-output-hk/jormungandr/pull/1283)
+
+**Closed issues:**
+
+- Rewards for the current epoch are allocated at the beginning of the epoch - 0.8.0-RC7 [\#1282](https://github.com/input-output-hk/jormungandr/issues/1282)
+
+## [v0.8.0-rc7](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc7) (2019-12-04)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc6...v0.8.0-rc7)
+
+**Implemented enhancements:**
+
+- Don't thrash slow connections in propagation [\#1277](https://github.com/input-output-hk/jormungandr/pull/1277)
+
+**Fixed bugs:**
+
+- No rewards received - 0.8.0-RC6 - local cluster 2 nodes [\#1275](https://github.com/input-output-hk/jormungandr/issues/1275)
+- 0.8 rc6 - delegator accounts \(standalone\) still not getting paid rewards [\#1274](https://github.com/input-output-hk/jormungandr/issues/1274)
+- update chain-deps and include a fix in the delegators reward distribution [\#1276](https://github.com/input-output-hk/jormungandr/pull/1276)
+
+## [v0.8.0-rc6](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc6) (2019-12-03)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc5...v0.8.0-rc6)
+
+**Fixed bugs:**
+
+- Neither delegatee nor delegator are getting rewards - 0.8.0-rc5 [\#1271](https://github.com/input-output-hk/jormungandr/issues/1271)
+- update chain deps to include fixes on the delegation [\#1272](https://github.com/input-output-hk/jormungandr/pull/1272)
+
+## [v0.8.0-rc5](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc5) (2019-12-03)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc4...v0.8.0-rc5)
+
+**Breaking changes:**
+
+- change how to set the reward account in the jcli command line parameter [\#1259](https://github.com/input-output-hk/jormungandr/pull/1259)
+
+**Implemented enhancements:**
+
+- detect node's environment/system settings at boot or on demand [\#1215](https://github.com/input-output-hk/jormungandr/issues/1215)
+- return stake-pools public VRF key [\#1163](https://github.com/input-output-hk/jormungandr/issues/1163)
+- fix reward distribution and expose the rewards in the REST API [\#1269](https://github.com/input-output-hk/jormungandr/pull/1269)
+- Add version to REST node stats [\#1265](https://github.com/input-output-hk/jormungandr/pull/1265)
+- Resolve the ancestor once for chain streaming [\#1258](https://github.com/input-output-hk/jormungandr/pull/1258)
+- Don't panic on network task error [\#1255](https://github.com/input-output-hk/jormungandr/pull/1255)
+- Expose resource usage limits on UNIX systems [\#1222](https://github.com/input-output-hk/jormungandr/pull/1222)
+
+**Fixed bugs:**
+
+- 0.8 rc4 - standalone delegators not getting paid rewards after pool owners/operators got their tax cut [\#1250](https://github.com/input-output-hk/jormungandr/issues/1250)
+- fix rlimit builds on different libc impls [\#1267](https://github.com/input-output-hk/jormungandr/pull/1267)
+- Yield the task after retrieving each block to send [\#1264](https://github.com/input-output-hk/jormungandr/pull/1264)
+- don't fail on error in the client task [\#1249](https://github.com/input-output-hk/jormungandr/pull/1249)
+
+**Closed issues:**
+
+- logging improvement epoch.block time [\#1251](https://github.com/input-output-hk/jormungandr/issues/1251)
+
+**Merged pull requests:**
+
+- Rest node stats REST cert fees [\#1266](https://github.com/input-output-hk/jormungandr/pull/1266)
+- add documentation regarding the stake pool Tax [\#1257](https://github.com/input-output-hk/jormungandr/pull/1257)
+
+## [v0.8.0-rc4](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc4) (2019-12-02)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc3...v0.8.0-rc4)
+
+**Fixed bugs:**
+
+- 0.8 rc3 - rewards still not working due to leader\_logs.total or subsequent panic [\#1242](https://github.com/input-output-hk/jormungandr/issues/1242)
+- update chain-deps and fix reward distribution panic [\#1246](https://github.com/input-output-hk/jormungandr/pull/1246)
+- properly report error and failures of the terminating service [\#1243](https://github.com/input-output-hk/jormungandr/pull/1243)
+
+**Closed issues:**
+
+- bootstrap.sh - error: The following required arguments were not provided:     --serial \<SERIAL\> [\#1244](https://github.com/input-output-hk/jormungandr/issues/1244)
+
+**Merged pull requests:**
+
+- don't run test on appveyor PRs [\#1245](https://github.com/input-output-hk/jormungandr/pull/1245)
+
+**Breaking changes:**
+
+- update chain-deps and changed the UTxO signature [\#1246](https://github.com/input-output-hk/jormungandr/pull/1246)
+
+## [v0.8.0-rc3](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc3) (2019-12-01)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc2...v0.8.0-rc3)
+
+**Implemented enhancements:**
+
+- don't add the block0 per-certificate fee if they are all not set (0) [\#1239](https://github.com/input-output-hk/jormungandr/pull/1239)
+
+**Fixed bugs:**
+
+- 0.8 rc2 - rewards not being paid out as expected \(private testnet\) [\#1237](https://github.com/input-output-hk/jormungandr/issues/1237)
+- Node shutdowns are classified at wrong priority and exit successful [\#1236](https://github.com/input-output-hk/jormungandr/issues/1236)
+- make the node actually return an error if a service was stopped because of error [\#1240](https://github.com/input-output-hk/jormungandr/pull/1240)
+- don't fail the stuck notifier task if time is set in the future [\#1241](https://github.com/input-output-hk/jormungandr/pull/1241)
+
+**Breaking changes:**
+
+- apply the reward to a transition_state and keep it for the safe keeping [\#1238](https://github.com/input-output-hk/jormungandr/pull/1238)
+
+
+## [v0.8.0-rc2](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc2) (2019-11-30)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc1...v0.8.0-rc2)
+
+**Implemented enhancements:**
+
+- Log which service has finished and how [\#1230](https://github.com/input-output-hk/jormungandr/pull/1230)
+- Implement all stake pools graphql query [\#1223](https://github.com/input-output-hk/jormungandr/pull/1223)
+
+**Fixed bugs:**
+
+- intercom: Make reply not fatal if receiver goes away [\#1233](https://github.com/input-output-hk/jormungandr/pull/1233)
+
+**Closed issues:**
+
+- 0.8.0-rc1: shutdowns, stability issues [\#1232](https://github.com/input-output-hk/jormungandr/issues/1232)
+- From BIP39 private key to Ed25519 [\#1211](https://github.com/input-output-hk/jormungandr/issues/1211)
+
+**Merged pull requests:**
+
+- Task unwind safety [\#1231](https://github.com/input-output-hk/jormungandr/pull/1231)
+- Switch Circle-CI from Rust nightly to beta [\#1229](https://github.com/input-output-hk/jormungandr/pull/1229)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.5...v0.8.0-rc1)
+
+**Breaking changes:**
+
+- update to latest chain-deps: add incentive [\#1193](https://github.com/input-output-hk/jormungandr/pull/1193)
+- Certificate fees [\#1191](https://github.com/input-output-hk/jormungandr/pull/1191)
+
+**Implemented enhancements:**
+
+- Add owner stake deletagion cert creation tool to JCLI [\#1202](https://github.com/input-output-hk/jormungandr/issues/1202)
+- expose the reward parameters [\#1227](https://github.com/input-output-hk/jormungandr/pull/1227)
+- Pull from block 0 if no checkpoints intersect [\#1225](https://github.com/input-output-hk/jormungandr/pull/1225)
+- Add owner stake deletagion cert creation tool to JCLI [\#1224](https://github.com/input-output-hk/jormungandr/pull/1224)
+- Allow setting treasury in the genesis file [\#1213](https://github.com/input-output-hk/jormungandr/pull/1213)
+- Add input output to block and initial fees [\#1198](https://github.com/input-output-hk/jormungandr/pull/1198)
+- Add multisignature to address in explorer [\#1197](https://github.com/input-output-hk/jormungandr/pull/1197)
+- remote syslog via UDP [\#1196](https://github.com/input-output-hk/jormungandr/pull/1196)
+- Add stake pool details getter to REST [\#1195](https://github.com/input-output-hk/jormungandr/pull/1195)
+- Small network fixes, improve logging [\#1194](https://github.com/input-output-hk/jormungandr/pull/1194)
+
+**Fixed bugs:**
+
+- Fix nightly for introduction of built-in never type [\#1228](https://github.com/input-output-hk/jormungandr/pull/1228)
+- update chain-libs, include fix for osx mbi1 [\#1226](https://github.com/input-output-hk/jormungandr/pull/1226)
+- Header chain validation errors are not fatal [\#1218](https://github.com/input-output-hk/jormungandr/pull/1218)
+- mitigate issue with loading existing state from storage [\#1214](https://github.com/input-output-hk/jormungandr/pull/1214)
+- Fix per certificate fees and APIs [\#1212](https://github.com/input-output-hk/jormungandr/pull/1212)
+- fix stake pool blocks query off by one [\#1205](https://github.com/input-output-hk/jormungandr/pull/1205)
+
+**Closed issues:**
+
+- 0.7.3-0.7.4, error compiling jormungandr-lib v0.7.3-0.7.4 [\#1217](https://github.com/input-output-hk/jormungandr/issues/1217)
+
+**Merged pull requests:**
+
+- Add `git submodule update` to "How to install from sources" [\#1219](https://github.com/input-output-hk/jormungandr/pull/1219)
+- Update doc [\#1210](https://github.com/input-output-hk/jormungandr/pull/1210)
+- Optimize locking with Storage::send\_from\_to [\#1209](https://github.com/input-output-hk/jormungandr/pull/1209)
+- rename blockchain\_stuck\_notifier [\#1208](https://github.com/input-output-hk/jormungandr/pull/1208)
+- \[Tests\] Jts timeout fix [\#1207](https://github.com/input-output-hk/jormungandr/pull/1207)
+- Disgraceful REST shutdown [\#1203](https://github.com/input-output-hk/jormungandr/pull/1203)
+- \[Tests\] another attempt to stabilize tests [\#1199](https://github.com/input-output-hk/jormungandr/pull/1199)
+- README.md: typo [\#1181](https://github.com/input-output-hk/jormungandr/pull/1181)
+- \[Tests\]\[Testnet\] more logging for testnet test [\#1177](https://github.com/input-output-hk/jormungandr/pull/1177)
+- Transform REST server into Tokio service [\#1173](https://github.com/input-output-hk/jormungandr/pull/1173)
+
+## [v0.7.2](https://github.com/input-output-hk/jormungandr/tree/v0.7.2) (2019-11-25)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.1...v0.7.2)
+
+**Implemented enhancements:**
+
+- Expose the parameters of the stake pool in the graphQL data [\#1158](https://github.com/input-output-hk/jormungandr/issues/1158)
+- Convert the client task to async, use bounded channels in intercom [\#1178](https://github.com/input-output-hk/jormungandr/pull/1178)
+
+**Closed issues:**
+
+- 0.7.1 Node startup fails with logging options in config [\#1184](https://github.com/input-output-hk/jormungandr/issues/1184)
+- bootstrap script to create accounts with error [\#1182](https://github.com/input-output-hk/jormungandr/issues/1182)
+- Discordant results between jcli and janalyze about leadership stats [\#1176](https://github.com/input-output-hk/jormungandr/issues/1176)
+- Convert the client task to full async and remove the header pull limit [\#1160](https://github.com/input-output-hk/jormungandr/issues/1160)
+
+**Merged pull requests:**
+
+- Detect if `set -o pipefail` is available [\#1186](https://github.com/input-output-hk/jormungandr/pull/1186)
+- \[Jormungandr-scenario-test\] fix failing tests from nighly run [\#1168](https://github.com/input-output-hk/jormungandr/pull/1168)
+- regenerate grpc port after unsuccessful jormungandr bootstrap [\#1088](https://github.com/input-output-hk/jormungandr/pull/1088)
+
 ## [v0.7.1](https://github.com/input-output-hk/jormungandr/tree/v0.7.1) (2019-11-21)
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.7.0...v0.7.1)
 

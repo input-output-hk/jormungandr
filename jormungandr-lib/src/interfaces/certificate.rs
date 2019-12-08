@@ -53,11 +53,11 @@ impl property::Serialize for Certificate {
         match &self.0 {
             certificate::Certificate::StakeDelegation(c) => {
                 writer.write_all(&[1])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
             }
             certificate::Certificate::OwnerStakeDelegation(c) => {
                 writer.write_all(&[2])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
             }
             certificate::Certificate::PoolRegistration(c) => {
                 writer.write_all(&[3])?;
@@ -114,12 +114,12 @@ impl property::Serialize for SignedCertificate {
         match &self.0 {
             certificate::SignedCertificate::StakeDelegation(c, a) => {
                 writer.write_all(&[1])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::OwnerStakeDelegation(c, ()) => {
                 writer.write_all(&[2])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
             }
             certificate::SignedCertificate::PoolRegistration(c, a) => {
                 writer.write_all(&[3])?;

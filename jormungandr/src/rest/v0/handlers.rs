@@ -1,4 +1,6 @@
-use jormungandr_lib::interfaces::*;
+use jormungandr_lib::interfaces::{
+    AccountState, Address, EnclaveLeaderId, FragmentOrigin, TaxTypeSerde,
+};
 use jormungandr_lib::time::SystemTime;
 
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
@@ -14,6 +16,7 @@ use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::error::Error as StorageError;
 
 use crate::blockchain::Ref;
+use crate::chain_crypto::bech32::Bech32;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
@@ -99,6 +102,7 @@ pub fn get_tip(context: State<Context>) -> ActixFuture!() {
 
 #[derive(Serialize)]
 struct NodeStatsDto {
+    version: &'static str,
     state: NodeState,
     #[serde(flatten)]
     stats: Option<serde_json::Value>,
@@ -172,6 +176,7 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
     }
     .map(move |stats| {
         Json(NodeStatsDto {
+            version: env!("SIMPLE_VERSION"),
             state: context.node_state(),
             stats,
         })
@@ -259,16 +264,18 @@ pub fn get_stake_distribution(context: State<Context>) -> ActixFuture!() {
         let last_epoch = blockchain_tip.block_date().epoch;
         if let LeadershipConsensus::GenesisPraos(gp) = leadership.consensus() {
             let stake = gp.distribution();
-            let pools: Vec<_> = stake
+            let unassigned: u64 = stake.unassigned.into();
+            let dangling: u64 = stake.dangling.into();
+            let pools: Vec<(String, u64)> = stake
                 .to_pools
                 .iter()
-                .map(|(h, p)| (format!("{}", h), p.total.total_stake.0))
+                .map(|(h, p)| (format!("{}", h), p.total.total_stake.into()))
                 .collect();
             Json(json!({
                 "epoch": last_epoch,
                 "stake": {
-                    "unassigned": stake.unassigned.0,
-                    "dangling": stake.dangling.0,
+                    "unassigned": unassigned,
+                    "dangling": dangling,
                     "pools": pools,
                 }
             }))
@@ -288,25 +295,28 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
             let consensus_version = ledger.consensus_version();
             let current_params = blockchain_tip.epoch_ledger_parameters();
             let fees = current_params.fees;
-            let slot_duration = blockchain_tip.time_frame().slot_duration();
             let slots_per_epoch = blockchain_tip
                 .epoch_leadership_schedule()
                 .era()
                 .slots_per_epoch();
-            Json(json!({
-                "block0Hash": static_params.block0_initial_hash.to_string(),
-                "block0Time": SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
-                "currSlotStartTime": context.stats_counter.slot_start_time().map(SystemTime::from),
-                "consensusVersion": consensus_version.to_string(),
-                "fees":{
-                    "constant": fees.constant,
-                    "coefficient": fees.coefficient,
-                    "certificate": fees.certificate,
-                },
-                "maxTxsPerBlock": 255, // TODO?
-                "slotDuration": slot_duration,
-                "slotsPerEpoch": slots_per_epoch,
-            }))
+
+            let settings = jormungandr_lib::interfaces::SettingsDto {
+                block0_hash: static_params.block0_initial_hash.to_string(),
+                block0_time: SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
+                curr_slot_start_time: context
+                    .stats_counter
+                    .slot_start_time()
+                    .map(SystemTime::from),
+                consensus_version: consensus_version.to_string(),
+                fees: fees,
+                max_txs_per_block: 255, // TODO?
+                slot_duration: blockchain_tip.time_frame().slot_duration(),
+                slots_per_epoch,
+                treasury_tax: current_params.treasury_tax,
+                reward_params: current_params.reward_params.clone(),
+            };
+
+            Json(json!(settings))
         })
 }
 
@@ -314,7 +324,7 @@ pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
     // Server finishes ongoing tasks before stopping, so user will get response to this request
     // Node should be shutdown automatically when server stopping is finished
     context.try_full()?;
-    context.server()?.stop();
+    context.server_stopper()?.stop();
     Ok(HttpResponse::Ok().finish())
 }
 
@@ -372,14 +382,12 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
     context.try_full_fut()
         .and_then(move |full_context| context.logger().map(|logger| (full_context, logger)))
         .and_then(|(full_context, logger)| {
-        let (reply_handle, reply_future) = intercom::unary_reply::<_, intercom::Error>(logger);
-        full_context
-            .network_task
-            .clone()
-            .try_send(NetworkMsg::PeerStats(reply_handle))
-            .map_err(ErrorInternalServerError)
-            .into_future()
-            .and_then(move |_| reply_future.map_err(ErrorInternalServerError))
+            intercom::unary_future(
+                full_context.network_task.clone(),
+                logger,
+                |reply_handle| NetworkMsg::PeerStats(reply_handle),
+            )
+            .map_err(|e: intercom::Error| ErrorInternalServerError(e))
             .map(|peer_stats| {
                 let network_stats = peer_stats
                     .into_iter()
@@ -393,7 +401,7 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
                     .collect::<Vec<_>>();
                 Json(network_stats)
             })
-    })
+        })
 }
 
 pub fn get_utxo(context: State<Context>, path_params: Path<(String, u8)>) -> ActixFuture!() {
@@ -417,4 +425,41 @@ pub fn get_utxo(context: State<Context>, path_params: Path<(String, u8)>) -> Act
                 })))
             })
         })
+}
+
+pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> ActixFuture!() {
+    pool_id_hex
+        .parse()
+        .map_err(ErrorBadRequest)
+        .into_future()
+        .and_then(move |pool_id| {
+            chain_tip_fut(&context).and_then(move |blockchain_tip| {
+                let ledger = blockchain_tip.ledger();
+                let pool = ledger.delegation().lookup(&pool_id).ok_or_else(|| {
+                    ErrorNotFound(format!("Stake pool '{}' not found", pool_id_hex))
+                })?;
+                let total_stake: u64 = ledger
+                    .get_stake_distribution()
+                    .to_pools
+                    .get(&pool_id)
+                    .map(|pool| pool.total.total_stake.into())
+                    .unwrap_or(0);
+                Ok(Json(json!({
+                    "kesPublicKey": pool.registration.keys.kes_public_key.to_bech32_str(),
+                    "vrfPublicKey": pool.registration.keys.vrf_public_key.to_bech32_str(),
+                    "total_stake": total_stake,
+                    "rewards": {
+                        "epoch": pool.last_rewards.epoch,
+                        "value_taxed": pool.last_rewards.value_taxed.as_ref(),
+                        "value_for_stakers": pool.last_rewards.value_for_stakers.as_ref(),
+                    },
+                    "tax": TaxTypeSerde(pool.registration.rewards),
+                })))
+            })
+        })
+}
+
+pub fn get_diagnostic(context: State<Context>) -> Result<impl Responder, Error> {
+    let full_context = context.try_full()?;
+    serde_json::to_string(&full_context.diagnostic).map_err(ErrorInternalServerError)
 }

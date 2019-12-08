@@ -20,6 +20,11 @@ struct PeerData {
     connecting: Option<ConnectHandle>,
 }
 
+pub enum CommStatus<'a> {
+    Connecting(&'a mut PeerComms),
+    Established(&'a mut PeerComms),
+}
+
 impl PeerData {
     fn with_comms(comms: PeerComms) -> Self {
         PeerData {
@@ -29,10 +34,10 @@ impl PeerData {
         }
     }
 
-    fn updated_comms(&mut self) -> &mut PeerComms {
+    fn update_comm_status(&mut self) -> CommStatus<'_> {
         if let Some(ref mut handle) = self.connecting {
             match handle.try_complete() {
-                Ok(None) => {}
+                Ok(None) => return CommStatus::Connecting(&mut self.comms),
                 Ok(Some(comms)) => {
                     self.connecting = None;
                     self.comms.update(comms);
@@ -42,7 +47,7 @@ impl PeerData {
                 }
             }
         }
-        &mut self.comms
+        CommStatus::Established(&mut self.comms)
     }
 
     fn server_comms(&mut self) -> &mut PeerComms {
@@ -52,6 +57,15 @@ impl PeerData {
         self.connecting = None;
         self.comms.clear_pending();
         &mut self.comms
+    }
+}
+
+impl<'a> CommStatus<'a> {
+    fn comms(self) -> &'a mut PeerComms {
+        match self {
+            CommStatus::Connecting(comms) => comms,
+            CommStatus::Established(comms) => comms,
+        }
     }
 }
 
@@ -72,12 +86,14 @@ impl PeerMap {
         }
     }
 
-    pub fn refresh_peer(&mut self, id: Id) -> Option<&mut PeerStats> {
+    pub fn refresh_peer(&mut self, id: &Id) -> Option<&mut PeerStats> {
         self.map.get_refresh(&id).map(|data| &mut data.stats)
     }
 
-    pub fn peer_comms(&mut self, id: Id) -> Option<&mut PeerComms> {
-        self.map.get_mut(&id).map(PeerData::updated_comms)
+    pub fn peer_comms(&mut self, id: &Id) -> Option<&mut PeerComms> {
+        self.map
+            .get_mut(id)
+            .map(|data| data.update_comm_status().comms())
     }
 
     fn ensure_peer(&mut self, id: Id) -> &mut PeerData {
@@ -100,14 +116,14 @@ impl PeerMap {
     pub fn add_connecting(&mut self, id: Id, handle: ConnectHandle) -> &mut PeerComms {
         let data = self.ensure_peer(id);
         data.connecting = Some(handle);
-        data.updated_comms()
+        data.update_comm_status().comms()
     }
 
     pub fn remove_peer(&mut self, id: Id) -> Option<PeerComms> {
         self.map.remove(&id).map(|mut data| {
-            // A bit tricky here: use PeerData::updated_comms for the
+            // A bit tricky here: use PeerData::update_comm_status for the
             // side effect, then return the up-to-date member.
-            data.updated_comms();
+            data.update_comm_status();
             data.comms
         })
     }
@@ -116,7 +132,7 @@ impl PeerMap {
         self.map
             .iter_mut()
             .next_back()
-            .map(|(&id, data)| (id, data.updated_comms()))
+            .map(|(&id, data)| (id, data.update_comm_status().comms()))
     }
 
     pub fn stats(&self) -> Vec<(Id, PeerStats)> {
@@ -138,8 +154,8 @@ pub struct Entry<'a> {
 }
 
 impl<'a> Entry<'a> {
-    pub fn updated_comms(&mut self) -> &mut PeerComms {
-        self.inner.get_mut().updated_comms()
+    pub fn update_comm_status(&mut self) -> CommStatus<'_> {
+        self.inner.get_mut().update_comm_status()
     }
 
     pub fn stats(&mut self) -> &mut PeerStats {

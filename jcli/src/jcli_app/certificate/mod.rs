@@ -7,9 +7,11 @@ use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 mod get_stake_pool_id;
+mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod sign;
+mod weighted_pool_ids;
 
 pub(crate) use self::sign::{pool_owner_sign, stake_delegation_account_binding_sign};
 
@@ -55,10 +57,26 @@ pub enum Certificate {
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum NewArgs {
-    /// build a stake pool registration certificate
+    /// create the stake pool registration certificate.
+    ///
+    /// This contains all the declaration data of a stake pool. Including the management
+    /// data. Once registered and accepted the users can delegate stake to the stake pool
+    /// by referring the stake pool id.
+    ///
+    /// `--tax-*` parameters allow to set the rewards the stake pool will take before
+    /// serving the stake delegators. If the total reward for a stake pool is `Y`. The
+    /// stake pool will take a fixed (`--tax-fixed`) first: `X`. Then will take a percentage
+    /// of the remaining rewards (`--tax-ratio`): `R`. The total of the tax `X + R`
+    /// can be capped by an optional `--tax-limit`: `L` where the actual tax `T` is the minimum of
+    /// `L` and `X + R`.
+    ///
+    /// Delegators will then receive a share of the remaining rewards: `Y - T`.
+    ///
     StakePoolRegistration(new_stake_pool_registration::StakePoolRegistration),
     /// build a stake delegation certificate
     StakeDelegation(new_stake_delegation::StakeDelegation),
+    /// build an owner stake delegation certificate
+    OwnerStakeDelegation(new_owner_stake_delegation::OwnerStakeDelegation),
 }
 
 #[derive(StructOpt)]
@@ -84,6 +102,7 @@ impl NewArgs {
         match self {
             NewArgs::StakePoolRegistration(args) => args.exec()?,
             NewArgs::StakeDelegation(args) => args.exec()?,
+            NewArgs::OwnerStakeDelegation(args) => args.exec()?,
         }
         Ok(())
     }

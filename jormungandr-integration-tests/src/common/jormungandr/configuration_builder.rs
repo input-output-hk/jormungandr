@@ -2,7 +2,7 @@ use crate::common::{
     configuration::{
         genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
         jormungandr_config::JormungandrConfig,
-        node_config_model::{Log, NodeConfig, TrustedPeer},
+        node_config_model::{Log, LogEntry, NodeConfig, TrustedPeer},
         secret_model::SecretModel,
     },
     file_utils, jcli_wrapper,
@@ -19,7 +19,6 @@ pub struct ConfigurationBuilder {
     block0_hash: Option<String>,
     block0_consensus: Option<String>,
     log: Option<Log>,
-    bft_slots_ratio: Option<String>,
     consensus_genesis_praos_active_slot_coeff: Option<String>,
     slots_per_epoch: Option<u32>,
     slot_duration: Option<u32>,
@@ -45,13 +44,15 @@ impl ConfigurationBuilder {
             slots_per_epoch: None,
             slot_duration: None,
             epoch_stability_depth: None,
-            log: None,
+            log: Some(Log(vec![LogEntry {
+                level: Some("info".to_string()),
+                format: Some("json".to_string()),
+            }])),
             linear_fees: LinearFees {
                 constant: 0,
                 coefficient: 0,
                 certificate: 0,
             },
-            bft_slots_ratio: Some("0.222".to_owned()),
             consensus_genesis_praos_active_slot_coeff: Some("0.1".to_owned()),
             kes_update_speed: 12 * 3600,
             mempool: None,
@@ -103,11 +104,6 @@ impl ConfigurationBuilder {
         active_slot_coeff: &str,
     ) -> &mut Self {
         self.consensus_genesis_praos_active_slot_coeff = Some(active_slot_coeff.to_string());
-        self
-    }
-
-    pub fn with_bft_slots_ratio(&mut self, slots_ratio: String) -> &mut Self {
-        self.bft_slots_ratio = Some(slots_ratio);
         self
     }
 
@@ -173,7 +169,6 @@ impl ConfigurationBuilder {
         leaders_ids.append(&mut self.consensus_leader_ids.clone());
         genesis_model.blockchain_configuration.consensus_leader_ids = Some(leaders_ids.clone());
         genesis_model.blockchain_configuration.block0_consensus = self.block0_consensus.clone();
-        genesis_model.blockchain_configuration.bft_slots_ratio = self.bft_slots_ratio.clone();
         genesis_model.blockchain_configuration.kes_update_speed = self.kes_update_speed.clone();
 
         if self.slots_per_epoch.is_some() {

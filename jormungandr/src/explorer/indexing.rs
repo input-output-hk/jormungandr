@@ -12,11 +12,11 @@ use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration};
 use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
-use std::convert::TryInto;
+use std::{convert::TryInto, sync::Arc};
 
 use cardano_legacy_address::Addr as OldAddress;
 
-pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
+pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
 
 pub type Transactions = Hamt<FragmentId, HeaderHash>;
 pub type Blocks = Hamt<HeaderHash, ExplorerBlock>;
@@ -44,6 +44,8 @@ pub struct ExplorerBlock {
     pub chain_length: ChainLength,
     pub parent_hash: HeaderHash,
     pub producer: BlockProducer,
+    pub total_input: Value,
+    pub total_output: Value,
 }
 
 #[derive(Clone)]
@@ -115,7 +117,7 @@ impl ExplorerBlock {
         let id = block.id();
         let chain_length = block.chain_length();
 
-        let transactions = fragments
+        let transactions: HashMap<FragmentId, ExplorerTransaction> = fragments
             .enumerate()
             .filter_map(|(offset, fragment)| {
                 let fragment_id = fragment.id();
@@ -227,6 +229,20 @@ impl ExplorerBlock {
             Proof::None => BlockProducer::None,
         };
 
+        let total_input = Value::sum(
+            transactions
+                .values()
+                .flat_map(|tx| tx.inputs.iter().map(|i| i.value)),
+        )
+        .expect("Couldn't compute block's total input");
+
+        let total_output = Value::sum(
+            transactions
+                .values()
+                .flat_map(|tx| tx.outputs.iter().map(|o| o.value)),
+        )
+        .expect("Couldn't compute block's total output");
+
         ExplorerBlock {
             id,
             transactions,
@@ -234,6 +250,8 @@ impl ExplorerBlock {
             date: block.header.block_date(),
             parent_hash: block.parent_id(),
             producer,
+            total_input,
+            total_output,
         }
     }
 
@@ -293,9 +311,15 @@ impl ExplorerTransaction {
                     let address = ExplorerAddress::New(Address(discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
-                (InputEnum::AccountInput(_id, _value), Witness::Multisig(_)) => {
-                    // TODO
-                    None
+                (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
+                    let kind = chain_addr::Kind::Multisig(
+                        id.to_multi_account()
+                            .as_ref()
+                            .try_into()
+                            .expect("multisig identifier size doesn't match address kind"),
+                    );
+                    let address = ExplorerAddress::New(Address(discrimination, kind));
+                    Some(ExplorerInput { address, value })
                 }
                 (InputEnum::UtxoInput(utxo_pointer), _witness) => {
                     let tx = utxo_pointer.transaction_id;

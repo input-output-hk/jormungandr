@@ -9,9 +9,7 @@ use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use std::{
     any::Any,
-    panic::{catch_unwind, AssertUnwindSafe},
-    sync::mpsc::{self, Receiver, Sender},
-    thread,
+    sync::mpsc::{self, Receiver, RecvError, Sender},
     time::{Duration, Instant},
 };
 use tokio::prelude::{stream, Future, IntoFuture, Stream};
@@ -90,96 +88,26 @@ impl Services {
         }
     }
 
-    /// spawn a service in a thread. the service will run as long as the
-    /// given function does not return. As soon as the function return
-    /// the service stop
-    ///
-    pub fn spawn<F>(&mut self, name: &'static str, f: F)
-    where
-        F: FnOnce(ThreadServiceInfo) -> (),
-        F: Send + 'static,
-    {
-        let now = Instant::now();
-        let logger = self
-            .logger
-            .new(o!(crate::log::KEY_TASK => name))
-            .into_erased();
-        let thread_service_info = ThreadServiceInfo {
-            name: name,
-            up_time: now,
-            logger: logger.clone(),
-        };
-        let finish_notifier = self.finish_listener.notifier();
-        thread::Builder::new()
-            .name(name.to_owned())
-            // .stack_size(2 * 1024 * 1024)
-            .spawn(move || {
-                info!(logger, "starting task");
-                // This AssertUnwindSafe is safe, because after `catch_unwind`
-                // its content is never used in this thread
-                if let Err(error) = catch_unwind(AssertUnwindSafe(|| f(thread_service_info))) {
-                    log_service_panic(&logger, &*error);
-                }
-                finish_notifier.notify();
-            })
-            .unwrap_or_else(|err| panic!("Cannot spawn thread: {}", err));
-
-        let task = Service::new_handler(name, now);
-        self.services.push(task);
-    }
-
-    /// spawn a service that will be launched for every given inputs
-    ///
-    /// the service will stop once there is no more input to read: the function
-    /// will be called one last time with `Input::Shutdown` and then will return
-    ///
-    pub fn spawn_with_inputs<F, Msg>(&mut self, name: &'static str, mut f: F) -> TaskMessageBox<Msg>
-    where
-        F: FnMut(&ThreadServiceInfo, Input<Msg>) -> (),
-        F: Send + 'static,
-        Msg: Send + 'static,
-    {
-        let (tx, rx) = mpsc::channel::<Msg>();
-
-        self.spawn(name, move |info| loop {
-            match rx.recv() {
-                Ok(msg) => f(&info, Input::Input(msg)),
-                Err(err) => {
-                    warn!(
-                        info.logger,
-                        "Shutting down service {} (up since {}): {}",
-                        name,
-                        humantime::format_duration(info.up_time()),
-                        err
-                    );
-                    f(&info, Input::Shutdown);
-                    break;
-                }
-            }
-        });
-
-        TaskMessageBox(tx)
-    }
-
     /// Spawn the given Future in a new dedicated runtime
     pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         T: Future<Item = (), Error = ()> + Send + 'static,
     {
-        let mut runtime = runtime::Builder::new()
-            .keep_alive(None)
-            .name_prefix(name)
-            .build()
-            .unwrap();
-
-        let executor = runtime.executor();
-
-        let now = Instant::now();
         let logger = self
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
+        let panic_logger = logger.clone();
+        let mut runtime = runtime::Builder::new()
+            .keep_alive(None)
+            .name_prefix(name)
+            .panic_handler(move |error| log_service_panic(&panic_logger, &*error))
+            .build()
+            .unwrap();
+
+        let executor = runtime.executor();
+        let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
@@ -188,12 +116,20 @@ impl Services {
         };
 
         let finish_notifier = self.finish_listener.notifier();
-        // This AssertUnwindSafe is safe, because after `catch_unwind`
-        // its content is never used in executor thread
-        let future = AssertUnwindSafe(f(future_service_info))
-            .catch_unwind()
-            .map_err(move |error| log_service_panic(&logger, &*error))
-            .then(|_| Ok(finish_notifier.notify()));
+        let future = f(future_service_info).then(move |res| {
+            let outcome = match res {
+                Ok(_) => "successfully",
+                Err(_) => "with error",
+            };
+            info!(logger, "service finished {}", outcome);
+            // send the finish notifier if the service finished with an error.
+            // this will allow to finish the node with an error code instead
+            // of an success error code
+            let _ = finish_notifier.sender.send(res.is_ok());
+            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
+            std::mem::drop(finish_notifier);
+            Ok(())
+        });
 
         runtime.spawn(future);
 
@@ -226,8 +162,8 @@ impl Services {
     }
 
     /// select on all the started services. this function will block until first services returns
-    pub fn wait_any_finished(&self) {
-        self.finish_listener.wait_any_finished();
+    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
+        self.finish_listener.wait_any_finished()
     }
 }
 
@@ -343,12 +279,13 @@ impl<Msg> TaskMessageBox<Msg> {
 }
 
 struct ServiceFinishListener {
-    sender: Sender<()>,
-    receiver: Receiver<()>,
+    sender: Sender<bool>,
+    receiver: Receiver<bool>,
 }
 
+/// Sends notification when dropped
 struct ServiceFinishNotifier {
-    sender: Sender<()>,
+    sender: Sender<bool>,
 }
 
 impl ServiceFinishListener {
@@ -363,8 +300,8 @@ impl ServiceFinishListener {
         }
     }
 
-    pub fn wait_any_finished(&self) {
-        let _ = self.receiver.recv();
+    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
+        self.receiver.recv()
     }
 
     #[allow(dead_code)]
@@ -376,9 +313,9 @@ impl ServiceFinishListener {
     }
 }
 
-impl ServiceFinishNotifier {
-    pub fn notify(self) {
-        let _ = self.sender.send(());
+impl Drop for ServiceFinishNotifier {
+    fn drop(&mut self) {
+        let _ = self.sender.send(true);
     }
 }
 

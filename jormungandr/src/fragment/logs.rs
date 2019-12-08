@@ -11,8 +11,8 @@ use tokio::{
 pub struct Logs(Lock<internal::Logs>);
 
 impl Logs {
-    pub fn new(ttl: Duration) -> Self {
-        Logs(Lock::new(internal::Logs::new(ttl)))
+    pub fn new(max_entries: usize, ttl: Duration) -> Self {
+        Logs(Lock::new(internal::Logs::new(max_entries, ttl)))
     }
 
     /// Returns true if fragment was registered
@@ -61,10 +61,6 @@ impl Logs {
         })
     }
 
-    pub fn remove(&mut self, fragment_id: FragmentId) -> impl Future<Item = (), Error = ()> {
-        self.run_on_inner(move |inner| inner.remove(&fragment_id.into()))
-    }
-
     pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
         self.inner()
             .and_then(move |mut guard| future::poll_fn(move || guard.poll_purge()))
@@ -103,14 +99,16 @@ pub(super) mod internal {
     };
 
     pub struct Logs {
+        max_entries: usize,
         entries: HashMap<Hash, (FragmentLog, delay_queue::Key)>,
         expirations: DelayQueue<Hash>,
         ttl: Duration,
     }
 
     impl Logs {
-        pub fn new(ttl: Duration) -> Self {
+        pub fn new(max_entries: usize, ttl: Duration) -> Self {
             Logs {
+                max_entries,
                 entries: HashMap::new(),
                 expirations: DelayQueue::new(),
                 ttl,
@@ -130,25 +128,35 @@ pub(super) mod internal {
 
         /// Returns true if fragment was registered
         pub fn insert(&mut self, log: FragmentLog) -> bool {
-            let fragment_id = *log.fragment_id();
-            let entry = match self.entries.entry(fragment_id) {
-                Entry::Occupied(_) => return false,
-                Entry::Vacant(entry) => entry,
-            };
-            let delay = self.expirations.insert(fragment_id, self.ttl);
-            entry.insert((log, delay));
-            true
+            if self.max_entries < self.entries.len() {
+                false
+            } else {
+                let fragment_id = *log.fragment_id();
+                let entry = match self.entries.entry(fragment_id) {
+                    Entry::Occupied(_) => return false,
+                    Entry::Vacant(entry) => entry,
+                };
+                let delay = self.expirations.insert(fragment_id, self.ttl);
+                entry.insert((log, delay));
+                true
+            }
         }
 
         /// Returns number of registered fragments
         pub fn insert_all(&mut self, logs: impl IntoIterator<Item = FragmentLog>) -> usize {
             logs.into_iter()
+                .take(
+                    self.max_entries
+                        .checked_sub(self.entries.len())
+                        .unwrap_or(0),
+                )
                 .map(|log| self.insert(log))
                 .filter(|was_modified| *was_modified)
                 .count()
         }
 
         pub fn modify(&mut self, fragment_id: &Hash, status: FragmentStatus) {
+            let len = self.entries.len();
             match self.entries.entry(fragment_id.clone()) {
                 Entry::Occupied(mut entry) => {
                     entry.get_mut().0.modify(status);
@@ -162,18 +170,17 @@ pub(super) mod internal {
                     // we can mark the status of the transaction so newly received transaction
                     // be stored.
 
-                    let delay = self.expirations.insert(*fragment_id, self.ttl);
-                    entry.insert((
-                        FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network),
-                        delay,
-                    ));
+                    if self.max_entries < len {
+                        let delay = self.expirations.insert(*fragment_id, self.ttl);
+                        entry.insert((
+                            FragmentLog::new(
+                                fragment_id.clone().into_hash(),
+                                FragmentOrigin::Network,
+                            ),
+                            delay,
+                        ));
+                    }
                 }
-            }
-        }
-
-        pub fn remove(&mut self, fragment_id: &Hash) {
-            if let Some((_, cache_key)) = self.entries.remove(fragment_id) {
-                self.expirations.remove(&cache_key);
             }
         }
 

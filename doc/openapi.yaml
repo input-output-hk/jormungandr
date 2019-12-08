@@ -35,11 +35,28 @@ paths:
                     description: Number of transactions performed with this account
                     type: integer
                     minimum: 0
+                  last_rewards:
+                    description: the last rewards
+                    type: object
+                    properties:
+                      epoch:
+                        description: the last epoch that distributed rewards to this account
+                        type: integer
+                        minimum: 0
+                      reward:
+                        description: the total amount of rewards received for the associated epoch
+                        type: integer
+                        minimum: 0
               example: |
                 {
                   "counter": 1,
                   "delegation": "c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356",
-                  "value": 990
+                  "value": 990,
+                  "last_rewards":
+                    {
+                      "epoch": 42,
+                      "reward": 2028
+                    }
                 }
         404:
           description: Account with given ID was not found
@@ -97,6 +114,29 @@ paths:
           description: Block ID malformed
         404:
           description: Block with given ID was not found in chain of the tip
+  /api/v0/diagnostic:
+    get:
+      description: Get system diagnostic information
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+              type: object
+              properties:
+                open_files_limit:
+                  description: The allowed number of open file descriptors on UNIX platforms (RLIMIT_NOFILE)
+                  type: integer
+                cpu_usage_limit:
+                  description: The amount of CPU time this process can consume (RLIMIT_CPU)
+                  type: integer
+                examples:
+                  unix: |
+                    {
+                      "open_files_limit": 256,
+                      "cpu_usage_limit": 9223372036854775807
+                    }
   /api/v0/fragment/logs:
     get:
       description: Gets logs from node message pool
@@ -490,7 +530,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime]
+                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
@@ -533,6 +573,9 @@ paths:
                     description: Node uptime in seconds
                     type: integer
                     minimum: 0
+                  version:
+                    description: Node app version
+                    type: string
               example: |
                 {
                   "blockRecvCnt": 1102,
@@ -545,7 +588,8 @@ paths:
                   "lastBlockTx": 2,
                   "state": "Running",
                   "txRecvCnt": 5440,
-                  "uptime": 20032
+                  "uptime": 20032,
+                  "version": "jormungandr 0.8.0-rc4-67477249"
                 }
   /api/v0/settings:
     get:
@@ -557,7 +601,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch]
+                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -584,6 +628,23 @@ paths:
                         description: Fee per certificate used in witness
                         type: integer
                         minimum: 0
+                      per_certificate_fees:
+                        description: Fee per certificate operations, all zero if this object absent
+                        type: object
+                        required: []
+                        properties:
+                          certificate_pool_registration:
+                            description: Fee per pool registration, zero if absent
+                            type: integer
+                            minimum: 1
+                          certificate_stake_delegation:
+                            description: Fee per stake delegation, zero if absent
+                            type: integer
+                            minimum: 1
+                          certificate_owner_stake_delegation:
+                            description: Fee per pool owner stake delegation, zero if absent
+                            type: integer
+                            minimum: 1
                       coefficient:
                         description: Fee per every input and output of transaction
                         type: integer
@@ -596,6 +657,42 @@ paths:
                     description: Maximum number of transactions in block
                     type: integer
                     minimum: 0
+                  rewardParams:
+                    description: Parameters for rewards calculation
+                    type: object
+                    required: [compoundingRatio, compoundingType, epochRate, epochStart, initialValue]
+                    properties:
+                      compoundingRatio:
+                        description: Speed at which reward is reduced. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      compoundingType:
+                        description: Reward reduction algorithm
+                        type: string
+                        enum: [Linear, Halvening]
+                      epochRate:
+                        description: Number of epochs between reward
+                        type: integer
+                        minimum: 1
+                      epochStart:
+                        description: Epoch when rewarding starts
+                        type: integer
+                        minimum: 0
+                      epochStart:
+                        description: Epoch when rewarding starts
+                        type: integer
+                        minimum: 0
+                      initialValue:
+                        description: Initial reward
+                        type: integer
+                        minimum: 0
                   slotDuration:
                     description: Slot duration in seconds
                     type: integer
@@ -604,6 +701,31 @@ paths:
                     description: Number of slots per epoch
                     type: integer
                     minimum: 0
+                  treasuryTax:
+                    description: Tax from reward that goes to pot
+                    type: object
+                    required: [fixed, ratio, max]
+                    properties:
+                      fixed:
+                        description: What get subtracted as fixed value
+                        type: integer
+                        minimum: 0
+                      ratio:
+                        description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      max:
+                        description: Limit of tax
+                        type: integer
+                        minimum: 1
+                        nullable: true
               example: |
                 {
                   "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
@@ -612,12 +734,35 @@ paths:
                   "currSlotStartTime": "2019-07-18T22:01:17+00:00",
                   "fees": {
                     "certificate": 4,
+                    "per_certificate_fees": {
+                      "certificate_pool_registration": 5,
+                      "certificate_stake_delegation": 3,
+                      "certificate_owner_stake_delegation": 4,
+                    }
                     "coefficient": 1,
                     "constant": 2
                   },
                   "maxTxsPerBlock": 100,
+                  "rewardParams": {
+                      "compoundingRatio": {
+                          "denominator": 1024,
+                          "numerator": 1
+                      },
+                      "compoundingType": "Linear",
+                      "epochRate": 100,
+                      "epochStart": 0,
+                      "initialValue": 10000
+                  },
                   "slotDuration": 10,
-                  "slotsPerEpoch": 60
+                  "slotsPerEpoch": 60,
+                  "treasuryTax": {
+                    "fixed": 5,
+                    "ratio": {
+                      "numerator": 1
+                      "denominator": 10000,
+                    }
+                    "max": 100,
+                  }
                 }
   /api/v0/shutdown:
     get:
@@ -641,6 +786,89 @@ paths:
                   type: string
                   pattern: '[0-9a-fA-F]+'
               example: [ "5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f" ]
+  /api/v0/stake_pool:
+    get:
+      description: Gets stake pool details
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: Stake pool details
+                type: object
+                required: [tax, total_stake, kesPublicKey, vrfPublicKey]
+                properties:
+                  tax:
+                    description: Pool reward
+                    type: object
+                    required: [fixed, ratio, max]
+                    properties:
+                      fixed:
+                        description: What get subtracted as fixed value
+                        type: integer
+                        minimum: 0
+                      ratio:
+                        description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      max:
+                        description: Limit of tax
+                        type: integer
+                        minimum: 1
+                        nullable: true
+                  total_stake:
+                    description: Total stake pool value
+                    type: integer
+                    minimum: 0
+                  rewards:
+                    type: object
+                    description: the reward received by the stake pool during the associated epoch
+                    properties:
+                      epoch:
+                        description: the epoch the reward has been distributed to this stake pool for the last time
+                        type: integer
+                        minimum: 0
+                      value_taxed:
+                        description: the total value taxed for the stake pool
+                        type: integer
+                        minimum: 0
+                      value_for_stakers:
+                        description: the value remaining to distribute amongst the delegators to this stake pool
+                        type: integer
+                        minimum: 0
+                  vrfPublicKey:
+                    description: Bech32-encoded stake pool KES key
+                    type: string
+                  vrfPublicKey:
+                    description: Bech32-encoded stake pool VRF key
+                    type: string
+              example: |
+                {
+                  "tax": {
+                    "fixed": 5,
+                    "ratio": {
+                      "numerator": 1
+                      "denominator": 10000,
+                    }
+                    "max": 100,
+                  },
+                  "rewards": {
+                    "epoch": 42,
+                    "value_taxed": 2901,
+                    "value_for_stakers": 2028
+                  },
+                  "total_stake": 2000000000000,
+                  "kesPublicKey": "kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r",
+                  "vrfPublicKey": "vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l"
+                }
   /api/v0/stake:
     get:
       description: Gets stake distribution

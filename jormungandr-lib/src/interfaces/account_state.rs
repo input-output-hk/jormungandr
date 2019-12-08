@@ -1,5 +1,5 @@
 use crate::{crypto::hash::Hash, interfaces::Value};
-use chain_impl_mockchain::accounting::account;
+use chain_impl_mockchain::{accounting::account, block::Epoch};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
@@ -58,6 +58,12 @@ impl From<DelegationType> for account::DelegationType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct LastRewards {
+    epoch: Epoch,
+    reward: Value,
+}
+
 /// represent the current state of an account in the ledger
 ///
 /// This type is different from the [`UTxOInfo`] which represents another
@@ -70,6 +76,7 @@ pub struct AccountState {
     delegation: DelegationType,
     value: Value,
     counter: u32,
+    last_rewards: LastRewards,
 }
 
 impl AccountState {
@@ -99,12 +106,31 @@ impl AccountState {
 
 /* ---------------- Conversion --------------------------------------------- */
 
+impl From<account::LastRewards> for LastRewards {
+    fn from(lr: account::LastRewards) -> Self {
+        Self {
+            epoch: lr.epoch.into(),
+            reward: lr.reward.into(),
+        }
+    }
+}
+
+impl From<LastRewards> for account::LastRewards {
+    fn from(lr: LastRewards) -> Self {
+        Self {
+            epoch: lr.epoch.into(),
+            reward: lr.reward.into(),
+        }
+    }
+}
+
 impl<E> From<account::AccountState<E>> for AccountState {
     fn from(account: account::AccountState<E>) -> Self {
         AccountState {
             delegation: account.delegation().clone().into(),
             value: account.value().into(),
             counter: account.get_counter(),
+            last_rewards: account.last_rewards.into(),
         }
     }
 }
@@ -115,6 +141,7 @@ impl<'a, E> From<&'a account::AccountState<E>> for AccountState {
             delegation: account.delegation().clone().into(),
             value: account.value().into(),
             counter: account.get_counter(),
+            last_rewards: account.last_rewards.clone().into(),
         }
     }
 }

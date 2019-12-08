@@ -23,9 +23,10 @@ we recommend to use the most recent stable version of the rust compiler.
 4. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
 5. Enter the repository directory: `cd jormungandr`
 6. Check latest release tag on https://github.com/input-output-hk/jormungandr/releases/latest
-7. checkout this tag ` git checkout tags/<latest release tag>`
-8. install **jormungandr**: `cargo install --path jormungandr`
-9. install **jcli**: `cargo install --path jcli`
+7. Checkout this tag: `git checkout tags/<latest release tag>`
+8. Update submodules: `git submodule update`
+9. Install **jormungandr**: `cargo install --path jormungandr`
+10. Install **jcli**: `cargo install --path jcli`
 
 Note:
 
@@ -34,7 +35,7 @@ Note:
 * On Linux and macOS: add `${HOME}/.cargo/bin` into your `PATH`.
 * Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
   the compiler and linker executable `cc` is found in `PATH`.
-* On Linux with systemd: to enable logging to journald replace step 8
+* On Linux with systemd: to enable logging to journald replace step 9
   with `cargo install --path jormungandr --features systemd`.
 * The build requires the [Protocol Buffers][protobuf] compiler:
   - On Linux environments without glibc such as Alpine, the protobuf compiler
@@ -116,7 +117,7 @@ to. The simplest way to start such a node is:
 
     jormungandr --genesis-block-hash <HASH> --trusted-peer <IPs>
     
-In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool WSorkgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
+In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
 
 Trusted peer IP addresses needs to be provided in a following format: `/ip4/<IP-ADDRESS>/tcp/<PORT>@<NODE-ID>`
 

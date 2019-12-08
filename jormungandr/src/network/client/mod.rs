@@ -12,7 +12,7 @@ use super::{
 use crate::{
     blockcfg::{Block, Fragment, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
-    utils::task::TaskMessageBox,
+    utils::async_msg::MessageBox,
 };
 use network_core::client as core_client;
 use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
@@ -38,10 +38,10 @@ where
     block_sink: BlockAnnouncementProcessor,
     fragment_sink: FragmentProcessor,
     gossip_processor: GossipProcessor,
+    client_box: MessageBox<ClientMsg>,
     incoming_block_announcement: Option<Header>,
+    incoming_solicitation: Option<ClientMsg>,
     incoming_fragment: Option<Fragment>,
-    // FIXME: kill it with fire
-    client_box: TaskMessageBox<ClientMsg>,
 }
 
 struct ClientBuilder {
@@ -112,6 +112,7 @@ where
             gossip_processor,
             client_box: builder.channels.client_box,
             incoming_block_announcement: None,
+            incoming_solicitation: None,
             incoming_fragment: None,
         }
     }
@@ -159,8 +160,8 @@ where
     fn process_block_event(&mut self) -> Poll<ProcessingOutcome, ()> {
         use self::ProcessingOutcome::*;
 
-        // Drive sending of a message to block task to completion
-        // before polling more events from the block subscription
+        // Drive sending of a message to block task to clear the buffered
+        // announcement before polling more events from the block subscription
         // stream.
         if let Some(header) = self.incoming_block_announcement.take() {
             match self.block_sink.start_send(header).map_err(|_| ())? {
@@ -176,6 +177,25 @@ where
             // while no progress has been made.
             self.block_sink.poll_complete().map_err(|_| ())?;
         }
+
+        // Drive sending of a message to the client request task to clear
+        // the buffered solicitation before polling more events from the
+        // block subscription stream.
+        if let Some(msg) = self.incoming_solicitation.take() {
+            match self.client_box.start_send(msg).map_err(|_| ())? {
+                AsyncSink::Ready => {}
+                AsyncSink::NotReady(msg) => {
+                    self.incoming_solicitation = Some(msg);
+                    return Ok(Async::NotReady);
+                }
+            }
+        } else {
+            // Ignoring possible NotReady return here: due to the following
+            // try_ready!() invocation, this function cannot return Continue
+            // while no progress has been made.
+            self.client_box.poll_complete().map_err(|_| ())?;
+        }
+
         let maybe_event = try_ready!(self.inbound.block_events.poll().map_err(|e| {
             debug!(
                 self.logger,
@@ -203,47 +223,55 @@ where
                 self.incoming_block_announcement = Some(header);
             }
             BlockEvent::Solicit(block_ids) => {
-                debug!(self.logger, "peer requests {} blocks", block_ids.len());
-                let (reply_handle, stream) = intercom::stream_reply::<
-                    Block,
-                    network_core::error::Error,
-                >(self.logger.clone());
-                self.client_box
-                    .send_to(ClientMsg::GetBlocks(block_ids, reply_handle));
-                let done_logger = self.logger.clone();
-                let err_logger = self.logger.clone();
-                self.global_state.spawn(
-                    self.service
-                        .upload_blocks(stream)
-                        .map(move |_| {
-                            debug!(done_logger, "finished uploading blocks");
-                        })
-                        .map_err(move |e| {
-                            info!(
-                                err_logger,
-                                "UploadBlocks request failed";
-                                "error" => ?e,
-                            );
-                        }),
-                );
+                self.upload_blocks(block_ids);
             }
             BlockEvent::Missing(req) => {
-                debug!(
-                    self.logger,
-                    "peer requests missing part of the chain";
-                    "checkpoints" => ?req.from,
-                    "to" => ?req.to);
                 self.push_missing_headers(req);
             }
         }
         Ok(Continue.into())
     }
 
+    fn upload_blocks(&mut self, block_ids: Vec<HeaderHash>) {
+        debug!(self.logger, "peer requests {} blocks", block_ids.len());
+        let (reply_handle, stream) = intercom::stream_reply::<_, core_error::Error>(
+            buffer_sizes::outbound::BLOCKS,
+            self.logger.new(o!("solicitation" => "UploadBlocks")),
+        );
+        debug_assert!(self.incoming_solicitation.is_none());
+        self.incoming_solicitation = Some(ClientMsg::GetBlocks(block_ids, reply_handle));
+        let done_logger = self.logger.clone();
+        let err_logger = self.logger.clone();
+        self.global_state.spawn(
+            self.service
+                .upload_blocks(stream)
+                .map(move |_| {
+                    debug!(done_logger, "finished uploading blocks");
+                })
+                .map_err(move |e| {
+                    info!(
+                        err_logger,
+                        "UploadBlocks request failed";
+                        "error" => ?e,
+                    );
+                }),
+        );
+    }
+
     fn push_missing_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
-        let (reply_handle, stream) =
-            intercom::stream_reply::<Header, network_core::error::Error>(self.logger.clone());
-        self.client_box
-            .send_to(ClientMsg::GetHeadersRange(req.from, req.to, reply_handle));
+        debug!(
+            self.logger,
+            "peer requests missing part of the chain";
+            "checkpoints" => ?req.from,
+            "to" => ?req.to,
+        );
+        let (reply_handle, stream) = intercom::stream_reply::<_, core_error::Error>(
+            buffer_sizes::outbound::HEADERS,
+            self.logger.new(o!("solicitation" => "PushHeaders")),
+        );
+        debug_assert!(self.incoming_solicitation.is_none());
+        self.incoming_solicitation =
+            Some(ClientMsg::GetHeadersRange(req.from, req.to, reply_handle));
         let done_logger = self.logger.clone();
         let err_logger = self.logger.clone();
         self.global_state.spawn(
@@ -276,7 +304,7 @@ where
         let req_err_logger = logger.clone();
         let res_logger = logger.clone();
         let (handle, sink) = intercom::stream_request::<Header, (), core_error::Error>(
-            buffer_sizes::CHAIN_PULL,
+            buffer_sizes::inbound::HEADERS,
             logger.clone(),
         );
         // TODO: make sure that back pressure on the number of requests
@@ -333,7 +361,7 @@ where
         let req_err_logger = logger.clone();
         let res_logger = logger.clone();
         let (handle, sink) = intercom::stream_request::<Block, (), core_error::Error>(
-            buffer_sizes::BLOCKS,
+            buffer_sizes::inbound::BLOCKS,
             logger.clone(),
         );
         // TODO: make sure that back pressure on the number of requests

@@ -51,8 +51,7 @@ $CLI certificate new stake-pool-registration \
     --start-validity 0 \
     --owner "${LEADER_PK}" \
     --kes-key "${POOL_KES_PK}" \
-    --vrf-key "${POOL_VRF_PK}" \
-    --serial 1010101010 > stake_pool.cert
+    --vrf-key "${POOL_VRF_PK}" > stake_pool.cert
 
 CERTIFICATE_FILE="stake_pool.cert"
 
