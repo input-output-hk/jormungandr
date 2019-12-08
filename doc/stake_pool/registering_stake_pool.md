@@ -51,7 +51,7 @@ There are 3 values you can set to configure the stake pool's **Tax**:
 * `tax-fixed`: this is the fixed cut the stake pool will take from the total reward due to
   the stake pool;
 * `tax-ratio`: this is the percentage of the remaining value that will be taken from the total due
-* `tax-limit`: a value that can be set to limit the pool's **Tax**.
+* `tax-limit`: a value that can be set to limit the pool's **Tax Ratio**.
 
 All of these values are optionals, if not set, they will be set to `0`. This will mean
 no tax for the stake pool: rewards are all distributed to the delegators.
@@ -65,7 +65,7 @@ Before distributing the `10_000` among the delegators, `SP` will take its **Tax*
 
 1. we extract the `tax-fixed`. If this is greater or equal to the total (`10_000`)
    then we stop there, there is no more rewards to distribute.
-2. with what remains the `SP` extracts its `tax-ratio` and checks the total **tax** is not
+2. with what remains the `SP` extracts its `tax-ratio` and checks the total **tax ratio** is not
    greater than `tax-limit`: if it is the total tax will be `tax-limit`.
 3. the total `SP` rewards will then be distributed equally to the owners (O1 and O2).
    Note that if the `--reward-account` is set, the rewards for `SP` are then distributed
@@ -84,9 +84,9 @@ For example:
 
 ```
 --tax-limit <TAX_LIMIT>
-    The maximum tax value the stake pool will take.
+    The maximum tax value the stake pool will take as a percentage of overall taxes.
 
-    This will set the maximum the stake pool value will reserve for themselves. Including both the `--tax-fixed` and the `--tax-ratio`.
+    This will set the maximum the stake pool value will reserve for themselves. It includes only the `--tax-ratio`.
 --tax-ratio <TAX_RATIO>
     The percentage take of the stake pool.
 
