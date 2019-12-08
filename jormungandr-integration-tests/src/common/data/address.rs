@@ -9,7 +9,7 @@ pub struct Account {
     pub private_key: String,
     pub public_key: String,
     pub address: String,
-    pub spending_key: u64,
+    pub spending_key: u32,
 }
 
 impl Account {
@@ -18,7 +18,7 @@ impl Account {
             private_key: private_key.to_string(),
             public_key: public_key.to_string(),
             address: address.to_string(),
-            spending_key: 0u64,
+            spending_key: 0u32,
         }
     }
 
@@ -39,7 +39,7 @@ pub trait AddressDataProvider {
     fn get_address(&self) -> String;
     fn get_private_key(&self) -> String;
     fn get_address_type(&self) -> String;
-    fn get_spending_key(&self) -> Option<u64>;
+    fn get_spending_key(&self) -> Option<u32>;
 }
 
 impl AddressDataProvider for Utxo {
@@ -56,7 +56,7 @@ impl AddressDataProvider for Utxo {
         address_type
     }
 
-    fn get_spending_key(&self) -> Option<u64> {
+    fn get_spending_key(&self) -> Option<u32> {
         None
     }
 }
@@ -75,7 +75,7 @@ impl AddressDataProvider for Account {
         address_type
     }
 
-    fn get_spending_key(&self) -> Option<u64> {
+    fn get_spending_key(&self) -> Option<u32> {
         Some(self.spending_key)
     }
 }
@@ -94,7 +94,7 @@ impl AddressDataProvider for Delegation {
         address_type
     }
 
-    fn get_spending_key(&self) -> Option<u64> {
+    fn get_spending_key(&self) -> Option<u32> {
         None
     }
 }

@@ -130,7 +130,7 @@ impl TransactionCommands {
         block0_hash: &str,
         tx_id: &str,
         addr_type: &str,
-        spending_account_counter: Option<u64>,
+        spending_account_counter: Option<u32>,
         witness_file: &PathBuf,
         witness_key: &PathBuf,
     ) -> Command {
