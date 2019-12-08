@@ -104,8 +104,7 @@ pub struct StakePoolRegistration {
 
     /// The maximum tax value the stake pool will take.
     ///
-    /// This will set the maximum the stake pool value will reserve for themselves. Including
-    /// both the `--tax-fixed` and the `--tax-ratio`.
+    /// This will set the maximum the stake pool value will reserve for themselves. It includes only the --tax-ratio.
     #[structopt(long = "tax-limit", name = "TAX_LIMIT")]
     pub tax_limit: Option<NonZeroU64>,
 
