@@ -99,7 +99,7 @@ blockchain_configuration:
   # It is possible to send all the generated fees to the "treasury".
   #
   # Optional, default is "rewards"
-  fees_go_to: "rewards"
+  # fees_go_to: "rewards"
 
   # initial value the treasury will start with, if not set the treasury
   # starts at 0
