@@ -754,16 +754,22 @@ fn write_reward_info(
         {
             let file = File::create(&filepath_tmp)?;
             let mut buf = BufWriter::new(file);
-            buf.write_all(format!("drawn {}", rewards_info.drawn.0).as_bytes())?;
-            buf.write_all(format!("fees {}", rewards_info.fees.0).as_bytes())?;
-            buf.write_all(format!("treasury {}", rewards_info.treasury.0).as_bytes())?;
+            writeln!(&mut buf, "drawn {}", rewards_info.drawn.0)?;
+            writeln!(&mut buf, "fees {}", rewards_info.fees.0)?;
+            writeln!(&mut buf, "treasury {}", rewards_info.treasury.0)?;
+            writeln!(&mut buf, "")?;
 
+            writeln!(&mut buf, "pool_id, taxed, distributed")?;
             for (pool_id, (taxed, distr)) in rewards_info.stake_pools.iter() {
-                buf.write_all(format!("{}, {}, {}\n", pool_id, taxed.0, distr.0).as_bytes())?;
+                writeln!(&mut buf, "{}, {}, {}", pool_id, taxed.0, distr.0)?;
             }
+
+            writeln!(&mut buf, "account_id, received")?;
             for (account_id, received) in rewards_info.accounts.iter() {
-                buf.write_all(format!("{}, {}\n", account_id, received.0).as_bytes())?;
+                writeln!(&mut buf, "{}, {}", account_id, received.0)?;
             }
+
+            buf.flush()?;
         }
 
         rename(filepath_tmp, filepath)?;
