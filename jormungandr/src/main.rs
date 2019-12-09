@@ -14,7 +14,7 @@ extern crate chain_core;
 extern crate chain_crypto;
 extern crate chain_impl_mockchain;
 extern crate chain_storage;
-extern crate chain_storage_sqlite;
+extern crate chain_storage_sqlite_old;
 extern crate chain_time;
 extern crate imhamt;
 #[macro_use]

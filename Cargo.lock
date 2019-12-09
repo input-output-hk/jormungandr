@@ -473,7 +473,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "chain-storage-sqlite"
+name = "chain-storage-sqlite-old"
 version = "0.1.0"
 dependencies = [
  "chain-core 0.1.0",
@@ -1467,7 +1467,7 @@ dependencies = [
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
  "chain-storage 0.1.0",
- "chain-storage-sqlite 0.1.0",
+ "chain-storage-sqlite-old 0.1.0",
  "chain-time 0.1.0",
  "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1520,7 +1520,7 @@ dependencies = [
  "chain-crypto 0.1.0",
  "chain-impl-mockchain 0.1.0",
  "chain-storage 0.1.0",
- "chain-storage-sqlite 0.1.0",
+ "chain-storage-sqlite-old 0.1.0",
  "chain-time 0.1.0",
  "custom_error 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519-bip32 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
