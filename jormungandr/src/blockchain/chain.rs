@@ -797,14 +797,23 @@ pub fn new_epoch_leadership_from(
         // 1. distribute the rewards (if any) This will give us the transition state
         let transition_state =
             if let Some(distribution) = parent.epoch_leadership_schedule().stake_distribution() {
+                let store_rewards = std::env::var("JORMUNGANDR_REWARD_DUMP_DIRECTORY").is_ok();
+                let reward_info_dist = if store_rewards {
+                    RewardsInfoParameters::report_all()
+                } else {
+                    RewardsInfoParameters::default()
+                };
+
                 let (ledger, rewards_info) = parent_ledger_state
                     .distribute_rewards(
                         distribution,
                         &parent.epoch_ledger_parameters(),
-                        RewardsInfoParameters::default(),
+                        reward_info_dist,
                     )
                     .expect("Distribution of rewards will not overflow");
-                write_reward_info(epoch, parent.hash(), rewards_info).unwrap_or(());
+                if let Err(err) = write_reward_info(epoch, parent.hash(), rewards_info) {
+                    panic!("Error while storing the reward dump, err {}", err)
+                }
                 Arc::new(ledger)
             } else {
                 parent_ledger_state.clone()
