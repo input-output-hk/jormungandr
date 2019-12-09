@@ -65,20 +65,20 @@ Before distributing the `10_000` among the delegators, `SP` will take its **Tax*
 
 1. we extract the `tax-fixed`. If this is greater or equal to the total (`10_000`)
    then we stop there, there is no more rewards to distribute.
-2. with what remains the `SP` extracts its `tax-ratio` and checks the total **tax** is not
-   greater than `tax-limit`: if it is the total tax will be `tax-limit`.
+2. with what remains the `SP` extracts its `tax-ratio` and checks the **tax** from the ratio
+   is not greater than `tax-limit`.
 3. the total `SP` rewards will then be distributed equally to the owners (O1 and O2).
    Note that if the `--reward-account` is set, the rewards for `SP` are then distributed
    to that account and nothing to `O1` and `O2`.
 
 For example:
 
-|                        | total | fixed| ratio|limit | `SP`  | `O1` | `O2` | for delegators |
-|------------------------|:-----:|:----:|:----:|:----:|:-----:|:----:|:----:|:--------------:|
-| takes 100%             | 10000 |   0  |  1/1 |   0  | 10000 | 5000 | 5000 |   0            |
-| fixed of 1000          | 10000 | 1000 |  0/1 |   0  |  1000 |  500 |  500 | 9000           |
-| fixed + 10%            |  2000 | 1000 | 1/10 |   0  |  1100 |  550 |  550 |  900           |
-| fixed + 20% up to 1150 |  2000 | 1000 |  1/5 | 1150 |  1150 |  575 |  575 |  850           |
+|                       | total | fixed| ratio|limit | `SP`  | `O1` | `O2` | for delegators |
+|-----------------------|:-----:|:----:|:----:|:----:|:-----:|:----:|:----:|:--------------:|
+| takes 100%            | 10000 |   0  |  1/1 |   0  | 10000 | 5000 | 5000 |   0            |
+| fixed of 1000         | 10000 | 1000 |  0/1 |   0  |  1000 |  500 |  500 | 9000           |
+| fixed + 10%           |  2000 | 1000 | 1/10 |   0  |  1100 |  550 |  550 |  900           |
+| fixed + 20% up to 150 |  2000 | 1000 |  1/5 | 1150 |  1150 |  575 |  575 |  850           |
 
 ### The options to set
 
@@ -86,7 +86,7 @@ For example:
 --tax-limit <TAX_LIMIT>
     The maximum tax value the stake pool will take.
 
-    This will set the maximum the stake pool value will reserve for themselves. Including both the `--tax-fixed` and the `--tax-ratio`.
+    This will set the maximum the stake pool value will reserve for themselves from the `--tax-ratio` (excluding `--tax-fixed`).
 --tax-ratio <TAX_RATIO>
     The percentage take of the stake pool.
 
