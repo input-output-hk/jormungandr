@@ -742,26 +742,32 @@ fn write_reward_info(
     parent_hash: HeaderHash,
     rewards_info: EpochRewardsInfo,
 ) -> std::io::Result<()> {
-    use std::{fs::rename, fs::File, io::BufWriter};
+    use std::{env::var, fs::rename, fs::File, io::BufWriter, path::PathBuf};
 
-    let filepath = format!("reward-info-{}-{}", epoch, parent_hash);
-    let filepath_tmp = format!("tmp.reward-info-{}-{}", epoch, parent_hash);
-    {
-        let file = File::create(&filepath_tmp)?;
-        let mut buf = BufWriter::new(file);
-        buf.write_all(format!("drawn {}", rewards_info.drawn.0).as_bytes())?;
-        buf.write_all(format!("fees {}", rewards_info.fees.0).as_bytes())?;
-        buf.write_all(format!("treasury {}", rewards_info.treasury.0).as_bytes())?;
+    if let Ok(directory) = var("JORMUNGANDR_REWARD_DUMP_DIRECTORY") {
+        let directory = PathBuf::from(directory);
+        let filepath = format!("reward-info-{}-{}", epoch, parent_hash);
+        let filepath = directory.join(filepath);
+        let filepath_tmp = format!("tmp.reward-info-{}-{}", epoch, parent_hash);
+        let filepath_tmp = directory.join(filepath_tmp);
 
-        for (pool_id, (taxed, distr)) in rewards_info.stake_pools.iter() {
-            buf.write_all(format!("{}, {}, {}\n", pool_id, taxed.0, distr.0).as_bytes())?;
+        {
+            let file = File::create(&filepath_tmp)?;
+            let mut buf = BufWriter::new(file);
+            buf.write_all(format!("drawn {}", rewards_info.drawn.0).as_bytes())?;
+            buf.write_all(format!("fees {}", rewards_info.fees.0).as_bytes())?;
+            buf.write_all(format!("treasury {}", rewards_info.treasury.0).as_bytes())?;
+
+            for (pool_id, (taxed, distr)) in rewards_info.stake_pools.iter() {
+                buf.write_all(format!("{}, {}, {}\n", pool_id, taxed.0, distr.0).as_bytes())?;
+            }
+            for (account_id, received) in rewards_info.accounts.iter() {
+                buf.write_all(format!("{}, {}\n", account_id, received.0).as_bytes())?;
+            }
         }
-        for (account_id, received) in rewards_info.accounts.iter() {
-            buf.write_all(format!("{}, {}\n", account_id, received.0).as_bytes())?;
-        }
+
+        rename(filepath_tmp, filepath)?;
     }
-
-    rename(filepath_tmp, filepath)?;
     Ok(())
 }
 
