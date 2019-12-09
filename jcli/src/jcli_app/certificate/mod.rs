@@ -66,9 +66,9 @@ pub enum NewArgs {
     /// `--tax-*` parameters allow to set the rewards the stake pool will take before
     /// serving the stake delegators. If the total reward for a stake pool is `Y`. The
     /// stake pool will take a fixed (`--tax-fixed`) first: `X`. Then will take a percentage
-    /// of the remaining rewards (`--tax-ratio`): `R`. The total of the tax `X + R`
-    /// can be capped by an optional `--tax-limit`: `L` where the actual tax `T` is the minimum of
-    /// `L` and `X + R`.
+    /// of the remaining rewards (`--tax-ratio`): `R`. The total of the rewards gained from `R`
+    /// can be capped by an optional `--tax-limit`: `L` where the actual tax `T` is `X` plus
+    /// the minimum of `L` and `R`.
     ///
     /// Delegators will then receive a share of the remaining rewards: `Y - T`.
     ///
