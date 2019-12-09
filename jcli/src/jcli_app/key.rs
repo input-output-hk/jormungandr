@@ -34,6 +34,8 @@ custom_error! { pub Error
         = "signature bech32 has invalid HRP: '{actual_hrp}', expected: '{expected_hrp}'",
     SignatureVerification = "signature verification failed",
     Derivation { source: DerivationError } = "failed to derive from BIP32 public key",
+    UnexpectedBip32Bech32Hrp { actual_hrp: String, public_hrp: String, private_hrp: String }
+        = "ed25519bip32 key expected, signature bech32 has invalid HRP: '{actual_hrp}', expected: '{public_hrp}' or '{private_hrp}'",
 }
 
 #[derive(StructOpt, Debug)]
@@ -51,7 +53,7 @@ pub enum Key {
     Sign(Sign),
     /// verify signed data with public key
     Verify(Verify),
-    /// derive a child key
+    /// derive a child key from a ed25519bip32 parent key
     Derive(Derive),
 }
 
@@ -148,7 +150,7 @@ pub struct Verify {
 
 #[derive(StructOpt, Debug)]
 pub struct Derive {
-    /// the parent key to derive a child key from
+    /// the ed25519bip32 parent key to derive a child key from
     ///
     /// if no value passed, the parent key will be read from the
     /// standard input
@@ -368,8 +370,10 @@ impl Derive {
                 hrp = Ed25519Bip32::SECRET_BECH32_HRP.to_string();
             }
             other => {
-                return Err(Error::UnknownBech32PubKeyHrp {
-                    hrp: other.to_string(),
+                return Err(Error::UnexpectedBip32Bech32Hrp {
+                    actual_hrp: other.to_string(),
+                    public_hrp: Ed25519Bip32::PUBLIC_BECH32_HRP.to_string(),
+                    private_hrp: Ed25519Bip32::SECRET_BECH32_HRP.to_string(),
                 })
             }
         }
