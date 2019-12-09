@@ -10,7 +10,9 @@ pub use chain_impl_mockchain::{
         HeaderGenesisPraosBuilder, HeaderId, HeaderSetConsensusSignature, SlotId,
     },
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
-    ledger::{Ledger, LedgerParameters, LedgerStaticParameters},
+    ledger::{
+        EpochRewardsInfo, Ledger, LedgerParameters, LedgerStaticParameters, RewardsInfoParameters,
+    },
     multiverse::Multiverse,
     value::{Value, ValueError},
 };

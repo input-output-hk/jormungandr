@@ -52,8 +52,8 @@ See Internal documentation for more details: doc/internal_design.md
 use super::{branch::Branches, reference_cache::RefCache};
 use crate::{
     blockcfg::{
-        Block, Block0Error, BlockDate, ChainLength, Epoch, Header, HeaderHash, Leadership, Ledger,
-        LedgerParameters,
+        Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderHash,
+        Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
     },
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
     start_up::NodeStorage,
@@ -737,6 +737,40 @@ impl Blockchain {
     }
 }
 
+fn write_reward_info(
+    epoch: Epoch,
+    parent_hash: HeaderHash,
+    rewards_info: EpochRewardsInfo,
+) -> std::io::Result<()> {
+    use std::{env::var, fs::rename, fs::File, io::BufWriter, path::PathBuf};
+
+    if let Ok(directory) = var("JORMUNGANDR_REWARD_DUMP_DIRECTORY") {
+        let directory = PathBuf::from(directory);
+        let filepath = format!("reward-info-{}-{}", epoch, parent_hash);
+        let filepath = directory.join(filepath);
+        let filepath_tmp = format!("tmp.reward-info-{}-{}", epoch, parent_hash);
+        let filepath_tmp = directory.join(filepath_tmp);
+
+        {
+            let file = File::create(&filepath_tmp)?;
+            let mut buf = BufWriter::new(file);
+            buf.write_all(format!("drawn {}", rewards_info.drawn.0).as_bytes())?;
+            buf.write_all(format!("fees {}", rewards_info.fees.0).as_bytes())?;
+            buf.write_all(format!("treasury {}", rewards_info.treasury.0).as_bytes())?;
+
+            for (pool_id, (taxed, distr)) in rewards_info.stake_pools.iter() {
+                buf.write_all(format!("{}, {}, {}\n", pool_id, taxed.0, distr.0).as_bytes())?;
+            }
+            for (account_id, received) in rewards_info.accounts.iter() {
+                buf.write_all(format!("{}, {}\n", account_id, received.0).as_bytes())?;
+            }
+        }
+
+        rename(filepath_tmp, filepath)?;
+    }
+    Ok(())
+}
+
 pub fn new_epoch_leadership_from(
     epoch: Epoch,
     parent: Arc<Ref>,
@@ -763,11 +797,24 @@ pub fn new_epoch_leadership_from(
         // 1. distribute the rewards (if any) This will give us the transition state
         let transition_state =
             if let Some(distribution) = parent.epoch_leadership_schedule().stake_distribution() {
-                Arc::new(
-                    parent_ledger_state
-                        .distribute_rewards(distribution, &parent.epoch_ledger_parameters())
-                        .expect("Distribution of rewards will not overflow"),
-                )
+                let store_rewards = std::env::var("JORMUNGANDR_REWARD_DUMP_DIRECTORY").is_ok();
+                let reward_info_dist = if store_rewards {
+                    RewardsInfoParameters::report_all()
+                } else {
+                    RewardsInfoParameters::default()
+                };
+
+                let (ledger, rewards_info) = parent_ledger_state
+                    .distribute_rewards(
+                        distribution,
+                        &parent.epoch_ledger_parameters(),
+                        reward_info_dist,
+                    )
+                    .expect("Distribution of rewards will not overflow");
+                if let Err(err) = write_reward_info(epoch, parent.hash(), rewards_info) {
+                    panic!("Error while storing the reward dump, err {}", err)
+                }
+                Arc::new(ledger)
             } else {
                 parent_ledger_state.clone()
             };

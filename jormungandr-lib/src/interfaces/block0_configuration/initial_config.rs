@@ -1,8 +1,8 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, EpochStabilityDepth,
-        KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration, TaxType,
-        Value,
+        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration,
+        TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -90,28 +90,36 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     pub block_content_max_size: BlockContentMaxSize,
 
-    /// this value is left for compatibility only be should be removed
-    /// or replaced by something more meaningful or merged with
-    /// `slots_per_epoch`.
+    /// set the maximal depth from which a fork will no longer be considered valid
     #[serde(default)]
     pub epoch_stability_depth: EpochStabilityDepth,
 
+    /// Fees go to settings, the default being `rewards`.
+    ///
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fees_go_to: Option<FeesGoTo>,
+
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury: Option<Value>,
 
     /// set the treasure parameters, i.e. the first value the treasury will take from the
     /// rewards pot and fees.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury_parameters: Option<TaxType>,
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub total_reward_supply: Option<Value>,
 
     /// The reward settings for the reward policy. No reward settings means no reward
     /// distributed at all.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reward_parameters: Option<RewardParams>,
 }
 
@@ -131,6 +139,7 @@ custom_error! {pub FromConfigParamsError
     ConsensusLeaderId { source: super::leader_id::TryFromConsensusLeaderIdError } = "Invalid consensus leader id",
     ActiveSlotCoefficient { source: super::active_slot_coefficient::TryFromActiveSlotCoefficientError } = "Invalid active slot coefficient value",
     KESUpdateSpeed { source: super::kes_update_speed::TryFromKESUpdateSpeedError } = "Invalid KES Update speed value",
+    FeesGoTo { source: super::fees_go_to::TryFromFeesGoToError } = "Invalid FeesGoTo setting",
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {
@@ -158,6 +167,7 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             block_content_max_size: BlockContentMaxSize::default(),
             epoch_stability_depth: EpochStabilityDepth::default(),
+            fees_go_to: None,
             treasury: None,
             treasury_parameters: None,
             total_reward_supply: None,
@@ -186,6 +196,7 @@ impl BlockchainConfiguration {
         let mut total_reward_supply = None;
         let mut reward_parameters = None;
         let mut per_certificate_fees = None;
+        let mut fees_go_to = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -217,6 +228,9 @@ impl BlockchainConfiguration {
                 cp @ ConfigParam::KESUpdateSpeed(_) => kes_update_speed
                     .replace(KESUpdateSpeed::try_from(cp)?)
                     .map(|_| "kes_update_speed"),
+                cp @ ConfigParam::FeesInTreasury(_) => fees_go_to
+                    .replace(FeesGoTo::try_from(cp)?)
+                    .map(|_| "fees_go_to"),
 
                 ConfigParam::RemoveBftLeader(_) => {
                     panic!("block 0 attempts to remove a BFT leader")
@@ -271,6 +285,7 @@ impl BlockchainConfiguration {
             consensus_leader_ids,
             block_content_max_size: block_content_max_size
                 .ok_or(param_missing_error("block_content_max_size"))?,
+            fees_go_to: fees_go_to,
             treasury,
             treasury_parameters,
             total_reward_supply,
@@ -291,6 +306,7 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff,
             block_content_max_size,
             epoch_stability_depth,
+            fees_go_to,
             treasury,
             treasury_parameters,
             total_reward_supply,
@@ -313,6 +329,10 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::EpochStabilityDepth(
             epoch_stability_depth.into(),
         ));
+
+        if let Some(fees_go_to) = fees_go_to {
+            params.push(ConfigParam::from(fees_go_to));
+        }
 
         if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(
             &linear_fees.per_certificate_fees,
@@ -399,6 +419,7 @@ mod test {
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::arbitrary(g),
                 block_content_max_size: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
+                fees_go_to: Arbitrary::arbitrary(g),
                 treasury: Arbitrary::arbitrary(g),
                 treasury_parameters: Arbitrary::arbitrary(g),
                 total_reward_supply: Arbitrary::arbitrary(g),
