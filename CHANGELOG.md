@@ -1,5 +1,30 @@
 # Change Log
 
+## [v0.8.0-rc10](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc10) (2019-12-09)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc9...v0.8.0-rc10)
+
+**Implemented enhancements:**
+
+- Update `get settings` output \(maxTxsPerBlock, block\_content\_max\_size\) - 0..8.0-RC9 [\#1298](https://github.com/input-output-hk/jormungandr/issues/1298)
+- REST: update /api/v0/settings [\#1248](https://github.com/input-output-hk/jormungandr/issues/1248)
+- dump the data in csv so easier to process on the long run [\#1311](https://github.com/input-output-hk/jormungandr/pull/1311)
+- write reward\_info to a file at rewards creation AND fees\_go\_to settings in the genesis yaml file [\#1307](https://github.com/input-output-hk/jormungandr/pull/1307)
+- Rest: settings/stats - update and cleanup [\#1299](https://github.com/input-output-hk/jormungandr/pull/1299)
+- change to old sqlite connection impl [\#1294](https://github.com/input-output-hk/jormungandr/pull/1294)
+- Add reward and treasury settings to settings REST [\#1291](https://github.com/input-output-hk/jormungandr/pull/1291)
+
+**Fixed bugs:**
+
+- Fix build on FreeBSD [\#1302](https://github.com/input-output-hk/jormungandr/pull/1302)
+
+**Merged pull requests:**
+
+- prevent invalid addr to be set in the poldercast entry [\#1309](https://github.com/input-output-hk/jormungandr/pull/1309)
+- \[Tests\] sync spending counter with blockchain [\#1306](https://github.com/input-output-hk/jormungandr/pull/1306)
+- \[Tests\] Update node stats dao  in jormungandr\_lib [\#1300](https://github.com/input-output-hk/jormungandr/pull/1300)
+
+
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc8...v0.8.0-rc9)
 
 **Breaking changes:**
