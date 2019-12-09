@@ -694,10 +694,6 @@ paths:
                         description: Epoch when rewarding starts
                         type: integer
                         minimum: 0
-                      epochStart:
-                        description: Epoch when rewarding starts
-                        type: integer
-                        minimum: 0
                       initialValue:
                         description: Initial reward
                         type: integer
