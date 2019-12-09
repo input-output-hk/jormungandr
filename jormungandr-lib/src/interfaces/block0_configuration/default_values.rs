@@ -1,6 +1,8 @@
 //! this module defines all the different static values used
 //! in the block0 configuration.
 
+use super::FeesGoTo;
+
 /// default active slot coefficient in milli `0.100`
 pub const DEFAULT_ACTIVE_SLOT_COEFFICIENT: u64 = 0_100;
 /// minimum active slot coefficient in milli `0.001`
@@ -27,6 +29,12 @@ pub const DEFAULT_EPOCH_STABILITY_DEPTH: u32 = 102_400;
 
 /// the default value for block content max size
 pub const DEFAULT_BLOCK_CONTENT_MAX_SIZE: u32 = 102_400;
+
+/// the default value for the fees to be added to the rewards
+///
+/// another possible value is to go to the treasury but this will
+/// unbalance the incentive to include any transactions in the blocks
+pub const DEFAULT_FEES_GO_TO: FeesGoTo = FeesGoTo::Rewards;
 
 /// default slot duration in seconds
 pub const DEFAULT_SLOT_DURATION: u8 = 5;
