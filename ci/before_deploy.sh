@@ -25,7 +25,7 @@ main() {
     cp target/$TARGET/release/jcli $stage/
 
     cd $stage
-    tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
+    tar czf $src/$CRATE_NAME-$TRAVIS_TAG+$TRAVIS_BUILD_NUMBER-$TARGET.tar.gz *
     cd $src
 
     rm -rf $stage
