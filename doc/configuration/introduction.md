@@ -23,3 +23,13 @@ p2p:
     blocks: normal
   allow_private_addresses: false
 ```
+
+## advanced
+
+this is not a recommended settings as it may take memory and may trigger some latency:
+
+If you want to record the reward distributions in a directory it is possible to set
+the environment variable: `JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD`.
+
+If an error occur while dumping the reward, the node will **panic** with an appropriate
+error message.
