@@ -14,6 +14,7 @@ use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
+use chain_impl_mockchain::ledger;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
 use std::convert::TryFrom;
@@ -166,6 +167,25 @@ impl Block {
     pub fn total_output(&self, context: &Context) -> FieldResult<Value> {
         self.get_explorer_block(&context.db)
             .map(|block| Value(format!("{}", block.total_output)))
+    }
+
+    pub fn treasury(&self, context: &Context) -> FieldResult<Option<Treasury>> {
+        let treasury = context
+            .db
+            .blockchain()
+            .get_ref(self.hash)
+            .wait()
+            .unwrap_or(None)
+            .map(|reference| {
+                let ledger = reference.ledger();
+                let treasury_tax = reference.epoch_ledger_parameters().treasury_tax.clone();
+                Treasury {
+                    rewards: ledger.remaining_rewards().into(),
+                    treasury: ledger.treasury_value().into(),
+                    treasury_tax: TaxType(treasury_tax),
+                }
+            });
+        Ok(treasury)
     }
 }
 
@@ -960,6 +980,29 @@ impl Status {
                     .unwrap_or(certificate)
             )),
         }
+    }
+}
+
+struct Treasury {
+    rewards: Value,
+    treasury: Value,
+    treasury_tax: TaxType,
+}
+
+#[juniper::object(
+    Context = Context
+)]
+impl Treasury {
+    fn rewards(&self) -> &Value {
+        &self.rewards
+    }
+
+    fn treasury(&self) -> &Value {
+        &self.treasury
+    }
+
+    fn treasury_tax(&self) -> &TaxType {
+        &self.treasury_tax
     }
 }
 

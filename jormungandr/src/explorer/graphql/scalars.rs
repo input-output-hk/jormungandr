@@ -86,6 +86,12 @@ impl From<&value::Value> for Value {
     }
 }
 
+impl From<value::Value> for Value {
+    fn from(v: value::Value) -> Value {
+        (&v).into()
+    }
+}
+
 impl From<blockcfg::Epoch> for EpochNumber {
     fn from(e: blockcfg::Epoch) -> EpochNumber {
         EpochNumber(format!("{}", e))
