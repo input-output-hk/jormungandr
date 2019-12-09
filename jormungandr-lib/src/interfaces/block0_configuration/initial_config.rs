@@ -97,24 +97,29 @@ pub struct BlockchainConfiguration {
     /// Fees go to settings, the default being `rewards`.
     ///
     #[serde(default)]
-    pub fees_go_to: FeesGoTo,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fees_go_to: Option<FeesGoTo>,
 
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury: Option<Value>,
 
     /// set the treasure parameters, i.e. the first value the treasury will take from the
     /// rewards pot and fees.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury_parameters: Option<TaxType>,
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub total_reward_supply: Option<Value>,
 
     /// The reward settings for the reward policy. No reward settings means no reward
     /// distributed at all.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reward_parameters: Option<RewardParams>,
 }
 
@@ -162,7 +167,7 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             block_content_max_size: BlockContentMaxSize::default(),
             epoch_stability_depth: EpochStabilityDepth::default(),
-            fees_go_to: FeesGoTo::default(),
+            fees_go_to: None,
             treasury: None,
             treasury_parameters: None,
             total_reward_supply: None,
@@ -280,7 +285,7 @@ impl BlockchainConfiguration {
             consensus_leader_ids,
             block_content_max_size: block_content_max_size
                 .ok_or(param_missing_error("block_content_max_size"))?,
-            fees_go_to: fees_go_to.unwrap_or(FeesGoTo::default()),
+            fees_go_to: fees_go_to,
             treasury,
             treasury_parameters,
             total_reward_supply,
@@ -324,7 +329,10 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::EpochStabilityDepth(
             epoch_stability_depth.into(),
         ));
-        params.push(ConfigParam::from(fees_go_to));
+
+        if let Some(fees_go_to) = fees_go_to {
+            params.push(ConfigParam::from(fees_go_to));
+        }
 
         if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(
             &linear_fees.per_certificate_fees,

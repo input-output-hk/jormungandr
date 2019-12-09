@@ -1,4 +1,3 @@
-use crate::interfaces::DEFAULT_FEES_GO_TO;
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr};
@@ -15,14 +14,6 @@ pub enum FeesGoTo {
     /// the pools don't receive any rewards to add transactions in the blocks
     /// it is instead given entirely to the treasury.
     Treasury,
-}
-
-/* Default ****************************************************************** */
-
-impl Default for FeesGoTo {
-    fn default() -> Self {
-        DEFAULT_FEES_GO_TO
-    }
 }
 
 /* Display ****************************************************************** */
