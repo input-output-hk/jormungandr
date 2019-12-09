@@ -16,6 +16,7 @@ pub struct Stats {
     pub last_block_tx: u32,
     pub last_block_sum: u32,
     pub last_block_fees: u32,
+    pub last_block_content_size: u32,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

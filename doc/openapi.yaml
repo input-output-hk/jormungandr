@@ -530,10 +530,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
+                required: [blockRecvCnt, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
+                    type: integer
+                    minimum: 0
+                  lastBlockContentSize:
+                    description: Size in bytes of all transactions in last block
                     type: integer
                     minimum: 0
                   lastBlockDate:
@@ -579,6 +583,7 @@ paths:
               example: |
                 {
                   "blockRecvCnt": 1102,
+                  "lastBlockContentSize": 484,
                   "lastBlockDate": "20.29",
                   "lastBlockFees": 534,
                   "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
@@ -601,7 +606,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
+                required: [block0Hash, block0Time, blockContentMaxSize, consensusVersion, epochStabilityDepth, fees, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -611,6 +616,10 @@ paths:
                     description: When block0 was created
                     type: string
                     format: date-time
+                  blockContentMaxSize:
+                    description: The block content's max size in bytes
+                    type: integer
+                    minimum: 1
                   consensusVersion:
                     description: Version of consensus, which is currently used
                     type: string
@@ -619,6 +628,10 @@ paths:
                     description: When current slot was opened, not set if none is currently open
                     type: string
                     format: date-time
+                  epochStabilityDepth:
+                    description: The depth, number of blocks, to which we consider the blockchain to be stable and prevent rollback beyond that depth
+                    type: integer
+                    minimum: 1
                   fees:
                     description: Linear fees configuration
                     type: object
@@ -653,10 +666,6 @@ paths:
                         description: Base fee per transaction
                         type: integer
                         minimum: 0
-                  maxTxsPerBlock:
-                    description: Maximum number of transactions in block
-                    type: integer
-                    minimum: 0
                   rewardParams:
                     description: Parameters for rewards calculation
                     type: object
@@ -730,6 +739,7 @@ paths:
                 {
                   "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
                   "block0Time": "2019-07-09T12:32:51+00:00",
+                  "blockContentMaxSize": 102400,
                   "consensusVersion": "bft",
                   "currSlotStartTime": "2019-07-18T22:01:17+00:00",
                   "fees": {
@@ -742,7 +752,6 @@ paths:
                     "coefficient": 1,
                     "constant": 2
                   },
-                  "maxTxsPerBlock": 100,
                   "rewardParams": {
                       "compoundingRatio": {
                           "denominator": 1024,

@@ -166,6 +166,7 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
                         "lastBlockDate": tip_header.block_date().to_string(),
                         "lastBlockTime": stats.slot_start_time().map(SystemTime::from),
                         "lastBlockTx": block_tx_count,
+                        "lastBlockContentSize": tip_header.block_content_size(),
                         "lastBlockSum": block_input_sum.0,
                         "lastBlockFees": block_fee_sum.0,
                     })))
@@ -295,6 +296,8 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
             let consensus_version = ledger.consensus_version();
             let current_params = blockchain_tip.epoch_ledger_parameters();
             let fees = current_params.fees;
+            let block_content_max_size = current_params.block_content_max_size;
+            let epoch_stability_depth = current_params.epoch_stability_depth;
             let slots_per_epoch = blockchain_tip
                 .epoch_leadership_schedule()
                 .era()
@@ -309,7 +312,8 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
                     .map(SystemTime::from),
                 consensus_version: consensus_version.to_string(),
                 fees: fees,
-                max_txs_per_block: 255, // TODO?
+                block_content_max_size: block_content_max_size,
+                epoch_stability_depth: epoch_stability_depth,
                 slot_duration: blockchain_tip.time_frame().slot_duration(),
                 slots_per_epoch,
                 treasury_tax: current_params.treasury_tax,
