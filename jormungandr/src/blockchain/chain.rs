@@ -746,6 +746,9 @@ fn write_reward_info(
 
     if let Ok(directory) = var("JORMUNGANDR_REWARD_DUMP_DIRECTORY") {
         let directory = PathBuf::from(directory);
+
+        std::fs::create_dir_all(&directory)?;
+
         let filepath = format!("reward-info-{}-{}", epoch, parent_hash);
         let filepath = directory.join(filepath);
         let filepath_tmp = format!("tmp.reward-info-{}-{}", epoch, parent_hash);
