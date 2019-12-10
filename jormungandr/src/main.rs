@@ -138,7 +138,9 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let topology = P2pTopology::new(
         bootstrapped_node.settings.network.profile.clone(),
-        bootstrapped_node.logger.clone(),
+        bootstrapped_node
+            .logger
+            .new(o!(log::KEY_TASK => "poldercast")),
     );
 
     let stats_counter = StatsCounter::default();
