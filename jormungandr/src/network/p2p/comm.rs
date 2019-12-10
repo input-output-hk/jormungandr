@@ -364,6 +364,13 @@ impl PeerStats {
     }
 }
 
+#[derive(Debug)]
+pub struct PeerInfo {
+    pub id: Id,
+    pub addr: Option<SocketAddr>,
+    pub stats: PeerStats,
+}
+
 /// The collection of currently connected peer nodes.
 ///
 /// This object uses internal locking and is shared between
@@ -640,8 +647,7 @@ impl Peers {
         }
     }
 
-    pub fn stats(&self) -> Vec<(Id, PeerStats)> {
-        let map = self.mutex.lock().unwrap();
-        map.stats()
+    pub fn infos(&self) -> Vec<PeerInfo> {
+        self.mutex.lock().unwrap().infos()
     }
 }

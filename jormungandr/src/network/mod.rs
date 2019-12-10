@@ -313,9 +313,9 @@ fn handle_network_input(
             state.peers.pull_headers(node_id, from.into(), to);
             Ok(())
         }
-        NetworkMsg::PeerStats(reply) => {
-            let stats = state.peers.stats();
-            reply.reply_ok(stats);
+        NetworkMsg::PeerInfo(reply) => {
+            let infos = state.peers.infos();
+            reply.reply_ok(infos);
             Ok(())
         }
     })

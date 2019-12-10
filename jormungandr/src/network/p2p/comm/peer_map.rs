@@ -1,11 +1,10 @@
 use crate::network::{
     client::ConnectHandle,
     p2p::{
-        comm::{PeerComms, PeerStats},
+        comm::{PeerComms, PeerInfo, PeerStats},
         Id,
     },
 };
-
 use linked_hash_map::LinkedHashMap;
 use std::net::SocketAddr;
 
@@ -138,10 +137,14 @@ impl PeerMap {
             .map(|(&id, data)| (id, data.update_comm_status().comms()))
     }
 
-    pub fn stats(&self) -> Vec<(Id, PeerStats)> {
+    pub fn infos(&self) -> Vec<PeerInfo> {
         self.map
             .iter()
-            .map(|(&id, data)| (id, data.stats.clone()))
+            .map(|(&id, data)| PeerInfo {
+                id,
+                addr: data.addr,
+                stats: data.stats.clone(),
+            })
             .collect()
     }
 
@@ -159,10 +162,6 @@ pub struct Entry<'a> {
 impl<'a> Entry<'a> {
     pub fn update_comm_status(&mut self) -> CommStatus<'_> {
         self.inner.get_mut().update_comm_status()
-    }
-
-    pub fn stats(&mut self) -> &mut PeerStats {
-        &mut self.inner.get_mut().stats
     }
 
     pub fn remove(self) {

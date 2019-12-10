@@ -1,6 +1,6 @@
 use crate::blockcfg::{Block, Fragment, FragmentId, Header, HeaderHash};
 use crate::blockchain::Checkpoints;
-use crate::network::p2p::comm::PeerStats;
+use crate::network::p2p::comm::PeerInfo;
 use crate::network::p2p::Id as NodeId;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use futures::prelude::*;
@@ -536,7 +536,7 @@ pub enum NetworkMsg {
         from: Checkpoints,
         to: HeaderHash,
     },
-    PeerStats(ReplyHandle<Vec<(NodeId, PeerStats)>>),
+    PeerInfo(ReplyHandle<Vec<PeerInfo>>),
 }
 
 /// Messages to the explorer task
