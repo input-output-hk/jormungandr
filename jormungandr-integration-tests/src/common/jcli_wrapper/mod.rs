@@ -2,7 +2,8 @@
 
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
-    AccountState, FragmentLog, FragmentStatus, SettingsDto, UTxOInfo, UTxOOutputInfo,
+    AccountState, FragmentLog, FragmentStatus, SettingsDto, StakePoolStats, UTxOInfo,
+    UTxOOutputInfo,
 };
 
 pub mod certificate;
@@ -471,5 +472,15 @@ pub fn assert_rest_get_stake_pools(host: &str) -> Vec<String> {
         process_utils::run_process_and_get_output(jcli_commands::get_stake_pools_command(&host));
     let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
-    serde_yaml::from_str(&content).expect("Failed to parse settings")
+    serde_yaml::from_str(&content).expect("Failed to parse stake poools collection")
+}
+
+pub fn assert_rest_get_stake_pool(stake_pool_id: &str, host: &str) -> StakePoolStats {
+    let output = process_utils::run_process_and_get_output(jcli_commands::get_stake_pool_command(
+        &stake_pool_id,
+        &host,
+    ));
+    let content = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+    serde_yaml::from_str(&content).expect("Failed to parse stak pool stats")
 }
