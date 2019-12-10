@@ -1,8 +1,8 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, EpochStabilityDepth,
-        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration,
-        TaxType, Value,
+        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, PoolLimit,
+        RewardLimitByStake, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -121,6 +121,18 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reward_parameters: Option<RewardParams>,
+
+    /// The rewards limit as a fraction of the total delegated stake (annualised), 100% means no limit, 0% means no distribution
+    /// If omitted, then 100% of rewards are distributed
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rewards_limit: Option<RewardLimitByStake>,
+
+    /// "Sybil" control through a target number of stake pools: ratio is target number of pools / threshold number of pools
+    /// If omitted, then there is no control
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pool_limit: Option<PoolLimit>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -172,6 +184,8 @@ impl BlockchainConfiguration {
             treasury_parameters: None,
             total_reward_supply: None,
             reward_parameters: None,
+            rewards_limit: None,
+            pool_limit: None,
         }
     }
 
@@ -197,6 +211,8 @@ impl BlockchainConfiguration {
         let mut reward_parameters = None;
         let mut per_certificate_fees = None;
         let mut fees_go_to = None;
+        let mut rewards_limit = None;
+        let mut pool_limit = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -257,6 +273,12 @@ impl BlockchainConfiguration {
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
                     .map(|_| "per_certificate_fees"),
+                ConfigParam::RewardLimitByStake(param) => {
+                    rewards_limit.replace(param.into()).map(|_| "rewards_limit")
+                }
+                ConfigParam::PoolLimit(param) => {
+                    pool_limit.replace(param.into()).map(|_| "pool_limit")
+                }
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -290,6 +312,8 @@ impl BlockchainConfiguration {
             treasury_parameters,
             total_reward_supply,
             reward_parameters,
+            rewards_limit,
+            pool_limit,
         })
     }
 
@@ -311,6 +335,8 @@ impl BlockchainConfiguration {
             treasury_parameters,
             total_reward_supply,
             reward_parameters,
+            rewards_limit,
+            pool_limit,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -356,6 +382,14 @@ impl BlockchainConfiguration {
 
         if let Some(reward_parameters) = reward_parameters {
             params.push(ConfigParam::RewardParams(reward_parameters.into()));
+        }
+
+        if let Some(rewards_limit) = rewards_limit {
+            params.push(ConfigParam::RewardLimitByStake(rewards_limit.into()));
+        }
+
+        if let Some(pool_limit) = pool_limit {
+            params.push(ConfigParam::PoolLimit(pool_limit.into()));
         }
 
         consensus_leader_ids
@@ -424,6 +458,8 @@ mod test {
                 treasury_parameters: Arbitrary::arbitrary(g),
                 total_reward_supply: Arbitrary::arbitrary(g),
                 reward_parameters: Arbitrary::arbitrary(g),
+                rewards_limit: Arbitrary::arbitrary(g),
+                pool_limit: Arbitrary::arbitrary(g),
             }
         }
     }

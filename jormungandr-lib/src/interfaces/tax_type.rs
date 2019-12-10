@@ -1,6 +1,7 @@
 use crate::interfaces::{Ratio, Value};
 use chain_impl_mockchain::rewards;
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU32;
 use std::num::NonZeroU64;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

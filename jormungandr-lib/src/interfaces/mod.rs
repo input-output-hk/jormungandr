@@ -9,7 +9,9 @@ mod fragment_log;
 mod leadership_log;
 mod linear_fee;
 mod old_address;
+mod pool_limit;
 mod ratio;
+mod reward_limit;
 mod reward_parameters;
 mod settings;
 mod stats;
@@ -36,9 +38,14 @@ pub use self::leadership_log::{
 };
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
+pub use self::pool_limit::PoolLimit;
 pub use self::ratio::{ParseRatioError, Ratio};
+pub use self::reward_limit::RewardLimitByStake;
 pub use self::reward_parameters::RewardParams;
-pub use self::settings::{ParametersDef, RatioDef, SettingsDto, TaxTypeDef, TaxTypeSerde};
+pub use self::settings::{
+    ParametersDef, PoolLimitDef, PoolLimitSerde, RatioDef, RewardLimitByDef, RewardLimitBySerde,
+    SettingsDto, TaxTypeDef, TaxTypeSerde,
+};
 pub use self::stats::{NodeState, Stats};
 pub use self::tax_type::TaxType;
 pub use self::transaction_input::{TransactionInput, TransactionInputType};

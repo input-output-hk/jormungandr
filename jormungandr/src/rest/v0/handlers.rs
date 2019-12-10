@@ -318,6 +318,8 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
                 slots_per_epoch,
                 treasury_tax: current_params.treasury_tax,
                 reward_params: current_params.reward_params.clone(),
+                rewards_limit: current_params.rewards_limit.clone(),
+                pool_limit: current_params.pool_limit.clone(),
             };
 
             Json(json!(settings))

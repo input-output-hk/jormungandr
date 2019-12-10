@@ -4,7 +4,9 @@ use crate::{
 };
 use chain_impl_mockchain::block::Epoch;
 use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::rewards::{CompoundingType, Parameters, Ratio, TaxType};
+use chain_impl_mockchain::rewards::{
+    CompoundingType, Parameters, PoolLimit, Ratio, RewardLimitByStake, TaxType,
+};
 use chain_impl_mockchain::value::Value;
 use serde::{Deserialize, Serialize};
 use std::num::{NonZeroU32, NonZeroU64};
@@ -26,6 +28,10 @@ pub struct SettingsDto {
     pub treasury_tax: TaxType,
     #[serde(with = "ParametersDef")]
     pub reward_params: Parameters,
+    #[serde(with = "RewardLimitByDef")]
+    pub rewards_limit: RewardLimitByStake,
+    #[serde(with = "PoolLimitDef")]
+    pub pool_limit: PoolLimit,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,5 +89,29 @@ impl PartialEq<SettingsDto> for SettingsDto {
             && self.slots_per_epoch == other.slots_per_epoch
             && self.treasury_tax == other.treasury_tax
             && self.reward_params == other.reward_params
+            && self.rewards_limit == other.rewards_limit
+            && self.pool_limit == other.pool_limit
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, remote = "PoolLimit")]
+pub struct PoolLimitDef {
+    pub npools: NonZeroU32,
+    pub npools_threshold: NonZeroU32,
+}
+
+#[derive(Serialize)]
+#[serde(transparent)]
+pub struct PoolLimitSerde(#[serde(with = "PoolLimit")] pub PoolLimit);
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, remote = "RewardLimitByStake")]
+pub struct RewardLimitByDef {
+    pub numerator: u32,
+    pub denominator: NonZeroU32,
+}
+
+#[derive(Serialize)]
+#[serde(transparent)]
+pub struct RewardLimitBySerde(#[serde(with = "RewardLimitByDef")] pub RewardLimitByStake);
