@@ -41,7 +41,7 @@ pub struct TaxTypeDef {
     pub max_limit: Option<NonZeroU64>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(transparent)]
 pub struct TaxTypeSerde(#[serde(with = "TaxTypeDef")] pub TaxType);
 
