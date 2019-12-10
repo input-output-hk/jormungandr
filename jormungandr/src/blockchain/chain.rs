@@ -754,19 +754,17 @@ fn write_reward_info(
         {
             let file = File::create(&filepath_tmp)?;
             let mut buf = BufWriter::new(file);
-            writeln!(&mut buf, "drawn {}", rewards_info.drawn.0)?;
-            writeln!(&mut buf, "fees {}", rewards_info.fees.0)?;
-            writeln!(&mut buf, "treasury {}", rewards_info.treasury.0)?;
-            writeln!(&mut buf, "")?;
+            write!(&mut buf, "type,identifier,received,distributed\r\n")?;
+            write!(&mut buf, "drawn,,,{}\r\n", rewards_info.drawn.0)?;
+            write!(&mut buf, "fees,,,{}\r\n", rewards_info.fees.0)?;
+            write!(&mut buf, "treasury,,{},\r\n", rewards_info.treasury.0)?;
 
-            writeln!(&mut buf, "pool_id, taxed, distributed")?;
             for (pool_id, (taxed, distr)) in rewards_info.stake_pools.iter() {
-                writeln!(&mut buf, "{}, {}, {}", pool_id, taxed.0, distr.0)?;
+                writeln!(&mut buf, "pool,{},{},{}\r\n", pool_id, taxed.0, distr.0)?;
             }
 
-            writeln!(&mut buf, "account_id, received")?;
             for (account_id, received) in rewards_info.accounts.iter() {
-                writeln!(&mut buf, "{}, {}", account_id, received.0)?;
+                writeln!(&mut buf, "account,{},{},\r\n", account_id, received.0)?;
             }
 
             buf.flush()?;
