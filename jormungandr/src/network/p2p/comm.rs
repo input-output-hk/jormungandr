@@ -17,6 +17,7 @@ use slog::Logger;
 
 use std::fmt;
 use std::mem;
+use std::net::SocketAddr;
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -380,9 +381,9 @@ impl Peers {
         }
     }
 
-    pub fn insert_peer(&self, id: Id, comms: PeerComms) {
+    pub fn insert_peer(&self, id: Id, comms: PeerComms, addr: SocketAddr) {
         let mut map = self.mutex.lock().unwrap();
-        map.insert_peer(id, comms)
+        map.insert_peer(id, comms, addr)
     }
 
     pub fn connecting_with<F>(&self, id: Id, handle: ConnectHandle, modify_comms: F)

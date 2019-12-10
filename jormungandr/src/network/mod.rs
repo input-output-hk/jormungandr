@@ -440,7 +440,7 @@ fn connect_and_propagate_with<F>(
                     return Err(());
                 }
                 if let Some(comms) = state.peers.remove_peer(node_id) {
-                    state.peers.insert_peer(connected_node_id, comms);
+                    state.peers.insert_peer(connected_node_id, comms, addr);
                 } else {
                     warn!(client.logger(), "peer no longer in map after connecting");
                 }
