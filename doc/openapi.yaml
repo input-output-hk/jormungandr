@@ -1132,7 +1132,7 @@ paths:
                           description: the last time this node has been part of a view for event propagation
                           type: object
                           properties:
-                            0:
+                            "0":
                               description: the last time the node was selected for fragment propagation
                               type: object
                               required: [seconds_since_epoch, nanos_since_epoch]
@@ -1145,7 +1145,7 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
-                            1:
+                            "1":
                               description: the last time the node was selected for block propagation
                               type: object
                               required: [seconds_since_epoch, nanos_since_epoch]
@@ -1296,7 +1296,7 @@ paths:
                           description: the last time this node has been part of a view for event propagation
                           type: object
                           properties:
-                            0:
+                            "0":
                               description: the last time the node was selected for fragment propagation
                               type: object
                               required: [seconds_since_epoch, nanos_since_epoch]
@@ -1309,7 +1309,7 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
-                            1:
+                            "1":
                               description: the last time the node was selected for block propagation
                               type: object
                               required: [seconds_since_epoch, nanos_since_epoch]
@@ -1460,7 +1460,7 @@ paths:
                           description: the last time this node has been part of a view for event propagation
                           type: object
                           properties:
-                            0:
+                            "0":
                               description: the last time the node was selected for fragment propagation
                               type: object
                               required: [seconds_since_epoch, nanos_since_epoch]
@@ -1473,7 +1473,7 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
-                            1:
+                            "1":
                               description: the last time the node was selected for block propagation
                               type: object
                               required: [seconds_since_epoch, nanos_since_epoch]
@@ -1486,3 +1486,53 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
+  /api/v0/network/p2p/view:
+    get:
+      description: list all the nodes that are selected for gossiping/peer discovery
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node id and addresses
+                  type: object
+                  required: [id, address]
+                  properties:
+                    address:
+                      type: string
+                      description: the multi-address of the node
+                    id:
+                      type: string
+                      description: the node public id
+  /api/v0/network/p2p/view/{topic}:
+    get:
+      parameters:
+        - in: path
+          name: topic
+          required: true
+          description: the topic name
+          schema:
+            type: string
+            enum: [blocks, fragments]
+      description: list all the nodes that are selected for the given topic
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node id and addresses
+                  type: object
+                  required: [id, address]
+                  properties:
+                    address:
+                      type: string
+                      description: the multi-address of the node
+                    id:
+                      type: string
+                      description: the node public id
