@@ -129,10 +129,11 @@ impl GlobalState {
     pub fn new(
         block0_hash: HeaderHash,
         config: Configuration,
+        topology: P2pTopology,
         executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
-        let mut topology = P2pTopology::new(config.profile.clone(), logger.clone());
+        let mut topology = topology;
         topology.set_poldercast_modules();
         topology.set_custom_modules(&config);
         topology.set_policy(config.policy.clone());
@@ -218,6 +219,7 @@ pub struct TaskParams {
 pub fn start(
     service_info: TokioServiceInfo,
     params: TaskParams,
+    topology: P2pTopology,
 ) -> impl Future<Item = (), Error = ()> {
     // TODO: the node needs to be saved/loaded
     //
@@ -227,6 +229,7 @@ pub fn start(
     let global_state = Arc::new(GlobalState::new(
         params.block0_hash,
         params.config,
+        topology,
         service_info.executor().clone(),
         service_info.logger().clone(),
     ));
