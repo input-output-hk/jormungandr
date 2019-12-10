@@ -23,7 +23,7 @@ use futures::future::{Either, Loop};
 use slog::Logger;
 use tokio::{
     prelude::*,
-    timer::{timeout, Timeout},
+    timer::{timeout, Interval, Timeout},
 };
 
 use std::{sync::Arc, time::Duration};
@@ -43,6 +43,7 @@ pub struct Process {
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub fragment_msgbox: MessageBox<TransactionMsg>,
     pub explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
+    pub garbage_collection_interval: Duration,
 }
 
 impl Process {
@@ -51,6 +52,7 @@ impl Process {
         service_info: TokioServiceInfo,
         input: MessageQueue<BlockMsg>,
     ) -> impl Future<Item = (), Error = ()> {
+        service_info.spawn(self.start_garbage_collector(service_info.logger().clone()));
         input.for_each(move |msg| {
             self.handle_input(&service_info, msg);
             future::ok(())
@@ -270,6 +272,20 @@ impl Process {
                 }))
             }
         }
+    }
+
+    fn start_garbage_collector(&self, logger: Logger) -> impl Future<Item = (), Error = ()> {
+        let candidate_forest = self.candidate_forest.clone();
+        let garbage_collection_interval = self.garbage_collection_interval;
+        let error_logger = logger.clone();
+        Interval::new_interval(garbage_collection_interval)
+            .for_each(move |_instant| {
+                debug!(logger, "garbage collecting unresolved branch candidates");
+                candidate_forest.purge()
+            })
+            .map_err(move |e| {
+                error!(error_logger, "cannot run garbage collection" ; "reason" => %e);
+            })
     }
 }
 
