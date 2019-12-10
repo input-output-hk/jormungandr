@@ -189,7 +189,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let fragment_msgbox = fragment_msgbox.clone();
         let explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         // TODO: we should get this value from the configuration
-        let block_cache_ttl: Duration = Duration::from_secs(3600);
+        let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
         services.spawn_future("block", move |info| {
             let candidate_forest = CandidateForest::new(
@@ -205,6 +205,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 network_msgbox,
                 fragment_msgbox,
                 explorer_msgbox,
+                garbage_collection_interval: block_cache_ttl,
             };
             process.start(info, block_queue)
         });
