@@ -849,7 +849,7 @@ paths:
                         description: the value remaining to distribute amongst the delegators to this stake pool
                         type: integer
                         minimum: 0
-                  vrfPublicKey:
+                  kesPublicKey:
                     description: Bech32-encoded stake pool KES key
                     type: string
                   vrfPublicKey:
