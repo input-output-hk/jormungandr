@@ -491,8 +491,10 @@ YAML printed on success
 
 ```yaml
 ---
+- # node address (optional)
+  addr: "3.124.55.91:3000"
   # hex-encoded node ID
-- nodeId: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+  nodeId: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
   # timestamp of when the connection was established
   establishedAt: "2019-10-14T06:24:12.010231281+00:00"
   # timestamp of last time block was received from node if ever (optional)
