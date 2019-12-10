@@ -1,5 +1,34 @@
 # Change Log
 
+## [v0.8.0-rc11](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc11) (2019-12-10)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc10...v0.8.0-rc11)
+
+**Implemented enhancements:**
+
+- jcli help message to improve and error message to be more precise [\#1310](https://github.com/input-output-hk/jormungandr/issues/1310)
+- Add node IPs in REST network stats [\#1261](https://github.com/input-output-hk/jormungandr/issues/1261)
+- Expose Poldercast and Node Quarantine status [\#1332](https://github.com/input-output-hk/jormungandr/pull/1332)
+- Add node IPs in REST network stats [\#1331](https://github.com/input-output-hk/jormungandr/pull/1331)
+- blockchain: Purge candidate forest from unresolved branches [\#1329](https://github.com/input-output-hk/jormungandr/pull/1329)
+- create directory if it does not exist [\#1328](https://github.com/input-output-hk/jormungandr/pull/1328)
+- jcli key derive - update help messages related to bip32 keys [\#1315](https://github.com/input-output-hk/jormungandr/pull/1315)
+
+**Fixed bugs:**
+
+- 0.8.0-RC9+1 - value\_taxed \> TAX\_LIMIT for stake pool [\#1304](https://github.com/input-output-hk/jormungandr/issues/1304)
+- fix open-api document [\#1322](https://github.com/input-output-hk/jormungandr/pull/1322)
+- remove extra line in csv dump [\#1321](https://github.com/input-output-hk/jormungandr/pull/1321)
+- remove trailing space to be compatible RFC4180 [\#1318](https://github.com/input-output-hk/jormungandr/pull/1318)
+- remove duplicated line [\#1316](https://github.com/input-output-hk/jormungandr/pull/1316)
+- Fix jcli doc on tax [\#1313](https://github.com/input-output-hk/jormungandr/pull/1313)
+
+**Merged pull requests:**
+
+- \[Tests\] Rewards integration tests [\#1330](https://github.com/input-output-hk/jormungandr/pull/1330)
+- more fixes in the openapi doc [\#1324](https://github.com/input-output-hk/jormungandr/pull/1324)
+- Update registering\_stake\_pool.md [\#1317](https://github.com/input-output-hk/jormungandr/pull/1317)
+
 ## [v0.8.0-rc10](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc10) (2019-12-09)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc9...v0.8.0-rc10)
