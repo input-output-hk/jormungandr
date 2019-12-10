@@ -257,7 +257,7 @@ pub fn start(
         Either::B(future::ok(()))
     };
 
-    let initial_nodes = global_state.topology.view();
+    let initial_nodes = global_state.topology.view(poldercast::Selection::Any);
     let self_node = global_state.topology.node();
     for node in initial_nodes {
         connect_and_propagate_with(node, global_state.clone(), channels.clone(), |comms| {
@@ -326,10 +326,17 @@ fn handle_network_input(
 
 fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
     trace!(state.logger(), "to propagate: {:?}", &msg);
-    let nodes = state.topology.view();
     let res = match msg {
-        PropagateMsg::Block(ref header) => state.peers.propagate_block(nodes, header.clone()),
+        PropagateMsg::Block(ref header) => {
+            let nodes = state.topology.view(poldercast::Selection::Topic {
+                topic: p2p::topic::BLOCKS,
+            });
+            state.peers.propagate_block(nodes, header.clone())
+        }
         PropagateMsg::Fragment(ref fragment) => {
+            let nodes = state.topology.view(poldercast::Selection::Topic {
+                topic: p2p::topic::MESSAGES,
+            });
             state.peers.propagate_fragment(nodes, fragment.clone())
         }
     };
@@ -353,7 +360,7 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
 }
 
 fn send_gossip(state: GlobalStateR, channels: Channels) {
-    for node in state.topology.view() {
+    for node in state.topology.view(poldercast::Selection::Any) {
         let gossip = Gossip::from(state.topology.initiate_gossips(node.id()));
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {

@@ -301,6 +301,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             logs: pool_logs,
             leadership_logs,
             enclave,
+            p2p: topology,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             diagnostic: bootstrapped_node.diagnostic,
         };
