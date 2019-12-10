@@ -17,6 +17,7 @@ use slog::Logger;
 
 use std::fmt;
 use std::mem;
+use std::net::SocketAddr;
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -363,6 +364,13 @@ impl PeerStats {
     }
 }
 
+#[derive(Debug)]
+pub struct PeerInfo {
+    pub id: Id,
+    pub addr: Option<SocketAddr>,
+    pub stats: PeerStats,
+}
+
 /// The collection of currently connected peer nodes.
 ///
 /// This object uses internal locking and is shared between
@@ -380,9 +388,9 @@ impl Peers {
         }
     }
 
-    pub fn insert_peer(&self, id: Id, comms: PeerComms) {
+    pub fn insert_peer(&self, id: Id, comms: PeerComms, addr: SocketAddr) {
         let mut map = self.mutex.lock().unwrap();
-        map.insert_peer(id, comms)
+        map.insert_peer(id, comms, addr)
     }
 
     pub fn connecting_with<F>(&self, id: Id, handle: ConnectHandle, modify_comms: F)
@@ -639,8 +647,7 @@ impl Peers {
         }
     }
 
-    pub fn stats(&self) -> Vec<(Id, PeerStats)> {
-        let map = self.mutex.lock().unwrap();
-        map.stats()
+    pub fn infos(&self) -> Vec<PeerInfo> {
+        self.mutex.lock().unwrap().infos()
     }
 }

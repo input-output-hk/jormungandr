@@ -486,8 +486,12 @@ paths:
                 items:
                   description: Node stats
                   type: object
-                  required: [nodeId, establishedAt]
+                  required: [addr, nodeId, establishedAt]
                   properties:
+                    addr:
+                      description: Node address
+                      type: string
+                      nullable: true
                     nodeId:
                       description: Hex-encoded node ID
                       type: string
@@ -511,6 +515,7 @@ paths:
               example: |
                 [
                   {
+                    "addr": "3.124.55.91:3000",
                     "nodeId": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
                     "establishedAt": "2019-10-14T06:24:12.010231281+00:00",
                     "lastBlockReceived": "2019-10-14T07:54:32.014432772+00:00",

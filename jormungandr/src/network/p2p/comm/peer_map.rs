@@ -1,12 +1,12 @@
 use crate::network::{
     client::ConnectHandle,
     p2p::{
-        comm::{PeerComms, PeerStats},
+        comm::{PeerComms, PeerInfo, PeerStats},
         Id,
     },
 };
-
 use linked_hash_map::LinkedHashMap;
+use std::net::SocketAddr;
 
 pub struct PeerMap {
     map: LinkedHashMap<Id, PeerData>,
@@ -15,6 +15,7 @@ pub struct PeerMap {
 
 #[derive(Default)]
 struct PeerData {
+    addr: Option<SocketAddr>,
     comms: PeerComms,
     stats: PeerStats,
     connecting: Option<ConnectHandle>,
@@ -26,8 +27,9 @@ pub enum CommStatus<'a> {
 }
 
 impl PeerData {
-    fn with_comms(comms: PeerComms) -> Self {
+    fn new(comms: PeerComms, addr: SocketAddr) -> Self {
         PeerData {
+            addr: Some(addr),
             comms,
             stats: PeerStats::default(),
             connecting: None,
@@ -107,9 +109,9 @@ impl PeerMap {
         self.ensure_peer(id).server_comms()
     }
 
-    pub fn insert_peer(&mut self, id: Id, comms: PeerComms) {
+    pub fn insert_peer(&mut self, id: Id, comms: PeerComms, addr: SocketAddr) {
         self.evict_if_full();
-        let data = PeerData::with_comms(comms);
+        let data = PeerData::new(comms, addr);
         self.map.insert(id, data);
     }
 
@@ -135,10 +137,14 @@ impl PeerMap {
             .map(|(&id, data)| (id, data.update_comm_status().comms()))
     }
 
-    pub fn stats(&self) -> Vec<(Id, PeerStats)> {
+    pub fn infos(&self) -> Vec<PeerInfo> {
         self.map
             .iter()
-            .map(|(&id, data)| (id, data.stats.clone()))
+            .map(|(&id, data)| PeerInfo {
+                id,
+                addr: data.addr,
+                stats: data.stats.clone(),
+            })
             .collect()
     }
 
@@ -156,10 +162,6 @@ pub struct Entry<'a> {
 impl<'a> Entry<'a> {
     pub fn update_comm_status(&mut self) -> CommStatus<'_> {
         self.inner.get_mut().update_comm_status()
-    }
-
-    pub fn stats(&mut self) -> &mut PeerStats {
-        &mut self.inner.get_mut().stats
     }
 
     pub fn remove(self) {

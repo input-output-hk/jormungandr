@@ -389,18 +389,19 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
             intercom::unary_future(
                 full_context.network_task.clone(),
                 logger,
-                |reply_handle| NetworkMsg::PeerStats(reply_handle),
+                |reply_handle| NetworkMsg::PeerInfo(reply_handle),
             )
             .map_err(|e: intercom::Error| ErrorInternalServerError(e))
             .map(|peer_stats| {
                 let network_stats = peer_stats
                     .into_iter()
-                    .map(|(node_id, stats)| json! ({
-                        "nodeId": node_id.to_string(),
-                        "establishedAt": SystemTime::from(stats.connection_established()),
-                        "lastBlockReceived": stats.last_block_received().map(SystemTime::from),
-                        "lastFragmentReceived": stats.last_fragment_received().map(SystemTime::from),
-                        "lastGossipReceived": stats.last_gossip_received().map(SystemTime::from),
+                    .map(|info| json! ({
+                        "nodeId": info.id.to_string(),
+                        "addr": info.addr,
+                        "establishedAt": SystemTime::from(info.stats.connection_established()),
+                        "lastBlockReceived": info.stats.last_block_received().map(SystemTime::from),
+                        "lastFragmentReceived": info.stats.last_fragment_received().map(SystemTime::from),
+                        "lastGossipReceived": info.stats.last_gossip_received().map(SystemTime::from),
                     }))
                     .collect::<Vec<_>>();
                 Json(network_stats)
