@@ -994,3 +994,495 @@ paths:
                 }
         404:
           description: Fragment with given ID or its output with given index was not found in the UTxO
+  /api/v0/network/p2p/non_public:
+    get:
+      description: list all the nodes that are connected to ours but that are not publicly reachable
+      responses:
+        200:
+          description: array of nodes that are not publicly reachable
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node and its associated logged data and records
+                  type: object
+                  required: [profile]
+                  properties:
+                    profile:
+                      type: object
+                      required: [info, subscriptions]
+                      description: the node public profile
+                      properties:
+                        info:
+                          type: object
+                          required: [id]
+                          description: the node public info
+                          properties:
+                            address:
+                              type: string
+                              description: the multi-address of the node
+                            id:
+                              type: string
+                              description: the node public id
+                        subscriptions:
+                          type: array
+                          description: the subscriptions of this node
+                          items:
+                            description: a subscription
+                            type: object
+                            required: [interest, topic]
+                            properties:
+                              interest:
+                                type: string
+                                description: the level of interest on the associate subscription
+                                enum: [High, Normal, Low]
+                              topic:
+                                type: integer
+                                description: 0 for fragment topic and 1 for a block topic
+                                enum: [0, 1]
+                    records:
+                      type: object
+                      description: all the recorded error with this node
+                      required: [strikes]
+                      properties:
+                        strikes:
+                          description: the strikes recorded on this node
+                          type: array
+                          items:
+                            description: the type of strike recorded against a node
+                            type: object
+                            required: [reason, when]
+                            properties:
+                              reason:
+                                type: string
+                                description: a short message describing the cause of the strike
+                              when:
+                                description: when the strike was recorded
+                                type: object
+                                required: [seconds_since_epoch, nanos_since_epoch]
+                                properties:
+                                  seconds_since_epoch:
+                                    type: integer
+                                    description: seconds since unix epoch
+                                    minimum: 0
+                                  nanos_since_epoch:
+                                    type: integer
+                                    description: elapsed nanoseconds since unix epoch
+                                    minimum: 0
+
+                    logs:
+                      type: object
+                      description: the different logged events associated to this node
+                      required: [creation_time]
+                      properties:
+                        creation_time:
+                          description: when the node was known of our node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_gossip:
+                          description: the last time we gossiped with the node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_update:
+                          description: the last time we received an update of the node (via gossiping with another node)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        quarantined:
+                          description: the time at which the node was quarantined (if not there then the node is not quarantined)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_use_of:
+                          description: the last time this node has been part of a view for event propagation
+                          type: object
+                          properties:
+                            0:
+                              description: the last time the node was selected for fragment propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+                            1:
+                              description: the last time the node was selected for block propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+  /api/v0/network/p2p/available:
+    get:
+      description: list all the nodes that are available for p2p discovery and events propagation
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node and its associated logged data and records
+                  type: object
+                  required: [profile]
+                  properties:
+                    profile:
+                      type: object
+                      required: [info, subscriptions]
+                      description: the node public profile
+                      properties:
+                        info:
+                          type: object
+                          required: [id, address]
+                          description: the node public info
+                          properties:
+                            address:
+                              type: string
+                              description: the multi-address of the node
+                            id:
+                              type: string
+                              description: the node public id
+                        subscriptions:
+                          type: array
+                          description: the subscriptions of this node
+                          items:
+                            description: a subscription
+                            type: object
+                            required: [interest, topic]
+                            properties:
+                              interest:
+                                type: string
+                                description: the level of interest on the associate subscription
+                                enum: [High, Normal, Low]
+                              topic:
+                                type: integer
+                                description: 0 for fragment topic and 1 for a block topic
+                                enum: [0, 1]
+                    records:
+                      type: object
+                      description: all the recorded error with this node
+                      required: [strikes]
+                      properties:
+                        strikes:
+                          description: the strikes recorded on this node
+                          type: array
+                          items:
+                            description: the type of strike recorded against a node
+                            type: object
+                            required: [reason, when]
+                            properties:
+                              reason:
+                                type: string
+                                description: a short message describing the cause of the strike
+                              when:
+                                description: when the strike was recorded
+                                type: object
+                                required: [seconds_since_epoch, nanos_since_epoch]
+                                properties:
+                                  seconds_since_epoch:
+                                    type: integer
+                                    description: seconds since unix epoch
+                                    minimum: 0
+                                  nanos_since_epoch:
+                                    type: integer
+                                    description: elapsed nanoseconds since unix epoch
+                                    minimum: 0
+
+                    logs:
+                      type: object
+                      description: the different logged events associated to this node
+                      required: [creation_time]
+                      properties:
+                        creation_time:
+                          description: when the node was known of our node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_gossip:
+                          description: the last time we gossiped with the node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_update:
+                          description: the last time we received an update of the node (via gossiping with another node)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        quarantined:
+                          description: the time at which the node was quarantined (if not there then the node is not quarantined)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_use_of:
+                          description: the last time this node has been part of a view for event propagation
+                          type: object
+                          properties:
+                            0:
+                              description: the last time the node was selected for fragment propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+                            1:
+                              description: the last time the node was selected for block propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+  /api/v0/network/p2p/quarantined:
+    get:
+      description: list all the nodes that have been quarantined
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node and its associated logged data and records
+                  type: object
+                  required: [profile]
+                  properties:
+                    profile:
+                      type: object
+                      required: [info, subscriptions]
+                      description: the node public profile
+                      properties:
+                        info:
+                          type: object
+                          required: [id, address]
+                          description: the node public info
+                          properties:
+                            address:
+                              type: string
+                              description: the multi-address of the node
+                            id:
+                              type: string
+                              description: the node public id
+                        subscriptions:
+                          type: array
+                          description: the subscriptions of this node
+                          items:
+                            description: a subscription
+                            type: object
+                            required: [interest, topic]
+                            properties:
+                              interest:
+                                type: string
+                                description: the level of interest on the associate subscription
+                                enum: [High, Normal, Low]
+                              topic:
+                                type: integer
+                                description: 0 for fragment topic and 1 for a block topic
+                                enum: [0, 1]
+                    records:
+                      type: object
+                      description: all the recorded error with this node
+                      required: [strikes]
+                      properties:
+                        strikes:
+                          description: the strikes recorded on this node
+                          type: array
+                          items:
+                            description: the type of strike recorded against a node
+                            type: object
+                            required: [reason, when]
+                            properties:
+                              reason:
+                                type: string
+                                description: a short message describing the cause of the strike
+                              when:
+                                description: when the strike was recorded
+                                type: object
+                                required: [seconds_since_epoch, nanos_since_epoch]
+                                properties:
+                                  seconds_since_epoch:
+                                    type: integer
+                                    description: seconds since unix epoch
+                                    minimum: 0
+                                  nanos_since_epoch:
+                                    type: integer
+                                    description: elapsed nanoseconds since unix epoch
+                                    minimum: 0
+
+                    logs:
+                      type: object
+                      description: the different logged events associated to this node
+                      required: [creation_time, quarantined]
+                      properties:
+                        creation_time:
+                          description: when the node was known of our node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_gossip:
+                          description: the last time we gossiped with the node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_update:
+                          description: the last time we received an update of the node (via gossiping with another node)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        quarantined:
+                          description: the time at which the node was quarantined (if not there then the node is not quarantined)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_use_of:
+                          description: the last time this node has been part of a view for event propagation
+                          type: object
+                          properties:
+                            0:
+                              description: the last time the node was selected for fragment propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+                            1:
+                              description: the last time the node was selected for block propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0

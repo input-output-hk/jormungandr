@@ -32,6 +32,21 @@ pub fn resources() -> Vec<(
         ("/network/stats", &|r| {
             r.get().with_async(handlers::get_network_stats)
         }),
+        ("/network/p2p/quarantined", &|r| {
+            r.get().with_async(handlers::get_network_p2p_quarantined)
+        }),
+        ("/network/p2p/non_public", &|r| {
+            r.get().with_async(handlers::get_network_p2p_non_public)
+        }),
+        ("/network/p2p/available", &|r| {
+            r.get().with_async(handlers::get_network_p2p_available)
+        }),
+        ("/network/p2p/view", &|r| {
+            r.get().with_async(handlers::get_network_p2p_view)
+        }),
+        ("/network/p2p/view/{topic}", &|r| {
+            r.get().with_async(handlers::get_network_p2p_view_topic)
+        }),
         ("/settings", &|r| r.get().with_async(handlers::get_settings)),
         ("/stake", &|r| {
             r.get().with_async(handlers::get_stake_distribution)

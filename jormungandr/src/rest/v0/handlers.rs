@@ -468,3 +468,64 @@ pub fn get_diagnostic(context: State<Context>) -> Result<impl Responder, Error> 
     let full_context = context.try_full()?;
     serde_json::to_string(&full_context.diagnostic).map_err(ErrorInternalServerError)
 }
+
+pub fn get_network_p2p_quarantined(context: State<Context>) -> ActixFuture!() {
+    context
+        .try_full_fut()
+        .and_then(|ctx| future::ok(Json(json!(ctx.p2p.list_quarantined()))))
+}
+
+pub fn get_network_p2p_non_public(context: State<Context>) -> ActixFuture!() {
+    context
+        .try_full_fut()
+        .and_then(|ctx| future::ok(Json(json!(ctx.p2p.list_non_public()))))
+}
+
+pub fn get_network_p2p_available(context: State<Context>) -> ActixFuture!() {
+    context
+        .try_full_fut()
+        .and_then(|ctx| future::ok(Json(json!(ctx.p2p.list_available()))))
+}
+
+pub fn get_network_p2p_view(context: State<Context>) -> ActixFuture!() {
+    context.try_full_fut().and_then(|ctx| {
+        let v: Vec<poldercast::NodeInfo> = ctx
+            .p2p
+            .view(poldercast::Selection::Any)
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        future::ok(Json(json!(v)))
+    })
+}
+
+pub fn get_network_p2p_view_topic(context: State<Context>, topic: Path<String>) -> ActixFuture!() {
+    fn parse_topic(s: &str) -> Result<poldercast::Selection, Error> {
+        use crate::network::p2p::topic;
+        use poldercast::Selection;
+        match s {
+            "blocks" => Ok(Selection::Topic {
+                topic: topic::BLOCKS,
+            }),
+            "fragments" => Ok(Selection::Topic {
+                topic: topic::MESSAGES,
+            }),
+            "" => Ok(Selection::Any),
+            _ => Err(ErrorBadRequest("invalid topic")),
+        }
+    }
+    dbg!(&topic);
+
+    parse_topic(&topic.into_inner())
+        .into_future()
+        .and_then(move |topic| context.try_full_fut().map(move |ctx| (ctx, topic)))
+        .and_then(|(ctx, selection)| {
+            let v: Vec<poldercast::NodeInfo> = ctx
+                .p2p
+                .view(selection)
+                .into_iter()
+                .map(Into::into)
+                .collect();
+            future::ok(Json(json!(v)))
+        })
+}
