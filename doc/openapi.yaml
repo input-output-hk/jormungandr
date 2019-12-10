@@ -123,16 +123,17 @@ paths:
           content:
             application/json:
               schema:
-              type: object
-              properties:
-                open_files_limit:
-                  description: The allowed number of open file descriptors on UNIX platforms (RLIMIT_NOFILE)
-                  type: integer
-                cpu_usage_limit:
-                  description: The amount of CPU time this process can consume (RLIMIT_CPU)
-                  type: integer
-                examples:
-                  unix: |
+                type: object
+                properties:
+                  open_files_limit:
+                    description: The allowed number of open file descriptors on UNIX platforms (RLIMIT_NOFILE)
+                    type: integer
+                  cpu_usage_limit:
+                    description: The amount of CPU time this process can consume (RLIMIT_CPU)
+                    type: integer
+              examples:
+                Unix:
+                  value: |
                     {
                       "open_files_limit": 256,
                       "cpu_usage_limit": 9223372036854775807
@@ -644,7 +645,6 @@ paths:
                       per_certificate_fees:
                         description: Fee per certificate operations, all zero if this object absent
                         type: object
-                        required: []
                         properties:
                           certificate_pool_registration:
                             description: Fee per pool registration, zero if absent
