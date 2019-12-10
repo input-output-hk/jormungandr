@@ -760,11 +760,11 @@ fn write_reward_info(
             write!(&mut buf, "treasury,,{},\r\n", rewards_info.treasury.0)?;
 
             for (pool_id, (taxed, distr)) in rewards_info.stake_pools.iter() {
-                writeln!(&mut buf, "pool,{},{},{}\r\n", pool_id, taxed.0, distr.0)?;
+                write!(&mut buf, "pool,{},{},{}\r\n", pool_id, taxed.0, distr.0)?;
             }
 
             for (account_id, received) in rewards_info.accounts.iter() {
-                writeln!(&mut buf, "account,{},{},\r\n", account_id, received.0)?;
+                write!(&mut buf, "account,{},{},\r\n", account_id, received.0)?;
             }
 
             buf.flush()?;
