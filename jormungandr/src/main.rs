@@ -62,6 +62,7 @@ use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::{Blockchain, CandidateForest},
     diagnostic::Diagnostic,
+    network::p2p::P2pTopology,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -134,6 +135,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         leadership::Logs::new(bootstrapped_node.settings.leadership.log_ttl.into());
     let leadership_garbage_collection_interval =
         bootstrapped_node.settings.leadership.log_ttl.into();
+
+    let topology = P2pTopology::new(
+        bootstrapped_node.settings.network.profile.clone(),
+        bootstrapped_node
+            .logger
+            .new(o!(log::KEY_TASK => "poldercast")),
+    );
 
     let stats_counter = StatsCounter::default();
 
@@ -233,6 +241,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             transaction_box: fragment_msgbox,
             block_box: block_msgbox,
         };
+        let topology = topology.clone();
 
         services.spawn_future("network", move |info| {
             let params = network::TaskParams {
@@ -241,7 +250,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 input: network_queue,
                 channels,
             };
-            network::start(info, params)
+            network::start(info, params, topology)
         });
     }
 
@@ -292,6 +301,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             logs: pool_logs,
             leadership_logs,
             enclave,
+            p2p: topology,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             diagnostic: bootstrapped_node.diagnostic,
         };

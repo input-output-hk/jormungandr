@@ -1485,7 +1485,7 @@ dependencies = [
  "network-core 0.1.0-dev",
  "network-grpc 0.1.0-dev",
  "nix 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poldercast 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poldercast 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.103 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1535,7 +1535,7 @@ dependencies = [
  "jormungandr-lib 0.8.0-rc10",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poldercast 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poldercast 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "protobuf 2.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "protoc-rust 2.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "quickcheck 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1597,7 +1597,7 @@ dependencies = [
  "jormungandr-lib 0.8.0-rc10",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poldercast 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poldercast 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_chacha 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2209,7 +2209,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "poldercast"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4237,7 +4237,7 @@ dependencies = [
 "checksum phf_shared 0.7.24 (registry+https://github.com/rust-lang/crates.io-index)" = "234f71a15de2288bcb7e3b6515828d22af7ec8598ee6d24c3b526fa0a80b67a0"
 "checksum pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)" = "05da548ad6865900e60eaba7f589cc0783590a92e940c26953ff81ddbab2d677"
 "checksum platforms 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "feb3b2b1033b8a60b4da6ee470325f887758c95d5320f52f9ce0df055a55940e"
-"checksum poldercast 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b88e4a1974f44e4ecb6559ead0afb6e297f86618dec8f1f8dddf37a0537e692d"
+"checksum poldercast 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "18b912a71224c9eb6b11d2331536eb568182230ba431f5fb469a40f2c673adad"
 "checksum ppv-lite86 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "74490b50b9fbe561ac330df47c08f3f33073d2d00c150f719147d7c54522fa1b"
 "checksum predicates 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "a9bfe52247e5cc9b2f943682a85a5549fb9662245caf094504e69a2f03fe64d4"
 "checksum predicates-core 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "06075c3a3e92559ff8929e7a280684489ea27fe44805174c3ebd9328dcb37178"

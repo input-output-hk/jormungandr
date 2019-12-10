@@ -67,10 +67,10 @@ impl P2pTopology {
 
     /// Returns a list of neighbors selected in this turn
     /// to contact for event dissemination.
-    pub fn view(&self) -> Vec<Node> {
+    pub fn view(&self, selection: poldercast::Selection) -> Vec<Node> {
         let mut topology = self.lock.write().unwrap();
         topology
-            .view(None, poldercast::Selection::Any)
+            .view(None, selection)
             .into_iter()
             .map(Node::new)
             .collect()
@@ -99,6 +99,39 @@ impl P2pTopology {
 
     pub fn force_reset_layers(&self) {
         self.lock.write().unwrap().force_reset_layers()
+    }
+
+    pub fn list_quarantined(&self) -> Vec<poldercast::Node> {
+        self.lock
+            .read()
+            .unwrap()
+            .nodes()
+            .all_quarantined_nodes()
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    pub fn list_available(&self) -> Vec<poldercast::Node> {
+        self.lock
+            .read()
+            .unwrap()
+            .nodes()
+            .all_available_nodes()
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    pub fn list_non_public(&self) -> Vec<poldercast::Node> {
+        self.lock
+            .read()
+            .unwrap()
+            .nodes()
+            .all_unreachable_nodes()
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
     /// register a strike against the given node id

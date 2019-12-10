@@ -129,10 +129,11 @@ impl GlobalState {
     pub fn new(
         block0_hash: HeaderHash,
         config: Configuration,
+        topology: P2pTopology,
         executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
-        let mut topology = P2pTopology::new(config.profile.clone(), logger.clone());
+        let mut topology = topology;
         topology.set_poldercast_modules();
         topology.set_custom_modules(&config);
         topology.set_policy(config.policy.clone());
@@ -218,6 +219,7 @@ pub struct TaskParams {
 pub fn start(
     service_info: TokioServiceInfo,
     params: TaskParams,
+    topology: P2pTopology,
 ) -> impl Future<Item = (), Error = ()> {
     // TODO: the node needs to be saved/loaded
     //
@@ -227,6 +229,7 @@ pub fn start(
     let global_state = Arc::new(GlobalState::new(
         params.block0_hash,
         params.config,
+        topology,
         service_info.executor().clone(),
         service_info.logger().clone(),
     ));
@@ -254,7 +257,7 @@ pub fn start(
         Either::B(future::ok(()))
     };
 
-    let initial_nodes = global_state.topology.view();
+    let initial_nodes = global_state.topology.view(poldercast::Selection::Any);
     let self_node = global_state.topology.node();
     for node in initial_nodes {
         connect_and_propagate_with(node, global_state.clone(), channels.clone(), |comms| {
@@ -323,10 +326,17 @@ fn handle_network_input(
 
 fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
     trace!(state.logger(), "to propagate: {:?}", &msg);
-    let nodes = state.topology.view();
     let res = match msg {
-        PropagateMsg::Block(ref header) => state.peers.propagate_block(nodes, header.clone()),
+        PropagateMsg::Block(ref header) => {
+            let nodes = state.topology.view(poldercast::Selection::Topic {
+                topic: p2p::topic::BLOCKS,
+            });
+            state.peers.propagate_block(nodes, header.clone())
+        }
         PropagateMsg::Fragment(ref fragment) => {
+            let nodes = state.topology.view(poldercast::Selection::Topic {
+                topic: p2p::topic::MESSAGES,
+            });
             state.peers.propagate_fragment(nodes, fragment.clone())
         }
     };
@@ -350,7 +360,7 @@ fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Chan
 }
 
 fn send_gossip(state: GlobalStateR, channels: Channels) {
-    for node in state.topology.view() {
+    for node in state.topology.view(poldercast::Selection::Any) {
         let gossip = Gossip::from(state.topology.initiate_gossips(node.id()));
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
         if let Err(gossip) = res {

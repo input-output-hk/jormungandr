@@ -32,6 +32,12 @@ impl gossip::Node for Node {
     }
 }
 
+impl From<Node> for poldercast::NodeInfo {
+    fn from(node: Node) -> Self {
+        node.info
+    }
+}
+
 #[deprecated]
 impl property::Serialize for Node {
     type Error = bincode::Error;

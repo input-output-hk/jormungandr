@@ -19,6 +19,7 @@ use std::sync::{Arc, RwLock};
 use crate::blockchain::{Blockchain, Tip};
 use crate::fragment::Logs;
 use crate::leadership::Logs as LeadershipLogs;
+use crate::network::p2p::P2pTopology;
 use crate::secure::enclave::Enclave;
 use crate::settings::start::{Cors as CorsConfig, Error as ConfigError, Rest};
 use crate::stats_counter::StatsCounter;
@@ -114,6 +115,7 @@ pub struct FullContext {
     pub logs: Logs,
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
+    pub p2p: P2pTopology,
     pub explorer: Option<crate::explorer::Explorer>,
     pub diagnostic: crate::diagnostic::Diagnostic,
 }
