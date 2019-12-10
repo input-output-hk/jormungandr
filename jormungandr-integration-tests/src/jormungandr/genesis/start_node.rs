@@ -103,6 +103,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         0,
         1,
         &owner_pubkey,
+        None,
     );
     let stake_pool_signcert = file_utils::read_file(&stake_pool_signcert_file);
 

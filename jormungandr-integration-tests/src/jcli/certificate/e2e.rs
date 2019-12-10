@@ -18,6 +18,7 @@ pub fn test_create_and_sign_new_stake_delegation() {
         0,
         1,
         &owner.identifier().to_bech32_str(),
+        None,
     );
 
     let input_file = file_utils::create_file_in_temp("certificate", &certificate);

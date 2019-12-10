@@ -13,7 +13,10 @@ use crate::common::{
 
 use chain_addr::Discrimination;
 use chain_crypto::{Curve25519_2HashDH, SumEd25519_12};
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{Ratio, TaxType, Value},
+};
 use std::str::FromStr;
 
 #[allow(dead_code)]
@@ -88,6 +91,11 @@ pub fn create_new_stake_pool(
         0u32,
         1u32,
         &account.public_key,
+        Some(TaxType {
+            fixed: 0.into(),
+            ratio: Ratio::new_checked(1, 2).unwrap(),
+            max_limit: None,
+        }),
     );
     let stake_pool_certificate_file =
         file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_certificate);
