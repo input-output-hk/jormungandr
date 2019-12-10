@@ -5,19 +5,18 @@ extern crate chain_crypto;
 extern crate rand;
 extern crate rand_chacha;
 extern crate serde_derive;
-use self::serde_derive::{Deserialize, Serialize};
-use jormungandr_lib::interfaces::Value;
-use std::path::PathBuf;
-use std::vec::Vec;
-
 use self::chain_addr::{Address, Discrimination};
 use self::chain_addr::{AddressReadable, Kind};
 use self::chain_crypto::bech32::Bech32;
 use self::chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
 use self::rand::SeedableRng;
 use self::rand_chacha::ChaChaRng;
-
+use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
+use jormungandr_lib::interfaces::{Ratio, RewardParams, TaxType, Value};
+use std::num::NonZeroU32;
+use std::path::PathBuf;
+use std::vec::Vec;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BlockchainConfig {
@@ -39,6 +38,14 @@ pub struct BlockchainConfig {
     pub consensus_genesis_praos_active_slot_coeff: Option<String>,
     pub linear_fees: LinearFees,
     pub kes_update_speed: u32,
+    #[serde(default)]
+    pub treasury: Option<Value>,
+    #[serde(default)]
+    pub treasury_parameters: Option<TaxType>,
+    #[serde(default)]
+    pub total_reward_supply: Option<Value>,
+    #[serde(default)]
+    pub reward_parameters: Option<RewardParams>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -156,6 +163,19 @@ impl GenesisYaml {
                     certificate: 0,
                 },
                 kes_update_speed: 12 * 3600,
+                treasury: Some(1_000_000.into()),
+                treasury_parameters: Some(TaxType {
+                    fixed: 10.into(),
+                    ratio: Ratio::new_checked(1, 1_000).unwrap(),
+                    max_limit: None,
+                }),
+                total_reward_supply: Some(1_000_000_000.into()),
+                reward_parameters: Some(RewardParams::Linear {
+                    constant: 100_000,
+                    ratio: Ratio::new_checked(1, 1_00).unwrap(),
+                    epoch_start: 0,
+                    epoch_rate: NonZeroU32::new(1).unwrap(),
+                }),
             },
             initial,
         }

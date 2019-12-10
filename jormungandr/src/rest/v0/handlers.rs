@@ -1,5 +1,6 @@
 use jormungandr_lib::interfaces::{
-    AccountState, Address, EnclaveLeaderId, FragmentOrigin, TaxTypeSerde,
+    AccountState, Address, EnclaveLeaderId, FragmentOrigin, Rewards as StakePoolRewards,
+    StakePoolStats, TaxTypeSerde,
 };
 use jormungandr_lib::time::SystemTime;
 
@@ -449,16 +450,26 @@ pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> Act
                     .get(&pool_id)
                     .map(|pool| pool.total.total_stake.into())
                     .unwrap_or(0);
-                Ok(Json(json!({
-                    "kesPublicKey": pool.registration.keys.kes_public_key.to_bech32_str(),
-                    "vrfPublicKey": pool.registration.keys.vrf_public_key.to_bech32_str(),
-                    "total_stake": total_stake,
-                    "rewards": {
-                        "epoch": pool.last_rewards.epoch,
-                        "value_taxed": pool.last_rewards.value_taxed.as_ref(),
-                        "value_for_stakers": pool.last_rewards.value_for_stakers.as_ref(),
+                Ok(Json(json!(StakePoolStats {
+                    kes_public_key: pool
+                        .registration
+                        .keys
+                        .kes_public_key
+                        .to_bech32_str()
+                        .to_owned(),
+                    vrf_public_key: pool
+                        .registration
+                        .keys
+                        .vrf_public_key
+                        .to_bech32_str()
+                        .to_owned(),
+                    total_stake: total_stake,
+                    rewards: StakePoolRewards {
+                        epoch: pool.last_rewards.epoch,
+                        value_taxed: pool.last_rewards.value_taxed,
+                        value_for_stakers: pool.last_rewards.value_for_stakers,
                     },
-                    "tax": TaxTypeSerde(pool.registration.rewards),
+                    tax: TaxTypeSerde(pool.registration.rewards),
                 })))
             })
         })

@@ -9,7 +9,7 @@ use chain_impl_mockchain::{
 };
 use std::{path::PathBuf, str::FromStr};
 
-use jormungandr_lib::interfaces::Certificate;
+use jormungandr_lib::interfaces::{Certificate, TaxType};
 
 #[derive(Debug)]
 pub struct JCLICertificateWrapper {
@@ -41,6 +41,7 @@ impl JCLICertificateWrapper {
         start_validity: u32,
         management_threshold: u32,
         owner_pk: &str,
+        tax_type: Option<TaxType>,
     ) -> String {
         println!("Running new stake pool registration...");
         let output = process_utils::run_process_and_get_output(
@@ -50,6 +51,7 @@ impl JCLICertificateWrapper {
                 start_validity,
                 management_threshold,
                 owner_pk,
+                tax_type,
             ),
         );
         let certification = output.as_single_line();
@@ -95,6 +97,7 @@ impl JCLICertificateWrapper {
         start_validity: u32,
         management_threshold: u32,
         owner_pk: &str,
+        tax_type: Option<TaxType>,
     ) -> PathBuf {
         let stake_pool_cert = self.assert_new_stake_pool_registration(
             &pool_kes_pk,
@@ -102,6 +105,7 @@ impl JCLICertificateWrapper {
             start_validity,
             management_threshold,
             owner_pk,
+            tax_type,
         );
         let stake_pool_cert_file =
             file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_cert);

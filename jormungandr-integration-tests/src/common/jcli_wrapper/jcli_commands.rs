@@ -324,3 +324,16 @@ pub fn get_stake_pools_command(host: &str) -> Command {
         .arg(&host);
     command
 }
+
+pub fn get_stake_pool_command(stake_pool_id: &str, host: &str) -> Command {
+    let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("stake-pool")
+        .arg("get")
+        .arg(&stake_pool_id)
+        .arg("--host")
+        .arg(&host);
+    command
+}
