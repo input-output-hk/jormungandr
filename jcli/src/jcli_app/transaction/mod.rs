@@ -14,7 +14,6 @@ mod staging;
 
 use self::staging::StagingKind;
 use crate::jcli_app::certificate;
-use crate::jcli_app::utils::error::CustomErrorFiller;
 use crate::jcli_app::utils::{key_parser, output_format};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
@@ -134,7 +133,6 @@ pub enum Error {
     WitnessFileSerializationFailed {
         #[source]
         source: std::io::Error,
-        filler: CustomErrorFiller,
     },
     #[error("could not write info file '{path}'")]
     InfoFileWriteFailed {
@@ -174,9 +172,9 @@ pub enum Error {
     #[error("invalid input account, this is a multisig account address")]
     AccountAddressMultisig,
     #[error("could not add witness to finalized transaction")]
-    AddingWitnessToFinalizedTxFailed { filler: CustomErrorFiller },
+    AddingWitnessToFinalizedTxFailed,
     #[error("generated transaction building failed")]
-    GeneratedTxBuildingFailed { filler: CustomErrorFiller },
+    GeneratedTxBuildingFailed,
     #[error("transaction finalization failed")]
     TxFinalizationFailed {
         #[from]
@@ -188,7 +186,6 @@ pub enum Error {
     MessageSerializationFailed {
         #[source]
         source: std::io::Error,
-        filler: CustomErrorFiller,
     },
     #[error("calculation of info failed")]
     InfoCalculationFailed {
@@ -271,13 +268,9 @@ fn display_fragment_id(common: common::CommonTransaction) -> Result<(), Error> {
 
 fn display_message(common: common::CommonTransaction) -> Result<(), Error> {
     let message = common.load()?.fragment()?;
-    let bytes: Vec<u8> =
-        message
-            .serialize_as_vec()
-            .map_err(|source| Error::MessageSerializationFailed {
-                source,
-                filler: CustomErrorFiller,
-            })?;
+    let bytes: Vec<u8> = message
+        .serialize_as_vec()
+        .map_err(|source| Error::MessageSerializationFailed { source })?;
     println!("{}", hex::encode(&bytes));
     Ok(())
 }

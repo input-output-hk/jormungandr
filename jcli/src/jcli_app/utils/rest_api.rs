@@ -1,4 +1,4 @@
-use crate::jcli_app::utils::{open_api_verifier, CustomErrorFiller, DebugFlag, OpenApiVerifier};
+use crate::jcli_app::utils::{open_api_verifier, DebugFlag, OpenApiVerifier};
 use hex;
 use reqwest::{self, header::HeaderValue, Client, Request, RequestBuilder, Response};
 use serde::{self, Serialize};
@@ -46,13 +46,11 @@ pub enum Error {
     RequestJsonSerializationError {
         #[source]
         source: SerdeJsonError,
-        filler: CustomErrorFiller,
     },
     #[error("response JSON malformed")]
     ResponseJsonDeserializationError {
         #[source]
         source: SerdeJsonError,
-        filler: CustomErrorFiller,
     },
 }
 
@@ -137,12 +135,8 @@ impl RestApiRequestBody {
     }
 
     fn try_from_json(data: impl Serialize) -> Result<Self, Error> {
-        let json = serde_json::to_string(&data).map_err(|source| {
-            Error::RequestJsonSerializationError {
-                source,
-                filler: CustomErrorFiller,
-            }
-        })?;
+        let json = serde_json::to_string(&data)
+            .map_err(|source| Error::RequestJsonSerializationError { source })?;
         Ok(RestApiRequestBody::Json(json))
     }
 
@@ -219,10 +213,7 @@ impl RestApiResponseBody {
             RestApiResponseBody::Text(text) => serde_json::from_str(text),
             RestApiResponseBody::Binary(binary) => serde_json::from_slice(binary),
         }
-        .map_err(|source| Error::ResponseJsonDeserializationError {
-            source,
-            filler: CustomErrorFiller,
-        })
+        .map_err(|source| Error::ResponseJsonDeserializationError { source })
     }
 
     pub fn json_value(&self) -> Result<serde_json::Value, Error> {

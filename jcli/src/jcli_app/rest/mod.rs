@@ -1,7 +1,7 @@
 mod v0;
 
 use crate::jcli_app::utils::rest_api::{self, DESERIALIZATION_ERROR_MSG};
-use crate::jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
+use crate::jcli_app::utils::{host_addr, io::ReadYamlError, output_format};
 use hex::FromHexError;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -35,7 +35,6 @@ pub enum Error {
     InputFragmentMalformed {
         #[source]
         source: std::io::Error,
-        filler: CustomErrorFiller,
     },
     #[error("formatting output failed")]
     OutputFormatFailed {
@@ -56,7 +55,6 @@ pub enum Error {
     InputSerializationFailed {
         #[source]
         source: serde_json::Error,
-        filler: CustomErrorFiller,
     },
     #[error("input hex encoding is not valid")]
     InputHexMalformed {

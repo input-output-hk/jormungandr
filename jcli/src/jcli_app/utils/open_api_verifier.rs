@@ -1,4 +1,4 @@
-use crate::jcli_app::utils::{rest_api::RestApiRequestBody, CustomErrorFiller};
+use crate::jcli_app::utils::rest_api::RestApiRequestBody;
 use mime::Mime;
 use openapiv3::{
     OpenAPI, Operation, Parameter, ParameterData, ParameterSchemaOrContent, PathItem, PathStyle,
@@ -182,7 +182,6 @@ pub enum SchemaError {
     SchemaSerializationFailed {
         #[source]
         source: serde_json::Error,
-        filler: CustomErrorFiller,
     },
     #[error("schema is not valid")]
     SchemaInvalid {
@@ -197,13 +196,11 @@ pub enum SchemaError {
     ValueNotValidPrimitive {
         #[source]
         source: serde_json::Error,
-        filler: CustomErrorFiller,
     },
     #[error("value is not a valid JSON")]
     ValueNotValidJson {
         #[source]
         source: serde_json::Error,
-        filler: CustomErrorFiller,
     },
     #[error("value does not match schema: {report:?}")]
     ValueValidationFailed { report: ValidationState },
@@ -487,10 +484,8 @@ fn verify_body_is_none(body: &RestApiRequestBody) -> Result<(), RequestBodyError
 }
 
 fn verify_schema_json(schema: &Schema, json: &str) -> Result<(), SchemaError> {
-    let value = serde_json::from_str(json).map_err(|source| SchemaError::ValueNotValidJson {
-        source,
-        filler: CustomErrorFiller,
-    })?;
+    let value =
+        serde_json::from_str(json).map_err(|source| SchemaError::ValueNotValidJson { source })?;
     validate_schema_value(schema, &value)
 }
 
@@ -502,10 +497,8 @@ fn verify_schema_simple_string(schema: &Schema, simple: &str) -> Result<(), Sche
     let value = match schema_type {
         Type::String(_) => Value::String(simple.to_string()),
         Type::Boolean { .. } | Type::Integer(_) | Type::Number(_) => {
-            serde_json::from_str(simple).map_err(|source| SchemaError::ValueNotValidPrimitive {
-                source,
-                filler: CustomErrorFiller,
-            })?
+            serde_json::from_str(simple)
+                .map_err(|source| SchemaError::ValueNotValidPrimitive { source })?
         }
         Type::Array(_) | Type::Object(_) => Err(SchemaError::SchemaNotPrimitive)?,
     };
@@ -513,11 +506,8 @@ fn verify_schema_simple_string(schema: &Schema, simple: &str) -> Result<(), Sche
 }
 
 fn validate_schema_value(schema: &Schema, value: &Value) -> Result<(), SchemaError> {
-    let schema_value =
-        serde_json::to_value(schema).map_err(|source| SchemaError::SchemaSerializationFailed {
-            source,
-            filler: CustomErrorFiller,
-        })?;
+    let schema_value = serde_json::to_value(schema)
+        .map_err(|source| SchemaError::SchemaSerializationFailed { source })?;
     let mut scope = Scope::new();
     let validator = scope.compile_and_return(schema_value, true)?;
     let report = validator.validate(value);

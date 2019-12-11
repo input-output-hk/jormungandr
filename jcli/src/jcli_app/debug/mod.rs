@@ -1,6 +1,5 @@
 mod block;
 mod message;
-use crate::jcli_app::utils::error::CustomErrorFiller;
 use hex::FromHexError;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -37,7 +36,6 @@ pub enum Error {
     MessageMalformed {
         #[source]
         source: std::io::Error,
-        filler: CustomErrorFiller,
     },
 }
 
