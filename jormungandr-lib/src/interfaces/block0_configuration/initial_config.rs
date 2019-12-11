@@ -1,8 +1,8 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, EpochStabilityDepth,
-        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardConstraints,
-        RewardParams, SlotDuration, TaxType, Value,
+        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, PoolParticipationCapping,
+        RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -267,6 +267,10 @@ impl BlockchainConfiguration {
                     .reward_drawing_limit_max
                     .replace(ratio.into())
                     .map(|_| "reward_constraints.reward_drawing_limit_max"),
+                ConfigParam::PoolRewardParticipationCapping((min, max)) => reward_constraints
+                    .pool_participation_capping
+                    .replace(PoolParticipationCapping { min, max })
+                    .map(|_| "reward_constraints.pool_participation_capping"),
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
                     .map(|_| "per_certificate_fees"),
@@ -377,6 +381,13 @@ impl BlockchainConfiguration {
             params.push(ConfigParam::RewardLimitByAbsoluteStake(
                 reward_drawing_limit_max.into(),
             ));
+        }
+
+        if let Some(pool_participation_capping) = reward_constraints.pool_participation_capping {
+            params.push(ConfigParam::PoolRewardParticipationCapping((
+                pool_participation_capping.min,
+                pool_participation_capping.max,
+            )));
         }
 
         consensus_leader_ids

@@ -71,6 +71,7 @@ pub struct ParametersDef {
     pub epoch_start: Epoch,
     #[serde(with = "LimitDef")]
     pub reward_drawing_limit_max: Limit,
+    pub pool_participation_capping: Option<(NonZeroU32, NonZeroU32)>,
 }
 
 #[derive(Deserialize, Serialize)]

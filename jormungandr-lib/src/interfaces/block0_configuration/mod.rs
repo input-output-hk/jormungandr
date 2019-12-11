@@ -21,7 +21,7 @@ pub use self::initial_fragment::{Initial, InitialUTxO, LegacyUTxO};
 pub use self::kes_update_speed::KESUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
-pub use self::reward_constraint::RewardConstraints;
+pub use self::reward_constraint::{PoolParticipationCapping, RewardConstraints};
 pub use self::slots_duration::SlotDuration;
 use chain_impl_mockchain::{
     block::{self, Block},
