@@ -6,8 +6,11 @@ use chain_impl_mockchain::{
     header::HeaderId,
 };
 use indicatif::ProgressBar;
-use jormungandr_integration_tests::mock::{client::JormungandrClient, read_into};
-use jormungandr_integration_tests::response_to_vec;
+use jormungandr_integration_tests::{
+    common::jormungandr::logger::JormungandrLogger,
+    mock::{client::JormungandrClient, read_into},
+    response_to_vec,
+};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus, Stats};
 use rand_core::RngCore;
 use std::{
@@ -53,19 +56,19 @@ error_chain! {
             description("the node is no longer running"),
         }
 
-        NodeFailedToBootstrap (alias: String, duration: Duration) {
+        NodeFailedToBootstrap (alias: String, duration: Duration, log: String) {
             description("cannot start node"),
-            display("node '{}' failed to start after {} s", alias, duration.as_secs()),
+            display("node '{}' failed to start after {} s. log: {}", alias, duration.as_secs(), log),
         }
 
-        FragmentNoInMemPoolLogs (fragment_id: FragmentId) {
+        FragmentNoInMemPoolLogs (alias: String, fragment_id: FragmentId, log: String) {
             description("cannot find fragment in mempool logs"),
-            display("fragment '{}' not in the mempool of the node", fragment_id),
+            display("fragment '{}' not in the mempool of the node '{}'. logs: {}", fragment_id, alias, log),
         }
 
-        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration) {
+        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration, log: String) {
             description("fragment is pending for too long"),
-            display("fragment '{}' is pending for too long ({} s)", fragment_id, duration.as_secs()),
+            display("fragment '{}' is pending for too long ({} s). Logs: {}", fragment_id, duration.as_secs(), log),
         }
     }
 }
@@ -313,7 +316,9 @@ impl NodeController {
                 }
             } else {
                 bail!(ErrorKind::FragmentNoInMemPoolLogs(
-                    check.fragment_id.clone()
+                    self.alias().to_string(),
+                    check.fragment_id.clone(),
+                    self.logger().get_log_content()
                 ))
             }
             std::thread::sleep(duration);
@@ -321,7 +326,8 @@ impl NodeController {
 
         bail!(ErrorKind::FragmentIsPendingForTooLong(
             check.fragment_id.clone(),
-            Duration::from_secs(duration.as_secs() * max_try)
+            Duration::from_secs(duration.as_secs() * max_try),
+            self.logger().get_log_content()
         ))
     }
 
@@ -348,7 +354,8 @@ impl NodeController {
         }
         bail!(ErrorKind::NodeFailedToBootstrap(
             self.alias().to_string(),
-            Duration::from_secs(sleep.as_secs() * max_try)
+            Duration::from_secs(sleep.as_secs() * max_try),
+            self.logger().get_log_content()
         ))
     }
 
@@ -361,6 +368,15 @@ impl NodeController {
         } else {
             Ok(false)
         }
+    }
+
+    fn logger(&self) -> JormungandrLogger {
+        let log_file = self.settings.config.log.log_file().unwrap();
+        JormungandrLogger::new(log_file)
+    }
+
+    pub fn log_content(&self) -> String {
+        self.logger().get_log_content()
     }
 }
 

@@ -15,6 +15,7 @@ use chain_impl_mockchain::{
     transaction::{SingleAccountBindingSignature, TxBuilder},
 };
 use chain_time::DurationSeconds;
+use jormungandr_integration_tests::common::file_utils;
 use jormungandr_lib::{
     crypto::{hash::Hash, key::SigningKey},
     interfaces::{Block0Configuration, BlockchainConfiguration, Initial, InitialUTxO},
@@ -58,11 +59,31 @@ pub struct NodeConfig {
     pub rest: Rest,
 
     pub p2p: P2pConfig,
+
+    pub log: LogConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rest {
     pub listen: SocketAddr,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogConfig(pub Vec<LogEntry>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogEntry {
+    pub format: String,
+    pub level: String,
+    pub output: LogOutput,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LogOutput {
+    Stdout,
+    Stderr,
+    File(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -430,6 +451,7 @@ impl NodeConfig {
             rest: Rest::prepare(context),
             p2p: P2pConfig::prepare(context),
             storage: None,
+            log: LogConfig::prepare(context),
         }
     }
 }
@@ -463,5 +485,53 @@ impl P2pConfig {
             address: self.public_address.clone(),
             id: self.public_id.clone(),
         }
+    }
+}
+
+impl LogConfig {
+    pub fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let format = "plain";
+        let level = "info";
+
+        let loggers = vec![
+            LogEntry {
+                format: format.to_string(),
+                level: level.to_string(),
+                output: LogOutput::Stderr,
+            },
+            LogEntry {
+                format: format.to_string(),
+                level: level.to_string(),
+                output: LogOutput::File(
+                    file_utils::get_path_in_temp("node.log")
+                        .into_os_string()
+                        .into_string()
+                        .unwrap(),
+                ),
+            },
+        ];
+        LogConfig(loggers)
+    }
+}
+
+impl LogConfig {
+    pub fn log_file(&self) -> Option<PathBuf> {
+        match self.file_logger_entry() {
+            Some(log_entry) => match log_entry.output {
+                LogOutput::File(file) => Some(PathBuf::from(file)),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+
+    pub fn file_logger_entry(&self) -> Option<LogEntry> {
+        self.0.iter().cloned().find(|x| match x.output {
+            LogOutput::File(_) => true,
+            _ => false,
+        })
     }
 }

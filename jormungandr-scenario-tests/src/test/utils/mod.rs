@@ -20,9 +20,10 @@ pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str)
 pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Result<()> {
     if !status.is_in_a_block() {
         bail!(ErrorKind::AssertionFailed(format!(
-            "fragment status sent to node: {} is not in block :({:?})",
+            "fragment status sent to node: {} is not in block :({:?}). logs: {}",
             node.alias(),
-            status
+            status,
+            node.log_content()
         )))
     }
     Ok(())
@@ -43,12 +44,22 @@ pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
         assert_equals(
             &expected_block_hashes,
             &all_block_hashes,
-            "nodes are out of sync (different block hashes)",
+            &format!("nodes are out of sync (different block hashes). Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                first_node.alias(),
+                first_node.log_content(),
+                node.alias(),
+                node.log_content()),
+
         )?;
         assert_equals(
             &block_height,
             &node.stats()?.last_block_height,
-            "nodes are out of sync (different block height)",
+            &format!("nodes are out of sync (different block height). Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                first_node.alias(),
+                first_node.log_content(),
+                node.alias(),
+                node.log_content()
+                ),
         )?;
     }
     Ok(())
