@@ -13,6 +13,7 @@ use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
+use chain_impl_mockchain::transaction::Transaction;
 use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::error::Error as StorageError;
 
@@ -135,18 +136,26 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
                     let mut block_fee_sum = Value::zero();
                     contents
                         .iter()
-                        .filter_map(|fragment| match fragment {
-                            Fragment::Transaction(tx) => Some(tx),
-                            _ => None,
-                        })
-                        .map(|tx| {
-                            let input_sum = tx.total_input()?;
-                            let output_sum = tx.total_output()?;
-                            //    Value::sum(tx.outputs.iter().map(|input| input.value))?;
-                            // Input < output implies minting, so no fee
-                            let fee = (input_sum - output_sum).unwrap_or(Value::zero());
+                        .map(|fragment| {
+                            fn totals<T>(t: &Transaction<T>) -> Result<(Value, Value), ValueError> {
+                                Ok((t.total_input()?, t.total_output()?))
+                            }
+
+                            let (total_input, total_output) = match fragment {
+                                Fragment::Transaction(tx) => totals(tx),
+                                Fragment::OwnerStakeDelegation(tx) => totals(tx),
+                                Fragment::StakeDelegation(tx) => totals(tx),
+                                Fragment::PoolRegistration(tx) => totals(tx),
+                                Fragment::PoolRetirement(tx) => totals(tx),
+                                Fragment::PoolUpdate(tx) => totals(tx),
+                                Fragment::Initial(_)
+                                | Fragment::OldUtxoDeclaration(_)
+                                | Fragment::UpdateProposal(_)
+                                | Fragment::UpdateVote(_) => return Ok(()),
+                            }?;
                             block_tx_count += 1;
-                            block_input_sum = (block_input_sum + input_sum)?;
+                            block_input_sum = (block_input_sum + total_input)?;
+                            let fee = (total_input - total_output).unwrap_or(Value::zero());
                             block_fee_sum = (block_fee_sum + fee)?;
                             Ok(())
                         })
