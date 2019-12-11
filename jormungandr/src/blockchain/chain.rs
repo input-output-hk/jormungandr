@@ -303,7 +303,7 @@ impl Blockchain {
     /// TODO: the case where the block is in storage but not yet in the cache
     ///       is not implemented
     pub fn get_ref(
-        &mut self,
+        &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Option<Arc<Ref>>, Error = Error> {
         let get_ref_cache_future = self.ref_cache.get(header_hash.clone());

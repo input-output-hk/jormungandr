@@ -54,6 +54,7 @@ pub struct ExplorerDB {
     /// multiverse, and the ChainLength is used in the updating process.
     longest_chain_tip: Tip,
     pub blockchain_config: BlockchainConfig,
+    blockchain: Blockchain,
 }
 
 #[derive(Clone)]
@@ -191,6 +192,7 @@ impl ExplorerDB {
                 length: block0.header.chain_length(),
             }),
             blockchain_config,
+            blockchain: blockchain.clone(),
         };
 
         blockchain
@@ -434,6 +436,10 @@ impl ExplorerDB {
                 Ok(f(state))
             })
         })
+    }
+
+    fn blockchain(&self) -> &Blockchain {
+        &self.blockchain
     }
 }
 

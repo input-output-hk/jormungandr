@@ -14,6 +14,7 @@ use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
+use chain_impl_mockchain::ledger;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
 use std::convert::TryFrom;
@@ -166,6 +167,25 @@ impl Block {
     pub fn total_output(&self, context: &Context) -> FieldResult<Value> {
         self.get_explorer_block(&context.db)
             .map(|block| Value(format!("{}", block.total_output)))
+    }
+
+    pub fn treasury(&self, context: &Context) -> FieldResult<Option<Treasury>> {
+        let treasury = context
+            .db
+            .blockchain()
+            .get_ref(self.hash)
+            .wait()
+            .unwrap_or(None)
+            .map(|reference| {
+                let ledger = reference.ledger();
+                let treasury_tax = reference.epoch_ledger_parameters().treasury_tax.clone();
+                Treasury {
+                    rewards: ledger.remaining_rewards().into(),
+                    treasury: ledger.treasury_value().into(),
+                    treasury_tax: TaxType(treasury_tax),
+                }
+            });
+        Ok(treasury)
     }
 }
 
@@ -923,14 +943,7 @@ impl Status {
     }
 
     pub fn latest_block(&self, context: &Context) -> FieldResult<Block> {
-        context
-            .db
-            .get_latest_block_hash()
-            .and_then(|hash| context.db.get_block(&hash))
-            .wait()
-            .unwrap_or_else(|e| match e {})
-            .ok_or(ErrorKind::InternalError("tip is not in explorer".to_owned()).into())
-            .map(|b| Block::from(&b))
+        latest_block(context).map(|b| Block::from(&b))
     }
 
     pub fn fee_settings(&self, context: &Context) -> FeeSettings {
@@ -967,6 +980,29 @@ impl Status {
                     .unwrap_or(certificate)
             )),
         }
+    }
+}
+
+struct Treasury {
+    rewards: Value,
+    treasury: Value,
+    treasury_tax: TaxType,
+}
+
+#[juniper::object(
+    Context = Context
+)]
+impl Treasury {
+    fn rewards(&self) -> &Value {
+        &self.rewards
+    }
+
+    fn treasury(&self) -> &Value {
+        &self.treasury
+    }
+
+    fn treasury_tax(&self) -> &TaxType {
+        &self.treasury_tax
     }
 }
 
@@ -1145,16 +1181,7 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
-        let longest_chain = context
-            .db
-            .get_latest_block_hash()
-            .and_then(|hash| context.db.get_block(&hash))
-            .wait()
-            .unwrap_or_else(|e| match e {})
-            .ok_or(ErrorKind::InternalError(
-                "tip is not in explorer".to_owned(),
-            ))
-            .map(|block| block.chain_length)?;
+        let longest_chain = latest_block(context)?.chain_length;
 
         let block0 = 0u32;
 
@@ -1283,4 +1310,15 @@ pub type Schema = RootNode<'static, Query, EmptyMutation<Context>>;
 
 pub fn create_schema() -> Schema {
     Schema::new(Query {}, EmptyMutation::new())
+}
+
+fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
+    context
+        .db
+        .get_latest_block_hash()
+        .and_then(|hash| context.db.get_block(&hash))
+        .wait()
+        .unwrap_or_else(|e| match e {})
+        .ok_or_else(|| ErrorKind::InternalError("tip is not in explorer".to_owned()))
+        .map_err(Into::into)
 }
