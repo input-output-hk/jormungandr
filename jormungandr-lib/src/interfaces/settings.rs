@@ -4,7 +4,7 @@ use crate::{
 };
 use chain_impl_mockchain::block::Epoch;
 use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::rewards::{CompoundingType, Parameters, Ratio, TaxType};
+use chain_impl_mockchain::rewards::{CompoundingType, Limit, Parameters, Ratio, TaxType};
 use chain_impl_mockchain::value::Value;
 use serde::{Deserialize, Serialize};
 use std::num::{NonZeroU32, NonZeroU64};
@@ -46,6 +46,13 @@ pub struct TaxTypeDef {
 pub struct TaxTypeSerde(#[serde(with = "TaxTypeDef")] pub TaxType);
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(remote = "Limit")]
+pub enum LimitDef {
+    None,
+    ByStakeAbsolute(#[serde(with = "RatioDef")] Ratio),
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(remote = "Ratio")]
 pub struct RatioDef {
     pub numerator: u64,
@@ -62,6 +69,8 @@ pub struct ParametersDef {
     pub compounding_type: CompoundingType,
     pub epoch_rate: NonZeroU32,
     pub epoch_start: Epoch,
+    #[serde(with = "LimitDef")]
+    pub reward_drawing_limit_max: Limit,
 }
 
 #[derive(Deserialize, Serialize)]
