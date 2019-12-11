@@ -1,5 +1,29 @@
 # Change Log
 
+## [v0.8.0](https://github.com/input-output-hk/jormungandr/tree/v0.8.0) (2019-12-11)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc11...v0.8.0)
+
+**Implemented enhancements:**
+
+- GraphQL: expose treasury balance [\#1247](https://github.com/input-output-hk/jormungandr/issues/1247)
+- Graphql treasury balance and settings [\#1342](https://github.com/input-output-hk/jormungandr/pull/1342)
+- add reward constraints parameter [\#1338](https://github.com/input-output-hk/jormungandr/pull/1338)
+- Debug block operation in jcli [\#1337](https://github.com/input-output-hk/jormungandr/pull/1337)
+
+**Fixed bugs:**
+
+- rest node stats does not count/consider all kinds of tx/fragments [\#1301](https://github.com/input-output-hk/jormungandr/issues/1301)
+- Get REST node stats from all framents containing TX [\#1343](https://github.com/input-output-hk/jormungandr/pull/1343)
+
+**Closed issues:**
+
+- Add jcli command / rest endpoint for decoding a block [\#1336](https://github.com/input-output-hk/jormungandr/issues/1336)
+
+**Merged pull requests:**
+
+- \[Tests\] logging enhancements for Private network tests [\#1339](https://github.com/input-output-hk/jormungandr/pull/1339)
+
 ## [v0.8.0-rc11](https://github.com/input-output-hk/jormungandr/tree/v0.8.0-rc11) (2019-12-10)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc10...v0.8.0-rc11)
