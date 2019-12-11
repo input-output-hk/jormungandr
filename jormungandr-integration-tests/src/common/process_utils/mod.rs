@@ -17,7 +17,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum ProcessError {
     #[error("could not start process '{message}'")]
-     ProcessExited{message: String},
+    ProcessExited { message: String },
 }
 
 /// Runs command, wait for output and returns it output

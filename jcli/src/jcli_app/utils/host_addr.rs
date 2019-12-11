@@ -29,6 +29,6 @@ impl HostAddr {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Host address '{addr}' isn't valid address base",)]
+    #[error("Host address '{addr}' isn't valid address base")]
     HostAddrNotBase { addr: Url },
 }
