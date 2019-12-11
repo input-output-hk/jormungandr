@@ -1,11 +1,22 @@
 use chain_impl_mockchain::transaction::Witness;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
+use thiserror::Error;
 
-custom_error! {pub TransactionWitnessFromStrError
-    Bech32 { source: bech32::Error } = "Invalid bech32 encoding",
-    InvalidHrp { expected: String, got: String } = "Invalid prefix, expected '{expected}' but received '{got}'",
-    Invalid { source: chain_core::mempack::ReadError } = "Invalid encoding",
+#[derive(Debug, Error)]
+pub enum TransactionWitnessFromStrError {
+    #[error("Invalid bech32 encoding")]
+    Bech32 {
+        #[from]
+        source: bech32::Error,
+    },
+    #[error("Invalid prefix, expected '{expected}' but received '{got}'")]
+    InvalidHrp { expected: String, got: String },
+    #[error("Invalid encoding")]
+    Invalid {
+        #[from]
+        source: chain_core::mempack::ReadError,
+    },
 }
 
 const HRP: &'static str = "witness";

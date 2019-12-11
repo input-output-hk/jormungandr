@@ -13,6 +13,8 @@ pub mod p2p;
 mod service;
 mod subscription;
 
+use thiserror::Error;
+
 // Constants
 
 mod buffer_sizes {
@@ -564,8 +566,10 @@ pub fn fetch_block(
     }
 }
 
-custom_error! {
-    pub FetchBlockError
-        NoTrustedPeers = "no trusted peers specified",
-        CouldNotDownloadBlock { block: HeaderHash } = "could not download block hash {block}",
+#[derive(Debug, Error)]
+pub enum FetchBlockError {
+    #[error("no trusted peers specified")]
+    NoTrustedPeers,
+    #[error("could not download block hash {block}")]
+    CouldNotDownloadBlock { block: HeaderHash },
 }

@@ -3,14 +3,27 @@ use chain_crypto::bech32::{self, Bech32};
 use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, PublicKey, SecretKey};
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
-custom_error! { pub Error
-    SecretKeyFileReadFailed { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not open secret key file '{}': {}", path.display(), source) }},
-    SecretKeyFileMalformed { source: bech32::Error, path: PathBuf }
-        = @{{ format_args!("could not decode secret file '{}': {}", path.display(), source) }},
-    SecretKeyMalformed { source: bech32::Error }
-        = @{{ format_args!("could not decode secretkey: {}", source) }},
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("could not open secret key file '{path}': {source}")]
+    SecretKeyFileReadFailed {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("could not decode secret file '{path}': {source}")]
+    SecretKeyFileMalformed {
+        #[source]
+        source: bech32::Error,
+        path: PathBuf,
+    },
+    #[error("could not decode secretkey: {source}")]
+    SecretKeyMalformed {
+        #[from]
+        source: bech32::Error,
+    },
 }
 
 pub fn parse_pub_key<A: AsymmetricPublicKey>(

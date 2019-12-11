@@ -5,6 +5,7 @@ use crate::{
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr as _};
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct SlotDuration(pub(crate) u8);
@@ -40,9 +41,12 @@ impl SlotDuration {
     }
 }
 
-custom_error! { pub TryFromSlotDurationError
-    Incompatible = "Incompatible Config param, expected slot duration",
-    Invalid { duration: u8 } = "Invalid slot duration {duration}"
+#[derive(Debug, Error)]
+pub enum TryFromSlotDurationError {
+    #[error("Incompatible Config param, expected slot duration")]
+    Incompatible,
+    #[error("Invalid slot duration {duration}")]
+    Invalid { duration: u8 },
 }
 
 impl TryFrom<ConfigParam> for SlotDuration {

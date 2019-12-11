@@ -4,6 +4,7 @@ use crate::jcli_app::utils::rest_api::{self, DESERIALIZATION_ERROR_MSG};
 use crate::jcli_app::utils::{host_addr, io::ReadYamlError, output_format, CustomErrorFiller};
 use hex::FromHexError;
 use structopt::StructOpt;
+use thiserror::Error;
 
 /// Send request to node REST API
 #[derive(StructOpt)]
@@ -13,16 +14,55 @@ pub enum Rest {
     V0(v0::V0),
 }
 
-custom_error! {pub Error
-    RestError { source: rest_api::Error } = "failed to make a REST request",
-    HostAddrError { source: host_addr::Error } = "invalid host address",
-    DeserializationError { source: serde_json::Error } = @{{ let _ = source; DESERIALIZATION_ERROR_MSG }},
-    InputFragmentMalformed { source: std::io::Error,  filler: CustomErrorFiller}  =  "input is not a valid fragment",
-    OutputFormatFailed { source: output_format::Error } = "formatting output failed",
-    InputFileInvalid { source: std::io::Error } = "could not read input file",
-    InputFileYamlMalformed { source: serde_yaml::Error } = "input yaml is not valid",
-    InputSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller } = "failed to serialize input",
-    InputHexMalformed { source: FromHexError } = "input hex encoding is not valid",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("failed to make a REST request")]
+    RestError {
+        #[from]
+        source: rest_api::Error,
+    },
+    #[error("invalid host address")]
+    HostAddrError {
+        #[from]
+        source: host_addr::Error,
+    },
+    #[error("{}", DESERIALIZATION_ERROR_MSG)]
+    DeserializationError {
+        #[from]
+        source: serde_json::Error,
+    },
+    #[error("input is not a valid fragment")]
+    InputFragmentMalformed {
+        #[source]
+        source: std::io::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("formatting output failed")]
+    OutputFormatFailed {
+        #[from]
+        source: output_format::Error,
+    },
+    #[error("could not read input file")]
+    InputFileInvalid {
+        #[from]
+        source: std::io::Error,
+    },
+    #[error("input yaml is not valid")]
+    InputFileYamlMalformed {
+        #[from]
+        source: serde_yaml::Error,
+    },
+    #[error("failed to serialize input")]
+    InputSerializationFailed {
+        #[source]
+        source: serde_json::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("input hex encoding is not valid")]
+    InputHexMalformed {
+        #[from]
+        source: FromHexError,
+    },
 }
 
 impl From<ReadYamlError> for Error {

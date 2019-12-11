@@ -1,5 +1,6 @@
 use reqwest::Url;
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt)]
 pub struct HostAddr {
@@ -26,6 +27,8 @@ impl HostAddr {
     }
 }
 
-custom_error! { pub Error
-    HostAddrNotBase { addr: Url } = "Host address '{addr}' isn't valid address base",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Host address '{addr}' isn't valid address base",)]
+    HostAddrNotBase { addr: Url },
 }

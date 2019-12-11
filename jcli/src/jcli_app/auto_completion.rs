@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use structopt::{clap::Shell, StructOpt};
+use thiserror::Error;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -29,7 +30,10 @@ fn validate_output(output: &PathBuf) -> Result<(), Error> {
     Ok(())
 }
 
-custom_error! {pub Error
-    OutputNotExist = "output directory does not exist",
-    OutputNotDir = "output is not a directory",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("output directory does not exist")]
+    OutputNotExist,
+    #[error("output is not a directory")]
+    OutputNotDir,
 }

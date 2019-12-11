@@ -18,8 +18,6 @@ extern crate chain_storage_sqlite_old;
 extern crate chain_time;
 extern crate imhamt;
 #[macro_use]
-extern crate custom_error;
-#[macro_use]
 extern crate error_chain;
 #[macro_use(try_ready)]
 extern crate futures;

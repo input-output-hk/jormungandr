@@ -4,6 +4,7 @@ use chain_core::property;
 use chain_impl_mockchain::certificate;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
+use thiserror::Error;
 use typed_bytes::ByteBuilder;
 
 pub const SIGNED_CERTIFICATE_HRP: &str = "signedcert";
@@ -183,20 +184,48 @@ impl Readable for SignedCertificate {
     }
 }
 
-custom_error! {pub CertificateToBech32Error
-    Io { source: std::io::Error } = "Cannot serialize the Certificate",
-    Bech32 { source: bech32::Error } = "Cannot create new Bech32",
+#[derive(Debug, Error)]
+pub enum CertificateToBech32Error {
+    #[error("Cannot serialize the Certificate")]
+    Io {
+        #[from]
+        source: std::io::Error,
+    },
+    #[error("Cannot create new Bech32")]
+    Bech32 {
+        #[from]
+        source: bech32::Error,
+    },
 }
 
-custom_error! {pub CertificateFromBech32Error
-    InvalidHRP { expected: String, actual: String } = "Invalid prefix, expected {expected} but read {actual}.",
-    InvalidBase32 { source: bech32::Error } = "invalid base32",
-    InvalidCertificate { source: chain_core::mempack::ReadError } = "Invalid certificate",
+#[derive(Debug, Error)]
+pub enum CertificateFromBech32Error {
+    #[error("Invalid prefix, expected {expected} but read {actual}")]
+    InvalidHRP { expected: String, actual: String },
+    #[error("invalid base32")]
+    InvalidBase32 {
+        #[from]
+        source: bech32::Error,
+    },
+    #[error("Invalid certificate")]
+    InvalidCertificate {
+        #[from]
+        source: chain_core::mempack::ReadError,
+    },
 }
 
-custom_error! {pub CertificateFromStrError
-    InvalidCertificate { source: CertificateFromBech32Error } = "Invalid certificate",
-    InvalidBech32 { source: bech32::Error } = "expected certificate in bech32",
+#[derive(Debug, Error)]
+pub enum CertificateFromStrError {
+    #[error("Invalid certificate")]
+    InvalidCertificate {
+        #[from]
+        source: CertificateFromBech32Error,
+    },
+    #[error("expected certificate in bech32")]
+    InvalidBech32 {
+        #[from]
+        source: bech32::Error,
+    },
 }
 
 impl Certificate {

@@ -3,6 +3,7 @@ use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::bech32::Bech32 as _;
 use chain_crypto::{AsymmetricPublicKey, Ed25519, PublicKey};
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt)]
 #[structopt(name = "address", rename_all = "kebab-case")]
@@ -63,8 +64,10 @@ pub struct AccountArgs {
     discrimination_data: DiscriminationData,
 }
 
-custom_error! {pub Error
-    MultisigAddressNotSupported = "multisig addresses are not supported",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("multisig addresses are not supported")]
+    MultisigAddressNotSupported,
 }
 
 impl Address {

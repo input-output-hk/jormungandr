@@ -5,6 +5,7 @@ use crate::interfaces::{
 use chain_impl_mockchain::{config::ConfigParam, milli::Milli};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{convert::TryFrom, fmt, str::FromStr as _};
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ActiveSlotCoefficient(pub(crate) Milli);
@@ -43,9 +44,12 @@ impl ActiveSlotCoefficient {
     }
 }
 
-custom_error! { pub TryFromActiveSlotCoefficientError
-    Incompatible = "Incompatible Config param, expected active slot coefficient",
-    Invalid { coefficient: Milli } = "invalid active slot coefficient {coefficient}",
+#[derive(Debug, Error)]
+pub enum TryFromActiveSlotCoefficientError {
+    #[error("Incompatible Config param, expected active slot coefficient")]
+    Incompatible,
+    #[error("invalid active slot coefficient {coefficient}")]
+    Invalid { coefficient: Milli },
 }
 
 impl TryFrom<ConfigParam> for ActiveSlotCoefficient {

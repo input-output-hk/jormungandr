@@ -30,6 +30,7 @@ use chain_impl_mockchain::{
 };
 use serde::{Deserialize, Serialize};
 use std::convert::{Infallible, TryFrom as _};
+use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -52,10 +53,20 @@ pub struct Block0Configuration {
     pub initial: Vec<Initial>,
 }
 
-custom_error! {pub Block0ConfigurationError
-    FirstBlock0MessageNotInit = "Invalid block, expecting the first block fragment to be an special Init fragment",
-    BlockchainConfiguration { source: initial_config::FromConfigParamsError } = "blockchain configuration is invalid",
-    InitialFragments { source: initial_fragment::Error } = "Invalid fragments"
+#[derive(Debug, Error)]
+pub enum Block0ConfigurationError {
+    #[error("Invalid block, expecting the first block fragment to be an special Init fragment")]
+    FirstBlock0MessageNotInit,
+    #[error("blockchain configuration is invalid")]
+    BlockchainConfiguration {
+        #[from]
+        source: initial_config::FromConfigParamsError,
+    },
+    #[error("Invalid fragments")]
+    InitialFragments {
+        #[from]
+        source: initial_fragment::Error,
+    },
 }
 
 impl Block0Configuration {

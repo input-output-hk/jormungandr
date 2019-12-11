@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-extern crate custom_error;
 extern crate serde_yaml;
 
 pub mod output_extensions;
@@ -8,15 +7,17 @@ mod wait;
 
 pub use wait::{Wait, WaitBuilder};
 
-use self::custom_error::custom_error;
 use self::output_extensions::ProcessOutput;
 use std::{
     process::{Command, Output, Stdio},
     thread, time,
 };
+use thiserror::Error;
 
-custom_error! {pub ProcessError
-     ProcessExited{message: String} = "could not start process '{message}'",
+#[derive(Debug, Error)]
+pub enum ProcessError {
+    #[error("could not start process '{message}'")]
+     ProcessExited{message: String},
 }
 
 /// Runs command, wait for output and returns it output

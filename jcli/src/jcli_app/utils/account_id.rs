@@ -2,6 +2,7 @@ use bech32::{Bech32, FromBase32};
 use chain_addr::{Address, Kind};
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::account;
+use thiserror::Error;
 
 #[derive(Debug)]
 pub struct AccountId {
@@ -54,7 +55,10 @@ impl AccountId {
     }
 }
 
-custom_error! { pub Error
-    NotRecognized { addr: String } = "account parameter '{addr}' isn't a valid address or publickey",
-    AddressNotAccount { addr: String, kind: String } = "account parameter '{addr}' isn't an account address, found: '{kind}'",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("account parameter '{addr}' isn't a valid address or publickey")]
+    NotRecognized { addr: String },
+    #[error("account parameter '{addr}' isn't an account address, found: '{kind}'")]
+    AddressNotAccount { addr: String, kind: String },
 }

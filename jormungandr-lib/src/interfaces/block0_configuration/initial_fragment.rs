@@ -7,6 +7,7 @@ use chain_impl_mockchain::{
     transaction::{NoExtra, Output, Payload, Transaction, TransactionSlice, TxBuilder},
 };
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
@@ -39,10 +40,14 @@ pub struct LegacyUTxO {
     pub value: Value,
 }
 
-custom_error! {pub Error
-    FirstBlock0MessageNotInit = "first message of block 0 is not initial",
-    Block0MessageUnexpected  = "non-first message of block 0 has unexpected type",
-    InitUtxoHasInput = "initial UTXO has input",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("first message of block 0 is not initial")]
+    FirstBlock0MessageNotInit,
+    #[error("non-first message of block 0 has unexpected type")]
+    Block0MessageUnexpected,
+    #[error("initial UTXO has input")]
+    InitUtxoHasInput,
 }
 
 pub fn try_initials_vec_from_messages<'a>(

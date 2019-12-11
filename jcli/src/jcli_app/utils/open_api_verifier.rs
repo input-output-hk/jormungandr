@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io;
+use thiserror::Error;
 use valico::json_schema::{SchemaError as ValicoError, Scope, ValidationState};
 
 const BINARY_BODY_MIME: &'static Mime = &mime::APPLICATION_OCTET_STREAM;
@@ -36,80 +37,182 @@ enum SegmentMatch<'a> {
     Wildcard(&'a str),
 }
 
-custom_error! { pub Error
-    VerificationFailed { source: VerifierError, path: String }
-        = "verification with OpenAPI definition in '{path}' failed",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("verification with OpenAPI definition in '{path}' failed")]
+    VerificationFailed {
+        #[source]
+        source: VerifierError,
+        path: String,
+    },
 }
 
-custom_error! { pub VerifierError
-    OpenApiFileOpenFailed { source: io::Error } = "could not open OpenApi file",
-    OpenApiFileMalformed { source: serde_yaml::Error } = "OpenApi file malformed",
-    PathVerificationFailed { source: PathError, url: String } = "failed to validate URL '{url}'",
+#[derive(Debug, Error)]
+pub enum VerifierError {
+    #[error("could not open OpenApi file")]
+    OpenApiFileOpenFailed {
+        #[from]
+        source: io::Error,
+    },
+    #[error("OpenApi file malformed")]
+    OpenApiFileMalformed {
+        #[from]
+        source: serde_yaml::Error,
+    },
+    #[error("failed to validate URL '{url}'")]
+    PathVerificationFailed {
+        #[source]
+        source: PathError,
+        url: String,
+    },
 }
 
-custom_error! { pub PathError
-    NotFound = "path not found",
-    RefError { source: RefError } = "error while reading reference",
-    MethodVerificationFailed { source: MethodError, method: String }
-        = "failed to validate method '{method}'",
+#[derive(Debug, Error)]
+pub enum PathError {
+    #[error("path not found")]
+    NotFound,
+    #[error("error while reading reference")]
+    RefError {
+        #[from]
+        source: RefError,
+    },
+    #[error("failed to validate method '{method}'")]
+    MethodVerificationFailed {
+        #[source]
+        source: MethodError,
+        method: String,
+    },
 }
 
-custom_error! { pub MethodError
-    NotFound = "method not found",
-    RequestPathVerificationFailed { source: RequestPathError } = "failed to validate request path",
-    RequestBodyVerificationFailed { source: RequestBodyError } = "failed to validate request body",
+#[derive(Debug, Error)]
+pub enum MethodError {
+    #[error("method not found")]
+    NotFound,
+    #[error("failed to validate request path")]
+    RequestPathVerificationFailed {
+        #[from]
+        source: RequestPathError,
+    },
+    #[error("failed to validate request body")]
+    RequestBodyVerificationFailed {
+        #[from]
+        source: RequestBodyError,
+    },
 }
 
-custom_error! { pub RequestPathError
-    RefError { source: RefError } = "error while reading reference",
-    ParamNotFound { name: String } = "parameter '{name}' not found in request URL",
-    ParamsUndocumented { names: Vec<String> }
-        = @{format_args!("parameters {:?} undocumented", names)},
-    RequestPathValueVerificationFailed { source: RequestPathValueError, name: String }
-        = "failed to validate request path value for parameter '{name}'",
+#[derive(Debug, Error)]
+pub enum RequestPathError {
+    #[error("error while reading reference")]
+    RefError {
+        #[from]
+        source: RefError,
+    },
+    #[error("parameter '{name}' not found in request URL")]
+    ParamNotFound { name: String },
+    #[error("parameters {names:?} undocumented")]
+    ParamsUndocumented { names: Vec<String> },
+    #[error("failed to validate request path value for parameter '{name}'")]
+    RequestPathValueVerificationFailed {
+        #[source]
+        source: RequestPathValueError,
+        name: String,
+    },
 }
 
-custom_error! { pub RequestPathValueError
-    RefError { source: RefError } = "error while reading reference",
-    PathStyleUnsupported { style: PathStyle }
-        = @{format_args!("path style '{:?}' is not supported", style)},
-    ContentUnsupported = "content in path definition not supported",
-    SchemaInvalid { source: SchemaError } = "schema does not match path value",
+#[derive(Debug, Error)]
+pub enum RequestPathValueError {
+    #[error("error while reading reference")]
+    RefError {
+        #[from]
+        source: RefError,
+    },
+    #[error("path style '{style:?}' is not supported")]
+    PathStyleUnsupported { style: PathStyle },
+    #[error("content in path definition not supported")]
+    ContentUnsupported,
+    #[error("schema does not match path value")]
+    SchemaInvalid {
+        #[from]
+        source: SchemaError,
+    },
 }
 
-custom_error! { pub RequestBodyError
-    RefError { source: RefError } = "error while reading reference",
-    UnexpectedBody = "request should not have body",
-    ExpectedBody = "request should have a body",
-    MediaTypeVerificationFailed { source: RequestMediaTypeError, mime: &'static Mime }
-        = "failed to verify media type '{mime}'"
+#[derive(Debug, Error)]
+pub enum RequestBodyError {
+    #[error("error while reading reference")]
+    RefError {
+        #[from]
+        source: RefError,
+    },
+    #[error("request should not have body")]
+    UnexpectedBody,
+    #[error("request should have a body")]
+    ExpectedBody,
+    #[error("failed to verify media type '{mime}'")]
+    MediaTypeVerificationFailed {
+        #[source]
+        source: RequestMediaTypeError,
+        mime: &'static Mime,
+    },
 }
 
-custom_error! { pub RequestMediaTypeError
-    NotFound = "media type not found",
-    SchemaRefError { source: RefError } = "error while reading schema reference",
-    SchemaMissing = "schema is missing",
-    SchemaBinaryInvalid = "schema does not match binary blob",
-    SchemaJsonInvalid { source: SchemaError } = "failed to validate JSON with schema",
+#[derive(Debug, Error)]
+pub enum RequestMediaTypeError {
+    #[error("media type not found")]
+    NotFound,
+    #[error("error while reading schema reference")]
+    SchemaRefError {
+        #[from]
+        source: RefError,
+    },
+    #[error("schema is missing")]
+    SchemaMissing,
+    #[error("schema does not match binary blob")]
+    SchemaBinaryInvalid,
+    #[error("failed to validate JSON with schema")]
+    SchemaJsonInvalid {
+        #[from]
+        source: SchemaError,
+    },
 }
 
-custom_error! { pub SchemaError
-    SchemaSerializationFailed { source: serde_json::Error, filler: CustomErrorFiller }
-        = "schema serialization failed",
-    SchemaInvalid { source: ValicoError } = "schema is not valid",
-    SchemaNotSpecific = "only schemas with single specific type are supported",
-    SchemaNotPrimitive = "only schemas for primitive types are supported",
-    ValueNotValidPrimitive { source: serde_json::Error, filler: CustomErrorFiller }
-        = "value is not a valid primitive",
-    ValueNotValidJson { source: serde_json::Error, filler: CustomErrorFiller }
-        = "value is not a valid JSON",
-    ValueValidationFailed { report: ValidationState }
-        = @{format_args!("value does not match schema: {:?}", report)},
+#[derive(Debug, Error)]
+pub enum SchemaError {
+    #[error("schema serialization failed")]
+    SchemaSerializationFailed {
+        #[source]
+        source: serde_json::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("schema is not valid")]
+    SchemaInvalid {
+        #[from]
+        source: ValicoError,
+    },
+    #[error("only schemas with single specific type are supported")]
+    SchemaNotSpecific,
+    #[error("only schemas for primitive types are supported")]
+    SchemaNotPrimitive,
+    #[error("value is not a valid primitive")]
+    ValueNotValidPrimitive {
+        #[source]
+        source: serde_json::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("value is not a valid JSON")]
+    ValueNotValidJson {
+        #[source]
+        source: serde_json::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("value does not match schema: {report:?}")]
+    ValueValidationFailed { report: ValidationState },
 }
 
-custom_error! { pub RefError
-    NotSupported { reference: String }
-        = "references are not supported, found one pointing at '{reference}'",
+#[derive(Debug, Error)]
+pub enum RefError {
+    #[error("references are not supported, found one pointing at '{reference}'")]
+    NotSupported { reference: String },
 }
 
 impl OpenApiVerifier {

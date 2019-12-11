@@ -10,19 +10,36 @@ use crate::settings::{command_arguments::*, Block0Info};
 use jormungandr_lib::interfaces::Mempool;
 use slog::{FilterLevel, Logger};
 use std::{fs::File, path::PathBuf};
+use thiserror::Error;
 
 const DEFAULT_FILTER_LEVEL: FilterLevel = FilterLevel::Info;
 const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Plain;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 
-custom_error! {pub Error
-   ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
-   Config { source: serde_yaml::Error } = "Error while parsing the node configuration file: {source}",
-   Rest { source: RestError } = "The Rest configuration is invalid: {source}",
-   ExpectedBlock0Info = "Cannot start the node without the information to retrieve the genesis block",
-   TooMuchBlock0Info = "Use only `--genesis-block-hash' or `--genesis-block'",
-   ListenAddressNotValid = "In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Cannot read the node configuration file: {source}")]
+    ConfigIo {
+        #[from]
+        source: std::io::Error,
+    },
+    #[error("Error while parsing the node configuration file: {source}")]
+    Config {
+        #[from]
+        source: serde_yaml::Error,
+    },
+    #[error("The Rest configuration is invalid: {source}")]
+    Rest {
+        #[from]
+        source: RestError,
+    },
+    #[error("Cannot start the node without the information to retrieve the genesis block")]
+    ExpectedBlock0Info,
+    #[error("Use only `--genesis-block-hash' or `--genesis-block'")]
+    TooMuchBlock0Info,
+    #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]
+    ListenAddressNotValid,
 }
 
 /// Overall Settings for node

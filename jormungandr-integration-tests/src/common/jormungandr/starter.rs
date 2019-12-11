@@ -1,6 +1,3 @@
-extern crate custom_error;
-
-use self::custom_error::custom_error;
 use super::ConfigurationBuilder;
 use crate::common::{
     configuration::jormungandr_config::JormungandrConfig,
@@ -10,16 +7,25 @@ use crate::common::{
     process_assert,
     process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
-
 use std::{
     process::{Child, Command},
     time::{Duration, Instant},
 };
-custom_error! {pub StartupError
-    JormungandrNotLaunched{ source: ProcessError } = "could not start jormungandr due to process issue",
-    Timeout{ timeout: u64, log_content: String } = "node wasn't properly bootstrap after {timeout} s. Log file: {log_content}",
-    ErrorInLogsFound { log_content: String } = "error(s) in log detected: {log_content} ",
-    PortAlreadyInUse = "error(s) in log detected: port already in use "
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum StartupError {
+    #[error("could not start jormungandr due to process issue")]
+    JormungandrNotLaunched {
+        #[from]
+        source: ProcessError,
+    },
+    #[error("node wasn't properly bootstrap after {timeout} s. Log file: {log_content}")]
+    Timeout { timeout: u64, log_content: String },
+    #[error("error(s) in log detected: {log_content}")]
+    ErrorInLogsFound { log_content: String },
+    #[error("error(s) in log detected: port already in use")]
+    PortAlreadyInUse,
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;

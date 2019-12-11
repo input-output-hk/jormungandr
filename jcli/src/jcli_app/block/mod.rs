@@ -10,18 +10,56 @@ use jormungandr_lib::interfaces::{
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use thiserror::Error;
 
-custom_error! {pub Error
-    InputInvalid { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
-    OutputInvalid { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("invalid output file path '{}'", path.display()) }},
-    BlockFileCorrupted { source: std::io::Error, filler: CustomErrorFiller } = "block file corrupted",
-    GenesisFileCorrupted { source: serde_yaml::Error, filler: CustomErrorFiller } = "genesis file corrupted",
-    GeneratedBlock0Invalid { source: ledger::Error } = "generated block is not a valid genesis block",
-    BlockSerializationFailed { source: std::io::Error, filler: CustomErrorFiller } = "failed to serialize block",
-    GenesisSerializationFailed { source: serde_yaml::Error, filler: CustomErrorFiller } = "failed to serialize genesis",
-    BuildingGenesisFromBlock0Failed { source: Block0ConfigurationError } = "failed to build genesis from block 0",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("invalid input file path '{path}'")]
+    InputInvalid {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("invalid output file path '{path}'")]
+    OutputInvalid {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("block file corrupted")]
+    BlockFileCorrupted {
+        #[source]
+        source: std::io::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("genesis file corrupted")]
+    GenesisFileCorrupted {
+        #[source]
+        source: serde_yaml::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("generated block is not a valid genesis block")]
+    GeneratedBlock0Invalid {
+        #[from]
+        source: ledger::Error,
+    },
+    #[error("failed to serialize block")]
+    BlockSerializationFailed {
+        #[source]
+        source: std::io::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("failed to serialize genesis")]
+    GenesisSerializationFailed {
+        #[source]
+        source: serde_yaml::Error,
+        filler: CustomErrorFiller,
+    },
+    #[error("failed to build genesis from block 0")]
+    BuildingGenesisFromBlock0Failed {
+        #[from]
+        source: Block0ConfigurationError,
+    },
 }
 
 impl Genesis {

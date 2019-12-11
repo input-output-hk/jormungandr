@@ -4,6 +4,7 @@ use reqwest::{self, header::HeaderValue, Client, Request, RequestBuilder, Respon
 use serde::{self, Serialize};
 use serde_json::error::Error as SerdeJsonError;
 use std::fmt;
+use thiserror::Error;
 
 pub const DESERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
 
@@ -29,13 +30,30 @@ pub enum RestApiResponseBody {
     Binary(Vec<u8>),
 }
 
-custom_error! { pub Error
-    RequestFailed { source: reqwest::Error } = @{ reqwest_error_msg(source) },
-    VerificationFailed { source: open_api_verifier::Error } = "request didn't pass verification",
-    RequestJsonSerializationError { source: SerdeJsonError, filler: CustomErrorFiller }
-        = "failed to serialize request JSON",
-    ResponseJsonDeserializationError { source: SerdeJsonError, filler: CustomErrorFiller }
-        = "response JSON malformed",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("{}", reqwest_error_msg(source))]
+    RequestFailed {
+        #[from]
+        source: reqwest::Error,
+    },
+    #[error("request didn't pass verification")]
+    VerificationFailed {
+        #[from]
+        source: open_api_verifier::Error,
+    },
+    #[error("failed to serialize request JSON")]
+    RequestJsonSerializationError {
+        #[source]
+        source: SerdeJsonError,
+        filler: CustomErrorFiller,
+    },
+    #[error("response JSON malformed")]
+    ResponseJsonDeserializationError {
+        #[source]
+        source: SerdeJsonError,
+        filler: CustomErrorFiller,
+    },
 }
 
 fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
