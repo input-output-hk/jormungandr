@@ -1,8 +1,8 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, EpochStabilityDepth,
-        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, RewardParams, SlotDuration,
-        TaxType, Value,
+        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, PoolParticipationCapping,
+        RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -121,6 +121,10 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reward_parameters: Option<RewardParams>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "RewardConstraints::is_none")]
+    pub reward_constraints: RewardConstraints,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -172,6 +176,7 @@ impl BlockchainConfiguration {
             treasury_parameters: None,
             total_reward_supply: None,
             reward_parameters: None,
+            reward_constraints: RewardConstraints::default(),
         }
     }
 
@@ -197,6 +202,7 @@ impl BlockchainConfiguration {
         let mut reward_parameters = None;
         let mut per_certificate_fees = None;
         let mut fees_go_to = None;
+        let mut reward_constraints = RewardConstraints::default();
 
         for param in params.iter().cloned() {
             match param {
@@ -254,6 +260,17 @@ impl BlockchainConfiguration {
                 ConfigParam::RewardParams(param) => reward_parameters
                     .replace(param.into())
                     .map(|_| "reward_parameters"),
+                ConfigParam::RewardLimitNone => {
+                    panic!("ConfigParam::RewardLimitNone should not be in the block0")
+                }
+                ConfigParam::RewardLimitByAbsoluteStake(ratio) => reward_constraints
+                    .reward_drawing_limit_max
+                    .replace(ratio.into())
+                    .map(|_| "reward_constraints.reward_drawing_limit_max"),
+                ConfigParam::PoolRewardParticipationCapping((min, max)) => reward_constraints
+                    .pool_participation_capping
+                    .replace(PoolParticipationCapping { min, max })
+                    .map(|_| "reward_constraints.pool_participation_capping"),
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
                     .map(|_| "per_certificate_fees"),
@@ -290,6 +307,7 @@ impl BlockchainConfiguration {
             treasury_parameters,
             total_reward_supply,
             reward_parameters,
+            reward_constraints: reward_constraints,
         })
     }
 
@@ -311,6 +329,7 @@ impl BlockchainConfiguration {
             treasury_parameters,
             total_reward_supply,
             reward_parameters,
+            reward_constraints,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -356,6 +375,19 @@ impl BlockchainConfiguration {
 
         if let Some(reward_parameters) = reward_parameters {
             params.push(ConfigParam::RewardParams(reward_parameters.into()));
+        }
+
+        if let Some(reward_drawing_limit_max) = reward_constraints.reward_drawing_limit_max {
+            params.push(ConfigParam::RewardLimitByAbsoluteStake(
+                reward_drawing_limit_max.into(),
+            ));
+        }
+
+        if let Some(pool_participation_capping) = reward_constraints.pool_participation_capping {
+            params.push(ConfigParam::PoolRewardParticipationCapping((
+                pool_participation_capping.min,
+                pool_participation_capping.max,
+            )));
         }
 
         consensus_leader_ids
@@ -424,6 +456,7 @@ mod test {
                 treasury_parameters: Arbitrary::arbitrary(g),
                 total_reward_supply: Arbitrary::arbitrary(g),
                 reward_parameters: Arbitrary::arbitrary(g),
+                reward_constraints: Arbitrary::arbitrary(g),
             }
         }
     }
