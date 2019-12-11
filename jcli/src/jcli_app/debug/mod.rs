@@ -1,5 +1,5 @@
+mod block;
 mod message;
-
 use crate::jcli_app::utils::error::CustomErrorFiller;
 use hex::FromHexError;
 use std::path::PathBuf;
@@ -8,8 +8,10 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum Debug {
-    /// Decode hex-encoded message an display its content
+    /// Decode hex-encoded message and display its content
     Message(message::Message),
+    /// Decode hex-encoded block and display its content
+    Block(block::Block),
 }
 
 custom_error! {pub Error
@@ -24,6 +26,7 @@ impl Debug {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Debug::Message(message) => message.exec(),
+            Debug::Block(block) => block.exec(),
         }
     }
 }
