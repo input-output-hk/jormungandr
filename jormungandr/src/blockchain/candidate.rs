@@ -70,6 +70,7 @@ struct Candidate {
 enum CandidateData {
     Header(Header),
     Block(Block),
+    Applied(Header),
 }
 
 impl Candidate {
@@ -87,11 +88,27 @@ impl Candidate {
         }
     }
 
-    fn has_only_header(&self) -> bool {
+    fn applied(header: Header) -> Self {
+        Candidate {
+            data: CandidateData::Applied(header),
+            children: Vec::new(),
+        }
+    }
+
+    fn has_block(&self) -> bool {
         use self::CandidateData::*;
         match self.data {
-            Header(_) => true,
-            Block(_) => false,
+            Header(_) => false,
+            Block(_) => true,
+            Applied(_) => false,
+        }
+    }
+
+    fn is_applied(&self) -> bool {
+        use self::CandidateData::*;
+        match self.data {
+            Applied(_) => true,
+            _ => false,
         }
     }
 
@@ -101,6 +118,7 @@ impl Candidate {
         match &self.data {
             Header(header) => header.clone(),
             Block(block) => block.header(),
+            Applied(header) => header.clone(),
         }
     }
 }
@@ -122,8 +140,7 @@ mod chain_landing {
     where
         S: Stream<Item = Header, Error = Error>,
     {
-        /// Read the first header from the stream and check that its parent
-        /// exists in storage.
+        /// Read the first header from the stream.
         /// Return a future that resolves to a state object.
         /// This method starts the sequence of processing a header chain.
         pub fn start(stream: S, blockchain: Blockchain) -> impl Future<Item = Self, Error = Error> {
@@ -241,13 +258,37 @@ impl ChainAdvance {
                     // when that can pre-validate headers without
                     // up-to-date ledger.
                     chain::pre_verify_link(&header, &parent_candidate.header())?;
-                    debug_assert!(!parent_candidate.children.contains(&block_hash));
-                    parent_candidate.children.push(block_hash);
-                    forest
-                        .candidate_map
-                        .insert(block_hash, Candidate::from_header(header));
-                    debug!(self.logger, "will fetch block"; "hash" => %block_hash);
-                    self.new_hashes.push(block_hash);
+                    if parent_candidate.is_applied() {
+                        // The parent block has been committed to storage
+                        // before this header was received.
+                        // Drop the block hashes collected for fetching so far
+                        // and try to re-land the chain.
+                        self.new_hashes.clear();
+                        let (_, is_new) = forest.add_or_refresh_root(header);
+                        debug!(
+                            self.logger,
+                            "re-landed the header chain, {}",
+                            if is_new { "new root" } else { "existing root" };
+                            "hash" => %block_hash,
+                            "parent" => %parent_hash,
+                        );
+                        if is_new {
+                            self.new_hashes.push(block_hash);
+                        }
+                    } else {
+                        debug_assert!(!parent_candidate.children.contains(&block_hash));
+                        parent_candidate.children.push(block_hash);
+                        forest
+                            .candidate_map
+                            .insert(block_hash, Candidate::from_header(header));
+                        debug!(
+                            self.logger,
+                            "adding block to fetch";
+                            "hash" => %block_hash,
+                            "parent" => %parent_hash,
+                        );
+                        self.new_hashes.push(block_hash);
+                    }
                 }
                 self.parent_hash = block_hash;
                 Ok(().into())
@@ -307,8 +348,8 @@ impl CandidateForest {
             .and_then(move |state| state.skip_present_blocks())
             .and_then(move |maybe_new| match maybe_new {
                 Some((header, stream)) => {
-                    // We have got a header that is not in storage, but its
-                    // parent is.
+                    // We have got a header that may not be in storage yet,
+                    // but its parent is.
                     // Find an existing root or create a new one.
                     let fut = future::poll_fn(move || Ok(inner.poll_lock())).and_then(
                         move |mut forest| {
@@ -393,6 +434,9 @@ impl CandidateForest {
                         debug_assert!(block.header().hash() == block_hash);
                         Ok(())
                     }
+                    CandidateData::Applied(_) => {
+                        panic!("caching block {} which is already in storage", block_hash)
+                    }
                 },
                 Vacant(_) => Err(chain::ErrorKind::BlockNotRequested(block_hash).into()),
             }
@@ -439,15 +483,20 @@ impl CandidateForestThickets {
                 let _old = self
                     .candidate_map
                     .insert(root_hash, Candidate::from_header(header));
-                debug_assert!(_old.is_none());
+                debug_assert!(
+                    _old.is_none(),
+                    "chain pull root candidate {} was previously cached",
+                    root_hash,
+                );
                 true
             }
             Occupied(entry) => {
                 debug_assert!(
-                    self.candidate_map
+                    !self
+                        .candidate_map
                         .get(&root_hash)
                         .expect("chain pull root candidate should be in the map")
-                        .has_only_header(),
+                        .has_block(),
                     "a chain pull root candidate should not cache a block",
                 );
                 self.expirations
@@ -458,16 +507,15 @@ impl CandidateForestThickets {
         (root_hash, is_new)
     }
 
-    fn remove_root(&mut self, root_hash: &HeaderHash) -> bool {
-        match self.roots.remove(&root_hash) {
-            Some(root_data) => {
-                self.expirations.remove(&root_data.expiration_key);
-                true
+    fn apply_candidate(&mut self, block_hash: HeaderHash) -> Candidate {
+        use std::collections::hash_map::Entry::*;
+
+        match self.candidate_map.entry(block_hash) {
+            Occupied(mut entry) => {
+                let header = entry.get().header();
+                entry.insert(Candidate::applied(header))
             }
-            None => {
-                assert!(!self.candidate_map.contains_key(&root_hash));
-                false
-            }
+            Vacant(_) => panic!("referential integrity failure in CandidateForest"),
         }
     }
 
@@ -475,19 +523,16 @@ impl CandidateForestThickets {
         use std::collections::hash_map::Entry::*;
 
         let mut block_avalanche = Vec::new();
-        if self.remove_root(&block_hash) {
-            let candidate = self
-                .candidate_map
-                .remove(&block_hash)
-                .expect("referential integrity failure in CandidateForest");
+        if self.roots.contains_key(&block_hash) {
+            let candidate = self.apply_candidate(block_hash);
             debug_assert!(
-                candidate.has_only_header(),
+                !candidate.has_block(),
                 "a chain pull root candidate should not cache a block",
             );
             let mut child_hashes = candidate.children;
             while let Some(child_hash) = child_hashes.pop() {
                 match self.candidate_map.entry(child_hash) {
-                    Occupied(entry) => match &entry.get().data {
+                    Occupied(mut entry) => match &entry.get().data {
                         CandidateData::Header(_header) => {
                             debug_assert_eq!(child_hash, _header.hash());
                             // Bump this one down to become a new root
@@ -495,16 +540,20 @@ impl CandidateForestThickets {
                             let _old = self.roots.insert(child_hash, root_data);
                             debug_assert!(_old.is_none());
                         }
-                        CandidateData::Block(_block) => {
-                            debug_assert_eq!(child_hash, _block.header().hash());
+                        CandidateData::Block(block) => {
+                            let header = block.header();
+                            debug_assert_eq!(child_hash, header.hash());
                             // Extract the block and descend to children
-                            let candidate = entry.remove();
+                            let candidate = entry.insert(Candidate::applied(header));
                             if let CandidateData::Block(block) = candidate.data {
                                 block_avalanche.push(block);
                             } else {
                                 unsafe { unreachable_unchecked() }
                             }
                             child_hashes.extend(candidate.children);
+                        }
+                        CandidateData::Applied(_) => {
+                            // Some other pull task has done it already
                         }
                     },
                     Vacant(_) => panic!("referential integrity failure in CandidateForest"),
@@ -513,7 +562,8 @@ impl CandidateForestThickets {
         } else {
             assert!(
                 !self.candidate_map.contains_key(&block_hash),
-                "missed when a chain pull root candidate got committed to storage",
+                "missed chain pull root candidate {} that got committed to storage",
+                block_hash,
             );
         }
         block_avalanche
@@ -522,7 +572,7 @@ impl CandidateForestThickets {
     // Removes the root from, then walks up the tree and
     // removes all the descendant candidates.
     fn expunge_root(&mut self, root_hash: HeaderHash) {
-        self.remove_root(&root_hash);
+        self.roots.remove(&root_hash);
         let mut hashes = vec![root_hash];
         while let Some(hash) = hashes.pop() {
             let candidate = self
