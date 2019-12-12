@@ -129,7 +129,7 @@ impl Process {
                     "date" => header.block_date().to_string(),
                     "from_node_id" => node_id.to_string()));
 
-                info!(logger, "receiving block announcement from network");
+                info!(logger, "received block announcement from network");
 
                 let future = process_block_announcement(
                     blockchain.clone(),
@@ -413,7 +413,7 @@ pub fn process_leadership_block(
         })
 }
 
-pub fn process_block_announcement(
+fn process_block_announcement(
     mut blockchain: Blockchain,
     blockchain_tip: Tip,
     header: Header,
