@@ -22,8 +22,7 @@ impl Message {
         let mut hex_str = String::new();
         BufReader::new(reader).read_line(&mut hex_str)?;
         let bytes = hex::decode(hex_str.trim())?;
-        let message = MockFragment::deserialize(bytes.as_ref())
-            .map_err(|source| Error::MessageMalformed { source })?;
+        let message = MockFragment::deserialize(bytes.as_ref()).map_err(Error::MessageMalformed)?;
         println!("{:#?}", message);
         Ok(())
     }

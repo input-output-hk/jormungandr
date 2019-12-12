@@ -6,17 +6,11 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum TransactionWitnessFromStrError {
     #[error("Invalid bech32 encoding")]
-    Bech32 {
-        #[from]
-        source: bech32::Error,
-    },
+    Bech32(#[from] bech32::Error),
     #[error("Invalid prefix, expected '{expected}' but received '{got}'")]
     InvalidHrp { expected: String, got: String },
     #[error("Invalid encoding")]
-    Invalid {
-        #[from]
-        source: chain_core::mempack::ReadError,
-    },
+    Invalid(#[from] chain_core::mempack::ReadError),
 }
 
 const HRP: &'static str = "witness";

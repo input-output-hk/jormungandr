@@ -19,15 +19,9 @@ pub(crate) use self::sign::{pool_owner_sign, stake_delegation_account_binding_si
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("invalid private key")]
-    KeyInvalid {
-        #[from]
-        source: key_parser::Error,
-    },
+    KeyInvalid(#[from] key_parser::Error),
     #[error("I/O Error")]
-    Io {
-        #[from]
-        source: std::io::Error,
-    },
+    Io(#[from] std::io::Error),
     #[error("invalid certificate, expecting a stake pool registration")]
     NotStakePoolRegistration,
     #[error("invalid input file path '{path}'")]
@@ -43,10 +37,7 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("Invalid certificate")]
-    InvalidCertificate {
-        #[from]
-        source: CertificateFromStrError,
-    },
+    InvalidCertificate(#[from] CertificateFromStrError),
     #[error("invalid management_threshold value, expected between at least 1 and {max_expected} but got {got}")]
     ManagementThresholdInvalid { got: usize, max_expected: usize },
     #[error("No signing keys specified (use -k or --key to specify)")]
@@ -60,10 +51,7 @@ pub enum Error {
     #[error("Invalid input, expected Signed Certificate or just Certificate")]
     ExpectedSignedOrNotCertificate,
     #[error("Invalid data")]
-    InvalidBech32 {
-        #[from]
-        source: bech32::Error,
-    },
+    InvalidBech32(#[from] bech32::Error),
     #[error("attempted to build delegation with zero weight")]
     PoolDelegationWithZeroWeight,
     #[error("pool delegation rates sum up to {actual}, maximum is 255")]

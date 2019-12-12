@@ -17,10 +17,7 @@ pub enum Debug {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("I/O Error")]
-    Io {
-        #[from]
-        source: std::io::Error,
-    },
+    Io(#[from] std::io::Error),
     #[error("invalid input file path '{path}'")]
     InputInvalid {
         #[source]
@@ -28,15 +25,9 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("hex encoding malformed")]
-    HexMalformed {
-        #[from]
-        source: FromHexError,
-    },
+    HexMalformed(#[from] FromHexError),
     #[error("message malformed")]
-    MessageMalformed {
-        #[source]
-        source: std::io::Error,
-    },
+    MessageMalformed(#[source] std::io::Error),
 }
 
 impl Debug {

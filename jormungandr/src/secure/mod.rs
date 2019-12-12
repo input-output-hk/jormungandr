@@ -58,16 +58,10 @@ pub struct NodePublic {
 
 #[derive(Debug, Error)]
 pub enum NodeSecretFromFileError {
-    #[error("Cannot read node's secrets: {source}")]
-    Io {
-        #[from]
-        source: std::io::Error,
-    },
-    #[error("Invalid Node secret file: {source}")]
-    Format {
-        #[from]
-        source: serde_yaml::Error,
-    },
+    #[error("Cannot read node's secrets: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Invalid Node secret file: {0}")]
+    Format(#[from] serde_yaml::Error),
 }
 
 impl NodeSecret {

@@ -23,16 +23,10 @@ pub type HeaderHash = HeaderId;
 
 #[derive(Debug, Error)]
 pub enum Block0Error {
-    #[error("Block0 Initial settings: {source}")]
-    CannotParseEntity {
-        #[from]
-        source: config::Error,
-    },
-    #[error("Block0 is invalid or malformed: {source}")]
-    Malformed {
-        #[from]
-        source: Block0Malformed,
-    },
+    #[error("Block0 Initial settings: {0}")]
+    CannotParseEntity(#[from] config::Error),
+    #[error("Block0 is invalid or malformed: {0}")]
+    Malformed(#[from] Block0Malformed),
 }
 
 #[derive(Debug, Error)]

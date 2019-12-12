@@ -83,11 +83,8 @@ pub enum Error {
         source: bincode::ErrorKind,
         path: PathBuf,
     },
-    #[error("could not process secret file '{source}'")]
-    SecretFileFailed {
-        #[from]
-        source: key_parser::Error,
-    },
+    #[error("could not process secret file '{0}'")]
+    SecretFileFailed(#[from] key_parser::Error),
     /*
     SecretFileReadFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read secret file '{}'", path.display()) }},
@@ -119,10 +116,7 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("failed to encode witness as bech32")]
-    WitnessFileBech32EncodingFailed {
-        #[from]
-        source: bech32::Error,
-    },
+    WitnessFileBech32EncodingFailed(#[from] bech32::Error),
     #[error("could not parse data in witness file '{path}'")]
     WitnessFileDeserializationFailed {
         #[source]
@@ -130,10 +124,7 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("could not serialize witness data")]
-    WitnessFileSerializationFailed {
-        #[source]
-        source: std::io::Error,
-    },
+    WitnessFileSerializationFailed(#[source] std::io::Error),
     #[error("could not write info file '{path}'")]
     InfoFileWriteFailed {
         #[source]
@@ -141,10 +132,7 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("formatting output failed")]
-    OutputFormatFailed {
-        #[from]
-        source: output_format::Error,
-    },
+    OutputFormatFailed(#[from] output_format::Error),
 
     #[error("adding certificate to {kind} transaction is not valid")]
     TxKindToAddExtraInvalid { kind: StagingKind },
@@ -176,22 +164,13 @@ pub enum Error {
     #[error("generated transaction building failed")]
     GeneratedTxBuildingFailed,
     #[error("transaction finalization failed")]
-    TxFinalizationFailed {
-        #[from]
-        source: chain::transaction::Error,
-    },
+    TxFinalizationFailed(#[from] chain::transaction::Error),
     #[error("unexpected generated transaction type")]
     GeneratedTxTypeUnexpected,
     #[error("serialization of message to bytes failed")]
-    MessageSerializationFailed {
-        #[source]
-        source: std::io::Error,
-    },
+    MessageSerializationFailed(#[source] std::io::Error),
     #[error("calculation of info failed")]
-    InfoCalculationFailed {
-        #[from]
-        source: chain::value::ValueError,
-    },
+    InfoCalculationFailed(#[from] chain::value::ValueError),
     #[error("fee calculation failed")]
     FeeCalculationFailed,
     #[error("expected a single account, multisig is not supported yet")]
@@ -270,7 +249,7 @@ fn display_message(common: common::CommonTransaction) -> Result<(), Error> {
     let message = common.load()?.fragment()?;
     let bytes: Vec<u8> = message
         .serialize_as_vec()
-        .map_err(|source| Error::MessageSerializationFailed { source })?;
+        .map_err(Error::MessageSerializationFailed)?;
     println!("{}", hex::encode(&bytes));
     Ok(())
 }

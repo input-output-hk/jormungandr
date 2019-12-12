@@ -19,21 +19,12 @@ const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Cannot read the node configuration file: {source}")]
-    ConfigIo {
-        #[from]
-        source: std::io::Error,
-    },
-    #[error("Error while parsing the node configuration file: {source}")]
-    Config {
-        #[from]
-        source: serde_yaml::Error,
-    },
-    #[error("The Rest configuration is invalid: {source}")]
-    Rest {
-        #[from]
-        source: RestError,
-    },
+    #[error("Cannot read the node configuration file: {0}")]
+    ConfigIo(#[from] std::io::Error),
+    #[error("Error while parsing the node configuration file: {0}")]
+    Config(#[from] serde_yaml::Error),
+    #[error("The Rest configuration is invalid: {0}")]
+    Rest(#[from] RestError),
     #[error("Cannot start the node without the information to retrieve the genesis block")]
     ExpectedBlock0Info,
     #[error("Use only `--genesis-block-hash' or `--genesis-block'")]

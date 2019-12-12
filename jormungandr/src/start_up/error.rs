@@ -19,15 +19,9 @@ pub enum ErrorKind {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Unable to initialize the logger")]
-    LoggingInitializationError {
-        #[from]
-        source: logging::Error,
-    },
+    LoggingInitializationError(#[from] logging::Error),
     #[error("Error in the overall configuration of the node")]
-    ConfigurationError {
-        #[from]
-        source: settings::Error,
-    },
+    ConfigurationError(#[from] settings::Error),
     #[error("I/O Error with {reason}")]
     IO {
         #[source]
@@ -41,49 +35,25 @@ pub enum Error {
         reason: ErrorKind,
     },
     #[error("Storage error")]
-    StorageError {
-        #[from]
-        source: StorageError,
-    },
+    StorageError(#[from] StorageError),
     #[error("Error while loading the legacy blockchain state")]
-    Blockchain {
-        #[from]
-        source: blockchain::Error,
-    },
+    Blockchain(#[from] blockchain::Error),
     #[error("Error in the genesis-block")]
-    Block0 {
-        #[from]
-        source: blockcfg::Block0Error,
-    },
+    Block0(#[from] blockcfg::Block0Error),
     #[error("Error fetching the genesis block from the network")]
-    FetchBlock0 {
-        #[from]
-        source: network::FetchBlockError,
-    },
+    FetchBlock0(#[from] network::FetchBlockError),
     #[error("Error while loading the blockchain from the network")]
-    NetworkBootstrapError {
-        #[from]
-        source: network::BootstrapError,
-    },
+    NetworkBootstrapError(#[from] network::BootstrapError),
     #[error("Error while loading the node's secrets.")]
-    NodeSecrets {
-        #[from]
-        source: secure::NodeSecretFromFileError,
-    },
+    NodeSecrets(#[from] secure::NodeSecretFromFileError),
     #[error("Block 0 is set to start in the future")]
     Block0InFuture,
     #[error("Error while loading the explorer from storage")]
-    ExplorerBootstrapError {
-        #[from]
-        source: explorer::error::Error,
-    },
+    ExplorerBootstrapError(#[from] explorer::error::Error),
     #[error("A service has terminated with an error")]
     ServiceTerminatedWithError,
-    #[error("Unable to get system limits: {source}")]
-    DiagnosticError {
-        #[from]
-        source: DiagnosticError,
-    },
+    #[error("Unable to get system limits: {0}")]
+    DiagnosticError(#[from] DiagnosticError),
 }
 
 impl Error {

@@ -19,11 +19,8 @@ pub enum Error {
         source: bech32::Error,
         path: PathBuf,
     },
-    #[error("could not decode secretkey: {source}")]
-    SecretKeyMalformed {
-        #[from]
-        source: bech32::Error,
-    },
+    #[error("could not decode secretkey: {0}")]
+    SecretKeyMalformed(#[from] bech32::Error),
 }
 
 pub fn parse_pub_key<A: AsymmetricPublicKey>(
@@ -71,6 +68,6 @@ pub fn parse_ed25519_secret_key(bech32_str: &str) -> Result<EitherEd25519SecretK
         Ok(sk) => Ok(EitherEd25519SecretKey::Extended(sk)),
         Err(_) => SecretKey::try_from_bech32_str(&bech32_str)
             .map(|sk| EitherEd25519SecretKey::Normal(sk))
-            .map_err(|source| Error::SecretKeyMalformed { source }),
+            .map_err(Error::SecretKeyMalformed),
     }
 }

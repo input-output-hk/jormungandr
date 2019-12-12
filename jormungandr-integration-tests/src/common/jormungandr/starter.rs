@@ -16,10 +16,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum StartupError {
     #[error("could not start jormungandr due to process issue")]
-    JormungandrNotLaunched {
-        #[from]
-        source: ProcessError,
-    },
+    JormungandrNotLaunched(#[from] ProcessError),
     #[error("node wasn't properly bootstrap after {timeout} s. Log file: {log_content}")]
     Timeout { timeout: u64, log_content: String },
     #[error("error(s) in log detected: {log_content}")]

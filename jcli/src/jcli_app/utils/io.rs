@@ -54,15 +54,9 @@ pub fn read_line<P: AsRef<Path>>(path: &Option<P>) -> Result<String, Error> {
 #[derive(Debug, Error)]
 pub enum ReadYamlError {
     #[error("could not read input")]
-    Io {
-        #[from]
-        source: Error,
-    },
+    Io(#[from] Error),
     #[error("input contains malformed yaml")]
-    Yaml {
-        #[from]
-        source: serde_yaml::Error,
-    },
+    Yaml(#[from] serde_yaml::Error),
 }
 
 pub fn read_yaml<D: DeserializeOwned>(path: &Option<impl AsRef<Path>>) -> Result<D, ReadYamlError> {

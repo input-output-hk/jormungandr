@@ -19,40 +19,19 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("I/O error")]
-    Io {
-        #[from]
-        source: std::io::Error,
-    },
+    Io(#[from] std::io::Error),
     #[error("invalid Bech32")]
-    Bech32 {
-        #[from]
-        source: bech32::Error,
-    },
+    Bech32(#[from] bech32::Error),
     #[error("invalid Hexadecimal")]
-    Hex {
-        #[from]
-        source: FromHexError,
-    },
+    Hex(#[from] FromHexError),
     #[error("invalid secret key")]
-    SecretKey {
-        #[from]
-        source: chain_crypto::SecretKeyError,
-    },
+    SecretKey(#[from] chain_crypto::SecretKeyError),
     #[error("invalid public key")]
-    PublicKey {
-        #[from]
-        source: chain_crypto::PublicKeyError,
-    },
+    PublicKey(#[from] chain_crypto::PublicKeyError),
     #[error("invalid signature")]
-    Signature {
-        #[from]
-        source: chain_crypto::SignatureError,
-    },
+    Signature(#[from] chain_crypto::SignatureError),
     #[error("error while using random source")]
-    Rand {
-        #[from]
-        source: rand::Error,
-    },
+    Rand(#[from] rand::Error),
     #[error("invalid seed length, expected 32 bytes but received {seed_len}")]
     InvalidSeed { seed_len: usize },
     #[error("invalid input file path '{path}'")]
@@ -79,10 +58,7 @@ pub enum Error {
     #[error("signature verification failed")]
     SignatureVerification,
     #[error("failed to derive from BIP32 public key")]
-    Derivation {
-        #[from]
-        source: DerivationError,
-    },
+    Derivation(#[from] DerivationError),
     #[error("ed25519bip32 key expected, signature bech32 has invalid HRP: '{actual_hrp}', expected: '{public_hrp}' or '{private_hrp}'")]
     UnexpectedBip32Bech32Hrp {
         actual_hrp: String,

@@ -27,35 +27,17 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("block file corrupted")]
-    BlockFileCorrupted {
-        #[source]
-        source: std::io::Error,
-    },
+    BlockFileCorrupted(#[source] std::io::Error),
     #[error("genesis file corrupted")]
-    GenesisFileCorrupted {
-        #[source]
-        source: serde_yaml::Error,
-    },
+    GenesisFileCorrupted(#[source] serde_yaml::Error),
     #[error("generated block is not a valid genesis block")]
-    GeneratedBlock0Invalid {
-        #[from]
-        source: ledger::Error,
-    },
+    GeneratedBlock0Invali(#[from] ledger::Error),
     #[error("failed to serialize block")]
-    BlockSerializationFailed {
-        #[source]
-        source: std::io::Error,
-    },
+    BlockSerializationFailed(#[source] std::io::Error),
     #[error("failed to serialize genesis")]
-    GenesisSerializationFailed {
-        #[source]
-        source: serde_yaml::Error,
-    },
+    GenesisSerializationFailed(#[source] serde_yaml::Error),
     #[error("failed to build genesis from block 0")]
-    BuildingGenesisFromBlock0Failed {
-        #[from]
-        source: Block0ConfigurationError,
-    },
+    BuildingGenesisFromBlock0Failed(#[from] Block0ConfigurationError),
 }
 
 impl Genesis {
@@ -77,19 +59,18 @@ fn init_genesis_yaml() -> Result<(), Error> {
 fn encode_block_0(common: Common) -> Result<(), Error> {
     let reader = common.input.open()?;
     let genesis: Block0Configuration =
-        serde_yaml::from_reader(reader).map_err(|source| Error::GenesisFileCorrupted { source })?;
+        serde_yaml::from_reader(reader).map_err(Error::GenesisFileCorrupted)?;
     let block = genesis.to_block();
     Ledger::new(block.id(), block.fragments())?;
     block
         .serialize(common.open_output()?)
-        .map_err(|source| Error::BlockSerializationFailed { source })
+        .map_err(Error::BlockSerializationFailed)
 }
 
 fn decode_block_0(common: Common) -> Result<(), Error> {
     let block = common.input.load_block()?;
     let yaml = Block0Configuration::from_block(&block)?;
-    serde_yaml::to_writer(common.open_output()?, &yaml)
-        .map_err(|source| Error::GenesisSerializationFailed { source })
+    serde_yaml::to_writer(common.open_output()?, &yaml).map_err(Error::GenesisSerializationFailed)
 }
 
 fn print_hash(input: Input) -> Result<(), Error> {
@@ -138,7 +119,7 @@ impl Input {
 
     fn load_block(&self) -> Result<Block, Error> {
         let reader = self.open()?;
-        Block::deserialize(reader).map_err(|source| Error::BlockFileCorrupted { source })
+        Block::deserialize(reader).map_err(Error::BlockFileCorrupted)
     }
 }
 

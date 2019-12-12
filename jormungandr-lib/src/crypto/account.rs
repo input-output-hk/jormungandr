@@ -62,16 +62,10 @@ pub struct SigningKey(EitherEd25519SecretKey);
 
 #[derive(Debug, Error)]
 pub enum SigningKeyParseError {
-    #[error("Invalid bech32: {source}")]
-    InvalidBech32Encoding {
-        #[from]
-        source: bech32::Error,
-    },
-    #[error("Invalid secret key: {source}")]
-    InvalidSecretKey {
-        #[from]
-        source: chain_crypto::bech32::Error,
-    },
+    #[error("Invalid bech32: {0}")]
+    InvalidBech32Encoding(#[from] bech32::Error),
+    #[error("Invalid secret key: {0}")]
+    InvalidSecretKey(#[from] chain_crypto::bech32::Error),
     #[error("Unexpected key '{hrp}'. Expected either ed25519 or ed25519extended")]
     UnexpectedHRP { hrp: String },
 }

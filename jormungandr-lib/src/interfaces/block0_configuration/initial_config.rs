@@ -143,35 +143,21 @@ pub enum FromConfigParamsError {
     #[error("initial message contains duplicate parameter {name}")]
     InitConfigParamDuplicate { name: StaticStr },
     #[error("Invalid number of slots per epoch")]
-    NumberOfSlotsPerEpoch {
-        #[from]
-        source: super::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError,
-    },
+    NumberOfSlotsPerEpoch(
+        #[from] super::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError,
+    ),
     #[error("Invalid slot duration value")]
-    SlotDuration {
-        #[from]
-        source: super::slots_duration::TryFromSlotDurationError,
-    },
+    SlotDuration(#[from] super::slots_duration::TryFromSlotDurationError),
     #[error("Invalid consensus leader id")]
-    ConsensusLeaderId {
-        #[from]
-        source: super::leader_id::TryFromConsensusLeaderIdError,
-    },
+    ConsensusLeaderId(#[from] super::leader_id::TryFromConsensusLeaderIdError),
     #[error("Invalid active slot coefficient value")]
-    ActiveSlotCoefficient {
-        #[from]
-        source: super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
-    },
+    ActiveSlotCoefficient(
+        #[from] super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
+    ),
     #[error("Invalid KES Update speed value")]
-    KESUpdateSpeed {
-        #[from]
-        source: super::kes_update_speed::TryFromKESUpdateSpeedError,
-    },
+    KESUpdateSpeed(#[from] super::kes_update_speed::TryFromKESUpdateSpeedError),
     #[error("Invalid FeesGoTo setting")]
-    FeesGoTo {
-        #[from]
-        source: super::fees_go_to::TryFromFeesGoToError,
-    },
+    FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {

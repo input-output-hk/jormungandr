@@ -58,15 +58,9 @@ pub enum Block0ConfigurationError {
     #[error("Invalid block, expecting the first block fragment to be an special Init fragment")]
     FirstBlock0MessageNotInit,
     #[error("blockchain configuration is invalid")]
-    BlockchainConfiguration {
-        #[from]
-        source: initial_config::FromConfigParamsError,
-    },
+    BlockchainConfiguration(#[from] initial_config::FromConfigParamsError),
     #[error("Invalid fragments")]
-    InitialFragments {
-        #[from]
-        source: initial_fragment::Error,
-    },
+    InitialFragments(#[from] initial_fragment::Error),
 }
 
 impl Block0Configuration {

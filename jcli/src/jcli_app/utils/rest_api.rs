@@ -32,26 +32,19 @@ pub enum RestApiResponseBody {
 
 #[derive(Debug, Error)]
 pub enum Error {
+    // `source` is named because we need to pass it to `reqwest_error_msg`.
+    // `reqwest_error_msg(0)` is not possible.
     #[error("{}", reqwest_error_msg(source))]
     RequestFailed {
         #[from]
         source: reqwest::Error,
     },
     #[error("request didn't pass verification")]
-    VerificationFailed {
-        #[from]
-        source: open_api_verifier::Error,
-    },
+    VerificationFailed(#[from] open_api_verifier::Error),
     #[error("failed to serialize request JSON")]
-    RequestJsonSerializationError {
-        #[source]
-        source: SerdeJsonError,
-    },
+    RequestJsonSerializationError(#[source] SerdeJsonError),
     #[error("response JSON malformed")]
-    ResponseJsonDeserializationError {
-        #[source]
-        source: SerdeJsonError,
-    },
+    ResponseJsonDeserializationError(#[source] SerdeJsonError),
 }
 
 fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
@@ -135,8 +128,7 @@ impl RestApiRequestBody {
     }
 
     fn try_from_json(data: impl Serialize) -> Result<Self, Error> {
-        let json = serde_json::to_string(&data)
-            .map_err(|source| Error::RequestJsonSerializationError { source })?;
+        let json = serde_json::to_string(&data).map_err(Error::RequestJsonSerializationError)?;
         Ok(RestApiRequestBody::Json(json))
     }
 
@@ -213,7 +205,7 @@ impl RestApiResponseBody {
             RestApiResponseBody::Text(text) => serde_json::from_str(text),
             RestApiResponseBody::Binary(binary) => serde_json::from_slice(binary),
         }
-        .map_err(|source| Error::ResponseJsonDeserializationError { source })
+        .map_err(Error::ResponseJsonDeserializationError)
     }
 
     pub fn json_value(&self) -> Result<serde_json::Value, Error> {

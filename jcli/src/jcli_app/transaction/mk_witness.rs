@@ -99,7 +99,7 @@ impl MkWitness {
             })?;
         let bytes = witness
             .serialize_as_vec()
-            .map_err(|source| Error::WitnessFileSerializationFailed { source })?;
+            .map_err(Error::WitnessFileSerializationFailed)?;
 
         let base32 = bytes.to_base32();
         let bech32 = Bech32::new("witness".to_owned(), base32)?;

@@ -187,15 +187,9 @@ impl Readable for SignedCertificate {
 #[derive(Debug, Error)]
 pub enum CertificateToBech32Error {
     #[error("Cannot serialize the Certificate")]
-    Io {
-        #[from]
-        source: std::io::Error,
-    },
+    Io(#[from] std::io::Error),
     #[error("Cannot create new Bech32")]
-    Bech32 {
-        #[from]
-        source: bech32::Error,
-    },
+    Bech32(#[from] bech32::Error),
 }
 
 #[derive(Debug, Error)]
@@ -203,29 +197,17 @@ pub enum CertificateFromBech32Error {
     #[error("Invalid prefix, expected {expected} but read {actual}")]
     InvalidHRP { expected: String, actual: String },
     #[error("invalid base32")]
-    InvalidBase32 {
-        #[from]
-        source: bech32::Error,
-    },
+    InvalidBase32(#[from] bech32::Error),
     #[error("Invalid certificate")]
-    InvalidCertificate {
-        #[from]
-        source: chain_core::mempack::ReadError,
-    },
+    InvalidCertificate(#[from] chain_core::mempack::ReadError),
 }
 
 #[derive(Debug, Error)]
 pub enum CertificateFromStrError {
     #[error("Invalid certificate")]
-    InvalidCertificate {
-        #[from]
-        source: CertificateFromBech32Error,
-    },
+    InvalidCertificate(#[from] CertificateFromBech32Error),
     #[error("expected certificate in bech32")]
-    InvalidBech32 {
-        #[from]
-        source: bech32::Error,
-    },
+    InvalidBech32(#[from] bech32::Error),
 }
 
 impl Certificate {

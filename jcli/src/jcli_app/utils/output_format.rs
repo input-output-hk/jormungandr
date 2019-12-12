@@ -32,20 +32,11 @@ impl<'a> From<&'a str> for FormatVariant {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("failed to format output as YAML")]
-    YamlFormattingFailed {
-        #[from]
-        source: serde_yaml::Error,
-    },
+    YamlFormattingFailed(#[from] serde_yaml::Error),
     #[error("failed to format output as JSON")]
-    JsonFormattingFailed {
-        #[from]
-        source: serde_json::Error,
-    },
+    JsonFormattingFailed(#[from] serde_json::Error),
     #[error("failed to format output as custom format")]
-    CustomFormattingFailed {
-        #[from]
-        source: GtmplError,
-    },
+    CustomFormattingFailed(#[from] GtmplError),
 }
 
 #[derive(Debug)]
