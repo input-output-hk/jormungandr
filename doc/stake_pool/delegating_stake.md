@@ -12,7 +12,7 @@ You will need:
   to delegate your stake to.
 
 ```sh
-jcli certificate new owned-stake-delegation STAKE_POOL_ID > stake_delegation.cert
+jcli certificate new owner-stake-delegation STAKE_POOL_ID > stake_delegation.cert
 ```
 
 Note that the certificate is in blaco, there's no account key used for its creation.
@@ -34,7 +34,7 @@ You will need:
   to delegate your stake to.
 
 ```sh
-jcli certificate new stake-delegation ACCOUNT_PUBLIC_KEY STAKE_POOL_ID > stake_delegation.cert
+jcli certificate new stake-delegation ACCOUNT_PUBLIC_KEY STAKE_POOL_ID --output stake_delegation.cert
 ```
 
 ## submitting to a node
@@ -72,8 +72,13 @@ delegation to happens, and for that we need a cryptographic signature.
 We will need the account secret key to create a signature
 
 ```sh
-cat stake_delegation.cert | jcli certificate sign account_key.prv | tee stake_delegation.signedcert
-signedcert1q9uxkxptz3zx7akmugk...7764rq
+jcli certificate sign --certificate stake_delegation.cert --key account_key.prv --output stake_delegation.signedcert
 ```
 
-The output can now be added in the `genesis config` file
+The content of `stake_delegation.signedcert` will be something like:
+
+```sh
+signedcert1q9uxkxptz3zx7akmugkmt4ecjjd3nmzween2qfr5enhzkt37tdt4uqt0j0039z5048mu9ayv3ujep5sl28q2cpdnx9fkvpq30lmjrrgtmqqctzczvu6e3v65m40n40c3y2pnu4vhd888dygkrtnfm0ts92fe50jy0h0ugh6wlvgy4xvr3lz4uuqzg2xgu6vv8tr24jrwhg0l09klp5wvwzl5
+```
+
+and can now be added in the `genesis config` file.
