@@ -413,7 +413,7 @@ pub fn process_leadership_block(
         })
 }
 
-pub fn process_block_announcement(
+fn process_block_announcement(
     mut blockchain: Blockchain,
     blockchain_tip: Tip,
     header: Header,
