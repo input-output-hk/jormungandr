@@ -1,5 +1,23 @@
 # Change Log
 
+## [v0.8.1](https://github.com/input-output-hk/jormungandr/tree/v0.8.1) (2019-12-13)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0...v0.8.1)
+
+**Implemented enhancements:**
+
+- Minor enhancements to network block processing [\#1353](https://github.com/input-output-hk/jormungandr/pull/1353)
+
+**Closed issues:**
+
+- make-witness account transaction error trying to register pool [\#1344](https://github.com/input-output-hk/jormungandr/issues/1344)
+- The transaction fees should not be included into the rewards for the Incentivized testnet [\#1340](https://github.com/input-output-hk/jormungandr/issues/1340)
+- Rewards are not evenly distributed per stake pool based on the number of blocks created in an epoch - 0.8.0-RC10 [\#1325](https://github.com/input-output-hk/jormungandr/issues/1325)
+
+**Merged pull requests:**
+
+- fix fees application for owner stake delegation [\#1357](https://github.com/input-output-hk/jormungandr/pull/1357)
+
 ## [v0.8.0](https://github.com/input-output-hk/jormungandr/tree/v0.8.0) (2019-12-11)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0-rc11...v0.8.0)
