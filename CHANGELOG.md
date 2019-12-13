@@ -1,5 +1,13 @@
 # Change Log
 
+## [v0.8.2](https://github.com/input-output-hk/jormungandr/tree/v0.8.2) (2019-12-13)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.1...v0.8.2)
+
+**Merged pull requests:**
+
+- chain-deps update [\#1359](https://github.com/input-output-hk/jormungandr/pull/1359)
+
 ## [v0.8.1](https://github.com/input-output-hk/jormungandr/tree/v0.8.1) (2019-12-13)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.0...v0.8.1)
