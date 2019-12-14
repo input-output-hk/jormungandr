@@ -35,6 +35,7 @@ use std::{sync::Arc, time::Duration};
 
 type TimeoutError = timeout::Error<Error>;
 type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
+type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
 
 const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
@@ -42,6 +43,13 @@ const DEFAULT_TIMEOUT_PROCESS_BLOCKS: u64 = 60;
 const DEFAULT_TIMEOUT_PROCESS_HEADERS: u64 = 60;
 
 const PULL_HEADERS_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSchedulerConfig {
+    max_running: 16,
+    max_running_same_task: 2,
+    command_channel_size: 1024,
+    timeout: Duration::from_millis(500),
+};
+
+const GET_NEXT_BLOCK_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSchedulerConfig {
     max_running: 16,
     max_running_same_task: 2,
     command_channel_size: 1024,
@@ -67,8 +75,14 @@ impl Process {
     ) -> impl Future<Item = (), Error = ()> {
         service_info.spawn(self.start_garbage_collector(service_info.logger().clone()));
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
+        let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
         input.for_each(move |msg| {
-            self.handle_input(&service_info, msg, &pull_headers_scheduler);
+            self.handle_input(
+                &service_info,
+                msg,
+                &pull_headers_scheduler,
+                &get_next_block_scheduler,
+            );
             future::ok(())
         })
     }
@@ -78,6 +92,7 @@ impl Process {
         info: &TokioServiceInfo,
         input: BlockMsg,
         pull_headers_scheduler: &PullHeadersScheduler,
+        get_next_block_scheduler: &GetNextBlockScheduler,
     ) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
@@ -155,8 +170,8 @@ impl Process {
                     blockchain_tip.clone(),
                     header,
                     node_id,
-                    network_msg_box.clone(),
                     pull_headers_scheduler.clone(),
+                    get_next_block_scheduler.clone(),
                     logger.clone(),
                 );
 
@@ -185,6 +200,7 @@ impl Process {
                     reply,
                     candidate: None,
                 };
+                let get_next_block_scheduler = get_next_block_scheduler.clone();
                 let future = future::loop_fn(state, move |state| {
                     let blockchain = blockchain_fold.clone();
                     let candidate_forest = candidate_forest.clone();
@@ -192,6 +208,7 @@ impl Process {
                     let explorer_msg_box = explorer_msg_box.clone();
                     let stats_counter = stats_counter.clone();
                     let logger = logger_fold.clone();
+                    let get_next_block_scheduler = get_next_block_scheduler.clone();
                     let State {
                         stream,
                         reply,
@@ -206,6 +223,7 @@ impl Process {
                                     block,
                                     tx_msg_box,
                                     explorer_msg_box,
+                                    get_next_block_scheduler,
                                     logger.clone(),
                                 )
                                 .then(move |res| match res {
@@ -334,6 +352,32 @@ impl Process {
         let logger = info.logger().clone();
         let future = scheduler_future.map(|never| match never {}).map_err(
             move |e| error!(logger, "get blocks scheduling failed"; "reason" => e.to_string()),
+        );
+        info.spawn(future);
+        scheduler
+    }
+
+    fn spawn_get_next_block_scheduler(&self, info: &TokioServiceInfo) -> GetNextBlockScheduler {
+        let network_msgbox = self.network_msgbox.clone();
+        let scheduler_logger = info.logger().clone();
+        let scheduler_future = FireForgetSchedulerFuture::new(
+            &GET_NEXT_BLOCK_SCHEDULER_CONFIG,
+            move |header_id, node_id, ()| {
+                network_msgbox
+                    .clone()
+                    .try_send(NetworkMsg::GetNextBlock(node_id, header_id))
+                    .unwrap_or_else(|e| {
+                        error!(
+                            scheduler_logger,
+                            "cannot send GetNextBlock request to network"; "reason" => e.to_string()
+                        )
+                    });
+            },
+        );
+        let scheduler = scheduler_future.scheduler();
+        let logger = info.logger().clone();
+        let future = scheduler_future.map(|never| match never {}).map_err(
+            move |e| error!(logger, "get next block scheduling failed"; "reason" => e.to_string()),
         );
         info.spawn(future);
         scheduler
@@ -469,8 +513,8 @@ fn process_block_announcement(
     blockchain_tip: Tip,
     header: Header,
     node_id: NodeId,
-    mut network_msg_box: MessageBox<NetworkMsg>,
     mut pull_headers_scheduler: PullHeadersScheduler,
+    mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,
 ) -> impl Future<Item = (), Error = Error> {
     blockchain
@@ -505,12 +549,11 @@ fn process_block_announcement(
                     logger,
                     "Announced block has a locally stored parent, fetch it"
                 );
-                network_msg_box
-                    .try_send(NetworkMsg::GetNextBlock(node_id, header.hash()))
+                get_next_block_scheduler.schedule(header.id(), node_id, ())
                     .unwrap_or_else(move |err| {
                         error!(
                             logger,
-                            "cannot send GetNextBlock request to network: {}", err
+                            "cannot schedule getting next block"; "reason" => err.to_string()
                         )
                     });
                 Either::A(future::ok(()))
@@ -525,10 +568,13 @@ pub fn process_network_block(
     block: Block,
     tx_msg_box: MessageBox<TransactionMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,
 ) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
     use futures::future::Either::{A, B};
 
+    get_next_block_scheduler.declare_completed(block.id())
+        .unwrap_or_else(|e| error!(logger, "get next block schedule completion failed"; "reason" => e.to_string()));
     let header = block.header();
     blockchain
         .pre_check_header(header, false)
