@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     blockcfg::{Block, FragmentId, Header},
+    blockchain::Checkpoints,
     intercom::{
         self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, ReplyHandle, TransactionMsg,
     },
@@ -13,8 +14,12 @@ use crate::{
     stats_counter::StatsCounter,
     utils::{
         async_msg::{self, MessageBox, MessageQueue},
+        fire_forget_scheduler::{
+            FireForgetScheduler, FireForgetSchedulerConfig, FireForgetSchedulerFuture,
+        },
         task::TokioServiceInfo,
     },
+    HeaderHash,
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
@@ -29,11 +34,19 @@ use tokio::{
 use std::{sync::Arc, time::Duration};
 
 type TimeoutError = timeout::Error<Error>;
+type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
 
 const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_BLOCKS: u64 = 60;
 const DEFAULT_TIMEOUT_PROCESS_HEADERS: u64 = 60;
+
+const PULL_HEADERS_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSchedulerConfig {
+    max_running: 16,
+    max_running_same_task: 2,
+    command_channel_size: 1024,
+    timeout: Duration::from_millis(500),
+};
 
 pub struct Process {
     pub blockchain: Blockchain,
@@ -53,13 +66,19 @@ impl Process {
         input: MessageQueue<BlockMsg>,
     ) -> impl Future<Item = (), Error = ()> {
         service_info.spawn(self.start_garbage_collector(service_info.logger().clone()));
+        let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         input.for_each(move |msg| {
-            self.handle_input(&service_info, msg);
+            self.handle_input(&service_info, msg, &pull_headers_scheduler);
             future::ok(())
         })
     }
 
-    fn handle_input(&mut self, info: &TokioServiceInfo, input: BlockMsg) {
+    fn handle_input(
+        &mut self,
+        info: &TokioServiceInfo,
+        input: BlockMsg,
+        pull_headers_scheduler: &PullHeadersScheduler,
+    ) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
@@ -137,6 +156,7 @@ impl Process {
                     header,
                     node_id,
                     network_msg_box.clone(),
+                    pull_headers_scheduler.clone(),
                     logger.clone(),
                 );
 
@@ -239,8 +259,14 @@ impl Process {
                 let (stream, reply) = handle.into_stream_and_reply();
                 let logger = info.logger().clone();
                 let logger_err = logger.clone();
+                let schedule_logger = logger.clone();
+                let mut pull_headers_scheduler = pull_headers_scheduler.clone();
 
                 let future = candidate_forest.advance_branch(blockchain, stream)
+                    .inspect(move |(header_ids, _)|
+                        header_ids.iter()
+                        .try_for_each(|header_id| pull_headers_scheduler.declare_completed(*header_id))
+                        .unwrap_or_else(|e| error!(schedule_logger, "get blocks schedule completion failed"; "reason" => e.to_string())))
                     .then(move |resp| match resp {
                         Err(e) => {
                             info!(
@@ -287,6 +313,30 @@ impl Process {
             .map_err(move |e| {
                 error!(error_logger, "cannot run garbage collection" ; "reason" => %e);
             })
+    }
+
+    fn spawn_pull_headers_scheduler(&self, info: &TokioServiceInfo) -> PullHeadersScheduler {
+        let network_msgbox = self.network_msgbox.clone();
+        let scheduler_logger = info.logger().clone();
+        let scheduler_future = FireForgetSchedulerFuture::new(
+            &PULL_HEADERS_SCHEDULER_CONFIG,
+            move |to, node_id, from| {
+                network_msgbox
+                    .clone()
+                    .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                    .unwrap_or_else(|e| {
+                        error!(scheduler_logger, "cannot send PullHeaders request to network";
+                        "reason" => e.to_string())
+                    })
+            },
+        );
+        let scheduler = scheduler_future.scheduler();
+        let logger = info.logger().clone();
+        let future = scheduler_future.map(|never| match never {}).map_err(
+            move |e| error!(logger, "get blocks scheduling failed"; "reason" => e.to_string()),
+        );
+        info.spawn(future);
+        scheduler
     }
 }
 
@@ -420,6 +470,7 @@ fn process_block_announcement(
     header: Header,
     node_id: NodeId,
     mut network_msg_box: MessageBox<NetworkMsg>,
+    mut pull_headers_scheduler: PullHeadersScheduler,
     logger: Logger,
 ) -> impl Future<Item = (), Error = Error> {
     blockchain
@@ -436,12 +487,11 @@ fn process_block_announcement(
                     blockchain
                         .get_checkpoints(blockchain_tip.branch().clone())
                         .map(move |from| {
-                            network_msg_box
-                                .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                            pull_headers_scheduler.schedule(to, node_id, from)
                                 .unwrap_or_else(move |err| {
                                     error!(
                                         logger,
-                                        "cannot send PullHeaders request to network: {}", err
+                                        "cannot schedule pulling headers"; "reason" => err.to_string()
                                     )
                                 });
                         }),
