@@ -238,38 +238,39 @@ impl Process {
 
                 let (stream, reply) = handle.into_stream_and_reply();
                 let logger = info.logger().clone();
-                let logger_err = info.logger().clone();
+                let logger_err = logger.clone();
 
-                let future = candidate_forest.advance_branch(blockchain, stream);
-                let future = future.then(move |resp| match resp {
-                    Err(e) => {
-                        info!(
-                            logger,
-                            "error processing an incoming header stream";
-                            "reason" => %e,
-                        );
-                        reply.reply_error(chain_header_error_into_reply(e));
-                        Either::A(future::ok(()))
-                    }
-                    Ok((hashes, maybe_remainder)) => {
-                        if hashes.is_empty() {
+                let future = candidate_forest.advance_branch(blockchain, stream)
+                    .then(move |resp| match resp {
+                        Err(e) => {
+                            info!(
+                                logger,
+                                "error processing an incoming header stream";
+                                "reason" => %e,
+                            );
+                            reply.reply_error(chain_header_error_into_reply(e));
                             Either::A(future::ok(()))
-                        } else {
-                            Either::B(
-                                network_msg_box
-                                    .send(NetworkMsg::GetBlocks(hashes))
-                                    .map_err(|_| "cannot request blocks from network".into())
-                                    .map(|_| reply.reply_ok(())),
-                            )
-                            // TODO: if the stream is not ended, resume processing
-                            // after more blocks arrive
                         }
-                    }
-                });
-
-                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS)).map_err(move |err: TimeoutError| {
-                    error!(logger_err, "cannot process network headers" ; "reason" => err.to_string())
-                }))
+                        Ok((hashes, maybe_remainder)) => {
+                            if hashes.is_empty() {
+                                Either::A(future::ok(()))
+                            } else {
+                                Either::B(
+                                    network_msg_box
+                                        .send(NetworkMsg::GetBlocks(hashes))
+                                        .map_err(|_| "cannot request blocks from network".into())
+                                        .map(|_| reply.reply_ok(())),
+                                )
+                                // TODO: if the stream is not ended, resume processing
+                                // after more blocks arrive
+                            }
+                        }
+                    })
+                    .timeout(Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS))
+                    .map_err(move |err: TimeoutError| {
+                        error!(logger_err, "cannot process network headers" ; "reason" => err.to_string())
+                    });
+                info.spawn(future);
             }
         }
     }
