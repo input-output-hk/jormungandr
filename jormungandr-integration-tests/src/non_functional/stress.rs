@@ -1,9 +1,12 @@
 #![cfg(feature = "soak-test")]
 
-use crate::common::configuration::genesis_model::Fund;
-use crate::common::data::address::Account;
-use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
-use crate::common::startup;
+use crate::common::{
+    configuration::genesis_model::Fund,
+    data::address::Account,
+    jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper,
+    jormungandr::{ConfigurationBuilder, Starter},
+    startup,
+};
 
 use std::iter;
 
@@ -31,14 +34,16 @@ fn send_100_transaction_in_10_packs_for_recievers(
 ) {
     let sender = startup::create_new_account_address();
 
-    let mut config = startup::ConfigurationBuilder::new()
+    let config = ConfigurationBuilder::new()
         .with_funds(vec![Fund {
             address: sender.address.clone(),
             value: 10000000.into(),
         }])
         .with_slot_duration(2)
         .build();
-    let jormungandr = startup::start_jormungandr_node_as_leader(&mut config);
+
+    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+
     let output_value = 1 as u64;
 
     let transation_messages: Vec<String> = receivers
