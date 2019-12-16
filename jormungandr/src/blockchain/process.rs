@@ -240,7 +240,7 @@ impl Process {
                 let logger = info.logger().clone();
                 let logger_err = info.logger().clone();
 
-                let future = candidate_forest.advance_branch(stream);
+                let future = candidate_forest.advance_branch(blockchain, stream);
                 let future = future.then(move |resp| match resp {
                     Err(e) => {
                         info!(
@@ -472,8 +472,8 @@ pub fn process_network_block(
     blockchain: Blockchain,
     candidate_forest: CandidateForest,
     block: Block,
-    mut tx_msg_box: MessageBox<TransactionMsg>,
-    mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    tx_msg_box: MessageBox<TransactionMsg>,
+    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     logger: Logger,
 ) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
     use futures::future::Either::{A, B};
@@ -483,9 +483,6 @@ pub fn process_network_block(
         "parent" => block.header.parent_id().to_string(),
         "date" => block.header.block_date().to_string()
     ));
-    let end_logger = logger.clone();
-    let end_blockchain = blockchain.clone();
-    let explorer_enabled = explorer_msg_box.is_some();
     let header = block.header();
     blockchain
         .pre_check_header(header, false)
@@ -501,53 +498,66 @@ pub fn process_network_block(
                 );
                 A(B(candidate_forest.cache_block(block).map(|()| None)))
             }
-            PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                let post_check_and_apply = blockchain
-                    .post_check_header(header, parent_ref)
-                    .and_then(move |post_checked| {
-                        let mut block_for_explorer = if explorer_enabled {
-                            Some(block.clone())
-                        } else {
-                            None
-                        };
-                        let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
-                        end_blockchain
-                            .apply_and_store_block(post_checked, block)
-                            .and_then(move |block_ref| {
-                                try_request_fragment_removal(&mut tx_msg_box, fragment_ids, block_ref.header()).unwrap_or_else(|err| {
-                                    error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
-                                });
-                                if let Some(msg_box) = explorer_msg_box.as_mut() {
-                                    msg_box
-                                        .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
-                                        .unwrap_or_else(|err| {
-                                            error!(logger, "cannot add block to explorer: {}", err)
-                                        });
-                                }
-                                Ok(block_ref)
-                            })
+            PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
+                let post_check_and_apply = candidate_forest
+                    .apply_block(block)
+                    .and_then(move |blocks| {
+                        check_and_apply_blocks(
+                            blockchain,
+                            parent_ref,
+                            blocks,
+                            tx_msg_box,
+                            explorer_msg_box,
+                            logger,
+                        )
                     })
-                    .and_then(move |block_ref| {
-                        candidate_forest
-                            .on_applied_block(block_ref.hash())
-                            .map_err(|never| match never {})
-                            .map(|more_blocks| (block_ref, more_blocks))
-                    })
-                    .map(move |(block_ref, more_blocks)| {
-                        info!(end_logger, "block successfully applied");
-                        if !more_blocks.is_empty() {
-                            warn!(
-                                end_logger,
-                                "{} more blocks have arrived out of order, \
-                                 but I don't know what to do with them yet!",
-                                more_blocks.len(),
-                            );
-                        }
-                        Some(block_ref)
-                    });
+                    .map(Some);
                 B(post_check_and_apply)
             }
         })
+}
+
+fn check_and_apply_blocks(
+    blockchain: Blockchain,
+    parent_ref: Arc<Ref>,
+    blocks: Vec<Block>,
+    tx_msg_box: MessageBox<TransactionMsg>,
+    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    logger: Logger,
+) -> impl Future<Item = Arc<Ref>, Error = chain::Error> {
+    let explorer_enabled = explorer_msg_box.is_some();
+    stream::iter_ok(blocks).fold(parent_ref, move |parent_ref, block| {
+        let blockchain1 = blockchain.clone();
+        let mut tx_msg_box = tx_msg_box.clone();
+        let mut explorer_msg_box = explorer_msg_box.clone();
+        let logger = logger.clone();
+        let header = block.header();
+        blockchain
+            .post_check_header(header, parent_ref)
+            .and_then(move |post_checked| {
+                let mut block_for_explorer = if explorer_enabled {
+                    Some(block.clone())
+                } else {
+                    None
+                };
+                let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
+                blockchain1
+                    .apply_and_store_block(post_checked, block)
+                    .and_then(move |block_ref| {
+                        try_request_fragment_removal(&mut tx_msg_box, fragment_ids, block_ref.header()).unwrap_or_else(|err| {
+                            error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
+                        });
+                        if let Some(msg_box) = explorer_msg_box.as_mut() {
+                            msg_box
+                                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
+                                .unwrap_or_else(|err| {
+                                    error!(logger, "cannot add block to explorer: {}", err)
+                                });
+                        }
+                        Ok(block_ref)
+                    })
+            })
+    })
 }
 
 fn network_block_error_into_reply(err: chain::Error) -> intercom::Error {

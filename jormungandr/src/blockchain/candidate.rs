@@ -4,7 +4,7 @@ use super::{
 };
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::utils::async_msg::MessageQueue;
-use chain_core::property::HasHeader;
+use chain_core::property::{Block as _, HasHeader};
 
 use futures::future::{self, Either, Loop};
 use futures::prelude::*;
@@ -13,7 +13,6 @@ use tokio::sync::lock::Lock;
 use tokio::timer::{self, delay_queue, DelayQueue};
 
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::hint::unreachable_unchecked;
 use std::time::Duration;
 
@@ -51,7 +50,6 @@ pub enum Error {
 #[derive(Clone)]
 pub struct CandidateForest {
     inner: Lock<CandidateForestThickets>,
-    blockchain: Blockchain,
     logger: Logger,
 }
 
@@ -322,7 +320,7 @@ impl ChainAdvance {
 }
 
 impl CandidateForest {
-    pub fn new(blockchain: Blockchain, root_ttl: Duration, logger: Logger) -> Self {
+    pub fn new(root_ttl: Duration, logger: Logger) -> Self {
         let inner = CandidateForestThickets {
             candidate_map: HashMap::new(),
             roots: HashMap::new(),
@@ -331,16 +329,15 @@ impl CandidateForest {
         };
         CandidateForest {
             inner: Lock::new(inner),
-            blockchain,
             logger,
         }
     }
 
     fn land_header_chain(
         &self,
+        blockchain: Blockchain,
         stream: HeaderStream,
     ) -> impl Future<Item = Option<ChainAdvance>, Error = Error> {
-        let blockchain = self.blockchain.clone();
         let mut inner = self.inner.clone();
         let logger = self.logger.clone();
 
@@ -387,10 +384,11 @@ impl CandidateForest {
     /// block data to validate more blocks with newer leadership information.
     pub fn advance_branch(
         &self,
+        blockchain: Blockchain,
         header_stream: HeaderStream,
     ) -> impl Future<Item = (Vec<HeaderHash>, Option<HeaderStream>), Error = Error> {
         let mut inner = self.inner.clone();
-        self.land_header_chain(header_stream)
+        self.land_header_chain(blockchain, header_stream)
             .and_then(move |mut advance| {
                 if advance.is_some() {
                     let fut = future::poll_fn(move || {
@@ -443,13 +441,13 @@ impl CandidateForest {
         })
     }
 
-    pub fn on_applied_block(
+    pub fn apply_block(
         &self,
-        block_hash: HeaderHash,
-    ) -> impl Future<Item = Vec<Block>, Error = Infallible> {
+        block: Block,
+    ) -> impl Future<Item = Vec<Block>, Error = chain::Error> {
         let mut inner = self.inner.clone();
         future::poll_fn(move || Ok(inner.poll_lock()))
-            .and_then(move |mut forest| Ok(forest.on_applied_block(block_hash)))
+            .and_then(move |mut forest| Ok(forest.apply_block(block)))
     }
 
     pub fn purge(&self) -> impl Future<Item = (), Error = timer::Error> {
@@ -519,10 +517,11 @@ impl CandidateForestThickets {
         }
     }
 
-    fn on_applied_block(&mut self, block_hash: HeaderHash) -> Vec<Block> {
+    fn apply_block(&mut self, block: Block) -> Vec<Block> {
         use std::collections::hash_map::Entry::*;
 
-        let mut block_avalanche = Vec::new();
+        let block_hash = block.id();
+        let mut block_avalanche = vec![block];
         if self.roots.contains_key(&block_hash) {
             let candidate = self.apply_candidate(block_hash);
             debug_assert!(
