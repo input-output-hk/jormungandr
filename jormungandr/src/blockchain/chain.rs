@@ -258,7 +258,7 @@ impl Blockchain {
 
     /// create and store a reference of this leader to the new
     fn create_and_store_reference(
-        &mut self,
+        &self,
         header_hash: HeaderHash,
         header: Header,
         ledger: Arc<Ledger>,
@@ -338,7 +338,7 @@ impl Blockchain {
 
     /// load the header's parent `Ref`.
     fn load_header_parent(
-        &mut self,
+        &self,
         header: Header,
         force: bool,
     ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
@@ -383,7 +383,7 @@ impl Blockchain {
     ///   this function.
     ///
     pub fn pre_check_header(
-        &mut self,
+        &self,
         header: Header,
         force: bool,
     ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
@@ -411,7 +411,7 @@ impl Blockchain {
     /// * the ledger state associated to the parent block
     /// * the leadership schedule associated to the header
     pub fn post_check_header(
-        &mut self,
+        &self,
         header: Header,
         parent: Arc<Ref>,
     ) -> impl Future<Item = PostCheckedHeader, Error = Error> {
@@ -441,7 +441,7 @@ impl Blockchain {
     }
 
     fn apply_block(
-        &mut self,
+        &self,
         post_checked_header: PostCheckedHeader,
         block: &Block,
     ) -> impl Future<Item = Arc<Ref>, Error = Error> {
@@ -457,7 +457,7 @@ impl Blockchain {
 
         let metadata = header.to_content_eval_context();
 
-        let mut self1 = self.clone();
+        let self1 = self.clone();
 
         future::result(
             ledger
@@ -482,7 +482,7 @@ impl Blockchain {
     /// Apply the block on the blockchain from a post checked header
     /// and add it to the storage.
     pub fn apply_and_store_block(
-        &mut self,
+        &self,
         post_checked_header: PostCheckedHeader,
         block: Block,
     ) -> impl Future<Item = Arc<Ref>, Error = Error> {
@@ -511,13 +511,13 @@ impl Blockchain {
     ///
     /// * the block0 does build an invalid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     ///
-    fn apply_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
+    fn apply_block0(&self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
         let block0_header = block0.header.clone();
         let block0_id = block0_header.hash();
         let block0_id_1 = block0_header.hash();
         let block0_date = block0_header.block_date().clone();
 
-        let mut self1 = self.clone();
+        let self1 = self.clone();
         let mut branches = self.branches.clone();
 
         let time_frame = {
@@ -593,12 +593,12 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub fn load_from_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
+    pub fn load_from_block0(&self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
         let block0_clone = block0.clone();
         let block0_header = block0.header.clone();
         let block0_id = block0_header.hash();
 
-        let mut self1 = self.clone();
+        let self1 = self.clone();
         let mut storage_store = self.storage.clone();
         let mut storage_store_2 = self.storage.clone();
 
@@ -641,15 +641,12 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub fn load_from_storage(
-        &mut self,
-        block0: Block,
-    ) -> impl Future<Item = Branch, Error = Error> {
+    pub fn load_from_storage(&self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
         let block0_header = block0.header.clone();
         let block0_id = block0_header.hash();
         let block0_id_2 = block0_id.clone();
         let self1 = self.clone();
-        let mut self2 = self.clone();
+        let self2 = self.clone();
         let self3 = self.clone();
         let self4 = self.clone();
 
@@ -691,11 +688,11 @@ impl Blockchain {
                             .map_err(|e| {
                                 Error::with_chain(e, "Error while iterating between block0 and HEAD")
                             })
-                            .fold((branch, self4), move |(branch, mut self4), block: Block| {
+                            .fold((branch, self4), move |(branch, self4), block: Block| {
                                 let header = block.header.clone();
 
-                                let mut self5 = self4.clone();
-                                let mut self6 = self4.clone();
+                                let self5 = self4.clone();
+                                let self6 = self4.clone();
                                 let returned = self4.clone();
 
                                 self4

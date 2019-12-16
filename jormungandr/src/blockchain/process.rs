@@ -376,10 +376,10 @@ fn process_and_propagate_new_ref(
 
 pub fn process_leadership_block(
     logger: Logger,
-    mut blockchain: Blockchain,
+    blockchain: Blockchain,
     block: Block,
 ) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    let mut end_blockchain = blockchain.clone();
+    let end_blockchain = blockchain.clone();
     let header = block.header();
     let parent_hash = block.parent_id();
     let logger1 = logger.clone();
@@ -414,7 +414,7 @@ pub fn process_leadership_block(
 }
 
 fn process_block_announcement(
-    mut blockchain: Blockchain,
+    blockchain: Blockchain,
     blockchain_tip: Tip,
     header: Header,
     node_id: NodeId,
@@ -469,7 +469,7 @@ fn process_block_announcement(
 }
 
 pub fn process_network_block(
-    mut blockchain: Blockchain,
+    blockchain: Blockchain,
     candidate_forest: CandidateForest,
     block: Block,
     mut tx_msg_box: MessageBox<TransactionMsg>,
@@ -484,7 +484,7 @@ pub fn process_network_block(
         "date" => block.header.block_date().to_string()
     ));
     let end_logger = logger.clone();
-    let mut end_blockchain = blockchain.clone();
+    let end_blockchain = blockchain.clone();
     let explorer_enabled = explorer_msg_box.is_some();
     let header = block.header();
     blockchain

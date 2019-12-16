@@ -169,7 +169,7 @@ mod chain_landing {
         pub fn skip_present_blocks(self) -> impl Future<Item = Option<(Header, S)>, Error = Error> {
             future::loop_fn(self, move |state| {
                 let State {
-                    mut blockchain,
+                    blockchain,
                     header,
                     stream,
                 } = state;
