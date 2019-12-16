@@ -18,6 +18,13 @@ pub struct BlockStream {
     state: BlockIterState,
 }
 
+pub struct BlockStreamReversed {
+    lock: Lock<NodeStorage>,
+    last_block: HeaderHash,
+    to: Option<HeaderHash>,
+    finished: bool,
+}
+
 pub struct Ancestor {
     pub header_hash: HeaderHash,
     pub distance: u64,
@@ -118,6 +125,32 @@ impl Storage {
         }
     }
 
+    /// Return values:
+    /// - `Ok(stream)` - `from` is ancestor of `to`, returns blocks between them
+    /// - `Err(CannotIterate)` - `from` is not ancestor of `to`
+    /// - `Err(BlockNotFound)` - `from` or `to` was not found
+    /// - `Err(_)` - some other storage error
+    pub fn stream_from_to_reversed(
+        &self,
+        from: HeaderHash,
+        to: Option<HeaderHash>,
+    ) -> impl Future<Item = BlockStreamReversed, Error = StorageError> {
+        let mut inner = self.inner.clone();
+        let inner_2 = self.inner.clone();
+
+        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
+            if let Some(to) = to {
+                match store.is_ancestor(&from, &to) {
+                    Err(error) => return future::err(error),
+                    Ok(None) => return future::err(StorageError::CannotIterate),
+                    _ => {}
+                }
+            }
+
+            future::ok(BlockStreamReversed::new(inner_2, from, to))
+        })
+    }
+
     /// Stream a branch ending at `to` and starting from the ancestor
     /// at `depth` or at the first ancestor since genesis block
     /// if `depth` is given as `None`.
@@ -214,6 +247,47 @@ impl Stream for BlockStream {
         self.state
             .get_next(&mut self.inner)
             .map(|block| Async::Ready(Some(block)))
+    }
+}
+
+impl BlockStreamReversed {
+    fn new(lock: Lock<NodeStorage>, from: HeaderHash, to: Option<HeaderHash>) -> Self {
+        Self {
+            lock,
+            last_block: from,
+            to,
+            finished: false,
+        }
+    }
+}
+
+impl Stream for BlockStreamReversed {
+    type Item = Block;
+    type Error = StorageError;
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        let store = try_ready!(Ok(self.lock.poll_lock()));
+
+        if !self.finished {
+            let (block, block_info) = store.get_block(&self.last_block)?;
+            // TODO change this to
+            //     if let Some(to) = self.to || block_info.depth > 1 {
+            // and remove the `else if` condition when the linked syntax is
+            // implemented.
+            // https://github.com/rust-lang/rust/issues/53667
+            if let Some(to) = self.to {
+                if to == self.last_block {
+                    self.finished = true;
+                }
+            } else if block_info.depth > 1 {
+                self.last_block = block.header.block_parent_hash();
+            } else {
+                self.finished = true;
+            }
+            return Ok(Async::Ready(Some(block)));
+        }
+
+        Ok(Async::Ready(None))
     }
 }
 
