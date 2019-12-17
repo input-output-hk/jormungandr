@@ -1,5 +1,29 @@
 # Change Log
 
+## [v0.8.3](https://github.com/input-output-hk/jormungandr/tree/v0.8.3) (2019-12-17)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.2...v0.8.3)
+
+**Fixed bugs:**
+
+- Node stuck - block is already cached as a candidate - panic 'assertion failed: \_old.is\_none\(\)' - immediate memory increase [\#1327](https://github.com/input-output-hk/jormungandr/issues/1327)
+- jcli transaction make-witness fails with error [\#1323](https://github.com/input-output-hk/jormungandr/issues/1323)
+
+**Closed issues:**
+
+- jcli rest v0 stake get no longer lists all pools with delegated stake in 0.8.2 [\#1371](https://github.com/input-output-hk/jormungandr/issues/1371)
+- where is jcli? [\#1369](https://github.com/input-output-hk/jormungandr/issues/1369)
+- Error in the overall configuration of the node/ bootstrap file.  v0.8.2   [\#1363](https://github.com/input-output-hk/jormungandr/issues/1363)
+- 404 Not Found status code is too generic for unused addresses which confuses jcli users [\#1361](https://github.com/input-output-hk/jormungandr/issues/1361)
+
+**Merged pull requests:**
+
+- \[Tests\] Another Fix for non functional tests [\#1378](https://github.com/input-output-hk/jormungandr/pull/1378)
+- \[Tests\] fixed non\_functional tests compilation issues [\#1375](https://github.com/input-output-hk/jormungandr/pull/1375)
+- Reverts change in 7e79334da1a46c484e3d6ffe0c52e2518c3c4c44 which remo… [\#1362](https://github.com/input-output-hk/jormungandr/pull/1362)
+- Docs: jcli/transaction + stake\_pool/delegating\_stake - fix [\#1347](https://github.com/input-output-hk/jormungandr/pull/1347)
+- Rework chain pull to be concurrency friendly [\#1346](https://github.com/input-output-hk/jormungandr/pull/1346)
+
 ## [v0.8.2](https://github.com/input-output-hk/jormungandr/tree/v0.8.2) (2019-12-13)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.1...v0.8.2)
