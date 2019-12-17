@@ -32,7 +32,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
     iterations_count: usize,
     receivers: Vec<Account>,
 ) {
-    let sender = startup::create_new_account_address();
+    let mut sender = startup::create_new_account_address();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![Fund {
@@ -49,12 +49,14 @@ fn send_100_transaction_in_10_packs_for_recievers(
     let transation_messages: Vec<String> = receivers
         .iter()
         .map(|receiver| {
-            JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
+            let message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
                 .assert_add_account(&sender.address.clone(), &output_value.into())
                 .assert_add_output(&receiver.address.clone(), &output_value.into())
                 .assert_finalize()
                 .seal_with_witness_for_address(&sender)
-                .assert_to_message()
+                .assert_to_message();
+            sender.confirm_transaction();
+            message
         })
         .collect();
 

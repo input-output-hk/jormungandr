@@ -21,7 +21,7 @@ pub fn test_100_transaction_is_processed() {
             value: 100.into(),
         }])
         .build();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let mut utxo = config.block0_utxo_for_address(&sender);
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
     for _i in 0..100 {
@@ -34,7 +34,7 @@ pub fn test_100_transaction_is_processed() {
 
         let fragment_id =
             jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
-        let utxo = jcli_wrapper::assert_rest_utxo_get(
+        utxo = jcli_wrapper::assert_rest_utxo_get(
             &jormungandr.rest_address(),
             &fragment_id.to_hex(),
             0,
@@ -74,7 +74,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
         .with_epoch_stability_depth(10)
         .build();
 
-    let utxo = config.block0_utxo_for_address(&sender);
+    let mut utxo = config.block0_utxo_for_address(&sender);
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
     let now = SystemTime::now();
@@ -90,7 +90,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
             &new_transaction,
             &jormungandr.rest_address(),
         );
-        let utxo = jcli_wrapper::assert_rest_utxo_get(
+        utxo = jcli_wrapper::assert_rest_utxo_get(
             &jormungandr.rest_address(),
             &fragment_id.to_hex(),
             0,
