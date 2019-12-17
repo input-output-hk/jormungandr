@@ -478,23 +478,27 @@ pub fn process_network_block(
 ) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
     use futures::future::Either::{A, B};
 
-    let logger = logger.new(o!(
-        "hash" => block.header.hash().to_string(),
-        "parent" => block.header.parent_id().to_string(),
-        "date" => block.header.block_date().to_string()
-    ));
     let header = block.header();
     blockchain
         .pre_check_header(header, false)
         .and_then(move |pre_checked| match pre_checked {
-            PreCheckedHeader::AlreadyPresent { .. } => {
-                debug!(logger, "block is already present");
-                A(A(future::ok(None)))
-            }
-            PreCheckedHeader::MissingParent { .. } => {
+            PreCheckedHeader::AlreadyPresent { header, .. } => {
                 debug!(
                     logger,
-                    "block is missing a locally stored parent, caching as candidate"
+                    "block is already present";
+                    "hash" => %header.hash(),
+                    "parent" => %header.parent_id(),
+                    "date" => %header.block_date(),
+                );
+                A(A(future::ok(None)))
+            }
+            PreCheckedHeader::MissingParent { header, .. } => {
+                debug!(
+                    logger,
+                    "block is missing a locally stored parent, caching as candidate";
+                    "hash" => %header.hash(),
+                    "parent" => %header.parent_id(),
+                    "date" => %header.block_date(),
                 );
                 A(B(candidate_forest.cache_block(block).map(|()| None)))
             }
@@ -535,6 +539,14 @@ fn check_and_apply_blocks(
         blockchain
             .post_check_header(header, parent_ref)
             .and_then(move |post_checked| {
+                let header = post_checked.header();
+                debug!(
+                    logger,
+                    "applying block to storage";
+                    "hash" => %header.hash(),
+                    "parent" => %header.parent_id(),
+                    "date" => %header.block_date(),
+                );
                 let mut block_for_explorer = if explorer_enabled {
                     Some(block.clone())
                 } else {
