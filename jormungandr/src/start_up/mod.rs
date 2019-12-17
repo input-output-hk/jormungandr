@@ -88,7 +88,7 @@ pub fn load_blockchain(
 ) -> Result<(Blockchain, Tip), Error> {
     use tokio::prelude::*;
 
-    let mut blockchain = Blockchain::new(storage, block_cache_ttl);
+    let blockchain = Blockchain::new(block0.header.hash(), storage, block_cache_ttl);
 
     let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
         Err(error) => match error.kind() {

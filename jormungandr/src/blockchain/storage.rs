@@ -159,7 +159,8 @@ impl Storage {
     }
 
     /// Stream a branch ending at `to` and starting from the ancestor
-    /// at `depth` or at the genesis block if `depth` is given as `None`.
+    /// at `depth` or at the first ancestor since genesis block
+    /// if `depth` is given as `None`.
     ///
     /// This function uses buffering in the sink to reduce lock contention.
     pub fn send_branch<S, E>(
@@ -178,7 +179,7 @@ impl Storage {
         future::poll_fn(move || Ok(inner.poll_lock()))
             .and_then(move |store| {
                 store.get_block_info(&to).map(|to_info| {
-                    let depth = depth.unwrap_or(to_info.depth);
+                    let depth = depth.unwrap_or(to_info.depth - 1);
                     BlockIterState::new(to_info, depth)
                 })
             })

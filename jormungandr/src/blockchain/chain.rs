@@ -181,6 +181,8 @@ pub struct Blockchain {
     ledgers: Multiverse<Arc<Ledger>>,
 
     storage: Storage,
+
+    block0: HeaderHash,
 }
 
 pub enum PreCheckedHeader {
@@ -235,13 +237,18 @@ impl PostCheckedHeader {
 }
 
 impl Blockchain {
-    pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
+    pub fn new(block0: HeaderHash, storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
             ledgers: Multiverse::new(),
             storage: Storage::new(storage),
+            block0,
         }
+    }
+
+    pub fn block0(&self) -> &HeaderHash {
+        &self.block0
     }
 
     pub fn storage(&self) -> &Storage {
