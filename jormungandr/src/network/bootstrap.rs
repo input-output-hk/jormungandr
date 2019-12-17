@@ -88,15 +88,19 @@ where
     S::Error: Debug,
 {
     let fold_logger = logger.clone();
+
+    let block0 = blockchain.block0().clone();
+
     stream
         .map_err(|e| Error::PullStreamFailed { source: e })
+        .filter(move |block| block.header.hash() != block0)
         .fold(tip, move |_, block| {
             handle_block(blockchain.clone(), block, fold_logger.clone())
         })
 }
 
 fn handle_block(
-    mut blockchain: Blockchain,
+    blockchain: Blockchain,
     block: Block,
     logger: Logger,
 ) -> impl Future<Item = Arc<Ref>, Error = Error> {
@@ -106,7 +110,7 @@ fn handle_block(
         "received block from the bootstrap node: {:#?}",
         header
     );
-    let mut end_blockchain = blockchain.clone();
+    let end_blockchain = blockchain.clone();
     blockchain
         .pre_check_header(header, true)
         .map_err(|e| Error::HeaderCheckFailed { source: e })
