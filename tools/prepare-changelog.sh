@@ -17,7 +17,14 @@ fi
 GITHUB_TOKEN=${1}
 NEW_VERSION=${2}
 
-github_changelog_generator \
+GITHUB_CHANGELOG_GENERATOR="$(which github_changelog_generator)"
+
+if [ "x${GITHUB_CHANGELOG_GENERATOR}" = "x" ] || [ ! -x ${GITHUB_CHANGELOG_GENERATOR} ]; then
+    echo "'github_changelog_generator' not installed? see https://github.com/github-changelog-generator/github-changelog-generator" >&2
+    exit 1
+fi
+
+${GITHUB_CHANGELOG_GENERATOR} \
     --user input-output-hk \
     --project jormungandr \
     --output release.latest \
