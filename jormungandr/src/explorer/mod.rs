@@ -476,20 +476,20 @@ fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> 
 
     for tx in transactions {
         let id = tx.id();
-        for output in tx.outputs() {
-            addresses = addresses.insert_or_update_simple(
-                output.address.clone(),
-                Arc::new(PersistentSequence::new().append(id.clone())),
-                |set| {
-                    let new_set = set.append(id.clone());
-                    Some(Arc::new(new_set))
-                },
-            )
-        }
 
-        for input in tx.inputs() {
+        // A Hashset is used for preventing duplicates when the address is both an
+        // input and an output in the given transaction
+
+        let included_addresses: std::collections::HashSet<ExplorerAddress> = tx
+            .outputs()
+            .iter()
+            .map(|output| output.address.clone())
+            .chain(tx.inputs().iter().map(|input| input.address.clone()))
+            .collect();
+
+        for address in included_addresses {
             addresses = addresses.insert_or_update_simple(
-                input.address.clone(),
+                address,
                 Arc::new(PersistentSequence::new().append(id.clone())),
                 |set| {
                     let new_set = set.append(id.clone());
@@ -498,7 +498,6 @@ fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> 
             )
         }
     }
-
     Ok(addresses)
 }
 
