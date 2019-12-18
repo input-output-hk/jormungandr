@@ -475,19 +475,25 @@ impl CandidateForestThickets {
 
         let root_hash = header.hash();
         let is_new = match self.roots.entry(root_hash) {
-            Vacant(entry) => {
-                let expiration_key = self.expirations.insert(root_hash, self.root_ttl);
-                entry.insert(RootData { expiration_key });
-                let _old = self
-                    .candidate_map
-                    .insert(root_hash, Candidate::from_header(header));
-                debug_assert!(
-                    _old.is_none(),
-                    "chain pull root candidate {} was previously cached",
-                    root_hash,
-                );
-                true
-            }
+            Vacant(entry) => match self.candidate_map.entry(root_hash) {
+                Vacant(candidate_entry) => {
+                    candidate_entry.insert(Candidate::from_header(header));
+                    let expiration_key = self.expirations.insert(root_hash, self.root_ttl);
+                    entry.insert(RootData { expiration_key });
+                    true
+                }
+                Occupied(candidate_entry) => {
+                    debug_assert!(
+                        candidate_entry.get().is_applied(),
+                        "chain pull root candidate {} was cached, but not yet applied",
+                        root_hash,
+                    );
+                    // Forgo the root entry here, because the pull
+                    // is going to be re-rooted, or voided if all following
+                    // blocks are concurrently applied as well.
+                    false
+                }
+            },
             Occupied(entry) => {
                 debug_assert!(
                     !self
