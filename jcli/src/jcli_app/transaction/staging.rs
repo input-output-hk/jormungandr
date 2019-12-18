@@ -420,7 +420,6 @@ impl Staging {
                 .set_witness(index, witness.clone().into())
                 .map_err(|source| Error::AddingWitnessToFinalizedTxFailed {
                     source,
-                    filler: CustomErrorFiller,
                 })?;
         }
 

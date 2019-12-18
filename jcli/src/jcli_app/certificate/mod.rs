@@ -5,6 +5,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+use thiserror::Error;
 
 mod get_stake_pool_id;
 mod new_owner_stake_delegation;
@@ -15,29 +16,50 @@ mod weighted_pool_ids;
 
 pub(crate) use self::sign::{pool_owner_sign, stake_delegation_account_binding_sign};
 
-custom_error! {pub Error
-    KeyInvalid { source: key_parser::Error } = "invalid private key",
-    Io { source: std::io::Error } = "I/O Error",
-    NotStakePoolRegistration = "invalid certificate, expecting a stake pool registration",
-    InputInvalid { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
-    OutputInvalid { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("invalid output file path '{}'", path.display()) }},
-    InvalidCertificate { source: CertificateFromStrError } = "Invalid certificate",
-    ManagementThresholdInvalid { got: usize, max_expected: usize }
-        = "invalid management_threshold value, expected between at least 1 and {max_expected} but got {got}",
-    NoSigningKeys = "No signing keys specified (use -k or --key to specify)",
-    ExpectingOnlyOneSigningKey { got: usize }
-        = "expecting only one signing keys but got {got}",
-    OwnerStakeDelegationDoesntNeedSignature = "owner stake delegation does not need a signature",
-    KeyNotFound { index: usize }
-        = "secret key number {index} matching the expected public key has not been found",
-    ExpectedSignedOrNotCertificate = "Invalid input, expected Signed Certificate or just Certificate",
-    InvalidBech32 { source: bech32::Error } = "Invalid data",
-    PoolDelegationWithZeroWeight = "attempted to build delegation with zero weight",
-    InvalidPoolDelegationWeights { actual: u64, max: u64 } = "pool delegation rates sum up to {actual}, maximum is 255",
-    TooManyPoolDelegations { actual: usize, max: usize } = "attempted to build delegation to {actual} pools, maximum is {max}",
-    InvalidPoolDelegation = "failed to build pool delegation",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("invalid private key")]
+    KeyInvalid(#[from] key_parser::Error),
+    #[error("I/O Error")]
+    Io(#[from] std::io::Error),
+    #[error("invalid certificate, expecting a stake pool registration")]
+    NotStakePoolRegistration,
+    #[error("invalid input file path '{path}'")]
+    InputInvalid {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("invalid output file path '{path}'")]
+    OutputInvalid {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("Invalid certificate")]
+    InvalidCertificate(#[from] CertificateFromStrError),
+    #[error("invalid management_threshold value, expected between at least 1 and {max_expected} but got {got}")]
+    ManagementThresholdInvalid { got: usize, max_expected: usize },
+    #[error("No signing keys specified (use -k or --key to specify)")]
+    NoSigningKeys,
+    #[error("expecting only one signing keys but got {got}")]
+    ExpectingOnlyOneSigningKey { got: usize },
+    #[error("owner stake delegation does not need a signature")]
+    OwnerStakeDelegationDoesntNeedSignature,
+    #[error("secret key number {index} matching the expected public key has not been found")]
+    KeyNotFound { index: usize },
+    #[error("Invalid input, expected Signed Certificate or just Certificate")]
+    ExpectedSignedOrNotCertificate,
+    #[error("Invalid data")]
+    InvalidBech32(#[from] bech32::Error),
+    #[error("attempted to build delegation with zero weight")]
+    PoolDelegationWithZeroWeight,
+    #[error("pool delegation rates sum up to {actual}, maximum is 255")]
+    InvalidPoolDelegationWeights { actual: u64, max: u64 },
+    #[error("attempted to build delegation to {actual} pools, maximum is {max}")]
+    TooManyPoolDelegations { actual: usize, max: usize },
+    #[error("failed to build pool delegation")]
+    InvalidPoolDelegation,
 }
 
 #[derive(StructOpt)]

@@ -39,11 +39,8 @@ impl fmt::Display for Ratio {
 
 #[derive(Clone, Debug, Error)]
 pub enum ParseRatioError {
-    #[error("{source}")]
-    InvalidInt {
-        #[from]
-        source: std::num::ParseIntError,
-    },
+    #[error("{0}")]
+    InvalidInt(#[from] std::num::ParseIntError),
 
     #[error("Missing numerator part of the Ratio")]
     MissingNumerator,

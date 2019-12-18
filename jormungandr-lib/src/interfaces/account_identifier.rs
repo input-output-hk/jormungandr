@@ -53,11 +53,7 @@ impl fmt::Display for AccountIdentifier {
 #[derive(Debug, Error)]
 pub enum ParseAccountIdentifierError {
     #[error("Cannot parse account identifier")]
-    CannotParseAddress {
-        #[source]
-        #[from]
-        source: chain_addr::Error,
-    },
+    CannotParseAddress(#[from] chain_addr::Error),
 
     #[error("Invalid account identifier, expected single account or multisig account")]
     NotAccountOrMulti,

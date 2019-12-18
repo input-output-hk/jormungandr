@@ -14,12 +14,12 @@ mod staging;
 
 use self::staging::StagingKind;
 use crate::jcli_app::certificate;
-use crate::jcli_app::utils::error::CustomErrorFiller;
 use crate::jcli_app::utils::{key_parser, output_format};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -63,79 +63,139 @@ pub enum Transaction {
 
 type StaticStr = &'static str;
 
-custom_error! { pub Error
-    StagingFileOpenFailed { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not open staging transaction file '{}'", path.display()) }},
-    StagingFileReadFailed { source: bincode::ErrorKind, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not read staging transaction file '{}'", path.display()) }},
-    StagingFileWriteFailed { source: bincode::ErrorKind, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not write staging transaction file '{}'", path.display()) }},
-    SecretFileFailed { source: key_parser::Error }
-        = @{{ format_args!("could not process secret file '{}'", source) }},
-        /*
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("could not open staging transaction file '{path}'")]
+    StagingFileOpenFailed {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("could not read staging transaction file '{path}'")]
+    StagingFileReadFailed {
+        #[source]
+        source: bincode::ErrorKind,
+        path: PathBuf,
+    },
+    #[error("could not write staging transaction file '{path}'")]
+    StagingFileWriteFailed {
+        #[source]
+        source: bincode::ErrorKind,
+        path: PathBuf,
+    },
+    #[error("could not process secret file '{0}'")]
+    SecretFileFailed(#[from] key_parser::Error),
+    /*
     SecretFileReadFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read secret file '{}'", path.display()) }},
     SecretFileMalformed { source: chain_crypto::bech32::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not decode secret file '{}'", path.display()) }},
         */
-    WitnessFileReadFailed { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not read witness file '{}'", path.display()) }},
-    WitnessFileWriteFailed { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not write witness file '{}'", path.display()) }},
-    WitnessFileBech32Malformed { source: bech32::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not parse Bech32 in witness file '{}'", path.display()) }},
-    WitnessFileBech32HrpInvalid { actual: String, expected: StaticStr, path: PathBuf }
-        = @{{ format_args!("invalid Bech32 prefix in witness file, expected '{}', found '{}' in '{}'",
-            expected, actual, path.display()) }},
-    WitnessFileBech32EncodingFailed { source: bech32::Error } = "failed to encode witness as bech32",
-    WitnessFileDeserializationFailed { source: chain_core::mempack::ReadError, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not parse data in witness file '{}'", path.display()) }},
-    WitnessFileSerializationFailed { source: std::io::Error, filler: CustomErrorFiller }
-        = "could not serialize witness data",
-    InfoFileWriteFailed { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("could not write info file '{}'", path.display()) }},
-    OutputFormatFailed { source: output_format::Error } = "formatting output failed",
+    #[error("could not read witness file '{path}'")]
+    WitnessFileReadFailed {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("could not write witness file '{path}'")]
+    WitnessFileWriteFailed {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("could not parse Bech32 in witness file '{path}'")]
+    WitnessFileBech32Malformed {
+        #[source]
+        source: bech32::Error,
+        path: PathBuf,
+    },
+    #[error("invalid Bech32 prefix in witness file, expected '{expected}', found '{actual}' in '{path}'")]
+    WitnessFileBech32HrpInvalid {
+        actual: String,
+        expected: StaticStr,
+        path: PathBuf,
+    },
+    #[error("failed to encode witness as bech32")]
+    WitnessFileBech32EncodingFailed(#[from] bech32::Error),
+    #[error("could not parse data in witness file '{path}'")]
+    WitnessFileDeserializationFailed {
+        #[source]
+        source: chain_core::mempack::ReadError,
+        path: PathBuf,
+    },
+    #[error("could not serialize witness data")]
+    WitnessFileSerializationFailed(#[source] std::io::Error),
+    #[error("could not write info file '{path}'")]
+    InfoFileWriteFailed {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("formatting output failed")]
+    OutputFormatFailed(#[from] output_format::Error),
 
-    TxKindToAddExtraInvalid { kind: StagingKind } = "adding certificate to {kind} transaction is not valid",
-    TxKindToAddInputInvalid { kind: StagingKind } = "adding input to {kind} transaction is not valid",
-    TxKindToAddOutputInvalid { kind: StagingKind } = "adding output to {kind} transaction is not valid",
-    TxKindToAddWitnessInvalid { kind: StagingKind } = "adding witness to {kind} transaction is not valid",
-    TxKindToSealInvalid { kind: StagingKind } = "sealing {kind} transaction is not valid",
-    TxKindToFinalizeInvalid { kind: StagingKind } = "finalizing {kind} transaction is not valid",
-    TxKindToGetMessageInvalid { kind: StagingKind } = "cannot get message from transaction in {kind} state",
+    #[error("adding certificate to {kind} transaction is not valid")]
+    TxKindToAddExtraInvalid { kind: StagingKind },
+    #[error("adding input to {kind} transaction is not valid")]
+    TxKindToAddInputInvalid { kind: StagingKind },
+    #[error("adding output to {kind} transaction is not valid")]
+    TxKindToAddOutputInvalid { kind: StagingKind },
+    #[error("adding witness to {kind} transaction is not valid")]
+    TxKindToAddWitnessInvalid { kind: StagingKind },
+    #[error("sealing {kind} transaction is not valid")]
+    TxKindToSealInvalid { kind: StagingKind },
+    #[error("finalizing {kind} transaction is not valid")]
+    TxKindToFinalizeInvalid { kind: StagingKind },
+    #[error("cannot get message from transaction in {kind} state")]
+    TxKindToGetMessageInvalid { kind: StagingKind },
 
-    TooManyWitnessesToAddWitness { actual: usize, max: usize }
-        = "too many witnesses in transaction to add another: {actual}, maximum is {max}",
-    WitnessCountToSealInvalid { actual: usize, expected: usize }
-        = "invalid number of witnesses in transaction to seal: {actual}, should be {expected}",
-    AccountAddressSingle = "invalid input account, this is a UTxO address",
-    AccountAddressGroup = "invalid input account, this is a UTxO address with delegation",
-    AccountAddressMultisig = "invalid input account, this is a multisig account address",
-    AddingWitnessToFinalizedTxFailed { filler: CustomErrorFiller }
-        = "could not add witness to finalized transaction",
-    GeneratedTxBuildingFailed { filler: CustomErrorFiller }
-        = "generated transaction building failed",
-    TxFinalizationFailed { source: chain::transaction::Error }
-        = "transaction finalization failed",
-    GeneratedTxTypeUnexpected = "unexpected generated transaction type",
-    MessageSerializationFailed { source: std::io::Error, filler: CustomErrorFiller }
-        = "serialization of message to bytes failed",
-    InfoCalculationFailed { source: chain::value::ValueError } = "calculation of info failed",
-    FeeCalculationFailed = "fee calculation failed",
-    InfoExpectedSingleAccount = "expected a single account, multisig is not supported yet",
-    MakeWitnessLegacyUtxoUnsupported = "making legacy UTxO witness unsupported",
-    MakeWitnessAccountCounterMissing = "making account witness requires passing spending counter",
-    TxDoesntNeedPayloadAuth = "transaction type doesn't need payload authentification",
-    TxNeedPayloadAuth = "transaction type need payload authentification",
-    NoSigningKeys = "No signing keys specified (use -k or --key to specify)",
-    ExpectingOnlyOneSigningKey { got: usize }
-        = "expecting only one signing keys but got {got}",
-    CertificateError { error: certificate::Error } = "certificate error {error}",
+    #[error("too many witnesses in transaction to add another: {actual}, maximum is {max}")]
+    TooManyWitnessesToAddWitness { actual: usize, max: usize },
+    #[error("invalid number of witnesses in transaction to seal: {actual}, should be {expected}")]
+    WitnessCountToSealInvalid { actual: usize, expected: usize },
+    #[error("invalid input account, this is a UTxO address")]
+    AccountAddressSingle,
+    #[error("invalid input account, this is a UTxO address with delegation")]
+    AccountAddressGroup,
+    #[error("invalid input account, this is a multisig account address")]
+    AccountAddressMultisig,
+    #[error("could not add witness to finalized transaction")]
+    AddingWitnessToFinalizedTxFailed,
+    #[error("generated transaction building failed")]
+    GeneratedTxBuildingFailed,
+    #[error("transaction finalization failed")]
+    TxFinalizationFailed(#[from] chain::transaction::Error),
+    #[error("unexpected generated transaction type")]
+    GeneratedTxTypeUnexpected,
+    #[error("serialization of message to bytes failed")]
+    MessageSerializationFailed(#[source] std::io::Error),
+    #[error("calculation of info failed")]
+    InfoCalculationFailed(#[from] chain::value::ValueError),
+    #[error("fee calculation failed")]
+    FeeCalculationFailed,
+    #[error("expected a single account, multisig is not supported yet")]
+    InfoExpectedSingleAccount,
+    #[error("making legacy UTxO witness unsupported")]
+    MakeWitnessLegacyUtxoUnsupported,
+    #[error("making account witness requires passing spending counter")]
+    MakeWitnessAccountCounterMissing,
+    #[error("transaction type doesn't need payload authentification")]
+    TxDoesntNeedPayloadAuth,
+    #[error("transaction type need payload authentification")]
+    TxNeedPayloadAuth,
+    #[error("No signing keys specified (use -k or --key to specify)")]
+    NoSigningKeys,
+    #[error("expecting only one signing keys but got {got}")]
+    ExpectingOnlyOneSigningKey { got: usize },
+    #[error("certificate error {error}")]
+    CertificateError { error: certificate::Error },
 
-    TxWithOwnerStakeDelegationMultiInputs { inputs: usize }
-        = "transaction has owner stake delegation, but has {inputs} inputs, should have 1",
-    TxWithOwnerStakeDelegationHasUtxoInput = "transaction has owner stake delegation, but has UTxO input",
-    TxWithOwnerStakeDelegationHasOutputs = "transaction has owner stake delegation, but has outputs",
+    #[error("transaction has owner stake delegation, but has {inputs} inputs, should have 1")]
+    TxWithOwnerStakeDelegationMultiInputs { inputs: usize },
+    #[error("transaction has owner stake delegation, but has UTxO input")]
+    TxWithOwnerStakeDelegationHasUtxoInput,
+    #[error("transaction has owner stake delegation, but has outputs")]
+    TxWithOwnerStakeDelegationHasOutputs,
 }
 
 /*
@@ -187,13 +247,9 @@ fn display_fragment_id(common: common::CommonTransaction) -> Result<(), Error> {
 
 fn display_message(common: common::CommonTransaction) -> Result<(), Error> {
     let message = common.load()?.fragment()?;
-    let bytes: Vec<u8> =
-        message
-            .serialize_as_vec()
-            .map_err(|source| Error::MessageSerializationFailed {
-                source,
-                filler: CustomErrorFiller,
-            })?;
+    let bytes: Vec<u8> = message
+        .serialize_as_vec()
+        .map_err(Error::MessageSerializationFailed)?;
     println!("{}", hex::encode(&bytes));
     Ok(())
 }

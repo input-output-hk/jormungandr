@@ -15,6 +15,7 @@ use chain_impl_mockchain::{
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use thiserror::Error;
 
 /// Initial blockchain configuration for block0
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -135,15 +136,28 @@ impl From<BlockchainConfiguration> for ConfigParams {
 
 type StaticStr = &'static str;
 
-custom_error! {pub FromConfigParamsError
-    InitConfigParamMissing { name: StaticStr } = "initial message misses parameter {name}",
-    InitConfigParamDuplicate { name: StaticStr } = "initial message contains duplicate parameter {name}",
-    NumberOfSlotsPerEpoch { source: super::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError } = "Invalid number of slots per epoch",
-    SlotDuration { source: super::slots_duration::TryFromSlotDurationError } = "Invalid slot duration value",
-    ConsensusLeaderId { source: super::leader_id::TryFromConsensusLeaderIdError } = "Invalid consensus leader id",
-    ActiveSlotCoefficient { source: super::active_slot_coefficient::TryFromActiveSlotCoefficientError } = "Invalid active slot coefficient value",
-    KESUpdateSpeed { source: super::kes_update_speed::TryFromKESUpdateSpeedError } = "Invalid KES Update speed value",
-    FeesGoTo { source: super::fees_go_to::TryFromFeesGoToError } = "Invalid FeesGoTo setting",
+#[derive(Debug, Error)]
+pub enum FromConfigParamsError {
+    #[error("initial message misses parameter {name}")]
+    InitConfigParamMissing { name: StaticStr },
+    #[error("initial message contains duplicate parameter {name}")]
+    InitConfigParamDuplicate { name: StaticStr },
+    #[error("Invalid number of slots per epoch")]
+    NumberOfSlotsPerEpoch(
+        #[from] super::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError,
+    ),
+    #[error("Invalid slot duration value")]
+    SlotDuration(#[from] super::slots_duration::TryFromSlotDurationError),
+    #[error("Invalid consensus leader id")]
+    ConsensusLeaderId(#[from] super::leader_id::TryFromConsensusLeaderIdError),
+    #[error("Invalid active slot coefficient value")]
+    ActiveSlotCoefficient(
+        #[from] super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
+    ),
+    #[error("Invalid KES Update speed value")]
+    KESUpdateSpeed(#[from] super::kes_update_speed::TryFromKESUpdateSpeedError),
+    #[error("Invalid FeesGoTo setting")]
+    FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {

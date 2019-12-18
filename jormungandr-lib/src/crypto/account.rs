@@ -45,6 +45,7 @@ use chain_impl_mockchain::{
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
+use thiserror::Error;
 
 /// Account identifier, used to identify an account. Cryptographically linked
 /// to the account [`SigningKey`].
@@ -59,10 +60,14 @@ pub struct Identifier(key::Identifier<account::AccountAlg>);
 #[derive(Clone)]
 pub struct SigningKey(EitherEd25519SecretKey);
 
-custom_error! {pub SigningKeyParseError
-    InvalidBech32Encoding { source: bech32::Error } = "Invalid bech32: {source}",
-    InvalidSecretKey { source: chain_crypto::bech32::Error } = "Invalid secret key: {source}",
-    UnexpectedHRP { hrp: String } = "Unexpected key '{hrp}'. Expected either ed25519 or ed25519extended",
+#[derive(Debug, Error)]
+pub enum SigningKeyParseError {
+    #[error("Invalid bech32: {0}")]
+    InvalidBech32Encoding(#[from] bech32::Error),
+    #[error("Invalid secret key: {0}")]
+    InvalidSecretKey(#[from] chain_crypto::bech32::Error),
+    #[error("Unexpected key '{hrp}'. Expected either ed25519 or ed25519extended")]
+    UnexpectedHRP { hrp: String },
 }
 
 impl Identifier {

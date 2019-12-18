@@ -35,11 +35,7 @@ use tokio::{
 #[derive(Error, Debug)]
 pub enum LeadershipError {
     #[error("Error while awaiting for next leader event to process")]
-    AwaitError {
-        #[source]
-        #[from]
-        source: timer::Error,
-    },
+    AwaitError(#[from] timer::Error),
 
     #[error("The blockchain Timeline hasn't started yet")]
     TooEarlyForTimeFrame {
@@ -254,9 +250,7 @@ impl Module {
         let tip = self.tip.clone();
 
         deadline
-            .and_then(|deadline| {
-                Delay::new(deadline).map_err(|source| LeadershipError::AwaitError { source })
-            })
+            .and_then(|deadline| Delay::new(deadline).map_err(LeadershipError::AwaitError))
             .and_then(move |()| tip.get_ref())
             .map(|tip_ref| {
                 self.tip_ref = tip_ref;
@@ -349,7 +343,7 @@ impl Module {
                     // await the right_time before starting the action
                     Either::A(
                         Delay::new(right_time)
-                            .map_err(|source| LeadershipError::AwaitError { source })
+                            .map_err(LeadershipError::AwaitError)
                             .and_then(move |()| {
                                 self.action_run_entry_in_bound(entry, logger, event_end)
                             }),

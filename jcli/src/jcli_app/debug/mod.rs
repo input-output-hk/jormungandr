@@ -1,9 +1,9 @@
 mod block;
 mod message;
-use crate::jcli_app::utils::error::CustomErrorFiller;
 use hex::FromHexError;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -14,12 +14,20 @@ pub enum Debug {
     Block(block::Block),
 }
 
-custom_error! {pub Error
-    Io { source: std::io::Error } = "I/O Error",
-    InputInvalid { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
-    HexMalformed { source: FromHexError } = "hex encoding malformed",
-    MessageMalformed { source: std::io::Error, filler: CustomErrorFiller } = "message malformed",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("I/O Error")]
+    Io(#[from] std::io::Error),
+    #[error("invalid input file path '{path}'")]
+    InputInvalid {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("hex encoding malformed")]
+    HexMalformed(#[from] FromHexError),
+    #[error("message malformed")]
+    MessageMalformed(#[source] std::io::Error),
 }
 
 impl Debug {

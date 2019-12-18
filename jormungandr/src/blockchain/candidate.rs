@@ -26,11 +26,7 @@ pub enum Error {
     #[error("the incoming header stream is empty")]
     EmptyHeaderStream,
     #[error("header chain verification failed")]
-    Blockchain(
-        #[from]
-        #[source]
-        chain::Error,
-    ),
+    Blockchain(#[from] chain::Error),
     #[error("the parent block {0} of the first received block header is not found in storage")]
     MissingParentBlock(HeaderHash),
     #[error("the parent hash field {0} of a received block header does not match the hash of the preceding header")]
@@ -38,11 +34,7 @@ pub enum Error {
     // FIXME: this needs to be merged into the Blockchain variant above
     // when Blockchain can pre-validate headers without up-to-date ledger.
     #[error("block headers do not form a valid chain: {0}")]
-    HeaderChainVerificationFailed(
-        #[from]
-        #[source]
-        HeaderChainVerifyError,
-    ),
+    HeaderChainVerificationFailed(#[from] HeaderChainVerifyError),
     #[error("unexpected header stream failure")]
     Unexpected,
 }

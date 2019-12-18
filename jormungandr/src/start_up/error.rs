@@ -6,27 +6,54 @@ use crate::{
 };
 use chain_storage::error::Error as StorageError;
 use std::io;
+use thiserror::Error;
 
-custom_error! {pub ErrorKind
-   SQLite = "SQLite file",
-   Block0 = "Block0"
+#[derive(Debug, Error)]
+pub enum ErrorKind {
+    #[error("SQLite file")]
+    SQLite,
+    #[error("Block0")]
+    Block0,
 }
 
-custom_error! {pub Error
-    LoggingInitializationError { source: logging::Error } = "Unable to initialize the logger",
-    ConfigurationError{source: settings::Error} = "Error in the overall configuration of the node",
-    IO{source: io::Error, reason: ErrorKind} = "I/O Error with {reason}",
-    ParseError{ source: io::Error, reason: ErrorKind} = "Parsing error on {reason}",
-    StorageError { source: StorageError } = "Storage error",
-    Blockchain { source: blockchain::Error } = "Error while loading the legacy blockchain state",
-    Block0 { source: blockcfg::Block0Error } = "Error in the genesis-block",
-    FetchBlock0 { source: network::FetchBlockError } = "Error fetching the genesis block from the network",
-    NetworkBootstrapError { source: network::BootstrapError } = "Error while loading the blockchain from the network",
-    NodeSecrets { source: secure::NodeSecretFromFileError} = "Error while loading the node's secrets.",
-    Block0InFuture = "Block 0 is set to start in the future",
-    ExplorerBootstrapError { source: explorer::error::Error } = "Error while loading the explorer from storage",
-    ServiceTerminatedWithError = "A service has terminated with an error",
-    DiagnosticError { source: DiagnosticError } = "Unable to get system limits: {source}",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Unable to initialize the logger")]
+    LoggingInitializationError(#[from] logging::Error),
+    #[error("Error in the overall configuration of the node")]
+    ConfigurationError(#[from] settings::Error),
+    #[error("I/O Error with {reason}")]
+    IO {
+        #[source]
+        source: io::Error,
+        reason: ErrorKind,
+    },
+    #[error("Parsing error on {reason}")]
+    ParseError {
+        #[source]
+        source: io::Error,
+        reason: ErrorKind,
+    },
+    #[error("Storage error")]
+    StorageError(#[from] StorageError),
+    #[error("Error while loading the legacy blockchain state")]
+    Blockchain(#[from] blockchain::Error),
+    #[error("Error in the genesis-block")]
+    Block0(#[from] blockcfg::Block0Error),
+    #[error("Error fetching the genesis block from the network")]
+    FetchBlock0(#[from] network::FetchBlockError),
+    #[error("Error while loading the blockchain from the network")]
+    NetworkBootstrapError(#[from] network::BootstrapError),
+    #[error("Error while loading the node's secrets.")]
+    NodeSecrets(#[from] secure::NodeSecretFromFileError),
+    #[error("Block 0 is set to start in the future")]
+    Block0InFuture,
+    #[error("Error while loading the explorer from storage")]
+    ExplorerBootstrapError(#[from] explorer::error::Error),
+    #[error("A service has terminated with an error")]
+    ServiceTerminatedWithError,
+    #[error("Unable to get system limits: {0}")]
+    DiagnosticError(#[from] DiagnosticError),
 }
 
 impl Error {

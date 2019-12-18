@@ -5,6 +5,7 @@ use crate::interfaces::{
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{convert::TryFrom, fmt};
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct NumberOfSlotsPerEpoch(pub(crate) u32);
@@ -41,9 +42,12 @@ impl NumberOfSlotsPerEpoch {
     }
 }
 
-custom_error! { pub TryFromNumberOfSlotsPerEpochError
-    Incompatible = "Incompatible Config param, expected number of slots per epoch",
-    Invalid { slots: u32 } = "invalid number of slots per epoch {slots}"
+#[derive(Debug, Error)]
+pub enum TryFromNumberOfSlotsPerEpochError {
+    #[error("Incompatible Config param, expected number of slots per epoch")]
+    Incompatible,
+    #[error("invalid number of slots per epoch {slots}")]
+    Invalid { slots: u32 },
 }
 
 impl TryFrom<ConfigParam> for NumberOfSlotsPerEpoch {

@@ -1,6 +1,6 @@
 use crate::jcli_app::{
     rest::Error,
-    utils::{error::CustomErrorFiller, io, DebugFlag, HostAddr, OutputFormat, RestApiSender},
+    utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender},
 };
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::fragment::Fragment;
@@ -67,12 +67,8 @@ fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) -> Resu
     let msg_bin = hex::decode(&msg_hex)?;
     let url = addr.with_segments(&["v0", "message"])?.into_url();
     let builder = reqwest::Client::new().post(url);
-    let fragment = Fragment::deserialize(msg_bin.as_slice().into_buf()).map_err(|e| {
-        Error::InputFragmentMalformed {
-            source: e,
-            filler: CustomErrorFiller,
-        }
-    })?;
+    let fragment = Fragment::deserialize(msg_bin.as_slice().into_buf())
+        .map_err(Error::InputFragmentMalformed)?;
     let response = RestApiSender::new(builder, &debug)
         .with_binary_body(msg_bin)
         .send()?;

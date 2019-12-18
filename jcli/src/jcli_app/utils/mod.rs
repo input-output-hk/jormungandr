@@ -1,7 +1,6 @@
 mod account_id;
 mod debug_flag;
 
-pub mod error;
 pub mod host_addr;
 pub mod io;
 pub mod key_parser;
@@ -11,13 +10,13 @@ pub mod rest_api;
 
 pub use self::account_id::AccountId;
 pub use self::debug_flag::DebugFlag;
-pub use self::error::CustomErrorFiller;
 pub use self::host_addr::HostAddr;
 pub use self::open_api_verifier::OpenApiVerifier;
 pub use self::output_format::OutputFormat;
 pub use self::rest_api::{RestApiResponse, RestApiResponseBody, RestApiSender};
 use bech32::Bech32;
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt)]
 #[structopt(name = "utils", rename_all = "kebab-case")]
@@ -37,8 +36,10 @@ pub struct Bech32ConvertArgs {
     new_hrp: String,
 }
 
-custom_error! {pub Error
-    Bech32ConversionFailure = "failed to convert bech32",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("failed to convert bech32")]
+    Bech32ConversionFailure,
 }
 
 impl Utils {

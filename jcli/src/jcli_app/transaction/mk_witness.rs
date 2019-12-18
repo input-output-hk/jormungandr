@@ -1,6 +1,5 @@
 use crate::jcli_app::transaction::Error;
 use crate::jcli_app::utils::{
-    error::CustomErrorFiller,
     io,
     key_parser::{read_ed25519_secret_key_from_file, read_secret_key_from_file},
 };
@@ -98,13 +97,9 @@ impl MkWitness {
                 source,
                 path: self.output.clone().unwrap_or_default(),
             })?;
-        let bytes =
-            witness
-                .serialize_as_vec()
-                .map_err(|source| Error::WitnessFileSerializationFailed {
-                    source,
-                    filler: CustomErrorFiller,
-                })?;
+        let bytes = witness
+            .serialize_as_vec()
+            .map_err(Error::WitnessFileSerializationFailed)?;
 
         let base32 = bytes.to_base32();
         let bech32 = Bech32::new("witness".to_owned(), base32)?;

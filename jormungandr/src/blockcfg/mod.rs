@@ -17,20 +17,30 @@ pub use chain_impl_mockchain::{
     value::{Value, ValueError},
 };
 use std::time::{Duration, SystemTime};
+use thiserror::Error;
 
 pub type HeaderHash = HeaderId;
 
-custom_error! {pub Block0Error
-    CannotParseEntity{source: config::Error} = "Block0 Initial settings: {source}",
-    Malformed{source: Block0Malformed} = "Block0 is invalid or malformed: {source}"
+#[derive(Debug, Error)]
+pub enum Block0Error {
+    #[error("Block0 Initial settings: {0}")]
+    CannotParseEntity(#[from] config::Error),
+    #[error("Block0 is invalid or malformed: {0}")]
+    Malformed(#[from] Block0Malformed),
 }
 
-custom_error! {pub Block0Malformed
-    NoInitialSettings = "missing its initial settings",
-    NoStartTime = "missing `block0-start' value in the block0",
-    NoDiscrimination = "missing `discrimination' value in the block0",
-    NoSlotDuration = "missing `slot_duration' value in the block0",
-    NoSlotsPerEpoch = "missing `slots_per_epoch' value in the block0",
+#[derive(Debug, Error)]
+pub enum Block0Malformed {
+    #[error("missing its initial settings")]
+    NoInitialSettings,
+    #[error("missing `block0-start' value in the block0")]
+    NoStartTime,
+    #[error("missing `discrimination' value in the block0")]
+    NoDiscrimination,
+    #[error("missing `slot_duration' value in the block0")]
+    NoSlotDuration,
+    #[error("missing `slots_per_epoch' value in the block0")]
+    NoSlotsPerEpoch,
 }
 
 pub trait Block0DataSource {
