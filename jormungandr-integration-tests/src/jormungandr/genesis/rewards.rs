@@ -11,7 +11,8 @@ pub fn collect_reward() {
     let (jormungandr, stake_pool_id) = startup::start_stake_pool(
         &actor_account,
         ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+            .with_slots_per_epoch(20)
+            .with_consensus_genesis_praos_active_slot_coeff("0.999")
             .with_slot_duration(1),
     )
     .unwrap();
