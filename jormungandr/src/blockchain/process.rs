@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     blockcfg::{Block, FragmentId, Header},
+    blockchain::Checkpoints,
     intercom::{
         self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, ReplyHandle, TransactionMsg,
     },
@@ -13,8 +14,12 @@ use crate::{
     stats_counter::StatsCounter,
     utils::{
         async_msg::{self, MessageBox, MessageQueue},
+        fire_forget_scheduler::{
+            FireForgetScheduler, FireForgetSchedulerConfig, FireForgetSchedulerFuture,
+        },
         task::TokioServiceInfo,
     },
+    HeaderHash,
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
@@ -29,11 +34,27 @@ use tokio::{
 use std::{sync::Arc, time::Duration};
 
 type TimeoutError = timeout::Error<Error>;
+type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
+type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
 
 const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_BLOCKS: u64 = 60;
 const DEFAULT_TIMEOUT_PROCESS_HEADERS: u64 = 60;
+
+const PULL_HEADERS_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSchedulerConfig {
+    max_running: 16,
+    max_running_same_task: 2,
+    command_channel_size: 1024,
+    timeout: Duration::from_millis(500),
+};
+
+const GET_NEXT_BLOCK_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSchedulerConfig {
+    max_running: 16,
+    max_running_same_task: 2,
+    command_channel_size: 1024,
+    timeout: Duration::from_millis(500),
+};
 
 pub struct Process {
     pub blockchain: Blockchain,
@@ -53,13 +74,26 @@ impl Process {
         input: MessageQueue<BlockMsg>,
     ) -> impl Future<Item = (), Error = ()> {
         service_info.spawn(self.start_garbage_collector(service_info.logger().clone()));
+        let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
+        let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
         input.for_each(move |msg| {
-            self.handle_input(&service_info, msg);
+            self.handle_input(
+                &service_info,
+                msg,
+                &pull_headers_scheduler,
+                &get_next_block_scheduler,
+            );
             future::ok(())
         })
     }
 
-    fn handle_input(&mut self, info: &TokioServiceInfo, input: BlockMsg) {
+    fn handle_input(
+        &mut self,
+        info: &TokioServiceInfo,
+        input: BlockMsg,
+        pull_headers_scheduler: &PullHeadersScheduler,
+        get_next_block_scheduler: &GetNextBlockScheduler,
+    ) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
@@ -136,7 +170,8 @@ impl Process {
                     blockchain_tip.clone(),
                     header,
                     node_id,
-                    network_msg_box.clone(),
+                    pull_headers_scheduler.clone(),
+                    get_next_block_scheduler.clone(),
                     logger.clone(),
                 );
 
@@ -165,6 +200,7 @@ impl Process {
                     reply,
                     candidate: None,
                 };
+                let get_next_block_scheduler = get_next_block_scheduler.clone();
                 let future = future::loop_fn(state, move |state| {
                     let blockchain = blockchain_fold.clone();
                     let candidate_forest = candidate_forest.clone();
@@ -172,6 +208,7 @@ impl Process {
                     let explorer_msg_box = explorer_msg_box.clone();
                     let stats_counter = stats_counter.clone();
                     let logger = logger_fold.clone();
+                    let get_next_block_scheduler = get_next_block_scheduler.clone();
                     let State {
                         stream,
                         reply,
@@ -186,6 +223,7 @@ impl Process {
                                     block,
                                     tx_msg_box,
                                     explorer_msg_box,
+                                    get_next_block_scheduler,
                                     logger.clone(),
                                 )
                                 .then(move |res| match res {
@@ -238,38 +276,45 @@ impl Process {
 
                 let (stream, reply) = handle.into_stream_and_reply();
                 let logger = info.logger().clone();
-                let logger_err = info.logger().clone();
+                let logger_err = logger.clone();
+                let schedule_logger = logger.clone();
+                let mut pull_headers_scheduler = pull_headers_scheduler.clone();
 
-                let future = candidate_forest.advance_branch(blockchain, stream);
-                let future = future.then(move |resp| match resp {
-                    Err(e) => {
-                        info!(
-                            logger,
-                            "error processing an incoming header stream";
-                            "reason" => %e,
-                        );
-                        reply.reply_error(chain_header_error_into_reply(e));
-                        Either::A(future::ok(()))
-                    }
-                    Ok((hashes, maybe_remainder)) => {
-                        if hashes.is_empty() {
+                let future = candidate_forest.advance_branch(blockchain, stream)
+                    .inspect(move |(header_ids, _)|
+                        header_ids.iter()
+                        .try_for_each(|header_id| pull_headers_scheduler.declare_completed(*header_id))
+                        .unwrap_or_else(|e| error!(schedule_logger, "get blocks schedule completion failed"; "reason" => e.to_string())))
+                    .then(move |resp| match resp {
+                        Err(e) => {
+                            info!(
+                                logger,
+                                "error processing an incoming header stream";
+                                "reason" => %e,
+                            );
+                            reply.reply_error(chain_header_error_into_reply(e));
                             Either::A(future::ok(()))
-                        } else {
-                            Either::B(
-                                network_msg_box
-                                    .send(NetworkMsg::GetBlocks(hashes))
-                                    .map_err(|_| "cannot request blocks from network".into())
-                                    .map(|_| reply.reply_ok(())),
-                            )
-                            // TODO: if the stream is not ended, resume processing
-                            // after more blocks arrive
                         }
-                    }
-                });
-
-                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS)).map_err(move |err: TimeoutError| {
-                    error!(logger_err, "cannot process network headers" ; "reason" => err.to_string())
-                }))
+                        Ok((hashes, maybe_remainder)) => {
+                            if hashes.is_empty() {
+                                Either::A(future::ok(()))
+                            } else {
+                                Either::B(
+                                    network_msg_box
+                                        .send(NetworkMsg::GetBlocks(hashes))
+                                        .map_err(|_| "cannot request blocks from network".into())
+                                        .map(|_| reply.reply_ok(())),
+                                )
+                                // TODO: if the stream is not ended, resume processing
+                                // after more blocks arrive
+                            }
+                        }
+                    })
+                    .timeout(Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS))
+                    .map_err(move |err: TimeoutError| {
+                        error!(logger_err, "cannot process network headers" ; "reason" => err.to_string())
+                    });
+                info.spawn(future);
             }
         }
     }
@@ -286,6 +331,56 @@ impl Process {
             .map_err(move |e| {
                 error!(error_logger, "cannot run garbage collection" ; "reason" => %e);
             })
+    }
+
+    fn spawn_pull_headers_scheduler(&self, info: &TokioServiceInfo) -> PullHeadersScheduler {
+        let network_msgbox = self.network_msgbox.clone();
+        let scheduler_logger = info.logger().clone();
+        let scheduler_future = FireForgetSchedulerFuture::new(
+            &PULL_HEADERS_SCHEDULER_CONFIG,
+            move |to, node_id, from| {
+                network_msgbox
+                    .clone()
+                    .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                    .unwrap_or_else(|e| {
+                        error!(scheduler_logger, "cannot send PullHeaders request to network";
+                        "reason" => e.to_string())
+                    })
+            },
+        );
+        let scheduler = scheduler_future.scheduler();
+        let logger = info.logger().clone();
+        let future = scheduler_future.map(|never| match never {}).map_err(
+            move |e| error!(logger, "get blocks scheduling failed"; "reason" => e.to_string()),
+        );
+        info.spawn(future);
+        scheduler
+    }
+
+    fn spawn_get_next_block_scheduler(&self, info: &TokioServiceInfo) -> GetNextBlockScheduler {
+        let network_msgbox = self.network_msgbox.clone();
+        let scheduler_logger = info.logger().clone();
+        let scheduler_future = FireForgetSchedulerFuture::new(
+            &GET_NEXT_BLOCK_SCHEDULER_CONFIG,
+            move |header_id, node_id, ()| {
+                network_msgbox
+                    .clone()
+                    .try_send(NetworkMsg::GetNextBlock(node_id, header_id))
+                    .unwrap_or_else(|e| {
+                        error!(
+                            scheduler_logger,
+                            "cannot send GetNextBlock request to network"; "reason" => e.to_string()
+                        )
+                    });
+            },
+        );
+        let scheduler = scheduler_future.scheduler();
+        let logger = info.logger().clone();
+        let future = scheduler_future.map(|never| match never {}).map_err(
+            move |e| error!(logger, "get next block scheduling failed"; "reason" => e.to_string()),
+        );
+        info.spawn(future);
+        scheduler
     }
 }
 
@@ -418,7 +513,8 @@ fn process_block_announcement(
     blockchain_tip: Tip,
     header: Header,
     node_id: NodeId,
-    mut network_msg_box: MessageBox<NetworkMsg>,
+    mut pull_headers_scheduler: PullHeadersScheduler,
+    mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,
 ) -> impl Future<Item = (), Error = Error> {
     blockchain
@@ -435,12 +531,11 @@ fn process_block_announcement(
                     blockchain
                         .get_checkpoints(blockchain_tip.branch().clone())
                         .map(move |from| {
-                            network_msg_box
-                                .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                            pull_headers_scheduler.schedule(to, node_id, from)
                                 .unwrap_or_else(move |err| {
                                     error!(
                                         logger,
-                                        "cannot send PullHeaders request to network: {}", err
+                                        "cannot schedule pulling headers"; "reason" => err.to_string()
                                     )
                                 });
                         }),
@@ -454,12 +549,11 @@ fn process_block_announcement(
                     logger,
                     "Announced block has a locally stored parent, fetch it"
                 );
-                network_msg_box
-                    .try_send(NetworkMsg::GetNextBlock(node_id, header.hash()))
+                get_next_block_scheduler.schedule(header.id(), node_id, ())
                     .unwrap_or_else(move |err| {
                         error!(
                             logger,
-                            "cannot send GetNextBlock request to network: {}", err
+                            "cannot schedule getting next block"; "reason" => err.to_string()
                         )
                     });
                 Either::A(future::ok(()))
@@ -474,10 +568,13 @@ pub fn process_network_block(
     block: Block,
     tx_msg_box: MessageBox<TransactionMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,
 ) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
     use futures::future::Either::{A, B};
 
+    get_next_block_scheduler.declare_completed(block.id())
+        .unwrap_or_else(|e| error!(logger, "get next block schedule completion failed"; "reason" => e.to_string()));
     let header = block.header();
     blockchain
         .pre_check_header(header, false)
