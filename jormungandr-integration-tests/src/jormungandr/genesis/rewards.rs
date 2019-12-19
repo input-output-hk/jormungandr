@@ -12,7 +12,7 @@ pub fn collect_reward() {
         &actor_account,
         ConfigurationBuilder::new()
             .with_slots_per_epoch(20)
-            .with_consensus_genesis_praos_active_slot_coeff("1.0")
+            .with_consensus_genesis_praos_active_slot_coeff("0.999")
             .with_slot_duration(1),
     )
     .unwrap();
