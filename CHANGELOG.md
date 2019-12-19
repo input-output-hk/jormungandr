@@ -1,5 +1,30 @@
 # Change Log
 
+## [v0.8.4](https://github.com/input-output-hk/jormungandr/tree/v0.8.4) (2019-12-19)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.3...v0.8.4)
+
+**Fixed bugs:**
+
+- Panic: transaction not found for utxo input [\#1382](https://github.com/input-output-hk/jormungandr/issues/1382)
+- Panic on 'invalid key' [\#1381](https://github.com/input-output-hk/jormungandr/issues/1381)
+- Question: initial bootstrap failed, error: BlockMissingParent... referring to block0, but wrong parent. [\#1326](https://github.com/input-output-hk/jormungandr/issues/1326)
+- Eliminate duplicates in transactions by address [\#1397](https://github.com/input-output-hk/jormungandr/pull/1397)
+- handle utxo pointers in the same block [\#1394](https://github.com/input-output-hk/jormungandr/pull/1394)
+- Fix a race condition of header pull with block pull [\#1389](https://github.com/input-output-hk/jormungandr/pull/1389)
+- Exclude block 0 from sent branches [\#1385](https://github.com/input-output-hk/jormungandr/pull/1385)
+
+**Closed issues:**
+
+- peer node ID differs from the expected X hash, node id: Y hash [\#1390](https://github.com/input-output-hk/jormungandr/issues/1390)
+- Compilation error building latest master on MacOS [\#1376](https://github.com/input-output-hk/jormungandr/issues/1376)
+- Limit concurrent pull requests [\#1349](https://github.com/input-output-hk/jormungandr/issues/1349)
+
+**Merged pull requests:**
+
+- Limit concurrent pull requests [\#1365](https://github.com/input-output-hk/jormungandr/pull/1365)
+- remove custom\_error [\#1345](https://github.com/input-output-hk/jormungandr/pull/1345)
+
 ## [v0.8.3](https://github.com/input-output-hk/jormungandr/tree/v0.8.3) (2019-12-17)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.2...v0.8.3)
