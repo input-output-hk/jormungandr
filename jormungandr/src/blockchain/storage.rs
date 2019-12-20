@@ -5,17 +5,16 @@ use crate::{
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
 use tokio::prelude::future::Either;
 use tokio::prelude::*;
-use tokio::sync::lock::{Lock, LockGuard};
 
 pub use chain_storage::error::Error as StorageError;
 
 #[derive(Clone)]
 pub struct Storage {
-    inner: Lock<NodeStorage>,
+    inner: NodeStorage,
 }
 
 pub struct BlockStream {
-    lock: Lock<NodeStorage>,
+    inner: NodeStorage,
     state: BlockIterState,
 }
 
@@ -32,30 +31,19 @@ struct BlockIterState {
 
 impl Storage {
     pub fn new(storage: NodeStorage) -> Self {
-        Storage {
-            inner: Lock::new(storage),
-        }
+        Storage { inner: storage }
     }
 
     #[deprecated(since = "new blockchain API", note = "use the stream iterator instead")]
-    pub fn get_inner(&self) -> impl Future<Item = LockGuard<NodeStorage>, Error = StorageError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock()))
+    pub fn get_inner(&self) -> impl Future<Item = NodeStorage, Error = StorageError> {
+        future::ok(self.inner.clone())
     }
 
     pub fn get_tag(
         &self,
         tag: String,
     ) -> impl Future<Item = Option<HeaderHash>, Error = StorageError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
-            match guard.get_tag(&tag) {
-                Err(error) => future::err(error),
-                Ok(res) => future::ok(res),
-            }
-        })
+        future::result(self.inner.get_tag(&tag))
     }
 
     pub fn put_tag(
@@ -63,71 +51,48 @@ impl Storage {
         tag: String,
         header_hash: HeaderHash,
     ) -> impl Future<Item = (), Error = StorageError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |mut guard| {
-            match guard.put_tag(&tag, &header_hash) {
-                Err(error) => future::err(error),
-                Ok(res) => future::ok(res),
-            }
-        })
+        future::result(self.inner.put_tag(&tag, &header_hash))
     }
 
     pub fn get(
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Option<Block>, Error = StorageError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
-            match guard.get_block(&header_hash) {
-                Err(StorageError::BlockNotFound) => future::ok(None),
-                Err(error) => future::err(error),
-                Ok((block, _block_info)) => future::ok(Some(block)),
-            }
-        })
+        match self.inner.get_block(&header_hash) {
+            Err(StorageError::BlockNotFound) => future::ok(None),
+            Err(error) => future::err(error),
+            Ok((block, _block_info)) => future::ok(Some(block)),
+        }
     }
 
     pub fn get_with_info(
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Option<(Block, BlockInfo<HeaderHash>)>, Error = StorageError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
-            match guard.get_block(&header_hash) {
-                Err(StorageError::BlockNotFound) => future::ok(None),
-                Err(error) => future::err(error),
-                Ok(v) => future::ok(Some(v)),
-            }
-        })
+        match self.inner.get_block(&header_hash) {
+            Err(StorageError::BlockNotFound) => future::ok(None),
+            Err(error) => future::err(error),
+            Ok(v) => future::ok(Some(v)),
+        }
     }
 
     pub fn block_exists(
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = bool, Error = StorageError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
-            match guard.block_exists(&header_hash) {
-                Err(StorageError::BlockNotFound) => future::ok(false),
-                Err(error) => future::err(error),
-                Ok(existence) => future::ok(existence),
-            }
-        })
+        match self.inner.block_exists(&header_hash) {
+            Err(StorageError::BlockNotFound) => future::ok(false),
+            Err(error) => future::err(error),
+            Ok(existence) => future::ok(existence),
+        }
     }
 
     pub fn put_block(&mut self, block: Block) -> impl Future<Item = (), Error = StorageError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |mut guard| {
-            match guard.put_block(&block) {
-                Err(StorageError::BlockNotFound) => unreachable!(),
-                Err(error) => future::err(error),
-                Ok(()) => future::ok(()),
-            }
-        })
+        match self.inner.put_block(&block) {
+            Err(StorageError::BlockNotFound) => unreachable!(),
+            Err(error) => future::err(error),
+            Ok(()) => future::ok(()),
+        }
     }
 
     /// Return values:
@@ -140,22 +105,17 @@ impl Storage {
         from: HeaderHash,
         to: HeaderHash,
     ) -> impl Future<Item = BlockStream, Error = StorageError> {
-        let mut inner = self.inner.clone();
-        let inner_2 = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
-            match store.is_ancestor(&from, &to) {
+        match self.inner.is_ancestor(&from, &to) {
+            Err(error) => future::err(error),
+            Ok(None) => future::err(StorageError::CannotIterate),
+            Ok(Some(distance)) => match self.inner.get_block_info(&to) {
                 Err(error) => future::err(error),
-                Ok(None) => future::err(StorageError::CannotIterate),
-                Ok(Some(distance)) => match store.get_block_info(&to) {
-                    Err(error) => future::err(error),
-                    Ok(to_info) => future::ok(BlockStream {
-                        lock: inner_2,
-                        state: BlockIterState::new(to_info, distance),
-                    }),
-                },
-            }
-        })
+                Ok(to_info) => future::ok(BlockStream {
+                    inner: self.inner.clone(),
+                    state: BlockIterState::new(to_info, distance),
+                }),
+            },
+        }
     }
 
     /// Stream a branch ending at `to` and starting from the ancestor
@@ -173,55 +133,34 @@ impl Storage {
         S: Sink<SinkItem = Result<Block, E>>,
         E: From<StorageError>,
     {
-        let mut inner = self.inner.clone();
-        let mut inner_2 = self.inner.clone();
+        let res = self.inner.get_block_info(&to).map(|to_info| {
+            let depth = depth.unwrap_or(to_info.depth - 1);
+            BlockIterState::new(to_info, depth)
+        });
 
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .and_then(move |store| {
-                store.get_block_info(&to).map(|to_info| {
-                    let depth = depth.unwrap_or(to_info.depth - 1);
-                    BlockIterState::new(to_info, depth)
-                })
-            })
-            .then(move |res| match res {
-                Ok(iter) => {
-                    let mut state = SendState {
-                        sink,
-                        iter,
-                        pending: None,
-                    };
-                    let fut = future::poll_fn(move || {
-                        while try_ready!(state.poll_continue()) {
-                            let mut store = try_ready!(Ok(inner_2.poll_lock()));
-                            try_ready!(state.fill_sink(&mut store));
-                        }
-                        Ok(().into())
-                    });
-                    Either::A(fut)
-                }
-                Err(e) => {
-                    let fut = sink
-                        .send_all(stream::once(Ok(Err(e.into()))))
-                        .map(|(_, _)| ());
-                    Either::B(fut)
-                }
-            })
-    }
-
-    pub fn get_checkpoints(
-        &self,
-        tip: HeaderHash,
-    ) -> impl Future<Item = Vec<HeaderHash>, Error = StorageError> {
-        let mut inner = self.inner.clone();
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
-            let tip_info = store.get_block_info(&tip)?;
-            let mut checkpoints = Vec::new();
-            assert!(tip_info.depth > 0);
-            for_path_to_nth_ancestor(&*store, &tip, tip_info.depth - 1, |block_info| {
-                checkpoints.push(block_info.block_hash.clone());
-            })?;
-            Ok(checkpoints)
-        })
+        match res {
+            Ok(iter) => {
+                let mut state = SendState {
+                    sink,
+                    iter,
+                    pending: None,
+                };
+                let mut store = self.inner.clone();
+                let fut = future::poll_fn(move || {
+                    while try_ready!(state.poll_continue()) {
+                        try_ready!(state.fill_sink(&mut store));
+                    }
+                    Ok(().into())
+                });
+                Either::A(fut)
+            }
+            Err(e) => {
+                let fut = sink
+                    .send_all(stream::once(Ok(Err(e.into()))))
+                    .map(|(_, _)| ());
+                Either::B(fut)
+            }
+        }
     }
 
     pub fn find_closest_ancestor(
@@ -229,40 +168,37 @@ impl Storage {
         checkpoints: Vec<HeaderHash>,
         descendant: HeaderHash,
     ) -> impl Future<Item = Option<Ancestor>, Error = StorageError> {
-        let mut inner = self.inner.clone();
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
-            let mut ancestor = None;
-            let mut closest_found = std::u64::MAX;
-            for checkpoint in checkpoints {
-                // Checkpoints sent by a peer may not
-                // be present locally, so we need to ignore certain errors
-                match store.is_ancestor(&checkpoint, &descendant) {
-                    Ok(None) => {}
-                    Ok(Some(distance)) => {
-                        if closest_found > distance {
-                            ancestor = Some(checkpoint);
-                            closest_found = distance;
-                        }
+        let mut ancestor = None;
+        let mut closest_found = std::u64::MAX;
+        for checkpoint in checkpoints {
+            // Checkpoints sent by a peer may not
+            // be present locally, so we need to ignore certain errors
+            match self.inner.is_ancestor(&checkpoint, &descendant) {
+                Ok(None) => {}
+                Ok(Some(distance)) => {
+                    if closest_found > distance {
+                        ancestor = Some(checkpoint);
+                        closest_found = distance;
                     }
-                    Err(e) => {
-                        // Checkpoints sent by a peer may not
-                        // be present locally, so we need to ignore certain errors
-                        match e {
-                            StorageError::BlockNotFound => {
-                                // FIXME: add block hash into the error so we
-                                // can see which of the two it is.
-                                // For now, just ignore either.
-                            }
-                            _ => return Err(e),
+                }
+                Err(e) => {
+                    // Checkpoints sent by a peer may not
+                    // be present locally, so we need to ignore certain errors
+                    match e {
+                        StorageError::BlockNotFound => {
+                            // FIXME: add block hash into the error so we
+                            // can see which of the two it is.
+                            // For now, just ignore either.
                         }
+                        _ => return future::err(e),
                     }
                 }
             }
-            Ok(ancestor.map(|header_hash| Ancestor {
-                header_hash,
-                distance: closest_found,
-            }))
-        })
+        }
+        future::ok(ancestor.map(|header_hash| Ancestor {
+            header_hash,
+            distance: closest_found,
+        }))
     }
 }
 
@@ -275,10 +211,8 @@ impl Stream for BlockStream {
             return Ok(Async::Ready(None));
         }
 
-        let mut store = try_ready!(Ok(self.lock.poll_lock()));
-
         self.state
-            .get_next(&mut store)
+            .get_next(&mut self.inner)
             .map(|block| Async::Ready(Some(block)))
     }
 }
