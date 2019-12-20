@@ -424,8 +424,9 @@ impl CandidateForest {
                         debug_assert!(block.header().hash() == block_hash);
                         Ok(())
                     }
-                    CandidateData::Applied(_) => {
-                        panic!("caching block {} which is already in storage", block_hash)
+                    CandidateData::Applied(header) => {
+                        debug_assert!(header.hash() == block_hash);
+                        Ok(())
                     }
                 },
                 Vacant(_) => Err(chain::ErrorKind::BlockNotRequested(block_hash).into()),
@@ -457,35 +458,24 @@ impl CandidateForest {
 }
 
 impl CandidateForestThickets {
-    fn enroll_root(&mut self, root_hash: HeaderHash) -> RootData {
-        let expiration_key = self.expirations.insert(root_hash, self.root_ttl);
-        RootData { expiration_key }
-    }
-
     fn add_or_refresh_root(&mut self, header: Header) -> (HeaderHash, bool) {
         use std::collections::hash_map::Entry::*;
 
         let root_hash = header.hash();
         let is_new = match self.roots.entry(root_hash) {
-            Vacant(entry) => match self.candidate_map.entry(root_hash) {
-                Vacant(candidate_entry) => {
-                    candidate_entry.insert(Candidate::from_header(header));
-                    let expiration_key = self.expirations.insert(root_hash, self.root_ttl);
-                    entry.insert(RootData { expiration_key });
-                    true
-                }
-                Occupied(candidate_entry) => {
-                    debug_assert!(
-                        candidate_entry.get().is_applied(),
-                        "chain pull root candidate {} was cached, but not yet applied",
-                        root_hash,
-                    );
-                    // Forgo the root entry here, because the pull
-                    // is going to be re-rooted, or voided if all following
-                    // blocks are concurrently applied as well.
-                    false
-                }
-            },
+            Vacant(entry) => {
+                let expiration_key = self.expirations.insert(root_hash, self.root_ttl);
+                entry.insert(RootData { expiration_key });
+                let _old = self
+                    .candidate_map
+                    .insert(root_hash, Candidate::from_header(header));
+                debug_assert!(
+                    _old.is_none(),
+                    "chain pull root candidate {} was previously cached",
+                    root_hash,
+                );
+                true
+            }
             Occupied(entry) => {
                 debug_assert!(
                     !self
@@ -529,30 +519,33 @@ impl CandidateForestThickets {
             let mut child_hashes = candidate.children;
             while let Some(child_hash) = child_hashes.pop() {
                 match self.candidate_map.entry(child_hash) {
-                    Occupied(mut entry) => match &entry.get().data {
-                        CandidateData::Header(_header) => {
-                            debug_assert_eq!(child_hash, _header.hash());
-                            // Bump this one down to become a new root
-                            let root_data = self.enroll_root(child_hash);
-                            let _old = self.roots.insert(child_hash, root_data);
-                            debug_assert!(_old.is_none());
-                        }
-                        CandidateData::Block(block) => {
-                            let header = block.header();
-                            debug_assert_eq!(child_hash, header.hash());
-                            // Extract the block and descend to children
-                            let candidate = entry.insert(Candidate::applied(header));
-                            if let CandidateData::Block(block) = candidate.data {
-                                block_avalanche.push(block);
-                            } else {
-                                unsafe { unreachable_unchecked() }
+                    Occupied(mut entry) => {
+                        // Promote the child to a new root entry
+                        let expiration_key = self.expirations.insert(child_hash, self.root_ttl);
+                        let root_data = RootData { expiration_key };
+                        let _old = self.roots.insert(child_hash, root_data);
+                        debug_assert!(_old.is_none());
+                        match &entry.get().data {
+                            CandidateData::Header(_header) => {
+                                debug_assert_eq!(child_hash, _header.hash());
                             }
-                            child_hashes.extend(candidate.children);
+                            CandidateData::Block(block) => {
+                                let header = block.header();
+                                debug_assert_eq!(child_hash, header.hash());
+                                // Extract the block and descend to children
+                                let candidate = entry.insert(Candidate::applied(header));
+                                if let CandidateData::Block(block) = candidate.data {
+                                    block_avalanche.push(block);
+                                } else {
+                                    unsafe { unreachable_unchecked() }
+                                }
+                                child_hashes.extend(candidate.children);
+                            }
+                            CandidateData::Applied(_) => {
+                                panic!("a child block has been applied ahead of the parent")
+                            }
                         }
-                        CandidateData::Applied(_) => {
-                            // Some other pull task has done it already
-                        }
-                    },
+                    }
                     Vacant(_) => panic!("referential integrity failure in CandidateForest"),
                 }
             }
