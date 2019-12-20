@@ -16,7 +16,7 @@ use futures::{Future, IntoFuture};
 use slog::Logger;
 use std::sync::{Arc, RwLock};
 
-use crate::blockchain::{Blockchain, Tip};
+use crate::blockchain::{index::Index, Blockchain, Tip};
 use crate::fragment::Logs;
 use crate::leadership::Logs as LeadershipLogs;
 use crate::network::p2p::P2pTopology;
@@ -110,6 +110,7 @@ pub struct FullContext {
     pub stats_counter: StatsCounter,
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
+    pub blockchain_index: Index,
     pub network_task: MessageBox<NetworkMsg>,
     pub transaction_task: MessageBox<TransactionMsg>,
     pub logs: Logs,

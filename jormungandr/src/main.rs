@@ -296,6 +296,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             stats_counter,
             blockchain,
             blockchain_tip: blockchain_tip.clone(),
+            blockchain_index: bootstrapped_node.index.clone(),
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
             logs: pool_logs,

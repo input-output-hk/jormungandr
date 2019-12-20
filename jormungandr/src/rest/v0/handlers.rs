@@ -11,12 +11,14 @@ use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use chain_impl_mockchain::header::BlockDate;
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::transaction::Transaction;
 use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::error::Error as StorageError;
 
+use crate::blockchain::index::IndexRequest;
 use crate::blockchain::Ref;
 use crate::chain_crypto::bech32::Bech32;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
@@ -253,6 +255,50 @@ pub fn get_block_next_id(
         .fold(Bytes::new(), |mut bytes, block| {
             bytes.extend_from_slice(block.id().as_ref());
             Result::<Bytes, Error>::Ok(bytes)
+        })
+}
+
+pub fn get_block_id_by_chain_length(
+    context: State<Context>,
+    chain_length: Path<u32>,
+) -> ActixFuture!() {
+    context.try_full().into_future().and_then(move |context| {
+        context
+            .blockchain_index
+            .get(IndexRequest::ChainLength((*chain_length).into()))
+            .map_err(|_| ErrorInternalServerError("failed to lock index"))
+            .map(|r| match r {
+                Some(x) => Ok(format!("{}", x)),
+                None => Err(ErrorNotFound(
+                    "no block found at the requested chain length",
+                )),
+            })
+    })
+}
+
+pub fn get_block_id_by_block_date(
+    context: State<Context>,
+    chain_length: Path<String>,
+) -> ActixFuture!() {
+    context
+        .try_full()
+        .and_then(|context| {
+            BlockDate::from_str(&*chain_length)
+                .map_err(|e| ErrorBadRequest(e))
+                .map(|block_date| (context, block_date))
+        })
+        .into_future()
+        .and_then(move |(context, block_date)| {
+            context
+                .blockchain_index
+                .get(IndexRequest::BlockDate(block_date))
+                .map_err(|_| ErrorInternalServerError("failed to lock index"))
+                .map(|r| match r {
+                    Some(x) => Ok(format!("{}", x)),
+                    None => Err(ErrorNotFound(
+                        "no block found at the requested chain length",
+                    )),
+                })
         })
 }
 

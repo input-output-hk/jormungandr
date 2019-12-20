@@ -16,6 +16,12 @@ pub fn resources() -> Vec<(
         ("/block/{block_id}/next_id", &|r| {
             r.get().with_async(handlers::get_block_next_id)
         }),
+        ("/block/by_chain_length/{chain_length}", &|r| {
+            r.get().with_async(handlers::get_block_id_by_chain_length)
+        }),
+        ("/block/by_block_date/{block_date}", &|r| {
+            r.get().with_async(handlers::get_block_id_by_block_date)
+        }),
         ("/fragment/logs", &|r| {
             r.get().with_async(handlers::get_message_logs)
         }),
