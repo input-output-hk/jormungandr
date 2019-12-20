@@ -1,7 +1,4 @@
-use crate::blockchain::{
-    chain::MAIN_BRANCH_TAG,
-    storage::{Storage, StorageError},
-};
+use crate::blockchain::storage::{Storage, StorageError};
 use chain_impl_mockchain::header::{BlockDate, ChainLength, Header, HeaderId};
 use std::collections::BTreeMap;
 use thiserror::Error;
@@ -52,6 +49,7 @@ impl Index {
     pub fn update_from_storage(
         &mut self,
         storage: Storage,
+        hash: HeaderId,
     ) -> impl Future<Item = (), Error = Error> {
         let mut inner = self.inner.clone();
         let mut inner_2 = self.inner.clone();
@@ -59,15 +57,8 @@ impl Index {
         future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |index| {
             // stream of values from the storage (HEAD to genesis)
             let mut storage_stream = storage
-                .get_tag(MAIN_BRANCH_TAG.to_owned())
+                .stream_from_to_reversed(hash, None)
                 .map_err(Error::StorageError)
-                .map(|r| r.ok_or(Error::NoHeadFound))
-                .flatten()
-                .and_then(move |hash| {
-                    storage
-                        .stream_from_to_reversed(hash, None)
-                        .map_err(Error::StorageError)
-                })
                 .map(|stream| stream.map_err(Error::StorageError))
                 .into_stream()
                 .flatten();
