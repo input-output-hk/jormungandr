@@ -2,6 +2,7 @@ use super::{
     candidate::{self, CandidateForest},
     chain,
     chain_selection::{self, ComparisonResult},
+    index::Index,
     Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::{
@@ -59,6 +60,7 @@ const GET_NEXT_BLOCK_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSch
 pub struct Process {
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
+    pub blockchain_index: Index,
     pub candidate_forest: CandidateForest,
     pub stats_counter: StatsCounter,
     pub network_msgbox: MessageBox<NetworkMsg>,
@@ -96,6 +98,7 @@ impl Process {
     ) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
+        let blockchain_index = self.blockchain_index.clone();
         let network_msg_box = self.network_msgbox.clone();
         let explorer_msg_box = self.explorer_msgbox.clone();
         let candidate_forest = self.candidate_forest.clone();
@@ -131,6 +134,7 @@ impl Process {
                         logger3,
                         blockchain,
                         blockchain_tip,
+                        blockchain_index,
                         Arc::clone(&new_block_ref),
                         network_msg_box,
                     )
@@ -259,6 +263,7 @@ impl Process {
                             logger,
                             blockchain,
                             blockchain_tip,
+                            blockchain_index,
                             Arc::clone(&new_block_ref),
                             network_msg_box,
                         );
@@ -408,6 +413,7 @@ pub fn process_new_ref(
     logger: Logger,
     mut blockchain: Blockchain,
     mut tip: Tip,
+    mut index: Index,
     candidate: Arc<Ref>,
 ) -> impl Future<Item = (), Error = Error> {
     use tokio::prelude::future::Either::*;
@@ -441,9 +447,18 @@ pub fn process_new_ref(
         .map_err(|_: std::convert::Infallible| unreachable!())
         .and_then(move |tip_updated| {
             if tip_updated {
+                let storage_2 = storage.clone();
+
                 A(storage
                     .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip")))
+                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
+                    .and_then(move |_| {
+                        index
+                            .update_from_storage(storage_2, candidate_hash)
+                            .map_err(|e| {
+                                Error::with_chain(e, "Cannot update the main storage's tip")
+                            })
+                    }))
             } else {
                 B(future::ok(()))
             }
@@ -454,10 +469,17 @@ fn process_and_propagate_new_ref(
     logger: Logger,
     blockchain: Blockchain,
     tip: Tip,
+    index: Index,
     new_block_ref: Arc<Ref>,
     network_msg_box: MessageBox<NetworkMsg>,
 ) -> impl Future<Item = (), Error = Error> {
-    let process_new_ref = process_new_ref(logger.clone(), blockchain, tip, new_block_ref.clone());
+    let process_new_ref = process_new_ref(
+        logger.clone(),
+        blockchain,
+        tip,
+        index,
+        new_block_ref.clone(),
+    );
 
     process_new_ref.and_then(move |()| {
         debug!(logger, "propagating block to the network");

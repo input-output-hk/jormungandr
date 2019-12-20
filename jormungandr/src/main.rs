@@ -58,7 +58,7 @@ extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
-    blockchain::{Blockchain, CandidateForest},
+    blockchain::{index::Index, Blockchain, CandidateForest},
     diagnostic::Diagnostic,
     network::p2p::P2pTopology,
     secure::enclave::Enclave,
@@ -104,6 +104,7 @@ pub struct BootstrappedNode {
     settings: Settings,
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
+    index: Index,
     block0_hash: HeaderHash,
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
@@ -191,6 +192,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     {
         let blockchain = blockchain.clone();
         let blockchain_tip = blockchain_tip.clone();
+        let blockchain_index = bootstrapped_node.index.clone();
         let network_msgbox = network_msgbox.clone();
         let fragment_msgbox = fragment_msgbox.clone();
         let explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
@@ -205,6 +207,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             let process = blockchain::Process {
                 blockchain,
                 blockchain_tip,
+                blockchain_index,
                 candidate_forest,
                 stats_counter,
                 network_msgbox,
@@ -383,10 +386,13 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let (blockchain, blockchain_tip) = start_up::load_blockchain(block0, storage, block_cache_ttl)?;
 
+    let index = Index::new();
+
     let bootstrapped = network::bootstrap(
         &settings.network,
         blockchain.clone(),
         blockchain_tip.clone(),
+        index.clone(),
         &bootstrap_logger,
     )?;
 
@@ -411,6 +417,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0_hash,
         blockchain,
         blockchain_tip,
+        index,
         logger,
         explorer_db,
         rest_context,

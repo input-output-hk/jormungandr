@@ -49,7 +49,7 @@ use self::p2p::{
     P2pTopology,
 };
 use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{Blockchain as NewBlockchain, Tip};
+use crate::blockchain::{index::Index, Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
@@ -478,6 +478,7 @@ pub fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
     branch: Tip,
+    index: Index,
     logger: &Logger,
 ) -> Result<bool, bootstrap::Error> {
     if config.protocol != Protocol::Grpc {
@@ -497,6 +498,7 @@ pub fn bootstrap(
             peer,
             blockchain.clone(),
             branch.clone(),
+            index.clone(),
             logger.clone(),
         );
 

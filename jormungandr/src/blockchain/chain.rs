@@ -49,7 +49,7 @@ See Internal documentation for more details: doc/internal_design.md
 [`Branch`]: ./struct.Branch.html
 */
 
-use super::{branch::Branches, reference_cache::RefCache};
+use super::{branch::Branches, index::Error as IndexError, reference_cache::RefCache};
 use crate::{
     blockcfg::{
         Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderHash,
@@ -72,6 +72,7 @@ error_chain! {
         Storage(StorageError);
         Ledger(ledger::Error);
         Block0(Block0Error);
+        Index(IndexError);
     }
 
     errors {

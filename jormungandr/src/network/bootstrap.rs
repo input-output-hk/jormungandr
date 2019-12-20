@@ -1,6 +1,8 @@
 use super::{grpc, BlockConfig};
 use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
+use crate::blockchain::{
+    self, index::Index, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip,
+};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
 use network_core::client::{BlockService, Client as _};
@@ -43,6 +45,7 @@ pub fn bootstrap_from_peer(
     peer: Peer,
     blockchain: Blockchain,
     branch: Tip,
+    index: Index,
     logger: Logger,
 ) -> Result<Arc<Ref>, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
@@ -69,7 +72,7 @@ pub fn bootstrap_from_peer(
                 .and_then(move |stream| bootstrap_from_stream(blockchain, tip, stream, logger))
         })
         .and_then(move |tip| {
-            blockchain::process_new_ref(logger2, blockchain2, branch, tip.clone())
+            blockchain::process_new_ref(logger2, blockchain2, branch, index, tip.clone())
                 .map_err(|e| Error::ChainSelectionFailed { source: e })
                 .map(|()| tip)
         });
