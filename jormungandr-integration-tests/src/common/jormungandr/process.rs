@@ -1,5 +1,7 @@
 use super::logger::JormungandrLogger;
-use crate::common::{configuration::jormungandr_config::JormungandrConfig, jcli_wrapper};
+use crate::common::{
+    configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
+};
 use std::path::PathBuf;
 use std::process::Child;
 
@@ -57,6 +59,18 @@ impl JormungandrProcess {
 
     pub fn config(&self) -> JormungandrConfig {
         self.config.clone()
+    }
+
+    pub fn explorer(&self) -> Explorer {
+        Explorer::new(
+            self.config
+                .node_config
+                .rest
+                .as_ref()
+                .unwrap()
+                .listen
+                .clone(),
+        )
     }
 }
 

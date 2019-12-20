@@ -44,6 +44,11 @@ pub struct TopicsOfInterest {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Explorer {
+    pub enabled: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<String>,
@@ -52,6 +57,7 @@ pub struct NodeConfig {
     pub rest: Option<Rest>,
     pub p2p: Peer2Peer,
     pub mempool: Mempool,
+    pub explorer: Explorer,
 }
 
 const DEFAULT_HOST: &str = "127.0.0.1";
@@ -95,6 +101,7 @@ impl NodeConfig {
                 },
             },
             mempool: Mempool::default(),
+            explorer: Explorer { enabled: false },
         }
     }
 
