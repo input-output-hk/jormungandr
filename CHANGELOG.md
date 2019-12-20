@@ -1,5 +1,22 @@
 # Change Log
 
+## [v0.8.5-alpha1](https://github.com/input-output-hk/jormungandr/tree/v0.8.5-alpha1) (2019-12-20)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.4...v0.8.5-alpha1)
+
+**Implemented enhancements:**
+
+- leverage SQLite multi-threading power by removing the bottleneck lock [\#1412](https://github.com/input-output-hk/jormungandr/pull/1412)
+
+**Fixed bugs:**
+
+- Thread 'blockX' panicked at missed chain pull root candidate [\#1388](https://github.com/input-output-hk/jormungandr/issues/1388)
+- blockchain: More robust CandidateForest [\#1405](https://github.com/input-output-hk/jormungandr/pull/1405)
+
+**Merged pull requests:**
+
+- \[Tests\] Stability fix - Change reward test parameters [\#1393](https://github.com/input-output-hk/jormungandr/pull/1393)
+
 ## [v0.8.4](https://github.com/input-output-hk/jormungandr/tree/v0.8.4) (2019-12-19)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.3...v0.8.4)
