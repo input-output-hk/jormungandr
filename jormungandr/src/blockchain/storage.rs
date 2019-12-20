@@ -19,7 +19,7 @@ pub struct BlockStream {
 }
 
 pub struct BlockStreamReversed {
-    lock: Lock<NodeStorage>,
+    storage: NodeStorage,
     last_block: HeaderHash,
     to: Option<HeaderHash>,
     finished: bool,
@@ -135,20 +135,17 @@ impl Storage {
         from: HeaderHash,
         to: Option<HeaderHash>,
     ) -> impl Future<Item = BlockStreamReversed, Error = StorageError> {
-        let mut inner = self.inner.clone();
         let inner_2 = self.inner.clone();
 
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |store| {
-            if let Some(to) = to {
-                match store.is_ancestor(&from, &to) {
-                    Err(error) => return future::err(error),
-                    Ok(None) => return future::err(StorageError::CannotIterate),
-                    _ => {}
-                }
+        if let Some(to) = to {
+            match self.inner.is_ancestor(&from, &to) {
+                Err(error) => return future::err(error),
+                Ok(None) => return future::err(StorageError::CannotIterate),
+                _ => {}
             }
+        }
 
-            future::ok(BlockStreamReversed::new(inner_2, from, to))
-        })
+        future::ok(BlockStreamReversed::new(inner_2, from, to))
     }
 
     /// Stream a branch ending at `to` and starting from the ancestor
@@ -251,9 +248,9 @@ impl Stream for BlockStream {
 }
 
 impl BlockStreamReversed {
-    fn new(lock: Lock<NodeStorage>, from: HeaderHash, to: Option<HeaderHash>) -> Self {
+    fn new(storage: NodeStorage, from: HeaderHash, to: Option<HeaderHash>) -> Self {
         Self {
-            lock,
+            storage,
             last_block: from,
             to,
             finished: false,
@@ -266,10 +263,8 @@ impl Stream for BlockStreamReversed {
     type Error = StorageError;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        let store = try_ready!(Ok(self.lock.poll_lock()));
-
         if !self.finished {
-            let (block, block_info) = store.get_block(&self.last_block)?;
+            let (block, block_info) = self.storage.get_block(&self.last_block)?;
             // TODO change this to
             //     if let Some(to) = self.to || block_info.depth > 1 {
             // and remove the `else if` condition when the linked syntax is
