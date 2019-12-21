@@ -562,7 +562,7 @@ fn process_block_announcement(
         .map_err(|err| Error::with_chain(err, "cannot process block announcement"))
 }
 
-pub fn process_network_block(
+fn process_network_block(
     blockchain: Blockchain,
     candidate_forest: CandidateForest,
     block: Block,
