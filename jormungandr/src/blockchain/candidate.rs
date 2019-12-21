@@ -407,30 +407,12 @@ impl CandidateForest {
     /// in the cache, the block value is not updated and the returned future
     /// resolves successfully.
     pub fn cache_block(&self, block: Block) -> impl Future<Item = (), Error = chain::Error> {
-        let header = block.header();
-        let block_hash = header.hash();
+        let block_hash = block.id();
         let mut inner = self.inner.clone();
         future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |mut forest| {
-            use std::collections::hash_map::Entry::*;
-
-            match forest.candidate_map.entry(block_hash) {
-                Occupied(mut entry) => match &entry.get().data {
-                    CandidateData::Header(header) => {
-                        debug_assert!(header.hash() == block_hash);
-                        entry.insert(Candidate::from_block(block));
-                        Ok(())
-                    }
-                    CandidateData::Block(block) => {
-                        debug_assert!(block.header().hash() == block_hash);
-                        Ok(())
-                    }
-                    CandidateData::Applied(header) => {
-                        debug_assert!(header.hash() == block_hash);
-                        Ok(())
-                    }
-                },
-                Vacant(_) => Err(chain::ErrorKind::BlockNotRequested(block_hash).into()),
-            }
+            forest
+                .cache_requested_block(block_hash, block)
+                .map_err(|_block| chain::ErrorKind::BlockNotRequested(block_hash).into())
         })
     }
 
@@ -509,13 +491,13 @@ impl CandidateForestThickets {
         use std::collections::hash_map::Entry::*;
 
         let block_hash = block.id();
-        let mut block_avalanche = vec![block];
         if self.roots.contains_key(&block_hash) {
             let candidate = self.apply_candidate(block_hash);
             debug_assert!(
                 !candidate.has_block(),
                 "a chain pull root candidate should not cache a block",
             );
+            let mut block_avalanche = vec![block];
             let mut child_hashes = candidate.children;
             while let Some(child_hash) = child_hashes.pop() {
                 match self.candidate_map.entry(child_hash) {
@@ -549,14 +531,47 @@ impl CandidateForestThickets {
                     Vacant(_) => panic!("referential integrity failure in CandidateForest"),
                 }
             }
+            block_avalanche
         } else {
-            assert!(
-                !self.candidate_map.contains_key(&block_hash),
-                "missed chain pull root candidate {} that got committed to storage",
-                block_hash,
-            );
+            match self.cache_requested_block(block_hash, block) {
+                Ok(()) => {
+                    // The task that applies the block has won the lock before
+                    // other tasks that should apply preceding blocks.
+                    // The block is cached for later, return an empty vector.
+                    Vec::default()
+                }
+                Err(block) => {
+                    // The block is not part of a chain pull.
+                    // Pass it through so that it gets applied to storage
+                    // or fails to validate against the parent that should be
+                    // already stored.
+                    vec![block]
+                }
+            }
         }
-        block_avalanche
+    }
+
+    fn cache_requested_block(&mut self, block_hash: HeaderHash, block: Block) -> Result<(), Block> {
+        use std::collections::hash_map::Entry::*;
+
+        match self.candidate_map.entry(block_hash) {
+            Vacant(_) => Err(block),
+            Occupied(mut entry) => {
+                match &entry.get().data {
+                    CandidateData::Header(header) => {
+                        debug_assert!(header.hash() == block_hash);
+                        entry.insert(Candidate::from_block(block));
+                    }
+                    CandidateData::Block(block) => {
+                        debug_assert!(block.header().hash() == block_hash);
+                    }
+                    CandidateData::Applied(header) => {
+                        debug_assert!(header.hash() == block_hash);
+                    }
+                }
+                Ok(())
+            }
+        }
     }
 
     // Removes the root from, then walks up the tree and
