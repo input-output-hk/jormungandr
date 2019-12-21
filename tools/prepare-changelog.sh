@@ -1,7 +1,7 @@
 #! /bin/bash
 
 function usage {
-    echo "${0} GITHUB_TOKEN NEW_VERSION" >&2 
+    echo "${0} GITHUB_TOKEN NEW_VERSION" >&2
 }
 
 if [ ${#} -ne 2 ]; then
