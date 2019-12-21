@@ -1,5 +1,17 @@
 # Change Log
 
+## [v0.8.5-alpha2](https://github.com/input-output-hk/jormungandr/tree/v0.8.5-alpha2) (2019-12-21)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.5-alpha1...v0.8.5-alpha2)
+
+**Fixed bugs:**
+
+- Handle concurrency in CandidateForest::apply\_block [\#1425](https://github.com/input-output-hk/jormungandr/pull/1425)
+
+**Closed issues:**
+
+- CRIT Service has terminated with an error [\#1418](https://github.com/input-output-hk/jormungandr/issues/1418)
+
 ## [v0.8.5-alpha1](https://github.com/input-output-hk/jormungandr/tree/v0.8.5-alpha1) (2019-12-20)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.4...v0.8.5-alpha1)
