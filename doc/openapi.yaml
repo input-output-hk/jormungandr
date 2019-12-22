@@ -536,12 +536,16 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
+                required: [blockRecvCnt, lastReceivedBlockTime, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
                     type: integer
                     minimum: 0
+                  lastReceivedBlockTime:
+                      description: The time at which we received the last block, not necessarily the current tip block
+                      type: string
+                      format: date-time
                   lastBlockContentSize:
                     description: Size in bytes of all transactions in last block
                     type: integer
@@ -564,7 +568,7 @@ paths:
                     type: integer
                     minimum: 0
                   lastBlockTime:
-                      description: When last block was created, not set if none was created yet
+                      description: The slot time of the block
                       type: string
                       format: date-time
                   lastBlockTx:

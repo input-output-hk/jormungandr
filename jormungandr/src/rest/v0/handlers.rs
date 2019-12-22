@@ -170,6 +170,7 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
                     Ok(Some(json!({
                         "txRecvCnt": stats.tx_recv_cnt(),
                         "blockRecvCnt": stats.block_recv_cnt(),
+                        "lastReceivedBlockTime": stats.slot_start_time().map(SystemTime::from),
                         "uptime": stats.uptime_sec(),
                         "lastBlockHash": tip_header.hash().to_string(),
                         "lastBlockHeight": tip_header.chain_length().to_string(),
