@@ -19,11 +19,22 @@ pub fn compare_against(storage: &Storage, current: &Ref, candidate: &Ref) -> Com
     let rollback_possible =
         check_rollback_up_to(epoch_stability_depth, storage, current, candidate);
 
-    if rollback_possible && current.chain_length() < candidate.chain_length() {
+    let not_in_future = !is_in_future(candidate);
+
+    if rollback_possible && not_in_future && current.chain_length() < candidate.chain_length() {
         ComparisonResult::PreferCandidate
     } else {
         ComparisonResult::PreferCurrent
     }
+}
+
+/// returns `true` is the Ref is set in what appears to be in the future
+/// relative to this node.
+fn is_in_future(node: &Ref) -> bool {
+    let node_time = node.time();
+    let current_time = std::time::SystemTime::now();
+
+    current_time < node_time
 }
 
 fn check_rollback_up_to(
