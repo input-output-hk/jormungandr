@@ -31,10 +31,7 @@ pub fn compare_against(storage: &Storage, current: &Ref, candidate: &Ref) -> Com
 /// returns `true` is the Ref is set in what appears to be in the future
 /// relative to this node.
 fn is_in_future(node: &Ref) -> bool {
-    let node_time = node.time();
-    let current_time = std::time::SystemTime::now();
-
-    current_time < node_time
+    node.elapsed().is_err()
 }
 
 fn check_rollback_up_to(

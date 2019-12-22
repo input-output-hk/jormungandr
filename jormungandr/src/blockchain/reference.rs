@@ -6,7 +6,10 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot, TimeFrame,
 };
-use std::{sync::Arc, time::SystemTime};
+use std::{
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
 /// a reference to a block in the blockchain
 #[derive(Clone)]
@@ -139,5 +142,11 @@ impl Ref {
 
             unsafe { std::hint::unreachable_unchecked() }
         }
+    }
+
+    /// retrieve the time of the slot of the block. If the block is set
+    /// in the future, this function will return an error.
+    pub fn elapsed(&self) -> Result<Duration, std::time::SystemTimeError> {
+        SystemTime::now().duration_since(self.time())
     }
 }
