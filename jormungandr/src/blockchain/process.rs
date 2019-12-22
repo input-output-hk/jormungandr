@@ -74,6 +74,7 @@ impl Process {
         input: MessageQueue<BlockMsg>,
     ) -> impl Future<Item = (), Error = ()> {
         service_info.spawn(self.start_garbage_collector(service_info.logger().clone()));
+        service_info.spawn(self.start_branch_reprocessing(service_info.logger().clone()));
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
         input.for_each(move |msg| {
@@ -319,6 +320,23 @@ impl Process {
         }
     }
 
+    fn start_branch_reprocessing(&self, logger: Logger) -> impl Future<Item = (), Error = ()> {
+        let tip = self.blockchain_tip.clone();
+        let blockchain = self.blockchain.clone();
+        let error_logger = logger.clone();
+
+        Interval::new_interval(Duration::from_secs(60))
+            .map_err(move |e| {
+                error!(error_logger, "cannot run branch reprocessing" ; "reason" => %e);
+            })
+            .for_each(move |_instance| {
+                let error_logger = logger.clone();
+                reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()).map_err(move |e| {
+                    error!(error_logger, "cannot run branch reprocessing" ; "reason" => %e);
+                })
+            })
+    }
+
     fn start_garbage_collector(&self, logger: Logger) -> impl Future<Item = (), Error = ()> {
         let candidate_forest = self.candidate_forest.clone();
         let garbage_collection_interval = self.garbage_collection_interval;
@@ -393,6 +411,34 @@ fn try_request_fragment_removal(
     let date = header.block_date().clone().into();
     let status = FragmentStatus::InABlock { date, block: hash };
     tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
+}
+
+/// this function will re-process the tip against the different branches
+/// this is because a branch may have become more interesting with time
+/// moving forward and branches may have been dismissed
+pub fn reprocess_tip(
+    logger: Logger,
+    blockchain: Blockchain,
+    tip: Tip,
+) -> impl Future<Item = (), Error = Error> {
+    let branches_future = blockchain.branches().branches();
+
+    branches_future
+        .join(tip.get_ref())
+        .map(|(all, tip)| {
+            all.into_iter()
+                .filter(|r|
+                    // remove our own tip so we don't apply it against itself
+                    !Arc::ptr_eq(&r, &tip))
+                .collect::<Vec<_>>()
+        })
+        .and_then(move |others| {
+            stream::iter_ok(others)
+                .for_each(move |other| {
+                    process_new_ref(logger.clone(), blockchain.clone(), tip.clone(), other)
+                })
+                .into_future()
+        })
 }
 
 /// process a new candidate block on top of the blockchain, this function may:

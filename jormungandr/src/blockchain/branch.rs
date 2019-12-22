@@ -54,6 +54,11 @@ impl Branches {
             })
     }
 
+    pub fn branches<E>(&self) -> impl Future<Item = Vec<Arc<Ref>>, Error = E> {
+        let mut branches = self.clone();
+        future::poll_fn(move || Ok(branches.inner.poll_lock())).and_then(|guard| guard.branches())
+    }
+
     fn apply(
         &mut self,
         candidate: Arc<Ref>,
@@ -87,6 +92,10 @@ impl BranchesData {
         .into_future()
         .map_err(|(e, _)| e)
         .map(|(v, _)| v)
+    }
+
+    pub fn branches<E>(&self) -> impl Future<Item = Vec<Arc<Ref>>, Error = E> {
+        stream::futures_unordered(self.branches.iter().map(|b| b.get_ref())).collect()
     }
 }
 

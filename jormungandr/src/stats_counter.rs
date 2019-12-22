@@ -59,6 +59,9 @@ impl StatsCounter {
             .store(time.to_secs(), Ordering::Relaxed)
     }
 
+    /// this value does returns the time of the last received block
+    ///
+    /// This is not the time of the block within the blockchain
     pub fn slot_start_time(&self) -> Option<SecondsSinceUnixEpoch> {
         match self.stats.slot_start_time.load(Ordering::Relaxed) {
             SLOT_START_TIME_UNDEFINED => None,

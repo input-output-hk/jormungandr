@@ -2,8 +2,14 @@ use crate::blockcfg::{
     BlockDate, ChainLength, Header, HeaderHash, Leadership, Ledger, LedgerParameters,
 };
 use chain_impl_mockchain::multiverse::GCRoot;
-use chain_time::TimeFrame;
-use std::sync::Arc;
+use chain_time::{
+    era::{EpochPosition, EpochSlotOffset},
+    Epoch, Slot, TimeFrame,
+};
+use std::{
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 
 /// a reference to a block in the blockchain
 #[derive(Clone)]
@@ -110,5 +116,37 @@ impl Ref {
 
     pub fn last_ref_previous_epoch(&self) -> Option<&Arc<Ref>> {
         self.previous_epoch_state.as_ref()
+    }
+
+    /// get the chain_time's `Slot`. This allows to compute an accurate
+    /// block time via a given time_frame or a precise block time
+    pub fn slot(&self) -> Slot {
+        let era = self.epoch_leadership_schedule().era();
+
+        let epoch = Epoch(self.header.block_date().epoch);
+        let slot = EpochSlotOffset(self.header.block_date().slot_id);
+
+        era.from_era_to_slot(EpochPosition { epoch, slot })
+    }
+
+    /// retrieve the time of the associated block.
+    pub fn time(&self) -> SystemTime {
+        let slot = self.slot();
+        let time_frame = self.time_frame();
+
+        if let Some(time) = time_frame.slot_to_systemtime(slot) {
+            time
+        } else {
+            // this case cannot happen because we cannot have a time_frame
+            // change during the lifetime of the object.
+
+            unsafe { std::hint::unreachable_unchecked() }
+        }
+    }
+
+    /// retrieve the time of the slot of the block. If the block is set
+    /// in the future, this function will return an error.
+    pub fn elapsed(&self) -> Result<Duration, std::time::SystemTimeError> {
+        SystemTime::now().duration_since(self.time())
     }
 }
