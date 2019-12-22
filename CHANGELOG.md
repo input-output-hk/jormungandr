@@ -1,5 +1,13 @@
 # Change Log
 
+## [v0.8.5-alpha3](https://github.com/input-output-hk/jormungandr/tree/v0.8.5-alpha3) (2019-12-22)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.5-alpha2...v0.8.5-alpha3)
+
+**Fixed bugs:**
+
+- Fix block time issue in the REST API and documentation [\#1426](https://github.com/input-output-hk/jormungandr/pull/1426)
+
 ## [v0.8.5-alpha2](https://github.com/input-output-hk/jormungandr/tree/v0.8.5-alpha2) (2019-12-21)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.5-alpha1...v0.8.5-alpha2)
