@@ -11,15 +11,16 @@ pub fn collect_reward() {
     let (jormungandr, stake_pool_id) = startup::start_stake_pool(
         &actor_account,
         ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
+            .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff("0.999")
             .with_slot_duration(1),
     )
     .unwrap();
-    sleep_till_next_epoch(&jormungandr.config);
+    sleep_till_next_epoch(10, &jormungandr.config);
     let stake_pool_data =
         jcli_wrapper::assert_rest_get_stake_pool(&stake_pool_id, &jormungandr.rest_address());
 
+    dbg!(&stake_pool_data);
     assert!(stake_pool_data.rewards.epoch != 0, "zero epoch");
     assert!(
         stake_pool_data.rewards.value_for_stakers != Value::zero(),
@@ -31,7 +32,7 @@ pub fn collect_reward() {
     );
 }
 
-fn sleep_till_next_epoch(config: &JormungandrConfig) {
+fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
     let slots_per_epoch = config
         .genesis_yaml
         .blockchain_configuration
@@ -42,7 +43,6 @@ fn sleep_till_next_epoch(config: &JormungandrConfig) {
         .blockchain_configuration
         .slot_duration
         .unwrap();
-    let grace_period = 30;
     let wait_time = (slots_per_epoch * slot_duration) + grace_period;
     process_utils::sleep(wait_time.into());
 }
