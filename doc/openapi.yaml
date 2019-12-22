@@ -336,7 +336,7 @@ paths:
                   type: object
                   required: [created_at_time, scheduled_at_time, scheduled_at_date, enclave_leader_id]
                   properties:
-                    lastBlockTime:
+                    created_at_time:
                       description: Timestamp of when this log entry was created
                       type: string
                       format: date-time
