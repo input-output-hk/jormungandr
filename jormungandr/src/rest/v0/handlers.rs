@@ -116,11 +116,10 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
             let stats_json_fut = chain_tip_fut_raw(&*context)
                 .map(|tip| (context, tip))
                 .and_then(move |(context, tip)| {
-                    let header = tip.header().clone();
                     context
                         .blockchain
                         .storage()
-                        .get(header.hash())
+                        .get(tip.hash())
                         .then(|res| match res {
                             Ok(Some(block)) => Ok(block.contents),
                             Ok(None) => {
@@ -128,12 +127,13 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
                             }
                             Err(e) => Err(ErrorInternalServerError(e)),
                         })
-                        .map(move |contents| (context, contents, header))
+                        .map(move |contents| (context, contents, tip))
                 })
-                .and_then(move |(context, contents, tip_header)| {
+                .and_then(move |(context, contents, tip)| {
                     let mut block_tx_count = 0;
                     let mut block_input_sum = Value::zero();
                     let mut block_fee_sum = Value::zero();
+                    let tip_header = tip.header();
                     contents
                         .iter()
                         .map(|fragment| {
