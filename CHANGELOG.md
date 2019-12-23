@@ -1,5 +1,28 @@
 # Change Log
 
+## [v0.8.5](https://github.com/input-output-hk/jormungandr/tree/v0.8.5) (2019-12-23)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.4...v0.8.5)
+
+**Implemented enhancements:**
+
+- leverage SQLite multi-threading power by removing the bottleneck lock [\#1412](https://github.com/input-output-hk/jormungandr/pull/1412)
+
+**Fixed bugs:**
+
+- Fix block time issue in the REST API and documentation [\#1426](https://github.com/input-output-hk/jormungandr/pull/1426)
+- Handle concurrency in CandidateForest::apply\_block [\#1425](https://github.com/input-output-hk/jormungandr/pull/1425)
+- Thread 'blockX' panicked at missed chain pull root candidate [\#1388](https://github.com/input-output-hk/jormungandr/issues/1388)
+- blockchain: More robust CandidateForest [\#1405](https://github.com/input-output-hk/jormungandr/pull/1405)
+
+**Closed issues:**
+
+- CRIT Service has terminated with an error [\#1418](https://github.com/input-output-hk/jormungandr/issues/1418)
+
+**Merged pull requests:**
+
+- \[Tests\] Stability fix - Change reward test parameters [\#1393](https://github.com/input-output-hk/jormungandr/pull/1393)
+
 ## [v0.8.5-alpha3](https://github.com/input-output-hk/jormungandr/tree/v0.8.5-alpha3) (2019-12-22)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.5-alpha2...v0.8.5-alpha3)
