@@ -5,12 +5,14 @@ use crate::{
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
 use tokio::prelude::future::Either;
 use tokio::prelude::*;
+use tokio::sync::lock::Lock;
 
 pub use chain_storage::error::Error as StorageError;
 
 #[derive(Clone)]
 pub struct Storage {
     inner: NodeStorage,
+    write_lock: Lock<NodeStorage>,
 }
 
 pub struct BlockStream {
@@ -31,7 +33,10 @@ struct BlockIterState {
 
 impl Storage {
     pub fn new(storage: NodeStorage) -> Self {
-        Storage { inner: storage }
+        Storage {
+            inner: storage.clone(),
+            write_lock: Lock::new(storage),
+        }
     }
 
     #[deprecated(since = "new blockchain API", note = "use the stream iterator instead")]
@@ -51,7 +56,14 @@ impl Storage {
         tag: String,
         header_hash: HeaderHash,
     ) -> impl Future<Item = (), Error = StorageError> {
-        future::result(self.inner.put_tag(&tag, &header_hash))
+        let mut write_lock = self.write_lock.clone();
+
+        future::poll_fn(move || Ok(write_lock.poll_lock())).and_then(move |mut guard| {
+            match guard.put_tag(&tag, &header_hash) {
+                Err(error) => future::err(error),
+                Ok(res) => future::ok(res),
+            }
+        })
     }
 
     pub fn get(
@@ -88,11 +100,15 @@ impl Storage {
     }
 
     pub fn put_block(&mut self, block: Block) -> impl Future<Item = (), Error = StorageError> {
-        match self.inner.put_block(&block) {
-            Err(StorageError::BlockNotFound) => unreachable!(),
-            Err(error) => future::err(error),
-            Ok(()) => future::ok(()),
-        }
+        let mut write_lock = self.write_lock.clone();
+
+        future::poll_fn(move || Ok(write_lock.poll_lock())).and_then(move |mut guard| {
+            match guard.put_block(&block) {
+                Err(StorageError::BlockNotFound) => unreachable!(),
+                Err(error) => future::err(error),
+                Ok(()) => future::ok(()),
+            }
+        })
     }
 
     /// Return values:
