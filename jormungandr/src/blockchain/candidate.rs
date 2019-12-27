@@ -342,8 +342,33 @@ impl CandidateForest {
                     // Find an existing root or create a new one.
                     let fut = future::poll_fn(move || Ok(inner.poll_lock())).and_then(
                         move |mut forest| {
+                            let root_hash = header.hash();
                             let root_parent_hash = header.block_parent_hash();
-                            let (root_hash, is_new) = forest.add_or_refresh_root(header);
+
+                            let is_new = if forest.candidate_map.contains_key(&root_hash) {
+                                false
+                            } else {
+                                let parent_candidate = forest
+                                    .candidate_map
+                                    .get_mut(&root_parent_hash)
+                                    .ok_or(Error::MissingParentBlock(root_parent_hash.clone()))?;
+
+                                chain::pre_verify_link(&header, &parent_candidate.header())?;
+
+                                if parent_candidate.is_applied() {
+                                    forest.add_or_refresh_root(header);
+                                } else {
+                                    debug_assert!(!parent_candidate.children.contains(&root_hash));
+
+                                    parent_candidate.children.push(root_hash);
+                                    forest
+                                        .candidate_map
+                                        .insert(root_hash, Candidate::from_header(header));
+                                }
+
+                                true
+                            };
+
                             debug!(
                                 logger,
                                 "landed the header chain, {}",
