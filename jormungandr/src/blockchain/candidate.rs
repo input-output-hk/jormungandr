@@ -345,25 +345,33 @@ impl CandidateForest {
                             let root_hash = header.hash();
                             let root_parent_hash = header.block_parent_hash();
 
+                            // skip if the candidate is already present in the tree
                             let is_new = if forest.candidate_map.contains_key(&root_hash) {
                                 false
                             } else {
-                                let parent_candidate = forest
-                                    .candidate_map
-                                    .get_mut(&root_parent_hash)
-                                    .ok_or(Error::MissingParentBlock(root_parent_hash.clone()))?;
+                                let parent_candidate =
+                                    forest.candidate_map.get_mut(&root_parent_hash);
 
-                                chain::pre_verify_link(&header, &parent_candidate.header())?;
+                                // insert the new candidate correctly if it has a parent in the
+                                // candidate tree
+                                if let Some(parent_candidate) = parent_candidate {
+                                    chain::pre_verify_link(&header, &parent_candidate.header())?;
 
-                                if parent_candidate.is_applied() {
-                                    forest.add_or_refresh_root(header);
+                                    if parent_candidate.is_applied() {
+                                        forest.add_or_refresh_root(header);
+                                    } else {
+                                        debug_assert!(!parent_candidate
+                                            .children
+                                            .contains(&root_hash));
+
+                                        parent_candidate.children.push(root_hash);
+                                        forest
+                                            .candidate_map
+                                            .insert(root_hash, Candidate::from_header(header));
+                                    }
                                 } else {
-                                    debug_assert!(!parent_candidate.children.contains(&root_hash));
-
-                                    parent_candidate.children.push(root_hash);
-                                    forest
-                                        .candidate_map
-                                        .insert(root_hash, Candidate::from_header(header));
+                                    // otherwise just insert a new root
+                                    forest.add_or_refresh_root(header);
                                 }
 
                                 true
