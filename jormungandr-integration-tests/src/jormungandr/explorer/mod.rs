@@ -1,8 +1,11 @@
 use crate::common::{
     jcli_wrapper::{self, JCLITransactionWrapper},
     jormungandr::ConfigurationBuilder,
+    process_utils::Wait,
     startup,
 };
+
+use std::time::Duration;
 
 #[test]
 pub fn explorer_test() {
@@ -23,10 +26,20 @@ pub fn explorer_test() {
             .seal_with_witness_for_address(&faucet)
             .assert_to_message();
 
-    let fragment_id =
-        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
+    let wait = Wait::new(Duration::from_secs(2), 10);
+
+    let fragment_id = jcli_wrapper::assert_transaction_in_block_with_wait(
+        &transaction,
+        &jormungandr.rest_address(),
+        &wait,
+    );
 
     let explorer = jormungandr.explorer();
-
-    println!("{:?}", explorer.get_transaction(fragment_id));
+    let explorer_transaction = explorer
+        .get_transaction(fragment_id)
+        .expect("non existing transaction");
+    assert_eq!(
+        fragment_id, explorer_transaction.id,
+        "incorrect fragment id"
+    );
 }
