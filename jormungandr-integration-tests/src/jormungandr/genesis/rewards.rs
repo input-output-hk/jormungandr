@@ -12,13 +12,17 @@ pub fn collect_reward() {
         startup::create_new_account_address(),
         startup::create_new_account_address(),
         startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
     ];
     let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
         &stake_pool_owners,
         ConfigurationBuilder::new()
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff("0.999")
-            .with_slot_duration(1),
+            .with_slot_duration(3),
     )
     .unwrap();
     sleep_till_next_epoch(10, &jormungandr.config);
