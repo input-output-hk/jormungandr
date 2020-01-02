@@ -106,7 +106,7 @@ fn create_stake_pool(owner: &Account) -> StakePool {
         &stake_key_pub,
         Some(TaxType {
             fixed: 100.into(),
-            ratio: Ratio::new_checked(0, 10).unwrap(),
+            ratio: Ratio::new_checked(1, 10).unwrap(),
             max_limit: None,
         }),
     );
