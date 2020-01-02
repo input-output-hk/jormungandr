@@ -7,13 +7,14 @@ use std::process::{Command, Stdio};
 pub fn get_start_jormungandr_as_leader_node_command(
     config_path: &PathBuf,
     genesis_block_path: &PathBuf,
-    secret_path: &PathBuf,
+    secret_paths: &[PathBuf],
     log_file_path: &PathBuf,
 ) -> Command {
     let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
+    for secret_path in secret_paths {
+        command.arg("--secret").arg(secret_path.as_os_str());
+    }
     command
-        .arg("--secret")
-        .arg(secret_path.as_os_str())
         .arg("--config")
         .arg(config_path.as_os_str())
         .arg("--genesis-block")

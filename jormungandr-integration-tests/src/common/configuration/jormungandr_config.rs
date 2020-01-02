@@ -16,10 +16,10 @@ pub struct JormungandrConfig {
     pub genesis_block_path: PathBuf,
     pub genesis_block_hash: String,
     pub node_config_path: PathBuf,
-    pub secret_model_path: PathBuf,
+    pub secret_model_paths: Vec<PathBuf>,
     pub genesis_yaml: GenesisYaml,
     pub node_config: NodeConfig,
-    pub secret_model: SecretModel,
+    pub secret_models: Vec<SecretModel>,
     pub log_file_path: PathBuf,
 }
 
@@ -47,11 +47,11 @@ impl JormungandrConfig {
             genesis_block_path: PathBuf::from(""),
             genesis_block_hash: String::from(""),
             node_config_path: PathBuf::from(""),
-            secret_model_path: PathBuf::from(""),
+            secret_model_paths: Vec::new(),
             log_file_path: PathBuf::from(""),
             genesis_yaml: genesis_yaml,
             node_config: node_config,
-            secret_model: SecretModel::empty(),
+            secret_models: Vec::new(),
         }
     }
 
