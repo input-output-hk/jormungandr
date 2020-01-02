@@ -28,6 +28,7 @@ pub struct ConfigurationBuilder {
     certs: Vec<String>,
     consensus_leader_ids: Vec<String>,
     mempool: Option<Mempool>,
+    enable_explorer: bool,
 }
 
 impl ConfigurationBuilder {
@@ -56,6 +57,7 @@ impl ConfigurationBuilder {
             consensus_genesis_praos_active_slot_coeff: Some("0.1".to_owned()),
             kes_update_speed: 12 * 3600,
             mempool: None,
+            enable_explorer: false,
         }
     }
 
@@ -91,6 +93,11 @@ impl ConfigurationBuilder {
 
     pub fn with_initial_certs(&mut self, certs: Vec<String>) -> &mut Self {
         self.certs = certs;
+        self
+    }
+
+    pub fn with_explorer(&mut self) -> &mut Self {
+        self.enable_explorer = true;
         self
     }
 
@@ -157,6 +164,7 @@ impl ConfigurationBuilder {
 
         node_config.p2p.trusted_peers = self.trusted_peers.clone();
         node_config.log = self.log.clone();
+        node_config.explorer.enabled = self.enable_explorer;
 
         let node_config_path = NodeConfig::serialize(&node_config);
 

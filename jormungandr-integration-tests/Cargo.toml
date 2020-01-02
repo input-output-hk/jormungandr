@@ -39,6 +39,7 @@ jormungandr = { path = "../jormungandr" }
 jcli = { path = "../jcli" }
 poldercast = "0.10"
 thiserror = "1.0"
+reqwest = "0.9.24"
 
 [dev-dependencies]
 chain-core           = { path = "../chain-deps/chain-core", features=["property-test-api"]}
