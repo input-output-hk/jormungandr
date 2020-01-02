@@ -2,14 +2,17 @@ use crate::common::{
     configuration::JormungandrConfig, jcli_wrapper, jormungandr::ConfigurationBuilder,
     process_utils, startup,
 };
-
 use chain_impl_mockchain::value::Value;
+use jormungandr_lib::interfaces::StakePoolStats;
 
 #[test]
 pub fn collect_reward() {
-    let actor_account = startup::create_new_account_address();
-    let (jormungandr, stake_pool_id) = startup::start_stake_pool(
-        &actor_account,
+    let stake_pool_owners = [
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+    ];
+    let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
+        &stake_pool_owners,
         ConfigurationBuilder::new()
             .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff("0.999")
