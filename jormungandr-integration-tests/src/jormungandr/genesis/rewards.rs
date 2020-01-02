@@ -20,17 +20,27 @@ pub fn collect_reward() {
     )
     .unwrap();
     sleep_till_next_epoch(10, &jormungandr.config);
-    let stake_pool_data =
-        jcli_wrapper::assert_rest_get_stake_pool(&stake_pool_id, &jormungandr.rest_address());
 
-    dbg!(&stake_pool_data);
-    assert!(stake_pool_data.rewards.epoch != 0, "zero epoch");
+    let stake_pools_data: Vec<StakePoolStats> = stake_pool_ids
+        .iter()
+        .map(|x| jcli_wrapper::assert_rest_get_stake_pool(x, &jormungandr.rest_address()))
+        .collect();
+
+    // at least one stake pool has reward
     assert!(
-        stake_pool_data.rewards.value_for_stakers != Value::zero(),
+        stake_pools_data.iter().any(|x| x.rewards.epoch != 0),
+        "zero epoch"
+    );
+    assert!(
+        stake_pools_data
+            .iter()
+            .any(|x| x.rewards.value_for_stakers != Value::zero()),
         "zero value_for_stakers epoch"
     );
     assert!(
-        stake_pool_data.rewards.value_taxed != Value::zero(),
+        stake_pools_data
+            .iter()
+            .any(|x| x.rewards.value_taxed != Value::zero()),
         "zero value_taxed epoch"
     );
 }
