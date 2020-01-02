@@ -16,7 +16,7 @@ pub fn collect_reward() {
     let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
         &stake_pool_owners,
         ConfigurationBuilder::new()
-            .with_slots_per_epoch(40)
+            .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff("0.999")
             .with_slot_duration(1),
     )
@@ -58,6 +58,6 @@ fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
         .blockchain_configuration
         .slot_duration
         .unwrap();
-    let wait_time = (slots_per_epoch * slot_duration) + grace_period;
+    let wait_time = ((slots_per_epoch * slot_duration) * 2) + grace_period;
     process_utils::sleep(wait_time.into());
 }
