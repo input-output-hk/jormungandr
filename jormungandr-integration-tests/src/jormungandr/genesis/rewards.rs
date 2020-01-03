@@ -5,6 +5,7 @@ use crate::common::{
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::interfaces::StakePoolStats;
 
+#[ignore]
 #[test]
 pub fn collect_reward() {
     let stake_pool_owners = [
