@@ -336,7 +336,7 @@ impl NodeController {
         let stats: Stats =
             serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
         self.progress_bar
-            .log_info(format!("node stats ({:?})", stats));
+            .log_info(format!("node stats ({:?})", &stats));
         Ok(stats)
     }
 
@@ -345,11 +345,16 @@ impl NodeController {
         let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
             let stats = self.stats();
-            if let Ok(stats) = stats {
-                if stats.uptime > 0 {
-                    return Ok(());
+            match stats {
+                Ok(stats) => {
+                    if stats.uptime > 0 {
+                        return Ok(());
+                    }
                 }
-            }
+                Err(err) => self
+                    .progress_bar
+                    .log_info(format!("node stats failure({:?})", err)),
+            };
             std::thread::sleep(sleep);
         }
         bail!(ErrorKind::NodeFailedToBootstrap(
