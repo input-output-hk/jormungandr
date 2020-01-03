@@ -65,8 +65,8 @@ redundancy.
 
 ### Setting the `public_id`
 
-Unless you want to advertise your node as a trusted peer, you don't want to set a `public_id`.
-This is completely useful. If not set, the node will generate a random one automatically.
+This is needed to advertise your node as a trusted peer.
+If not set, the node will generate a random ID, which is fine for a regular user.
 
 ### `topics_of_interest`
 
