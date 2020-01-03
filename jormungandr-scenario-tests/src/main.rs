@@ -47,7 +47,7 @@ fn main() {
     let jcli = prepare_command(command_args.jcli);
     let seed = command_args
         .seed
-        .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng::new().unwrap()));
+        .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
     let testing_directory = command_args.testing_directory;
     let generate_documentation = command_args.generate_documentation;
 

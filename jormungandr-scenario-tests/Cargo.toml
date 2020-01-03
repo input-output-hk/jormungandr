@@ -21,10 +21,10 @@ chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain", features =
 chain-time           = { path = "../chain-deps/chain-time"}
 jormungandr-integration-tests = { path = "../jormungandr-integration-tests"}
 jormungandr-lib = { path = "../jormungandr-lib" }
-poldercast = "0.10"
-rand = "0.6"
-rand_core = "0.3"
-rand_chacha = "0.1"
+poldercast = "0.11"
+rand = "0.7"
+rand_core = "0.5"
+rand_chacha = "0.2"
 regex = "1.1"
 serde = "1.0"
 serde_derive = "1.0"

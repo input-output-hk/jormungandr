@@ -73,7 +73,7 @@ impl NodeConfig {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
         let storage_file = file_utils::get_path_in_temp("storage");
-        let public_id = poldercast::Id::generate(&mut rand::rngs::OsRng::new().unwrap());
+        let public_id = poldercast::Id::generate(rand::rngs::OsRng);
         let log = Log(vec![LogEntry {
             level: Some("info".to_string()),
             format: Some("json".to_string()),
