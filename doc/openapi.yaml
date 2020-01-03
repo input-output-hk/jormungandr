@@ -800,9 +800,17 @@ paths:
                   type: string
                   pattern: '[0-9a-fA-F]+'
               example: [ "5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f" ]
-  /api/v0/stake_pool:
+  /api/v0/stake_pool/{pool_id}:
     get:
       description: Gets stake pool details
+      parameters:
+        - name: pool_id
+          in: path
+          required: true
+          schema:
+            description: Hex-encoded pool ID
+            type: string
+            pattern: '[0-9a-fA-F]+'
       responses:
         200:
           description: Success
