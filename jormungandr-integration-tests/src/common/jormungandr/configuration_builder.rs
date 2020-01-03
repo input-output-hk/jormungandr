@@ -204,8 +204,8 @@ impl ConfigurationBuilder {
         let secret_model = SecretModel::new_bft(&secret_key);
         let secret_model_path = SecretModel::serialize(&secret_model);
 
-        config.secret_model = secret_model;
-        config.secret_model_path = secret_model_path;
+        config.secret_models = vec![secret_model];
+        config.secret_model_paths = vec![secret_model_path];
         config.genesis_block_path = path_to_output_block.clone();
         config.node_config_path = node_config_path;
         config.log_file_path = file_utils::get_path_in_temp("log_file.log");

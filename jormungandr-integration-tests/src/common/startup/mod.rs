@@ -81,10 +81,7 @@ pub fn create_new_key_pair<K: AsymmetricKey>() -> KeyPair<K> {
     KeyPair::generate(&mut rand::rngs::OsRng::new().unwrap())
 }
 
-pub fn start_stake_pool(
-    owner: &Account,
-    config_builder: &mut ConfigurationBuilder,
-) -> Result<(JormungandrProcess, String), StartupError> {
+fn create_stake_pool(owner: &Account) -> StakePool {
     // leader
     let leader = create_new_key_pair::<Ed25519>();
 
@@ -109,45 +106,105 @@ pub fn start_stake_pool(
         &stake_key_pub,
         Some(TaxType {
             fixed: 100.into(),
-            ratio: Ratio::new_checked(0, 10).unwrap(),
+            ratio: Ratio::new_checked(1, 10).unwrap(),
             max_limit: None,
         }),
     );
-    let stake_pool_signcert = file_utils::read_file(&stake_pool_signcert_file);
+    StakePool {
+        owner: owner.clone(),
+        leader: leader,
+        pool_vrf: pool_vrf,
+        pool_kes: pool_kes,
+        stake_pool_signcert_file: stake_pool_signcert_file.clone(),
+        stake_pool_id: jcli_certificate.assert_get_stake_pool_id(&stake_pool_signcert_file),
+    }
+}
 
-    let stake_pool_id = jcli_certificate.assert_get_stake_pool_id(&stake_pool_signcert_file);
+fn create_stake_pool_owner_delegation_cert(stake_pool: &StakePool) -> String {
+    let stake_key = stake_pool.owner.private_key.clone();
+    let stake_key_pub = stake_pool.owner.public_key.clone();
+    let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key);
 
-    let stake_delegation_signcert = jcli_certificate.assert_new_signed_stake_pool_delegation(
-        &stake_pool_id,
+    JCLICertificateWrapper::new().assert_new_signed_stake_pool_delegation(
+        &stake_pool.stake_pool_id,
         &stake_key_pub,
         &stake_key_file,
-    );
+    )
+}
+
+pub fn start_stake_pool(
+    owners: &[Account],
+    config_builder: &mut ConfigurationBuilder,
+) -> Result<(JormungandrProcess, Vec<String>), StartupError> {
+    let stake_pools: Vec<StakePool> = owners.iter().map(|x| create_stake_pool(x)).collect();
+
+    let stake_pool_registration_certs: Vec<String> = stake_pools
+        .iter()
+        .map(|x| file_utils::read_file(&x.stake_pool_signcert_file))
+        .collect();
+    let stake_pool_owner_delegation_certs: Vec<String> = stake_pools
+        .iter()
+        .map(|x| create_stake_pool_owner_delegation_cert(&x))
+        .collect();
+
+    let mut initial_certs = stake_pool_registration_certs.clone();
+    initial_certs.extend(stake_pool_owner_delegation_certs.iter().cloned());
+
+    let leaders: Vec<String> = stake_pools
+        .iter()
+        .map(|x| x.leader.identifier().to_bech32_str())
+        .collect();
+
+    let funds: Vec<Fund> = owners
+        .iter()
+        .map(|x| Fund {
+            address: x.address.clone(),
+            value: 1_000_000.into(),
+        })
+        .collect();
 
     let mut config = config_builder
         .with_block0_consensus("genesis_praos")
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
-        .with_consensus_leaders_ids(vec![leader.identifier().to_bech32_str()])
+        .with_consensus_leaders_ids(leaders)
         .with_kes_update_speed(43200)
-        .with_initial_certs(vec![
-            stake_pool_signcert.clone(),
-            stake_delegation_signcert.clone(),
-        ])
-        .with_funds(vec![Fund {
-            address: owner.address.clone(),
-            value: 1_000_000.into(),
-        }])
+        .with_initial_certs(initial_certs)
+        .with_funds(funds)
         .build();
 
-    let secret = SecretModel::new_genesis(
-        &pool_kes.signing_key().to_bech32_str(),
-        &pool_vrf.signing_key().to_bech32_str(),
-        &stake_pool_id,
-    );
-    let secret_file = SecretModel::serialize(&secret);
-    config.secret_model = secret;
-    config.secret_model_path = secret_file;
+    let secrets: Vec<SecretModel> = stake_pools
+        .iter()
+        .map(|x| {
+            SecretModel::new_genesis(
+                &x.pool_kes.signing_key().to_bech32_str(),
+                &x.pool_vrf.signing_key().to_bech32_str(),
+                &x.stake_pool_id,
+            )
+        })
+        .collect();
+
+    let secret_model_paths = secrets.iter().map(|x| SecretModel::serialize(&x)).collect();
+
+    config.secret_models = secrets;
+    config.secret_model_paths = secret_model_paths;
+
+    let stake_pool_ids: Vec<String> = stake_pools
+        .iter()
+        .map(|x| x.stake_pool_id.clone())
+        .collect();
+
     Starter::new()
         .config(config)
         .start()
-        .map(|process| (process, stake_pool_id))
+        .map(|process| (process, stake_pool_ids))
+}
+
+// temporary struct which should be replaced by one from chain-libs or jormungandr-lib
+struct StakePool {
+    pub owner: Account,
+    pub leader: KeyPair<Ed25519>,
+    pub pool_vrf: KeyPair<Curve25519_2HashDH>,
+    pub pool_kes: KeyPair<SumEd25519_12>,
+    pub stake_pool_signcert_file: PathBuf,
+    pub stake_pool_id: String,
 }

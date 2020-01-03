@@ -295,7 +295,7 @@ impl Starter {
             Role::Leader => commands::get_start_jormungandr_as_leader_node_command(
                 &config.node_config_path,
                 &config.genesis_block_path,
-                &config.secret_model_path,
+                &config.secret_model_paths,
                 &config.log_file_path,
             ),
         }

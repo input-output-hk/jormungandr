@@ -9,10 +9,9 @@ use chain_crypto::{Curve25519_2HashDH, Ed25519, Ed25519Extended, SumEd25519_12};
 
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
-    //faucet
     let faucet = startup::create_new_account_address();
     let (_jormungandr, _) =
-        startup::start_stake_pool(&faucet, &mut ConfigurationBuilder::new()).unwrap();
+        startup::start_stake_pool(&[faucet], &mut ConfigurationBuilder::new()).unwrap();
 }
 
 #[test]
@@ -81,8 +80,8 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         &stake_pool_id,
     );
     let secret_file = SecretModel::serialize(&secret);
-    config.secret_model = secret;
-    config.secret_model_path = secret_file;
+    config.secret_models = vec![secret];
+    config.secret_model_paths = vec![secret_file];
 
     let _jormungandr = Starter::new().config(config).start().unwrap();
 }
