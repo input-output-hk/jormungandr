@@ -26,7 +26,7 @@ pub fn explorer_test() {
             .seal_with_witness_for_address(&faucet)
             .assert_to_message();
 
-    let wait = Wait::new(Duration::from_secs(2), 10);
+    let wait = Wait::new(Duration::from_secs(3), 20);
 
     let fragment_id = jcli_wrapper::assert_transaction_in_block_with_wait(
         &transaction,
