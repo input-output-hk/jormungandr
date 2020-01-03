@@ -16,7 +16,7 @@ pub fn explorer_test() {
 
     config.with_explorer();
 
-    let (jormungandr, _) = startup::start_stake_pool(&faucet, &mut config).unwrap();
+    let (jormungandr, _) = startup::start_stake_pool(&[faucet.clone()], &mut config).unwrap();
 
     let transaction =
         JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
@@ -26,7 +26,7 @@ pub fn explorer_test() {
             .seal_with_witness_for_address(&faucet)
             .assert_to_message();
 
-    let wait = Wait::new(Duration::from_secs(2), 10);
+    let wait = Wait::new(Duration::from_secs(3), 20);
 
     let fragment_id = jcli_wrapper::assert_transaction_in_block_with_wait(
         &transaction,
