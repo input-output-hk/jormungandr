@@ -16,7 +16,7 @@ pub fn explorer_test() {
 
     config.with_explorer();
 
-    let (jormungandr, _) = startup::start_stake_pool(&faucet, &mut config).unwrap();
+    let (jormungandr, _) = startup::start_stake_pool(&[faucet.clone()], &mut config).unwrap();
 
     let transaction =
         JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
