@@ -53,7 +53,6 @@ extern crate slog_syslog;
 extern crate slog_term;
 extern crate structopt;
 extern crate thiserror;
-extern crate tk_listen;
 extern crate tokio;
 
 use crate::{
