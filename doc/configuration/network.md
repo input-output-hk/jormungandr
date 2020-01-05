@@ -51,7 +51,7 @@ p2p:
 - `gossip_interval`: (optional) interval to start gossiping with new nodes,
   changing the value will affect the bandwidth. The more often the node will
   gossip the more bandwidth the node will need. The less often the node gossips
-  the less good the resilience to node churn. `[default: 10]`
+  the less good the resilience to node churn. `[default: 10s]`
 - `topology_force_reset_interval`: (optional) If this value is set, it will
   trigger a force reset of the topology layers. The default is to not do
   force the reset. It is recommended to let the protocol handle it.
