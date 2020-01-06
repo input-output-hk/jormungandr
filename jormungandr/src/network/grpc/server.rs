@@ -34,18 +34,9 @@ pub fn run_listen_socket(
                         "Error while accepting connection on {}: {:?}", sockaddr, err
                     );
                 })
-                .filter_map(move |stream| {
+                .filter_map(move |(stream, peer_addr)| {
                     // received incoming connection
-                    let conn_logger = match stream.peer_addr() {
-                        Ok(addr) => fold_logger.new(o!("peer_addr" => addr)),
-                        Err(e) => {
-                            debug!(
-                                fold_logger,
-                                "connection rejected because peer address can't be obtained";
-                                "reason" => %e);
-                            return None;
-                        }
-                    };
+                    let conn_logger = fold_logger.new(o!("peer_addr" => peer_addr));
                     info!(
                         conn_logger,
                         "incoming connection on {}",

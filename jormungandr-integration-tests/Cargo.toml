@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 grpc            = "0.6.1"
-protobuf        = "~2"
+protobuf        = "=2.8.2"
 futures         = "~0.1"
 futures-cpupool = "~0.1"
 base64 = "0.10.1"
@@ -20,9 +20,9 @@ chain-storage   = { path = "../chain-deps/chain-storage" }
 chain-storage-sqlite-old = { path = "../chain-deps/chain-storage-sqlite-old" }
 chain-time      = { path = "../chain-deps/chain-time" }
 jormungandr-lib = { path = "../jormungandr-lib" }
-rand = "0.6"
-rand_core = "0.3"
-rand_chacha = "0.1"
+rand = "0.7"
+rand_core = "0.5"
+rand_chacha = "0.2"
 slog = { version = "^2.5.1", features = [ "max_level_trace", "release_max_level_trace" ] }
 slog-async = "2.3.0"
 slog-json = "2.3.0"
@@ -37,7 +37,7 @@ regex = "1.1"
 error-chain = "0.12"
 jormungandr = { path = "../jormungandr" }
 jcli = { path = "../jcli" }
-poldercast = "0.10"
+poldercast = "0.11"
 thiserror = "1.0"
 reqwest = "0.9.24"
 
@@ -52,7 +52,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
-quickcheck = "0.8"
+quickcheck = "0.9"
 galvanic-test = "0.2.0"
 assert_cmd = "0.11"
 assert_fs = "0.11"

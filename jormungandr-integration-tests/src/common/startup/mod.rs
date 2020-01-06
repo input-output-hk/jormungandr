@@ -78,7 +78,7 @@ pub fn create_new_delegation_address_for(delegation_public_key: &str) -> Delegat
 }
 
 pub fn create_new_key_pair<K: AsymmetricKey>() -> KeyPair<K> {
-    KeyPair::generate(&mut rand::rngs::OsRng::new().unwrap())
+    KeyPair::generate(rand::rngs::OsRng)
 }
 
 fn create_stake_pool(owner: &Account) -> StakePool {

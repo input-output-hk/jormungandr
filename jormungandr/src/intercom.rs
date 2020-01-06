@@ -113,6 +113,7 @@ impl From<chain_storage::error::Error> for Error {
             BackendError(_) => core_error::Code::Internal,
             Block0InFuture => core_error::Code::Internal,
             BlockAlreadyPresent => core_error::Code::Internal,
+            MissingParent => core_error::Code::InvalidArgument,
         };
         Error {
             code,
