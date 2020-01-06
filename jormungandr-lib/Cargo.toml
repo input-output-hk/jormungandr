@@ -21,7 +21,7 @@ thiserror = "1.0"
 
 [dev-dependencies]
 rand = "0.7"
-quickcheck = "0.8"
+quickcheck = "0.9"
 chain-crypto    = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
 ed25519-bip32 = "0.1"
 serde_yaml = "0.8"
