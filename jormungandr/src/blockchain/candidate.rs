@@ -63,6 +63,18 @@ enum CandidateData {
     Applied(Header),
 }
 
+enum ProcessHeaderOutcome {
+    NewHeader {
+        block_hash: HeaderHash,
+        parent_hash: HeaderHash,
+    },
+    NewRoot {
+        block_hash: HeaderHash,
+        parent_hash: HeaderHash,
+    },
+    AlreadyCached(HeaderHash),
+}
+
 impl Candidate {
     fn from_header(header: Header) -> Self {
         Candidate {
@@ -223,64 +235,47 @@ impl ChainAdvance {
                 Ok(Async::NotReady)
             }
             Async::Ready(mut forest) => {
-                // If we already have this header as candidate,
-                // skip to the next, otherwise validate
-                // and store as candidate and a child of its parent.
-                let block_hash = header.hash();
-                if forest.candidate_map.contains_key(&block_hash) {
-                    // Hey, it has the same crypto hash, so it's the
-                    // same header, what could possibly go wrong?
-                    debug!(
-                        self.logger,
-                        "block is already cached as a candidate";
-                        "hash" => %block_hash,
-                    );
-                } else {
-                    let parent_hash = header.block_parent_hash();
-                    if parent_hash != self.parent_hash {
-                        return Err(Error::BrokenHeaderChain(parent_hash));
-                    }
-                    let parent_candidate = forest
-                        .candidate_map
-                        .get_mut(&parent_hash)
-                        .ok_or(Error::MissingParentBlock(parent_hash.clone()))?;
-                    // TODO: replace with a Blockchain method call
-                    // when that can pre-validate headers without
-                    // up-to-date ledger.
-                    chain::pre_verify_link(&header, &parent_candidate.header())?;
-                    if parent_candidate.is_applied() {
-                        // The parent block has been committed to storage
-                        // before this header was received.
-                        // Drop the block hashes collected for fetching so far
-                        // and try to re-land the chain.
-                        self.new_hashes.clear();
-                        let (_, is_new) = forest.add_or_refresh_root(header);
+                match forest.try_process_header(header, false)? {
+                    ProcessHeaderOutcome::AlreadyCached(block_hash) => {
                         debug!(
                             self.logger,
-                            "re-landed the header chain, {}",
-                            if is_new { "new root" } else { "existing root" };
+                            "block is already cached as a candidate";
                             "hash" => %block_hash,
-                            "parent" => %parent_hash,
                         );
-                        if is_new {
-                            self.new_hashes.push(block_hash);
-                        }
-                    } else {
-                        debug_assert!(!parent_candidate.children.contains(&block_hash));
-                        parent_candidate.children.push(block_hash);
-                        forest
-                            .candidate_map
-                            .insert(block_hash, Candidate::from_header(header));
+
+                        self.parent_hash = block_hash;
+                    }
+                    ProcessHeaderOutcome::NewHeader {
+                        block_hash,
+                        parent_hash,
+                    } => {
                         debug!(
                             self.logger,
                             "adding block to fetch";
                             "hash" => %block_hash,
                             "parent" => %parent_hash,
                         );
+
                         self.new_hashes.push(block_hash);
+                        self.parent_hash = block_hash;
+                    }
+                    ProcessHeaderOutcome::NewRoot {
+                        block_hash,
+                        parent_hash,
+                    } => {
+                        debug!(
+                            self.logger,
+                            "re-landed the header chain";
+                            "hash" => %block_hash,
+                            "parent" => %parent_hash,
+                        );
+
+                        self.new_hashes.clear();
+                        self.new_hashes.push(block_hash);
+                        self.parent_hash = block_hash;
                     }
                 }
-                self.parent_hash = block_hash;
+
                 Ok(().into())
             }
         }
@@ -345,46 +340,27 @@ impl CandidateForest {
                             let root_hash = header.hash();
                             let root_parent_hash = header.block_parent_hash();
 
-                            // skip if the candidate is already present in the tree
-                            let is_new = if forest.candidate_map.contains_key(&root_hash) {
-                                false
-                            } else {
-                                let parent_candidate =
-                                    forest.candidate_map.get_mut(&root_parent_hash);
-
-                                // insert the new candidate correctly if it has a parent in the
-                                // candidate tree
-                                if let Some(parent_candidate) = parent_candidate {
-                                    chain::pre_verify_link(&header, &parent_candidate.header())?;
-
-                                    if parent_candidate.is_applied() {
-                                        forest.add_or_refresh_root(header);
-                                    } else {
-                                        debug_assert!(!parent_candidate
-                                            .children
-                                            .contains(&root_hash));
-
-                                        parent_candidate.children.push(root_hash);
-                                        forest
-                                            .candidate_map
-                                            .insert(root_hash, Candidate::from_header(header));
+                            let (new_hashes, log_entry) =
+                                match forest.try_process_header(header, false)? {
+                                    ProcessHeaderOutcome::AlreadyCached(_) => {
+                                        (Vec::new(), "block is already cached as a candidate")
                                     }
-                                } else {
-                                    // otherwise just insert a new root
-                                    forest.add_or_refresh_root(header);
-                                }
-
-                                true
-                            };
+                                    ProcessHeaderOutcome::NewHeader { block_hash, .. } => {
+                                        (vec![block_hash], "adding block to fetch")
+                                    }
+                                    ProcessHeaderOutcome::NewRoot { block_hash, .. } => {
+                                        (vec![block_hash], "new root, adding a block to fetch")
+                                    }
+                                };
 
                             debug!(
                                 logger,
                                 "landed the header chain, {}",
-                                if is_new { "new root" } else { "existing root" };
+                                log_entry;
                                 "hash" => %root_hash,
                                 "parent" => %root_parent_hash,
                             );
-                            let new_hashes = if is_new { vec![root_hash] } else { Vec::new() };
+
                             let landing = ChainAdvance {
                                 stream: stream.into_inner(),
                                 parent_hash: root_hash,
@@ -392,6 +368,7 @@ impl CandidateForest {
                                 new_hashes,
                                 logger,
                             };
+
                             Ok(Some(landing))
                         },
                     );
@@ -506,6 +483,55 @@ impl CandidateForestThickets {
             }
         };
         (root_hash, is_new)
+    }
+
+    fn try_process_header(
+        &mut self,
+        header: Header,
+        possible_new_root: bool,
+    ) -> Result<ProcessHeaderOutcome, Error> {
+        let hash = header.hash();
+
+        if self.candidate_map.contains_key(&hash) {
+            return Ok(ProcessHeaderOutcome::AlreadyCached(hash));
+        }
+
+        let parent_hash = header.block_parent_hash();
+        let parent_candidate = self.candidate_map.get_mut(&parent_hash);
+
+        // insert the new candidate correctly if it has a parent in the
+        // candidate tree
+        if let Some(parent_candidate) = parent_candidate {
+            chain::pre_verify_link(&header, &parent_candidate.header())?;
+
+            if parent_candidate.is_applied() {
+                self.add_or_refresh_root(header);
+            } else {
+                debug_assert!(!parent_candidate.children.contains(&hash));
+
+                parent_candidate.children.push(hash);
+                self.candidate_map
+                    .insert(hash, Candidate::from_header(header));
+            }
+
+            return Ok(ProcessHeaderOutcome::NewHeader {
+                block_hash: hash,
+                parent_hash,
+            });
+        }
+
+        if possible_new_root {
+            // otherwise just insert a new root
+            self.add_or_refresh_root(header);
+
+            return Ok(ProcessHeaderOutcome::NewRoot {
+                block_hash: hash,
+                parent_hash,
+            });
+        }
+
+        // not a new root, missing parent block
+        Err(Error::MissingParentBlock(parent_hash))
     }
 
     fn apply_candidate(&mut self, block_hash: HeaderHash) -> Candidate {
