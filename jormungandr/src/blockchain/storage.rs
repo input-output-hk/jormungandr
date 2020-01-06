@@ -5,12 +5,20 @@ use crate::{
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
 use tokio::prelude::future::Either;
 use tokio::prelude::*;
+use tokio::sync::lock::Lock;
 
 pub use chain_storage::error::Error as StorageError;
 
 #[derive(Clone)]
 pub struct Storage {
-    inner: NodeStorage,
+    // This must be used only for read operations.
+    read_connection: NodeStorage,
+    // All write operations must be performed only via this lock. The lock helps
+    // us to ensure that all of the write operations are performed in the right
+    // sequence. Otherwise they can be performed out of the expected order (for
+    // example, by different tokio executors) which eventually leads to a panic
+    // because the block data would be inconsistent at the time of a write.
+    write_connection_lock: Lock<NodeStorage>,
 }
 
 pub struct BlockStream {
@@ -31,19 +39,22 @@ struct BlockIterState {
 
 impl Storage {
     pub fn new(storage: NodeStorage) -> Self {
-        Storage { inner: storage }
+        Storage {
+            read_connection: storage.clone(),
+            write_connection_lock: Lock::new(storage),
+        }
     }
 
     #[deprecated(since = "new blockchain API", note = "use the stream iterator instead")]
     pub fn get_inner(&self) -> impl Future<Item = NodeStorage, Error = StorageError> {
-        future::ok(self.inner.clone())
+        future::ok(self.read_connection.clone())
     }
 
     pub fn get_tag(
         &self,
         tag: String,
     ) -> impl Future<Item = Option<HeaderHash>, Error = StorageError> {
-        future::result(self.inner.get_tag(&tag))
+        future::result(self.read_connection.get_tag(&tag))
     }
 
     pub fn put_tag(
@@ -51,14 +62,21 @@ impl Storage {
         tag: String,
         header_hash: HeaderHash,
     ) -> impl Future<Item = (), Error = StorageError> {
-        future::result(self.inner.put_tag(&tag, &header_hash))
+        let mut write_connection_lock = self.write_connection_lock.clone();
+
+        future::poll_fn(move || Ok(write_connection_lock.poll_lock())).and_then(move |mut guard| {
+            match guard.put_tag(&tag, &header_hash) {
+                Err(error) => future::err(error),
+                Ok(res) => future::ok(res),
+            }
+        })
     }
 
     pub fn get(
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Option<Block>, Error = StorageError> {
-        match self.inner.get_block(&header_hash) {
+        match self.read_connection.get_block(&header_hash) {
             Err(StorageError::BlockNotFound) => future::ok(None),
             Err(error) => future::err(error),
             Ok((block, _block_info)) => future::ok(Some(block)),
@@ -69,7 +87,7 @@ impl Storage {
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Option<(Block, BlockInfo<HeaderHash>)>, Error = StorageError> {
-        match self.inner.get_block(&header_hash) {
+        match self.read_connection.get_block(&header_hash) {
             Err(StorageError::BlockNotFound) => future::ok(None),
             Err(error) => future::err(error),
             Ok(v) => future::ok(Some(v)),
@@ -80,7 +98,7 @@ impl Storage {
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = bool, Error = StorageError> {
-        match self.inner.block_exists(&header_hash) {
+        match self.read_connection.block_exists(&header_hash) {
             Err(StorageError::BlockNotFound) => future::ok(false),
             Err(error) => future::err(error),
             Ok(existence) => future::ok(existence),
@@ -88,11 +106,15 @@ impl Storage {
     }
 
     pub fn put_block(&mut self, block: Block) -> impl Future<Item = (), Error = StorageError> {
-        match self.inner.put_block(&block) {
-            Err(StorageError::BlockNotFound) => unreachable!(),
-            Err(error) => future::err(error),
-            Ok(()) => future::ok(()),
-        }
+        let mut write_connection_lock = self.write_connection_lock.clone();
+
+        future::poll_fn(move || Ok(write_connection_lock.poll_lock())).and_then(move |mut guard| {
+            match guard.put_block(&block) {
+                Err(StorageError::BlockNotFound) => unreachable!(),
+                Err(error) => future::err(error),
+                Ok(()) => future::ok(()),
+            }
+        })
     }
 
     /// Return values:
@@ -105,13 +127,13 @@ impl Storage {
         from: HeaderHash,
         to: HeaderHash,
     ) -> impl Future<Item = BlockStream, Error = StorageError> {
-        match self.inner.is_ancestor(&from, &to) {
+        match self.read_connection.is_ancestor(&from, &to) {
             Err(error) => future::err(error),
             Ok(None) => future::err(StorageError::CannotIterate),
-            Ok(Some(distance)) => match self.inner.get_block_info(&to) {
+            Ok(Some(distance)) => match self.read_connection.get_block_info(&to) {
                 Err(error) => future::err(error),
                 Ok(to_info) => future::ok(BlockStream {
-                    inner: self.inner.clone(),
+                    inner: self.read_connection.clone(),
                     state: BlockIterState::new(to_info, distance),
                 }),
             },
@@ -133,7 +155,7 @@ impl Storage {
         S: Sink<SinkItem = Result<Block, E>>,
         E: From<StorageError>,
     {
-        let res = self.inner.get_block_info(&to).map(|to_info| {
+        let res = self.read_connection.get_block_info(&to).map(|to_info| {
             let depth = depth.unwrap_or(to_info.depth - 1);
             BlockIterState::new(to_info, depth)
         });
@@ -145,7 +167,7 @@ impl Storage {
                     iter,
                     pending: None,
                 };
-                let mut store = self.inner.clone();
+                let mut store = self.read_connection.clone();
                 let fut = future::poll_fn(move || {
                     while try_ready!(state.poll_continue()) {
                         try_ready!(state.fill_sink(&mut store));
@@ -173,7 +195,7 @@ impl Storage {
         for checkpoint in checkpoints {
             // Checkpoints sent by a peer may not
             // be present locally, so we need to ignore certain errors
-            match self.inner.is_ancestor(&checkpoint, &descendant) {
+            match self.read_connection.is_ancestor(&checkpoint, &descendant) {
                 Ok(None) => {}
                 Ok(Some(distance)) => {
                     if closest_found > distance {
