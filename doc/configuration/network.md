@@ -67,6 +67,7 @@ redundancy.
 
 This is needed to advertise your node as a trusted peer.
 If not set, the node will generate a random ID, which is fine for a regular user.
+You can generate a public id with **openssl**, for example: `openssl rand -hex 24`
 
 ### `topics_of_interest`
 
