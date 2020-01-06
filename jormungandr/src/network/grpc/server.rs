@@ -53,7 +53,6 @@ impl Connection {
         peer_addr: SocketAddr,
         logger: &Logger,
     ) -> Self {
-        // FIXME: obtain the peer address from the listener stream
         let logger = logger.new(o!("peer_addr" => peer_addr));
         info!(logger, "accepted connection");
         Connection {
