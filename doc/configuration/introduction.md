@@ -13,7 +13,7 @@ log:
     level:  info
     format: plain
 p2p:
-  public_address: "/ip4/40.90.149.161/tcp/3200" # This should match your public IP address.     
+  public_address: "/ip4/X.X.X.X/tcp/Y" # This should match your public IP address (X) and port number (Y)
   topics_of_interest:
     blocks: normal #Default is normal - high for stakepool
     messages: low   #Default is low - high for stakepool
