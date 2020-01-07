@@ -1,5 +1,12 @@
+/*
+ Sanity performacne tests. Quick tests to check overall node performance.
+ Run some transaction for ~15 minutes or specified no of transactions (100)
+*/
+pub mod sanity;
+/*
+Long running test for self node (48 h)
+*/
 pub mod soak;
-pub mod stress;
 
 use crate::common::jcli_wrapper;
 use crate::common::jormungandr::JormungandrProcess;
