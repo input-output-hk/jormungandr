@@ -159,15 +159,13 @@ pub fn start_stake_pool(
         .iter()
         .map(|x| Fund {
             address: x.address.clone(),
-            value: 1_000_000.into(),
+            value: 1_000_000_000.into(),
         })
         .collect();
 
     let mut config = config_builder
         .with_block0_consensus("genesis_praos")
-        .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(leaders)
-        .with_kes_update_speed(43200)
         .with_initial_certs(initial_certs)
         .with_funds(funds)
         .build();
