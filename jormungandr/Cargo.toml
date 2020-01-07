@@ -55,7 +55,6 @@ slog-term = "2.4.0"
 structopt = "^0.2"
 thiserror = "1.0"
 tokio      = "^0.1.16"
-tk-listen = "0.2"
 bech32 = "0.7"
 
 [build-dependencies]
