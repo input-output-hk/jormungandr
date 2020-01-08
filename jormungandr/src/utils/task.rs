@@ -268,14 +268,6 @@ impl ServiceFinishListener {
     pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
         self.receiver.recv()
     }
-
-    #[allow(dead_code)]
-    pub fn wait_all_finished(self) {
-        std::mem::drop(self.sender);
-        while let Ok(_) = self.receiver.recv() {
-            continue;
-        }
-    }
 }
 
 impl Drop for ServiceFinishNotifier {
