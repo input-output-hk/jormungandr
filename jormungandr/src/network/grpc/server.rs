@@ -6,7 +6,7 @@ use futures::stream::FuturesUnordered;
 use slog::Logger;
 use tokio::net::TcpStream;
 use tokio::prelude::*;
-use tokio_threadpool::ThreadPool;
+use tokio_threadpool::{Shutdown, ThreadPool};
 
 use std::any::Any;
 use std::net::SocketAddr;
@@ -41,11 +41,11 @@ pub fn run_listen_socket(
                 server,
                 capacity,
                 conn_set: FuturesUnordered::new(),
-                thread_pool,
+                thread_pool: Some(thread_pool),
                 logger: logger.clone(),
             };
 
-            Ok(conn_mgr)
+            Ok(conn_mgr.and_then(|shutdown| shutdown))
         }
     }
 }
@@ -114,15 +114,15 @@ struct Connections {
     server: Server,
     capacity: usize,
     conn_set: FuturesUnordered<ConnHandle>,
-    thread_pool: ThreadPool,
+    thread_pool: Option<ThreadPool>,
     logger: Logger,
 }
 
 impl Future for Connections {
-    type Item = ();
+    type Item = Shutdown;
     type Error = ();
 
-    fn poll(&mut self) -> Poll<(), ()> {
+    fn poll(&mut self) -> Poll<Shutdown, ()> {
         loop {
             if !self.conn_set.is_empty() {
                 match self.conn_set.poll() {
@@ -144,7 +144,11 @@ impl Future for Connections {
                     if self.conn_set.len() < self.capacity {
                         let conn =
                             Connection::serve(&mut self.server, stream, peer_addr, &self.logger);
-                        let handle = self.thread_pool.spawn_handle(conn);
+                        let thread_pool = self
+                            .thread_pool
+                            .as_ref()
+                            .expect("server polled after shutdown");
+                        let handle = thread_pool.spawn_handle(conn);
                         self.conn_set.push(handle);
                     } else {
                         // The pool of managed connections is full.
@@ -154,8 +158,16 @@ impl Future for Connections {
                     }
                 }
                 Ok(Async::Ready(None)) => {
+                    // FIXME: this is never returned by the current
+                    // implementation in network-grpc, so this code
+                    // is a placeholder, to be reused for graceful
+                    // service shutdown on a different pollable condition.
                     info!(self.logger, "listening socket has closed");
-                    return Ok(Async::Ready(()));
+                    let thread_pool = self
+                        .thread_pool
+                        .take()
+                        .expect("server polled after shutdown");
+                    return Ok(Async::Ready(thread_pool.shutdown()));
                 }
                 Err(e) => {
                     error!(
