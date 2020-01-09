@@ -246,7 +246,7 @@ impl Starter {
 
     fn custom_errors_found(&self) -> Result<(), StartupError> {
         let logger = JormungandrLogger::new(self.config.log_file_path.clone());
-        let port_occupied_msgs = ["error 87", "panicked at 'Box<Any>'"];
+        let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         match logger
             .raw_log_contains_any_of(&port_occupied_msgs)
             .unwrap_or_else(|_| false)
