@@ -4,7 +4,7 @@ extern crate jormungandr_integration_tests;
 
 use jormungandr_scenario_tests::{
     node::{LeadershipMode, PersistenceMode},
-    prepare_command, style, Context, ScenariosRepository, Seed,
+    parse_tag_from_str, prepare_command, style, Context, ScenariosRepository, Seed, Tag,
 };
 use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
@@ -20,8 +20,20 @@ struct CommandArgs {
     #[structopt(long = "jcli", default_value = "jcli")]
     jcli: PathBuf,
 
+    /// scenario name
     #[structopt(long = "scenario", default_value = "*")]
     scenario: String,
+
+    /// in order to group scenarios (for example long_running, short running)
+    /// one can use tag parameter to run entire set of scenarios
+    /// by default all scenarios are run
+    #[structopt(
+        long = "tag",
+        default_value = "All",
+        parse(try_from_str = "parse_tag_from_str")
+    )]
+    tag: Tag,
+
     /// set a directory in which the tests will be run, allowing every details
     /// to be save persistently. By default it will create temporary directories
     /// and will delete the files and documents
@@ -60,7 +72,7 @@ fn main() {
     );
 
     introduction(&context);
-    let scenarios_repo = ScenariosRepository::new(command_args.scenario);
+    let scenarios_repo = ScenariosRepository::new(command_args.scenario, command_args.tag);
     let scenario_suite_result = scenarios_repo.run(&mut context);
     println!("{}", scenario_suite_result.result_string())
 }

@@ -1,64 +1,146 @@
 use crate::{
     test::Result,
-    test::{comm::leader_leader::*, comm::passive_leader::*, network::topology::scenarios::*},
+    test::{
+        comm::leader_leader::*, comm::passive_leader::*, network::topology::scenarios::*,
+        non_functional::soak::*,
+    },
     Context,
 };
 use rand_chacha::ChaChaRng;
-use std::{any::Any, collections::HashMap, fmt, marker::Send};
+use std::{any::Any, fmt, marker::Send};
 type ScenarioMethod = fn(Context<ChaChaRng>) -> Result<ScenarioResult>;
 
 pub struct ScenariosRepository {
-    repository: HashMap<String, ScenarioMethod>,
+    repository: Vec<Scenario>,
     scenario: String,
+    tag: Tag,
+}
+
+#[derive(Debug, Clone)]
+pub struct Scenario {
+    name: String,
+    method: ScenarioMethod,
+    tags: Vec<Tag>,
+}
+
+impl Scenario {
+    pub fn new<S: Into<String>>(name: S, method: ScenarioMethod, tags: Vec<Tag>) -> Self {
+        Scenario {
+            name: name.into(),
+            method: method,
+            tags: tags,
+        }
+    }
+
+    pub fn has_tag(&self, tag: &Tag) -> bool {
+        self.tags.iter().any(|t| *t == *tag)
+    }
+
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+}
+
+impl fmt::Display for Scenario {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.name())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Tag {
+    Short,
+    Long,
+    All,
+}
+
+pub fn parse_tag_from_str(tag: &str) -> Result<Tag> {
+    let tag_lowercase: &str = &tag.to_lowercase();
+    match tag_lowercase {
+        "short" => Ok(Tag::Short),
+        "long" => Ok(Tag::Long),
+        _ => Ok(Tag::All),
+    }
+}
+
+impl fmt::Display for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl ScenariosRepository {
-    pub fn new<S: Into<String>>(scenario: S) -> Self {
+    pub fn new<S: Into<String>>(scenario: S, tag: Tag) -> Self {
         Self {
             repository: scenarios_repository(),
             scenario: scenario.into(),
+            tag: tag,
         }
     }
 
     pub fn run(&self, context: &Context<ChaChaRng>) -> ScenarioSuiteResult {
+        let available_scenarios = self.scenarios_tagged_by(&self.tag);
+
         match self.should_run_all() {
-            true => self.run_all_scenarios(&mut context.clone()),
-            false => ScenarioSuiteResult::from_single(
-                self.run_scenario_by_name(&self.scenario, &mut context.clone()),
-            ),
+            true => self.run_all_scenarios(&available_scenarios, &mut context.clone()),
+            false => ScenarioSuiteResult::from_single(self.run_single_scenario(
+                &self.scenario,
+                &available_scenarios,
+                &mut context.clone(),
+            )),
         }
+    }
+
+    fn scenarios_tagged_by(&self, tag: &Tag) -> Vec<Scenario> {
+        self.repository
+            .iter()
+            .cloned()
+            .filter(|x| x.has_tag(tag))
+            .collect()
     }
 
     fn should_run_all(&self) -> bool {
         self.scenario.trim() == "*"
     }
 
-    fn run_all_scenarios(&self, mut context: &mut Context<ChaChaRng>) -> ScenarioSuiteResult {
+    fn run_all_scenarios(
+        &self,
+        available_scenarios: &Vec<Scenario>,
+        mut context: &mut Context<ChaChaRng>,
+    ) -> ScenarioSuiteResult {
         let mut suite_result = ScenarioSuiteResult::new();
-        for scenario_to_run in self.repository.keys() {
-            suite_result.push(self.run_scenario_by_name(&scenario_to_run, &mut context));
+        for scenario_to_run in available_scenarios {
+            suite_result.push(self.run_single_scenario(
+                &scenario_to_run.name(),
+                &available_scenarios,
+                &mut context,
+            ));
         }
         suite_result
     }
 
-    fn run_scenario_by_name(
+    fn run_single_scenario(
         &self,
-        scenario: &str,
+        scenario_name: &str,
+        scenarios_to_run: &Vec<Scenario>,
         context: &mut Context<ChaChaRng>,
     ) -> ScenarioResult {
-        if !self.repository.contains_key(scenario) {
-            panic!(format!(
-                "Cannot find scenario '{}'. Available are: {:?}",
-                scenario,
-                self.repository.keys().cloned().collect::<Vec<String>>()
-            ));
-        }
+        let scenario = self
+            .repository
+            .iter()
+            .find(|x| x.name() == scenario_name)
+            .unwrap_or_else(|| {
+                panic!(format!(
+                    "Cannot find scenario '{}' under the tag '{:?}'. Available are: {:?}",
+                    scenario_name, self.tag, scenarios_to_run
+                ))
+            });
+        let scenario_to_run = scenario.method;
 
-        let scenario_to_run = self.repository.get(scenario).unwrap();
-        println!("Running '{}' scenario", scenario);
+        println!("Running '{}' scenario", scenario.name());
         let result = std::panic::catch_unwind(|| return scenario_to_run(context.clone().derive()));
         let scenario_result = ScenarioResult::from_result(result);
-        println!("Scenario '{}' {}", scenario, scenario_result);
+        println!("Scenario '{}' {}", scenario.name(), scenario_result);
         scenario_result
     }
 }
@@ -153,24 +235,43 @@ impl fmt::Display for ScenarioResult {
         }
     }
 }
-fn scenarios_repository() -> HashMap<String, ScenarioMethod> {
-    let mut map: HashMap<String, ScenarioMethod> = HashMap::new();
-    map.insert(
-        "two_transaction_to_two_leaders".to_string(),
+fn scenarios_repository() -> Vec<Scenario> {
+    let mut repository: Vec<Scenario> = Vec::new();
+    repository.push(Scenario::new(
+        "two_transaction_to_two_leaders",
         two_transaction_to_two_leaders,
-    );
-    map.insert("transaction_to_passive".to_string(), transaction_to_passive);
-    map.insert("leader_restart".to_string(), leader_restart);
-    map.insert(
-        "passive_node_is_updated".to_string(),
+        vec![Tag::Short],
+    ));
+    repository.push(Scenario::new(
+        "transaction_to_passive",
+        transaction_to_passive,
+        vec![Tag::Short],
+    ));
+    repository.push(Scenario::new(
+        "leader_restart",
+        leader_restart,
+        vec![Tag::Short],
+    ));
+    repository.push(Scenario::new(
+        "passive_node_is_updated",
         passive_node_is_updated,
-    );
-    map.insert("fully_connected".to_string(), fully_connected);
-    map.insert("star".to_string(), star);
-    map.insert("ring".to_string(), ring);
-    map.insert("mesh".to_string(), mesh);
-    map.insert("point_to_point".to_string(), point_to_point);
-    map.insert("tree".to_string(), tree);
-    map.insert("relay".to_string(), relay);
-    map
+        vec![Tag::Short],
+    ));
+    repository.push(Scenario::new(
+        "fully_connected",
+        fully_connected,
+        vec![Tag::Short],
+    ));
+    repository.push(Scenario::new("star", star, vec![Tag::Short]));
+    repository.push(Scenario::new("ring", ring, vec![Tag::Short]));
+    repository.push(Scenario::new("mesh", mesh, vec![Tag::Short]));
+    repository.push(Scenario::new(
+        "point_to_point",
+        point_to_point,
+        vec![Tag::Short],
+    ));
+    repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
+    repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
+    repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
+    repository
 }
