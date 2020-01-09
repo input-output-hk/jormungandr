@@ -320,10 +320,10 @@ impl Settings {
         };
         blockchain_configuration.slots_per_epoch = *blockchain.slots_per_epoch();
         blockchain_configuration.slot_duration = *blockchain.slot_duration();
-
         // TODO blockchain_configuration.linear_fees = ;
-        // TODO blockchain_configuration.kes_update_speed = ;
-        // TODO blockchain_configuration.consensus_genesis_praos_active_slot_coeff = ;
+        blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
+        blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
+            *blockchain.consensus_genesis_praos_active_slot_coeff();
     }
 
     fn populate_trusted_peers(&mut self) {

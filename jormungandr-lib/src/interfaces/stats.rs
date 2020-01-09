@@ -13,6 +13,7 @@ pub struct Stats {
     pub last_block_height: String,
     pub last_block_date: String,
     pub last_block_time: Option<SystemTime>,
+    pub last_received_block_time: Option<SystemTime>,
     pub last_block_tx: u32,
     pub last_block_sum: u32,
     pub last_block_fees: u32,
