@@ -1,5 +1,6 @@
 pub mod comm;
 pub mod network;
+pub mod non_functional;
 pub mod utils;
 
 use jormungandr_lib::interfaces::FragmentStatus;
