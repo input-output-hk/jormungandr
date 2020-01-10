@@ -8,12 +8,14 @@ use crate::common::{
     startup,
 };
 
-use jormungandr_lib::interfaces::UTxOInfo;
+use jormungandr_lib::interfaces::{Mempool, UTxOInfo};
 use std::iter;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 #[test]
 pub fn test_blocks_are_being_created_for_48_hours() {
+    let duration_48_hours = Duration::from_secs(86400 * 2);
+
     let mut receiver = startup::create_new_account_address();
     let mut sender = startup::create_new_account_address();
     let (jormungandr, _) = startup::start_stake_pool(
@@ -22,7 +24,14 @@ pub fn test_blocks_are_being_created_for_48_hours() {
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff("0.999")
             .with_slot_duration(3)
-            .with_kes_update_speed(43200),
+            .with_kes_update_speed(43200)
+            .with_mempool(Mempool {
+                pool_max_entries: 1_000_000usize.into(),
+                fragment_ttl: duration_48_hours.clone().into(),
+                log_max_entries: 1_000_000usize.into(),
+                log_ttl: duration_48_hours.clone().into(),
+                garbage_collection_interval: duration_48_hours.clone().into(),
+            }),
     )
     .unwrap();
 
@@ -36,7 +45,7 @@ pub fn test_blocks_are_being_created_for_48_hours() {
                 .seal_with_witness_for_address(&sender)
                 .assert_to_message();
 
-        let wait: Wait = Default::default();
+        let wait: Wait = Wait::new(Duration::from_secs(10), 10);
         let fragment_id =
             jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_address());
         if let Err(err) = jcli_wrapper::wait_until_transaction_processed(
@@ -53,8 +62,7 @@ pub fn test_blocks_are_being_created_for_48_hours() {
         }
         sender.confirm_transaction();
 
-        // 48 hours
-        if now.elapsed().unwrap().as_secs() > (86400 * 2) {
+        if now.elapsed().unwrap() > duration_48_hours.clone() {
             break;
         }
 

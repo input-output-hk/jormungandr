@@ -127,7 +127,7 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
     error_description: &str,
 ) -> Result<(), ProcessError> {
     let sleep_between_attempt_duration = time::Duration::from_millis(&sleep_between_attempt * 1000);
-    let mut attempts = max_attempts.clone();
+    let mut attempts = max_attempts + 1;
 
     println!("Running command {:?} in loop", command);
 
@@ -144,11 +144,17 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
         println!("Standard Error: {}", output.err_as_lossy_string());
 
         if output.status.success() && is_output_ok(output) {
-            break;
+            println!("Success: {}", &command_description);
+            return Ok(());
         }
 
-        if attempts <= 0 {
-            break;
+        if attempts == 0 {
+            return Err(ProcessError::ProcessExited {
+                message: format!(
+                    "{} (tried to connect {} times with {} s interval)",
+                    &error_description, &max_attempts, &sleep_between_attempt
+                ),
+            });
         }
 
         println!(
@@ -161,17 +167,6 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
         attempts = attempts - 1;
         thread::sleep(sleep_between_attempt_duration);
     }
-
-    if attempts <= 0 {
-        return Err(ProcessError::ProcessExited {
-            message: format!(
-                "{} (tried to connect {} times with {} s interval)",
-                &error_description, &max_attempts, &sleep_between_attempt
-            ),
-        });
-    }
-    println!("Success: {}", &command_description);
-    Ok(())
 }
 
 pub fn sleep(seconds: u64) {
