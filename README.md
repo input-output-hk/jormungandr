@@ -71,16 +71,27 @@ This will install 2 tools:
 
 A functional node needs 2 configurations:
 
-1. Its own system configuration: Where to store data, network configuration, logging.
-2. The blockchain genesis configuration which contains the initial trusted setup of the blockchain:
+1. Its own [node configuration](https://input-output-hk.github.io/jormungandr/configuration/introduction.html): Where to store data, network configuration, logging.
+2. The [blockchain genesis configuration](https://input-output-hk.github.io/jormungandr/advanced/introduction.html), which contains the initial trusted setup of the blockchain:
    coin configuration, consensus settings, initial state.
 
 In normal use, the blockchain genesis configuration is given to you or
 automatically fetched from the network.
 
-For more information, refere to the documentation
-* [node configuration](https://input-output-hk.github.io/jormungandr/configuration/introduction.html)
-* [blockchain genesis configuration](https://input-output-hk.github.io/jormungandr/advanced/introduction.html)
+
+## Quick-Start - Public Mode
+ 
+To start a new node from scratch on a given blockchain, you need to know the
+block0 hash of this blockchain for trust purpose and internet peers to connect
+to. The simplest way to start such a node is:
+
+    jormungandr --block0-hash <HASH> --trusted-peers <IPs>
+
+## Quick-Start - Cardano Shelly Testnet
+
+* [Official Cardano Shelly Testnet Documentation](https://testnet.iohkdev.io/cardano/shelley/).
+* For the **nightly testnet**, ask within the [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
+
 
 ## Quick-Start - Private Mode
 
@@ -111,22 +122,6 @@ run of bootstrap:
 * `faucet-send-certificate`
 
 Both scripts can be used to do simple limited operation through the jcli debugging tools.
-
-## Quick-Start - Public Mode
-With release of 0.6.0, public mode became available; there are currently two testnets operating at any given time:
-- beta testnet
-- nightly testnet
- 
-To start a new node from scratch on a given blockchain, you need to know the
-block0 hash of this blockchain for trust purpose and internet peers to connect
-to. The simplest way to start such a node is:
-
-    jormungandr --block0-hash <HASH> --trusted-peers <IPs>
-
-## Cardano Shelly Testnet
-    
-* [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/).
-* In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
 
 ## Documentation
 
