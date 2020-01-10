@@ -14,19 +14,19 @@ User guide documentation available [here](https://input-output-hk.github.io/jorm
 
 ## Install from Binaries
 
-Use the [Latest Binaries](https://github.com/input-output-hk/jormungandr/releases), available
-for many operating systems and architectures.
+Use the [Latest Binaries](https://github.com/input-output-hk/jormungandr/releases), available for many operating systems and architectures.
 
 ## Install from Source
 
 ### Prerequisites
 
-[Rust Compiler](https://www.rust-lang.org/tools/install) (latest stable version is recommended, minimum required: 1.35+)
+Get the [Rust Compiler](https://www.rust-lang.org/tools/install) (latest stable version is recommended, minimum required: 1.35+)
 
 
 ```sh
 rustup install stable
 rustup default stable
+rustc --version # if this fails, try a new command window, or add the path (see below)
 ```
 
 
@@ -35,21 +35,14 @@ rustup default stable
 * Win: Add `%USERPROFILE%\.cargo\bin` to the  environment variable `PATH`.
 * Lin/Mac: Add `${HOME}/.cargo/bin` to your `PATH`.
 
-#### cc, protobuf
+#### protobuf
 
-* Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
-  the compiler and linker executable `cc` is found in `PATH`.
-* On Linux with systemd: to enable logging to journald replace step 9
-  with `cargo install --path jormungandr --features systemd`.
-* The build requires the [Protocol Buffers][protobuf] compiler:
-  - On Linux environments without glibc such as Alpine, the protobuf compiler
-    `protoc` needs to be installed and found in `PATH` or otherwise
-    specified in the environment variable `PROTOC`.
-  - For distribution or container builds in general, it's a good practice to
-    install `protoc` from the official distribution package if available,
-    otherwise the version bundled with crate `prost-build` will be used.
-  - **NixOS** users should rely on [shell.nix](shell.nix) provided in this source
-    tree to pull the dependencies and set up the environment for the build.
+* The [Protocol Buffers][protobuf] version bundled with crate `prost-build` will be used.
+* For distribution or container builds in general, it's a good practice to install `protoc` from the official distribution package if available.
+
+#### NixOS
+
+If you are on NixOS, use [shell.nix](shell.nix) to pull the dependencies and set up the environment for the build.
 
 
 [protobuf]: https://developers.google.com/protocol-buffers/
@@ -63,7 +56,7 @@ git clone --recurse-submodules https://github.com/input-output-hk/jormungandr
 cd jormungandr
 git checkout tags/<latest release tag> #replace this with something like v1.2.3
 git submodule update
-cargo install --path jormungandr # --features # systemd (on linux with systemd)
+cargo install --path jormungandr # --features systemd # (on linux with systemd)
 cargo install --path jcli
 ```
 
@@ -74,7 +67,7 @@ This will install 2 tools:
 * `jcli`: a command line helper tool to help you use and setup the node;
 
 
-## How To Use
+## Configuration Basics
 
 A functional node needs 2 configurations:
 
@@ -85,34 +78,33 @@ A functional node needs 2 configurations:
 In normal use, the blockchain genesis configuration is given to you or
 automatically fetched from the network.
 
-More documentation on the node configuration can be found [here](https://input-output-hk.github.io/jormungandr/configuration/introduction.html),
-and for the blockchain genesis configuration [here](https://input-output-hk.github.io/jormungandr/advanced/introduction.html)
+For more information, refere to the documentation
+* [node configuration](https://input-output-hk.github.io/jormungandr/configuration/introduction.html)
+* [blockchain genesis configuration](https://input-output-hk.github.io/jormungandr/advanced/introduction.html)
 
-## Quick-Start for private mode
+## Quick-Start - Private Mode
 
 Follow instructions on installation, then to start a private and minimal
 test setup:
 
-1. In terminal, create an empty directory somewhere and enter this directory
-2. `PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap <options>`
-3. execute the instruction to start printed at the end
+```sh
+mkdir mynode
+cd mynode
+PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap <options>
+```
 
-For a BFT setup, use the following recommended options:
+Use the following recommended bootstrap options:
 
-    bootstrap -b
-
-For a Genesis-praos setup, use the following recommended options:
-
-    bootstrap -g -s 2
-
-For help on the options:
-
-    bootstrap -h
-
+```sh
+bootstrap -b        # BFT setup
+bootstrap -g -s 2   # Genesis-praos setup
+bootstrap -h        # further help
+```
+ 
 The bootstrap script creates a simple setup with a faucet with 10 millions
 coins, a BFT leader, and a stake pool.
 
-The bootstrap script also create 2 shell scripts parametrized to this specific
+It also creates 2 shell scripts parametrized to this specific
 run of bootstrap:
 
 * `faucet-send-money`
@@ -120,7 +112,7 @@ run of bootstrap:
 
 Both scripts can be used to do simple limited operation through the jcli debugging tools.
 
-## Quick-Start in public mode
+## Quick-Start - Public Mode
 With release of 0.6.0, public mode became available; there are currently two testnets operating at any given time:
 - beta testnet
 - nightly testnet
@@ -130,8 +122,11 @@ block0 hash of this blockchain for trust purpose and internet peers to connect
 to. The simplest way to start such a node is:
 
     jormungandr --block0-hash <HASH> --trusted-peers <IPs>
+
+## Cardano Shelly Testnet
     
-In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
+* [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/).
+* In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
 
 ## Documentation
 
