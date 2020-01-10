@@ -86,23 +86,27 @@ impl Future for Connection {
     fn poll(&mut self) -> Poll<(), ()> {
         use network_grpc::server::Error;
 
-        try_ready!(self.inner.poll().map_err(|e| match e {
-            Error::Protocol(e) => {
+        match self.inner.poll() {
+            Ok(Async::NotReady) => return Ok(Async::NotReady),
+            Ok(Async::Ready(())) => {
+                info!(self.logger, "connection closed");
+            }
+            Err(Error::Protocol(e)) => {
                 info!(
                     self.logger,
                     "incoming HTTP/2 connection error";
                     "reason" => %e,
                 );
             }
-            e => {
+            Err(e) => {
                 warn!(
                     self.logger,
                     "incoming connection failed";
                     "error" => ?e,
                 );
             }
-        }));
-        info!(self.logger, "connection closed");
+        }
+
         Ok(Async::Ready(()))
     }
 }
