@@ -13,8 +13,9 @@ pub fn explorer_test() {
     let receiver = startup::create_new_account_address();
 
     let mut config = ConfigurationBuilder::new();
-
-    config.with_explorer();
+    config
+        .with_consensus_genesis_praos_active_slot_coeff("0.999")
+        .with_explorer();
 
     let (jormungandr, _) = startup::start_stake_pool(&[faucet.clone()], &mut config).unwrap();
 
