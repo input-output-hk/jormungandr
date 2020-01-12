@@ -2,6 +2,7 @@
 //!
 
 use crate::{
+    log::KEY_SUB_TASK,
     network::p2p::{Gossips, Id, Node, Policy, PolicyConfig},
     settings::start::network::Configuration,
 };
@@ -45,7 +46,10 @@ impl P2pTopology {
 
     pub fn set_policy(&mut self, policy: PolicyConfig) {
         let mut topology = self.lock.write().unwrap();
-        topology.set_policy(Policy::new(policy, self.logger.new(o!("task" => "policy"))));
+        topology.set_policy(Policy::new(
+            policy,
+            self.logger.new(o!(KEY_SUB_TASK => "policy")),
+        ));
     }
 
     /// set all the default poldercast modules (Rings, Vicinity and Cyclon)
