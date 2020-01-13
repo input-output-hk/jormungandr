@@ -8,7 +8,6 @@
 use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use std::{
-    any::Any,
     sync::mpsc::{self, Receiver, RecvError, Sender},
     time::{Duration, Instant},
 };
@@ -23,6 +22,7 @@ pub struct Services {
     logger: Logger,
     services: Vec<Service>,
     finish_listener: ServiceFinishListener,
+    runtime: Runtime,
 }
 
 /// wrap up a service
@@ -39,10 +39,6 @@ pub struct Service {
     /// this will allow us to monitor if a service has been restarted
     /// without having to follow the log history of the service.
     up_time: Instant,
-
-    /// the tokio Runtime running the service in
-    #[allow(dead_code)]
-    runtime: Option<Runtime>,
 }
 
 /// the current future service information
@@ -76,6 +72,7 @@ impl Services {
             logger: logger,
             services: Vec::new(),
             finish_listener: ServiceFinishListener::new(),
+            runtime: runtime::Builder::new().keep_alive(None).build().unwrap(),
         }
     }
 
@@ -89,15 +86,8 @@ impl Services {
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
-        let panic_logger = logger.clone();
-        let mut runtime = runtime::Builder::new()
-            .keep_alive(None)
-            .name_prefix(name)
-            .panic_handler(move |error| log_service_panic(&panic_logger, &*error))
-            .build()
-            .unwrap();
 
-        let executor = runtime.executor();
+        let executor = self.runtime.executor();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
@@ -122,9 +112,9 @@ impl Services {
             Ok(())
         });
 
-        runtime.spawn(future);
+        self.runtime.spawn(future);
 
-        let task = Service::new_runtime(name, runtime, now);
+        let task = Service::new(name, now);
         self.services.push(task);
     }
 
@@ -213,21 +203,8 @@ impl Service {
     }
 
     #[inline]
-    fn new_handler(name: &'static str, now: Instant) -> Self {
-        Service {
-            name,
-            up_time: now,
-            runtime: None,
-        }
-    }
-
-    #[inline]
-    fn new_runtime(name: &'static str, runtime: Runtime, now: Instant) -> Self {
-        Service {
-            name,
-            up_time: now,
-            runtime: Some(runtime),
-        }
+    fn new(name: &'static str, now: Instant) -> Self {
+        Service { name, up_time: now }
     }
 }
 
@@ -274,12 +251,4 @@ impl Drop for ServiceFinishNotifier {
     fn drop(&mut self) {
         let _ = self.sender.send(true);
     }
-}
-
-fn log_service_panic(logger: &Logger, error: &dyn Any) {
-    let reason_logger = error
-        .downcast_ref::<&str>()
-        .map(|reason| logger.new(o!("reason" => *reason)));
-    let panic_logger = reason_logger.as_ref().unwrap_or(logger);
-    crit!(panic_logger, "Task panicked");
 }
