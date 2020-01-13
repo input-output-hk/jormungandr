@@ -18,10 +18,10 @@ use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage::error::Error as StorageError;
 
 use crate::blockchain::Ref;
-use crate::chain_crypto::bech32::Bech32;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
+use chain_crypto::bech32::Bech32;
 use futures::{
     future::{
         self,

@@ -45,15 +45,6 @@ pub struct Service {
     runtime: Option<Runtime>,
 }
 
-/// the current thread service information
-///
-/// retrieve the name, the up time, the logger
-pub struct ThreadServiceInfo {
-    name: &'static str,
-    up_time: Instant,
-    logger: Logger,
-}
-
 /// the current future service information
 ///
 /// retrieve the name, the up time, the logger and the executor
@@ -167,32 +158,6 @@ impl Services {
     }
 }
 
-impl ThreadServiceInfo {
-    /// get the time this service has been running since
-    #[inline]
-    pub fn up_time(&self) -> Duration {
-        Instant::now().duration_since(self.up_time)
-    }
-
-    /// get the name of this Service
-    #[inline]
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    /// access the service's logger
-    #[inline]
-    pub fn logger(&self) -> &Logger {
-        &self.logger
-    }
-
-    /// extract the service's logger
-    #[inline]
-    pub fn into_logger(self) -> Logger {
-        self.logger
-    }
-}
-
 impl TokioServiceInfo {
     /// get the time this service has been running since
     #[inline]
@@ -302,14 +267,6 @@ impl ServiceFinishListener {
 
     pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
         self.receiver.recv()
-    }
-
-    #[allow(dead_code)]
-    pub fn wait_all_finished(self) {
-        std::mem::drop(self.sender);
-        while let Ok(_) = self.receiver.recv() {
-            continue;
-        }
     }
 }
 

@@ -2,58 +2,24 @@
 // monomorphized structured with long signatures. This value is enough for current project.
 #![type_length_limit = "10000000"]
 
-extern crate actix_net;
-extern crate actix_threadpool;
-extern crate actix_web;
-extern crate bech32;
-extern crate bincode;
-extern crate bytes;
-extern crate cardano_legacy_address;
-extern crate chain_addr;
-extern crate chain_core;
-extern crate chain_crypto;
-extern crate chain_impl_mockchain;
-extern crate chain_storage;
-extern crate chain_storage_sqlite_old;
-extern crate chain_time;
-extern crate imhamt;
 #[macro_use]
 extern crate error_chain;
 #[macro_use(try_ready)]
 extern crate futures;
-extern crate http;
-extern crate humantime;
-extern crate hyper;
-extern crate jormungandr_lib;
 #[macro_use]
 extern crate lazy_static;
-extern crate linked_hash_map;
-extern crate native_tls;
-extern crate network_core;
-extern crate network_grpc;
-extern crate poldercast;
-extern crate rand;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
-extern crate serde_yaml;
 #[macro_use]
 extern crate slog;
-extern crate juniper;
-extern crate slog_async;
 #[cfg(feature = "gelf")]
 extern crate slog_gelf;
 #[cfg(feature = "systemd")]
 extern crate slog_journald;
-extern crate slog_json;
 #[cfg(unix)]
 extern crate slog_syslog;
-extern crate slog_term;
-extern crate structopt;
-extern crate thiserror;
-extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
