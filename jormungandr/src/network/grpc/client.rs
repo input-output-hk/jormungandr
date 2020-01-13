@@ -42,7 +42,7 @@ pub fn connect(addr: SocketAddr, node_id: Option<Id>, executor: TaskExecutor) ->
     let uri = destination_uri(addr);
     let mut connector = HttpConnector::new(2);
     connector.set_nodelay(true);
-    let mut builder = Connect::new(connector, executor);
+    let mut builder = Connect::with_executor(connector, executor);
     if let Some(id) = node_id {
         builder.node_id(id);
     }
