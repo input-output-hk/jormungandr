@@ -20,7 +20,7 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<NodeStorag
     match &setting.storage {
         None => {
             info!(logger, "storing blockchain in memory");
-            Ok(SQLiteBlockStore::new("file::memory:?cache=shared"))
+            Ok(SQLiteBlockStore::memory())
         }
         Some(dir) => {
             std::fs::create_dir_all(dir).map_err(|err| Error::IO {
@@ -30,7 +30,7 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<NodeStorag
             let mut sqlite = dir.clone();
             sqlite.push("blocks.sqlite");
             info!(logger, "storing blockchain in '{:?}'", sqlite);
-            Ok(SQLiteBlockStore::new(sqlite))
+            Ok(SQLiteBlockStore::file(sqlite))
         }
     }
 }
