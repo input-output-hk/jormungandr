@@ -49,17 +49,14 @@ If you are on NixOS, use [shell.nix](shell.nix) to pull the dependencies and set
 
 ### Commands
 
-Check `<latest release tag>` on https://github.com/input-output-hk/jormungandr/releases/latest
+Get the latest "master" branch of the repository and install
 
 ```sh
 git clone --recurse-submodules https://github.com/input-output-hk/jormungandr
 cd jormungandr
-git checkout tags/<latest release tag> #replace this with something like v1.2.3
-git submodule update
 cargo install --path jormungandr # --features systemd # (on linux with systemd)
 cargo install --path jcli
 ```
-
 
 This will install 2 tools:
 
@@ -122,6 +119,23 @@ run of bootstrap:
 * `faucet-send-certificate`
 
 Both scripts can be used to do simple limited operation through the jcli debugging tools.
+
+## Further Build Commands
+
+Usually you'll use the master-branch version. To switch to a [specific release tag](https://github.com/input-output-hk/jormungandr/releases/latest)
+
+```sh
+git checkout tags/<specific-release-tag> #replace this with something like v1.2.3
+git submodule update  # always update the submodules after a version change
+```
+
+To rebuild clean and run tests 
+
+```sh
+cargo clean   # cleans the build-target directory
+cargo build   # builds jurmungandr, jcli and tests
+cargo test    # runs the unit and integration-tests (you need to 'cargo build' before)
+```
 
 ## Documentation
 
