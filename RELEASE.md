@@ -43,4 +43,4 @@ scenario (e.g. security updates).
 
 ## Versioning
 
-Exact scheme TBD but globally this is following semver
+Exact scheme TBD but globally this is following [Semantic Versioning](https://semver.org/)
