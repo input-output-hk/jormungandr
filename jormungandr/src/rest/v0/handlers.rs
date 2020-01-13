@@ -16,7 +16,7 @@ use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::stake::StakeDistribution;
 use chain_impl_mockchain::transaction::Transaction;
 use chain_impl_mockchain::value::{Value, ValueError};
-use chain_storage::error::Error as StorageError;
+use chain_storage_sqlite_old::Error as StorageError;
 
 use crate::blockchain::Ref;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};

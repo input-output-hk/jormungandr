@@ -1,4 +1,4 @@
-use chain_storage::error::Error as StorageError;
+use chain_storage_sqlite_old::Error as StorageError;
 
 error_chain! {
     foreign_links {
