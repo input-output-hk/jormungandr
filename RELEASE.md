@@ -4,7 +4,7 @@
 
 release are a specific commit on the 'master' branch
 
-release will happens on master every week at $TIME, unless the repository
+release will happens on master every Wednesday, unless the repository
 has not changed since the last release or that master doesn't compile.
 
 A release must have:
