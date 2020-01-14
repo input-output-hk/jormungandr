@@ -3,7 +3,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum DiagnosticError {
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "android")))]
     #[error("while performing a UNIX syscall {0}")]
     UnixError(#[source] nix::Error),
     #[error("unknown diagnostic error")]
@@ -18,14 +18,14 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     pub fn new() -> Result<Self, DiagnosticError> {
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_os = "android")))]
         {
             Ok(Self {
                 open_files_limit: Some(getrlimit(RlimitResource::NoFile)?),
                 cpu_usage_limit: Some(getrlimit(RlimitResource::CPU)?),
             })
         }
-        #[cfg(not(unix))]
+        #[cfg(any(not(unix), target_os = "android"))]
         {
             Ok(Self {
                 open_files_limit: None,
@@ -60,7 +60,7 @@ enum RlimitResource {
     CPU,
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "android")))]
 fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     use libc::rlimit;
     use std::convert::TryInto;
