@@ -22,6 +22,7 @@ RUN apt-get update && \
     git clone --recurse-submodules https://github.com/input-output-hk/jormungandr src && \
     cd src && git checkout ${ENV_VER} && \
     cp scripts/bootstrap scripts/faucet-send-money.shtempl scripts/faucet-send-certificate.shtempl \
+    scripts/create-stakepool.shtempl \
     scripts/create-account-and-delegate.shtempl scripts/jcli-helpers ${ENV_PREFIX}/bin 
 
 # install the node and jcli from binary
