@@ -24,7 +24,7 @@ These can be overridden during the docker build process:
 To run a different version
 ```bash
 docker build -t jormungandr-node:0.1 \
-  --build-arg VERSION=v0.2.2 .
+  --build-arg VER=v0.2.2 .
 ```
 
 To build from source:
@@ -37,7 +37,7 @@ To build a different version from source:
 ```bash
 docker build -t jormungandr-node:0.1 \
   --build-arg BUILD=true \
-  --build-arg VERSION=v0.2.2 .
+  --build-arg VER=v0.2.2 .
 ```
 
 ### How to run
