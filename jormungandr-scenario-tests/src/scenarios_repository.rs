@@ -92,11 +92,15 @@ impl ScenariosRepository {
     }
 
     fn scenarios_tagged_by(&self, tag: &Tag) -> Vec<Scenario> {
-        self.repository
-            .iter()
-            .cloned()
-            .filter(|x| x.has_tag(tag))
-            .collect()
+        match tag {
+            Tag::All => self.repository.clone(),
+            _ => self
+                .repository
+                .iter()
+                .cloned()
+                .filter(|x| x.has_tag(tag))
+                .collect(),
+        }
     }
 
     fn should_run_all(&self) -> bool {
