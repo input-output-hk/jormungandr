@@ -69,7 +69,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader5,
     )?;
 
     leader5 =
@@ -80,7 +80,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader3,
     )?;
 
     std::thread::sleep(Duration::from_secs(60 * 5));

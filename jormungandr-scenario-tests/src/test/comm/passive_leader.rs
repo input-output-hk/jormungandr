@@ -79,8 +79,8 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     };
 
     let mut controller = scenario_settings.build(context)?;
-
-    controller.monitor_nodes();
+    //monitor node disabled due to unsupported operation: restart node
+    //controller.monitor_nodes();
     let passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     let leader =
