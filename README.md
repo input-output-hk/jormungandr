@@ -40,13 +40,6 @@ rustc --version # if this fails, try a new command window, or add the path (see 
 * The [Protocol Buffers][protobuf] version bundled with crate `prost-build` will be used.
 * For distribution or container builds in general, it's a good practice to install `protoc` from the official distribution package if available.
 
-#### NixOS
-
-If you are on NixOS, use [shell.nix](shell.nix) to pull the dependencies and set up the environment for the build.
-
-
-[protobuf]: https://developers.google.com/protocol-buffers/
-
 ### Commands
 
 Check `<latest release tag>` on https://github.com/input-output-hk/jormungandr/releases/latest
