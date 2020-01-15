@@ -5,6 +5,7 @@ mod error;
 
 pub use self::error::Error;
 
+use crate::settings::start::Tls as TlsConfig;
 use actix_net::server::Server as ActixServer;
 use actix_web::{
     actix::{Addr, System},
@@ -12,11 +13,11 @@ use actix_web::{
 };
 use futures::sync::oneshot::{self, Receiver};
 use futures::{Async, Future, Poll};
-use native_tls::{Identity, TlsAcceptor};
+use rustls::{internal::pemfile, Certificate, NoClientAuth, PrivateKey, ServerConfig};
 use std::{
-    fs,
+    fs::File,
+    io::BufReader,
     net::{SocketAddr, ToSocketAddrs},
-    path::PathBuf,
     sync::mpsc,
     thread,
 };
@@ -37,7 +38,7 @@ pub struct ServerStopper {
 
 impl Server {
     pub fn start<F, H>(
-        pkcs12: Option<PathBuf>,
+        tls_config: Option<TlsConfig>,
         address: SocketAddr,
         handler: F,
     ) -> ServerResult<Server>
@@ -45,7 +46,7 @@ impl Server {
         F: Fn() -> H + Clone + Send + 'static,
         H: IntoHttpHandler + 'static,
     {
-        let tls = load_tls_acceptor(pkcs12)?;
+        let tls = tls_config.map(load_rustls_config).transpose()?;
         let (server_sender, server_receiver) = mpsc::sync_channel::<ServerResult<Server>>(0);
         thread::spawn(move || {
             let actix_system = System::builder().build();
@@ -90,20 +91,39 @@ impl ServerStopper {
     }
 }
 
-pub fn load_tls_acceptor(pkcs12_opt: Option<PathBuf>) -> ServerResult<Option<TlsAcceptor>> {
-    let pkcs12_path = match pkcs12_opt {
-        Some(pkcs12) => pkcs12,
-        None => return Ok(None),
-    };
-    let pkcs12_data = fs::read(pkcs12_path).map_err(|e| Error::Pkcs12LoadFailed(e))?;
-    let identity = Identity::from_pkcs12(&pkcs12_data, "").map_err(|e| Error::Pkcs12Invalid(e))?;
-    let tls = TlsAcceptor::new(identity).map_err(|e| Error::Pkcs12Invalid(e))?;
-    Ok(Some(tls))
+fn load_rustls_config(config: TlsConfig) -> ServerResult<ServerConfig> {
+    let certs = load_certs(&config.cert_file)?;
+    let priv_key = load_priv_key(&config.priv_key_file)?;
+    let mut config = ServerConfig::new(NoClientAuth::new());
+    config
+        .set_single_cert(certs, priv_key)
+        .map_err(Error::SetCertFailed)?;
+    Ok(config)
+}
+
+fn load_certs(path: &str) -> ServerResult<Vec<Certificate>> {
+    let file = File::open(path).map_err(Error::CertFileOpenFailed)?;
+    let certs =
+        pemfile::certs(&mut BufReader::new(file)).map_err(|_| Error::CertFileParsingFailed)?;
+    if certs.is_empty() {
+        return Err(Error::CertFileEmpty);
+    }
+    Ok(certs)
+}
+
+fn load_priv_key(path: &str) -> ServerResult<PrivateKey> {
+    let file = File::open(path).map_err(Error::PrivKeyFileOpenFailed)?;
+    let mut priv_keys = pemfile::pkcs8_private_keys(&mut BufReader::new(file))
+        .map_err(|_| Error::PrivKeyFileParsingFailed)?;
+    if priv_keys.len() != 1 {
+        return Err(Error::PrivKeyFileKeyCountInvalid(priv_keys.len()));
+    }
+    Ok(priv_keys.pop().unwrap())
 }
 
 fn start_server_curr_actix_system<F, H>(
     address: impl ToSocketAddrs,
-    tls_opt: Option<TlsAcceptor>,
+    tls_config_opt: Option<ServerConfig>,
     handler: F,
 ) -> ServerResult<Addr<ActixServer>>
 where
@@ -114,10 +134,11 @@ where
         .workers(1)
         .system_exit()
         .disable_signals();
-    match tls_opt {
-        Some(tls) => server.bind_tls(address, tls),
+    let server = match tls_config_opt {
+        Some(tls_config) => server.bind_rustls(address, tls_config),
         None => server.bind(address),
     }
-    .map(|bound_server| bound_server.start())
-    .map_err(|err| Error::BindFailed(err))
+    .map_err(Error::BindFailed)?;
+    let server_addr = server.start();
+    Ok(server_addr)
 }

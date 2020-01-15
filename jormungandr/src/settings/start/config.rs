@@ -52,9 +52,19 @@ pub struct ConfigLogSettings(pub Vec<ConfigLogSettingsEntry>);
 #[serde(deny_unknown_fields)]
 pub struct Rest {
     pub listen: SocketAddr,
-    pub pkcs12: Option<PathBuf>,
+    /// Enables TLS and disables plain HTTP if provided
+    pub tls: Option<Tls>,
     /// Enables CORS if provided
     pub cors: Option<Cors>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Tls {
+    /// Path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
+    pub cert_file: String,
+    /// Path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
+    pub priv_key_file: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
