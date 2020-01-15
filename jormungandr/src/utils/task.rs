@@ -12,6 +12,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::prelude::{stream, Future, IntoFuture, Stream};
+use tokio::runtime::{self, Runtime, TaskExecutor};
 
 // Limit on the length of a task message queue
 const MESSAGE_QUEUE_LEN: usize = 1000;
@@ -21,6 +22,7 @@ pub struct Services {
     logger: Logger,
     services: Vec<Service>,
     finish_listener: ServiceFinishListener,
+    runtime: Runtime,
 }
 
 /// wrap up a service
@@ -46,6 +48,7 @@ pub struct TokioServiceInfo {
     name: &'static str,
     up_time: Instant,
     logger: Logger,
+    executor: TaskExecutor,
 }
 
 pub struct TaskMessageBox<Msg>(Sender<Msg>);
@@ -69,6 +72,7 @@ impl Services {
             logger: logger,
             services: Vec::new(),
             finish_listener: ServiceFinishListener::new(),
+            runtime: runtime::Builder::new().keep_alive(None).build().unwrap(),
         }
     }
 
@@ -83,11 +87,13 @@ impl Services {
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
 
+        let executor = self.runtime.executor();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
             logger: logger.clone(),
+            executor,
         };
 
         let finish_notifier = self.finish_listener.notifier();
@@ -106,7 +112,7 @@ impl Services {
             Ok(())
         });
 
-        tokio::spawn(future);
+        self.runtime.spawn(future);
 
         let task = Service::new(name, now);
         self.services.push(task);
@@ -155,6 +161,12 @@ impl TokioServiceInfo {
         self.name
     }
 
+    /// Access the service's executor
+    #[inline]
+    pub fn executor(&self) -> &TaskExecutor {
+        &self.executor
+    }
+
     /// access the service's logger
     #[inline]
     pub fn logger(&self) -> &Logger {
@@ -173,7 +185,7 @@ impl TokioServiceInfo {
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
-        tokio::spawn(future);
+        self.executor.spawn(future)
     }
 }
 
