@@ -11,10 +11,46 @@ p2p:
 ## REST interface configuration
 
 - `listen`: listen address
-- `pkcs12`: certificate file (optional)
+- `tls`: (optional) enables TLS and disables plain HTTP if provided
+    - `cert_file`: path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
+    - `priv_key_file`: path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
 - `cors`: (optional) CORS configuration, if not provided, CORS is disabled
   - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin
   - `max_age_secs`: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
+
+### Configuring TLS
+
+In order to enable TLS there must be provided certificate and private key files.
+
+#### Example generation of files for self-signed TLS
+
+Generate private key
+
+```bash
+openssl genrsa -out priv.key 2048
+```
+
+Wrap private key in PKCS8
+
+```bash
+openssl pkcs8 -topk8 -inform PEM -outform PEM -in priv.key -out priv.pk8 -nocrypt
+```
+
+Generate a self-signed certificate for private key
+
+```bash
+openssl req -new -key priv.key -out cert_req.csr
+openssl x509 -req -days 3650 -in cert_req.csr -signkey priv.key -out cert.crt
+```
+
+Use generated files in config
+
+```yaml
+rest:
+  tls:
+    cert_file: cert.crt
+    priv_key_file: priv.pk8
+```
 
 ## P2P configuration
 

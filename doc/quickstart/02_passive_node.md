@@ -62,7 +62,9 @@ Description of the fields:
       - `file`: path to the log file.
 - `rest`: (optional) Configuration of the REST endpoint.
     - `listen`: _address_:_port_ to listen for requests
-    - `pkcs12`: (optional) Certificate file
+    - `tls`: (optional) enables TLS and disables plain HTTP if provided
+      - `cert_file`: path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
+      - `priv_key_file`: path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
     - `cors`: (optional) CORS configuration, if not provided, CORS is disabled
       - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin
       - `max_age_secs`: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
