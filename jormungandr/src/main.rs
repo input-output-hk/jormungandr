@@ -23,7 +23,7 @@ extern crate slog_syslog;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
-    blockchain::{Blockchain, CandidateForest},
+    blockchain::Blockchain,
     diagnostic::Diagnostic,
     network::p2p::P2pTopology,
     secure::enclave::Enclave,
@@ -163,14 +163,9 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
         services.spawn_future("block", move |info| {
-            let candidate_forest = CandidateForest::new(
-                block_cache_ttl,
-                info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull")),
-            );
             let process = blockchain::Process {
                 blockchain,
                 blockchain_tip,
-                candidate_forest,
                 stats_counter,
                 network_msgbox,
                 fragment_msgbox,

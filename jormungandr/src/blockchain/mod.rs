@@ -26,7 +26,6 @@ mod chunk_sizes {
 
 pub use self::{
     branch::Branch,
-    candidate::CandidateForest,
     chain::{
         new_epoch_leadership_from, Blockchain, Error, ErrorKind, PreCheckedHeader, MAIN_BRANCH_TAG,
     },
