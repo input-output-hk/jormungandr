@@ -1,5 +1,88 @@
 # Change Log
 
+## [v0.8.6](https://github.com/input-output-hk/jormungandr/tree/v0.8.6) (2020-01-15)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.5...v0.8.6)
+
+**Implemented enhancements:**
+
+- Get rid of CandidateForest [\#1569](https://github.com/input-output-hk/jormungandr/pull/1569)
+- Update chain-deps for rand and network API changes [\#1507](https://github.com/input-output-hk/jormungandr/pull/1507)
+- Implement a TCP server connection manager that rejects incoming connections when full [\#1497](https://github.com/input-output-hk/jormungandr/pull/1497)
+
+**Fixed bugs:**
+
+- android compilation fails with rlimit [\#1553](https://github.com/input-output-hk/jormungandr/issues/1553)
+- SqliteFailure: "no such table: Blocks"  [\#1485](https://github.com/input-output-hk/jormungandr/issues/1485)
+- Tests are sporadically failing on Circle CI [\#1463](https://github.com/input-output-hk/jormungandr/issues/1463)
+- 0.8.5-alpha1 panics observed [\#1422](https://github.com/input-output-hk/jormungandr/issues/1422)
+- no data at API endpoint /api/v0/stake\_pool [\#1421](https://github.com/input-output-hk/jormungandr/issues/1421)
+- Error in documentation of public\_id [\#1420](https://github.com/input-output-hk/jormungandr/issues/1420)
+- disable diagnostic on Android [\#1557](https://github.com/input-output-hk/jormungandr/pull/1557)
+- replace task key with subtask for topology policy [\#1533](https://github.com/input-output-hk/jormungandr/pull/1533)
+- enable shared cache for in-memory databases [\#1508](https://github.com/input-output-hk/jormungandr/pull/1508)
+- enforce the correct order of writes to storage [\#1441](https://github.com/input-output-hk/jormungandr/pull/1441)
+
+**Closed issues:**
+
+- thread 'tokio-runtime-worker-1' panicked at 'called `Option::unwrap\(\)` [\#1564](https://github.com/input-output-hk/jormungandr/issues/1564)
+- Upgrade to Async/Await: use tokio compat Runtime to allow new async/await use [\#1548](https://github.com/input-output-hk/jormungandr/issues/1548)
+- Upgrade to Async/Await: use default runtime [\#1547](https://github.com/input-output-hk/jormungandr/issues/1547)
+- CRIT task panicked [\#1542](https://github.com/input-output-hk/jormungandr/issues/1542)
+- Cannot sign the block: This leader 1 is not in the enclave [\#1540](https://github.com/input-output-hk/jormungandr/issues/1540)
+- Error processing incoming header stream -Mac OS Mojave [\#1535](https://github.com/input-output-hk/jormungandr/issues/1535)
+- "Block theft" seems to be happening [\#1532](https://github.com/input-output-hk/jormungandr/issues/1532)
+- Jormungandr - logs - poldercast / policy log task / sub\_task [\#1499](https://github.com/input-output-hk/jormungandr/issues/1499)
+- restart of SSH terminal causes node to stop syncing [\#1480](https://github.com/input-output-hk/jormungandr/issues/1480)
+- Blockchain is not moving up - jormungandr v0.8.5 [\#1479](https://github.com/input-output-hk/jormungandr/issues/1479)
+- Run jormungandr with version testnet Byron [\#1477](https://github.com/input-output-hk/jormungandr/issues/1477)
+- Ghost block  [\#1464](https://github.com/input-output-hk/jormungandr/issues/1464)
+- CRIT Task panicked, task: leadership [\#1451](https://github.com/input-output-hk/jormungandr/issues/1451)
+- v0.8.5 labeled as a Pre-release [\#1450](https://github.com/input-output-hk/jormungandr/issues/1450)
+- stats: Server Error: 500 Internal Server Error [\#1449](https://github.com/input-output-hk/jormungandr/issues/1449)
+- Leader log should have a flag if block was invalidated [\#1446](https://github.com/input-output-hk/jormungandr/issues/1446)
+- Dec 25 00:51:54.086 WARN blockchain is not moving up, the last block was 4963 seconds ago, task: stuck\_notifier [\#1443](https://github.com/input-output-hk/jormungandr/issues/1443)
+- The Node is Not in Sync v0.8.5 [\#1440](https://github.com/input-output-hk/jormungandr/issues/1440)
+- Node crash [\#1434](https://github.com/input-output-hk/jormungandr/issues/1434)
+- itn\_rewards\_v1 - jcli generates a binary genesis which hash is different from the official one [\#1430](https://github.com/input-output-hk/jormungandr/issues/1430)
+- Block produced but is not visible in Cardano Explorer [\#1427](https://github.com/input-output-hk/jormungandr/issues/1427)
+- the node is not synced v0.8.3 [\#1410](https://github.com/input-output-hk/jormungandr/issues/1410)
+- CRIT Task panicked, task: block [\#1408](https://github.com/input-output-hk/jormungandr/issues/1408)
+- ERRO cannot compute the time passed [\#1404](https://github.com/input-output-hk/jormungandr/issues/1404)
+- Wrong parent block - j. 0.8.3 [\#1403](https://github.com/input-output-hk/jormungandr/issues/1403)
+- The lastBlockTime increases but lastBlockHeight freezes [\#1402](https://github.com/input-output-hk/jormungandr/issues/1402)
+- Error: deadline has elapsed [\#1392](https://github.com/input-output-hk/jormungandr/issues/1392)
+
+**Merged pull requests:**
+
+- Revert "use a global runtime instead of a local one and new future" [\#1570](https://github.com/input-output-hk/jormungandr/pull/1570)
+- remove unused shell.nix file [\#1559](https://github.com/input-output-hk/jormungandr/pull/1559)
+- \[Tests\] Disruption private network test [\#1558](https://github.com/input-output-hk/jormungandr/pull/1558)
+- use a global runtime instead of a local one and new future [\#1556](https://github.com/input-output-hk/jormungandr/pull/1556)
+- Dockerfile uses VER as an ARG but not VERSION [\#1555](https://github.com/input-output-hk/jormungandr/pull/1555)
+- miss to cp a shell script [\#1554](https://github.com/input-output-hk/jormungandr/pull/1554)
+- integrate new SQLiteBlockStore constructors [\#1550](https://github.com/input-output-hk/jormungandr/pull/1550)
+- use `with\_executor` as per breaking changes from chain-libs/network-grpc [\#1549](https://github.com/input-output-hk/jormungandr/pull/1549)
+- use one Runtime for all the services. [\#1546](https://github.com/input-output-hk/jormungandr/pull/1546)
+- Remove some dead code [\#1545](https://github.com/input-output-hk/jormungandr/pull/1545)
+- Make server connection failures non-fatal [\#1531](https://github.com/input-output-hk/jormungandr/pull/1531)
+- rearrange sections, simplify text [\#1528](https://github.com/input-output-hk/jormungandr/pull/1528)
+- \[Tests\] Jts soak test [\#1525](https://github.com/input-output-hk/jormungandr/pull/1525)
+- Thread pool for server tasks [\#1523](https://github.com/input-output-hk/jormungandr/pull/1523)
+- add RELEASE file [\#1520](https://github.com/input-output-hk/jormungandr/pull/1520)
+- \[Tests\] Reward test fix [\#1516](https://github.com/input-output-hk/jormungandr/pull/1516)
+- \[Test\] Implement long soak test \(Selfnode\) [\#1515](https://github.com/input-output-hk/jormungandr/pull/1515)
+- Docs: configuration/network - gossip\_interval - fix default value [\#1506](https://github.com/input-output-hk/jormungandr/pull/1506)
+- \[Tests\] NodeStats struct update [\#1487](https://github.com/input-output-hk/jormungandr/pull/1487)
+- Command for generating the public id [\#1486](https://github.com/input-output-hk/jormungandr/pull/1486)
+- Clean up docs for network public\_id [\#1484](https://github.com/input-output-hk/jormungandr/pull/1484)
+- Fix stake pool OpenAPI lacking pool\_id parameter [\#1483](https://github.com/input-output-hk/jormungandr/pull/1483)
+- \[Test\] Testnet: added "Port already in use" new error code [\#1482](https://github.com/input-output-hk/jormungandr/pull/1482)
+- \[Tests\] build fix for explorer pr [\#1481](https://github.com/input-output-hk/jormungandr/pull/1481)
+- \[Test\] Collect reward test fix [\#1478](https://github.com/input-output-hk/jormungandr/pull/1478)
+- \[Tests\] Explorer test [\#1414](https://github.com/input-output-hk/jormungandr/pull/1414)
+
+
 ## [v0.8.5](https://github.com/input-output-hk/jormungandr/tree/v0.8.5) (2019-12-23)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.4...v0.8.5)
