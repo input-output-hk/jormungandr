@@ -186,6 +186,16 @@ impl Controller {
         Ok(controller)
     }
 
+    pub fn restart_node(
+        &mut self,
+        node: NodeController,
+        leadership_mode: LeadershipMode,
+        persistence_mode: PersistenceMode,
+    ) -> Result<NodeController> {
+        node.shutdown()?;
+        self.spawn_node(node.alias(), leadership_mode, persistence_mode)
+    }
+
     pub fn monitor_nodes(&mut self) {
         let pb = Arc::clone(&self.progress_bar);
         self.progress_bar_thread = Some(std::thread::spawn(move || {

@@ -1,8 +1,10 @@
 use crate::{
     test::Result,
     test::{
-        comm::leader_leader::*, comm::passive_leader::*, network::topology::scenarios::*,
-        non_functional::soak::*,
+        comm::leader_leader::*,
+        comm::passive_leader::*,
+        network::topology::scenarios::*,
+        non_functional::{disruption::*, soak::*},
     },
     Context,
 };
@@ -92,11 +94,15 @@ impl ScenariosRepository {
     }
 
     fn scenarios_tagged_by(&self, tag: &Tag) -> Vec<Scenario> {
-        self.repository
-            .iter()
-            .cloned()
-            .filter(|x| x.has_tag(tag))
-            .collect()
+        match tag {
+            Tag::All => self.repository.clone(),
+            _ => self
+                .repository
+                .iter()
+                .cloned()
+                .filter(|x| x.has_tag(tag))
+                .collect(),
+        }
     }
 
     fn should_run_all(&self) -> bool {
@@ -273,5 +279,10 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
     repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
+    repository.push(Scenario::new(
+        "mesh_disruption",
+        mesh_disruption,
+        vec![Tag::Short],
+    ));
     repository
 }
