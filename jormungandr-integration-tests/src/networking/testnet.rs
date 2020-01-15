@@ -92,7 +92,7 @@ pub fn e2e_stake_pool() {
 
     let jormungandr = Starter::new()
         .config(testnet_config.make_config())
-        .timeout(Duration::from_secs(1000))
+        .timeout(Duration::from_secs(2000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
