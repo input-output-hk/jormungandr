@@ -17,10 +17,21 @@ use super::configuration::genesis_model::GenesisYaml;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
-use super::process_utils::{self, output_extensions::ProcessOutput, Wait};
+use super::process_utils::{self, output_extensions::ProcessOutput, ProcessError, Wait};
 use std::{collections::BTreeMap, path::PathBuf};
 
 use chain_addr::Discrimination;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("transaction {transaction_id} is not in block")]
+    TransactionNotInBlock {
+        #[source]
+        source: ProcessError,
+        transaction_id: Hash,
+    },
+}
 
 pub fn assert_genesis_encode(
     genesis_yaml_file_path: &PathBuf,
@@ -322,7 +333,7 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
 pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
     let fragment_id = assert_post_transaction(&transaction_message, &host);
     let wait: Wait = Default::default();
-    wait_until_transaction_processed(fragment_id, &host, &wait);
+    wait_until_transaction_processed(fragment_id, &host, &wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, &host);
     fragment_id.clone()
 }
@@ -333,7 +344,7 @@ pub fn assert_transaction_in_block_with_wait(
     wait: &Wait,
 ) -> Hash {
     let fragment_id = assert_post_transaction(&transaction_message, &host);
-    wait_until_transaction_processed(fragment_id, &host, wait);
+    wait_until_transaction_processed(fragment_id, &host, wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, &host);
     fragment_id.clone()
 }
@@ -341,11 +352,15 @@ pub fn assert_transaction_in_block_with_wait(
 pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
     let fragment_id = assert_post_transaction(&transaction_message, &host);
     let wait: Wait = Default::default();
-    wait_until_transaction_processed(fragment_id, &host, &wait);
+    wait_until_transaction_processed(fragment_id, &host, &wait).unwrap();
     assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
 }
 
-pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str, wait: &Wait) {
+pub fn wait_until_transaction_processed(
+    fragment_id: Hash,
+    host: &str,
+    wait: &Wait,
+) -> Result<(), Error> {
     process_utils::run_process_until_response_matches(
         jcli_commands::get_rest_message_log_command(&host),
         |output| {
@@ -371,7 +386,10 @@ pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str, wait: &Wa
         ),
         &format!("transaction: '{}' is pending for too long", fragment_id),
     )
-    .expect("internal error while waiting until last transaction is processed");
+    .map_err(|err| Error::TransactionNotInBlock {
+        source: err,
+        transaction_id: fragment_id.clone(),
+    })
 }
 
 pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, host: &str) {
