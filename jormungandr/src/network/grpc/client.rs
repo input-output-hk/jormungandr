@@ -11,7 +11,7 @@ use network_core::error as core_error;
 use network_grpc::client::Connect;
 use slog::Logger;
 use thiserror::Error;
-use tokio::runtime::{Runtime, TaskExecutor};
+use tokio_compat::prelude::*;
 
 use std::io;
 use std::net::{IpAddr, SocketAddr};
@@ -19,8 +19,6 @@ use std::slice;
 
 #[derive(Error, Debug)]
 pub enum FetchBlockError {
-    #[error("runtime initialization failed")]
-    RuntimeInit { source: io::Error },
     #[error("connection to peer failed")]
     Connect { source: ConnectError },
     #[error("connection broken")]
@@ -34,15 +32,18 @@ pub enum FetchBlockError {
 }
 
 pub type Connection = network_grpc::client::Connection<BlockConfig>;
-pub type ConnectFuture =
-    network_grpc::client::ConnectFuture<BlockConfig, HttpConnector, TaskExecutor>;
+pub type ConnectFuture = network_grpc::client::ConnectFuture<
+    BlockConfig,
+    HttpConnector,
+    tokio::executor::DefaultExecutor,
+>;
 pub type ConnectError = network_grpc::client::ConnectError<io::Error>;
 
-pub fn connect(addr: SocketAddr, node_id: Option<Id>, executor: TaskExecutor) -> ConnectFuture {
+pub fn connect(addr: SocketAddr, node_id: Option<Id>) -> ConnectFuture {
     let uri = destination_uri(addr);
     let mut connector = HttpConnector::new(2);
     connector.set_nodelay(true);
-    let mut builder = Connect::with_executor(connector, executor);
+    let mut builder = Connect::new(connector);
     if let Some(id) = node_id {
         builder.node_id(id);
     }
@@ -60,14 +61,13 @@ fn destination_uri(addr: SocketAddr) -> Uri {
 
 // Fetches a block from a network peer in a one-off, blocking call.
 // This function is used during node bootstrap to fetch the genesis block.
-pub fn fetch_block(
+pub async fn fetch_block(
     peer: Peer,
     hash: HeaderHash,
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     info!(logger, "fetching block {}", hash);
-    let runtime = Runtime::new().map_err(|e| FetchBlockError::RuntimeInit { source: e })?;
-    let fetch = connect(peer.address(), None, runtime.executor())
+    let fetch = connect(peer.address(), None)
         .map_err(|err| FetchBlockError::Connect { source: err })
         .and_then(move |client: Connection| {
             client
@@ -88,5 +88,6 @@ pub fn fetch_block(
             None => Err(FetchBlockError::NoBlocks),
             Some(block) => Ok(block),
         });
-    runtime.block_on_all(fetch)
+
+    fetch.compat().await
 }
