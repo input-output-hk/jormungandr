@@ -57,10 +57,10 @@ pub mod utils;
 
 use stats_counter::StatsCounter;
 
-fn start() -> Result<(), start_up::Error> {
-    let initialized_node = initialize_node()?;
+async fn start() -> Result<(), start_up::Error> {
+    let initialized_node = initialize_node().await?;
 
-    let bootstrapped_node = bootstrap(initialized_node)?;
+    let bootstrapped_node = bootstrap(initialized_node).await?;
 
     start_services(bootstrapped_node)
 }
@@ -317,7 +317,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 /// * network / peer discoveries (?)
 ///
 ///
-fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
+async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
     let InitializedNode {
         settings,
         block0,
@@ -348,7 +348,8 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         blockchain.clone(),
         blockchain_tip.clone(),
         &bootstrap_logger,
-    )?;
+    )
+    .await?;
 
     let explorer_db = if settings.explorer {
         Some(explorer::ExplorerDB::bootstrap(
@@ -389,7 +390,7 @@ pub struct InitializedNode {
     pub diagnostic: Diagnostic,
 }
 
-fn initialize_node() -> Result<InitializedNode, start_up::Error> {
+async fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
 
     if command_line.full_version {
@@ -455,7 +456,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         &settings,
         &storage,
         &init_logger, /* add network to fetch block0 */
-    )?;
+    )
+    .await?;
 
     Ok(InitializedNode {
         settings,
@@ -471,19 +473,21 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 fn main() {
     use std::error::Error;
 
-    if let Err(error) = start() {
-        eprintln!("{}", error);
-        let mut source = error.source();
-        while let Some(err) = source {
-            eprintln!(" |-> {}", err);
-            source = err.source();
-        }
+    tokio_compat::run_std(async {
+        if let Err(error) = start().await {
+            eprintln!("{}", error);
+            let mut source = error.source();
+            while let Some(err) = source {
+                eprintln!(" |-> {}", err);
+                source = err.source();
+            }
 
-        // TODO: https://github.com/rust-lang/rust/issues/43301
-        //
-        // as soon as #43301 is stabilized it would be nice to no use
-        // `exit` but the more appropriate:
-        // https://doc.rust-lang.org/stable/std/process/trait.Termination.html
-        std::process::exit(error.code());
-    }
+            // TODO: https://github.com/rust-lang/rust/issues/43301
+            //
+            // as soon as #43301 is stabilized it would be nice to no use
+            // `exit` but the more appropriate:
+            // https://doc.rust-lang.org/stable/std/process/trait.Termination.html
+            std::process::exit(error.code());
+        }
+    })
 }
