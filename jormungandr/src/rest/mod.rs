@@ -146,7 +146,7 @@ pub fn start_rest_server(
 
         apps
     };
-    let server = Server::start(config.pkcs12, config.listen, handlers)?;
+    let server = Server::start(config.tls, config.listen, handlers)?;
     context.set_server_stopper(server.stopper());
     Ok(server)
 }

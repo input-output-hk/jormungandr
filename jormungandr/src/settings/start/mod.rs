@@ -2,7 +2,7 @@ pub mod config;
 pub mod network;
 
 use self::config::{Config, Leadership};
-pub use self::config::{Cors, Rest};
+pub use self::config::{Cors, Rest, Tls};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
@@ -111,7 +111,7 @@ impl RawSettings {
             (Some(config_rest), None) => Some(config_rest.clone()),
             (None, Some(cmd_listen)) => Some(Rest {
                 listen: cmd_listen,
-                pkcs12: None,
+                tls: None,
                 cors: None,
             }),
             (None, None) => None,

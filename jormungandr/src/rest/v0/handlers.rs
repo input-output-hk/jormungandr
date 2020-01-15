@@ -8,7 +8,7 @@ use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound}
 use actix_web::{Error, HttpResponse};
 use actix_web::{Json, Path, Query, Responder, State};
 use chain_core::property::{Block, Deserialize, Serialize as _};
-use chain_crypto::{Blake2b256, PublicKey};
+use chain_crypto::{bech32::Bech32, Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
@@ -21,7 +21,6 @@ use crate::blockchain::Ref;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
 use bytes::{Bytes, IntoBuf};
-use chain_crypto::bech32::Bech32;
 use futures::{
     future::{
         self,
