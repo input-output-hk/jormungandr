@@ -1,10 +1,13 @@
 use crate::common::{
-    configuration::genesis_model::{Fund, LinearFees},
+    configuration::genesis_model::LinearFees,
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::UTxOInfo};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{InitialUTxO, UTxOInfo},
+};
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {
@@ -19,8 +22,8 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -55,8 +58,8 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     let receiver = startup::create_new_utxo_address();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -95,8 +98,8 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     let receiver = startup::create_new_utxo_address();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -122,8 +125,8 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
     let receiver = startup::create_new_utxo_address();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: TX_VALUE.into(),
         }])
         .build();
@@ -162,8 +165,8 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: transfer_amount,
         }])
         .build();
@@ -207,8 +210,8 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: transfer_amount,
         }])
         .build();
@@ -233,8 +236,8 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: transfer_amount,
         }])
         .build();
@@ -259,8 +262,8 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: transfer_amount,
         }])
         .build();
@@ -284,8 +287,8 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
     let receiver = startup::create_new_account_address();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -310,8 +313,8 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: transfer_amount,
         }])
         .build();
@@ -335,8 +338,8 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: transfer_amount,
         }])
         .build();
@@ -359,8 +362,8 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: transfer_amount,
         }])
         .build();
@@ -383,8 +386,8 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -412,8 +415,8 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -439,8 +442,8 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
 pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -464,8 +467,8 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -493,8 +496,8 @@ pub fn test_transaction_with_non_zero_linear_fees() {
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .with_linear_fees(LinearFees {

@@ -1,11 +1,10 @@
 use crate::common::{
-    configuration::genesis_model::Fund,
     jcli_wrapper::{self, JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, Starter},
     process_utils, startup,
 };
 
-use jormungandr_lib::interfaces::Mempool;
+use jormungandr_lib::interfaces::{InitialUTxO, Mempool};
 use std::time::Duration;
 
 #[test]
@@ -18,9 +17,9 @@ pub fn test_log_ttl() {
     let timeout_grace_period = garbage_collection_interval * 2;
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
+        .with_funds(vec![InitialUTxO {
             value: 1000000.into(),
-            address: sender.address.clone(),
+            address: sender.address.parse().unwrap(),
         }])
         .with_mempool(Mempool {
             pool_max_entries: 10_000usize.into(),

@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::genesis_model::{Fund, LinearFees},
+    configuration::genesis_model::LinearFees,
     data::address::Account,
     file_utils,
     jcli_wrapper::{
@@ -15,7 +15,7 @@ use chain_addr::Discrimination;
 use chain_crypto::{Curve25519_2HashDH, SumEd25519_12};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{Ratio, TaxType, Value},
+    interfaces::{InitialUTxO, Ratio, TaxType, Value},
 };
 use std::str::FromStr;
 
@@ -36,32 +36,31 @@ pub fn create_delegate_retire_stake_pool() {
             coefficient: 100,
             certificate: 200,
         })
-        .with_funds(vec![Fund {
+        .with_funds(vec![InitialUTxO {
             value: 1000000.into(),
-            address: actor_account.address.clone(),
+            address: actor_account.address.parse().unwrap(),
         }])
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let block0_hash = config.genesis_block_hash;
 
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
-        &block0_hash,
+        &config.genesis_block_hash,
         &jormungandr.rest_address(),
         &Default::default(),
     );
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
-        &block0_hash,
+        &config.genesis_block_hash,
         &jormungandr.rest_address(),
         &Default::default(),
     );
     retire_stake_pool(
         &stake_pool_id,
         &mut actor_account,
-        &block0_hash,
+        &config.genesis_block_hash,
         &jormungandr.rest_address(),
         &Default::default(),
     );

@@ -1,8 +1,5 @@
 use crate::common::{
-    configuration::{
-        genesis_model::{Fund, GenesisYaml},
-        secret_model::SecretModel,
-    },
+    configuration::{genesis_model::GenesisYaml, secret_model::SecretModel},
     data::address::{Account, Delegation, Utxo},
     file_utils,
     jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
@@ -12,7 +9,7 @@ use chain_addr::Discrimination;
 use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use jormungandr_lib::{
     crypto::key::KeyPair,
-    interfaces::{Ratio, TaxType},
+    interfaces::{InitialUTxO, Ratio, TaxType},
 };
 use std::path::PathBuf;
 
@@ -155,10 +152,10 @@ pub fn start_stake_pool(
         .map(|x| x.leader.identifier().to_bech32_str())
         .collect();
 
-    let funds: Vec<Fund> = owners
+    let funds: Vec<InitialUTxO> = owners
         .iter()
-        .map(|x| Fund {
-            address: x.address.clone(),
+        .map(|x| InitialUTxO {
+            address: x.address.parse().unwrap(),
             value: 1_000_000_000.into(),
         })
         .collect();

@@ -3,7 +3,7 @@
 pub mod jcli_transaction_commands;
 
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::configuration::genesis_model::{Fund, LinearFees};
+use crate::common::configuration::genesis_model::LinearFees;
 use crate::common::data::address::AddressDataProvider;
 use crate::common::data::witness::Witness;
 use crate::common::file_utils;
@@ -15,7 +15,7 @@ use chain_core::property::Deserialize;
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{UTxOInfo, Value},
+    interfaces::{LegacyUTxO, UTxOInfo, Value},
 };
 use std::path::PathBuf;
 
@@ -179,8 +179,8 @@ impl JCLITransactionWrapper {
         );
     }
 
-    pub fn assert_add_account_from_legacy(&mut self, fund: &Fund) -> &mut Self {
-        self.assert_add_account(&fund.address, &fund.value)
+    pub fn assert_add_account_from_legacy(&mut self, fund: &LegacyUTxO) -> &mut Self {
+        self.assert_add_account(&fund.address.to_string(), &fund.value)
     }
 
     pub fn assert_add_output(&mut self, addr: &str, amount: &Value) -> &mut Self {
