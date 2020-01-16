@@ -40,6 +40,7 @@ pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
 
     ConfigurationBuilder::new()
         .with_slot_duration(4)
+        .with_block0_consensus("genesis_praos")
         .with_trusted_peers(vec![trusted_peer])
         .build()
 }

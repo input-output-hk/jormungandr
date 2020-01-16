@@ -7,7 +7,7 @@ use crate::common::{
     configuration::genesis_model::Fund,
     jcli_wrapper,
     jcli_wrapper::JCLITransactionWrapper,
-    jormungandr::{logger::Level, ConfigurationBuilder, Starter},
+    jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
 use chain_core::property::FromStr;

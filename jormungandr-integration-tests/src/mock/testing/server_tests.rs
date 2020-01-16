@@ -83,13 +83,7 @@ pub fn wrong_protocol() {
         |logger: &MockLogger| logger.executed_at_least_once(MethodType::Handshake),
     );
 
-    let server = Starter::new()
-        .passive()
-        .config(config)
-        .verify_by(StartupVerificationMode::Log)
-        .start()
-        .unwrap();
-
+    let (server, _) = bootstrap_node_with_peer(mock_port);
     assert_eq!(
         mock_thread.join().expect("mock thread error"),
         MockExitCode::Success,
