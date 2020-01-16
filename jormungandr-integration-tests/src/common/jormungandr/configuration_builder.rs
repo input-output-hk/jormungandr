@@ -1,6 +1,6 @@
 use crate::common::{
     configuration::{
-        genesis_model::{GenesisYaml, LinearFees},
+        genesis_model::GenesisYaml,
         jormungandr_config::JormungandrConfig,
         node_config_model::{Log, LogEntry, NodeConfig, TrustedPeer},
         secret_model::SecretModel,
@@ -8,6 +8,8 @@ use crate::common::{
     file_utils, jcli_wrapper,
     startup::build_genesis_block,
 };
+
+use chain_impl_mockchain::fee::LinearFee;
 
 use jormungandr_lib::interfaces::{Initial, InitialUTxO, Mempool, SignedCertificate};
 
@@ -25,7 +27,7 @@ pub struct ConfigurationBuilder {
     slot_duration: Option<u32>,
     epoch_stability_depth: Option<u32>,
     kes_update_speed: u32,
-    linear_fees: LinearFees,
+    linear_fees: LinearFee,
     consensus_leader_ids: Vec<String>,
     mempool: Option<Mempool>,
     enable_explorer: bool,
@@ -49,11 +51,7 @@ impl ConfigurationBuilder {
                 level: Some("info".to_string()),
                 format: Some("json".to_string()),
             }])),
-            linear_fees: LinearFees {
-                constant: 0,
-                coefficient: 0,
-                certificate: 0,
-            },
+            linear_fees: LinearFee::new(0, 0, 0),
             consensus_genesis_praos_active_slot_coeff: Some("0.1".to_owned()),
             kes_update_speed: 12 * 3600,
             mempool: None,
@@ -81,7 +79,7 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_linear_fees(&mut self, linear_fees: LinearFees) -> &mut Self {
+    pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
         self.linear_fees = linear_fees;
         self
     }

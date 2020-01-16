@@ -3,7 +3,6 @@
 pub mod jcli_transaction_commands;
 
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::configuration::genesis_model::LinearFees;
 use crate::common::data::address::AddressDataProvider;
 use crate::common::data::witness::Witness;
 use crate::common::file_utils;
@@ -12,7 +11,7 @@ use crate::common::process_assert;
 use crate::common::process_utils;
 use crate::common::process_utils::output_extensions::ProcessOutput;
 use chain_core::property::Deserialize;
-use chain_impl_mockchain::fragment::Fragment;
+use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{LegacyUTxO, UTxOInfo, Value},
@@ -202,11 +201,7 @@ impl JCLITransactionWrapper {
         self
     }
 
-    pub fn assert_finalize_with_fee(
-        &mut self,
-        address: &str,
-        linear_fee: &LinearFees,
-    ) -> &mut Self {
+    pub fn assert_finalize_with_fee(&mut self, address: &str, linear_fee: &LinearFee) -> &mut Self {
         let output =
             process_utils::run_process_and_get_output(self.commands.get_finalize_with_fee_command(
                 &address,
