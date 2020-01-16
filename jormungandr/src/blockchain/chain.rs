@@ -517,7 +517,7 @@ impl Blockchain {
         post_checked_header: PostCheckedHeader,
         block: Block,
     ) -> impl Future<Item = AppliedBlock, Error = Error> {
-        let mut storage = self.storage.clone();
+        let storage = self.storage.clone();
         self.apply_block(post_checked_header, &block)
             .and_then(move |block_ref| {
                 storage.put_block(block).then(|res| match res {
@@ -608,9 +608,11 @@ impl Blockchain {
     pub async fn load_from_block0(&self, block0: Block) -> Result<Branch> {
         use tokio_compat::prelude::*;
 
-        let block0_id = block0.header.hash();
-        let already_exist = self
-            .storage
+        let self1 = self.clone();
+        let storage_store = self.storage.clone();
+        let storage_store_2 = self.storage.clone();
+
+        self.storage
             .block_exists(block0_id.clone())
             .compat()
             .await

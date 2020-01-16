@@ -8,11 +8,12 @@ use crate::{
     settings::start::Settings,
 };
 use chain_storage::store::BlockStore;
-use chain_storage_sqlite_old::SQLiteBlockStore;
+use chain_storage_sqlite_old::{SQLiteBlockStore, SQLiteBlockStoreConnection};
 use slog::Logger;
 use std::time::Duration;
 
 pub type NodeStorage = SQLiteBlockStore<Block>;
+pub type NodeStorageConnection = SQLiteBlockStoreConnection<Block>;
 
 /// prepare the block storage from the given settings
 ///
@@ -63,12 +64,14 @@ pub fn prepare_block_0(
             })
         }
         Block0Info::Hash(block0_id) => {
-            if storage.block_exists(&block0_id)? {
+            let connection = storage.connect().unwrap();
+
+            if connection.block_exists(&block0_id)? {
                 debug!(
                     logger,
                     "retrieving block0 from storage with hash {}", block0_id
                 );
-                let (block0, _block0_info) = storage.get_block(block0_id)?;
+                let (block0, _block0_info) = connection.get_block(block0_id)?;
                 Ok(block0)
             } else {
                 debug!(
