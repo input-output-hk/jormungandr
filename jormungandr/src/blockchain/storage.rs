@@ -3,10 +3,10 @@ use crate::{
     start_up::{NodeStorage, NodeStorageConnection},
 };
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
+use std::sync::Arc;
 use tokio::prelude::future::Either;
 use tokio::prelude::*;
 use tokio::sync::lock::Lock;
-use std::sync::Arc;
 
 pub use chain_storage::error::Error as StorageError;
 
@@ -50,7 +50,11 @@ impl Storage {
         &self,
         tag: String,
     ) -> impl Future<Item = Option<HeaderHash>, Error = StorageError> {
-        future::result(self.storage.connect().and_then(|conn| conn.get_tag(&tag)))
+        future::result(
+            self.storage
+                .connect::<Block>()
+                .and_then(|conn| conn.get_tag(&tag)),
+        )
     }
 
     pub fn put_tag(
@@ -72,7 +76,11 @@ impl Storage {
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Option<Block>, Error = StorageError> {
-        match self.storage.connect().and_then(|conn| conn.get_block(&header_hash)) {
+        match self
+            .storage
+            .connect()
+            .and_then(|conn| conn.get_block(&header_hash))
+        {
             Err(StorageError::BlockNotFound) => future::ok(None),
             Err(error) => future::err(error),
             Ok((block, _block_info)) => future::ok(Some(block)),
@@ -83,7 +91,11 @@ impl Storage {
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = Option<(Block, BlockInfo<HeaderHash>)>, Error = StorageError> {
-        match self.storage.connect().and_then(|conn| conn.get_block(&header_hash)) {
+        match self
+            .storage
+            .connect()
+            .and_then(|conn| conn.get_block(&header_hash))
+        {
             Err(StorageError::BlockNotFound) => future::ok(None),
             Err(error) => future::err(error),
             Ok(v) => future::ok(Some(v)),
@@ -94,7 +106,11 @@ impl Storage {
         &self,
         header_hash: HeaderHash,
     ) -> impl Future<Item = bool, Error = StorageError> {
-        match self.storage.connect().and_then(|conn| conn.block_exists(&header_hash)) {
+        match self
+            .storage
+            .connect::<Block>()
+            .and_then(|conn| conn.block_exists(&header_hash))
+        {
             Err(StorageError::BlockNotFound) => future::ok(false),
             Err(error) => future::err(error),
             Ok(existence) => future::ok(existence),
@@ -192,7 +208,7 @@ impl Storage {
         checkpoints: Vec<HeaderHash>,
         descendant: HeaderHash,
     ) -> impl Future<Item = Option<Ancestor>, Error = StorageError> {
-        let connection = match self.storage.connect() {
+        let connection = match self.storage.connect::<Block>() {
             Ok(connection) => connection,
             Err(error) => return future::err(error),
         };
