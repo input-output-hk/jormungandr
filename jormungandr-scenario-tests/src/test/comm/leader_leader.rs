@@ -37,8 +37,6 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     let leader_2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    controller.monitor_nodes();
-
     leader_2.wait_for_bootstrap()?;
     leader_1.wait_for_bootstrap()?;
 

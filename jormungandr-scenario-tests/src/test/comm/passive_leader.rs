@@ -31,7 +31,6 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
 
     let mut controller = scenario_settings.build(context)?;
 
-    controller.monitor_nodes();
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader.wait_for_bootstrap()?;
