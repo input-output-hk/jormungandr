@@ -105,6 +105,15 @@ pub struct P2pConfig {
     /// If not specified, an internal default limit is used.
     pub max_connections: Option<usize>,
 
+    /// capacity threshold delta
+    ///
+    /// this value will be compared to the delta between the number
+    /// of connections and the max_connections. If the threshold
+    /// has been reached (less then max_connections_threshold remaining)
+    /// the connections will be GCed in order to make some space for
+    /// nodes that are actually propagating blocks
+    pub max_connections_threshold: Option<usize>,
+
     /// Whether to allow non-public IP addresses on the network.
     /// The default is to not allow advertising non-public IP addresses.
     #[serde(default)]
@@ -196,6 +205,7 @@ impl Default for P2pConfig {
             trusted_peers: None,
             topics_of_interest: None,
             max_connections: None,
+            max_connections_threshold: None,
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,

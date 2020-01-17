@@ -51,7 +51,7 @@ use self::p2p::{
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
-use crate::settings::start::network::{Configuration, Peer, Protocol};
+use crate::settings::start::network::{Configuration, Peer, Protocol, DEFAULT_PEER_GC_INTERVAL};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TokioServiceInfo,
@@ -156,7 +156,11 @@ impl GlobalState {
                 .into(),
         );
 
-        let peers = Peers::new(config.max_connections, logger.clone());
+        let peers = Peers::new(
+            config.max_connections,
+            config.max_connections_threshold,
+            logger.clone(),
+        );
 
         GlobalState {
             block0_hash,
@@ -278,6 +282,28 @@ pub fn start(
                 .for_each(move |_| Ok(tp2p.force_reset_layers())),
         );
     }
+
+    let peers = global_state.peers.clone();
+    let gc_err_logger = global_state.logger.clone();
+    let gc_info_logger = global_state.logger.clone();
+    global_state.spawn(
+        Interval::new_interval(DEFAULT_PEER_GC_INTERVAL)
+            .map_err(move |e| {
+                error!(gc_err_logger, "interval timer error: {:?}", e);
+            })
+            .for_each(move |_| {
+                if let Some(number_gced) = peers.gc() {
+                    warn!(
+                        gc_info_logger,
+                        "Peer GCed {number_gced} nodes",
+                        number_gced = number_gced
+                    );
+                } else {
+                    debug!(gc_info_logger, "Peer GCed nothing");
+                }
+                Ok(())
+            }),
+    );
 
     let gossip = Interval::new_interval(global_state.config.gossip_interval.clone())
         .map_err(move |e| {
