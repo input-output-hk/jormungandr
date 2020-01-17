@@ -204,7 +204,7 @@ impl Controller {
     }
 
     pub fn finalize(self) {
-        self.runtime.shutdown_on_idle().wait().unwrap(); //.shutdown_now().wait().unwrap();
+        self.runtime.shutdown_now().wait().unwrap(); //.shutdown_now().wait().unwrap();
         if let Some(thread) = self.progress_bar_thread {
             thread.join().unwrap()
         }

@@ -558,14 +558,14 @@ impl ProgressBarController {
         L: Display,
         M: Display,
     {
-        println!(
+        /*println!(
             "[{}][{}{}]: {}",
             lvl,
             *style::icons::jormungandr,
             style::binary.apply_to(&self.prefix),
             msg
         );
-        /* self.progress_bar.println(format!(
+         self.progress_bar.println(format!(
             "[{}][{}{}]: {}",
             lvl,
             *style::icons::jormungandr,
