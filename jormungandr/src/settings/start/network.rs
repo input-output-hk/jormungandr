@@ -41,6 +41,9 @@ pub const DEFAULT_MAX_CONNECTIONS: usize = 256;
 /// dedicated to nodes with network improvements capacity
 pub const DEFAULT_MAX_CONNECTIONS_THRESHOLD: usize = DEFAULT_MAX_CONNECTIONS / 4;
 
+/// the interval to run the GC on the peer map connections
+pub const DEFAULT_PEER_GC_INTERVAL: Duration = Duration::from_secs(13);
+
 const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 
 ///

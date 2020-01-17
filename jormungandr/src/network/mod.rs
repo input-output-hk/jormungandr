@@ -51,7 +51,7 @@ use self::p2p::{
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
-use crate::settings::start::network::{Configuration, Peer, Protocol};
+use crate::settings::start::network::{Configuration, Peer, Protocol, DEFAULT_PEER_GC_INTERVAL};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TokioServiceInfo,
@@ -287,7 +287,7 @@ pub fn start(
     let gc_err_logger = global_state.logger.clone();
     let gc_info_logger = global_state.logger.clone();
     global_state.spawn(
-        Interval::new_interval(Duration::from_secs(13))
+        Interval::new_interval(DEFAULT_PEER_GC_INTERVAL)
             .map_err(move |e| {
                 error!(gc_err_logger, "interval timer error: {:?}", e);
             })
