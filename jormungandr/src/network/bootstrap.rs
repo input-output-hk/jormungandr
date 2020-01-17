@@ -47,9 +47,6 @@ pub async fn bootstrap_from_peer(
 ) -> Result<Arc<Ref>, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let blockchain2 = blockchain.clone();
-    let logger2 = logger.clone();
-
     let bootstrap = grpc::connect(peer.address(), None)
         .map_err(|e| Error::Connect { source: e })
         .and_then(|client: Connection<BlockConfig>| {
@@ -64,12 +61,9 @@ pub async fn bootstrap_from_peer(
             client
                 .pull_blocks_to_tip(&[tip_hash])
                 .map_err(|e| Error::PullRequestFailed { source: e })
-                .and_then(move |stream| bootstrap_from_stream(blockchain, tip, stream, logger))
-        })
-        .and_then(move |tip| {
-            blockchain::process_new_ref(logger2, blockchain2, branch, tip.clone())
-                .map_err(|e| Error::ChainSelectionFailed { source: e })
-                .map(|()| tip)
+                .and_then(move |stream| {
+                    bootstrap_from_stream(blockchain, branch, tip, stream, logger)
+                })
         });
 
     bootstrap.compat().await
@@ -77,6 +71,7 @@ pub async fn bootstrap_from_peer(
 
 fn bootstrap_from_stream<S>(
     blockchain: Blockchain,
+    branch: Tip,
     tip: Arc<Ref>,
     stream: S,
     logger: Logger,
@@ -85,16 +80,30 @@ where
     S: Stream<Item = Block, Error = NetworkError>,
     S::Error: Debug,
 {
-    let fold_logger = logger.clone();
-
     let block0 = blockchain.block0().clone();
+    let logger2 = logger.clone();
+    let blockchain2 = blockchain.clone();
 
     stream
         .map_err(|e| Error::PullStreamFailed { source: e })
         .filter(move |block| block.header.hash() != block0)
-        .fold(tip, move |_, block| {
-            handle_block(blockchain.clone(), block, fold_logger.clone())
+        .and_then(move |block| handle_block(blockchain.clone(), block, logger.clone()))
+        .and_then(move |new_tip| {
+            // A further optimization could be to process bootstrap blocks in batches (e.g. of 100)
+            // and then only call process_new_ref on the last value of each processed batch. However,
+            // at this time, it would seem processing_new_ref for every bootstrap block does not
+            // introduce too much overhead. Thus such an optimization may be premature and/or
+            // unnecessary.
+            blockchain::process_new_ref(
+                logger2.clone(),
+                blockchain2.clone(),
+                branch.clone(),
+                new_tip.clone(),
+            )
+            .map_err(|e| Error::ChainSelectionFailed { source: e })
+            .map(|()| new_tip)
         })
+        .fold(tip, |_, block| future::ok(block))
 }
 
 fn handle_block(
