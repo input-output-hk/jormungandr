@@ -14,11 +14,14 @@ use network_core::error as core_error;
 use network_core::gossip::{Gossip, Node};
 use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
+use tokio::{
+    prelude::future,
+    sync::lock::{Lock, LockGuard},
+};
 
 use std::fmt;
 use std::mem;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 // Buffer size determines the number of stream items pending processing that
@@ -377,7 +380,7 @@ pub struct PeerInfo {
 /// all network connection tasks.
 #[derive(Clone)]
 pub struct Peers {
-    mutex: Arc<Mutex<peer_map::PeerMap>>,
+    mutex: Lock<peer_map::PeerMap>,
     logger: Logger,
     capacity_threshold: usize,
 }
@@ -385,114 +388,151 @@ pub struct Peers {
 impl Peers {
     pub fn new(capacity: usize, capacity_threshold: usize, logger: Logger) -> Self {
         Peers {
-            mutex: Arc::new(Mutex::new(peer_map::PeerMap::new(capacity))),
+            mutex: Lock::new(peer_map::PeerMap::new(capacity)),
             logger,
             capacity_threshold,
         }
     }
 
-    pub fn clear(&self) {
-        let mut map = self.mutex.lock().unwrap();
-
-        map.clear();
+    fn inner<E>(&self) -> impl Future<Item = LockGuard<peer_map::PeerMap>, Error = E> {
+        let mut lock = self.mutex.clone();
+        future::poll_fn(move || Ok(lock.poll_lock()))
     }
 
-    pub fn gc(&self) -> Option<usize> {
-        let mut map = self.mutex.lock().unwrap();
-        let delta = map.capacity() - map.len();
-
-        if delta < self.capacity_threshold {
-            Some(map.gc(delta))
-        } else {
-            None
-        }
+    pub fn clear<E>(&self) -> impl Future<Item = (), Error = E> {
+        self.inner().map(|mut map| map.clear())
     }
 
-    pub fn insert_peer(&self, id: Id, comms: PeerComms, addr: SocketAddr) {
-        let mut map = self.mutex.lock().unwrap();
-        map.insert_peer(id, comms, addr)
+    pub fn gc<E>(&self) -> impl Future<Item = Option<usize>, Error = E> {
+        let capacity_threshold = self.capacity_threshold;
+        self.inner().map(move |mut map| {
+            let delta = map.capacity() - map.len();
+
+            if delta < capacity_threshold {
+                Some(map.gc(delta))
+            } else {
+                None
+            }
+        })
     }
 
-    pub fn connecting_with<F>(&self, id: Id, handle: ConnectHandle, modify_comms: F)
+    pub fn insert_peer<E>(
+        &self,
+        id: Id,
+        comms: PeerComms,
+        addr: SocketAddr,
+    ) -> impl Future<Item = (), Error = E> {
+        self.inner()
+            .map(move |mut map| map.insert_peer(id, comms, addr))
+    }
+
+    pub fn connecting_with<F, E>(
+        &self,
+        id: Id,
+        handle: ConnectHandle,
+        modify_comms: F,
+    ) -> impl Future<Item = (), Error = E>
     where
         F: FnOnce(&mut PeerComms),
     {
-        let mut map = self.mutex.lock().unwrap();
-        let comms = map.add_connecting(id, handle);
-        modify_comms(comms);
+        self.inner().map(move |mut map| {
+            let comms = map.add_connecting(id, handle);
+            modify_comms(comms);
+        })
     }
 
-    pub fn remove_peer(&self, id: Id) -> Option<PeerComms> {
-        let mut map = self.mutex.lock().unwrap();
-        map.remove_peer(id)
+    pub fn remove_peer<E>(&self, id: Id) -> impl Future<Item = Option<PeerComms>, Error = E> {
+        self.inner().map(move |mut map| map.remove_peer(id))
     }
 
-    pub fn serve_block_events(&self, id: Id) -> BlockEventSubscription {
-        let mut map = self.mutex.lock().unwrap();
-        let handles = map.server_comms(id);
-        let announce_events: BlockEventAnnounceStream = handles
-            .block_announcements
-            .subscribe()
-            .map(BlockEvent::Announce);
-        let solicit_events: BlockEventSolicitStream = handles
-            .block_solicitations
-            .subscribe()
-            .map(BlockEvent::Solicit);
-        let missing_events: BlockEventMissingStream =
-            handles.chain_pulls.subscribe().map(BlockEvent::Missing);
-        announce_events
-            .select(solicit_events)
-            .select(missing_events)
+    pub fn serve_block_events<E>(
+        &self,
+        id: Id,
+    ) -> impl Future<Item = BlockEventSubscription, Error = E> {
+        self.inner().map(move |mut map| {
+            let handles = map.server_comms(id);
+            let announce_events: BlockEventAnnounceStream = handles
+                .block_announcements
+                .subscribe()
+                .map(BlockEvent::Announce);
+            let solicit_events: BlockEventSolicitStream = handles
+                .block_solicitations
+                .subscribe()
+                .map(BlockEvent::Solicit);
+            let missing_events: BlockEventMissingStream =
+                handles.chain_pulls.subscribe().map(BlockEvent::Missing);
+            announce_events
+                .select(solicit_events)
+                .select(missing_events)
+        })
     }
 
-    pub fn serve_fragments(&self, id: Id) -> OutboundSubscription<Fragment> {
-        let mut map = self.mutex.lock().unwrap();
-        let handles = map.server_comms(id);
-        handles.fragments.subscribe()
+    pub fn serve_fragments<E>(
+        &self,
+        id: Id,
+    ) -> impl Future<Item = OutboundSubscription<Fragment>, Error = E> {
+        self.inner().map(move |mut map| {
+            let handles = map.server_comms(id);
+            handles.fragments.subscribe()
+        })
     }
 
-    pub fn serve_gossip(&self, id: Id) -> OutboundSubscription<Gossip<NodeData>> {
-        let mut map = self.mutex.lock().unwrap();
-        let handles = map.server_comms(id);
-        handles.gossip.subscribe()
+    pub fn serve_gossip<E>(
+        &self,
+        id: Id,
+    ) -> impl Future<Item = OutboundSubscription<Gossip<NodeData>>, Error = E> {
+        self.inner().map(move |mut map| {
+            let handles = map.server_comms(id);
+            handles.gossip.subscribe()
+        })
     }
 
-    fn propagate_with<T, F>(&self, nodes: Vec<NodeRef>, f: F) -> Result<(), Vec<NodeRef>>
+    fn propagate_with<T, F>(
+        &self,
+        nodes: Vec<NodeRef>,
+        f: F,
+    ) -> impl Future<Item = (), Error = Vec<NodeRef>>
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
-        let mut map = self.mutex.lock().unwrap();
-        let unreached_nodes = nodes
-            .into_iter()
-            .filter(|node| {
-                let id = node.id();
-                if let Some(mut entry) = map.entry(id) {
-                    match f(entry.update_comm_status()) {
-                        Ok(()) => false,
-                        Err(e) => {
-                            debug!(
-                                self.logger,
-                                "propagation to peer failed, unsubscribing peer";
-                                "node_id" => %id,
-                                "reason" => %e.kind()
-                            );
-                            entry.remove();
-                            true
+        let logger = self.logger.clone();
+        self.inner().and_then(move |mut map| {
+            let unreached_nodes = nodes
+                .into_iter()
+                .filter(|node| {
+                    let id = node.id();
+                    if let Some(mut entry) = map.entry(id) {
+                        match f(entry.update_comm_status()) {
+                            Ok(()) => false,
+                            Err(e) => {
+                                debug!(
+                                    logger,
+                                    "propagation to peer failed, unsubscribing peer";
+                                    "node_id" => %id,
+                                    "reason" => %e.kind()
+                                );
+                                entry.remove();
+                                true
+                            }
                         }
+                    } else {
+                        true
                     }
-                } else {
-                    true
-                }
-            })
-            .collect::<Vec<_>>();
-        if unreached_nodes.is_empty() {
-            Ok(())
-        } else {
-            Err(unreached_nodes)
-        }
+                })
+                .collect::<Vec<_>>();
+            if unreached_nodes.is_empty() {
+                Ok(())
+            } else {
+                Err(unreached_nodes)
+            }
+        })
     }
 
-    pub fn propagate_block(&self, nodes: Vec<NodeRef>, header: Header) -> Result<(), Vec<NodeRef>> {
+    pub fn propagate_block(
+        &self,
+        nodes: Vec<NodeRef>,
+        header: Header,
+    ) -> impl Future<Item = (), Error = Vec<NodeRef>> {
         debug!(
             self.logger,
             "propagating block";
@@ -511,7 +551,7 @@ impl Peers {
         &self,
         nodes: Vec<NodeRef>,
         fragment: Fragment,
-    ) -> Result<(), Vec<NodeRef>> {
+    ) -> impl Future<Item = (), Error = Vec<NodeRef>> {
         debug!(
             self.logger,
             "propagating fragment";
@@ -529,119 +569,135 @@ impl Peers {
         &self,
         target: Id,
         gossip: Gossip<NodeData>,
-    ) -> Result<(), Gossip<NodeData>> {
+    ) -> impl Future<Item = (), Error = Gossip<NodeData>> {
         debug!(
             self.logger,
             "sending gossip";
             "node_id" => %target,
         );
-        let mut map = self.mutex.lock().unwrap();
-        if let Some(mut entry) = map.entry(target) {
-            let res = match entry.update_comm_status() {
-                CommStatus::Established(comms) => comms.try_send_gossip(gossip),
-                CommStatus::Connecting(comms) => {
-                    comms.set_pending_gossip(gossip);
-                    Ok(())
+        let logger = self.logger.clone();
+        self.inner().and_then(move |mut map| {
+            if let Some(mut entry) = map.entry(target) {
+                let res = match entry.update_comm_status() {
+                    CommStatus::Established(comms) => comms.try_send_gossip(gossip),
+                    CommStatus::Connecting(comms) => {
+                        comms.set_pending_gossip(gossip);
+                        Ok(())
+                    }
+                };
+                res.map_err(|e| {
+                    debug!(
+                        logger,
+                        "gossip propagation to peer failed, unsubscribing peer";
+                        "node_id" => %target,
+                        "reason" => %e.kind(),
+                    );
+                    entry.remove();
+                    e.into_item()
+                })
+            } else {
+                Err(gossip)
+            }
+        })
+    }
+
+    pub fn refresh_peer_on_block<E>(&self, node_id: Id) -> impl Future<Item = bool, Error = E> {
+        self.inner()
+            .map(move |mut map| match map.refresh_peer(&node_id) {
+                Some(stats) => {
+                    stats.last_block_received = Some(SystemTime::now());
+                    true
                 }
-            };
-            res.map_err(|e| {
-                debug!(
-                    self.logger,
-                    "gossip propagation to peer failed, unsubscribing peer";
-                    "node_id" => %target,
-                    "reason" => %e.kind(),
-                );
-                entry.remove();
-                e.into_item()
+                None => false,
             })
-        } else {
-            Err(gossip)
-        }
     }
 
-    pub fn refresh_peer_on_block(&self, node_id: Id) -> bool {
-        let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer(&node_id) {
-            Some(stats) => {
-                stats.last_block_received = Some(SystemTime::now());
-                true
-            }
-            None => false,
-        }
+    pub fn refresh_peer_on_fragment<E>(&self, node_id: Id) -> impl Future<Item = bool, Error = E> {
+        self.inner()
+            .map(move |mut map| match map.refresh_peer(&node_id) {
+                Some(stats) => {
+                    stats.last_fragment_received = Some(SystemTime::now());
+                    true
+                }
+                None => false,
+            })
     }
 
-    pub fn refresh_peer_on_fragment(&self, node_id: Id) -> bool {
-        let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer(&node_id) {
-            Some(stats) => {
-                stats.last_fragment_received = Some(SystemTime::now());
-                true
-            }
-            None => false,
-        }
+    pub fn refresh_peer_on_gossip<E>(&self, node_id: Id) -> impl Future<Item = bool, Error = E> {
+        self.inner()
+            .map(move |mut map| match map.refresh_peer(&node_id) {
+                Some(stats) => {
+                    stats.last_gossip_received = Some(SystemTime::now());
+                    true
+                }
+                None => false,
+            })
     }
 
-    pub fn refresh_peer_on_gossip(&self, node_id: Id) -> bool {
-        let mut map = self.mutex.lock().unwrap();
-        match map.refresh_peer(&node_id) {
-            Some(stats) => {
-                stats.last_gossip_received = Some(SystemTime::now());
-                true
-            }
-            None => false,
-        }
-    }
-
-    pub fn fetch_blocks(&self, hashes: Vec<HeaderHash>) {
-        let mut map = self.mutex.lock().unwrap();
-        if let Some((node_id, comms)) = map.next_peer_for_block_fetch() {
-            debug!(self.logger, "fetching blocks from {}", node_id);
-            comms
-                .block_solicitations
-                .try_send(hashes)
-                .unwrap_or_else(|e| {
-                    debug!(self.logger, "block fetch from {} failed: {:?}", node_id, e);
-                    debug!(self.logger, "unsubscribing peer {}", node_id);
-                    map.remove_peer(node_id);
-                });
-        } else {
-            warn!(self.logger, "no peers to fetch blocks from");
-        }
-    }
-
-    pub fn solicit_blocks(&self, node_id: Id, hashes: Vec<HeaderHash>) {
-        let mut map = self.mutex.lock().unwrap();
-        match map.peer_comms(&node_id) {
-            Some(comms) => {
-                debug!(self.logger, "sending block solicitation to {}", node_id;
-                       "hashes" => ?hashes);
+    pub fn fetch_blocks<E>(&self, hashes: Vec<HeaderHash>) -> impl Future<Item = (), Error = E> {
+        let logger = self.logger.clone();
+        self.inner().map(move |mut map| {
+            if let Some((node_id, comms)) = map.next_peer_for_block_fetch() {
+                debug!(logger, "fetching blocks from {}", node_id);
                 comms
                     .block_solicitations
                     .try_send(hashes)
                     .unwrap_or_else(|e| {
-                        debug!(
-                            self.logger,
-                            "block solicitation from {} failed: {:?}", node_id, e
-                        );
-                        debug!(self.logger, "unsubscribing peer {}", node_id);
+                        debug!(logger, "block fetch from {} failed: {:?}", node_id, e);
+                        debug!(logger, "unsubscribing peer {}", node_id);
                         map.remove_peer(node_id);
                     });
+            } else {
+                warn!(logger, "no peers to fetch blocks from");
             }
-            None => {
-                // TODO: connect and request on demand, or select another peer?
-                info!(
-                    self.logger,
-                    "peer {} not available to solicit blocks from", node_id
-                );
-            }
-        }
+        })
     }
 
-    pub fn pull_headers(&self, node_id: Id, from: Vec<HeaderHash>, to: HeaderHash) {
-        let mut map = self.mutex.lock().unwrap();
+    pub fn solicit_blocks<E>(
+        &self,
+        node_id: Id,
+        hashes: Vec<HeaderHash>,
+    ) -> impl Future<Item = (), Error = E> {
+        let logger = self.logger.clone();
+        self.inner().map(move |mut map| {
+            match map.peer_comms(&node_id) {
+                Some(comms) => {
+                    debug!(logger, "sending block solicitation to {}", node_id;
+                       "hashes" => ?hashes);
+                    comms
+                        .block_solicitations
+                        .try_send(hashes)
+                        .unwrap_or_else(|e| {
+                            debug!(
+                                logger,
+                                "block solicitation from {} failed: {:?}", node_id, e
+                            );
+                            debug!(logger, "unsubscribing peer {}", node_id);
+                            map.remove_peer(node_id);
+                        });
+                }
+                None => {
+                    // TODO: connect and request on demand, or select another peer?
+                    info!(
+                        logger,
+                        "peer {} not available to solicit blocks from", node_id
+                    );
+                }
+            }
+        })
+    }
+
+    pub fn pull_headers<E>(
+        &self,
+        node_id: Id,
+        from: Vec<HeaderHash>,
+        to: HeaderHash,
+    ) -> impl Future<Item = (), Error = E> {
+        let logger = self.logger.clone();
+        self.inner().map(move |mut map| {
         match map.peer_comms(&node_id) {
             Some(comms) => {
-                debug!(self.logger, "pulling headers";
+                debug!(logger, "pulling headers";
                        "node_id" => %node_id,
                        "from" => format!("[{}]", from.iter().map(|h| h.to_string()).collect::<Vec<_>>().join(", ")),
                        "to" => %to);
@@ -650,24 +706,26 @@ impl Peers {
                     .try_send(ChainPullRequest { from, to })
                     .unwrap_or_else(|e| {
                         debug!(
-                            self.logger,
+                            logger,
                             "sending header pull solicitation to {} failed: {:?}", node_id, e
                         );
-                        debug!(self.logger, "unsubscribing peer {}", node_id);
+                        debug!(logger, "unsubscribing peer {}", node_id);
                         map.remove_peer(node_id);
                     });
             }
             None => {
                 // TODO: connect and request on demand, or select another peer?
                 info!(
-                    self.logger,
+                    logger,
                     "peer {} not available to pull headers from", node_id
                 );
             }
         }
+
+        })
     }
 
-    pub fn infos(&self) -> Vec<PeerInfo> {
-        self.mutex.lock().unwrap().infos()
+    pub fn infos<E>(&self) -> impl Future<Item = Vec<PeerInfo>, Error = E> {
+        self.inner().map(|map| map.infos())
     }
 }
