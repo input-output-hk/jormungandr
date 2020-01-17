@@ -150,7 +150,7 @@ impl Process {
                 info.spawn(
                     Timeout::new(notify_explorer, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP))
                         .map_err(move |err: TimeoutError| {
-                            error!(logger, "cannot process leadership block" ; "reason" => err.to_string())
+                            error!(logger, "cannot process leadership block" ; "reason" => ?err)
                         })
                 )
             }
@@ -174,7 +174,7 @@ impl Process {
                 );
 
                 info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT)).map_err(move |err: TimeoutError| {
-                    error!(logger, "cannot process block announcement" ; "reason" => err.to_string())
+                    error!(logger, "cannot process block announcement" ; "reason" => ?err)
                 }))
             }
             BlockMsg::NetworkBlocks(handle) => {
@@ -235,7 +235,7 @@ impl Process {
                                         info!(
                                             logger,
                                             "validation of an incoming block failed";
-                                            "reason" => %e,
+                                            "reason" => ?e,
                                         );
                                         reply.reply_error(network_block_error_into_reply(e));
                                         Ok(Loop::Break(candidate))
@@ -264,7 +264,7 @@ impl Process {
                 });
 
                 info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS)).map_err(move |err: TimeoutError| {
-                    error!(logger_err, "cannot process network blocks" ; "reason" => err.to_string())
+                    error!(logger_err, "cannot process network blocks" ; "reason" => ?err)
                 }))
             }
             BlockMsg::ChainHeaders(handle) => {
@@ -281,7 +281,7 @@ impl Process {
                     .inspect(move |(header_ids, _)|
                         header_ids.iter()
                         .try_for_each(|header_id| pull_headers_scheduler.declare_completed(*header_id))
-                        .unwrap_or_else(|e| error!(schedule_logger, "get blocks schedule completion failed"; "reason" => e.to_string())))
+                        .unwrap_or_else(|e| error!(schedule_logger, "get blocks schedule completion failed"; "reason" => ?e)))
                     .then(move |resp| match resp {
                         Err(e) => {
                             info!(
@@ -309,7 +309,7 @@ impl Process {
                     })
                     .timeout(Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS))
                     .map_err(move |err: TimeoutError| {
-                        error!(logger_err2, "cannot process network headers" ; "reason" => err.to_string())
+                        error!(logger_err2, "cannot process network headers" ; "reason" => ?err)
                     });
                 info.spawn(future);
             }
@@ -323,12 +323,12 @@ impl Process {
 
         Interval::new_interval(Duration::from_secs(60))
             .map_err(move |e| {
-                error!(error_logger, "cannot run branch reprocessing" ; "reason" => %e);
+                error!(error_logger, "cannot run branch reprocessing" ; "reason" => ?e);
             })
             .for_each(move |_instance| {
                 let error_logger = logger.clone();
                 reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()).map_err(move |e| {
-                    error!(error_logger, "cannot run branch reprocessing" ; "reason" => %e);
+                    error!(error_logger, "cannot run branch reprocessing" ; "reason" => ?e);
                 })
             })
     }
@@ -350,9 +350,9 @@ impl Process {
         );
         let scheduler = scheduler_future.scheduler();
         let logger = info.logger().clone();
-        let future = scheduler_future.map(|never| match never {}).map_err(
-            move |e| error!(logger, "get blocks scheduling failed"; "reason" => e.to_string()),
-        );
+        let future = scheduler_future
+            .map(|never| match never {})
+            .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
         info.spawn(future);
         scheduler
     }
@@ -369,16 +369,16 @@ impl Process {
                     .unwrap_or_else(|e| {
                         error!(
                             scheduler_logger,
-                            "cannot send GetNextBlock request to network"; "reason" => e.to_string()
+                            "cannot send GetNextBlock request to network"; "reason" => ?e
                         )
                     });
             },
         );
         let scheduler = scheduler_future.scheduler();
         let logger = info.logger().clone();
-        let future = scheduler_future.map(|never| match never {}).map_err(
-            move |e| error!(logger, "get next block scheduling failed"; "reason" => e.to_string()),
-        );
+        let future = scheduler_future
+            .map(|never| match never {})
+            .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
         info.spawn(future);
         scheduler
     }
@@ -559,11 +559,12 @@ fn process_block_announcement(
                     blockchain
                         .get_checkpoints(blockchain_tip.branch().clone())
                         .map(move |from| {
-                            pull_headers_scheduler.schedule(to, node_id, from)
+                            pull_headers_scheduler
+                                .schedule(to, node_id, from)
                                 .unwrap_or_else(move |err| {
                                     error!(
                                         logger,
-                                        "cannot schedule pulling headers"; "reason" => err.to_string()
+                                        "cannot schedule pulling headers"; "reason" => ?err
                                     )
                                 });
                         }),
@@ -577,11 +578,12 @@ fn process_block_announcement(
                     logger,
                     "Announced block has a locally stored parent, fetch it"
                 );
-                get_next_block_scheduler.schedule(header.id(), node_id, ())
+                get_next_block_scheduler
+                    .schedule(header.id(), node_id, ())
                     .unwrap_or_else(move |err| {
                         error!(
                             logger,
-                            "cannot schedule getting next block"; "reason" => err.to_string()
+                            "cannot schedule getting next block"; "reason" => ?err
                         )
                     });
                 Either::A(future::ok(()))
@@ -598,8 +600,11 @@ fn process_network_block(
     mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,
 ) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
-    get_next_block_scheduler.declare_completed(block.id())
-        .unwrap_or_else(|e| error!(logger, "get next block schedule completion failed"; "reason" => e.to_string()));
+    get_next_block_scheduler
+        .declare_completed(block.id())
+        .unwrap_or_else(
+            |e| error!(logger, "get next block schedule completion failed"; "reason" => ?e),
+        );
     let header = block.header();
     blockchain
         .pre_check_header(header, false)
