@@ -18,7 +18,7 @@ use slog::Logger;
 use std::fmt;
 use std::mem;
 use std::net::SocketAddr;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 // Buffer size determines the number of stream items pending processing that
@@ -375,16 +375,36 @@ pub struct PeerInfo {
 ///
 /// This object uses internal locking and is shared between
 /// all network connection tasks.
+#[derive(Clone)]
 pub struct Peers {
-    mutex: Mutex<peer_map::PeerMap>,
+    mutex: Arc<Mutex<peer_map::PeerMap>>,
     logger: Logger,
+    capacity_threshold: usize,
 }
 
 impl Peers {
-    pub fn new(capacity: usize, logger: Logger) -> Self {
+    pub fn new(capacity: usize, capacity_threshold: usize, logger: Logger) -> Self {
         Peers {
-            mutex: Mutex::new(peer_map::PeerMap::new(capacity)),
+            mutex: Arc::new(Mutex::new(peer_map::PeerMap::new(capacity))),
             logger,
+            capacity_threshold,
+        }
+    }
+
+    pub fn clear(&self) {
+        let mut map = self.mutex.lock().unwrap();
+
+        map.clear();
+    }
+
+    pub fn gc(&self) -> Option<usize> {
+        let mut map = self.mutex.lock().unwrap();
+        let delta = map.capacity() - map.len();
+
+        if delta < self.capacity_threshold {
+            Some(map.gc(delta))
+        } else {
+            None
         }
     }
 
