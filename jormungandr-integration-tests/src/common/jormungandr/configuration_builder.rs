@@ -8,10 +8,11 @@ use crate::common::{
     file_utils, jcli_wrapper,
     startup::build_genesis_block,
 };
-
-use chain_impl_mockchain::fee::LinearFee;
-
-use jormungandr_lib::interfaces::{Initial, InitialUTxO, Mempool, SignedCertificate};
+use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, ConsensusLeaderId, EpochStabilityDepth, Initial, InitialUTxO,
+    KESUpdateSpeed, Mempool, NumberOfSlotsPerEpoch, SignedCertificate, SlotDuration,
+};
 
 pub struct ConfigurationBuilder {
     funds: Vec<InitialUTxO>,
@@ -20,15 +21,15 @@ pub struct ConfigurationBuilder {
     public_address: Option<String>,
     listen_address: Option<String>,
     block0_hash: Option<String>,
-    block0_consensus: Option<String>,
+    block0_consensus: ConsensusVersion,
     log: Option<Log>,
-    consensus_genesis_praos_active_slot_coeff: Option<String>,
-    slots_per_epoch: Option<u32>,
-    slot_duration: Option<u32>,
-    epoch_stability_depth: Option<u32>,
-    kes_update_speed: u32,
+    consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
+    slots_per_epoch: NumberOfSlotsPerEpoch,
+    slot_duration: SlotDuration,
+    epoch_stability_depth: EpochStabilityDepth,
+    kes_update_speed: KESUpdateSpeed,
     linear_fees: LinearFee,
-    consensus_leader_ids: Vec<String>,
+    consensus_leader_ids: Vec<ConsensusLeaderId>,
     mempool: Option<Mempool>,
     enable_explorer: bool,
 }
@@ -43,38 +44,38 @@ impl ConfigurationBuilder {
             listen_address: None,
             public_address: None,
             block0_hash: None,
-            block0_consensus: Some("bft".to_string()),
-            slots_per_epoch: None,
-            slot_duration: None,
-            epoch_stability_depth: None,
+            block0_consensus: ConsensusVersion::Bft,
+            slots_per_epoch: NumberOfSlotsPerEpoch::new(100).unwrap(),
+            slot_duration: SlotDuration::new(1).unwrap(),
+            epoch_stability_depth: 2600u32.into(),
             log: Some(Log(vec![LogEntry {
                 level: Some("info".to_string()),
                 format: Some("json".to_string()),
             }])),
             linear_fees: LinearFee::new(0, 0, 0),
-            consensus_genesis_praos_active_slot_coeff: Some("0.1".to_owned()),
-            kes_update_speed: 12 * 3600,
+            consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
+            kes_update_speed: KESUpdateSpeed::new(12 * 3600).unwrap(),
             mempool: None,
             enable_explorer: false,
         }
     }
 
     pub fn with_slots_per_epoch(&mut self, slots_per_epoch: u32) -> &mut Self {
-        self.slots_per_epoch = Some(slots_per_epoch);
+        self.slots_per_epoch = NumberOfSlotsPerEpoch::new(slots_per_epoch).unwrap();
         self
     }
 
-    pub fn with_slot_duration(&mut self, slot_duration: u32) -> &mut Self {
-        self.slot_duration = Some(slot_duration);
+    pub fn with_slot_duration(&mut self, slot_duration: u8) -> &mut Self {
+        self.slot_duration = SlotDuration::new(slot_duration).unwrap();
         self
     }
 
     pub fn with_epoch_stability_depth(&mut self, epoch_stability_depth: u32) -> &mut Self {
-        self.epoch_stability_depth = Some(epoch_stability_depth);
+        self.epoch_stability_depth = epoch_stability_depth.into();
         self
     }
 
-    pub fn with_kes_update_speed(&mut self, kes_update_speed: u32) -> &mut Self {
+    pub fn with_kes_update_speed(&mut self, kes_update_speed: KESUpdateSpeed) -> &mut Self {
         self.kes_update_speed = kes_update_speed;
         self
     }
@@ -84,8 +85,11 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_consensus_leaders_ids(&mut self, consensus_leader_ids: Vec<String>) -> &mut Self {
-        self.consensus_leader_ids = consensus_leader_ids;
+    pub fn with_consensus_leaders_ids(
+        &mut self,
+        consensus_leader_ids: Vec<ConsensusLeaderId>,
+    ) -> &mut Self {
+        self.consensus_leader_ids = consensus_leader_ids.clone();
         self
     }
 
@@ -99,16 +103,16 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_block0_consensus(&mut self, consensus: &str) -> &mut Self {
-        self.block0_consensus = Some(consensus.to_string());
+    pub fn with_block0_consensus(&mut self, consensus: ConsensusVersion) -> &mut Self {
+        self.block0_consensus = consensus;
         self
     }
 
     pub fn with_consensus_genesis_praos_active_slot_coeff(
         &mut self,
-        active_slot_coeff: &str,
+        active_slot_coeff: ActiveSlotCoefficient,
     ) -> &mut Self {
-        self.consensus_genesis_praos_active_slot_coeff = Some(active_slot_coeff.to_string());
+        self.consensus_genesis_praos_active_slot_coeff = active_slot_coeff;
         self
     }
 
@@ -171,22 +175,14 @@ impl ConfigurationBuilder {
 
         let mut genesis_model = GenesisYaml::new_with_funds(&self.funds);
 
-        let mut leaders_ids = vec![public_key];
-        leaders_ids.append(&mut self.consensus_leader_ids.clone());
-        genesis_model.blockchain_configuration.consensus_leader_ids = Some(leaders_ids.clone());
+        let mut leaders_ids = self.consensus_leader_ids.clone();
+        leaders_ids.push(serde_yaml::from_str(&public_key).unwrap());
+        genesis_model.blockchain_configuration.consensus_leader_ids = leaders_ids;
         genesis_model.blockchain_configuration.block0_consensus = self.block0_consensus.clone();
         genesis_model.blockchain_configuration.kes_update_speed = self.kes_update_speed.clone();
-
-        if self.slots_per_epoch.is_some() {
-            genesis_model.blockchain_configuration.slots_per_epoch = self.slots_per_epoch;
-        }
-        if self.slot_duration.is_some() {
-            genesis_model.blockchain_configuration.slot_duration = self.slot_duration;
-        }
-        if self.epoch_stability_depth.is_some() {
-            genesis_model.blockchain_configuration.epoch_stability_depth =
-                self.epoch_stability_depth;
-        }
+        genesis_model.blockchain_configuration.slots_per_epoch = self.slots_per_epoch;
+        genesis_model.blockchain_configuration.slot_duration = self.slot_duration;
+        genesis_model.blockchain_configuration.epoch_stability_depth = self.epoch_stability_depth;
 
         genesis_model
             .blockchain_configuration

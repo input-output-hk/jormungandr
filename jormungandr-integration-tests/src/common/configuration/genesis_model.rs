@@ -7,54 +7,28 @@ extern crate rand;
 extern crate rand_chacha;
 extern crate serde_derive;
 use self::chain_addr::{Address as ChainAddress, Discrimination, Kind};
-use self::chain_crypto::bech32::Bech32;
 use self::chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
-use self::chain_impl_mockchain::fee::LinearFee;
 use self::rand::SeedableRng;
 use self::rand_chacha::ChaChaRng;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
-use jormungandr_lib::interfaces::{
-    Address, Initial, InitialUTxO, LegacyUTxO, LinearFeeDef, Ratio, RewardParams, TaxType, Value,
+use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
+use jormungandr_lib::{
+    interfaces::{
+        ActiveSlotCoefficient, Address, BlockchainConfiguration, ConsensusLeaderId, Initial,
+        InitialUTxO, KESUpdateSpeed, LegacyUTxO, NumberOfSlotsPerEpoch, Ratio, RewardConstraints,
+        RewardParams, SlotDuration, TaxType,
+    },
+    time::SecondsSinceUnixEpoch,
 };
+
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::vec::Vec;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BlockchainConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub block0_date: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub discrimination: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub block0_consensus: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub slot_duration: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub slots_per_epoch: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub epoch_stability_depth: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub consensus_leader_ids: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub consensus_genesis_praos_active_slot_coeff: Option<String>,
-    #[serde(with = "LinearFeeDef")]
-    pub linear_fees: LinearFee,
-    pub kes_update_speed: u32,
-    #[serde(default)]
-    pub treasury: Option<Value>,
-    #[serde(default)]
-    pub treasury_parameters: Option<TaxType>,
-    #[serde(default)]
-    pub total_reward_supply: Option<Value>,
-    #[serde(default)]
-    pub reward_parameters: Option<RewardParams>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GenesisYaml {
-    pub blockchain_configuration: BlockchainConfig,
+    pub blockchain_configuration: BlockchainConfiguration,
     pub initial: Vec<Initial>,
 }
 
@@ -105,8 +79,8 @@ impl GenesisYaml {
             KeyPair::generate(&mut ChaChaRng::from_seed([1; 32]));
         let leader_2: KeyPair<Ed25519Extended> =
             KeyPair::generate(&mut ChaChaRng::from_seed([2; 32]));
-        let leader_1_pk = leader_1.public_key().to_bech32_str();
-        let leader_2_pk = leader_2.public_key().to_bech32_str();
+        let leader_1_pk = leader_1.public_key();
+        let leader_2_pk = leader_2.public_key();
 
         let mut initial = Vec::new();
         if initial_funds.len() > 0 {
@@ -116,21 +90,28 @@ impl GenesisYaml {
             initial.push(Initial::LegacyFund(legacy_funds.iter().cloned().collect()))
         }
 
+        let mut consensus_leader_ids: Vec<ConsensusLeaderId> = Vec::new();
+        consensus_leader_ids.push(leader_1_pk.clone().into());
+        consensus_leader_ids.push(leader_2_pk.clone().into());
+
         GenesisYaml {
-            blockchain_configuration: BlockchainConfig {
-                block0_date: Some(1554185140),
-                discrimination: Some(String::from("test")),
-                block0_consensus: Some(String::from("bft")),
-                slot_duration: Some(1),
-                slots_per_epoch: Some(100),
-                epoch_stability_depth: Some(2600),
-                consensus_leader_ids: Some(vec![
-                    String::from(leader_1_pk),
-                    String::from(leader_2_pk),
-                ]),
-                consensus_genesis_praos_active_slot_coeff: Some("0.444".to_owned()),
+            blockchain_configuration: BlockchainConfiguration {
+                block_content_max_size: 4096.into(),
+                fees_go_to: None,
+                reward_constraints: RewardConstraints {
+                    reward_drawing_limit_max: None,
+                    pool_participation_capping: None,
+                },
+                block0_date: SecondsSinceUnixEpoch::now(),
+                discrimination: Discrimination::Test,
+                block0_consensus: ConsensusVersion::Bft,
+                slot_duration: SlotDuration::new(1u8).unwrap(),
+                slots_per_epoch: NumberOfSlotsPerEpoch::new(100u32).unwrap(),
+                epoch_stability_depth: 2600u32.into(),
+                consensus_leader_ids: consensus_leader_ids,
+                consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
                 linear_fees: LinearFee::new(0, 0, 0),
-                kes_update_speed: 12 * 3600,
+                kes_update_speed: KESUpdateSpeed::new(12 * 3600).unwrap(),
                 treasury: Some(1_000_000.into()),
                 treasury_parameters: Some(TaxType {
                     fixed: 10.into(),

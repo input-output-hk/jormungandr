@@ -67,6 +67,12 @@ impl From<SlotDuration> for ConfigParam {
     }
 }
 
+impl Into<u8> for SlotDuration {
+    fn into(self) -> u8 {
+        self.0
+    }
+}
+
 impl fmt::Display for SlotDuration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Duration::new(self.0 as u64, 0).fmt(f)

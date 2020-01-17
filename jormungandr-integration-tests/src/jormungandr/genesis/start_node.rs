@@ -6,7 +6,8 @@ use crate::common::{
     startup,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, Ed25519Extended, SumEd25519_12};
-use jormungandr_lib::interfaces::InitialUTxO;
+use chain_impl_mockchain::block::ConsensusVersion;
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, InitialUTxO, KESUpdateSpeed};
 
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
@@ -61,10 +62,10 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     );
 
     let mut config = ConfigurationBuilder::new()
-        .with_block0_consensus("genesis_praos")
-        .with_consensus_genesis_praos_active_slot_coeff("0.1")
-        .with_consensus_leaders_ids(vec![leader.identifier().to_bech32_str()])
-        .with_kes_update_speed(43200)
+        .with_block0_consensus(ConsensusVersion::GenesisPraos)
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+        .with_consensus_leaders_ids(vec![leader.identifier().into()])
+        .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
         .with_funds(vec![InitialUTxO {
             address: faucet.address.parse().unwrap(),
             value: 100.into(),

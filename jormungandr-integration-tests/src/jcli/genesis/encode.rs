@@ -16,7 +16,7 @@ pub fn test_genesis_with_empty_consenus_leaders_list_fails_to_build() {
     config
         .genesis_yaml
         .blockchain_configuration
-        .consensus_leader_ids = Some(vec![]);
+        .consensus_leader_ids = vec![];
     jcli_wrapper::assert_genesis_encode_fails(
         &config.genesis_yaml,
         r"Missing consensus leader id list in the initial fragment",
@@ -27,7 +27,7 @@ pub fn test_genesis_with_empty_consenus_leaders_list_fails_to_build() {
 pub fn test_genesis_for_production_is_successfully_built() {
     let mut config = JormungandrConfig::new();
     config.genesis_yaml.initial.clear();
-    config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
+    config.genesis_yaml.blockchain_configuration.discrimination = Discrimination::Production;
     let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
@@ -44,14 +44,14 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
         value: 100.into(),
         address: test_address.parse().unwrap(),
     }])];
-    config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
+    config.genesis_yaml.blockchain_configuration.discrimination = Discrimination::Production;
     jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "Invalid discrimination");
 }
 
 #[test]
 pub fn test_genesis_for_prod_with_wrong_discrimination_fail_to_build() {
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.blockchain_configuration.discrimination = Some("prod".to_string());
+    config.genesis_yaml.blockchain_configuration.discrimination = Discrimination::Production;
     jcli_wrapper::assert_genesis_encode_fails(
         &config.genesis_yaml,
         "blockchain_configuration.discrimination: unknown variant `prod`, expected `test` or `production`",
