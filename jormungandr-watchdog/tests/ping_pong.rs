@@ -6,7 +6,6 @@
 use async_trait::async_trait;
 use jormungandr_watchdog::{
     service, CoreServices, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
-    WatchdogError, WatchdogQuery,
 };
 use std::{any::Any, time::Duration};
 use tokio::time::delay_for;
@@ -84,50 +83,10 @@ impl Service for Pong {
     }
 }
 
+#[derive(CoreServices)]
 struct PingPongServices {
     ping: service::ServiceManager<Ping>,
     pong: service::ServiceManager<Pong>,
-}
-impl CoreServices for PingPongServices {
-    fn start(
-        &mut self,
-        service_identifier: ServiceIdentifier,
-        watchdog_query: WatchdogQuery,
-    ) -> Result<(), WatchdogError> {
-        match service_identifier {
-            "ping" => Ok(self.ping.runtime(watchdog_query).start()),
-            "pong" => Ok(self.pong.runtime(watchdog_query).start()),
-            _ => Err(WatchdogError::UnknownService {
-                service_identifier,
-                possible_values: &[],
-            }),
-        }
-    }
-
-    fn stop(&mut self, service_identifier: ServiceIdentifier) -> Result<(), WatchdogError> {
-        match service_identifier {
-            "ping" => Ok(self.ping.shutdown()),
-            "pong" => Ok(self.pong.shutdown()),
-            _ => Err(WatchdogError::UnknownService {
-                service_identifier,
-                possible_values: &[],
-            }),
-        }
-    }
-
-    fn intercoms(
-        &mut self,
-        service_identifier: ServiceIdentifier,
-    ) -> Result<Box<dyn Any + Send>, WatchdogError> {
-        match service_identifier {
-            "ping" => Ok(Box::new(self.ping.intercom())),
-            "pong" => Ok(Box::new(self.pong.intercom())),
-            _ => Err(WatchdogError::UnknownService {
-                service_identifier,
-                possible_values: &[],
-            }),
-        }
-    }
 }
 
 /// test that the execution of the watchdog will be stopped shortly

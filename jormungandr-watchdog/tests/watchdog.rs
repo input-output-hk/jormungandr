@@ -2,40 +2,12 @@
 //! services to add noises around.
 //!
 
-use jormungandr_watchdog::{
-    CoreServices, ServiceIdentifier, WatchdogBuilder, WatchdogError, WatchdogQuery,
-};
+use jormungandr_watchdog::{CoreServices, WatchdogBuilder, WatchdogError};
 use std::{any::Any, time::Duration};
 use tokio::time::{delay_for, timeout};
 
+#[derive(CoreServices)]
 struct NoServices;
-impl CoreServices for NoServices {
-    fn start(
-        &mut self,
-        service_identifier: ServiceIdentifier,
-        _watchdog_query: WatchdogQuery,
-    ) -> Result<(), WatchdogError> {
-        Err(WatchdogError::UnknownService {
-            service_identifier,
-            possible_values: &[],
-        })
-    }
-    fn stop(&mut self, service_identifier: ServiceIdentifier) -> Result<(), WatchdogError> {
-        Err(WatchdogError::UnknownService {
-            service_identifier,
-            possible_values: &[],
-        })
-    }
-    fn intercoms(
-        &mut self,
-        service_identifier: ServiceIdentifier,
-    ) -> Result<Box<dyn Any + Send>, WatchdogError> {
-        Err(WatchdogError::UnknownService {
-            service_identifier,
-            possible_values: &[],
-        })
-    }
-}
 
 /// test that running the watchdog and then awaiting
 /// on it will busy wait forever unless interrupted
