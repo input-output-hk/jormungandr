@@ -60,7 +60,7 @@ rest:
 - `public_address`: [multiaddr][multiaddr] the address to listen from and accept connection
     from. This is the public address that will be distributed to other peers
     of the network that may find interest into participating to the blockchain
-    dissemination with the node;
+    dissemination with the node.  Currently only TCP is supported.
 - `public_id`: (optional) This is a static identifier, 24 bytes encoded in hexadecimal. They are used
   to bootstrap the connection to the node if the node introduce itself as a trusted peer.
   **Most of the user don't need to set this value** and in fact we are working toward potentially
