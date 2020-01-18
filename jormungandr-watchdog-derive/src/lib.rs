@@ -188,13 +188,16 @@ fn impl_core_services(input: &DeriveInput) -> TokenStream {
             ) -> Result<(), ::jormungandr_watchdog::WatchdogError> {
                 unimplemented!()
             }
-            fn stop(&mut self, service_identifier: ::jormungandr_watchdog::ServiceIdentifier) -> Result<(), ::jormungandr_watchdog::WatchdogError> {
+            fn stop(
+                &mut self,
+                _service_identifier: ::jormungandr_watchdog::ServiceIdentifier
+            ) -> Result<(), ::jormungandr_watchdog::WatchdogError> {
                 unimplemented!()
             }
             fn intercoms(
                 &mut self,
                 _service_identifier: ::jormungandr_watchdog::ServiceIdentifier,
-            ) -> Result<Box<dyn Any + Send>, ::jormungandr_watchdog::WatchdogError> {
+            ) -> Result<Box<dyn ::std::any::Any + Send>, ::jormungandr_watchdog::WatchdogError> {
                 unimplemented!()
             }
         }

@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use jormungandr_watchdog::{
     service, CoreServices, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
 };
-use std::{any::Any, time::Duration};
+use std::time::Duration;
 use tokio::time::delay_for;
 
 struct Ping {
