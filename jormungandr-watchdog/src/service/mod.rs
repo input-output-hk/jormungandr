@@ -17,6 +17,7 @@ use futures_util::{
     future::abortable,
     future::{select, Either},
 };
+use thiserror::Error;
 
 pub type ServiceIdentifier = &'static str;
 
@@ -31,6 +32,12 @@ pub trait Service: Send + Sized + 'static {
     fn prepare(service_state: ServiceState<Self>) -> Self;
 
     async fn start(self);
+}
+
+#[derive(Clone, Debug, Error, PartialEq, Eq)]
+pub enum ServiceError {
+    #[error("Service cannot be started because status is: {status}")]
+    CannotStart { status: Status },
 }
 
 pub struct ServiceManager<T: Service> {
@@ -102,21 +109,19 @@ impl<T: Service> ServiceManager<T> {
         }
     }
 
-    pub fn runtime(&mut self, watchdog_query: WatchdogQuery) -> ServiceRuntime<T> {
-        if self.status.status() != Status::Shutdown {
-            // TODO: report the error properly
-
-            panic!(
-                "{} cannot be started, status is: {}",
-                self.identifier,
-                self.status.status()
-            )
+    pub fn runtime(
+        &mut self,
+        watchdog_query: WatchdogQuery,
+    ) -> Result<ServiceRuntime<T>, ServiceError> {
+        let status = self.status.status();
+        if status != Status::Shutdown {
+            Err(ServiceError::CannotStart { status })
         } else {
             let (intercom_sender, intercom_receiver) = intercom::channel::<T::Intercom>();
 
             std::mem::replace(&mut self.intercom_sender, intercom_sender);
 
-            ServiceRuntime {
+            Ok(ServiceRuntime {
                 service_state: ServiceState {
                     identifier: self.identifier,
                     settings: self.settings.reader(),
@@ -126,7 +131,7 @@ impl<T: Service> ServiceManager<T> {
                 },
                 status: self.status.updater(),
                 control: self.controller.reader(),
-            }
+            })
         }
     }
 }

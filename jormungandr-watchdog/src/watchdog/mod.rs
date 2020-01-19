@@ -6,7 +6,7 @@ pub use self::{
     control_command::{ControlHandler, WatchdogQuery},
     monitor::WatchdogMonitor,
 };
-use crate::ServiceIdentifier;
+use crate::{service::ServiceError, ServiceIdentifier};
 use std::any::Any;
 use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
@@ -43,6 +43,12 @@ pub enum WatchdogError {
     UnknownService {
         service_identifier: ServiceIdentifier,
         possible_values: &'static [ServiceIdentifier],
+    },
+
+    #[error("Cannot start service {service_identifier}: {source}")]
+    CannotStartService {
+        service_identifier: ServiceIdentifier,
+        source: ServiceError,
     },
 }
 

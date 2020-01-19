@@ -29,7 +29,15 @@ fn gen_start(fields: &Punctuated<Field, Comma>) -> TokenStream {
         let entry = field_name.to_string();
 
         quote! {
-            #entry => { Ok(self.#field_name.runtime(watchdog_query).start()) }
+            #entry => {
+                match self.#field_name.runtime(watchdog_query) {
+                    Ok(rt) => Ok(rt.start()),
+                    Err(source) => Err(::jormungandr_watchdog::WatchdogError::CannotStartService {
+                        service_identifier,
+                        source,
+                    })
+                }
+            }
         }
     });
 
