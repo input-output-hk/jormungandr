@@ -49,7 +49,7 @@ impl WatchdogQuery {
                 let tid = intercom_sender.type_id();
                 match intercom_sender.downcast_ref::<IntercomSender<T::Intercom>>() {
                     Some(intercom_sender_ref) => Ok(intercom_sender_ref.clone()),
-                    None => panic!(
+                    None => unreachable!(
                         "cannot downcast the intercom object to {}, {:?}",
                         std::any::type_name::<T::Intercom>(),
                         tid,
