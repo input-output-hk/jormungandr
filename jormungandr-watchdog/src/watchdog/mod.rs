@@ -159,8 +159,6 @@ where
             }
         }
 
-        println!("watchdog stopping");
-
         if self.on_drop_send.send(()).is_err() {
             // ignore error for now
         }
