@@ -1,5 +1,4 @@
 use crate::common::{
-    configuration::genesis_model::Fund,
     data::address::{Account, AddressDataProvider, Utxo},
     jcli_wrapper,
     jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper,
@@ -9,7 +8,7 @@ use crate::common::{
     startup,
 };
 
-use jormungandr_lib::interfaces::{AccountState, SettingsDto, UTxOInfo};
+use jormungandr_lib::interfaces::{AccountState, InitialUTxO, SettingsDto, UTxOInfo};
 
 #[derive(Clone, Debug, PartialEq)]
 struct LedgerSnapshot {
@@ -79,8 +78,8 @@ pub fn test_node_recovers_from_node_restart() {
     let utxo_receiver = startup::create_new_utxo_address();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();
@@ -113,8 +112,8 @@ pub fn test_node_recovers_kill_signal() {
     let utxo_receiver = startup::create_new_utxo_address();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();

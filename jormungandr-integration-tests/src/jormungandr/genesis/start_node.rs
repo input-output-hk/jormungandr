@@ -1,11 +1,12 @@
 use crate::common::{
-    configuration::{genesis_model::Fund, secret_model::SecretModel},
+    configuration::secret_model::SecretModel,
     file_utils,
     jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, Ed25519Extended, SumEd25519_12};
+use jormungandr_lib::interfaces::InitialUTxO;
 
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
@@ -64,8 +65,8 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         .with_consensus_genesis_praos_active_slot_coeff("0.1")
         .with_consensus_leaders_ids(vec![leader.identifier().to_bech32_str()])
         .with_kes_update_speed(43200)
-        .with_funds(vec![Fund {
-            address: faucet.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: faucet.address.parse().unwrap(),
             value: 100.into(),
         }])
         .with_initial_certs(vec![

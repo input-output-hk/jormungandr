@@ -1,11 +1,9 @@
 use crate::common::{
-    configuration::{
-        genesis_model::{Fund, GenesisYaml, Initial},
-        jormungandr_config::JormungandrConfig,
-    },
+    configuration::{genesis_model::GenesisYaml, jormungandr_config::JormungandrConfig},
     file_utils, jcli_wrapper, startup,
 };
 use chain_addr::Discrimination;
+use jormungandr_lib::interfaces::{Initial, InitialUTxO, LegacyUTxO};
 
 #[test]
 pub fn test_genesis_block_is_built_from_correct_yaml() {
@@ -42,9 +40,9 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
     let test_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
 
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial = vec![Initial::Fund(vec![Fund {
+    config.genesis_yaml.initial = vec![Initial::Fund(vec![InitialUTxO {
         value: 100.into(),
-        address: test_address.clone(),
+        address: test_address.parse().unwrap(),
     }])];
     config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
     jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "Invalid discrimination");
@@ -75,13 +73,13 @@ pub fn test_genesis_with_many_initial_funds_is_built_successfully() {
     let address_1 = startup::create_new_account_address();
     let address_2 = startup::create_new_account_address();
     let initial_funds = Initial::Fund(vec![
-        Fund {
+        InitialUTxO {
             value: 100.into(),
-            address: address_1.address,
+            address: address_1.address.parse().unwrap(),
         },
-        Fund {
+        InitialUTxO {
             value: 100.into(),
-            address: address_2.address,
+            address: address_2.address.parse().unwrap(),
         },
     ]);
     config.genesis_yaml.initial.push(initial_funds);
@@ -95,9 +93,9 @@ pub fn test_genesis_with_legacy_funds_is_built_successfully() {
     let mut config = JormungandrConfig::new();
     let legacy_funds = Initial::LegacyFund(
             vec![
-                Fund{
+                LegacyUTxO{
                     value: 100.into(),
-                    address: "DdzFFzCqrht5TM5GznWhJ3GTpKawtJuA295F8igwXQXyt2ih1TL1XKnZqRBQBoLpyYVKfNKgCXPBUYruUneC83KjGK6QNAoBSqRJovbG".to_string()
+                    address: "DdzFFzCqrht5TM5GznWhJ3GTpKawtJuA295F8igwXQXyt2ih1TL1XKnZqRBQBoLpyYVKfNKgCXPBUYruUneC83KjGK6QNAoBSqRJovbG".parse().unwrap()
                 },
             ]
         );

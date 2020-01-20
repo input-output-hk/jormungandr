@@ -1,10 +1,10 @@
 use crate::common::{
-    configuration::genesis_model::Fund,
     data::address::Utxo,
     jcli_wrapper,
     jormungandr::{starter::Starter, ConfigurationBuilder},
 };
 use chain_addr::Discrimination;
+use jormungandr_lib::interfaces::InitialUTxO;
 
 #[test]
 pub fn test_correct_utxos_are_read_from_node() {
@@ -41,12 +41,12 @@ pub fn test_correct_utxos_are_read_from_node() {
     };
 
     let funds = vec![
-        Fund {
-            address: receiver_address.clone(),
+        InitialUTxO {
+            address: receiver_address.parse().unwrap(),
             value: 100.into(),
         },
-        Fund {
-            address: sender_address.clone(),
+        InitialUTxO {
+            address: sender_address.parse().unwrap(),
             value: 100.into(),
         },
     ];

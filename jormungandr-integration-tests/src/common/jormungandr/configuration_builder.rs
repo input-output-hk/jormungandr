@@ -1,6 +1,6 @@
 use crate::common::{
     configuration::{
-        genesis_model::{Fund, GenesisYaml, Initial, LinearFees},
+        genesis_model::{GenesisYaml, LinearFees},
         jormungandr_config::JormungandrConfig,
         node_config_model::{Log, LogEntry, NodeConfig, TrustedPeer},
         secret_model::SecretModel,
@@ -9,10 +9,11 @@ use crate::common::{
     startup::build_genesis_block,
 };
 
-use jormungandr_lib::interfaces::Mempool;
+use jormungandr_lib::interfaces::{Initial, InitialUTxO, Mempool, SignedCertificate};
 
 pub struct ConfigurationBuilder {
-    funds: Vec<Fund>,
+    funds: Vec<InitialUTxO>,
+    certs: Vec<SignedCertificate>,
     trusted_peers: Option<Vec<TrustedPeer>>,
     public_address: Option<String>,
     listen_address: Option<String>,
@@ -25,7 +26,6 @@ pub struct ConfigurationBuilder {
     epoch_stability_depth: Option<u32>,
     kes_update_speed: u32,
     linear_fees: LinearFees,
-    certs: Vec<String>,
     consensus_leader_ids: Vec<String>,
     mempool: Option<Mempool>,
     enable_explorer: bool,
@@ -92,7 +92,7 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_initial_certs(&mut self, certs: Vec<String>) -> &mut Self {
-        self.certs = certs;
+        self.certs = certs.iter().map(|cert| cert.parse().unwrap()).collect();
         self
     }
 
@@ -114,7 +114,7 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_funds(&mut self, funds: Vec<Fund>) -> &mut Self {
+    pub fn with_funds(&mut self, funds: Vec<InitialUTxO>) -> &mut Self {
         self.funds = funds.clone();
         self
     }
