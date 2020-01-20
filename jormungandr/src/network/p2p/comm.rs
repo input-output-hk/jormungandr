@@ -349,6 +349,18 @@ impl PeerStats {
         self.last_gossip_received.clone()
     }
 
+    fn update_last_block_received(&mut self, timestamp: SystemTime) {
+        update_last_timestamp(&mut self.last_block_received, timestamp)
+    }
+
+    fn update_last_fragment_received(&mut self, timestamp: SystemTime) {
+        update_last_timestamp(&mut self.last_fragment_received, timestamp)
+    }
+
+    fn update_last_gossip_received(&mut self, timestamp: SystemTime) {
+        update_last_timestamp(&mut self.last_gossip_received, timestamp)
+    }
+
     pub fn connection_established(&self) -> SystemTime {
         self.created
     }
@@ -364,6 +376,18 @@ impl PeerStats {
             last_block_received,
             max(last_fragment_received, last_gossip_received),
         )
+    }
+}
+
+fn update_last_timestamp(field: &mut Option<SystemTime>, timestamp: SystemTime) {
+    match *field {
+        None => {
+            *field = Some(timestamp);
+        }
+        Some(last) if last < timestamp => {
+            *field = Some(timestamp);
+        }
+        _ => {}
     }
 }
 
@@ -602,10 +626,11 @@ impl Peers {
     }
 
     pub fn refresh_peer_on_block<E>(&self, node_id: Id) -> impl Future<Item = bool, Error = E> {
+        let timestamp = SystemTime::now();
         self.inner()
             .map(move |mut map| match map.refresh_peer(&node_id) {
                 Some(stats) => {
-                    stats.last_block_received = Some(SystemTime::now());
+                    stats.update_last_block_received(timestamp);
                     true
                 }
                 None => false,
@@ -613,10 +638,11 @@ impl Peers {
     }
 
     pub fn refresh_peer_on_fragment<E>(&self, node_id: Id) -> impl Future<Item = bool, Error = E> {
+        let timestamp = SystemTime::now();
         self.inner()
             .map(move |mut map| match map.refresh_peer(&node_id) {
                 Some(stats) => {
-                    stats.last_fragment_received = Some(SystemTime::now());
+                    stats.update_last_fragment_received(timestamp);
                     true
                 }
                 None => false,
@@ -624,10 +650,11 @@ impl Peers {
     }
 
     pub fn refresh_peer_on_gossip<E>(&self, node_id: Id) -> impl Future<Item = bool, Error = E> {
+        let timestamp = SystemTime::now();
         self.inner()
             .map(move |mut map| match map.refresh_peer(&node_id) {
                 Some(stats) => {
-                    stats.last_gossip_received = Some(SystemTime::now());
+                    stats.update_last_gossip_received(timestamp);
                     true
                 }
                 None => false,

@@ -204,6 +204,24 @@ impl BlockAnnouncementProcessor {
         );
         core_error::Error::new(core_error::Code::Internal, err)
     }
+
+    fn refresh_stat(&self) {
+        let refresh_logger = self.logger.clone();
+        self.global_state.spawn(
+            self.global_state
+                .peers
+                .refresh_peer_on_block(self.node_id)
+                .and_then(move |refreshed| {
+                    if !refreshed {
+                        debug!(
+                            refresh_logger,
+                            "received block from node that is not in the peer map",
+                        );
+                    }
+                    Ok(())
+                }),
+        );
+    }
 }
 
 #[must_use = "sinks do nothing unless polled"]
@@ -230,6 +248,24 @@ impl FragmentProcessor {
             buffered_fragments: Vec::new(),
         }
     }
+
+    fn refresh_stat(&self) {
+        let refresh_logger = self.logger.clone();
+        self.global_state.spawn(
+            self.global_state
+                .peers
+                .refresh_peer_on_fragment(self.node_id)
+                .and_then(move |refreshed| {
+                    if !refreshed {
+                        debug!(
+                            refresh_logger,
+                            "received fragment from node that is not in the peer map",
+                        );
+                    }
+                    Ok(())
+                }),
+        );
+    }
 }
 
 pub struct GossipProcessor {
@@ -255,12 +291,21 @@ impl GossipProcessor {
         if filtered_out.len() > 0 {
             debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
         }
-        if !self.global_state.peers.refresh_peer_on_gossip(self.node_id) {
-            debug!(
-                self.logger,
-                "received gossip from node that is not in the peer map",
-            );
-        }
+        let refresh_logger = self.logger.clone();
+        self.global_state.spawn(
+            self.global_state
+                .peers
+                .refresh_peer_on_gossip(self.node_id)
+                .and_then(move |refreshed| {
+                    if !refreshed {
+                        debug!(
+                            refresh_logger,
+                            "received gossip from node that is not in the peer map",
+                        );
+                    }
+                    Ok(())
+                }),
+        );
         self.global_state
             .topology
             .accept_gossips(self.node_id, nodes.into());
@@ -284,7 +329,7 @@ impl Sink for BlockAnnouncementProcessor {
             .map_err(|e| self.mbox_error(e))?;
         match polled {
             AsyncSink::Ready => {
-                self.global_state.peers.refresh_peer_on_block(self.node_id);
+                self.refresh_stat();
                 Ok(AsyncSink::Ready)
             }
             AsyncSink::NotReady(BlockMsg::AnnouncedBlock(header, _)) => {
@@ -384,9 +429,7 @@ impl FragmentProcessor {
             })?;
         match polled {
             AsyncSink::Ready => {
-                self.global_state
-                    .peers
-                    .refresh_peer_on_fragment(self.node_id);
+                self.refresh_stat();
                 Ok(AsyncSink::Ready)
             }
             AsyncSink::NotReady(TransactionMsg::SendTransaction(_, fragments)) => {
