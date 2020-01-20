@@ -489,5 +489,6 @@ fn main() {
             // https://doc.rust-lang.org/stable/std/process/trait.Termination.html
             std::process::exit(error.code());
         }
+        std::process::exit(0);
     })
 }
