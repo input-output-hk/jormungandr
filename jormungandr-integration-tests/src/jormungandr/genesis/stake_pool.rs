@@ -1,5 +1,4 @@
 use crate::common::{
-    configuration::genesis_model::LinearFees,
     data::address::Account,
     file_utils,
     jcli_wrapper::{
@@ -13,6 +12,7 @@ use crate::common::{
 
 use chain_addr::Discrimination;
 use chain_crypto::{Curve25519_2HashDH, SumEd25519_12};
+use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{InitialUTxO, Ratio, TaxType, Value},
@@ -31,11 +31,7 @@ pub fn create_delegate_retire_stake_pool() {
     let mut actor_account = startup::create_new_account_address();
 
     let config = ConfigurationBuilder::new()
-        .with_linear_fees(LinearFees {
-            constant: 100,
-            coefficient: 100,
-            certificate: 200,
-        })
+        .with_linear_fees(LinearFee::new(100, 100, 200))
         .with_funds(vec![InitialUTxO {
             value: 1000000.into(),
             address: actor_account.address.parse().unwrap(),
@@ -79,7 +75,7 @@ pub fn create_new_stake_pool(
         file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr_rest_address);
-    let fees: LinearFees = settings.fees.into();
+    let fees: LinearFee = settings.fees.into();
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let certificate_wrapper = JCLICertificateWrapper::new();
@@ -139,7 +135,7 @@ pub fn delegate_stake(
         certificate_wrapper.assert_new_stake_delegation(&stake_pool_id, &account.public_key);
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr_rest_address);
-    let fees: LinearFees = settings.fees.into();
+    let fees: LinearFee = settings.fees.into();
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)
@@ -186,7 +182,7 @@ pub fn retire_stake_pool(
     let retirement_cert = certificate_wrapper.assert_new_stake_pool_retirement(&stake_pool_id);
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr_rest_address);
-    let fees: LinearFees = settings.fees.into();
+    let fees: LinearFee = settings.fees.into();
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)

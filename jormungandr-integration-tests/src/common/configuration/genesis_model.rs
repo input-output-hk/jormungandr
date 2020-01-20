@@ -2,18 +2,20 @@
 
 extern crate chain_addr;
 extern crate chain_crypto;
+extern crate chain_impl_mockchain;
 extern crate rand;
 extern crate rand_chacha;
 extern crate serde_derive;
 use self::chain_addr::{Address as ChainAddress, Discrimination, Kind};
 use self::chain_crypto::bech32::Bech32;
 use self::chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
+use self::chain_impl_mockchain::fee::LinearFee;
 use self::rand::SeedableRng;
 use self::rand_chacha::ChaChaRng;
 use self::serde_derive::{Deserialize, Serialize};
 use super::file_utils;
 use jormungandr_lib::interfaces::{
-    Address, Initial, InitialUTxO, LegacyUTxO, Ratio, RewardParams, TaxType, Value,
+    Address, Initial, InitialUTxO, LegacyUTxO, LinearFeeDef, Ratio, RewardParams, TaxType, Value,
 };
 use std::num::NonZeroU32;
 use std::path::PathBuf;
@@ -37,7 +39,8 @@ pub struct BlockchainConfig {
     pub consensus_leader_ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub consensus_genesis_praos_active_slot_coeff: Option<String>,
-    pub linear_fees: LinearFees,
+    #[serde(with = "LinearFeeDef")]
+    pub linear_fees: LinearFee,
     pub kes_update_speed: u32,
     #[serde(default)]
     pub treasury: Option<Value>,
@@ -47,23 +50,6 @@ pub struct BlockchainConfig {
     pub total_reward_supply: Option<Value>,
     #[serde(default)]
     pub reward_parameters: Option<RewardParams>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct LinearFees {
-    pub constant: u64,
-    pub coefficient: u64,
-    pub certificate: u64,
-}
-
-impl From<chain_impl_mockchain::fee::LinearFee> for LinearFees {
-    fn from(fees: chain_impl_mockchain::fee::LinearFee) -> LinearFees {
-        LinearFees {
-            constant: fees.constant,
-            coefficient: fees.coefficient,
-            certificate: fees.certificate,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -143,11 +129,7 @@ impl GenesisYaml {
                     String::from(leader_2_pk),
                 ]),
                 consensus_genesis_praos_active_slot_coeff: Some("0.444".to_owned()),
-                linear_fees: LinearFees {
-                    constant: 0,
-                    coefficient: 0,
-                    certificate: 0,
-                },
+                linear_fees: LinearFee::new(0, 0, 0),
                 kes_update_speed: 12 * 3600,
                 treasury: Some(1_000_000.into()),
                 treasury_parameters: Some(TaxType {

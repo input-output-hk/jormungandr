@@ -1,5 +1,4 @@
 use crate::common::{
-    configuration::genesis_model::LinearFees,
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
@@ -8,6 +7,8 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{InitialUTxO, UTxOInfo},
 };
+
+use chain_impl_mockchain::fee::LinearFee;
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {
@@ -495,16 +496,13 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
 pub fn test_transaction_with_non_zero_linear_fees() {
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
+    let fee = LinearFee::new(10, 1, 0);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
-        .with_linear_fees(LinearFees {
-            constant: 10,
-            coefficient: 1,
-            certificate: 0,
-        })
+        .with_linear_fees(fee.clone())
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
@@ -513,14 +511,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
     let transaction_message = tx
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address, &50.into())
-        .assert_finalize_with_fee(
-            &sender.address,
-            &LinearFees {
-                constant: 10,
-                coefficient: 1,
-                certificate: 0,
-            },
-        )
+        .assert_finalize_with_fee(&sender.address, &fee)
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
     let tx_id = tx.get_fragment_id();

@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::common::configuration;
-use crate::common::configuration::genesis_model::LinearFees;
+
+use chain_impl_mockchain::fee::LinearFee;
 
 #[derive(Debug)]
 pub struct TransactionCommands {}
@@ -106,7 +107,7 @@ impl TransactionCommands {
     pub fn get_finalize_with_fee_command<P: AsRef<Path>>(
         &self,
         address: &str,
-        linear_fees: &LinearFees,
+        linear_fees: &LinearFee,
         staging_file: &P,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
