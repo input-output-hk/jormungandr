@@ -10,7 +10,6 @@ pub use self::server::{Error, Server, ServerStopper};
 use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServiceUnavailable};
 use actix_web::web::ServiceConfig;
 
-use futures::{Future, IntoFuture};
 use slog::Logger;
 use std::sync::{Arc, RwLock};
 
@@ -47,10 +46,6 @@ impl Context {
 
     pub fn set_full(&self, full_context: FullContext) {
         *self.full.write().expect("Context state poisoned") = Some(Arc::new(full_context));
-    }
-
-    pub fn try_full_fut(&self) -> impl Future<Item = Arc<FullContext>, Error = ActixError> {
-        self.try_full().into_future()
     }
 
     pub fn try_full(&self) -> Result<Arc<FullContext>, ActixError> {
