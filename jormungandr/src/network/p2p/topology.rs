@@ -14,6 +14,36 @@ use poldercast::{
 use slog::Logger;
 use std::sync::{Arc, RwLock};
 
+// object holding a count of available, unreachable and quarantined nodes.
+#[derive(Clone)]
+pub struct NodeCount {
+    all_available_nodes: usize,
+    all_unreachable_nodes: usize,
+    all_quarantined_nodes: usize,
+}
+
+impl NodeCount {
+    pub fn new(nodes: &poldercast::Nodes) -> Self {
+        NodeCount {
+            all_available_nodes: nodes.all_available_nodes().len(),
+            all_unreachable_nodes: nodes.all_unreachable_nodes().len(),
+            all_quarantined_nodes: nodes.all_quarantined_nodes().len(),
+        }
+    }
+
+    pub fn all_available_nodes_count(&self) -> usize {
+        self.all_available_nodes
+    }
+
+    pub fn all_unreachable_nodes_count(&self) -> usize {
+        self.all_unreachable_nodes
+    }
+
+    pub fn all_quarantined_nodes_count(&self) -> usize {
+        self.all_quarantined_nodes
+    }
+}
+
 /// object holding the P2pTopology of the Node
 #[derive(Clone)]
 pub struct P2pTopology {
@@ -136,6 +166,10 @@ impl P2pTopology {
             .into_iter()
             .cloned()
             .collect()
+    }
+
+    pub fn nodes_count(&self) -> NodeCount {
+        NodeCount::new(self.lock.read().unwrap().nodes())
     }
 
     /// register a strike against the given node id

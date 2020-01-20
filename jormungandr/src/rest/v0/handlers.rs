@@ -156,6 +156,8 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
         .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
     let stats = &context.stats_counter;
     let tip_header = tip.header();
+    let stats = &context.stats_counter;
+    let nodes_count = &context.p2p.nodes_count();
     Ok(json!({
         "txRecvCnt": stats.tx_recv_cnt(),
         "blockRecvCnt": stats.block_recv_cnt(),
@@ -169,6 +171,9 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
         "lastBlockContentSize": tip_header.block_content_size(),
         "lastBlockSum": block_input_sum.0,
         "lastBlockFees": block_fee_sum.0,
+        "peerAvailableCnt": nodes_count.all_available_nodes_count().to_string(),
+        "peerUnreachableCnt": nodes_count.all_unreachable_nodes_count().to_string(),
+        "peerQuarantinedCnt": nodes_count.all_quarantined_nodes_count().to_string(),
     }))
 }
 
