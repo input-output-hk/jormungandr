@@ -55,6 +55,10 @@ struct CommandArgs {
     #[structopt(long = "disable-progress-bar")]
     disable_progress_bar: bool,
 
+    /// set exit code based on test result
+    #[structopt(long = "set-exit-code")]
+    set_exit_code: bool,
+
     /// to set if to reproduce an existing test
     #[structopt(long = "seed")]
     seed: Option<Seed>,
@@ -84,7 +88,14 @@ fn main() {
     introduction(&context);
     let scenarios_repo = ScenariosRepository::new(command_args.scenario, command_args.tag);
     let scenario_suite_result = scenarios_repo.run(&mut context);
-    println!("{}", scenario_suite_result.result_string())
+    println!("{}", scenario_suite_result.result_string());
+
+    if command_args.set_exit_code == true {
+        std::process::exit(match scenario_suite_result.is_failed() {
+            true => 1,
+            false => 0,
+        });
+    }
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
