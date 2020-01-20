@@ -1,6 +1,7 @@
 use std::ops::{Deref, DerefMut};
 use tokio::sync::mpsc;
 
+#[derive(Debug)]
 pub struct NoIntercom;
 
 pub trait Intercom: 'static {}

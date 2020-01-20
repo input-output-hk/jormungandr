@@ -21,3 +21,6 @@ async-trait = "^0.1.22"
 
 [dev-dependencies]
 tokio = { version = "^0.2.9", features = ["full"] }
+tokio-compat = "^0.1.4"
+legacy_tokio = { package = "tokio", version = "^0.1.22" }
+legacy_futures = { package = "futures", version = "0.1.29" }

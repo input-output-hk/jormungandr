@@ -13,9 +13,6 @@ use tokio::sync::{mpsc, oneshot};
 
 /// trait to define the different core services and their
 /// associated metadata
-///
-// TODO: write a proc macro to make it easier
-//       to impl this object
 pub trait CoreServices: Send + Sync {
     fn stop(&mut self, service_identifier: ServiceIdentifier) -> Result<(), WatchdogError>;
     fn start(
