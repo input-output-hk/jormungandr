@@ -105,6 +105,7 @@ pub enum Status {
 struct ProgressBarController {
     progress_bar: ProgressBar,
     prefix: String,
+    legacy_logging: bool,
 }
 
 /// send query to a running node
@@ -419,6 +420,7 @@ impl Node {
         let progress_bar = ProgressBarController::new(
             progress_bar,
             format!("{}@{}", alias, node_settings.config().rest.listen),
+            context.disable_progress_bar(),
         );
 
         let config_file = dir.join(NODE_CONFIG);
@@ -532,10 +534,11 @@ impl Node {
 use std::fmt::Display;
 
 impl ProgressBarController {
-    fn new(progress_bar: ProgressBar, prefix: String) -> Self {
+    fn new(progress_bar: ProgressBar, prefix: String, legacy_logging: bool) -> Self {
         ProgressBarController {
             progress_bar,
             prefix,
+            legacy_logging,
         }
     }
 
@@ -558,13 +561,20 @@ impl ProgressBarController {
         L: Display,
         M: Display,
     {
-        self.progress_bar.println(format!(
-            "[{}][{}{}]: {}",
-            lvl,
-            *style::icons::jormungandr,
-            style::binary.apply_to(&self.prefix),
-            msg,
-        ))
+        match self.legacy_logging {
+            true => {
+                println!("[{}][{}]: {}", lvl, &self.prefix, msg);
+            }
+            false => {
+                self.progress_bar.println(format!(
+                    "[{}][{}{}]: {}",
+                    lvl,
+                    *style::icons::jormungandr,
+                    style::binary.apply_to(&self.prefix),
+                    msg,
+                ));
+            }
+        }
     }
 }
 

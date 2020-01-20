@@ -4,7 +4,7 @@ use crate::{
     Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
