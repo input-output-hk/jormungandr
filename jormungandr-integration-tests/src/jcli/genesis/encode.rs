@@ -52,10 +52,7 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
 pub fn test_genesis_for_prod_with_wrong_discrimination_fail_to_build() {
     let mut config = JormungandrConfig::new();
     config.genesis_yaml.blockchain_configuration.discrimination = Discrimination::Production;
-    jcli_wrapper::assert_genesis_encode_fails(
-        &config.genesis_yaml,
-        "blockchain_configuration.discrimination: unknown variant `prod`, expected `test` or `production`",
-    );
+    jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "Invalid discrimination");
 }
 
 #[test]
