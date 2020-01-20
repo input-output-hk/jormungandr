@@ -1,13 +1,12 @@
 mod handlers;
 
-use actix_web::dev::Resource;
+use actix_web::{
+    dev::HttpServiceFactory,
+    web::{get, post, scope},
+};
 
-pub fn resources() -> Vec<(
-    &'static str,
-    &'static dyn Fn(&mut Resource<handlers::Context>),
-)> {
-    vec![
-        ("/graphql", &|r| r.post().with_async(handlers::graphql)),
-        ("/graphiql", &|r| r.get().with(handlers::graphiql)),
-    ]
+pub fn service(root_path: &str) -> impl HttpServiceFactory {
+    scope(root_path)
+        .route("/graphql", post().to_async(handlers::graphql))
+        .route("/graphiql", get().to(handlers::graphiql))
 }

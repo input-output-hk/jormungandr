@@ -7,10 +7,8 @@ pub mod v0;
 
 pub use self::server::{Error, Server, ServerStopper};
 
-use actix_web::dev::Resource;
 use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServiceUnavailable};
-use actix_web::middleware::cors::Cors;
-use actix_web::App;
+use actix_web::web::ServiceConfig;
 
 use futures::{Future, IntoFuture};
 use slog::Logger;
@@ -21,7 +19,7 @@ use crate::fragment::Logs;
 use crate::leadership::Logs as LeadershipLogs;
 use crate::network::p2p::P2pTopology;
 use crate::secure::enclave::Enclave;
-use crate::settings::start::{Cors as CorsConfig, Error as ConfigError, Rest};
+use crate::settings::start::{Error as ConfigError, Rest};
 use crate::stats_counter::StatsCounter;
 
 use crate::intercom::{NetworkMsg, TransactionMsg};
@@ -125,70 +123,22 @@ pub fn start_rest_server(
     explorer_enabled: bool,
     context: &Context,
 ) -> Result<Server, ConfigError> {
-    let app_context = context.clone();
-    let cors_cfg = config.cors;
-    let handlers = move || {
-        let mut apps = vec![build_app(
-            app_context.clone(),
-            "/api/v0",
-            v0::resources(),
-            &cors_cfg,
-        )];
-
-        if explorer_enabled {
-            apps.push(build_app(
-                app_context.clone(),
-                "/explorer",
-                explorer::resources(),
-                &cors_cfg,
-            ))
-        }
-
-        apps
-    };
-    let server = Server::start(config.tls, config.listen, handlers)?;
+    let app_config = app_config_factory(explorer_enabled, context.clone());
+    let server = Server::start(config, app_config)?;
     context.set_server_stopper(server.stopper());
     Ok(server)
 }
 
-fn build_app<S, P, R>(state: S, prefix: P, resources: R, cors_cfg: &Option<CorsConfig>) -> App<S>
-where
-    S: 'static,
-    P: Into<String>,
-    R: IntoIterator<Item = (&'static str, &'static dyn Fn(&mut Resource<S>))>,
-{
-    let app = App::with_state(state).prefix(prefix);
-    match cors_cfg {
-        Some(cors_cfg) => register_resources_with_cors(app, resources, cors_cfg),
-        None => register_resources(app, resources),
-    }
+fn app_config_factory(
+    explorer_enabled: bool,
+    context: Context,
+) -> impl FnOnce(&mut ServiceConfig) + Clone + Send + 'static {
+    move |config| app_config(config, explorer_enabled, context)
 }
 
-fn register_resources<S, R>(mut app: App<S>, resources: R) -> App<S>
-where
-    S: 'static,
-    R: IntoIterator<Item = (&'static str, &'static dyn Fn(&mut Resource<S>))>,
-{
-    for (path, resource) in resources {
-        app = app.resource(path, resource);
+fn app_config(config: &mut ServiceConfig, explorer_enabled: bool, context: Context) {
+    config.data(context).service(v0::service("/api/v0"));
+    if explorer_enabled {
+        config.service(explorer::service("/explorer"));
     }
-    app
-}
-
-fn register_resources_with_cors<S, R>(app: App<S>, resources: R, cors_cfg: &CorsConfig) -> App<S>
-where
-    S: 'static,
-    R: IntoIterator<Item = (&'static str, &'static dyn Fn(&mut Resource<S>))>,
-{
-    let mut cors = Cors::for_app(app);
-    if let Some(max_age_secs) = cors_cfg.max_age_secs {
-        cors.max_age(max_age_secs as usize);
-    }
-    for origin in &cors_cfg.allowed_origins {
-        cors.allowed_origin(origin);
-    }
-    for (path, resource) in resources {
-        cors.resource(path, resource);
-    }
-    cors.register()
 }

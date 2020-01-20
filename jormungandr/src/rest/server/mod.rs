@@ -5,20 +5,18 @@ mod error;
 
 pub use self::error::Error;
 
-use crate::settings::start::Tls as TlsConfig;
-use actix_net::server::Server as ActixServer;
-use actix_web::{
-    actix::{Addr, System},
-    server::{self, IntoHttpHandler, StopServer},
-};
+use crate::settings::start::{Cors as CorsConfig, Rest, Tls as TlsConfig};
+use actix_cors::Cors;
+use actix_rt::System;
+use actix_web::{dev::Server as ActixServer, web::ServiceConfig, App, HttpServer};
 use futures::sync::oneshot::{self, Receiver};
 use futures::{Async, Future, Poll};
 use rustls::{internal::pemfile, Certificate, NoClientAuth, PrivateKey, ServerConfig};
 use std::{
     fs::File,
     io::BufReader,
-    net::{SocketAddr, ToSocketAddrs},
-    sync::mpsc,
+    net::ToSocketAddrs,
+    sync::{mpsc, Arc},
     thread,
 };
 
@@ -33,33 +31,32 @@ pub struct Server {
 
 #[derive(Clone)]
 pub struct ServerStopper {
-    addr: Addr<ActixServer>,
+    actix_server: ActixServer,
 }
 
 impl Server {
-    pub fn start<F, H>(
-        tls_config: Option<TlsConfig>,
-        address: SocketAddr,
-        handler: F,
-    ) -> ServerResult<Server>
-    where
-        F: Fn() -> H + Clone + Send + 'static,
-        H: IntoHttpHandler + 'static,
-    {
-        let tls = tls_config.map(load_rustls_config).transpose()?;
+    pub fn start(
+        rest: Rest,
+        app_config: impl FnOnce(&mut ServiceConfig) + Clone + Send + 'static,
+    ) -> ServerResult<Server> {
+        let address = rest.listen;
+        let tls = rest.tls.map(load_rustls_config).transpose()?;
+        let cors = rest.cors.map(create_cors_factory);
         let (server_sender, server_receiver) = mpsc::sync_channel::<ServerResult<Server>>(0);
         thread::spawn(move || {
             let actix_system = System::builder().build();
             let (stop_sender, stop_receiver) = oneshot::channel();
             let server_res =
-                start_server_curr_actix_system(address, tls, handler).map(move |addr| Server {
-                    stopper: ServerStopper { addr },
-                    stop_receiver,
+                start_server_curr_sys(address, tls, cors, app_config).map(move |actix_server| {
+                    Server {
+                        stopper: ServerStopper { actix_server },
+                        stop_receiver,
+                    }
                 });
             let run_system = server_res.is_ok();
             let _ = server_sender.send(server_res);
             if run_system {
-                actix_system.run();
+                let _ = actix_system.run();
             };
             let _ = stop_sender.send(());
         });
@@ -86,8 +83,10 @@ impl Future for Server {
 }
 
 impl ServerStopper {
+    /// Starts server stopping routine in fire-forget fashion
     pub fn stop(&self) {
-        self.addr.do_send(StopServer { graceful: false })
+        let gracefully = false;
+        let _ = self.actix_server.stop(gracefully);
     }
 }
 
@@ -121,24 +120,56 @@ fn load_priv_key(path: &str) -> ServerResult<PrivateKey> {
     Ok(priv_keys.pop().unwrap())
 }
 
-fn start_server_curr_actix_system<F, H>(
+fn create_cors_factory(cors_cfg: CorsConfig) -> impl Fn() -> Cors + Clone + Send + 'static {
+    let cors_cfg_shared = Arc::new(cors_cfg);
+    move || create_cors(&*cors_cfg_shared)
+}
+
+fn create_cors(cors_cfg: &CorsConfig) -> Cors {
+    let mut cors = Cors::new();
+    if let Some(max_age_secs) = cors_cfg.max_age_secs {
+        cors = cors.max_age(max_age_secs as usize);
+    }
+    for origin in &cors_cfg.allowed_origins {
+        cors = cors.allowed_origin(origin);
+    }
+    cors
+}
+
+fn start_server_curr_sys(
     address: impl ToSocketAddrs,
     tls_config_opt: Option<ServerConfig>,
-    handler: F,
-) -> ServerResult<Addr<ActixServer>>
-where
-    F: Fn() -> H + Clone + Send + 'static,
-    H: IntoHttpHandler + 'static,
-{
-    let server = server::new(handler)
-        .workers(1)
-        .system_exit()
-        .disable_signals();
-    let server = match tls_config_opt {
-        Some(tls_config) => server.bind_rustls(address, tls_config),
-        None => server.bind(address),
+    cors_factory: Option<impl Fn() -> Cors + Clone + Send + 'static>,
+    app_config: impl FnOnce(&mut ServiceConfig) + Clone + Send + 'static,
+) -> ServerResult<ActixServer> {
+    // This macro-based pseud generic is needed because addition of CORS changes server type.
+    // It's not possible to use real generics because concrete server
+    // type boundaries are volatile and base on private types.
+
+    macro_rules! start_server_curr_sys {
+        ($($wrapper:ident)?) => {{
+            let app_factory = move ||
+                App::new()
+                    $(
+                        .wrap($wrapper())
+                    )*
+                    .configure(app_config.clone());
+            let server = HttpServer::new(app_factory)
+                .workers(1)
+                .system_exit()
+                .disable_signals();
+            let server = match tls_config_opt {
+                Some(tls_config) => server.bind_rustls(address, tls_config),
+                None => server.bind(address),
+            }
+            .map_err(Error::BindFailed)?;
+            let server_addr = server.start();
+            Ok(server_addr)
+        }}
     }
-    .map_err(Error::BindFailed)?;
-    let server_addr = server.start();
-    Ok(server_addr)
+
+    match cors_factory {
+        Some(cors) => start_server_curr_sys!(cors),
+        None => start_server_curr_sys!(),
+    }
 }
