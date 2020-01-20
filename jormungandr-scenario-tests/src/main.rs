@@ -47,6 +47,14 @@ struct CommandArgs {
     #[structopt(long = "document")]
     generate_documentation: bool,
 
+    /// in some circumstances progress bar can spoil test logs (e.g. on test build job)
+    /// if this parametrer value is true, then no progress bar is visible,
+    /// but simple log on console enabled
+    ///
+    /// no progress bar, only simple console output
+    #[structopt(long = "disable-progress-bar")]
+    disable_progress_bar: bool,
+
     /// to set if to reproduce an existing test
     #[structopt(long = "seed")]
     seed: Option<Seed>,
@@ -57,6 +65,7 @@ fn main() {
 
     let jormungandr = prepare_command(command_args.jormungandr);
     let jcli = prepare_command(command_args.jcli);
+    let disable_progress_bar = command_args.disable_progress_bar;
     let seed = command_args
         .seed
         .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
@@ -69,6 +78,7 @@ fn main() {
         jcli,
         testing_directory,
         generate_documentation,
+        disable_progress_bar,
     );
 
     introduction(&context);
