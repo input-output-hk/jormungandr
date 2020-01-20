@@ -5,8 +5,8 @@ use jormungandr_lib::interfaces::{
 use jormungandr_lib::time::SystemTime;
 
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
-use actix_web::{Error, HttpResponse};
-use actix_web::{Json, Path, Query, Responder, State};
+use actix_web::web::{Data, Json, Path, Query};
+use actix_web::{Error, HttpResponse, Responder};
 use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{bech32::Bech32, Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
@@ -38,7 +38,7 @@ macro_rules! ActixFuture {
     () => { impl Future<Item = impl Responder + 'static, Error = impl Into<Error> + 'static> + 'static }
 }
 
-fn chain_tip_fut<'a>(context: &State<Context>) -> impl Future<Item = Arc<Ref>, Error = Error> {
+fn chain_tip_fut<'a>(context: &Data<Context>) -> impl Future<Item = Arc<Ref>, Error = Error> {
     context
         .try_full_fut()
         .and_then(|context| chain_tip_fut_raw(&*context))
@@ -48,7 +48,7 @@ fn chain_tip_fut_raw<'a>(context: &FullContext) -> impl Future<Item = Arc<Ref>, 
     context.blockchain_tip.get_ref()
 }
 
-pub fn get_account_state(context: State<Context>, account_id_hex: Path<String>) -> ActixFuture!() {
+pub fn get_account_state(context: Data<Context>, account_id_hex: Path<String>) -> ActixFuture!() {
     parse_account_id(&account_id_hex)
         .into_future()
         .and_then(move |account_id| {
@@ -75,7 +75,7 @@ fn parse_fragment_id(id_hex: &str) -> Result<FragmentId, Error> {
     FragmentId::from_str(id_hex).map_err(ErrorBadRequest)
 }
 
-pub fn get_message_logs(context: State<Context>) -> ActixFuture!() {
+pub fn get_message_logs(context: Data<Context>) -> ActixFuture!() {
     context.try_full_fut().and_then(|context| {
         context
             .logs
@@ -85,7 +85,7 @@ pub fn get_message_logs(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn post_message(context: State<Context>, message: Bytes) -> Result<impl Responder, Error> {
+pub fn post_message(context: Data<Context>, message: Bytes) -> Result<impl Responder, Error> {
     let fragment = Fragment::deserialize(message.into_buf()).map_err(ErrorBadRequest)?;
     let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
     context
@@ -97,7 +97,7 @@ pub fn post_message(context: State<Context>, message: Bytes) -> Result<impl Resp
     Ok(HttpResponse::Ok().finish())
 }
 
-pub fn get_tip(context: State<Context>) -> ActixFuture!() {
+pub fn get_tip(context: Data<Context>) -> ActixFuture!() {
     chain_tip_fut(&context).map(|tip| tip.hash().to_string())
 }
 
@@ -109,7 +109,7 @@ struct NodeStatsDto {
     stats: Option<serde_json::Value>,
 }
 
-pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
+pub fn get_stats_counter(context: Data<Context>) -> ActixFuture!() {
     match context.try_full() {
         Ok(context) => {
             let stats_json_fut = chain_tip_fut_raw(&*context)
@@ -194,7 +194,7 @@ pub fn get_stats_counter(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn get_block_id(context: State<Context>, block_id_hex: Path<String>) -> ActixFuture!() {
+pub fn get_block_id(context: Data<Context>, block_id_hex: Path<String>) -> ActixFuture!() {
     context
         .try_full()
         .and_then(|context| parse_block_hash(&block_id_hex).map(|block_id| (context, block_id)))
@@ -222,7 +222,7 @@ fn parse_block_hash(hex: &str) -> Result<Hash, Error> {
 }
 
 pub fn get_block_next_id(
-    context: State<Context>,
+    context: Data<Context>,
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> ActixFuture!() {
@@ -269,7 +269,7 @@ impl QueryParams {
     }
 }
 
-pub fn get_stake_distribution(context: State<Context>) -> ActixFuture!() {
+pub fn get_stake_distribution(context: Data<Context>) -> ActixFuture!() {
     chain_tip_fut(&context).map(|blockchain_tip| {
         let leadership = blockchain_tip.epoch_leadership_schedule();
         let last_epoch = blockchain_tip.block_date().epoch;
@@ -296,7 +296,7 @@ pub fn get_stake_distribution(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn get_settings(context: State<Context>) -> ActixFuture!() {
+pub fn get_settings(context: Data<Context>) -> ActixFuture!() {
     context
         .try_full_fut()
         .and_then(|context| chain_tip_fut_raw(&context).map(move |tip| (context, tip)))
@@ -334,7 +334,7 @@ pub fn get_settings(context: State<Context>) -> ActixFuture!() {
         })
 }
 
-pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
+pub fn get_shutdown(context: Data<Context>) -> Result<impl Responder, Error> {
     // Server finishes ongoing tasks before stopping, so user will get response to this request
     // Node should be shutdown automatically when server stopping is finished
     context.try_full()?;
@@ -342,7 +342,7 @@ pub fn get_shutdown(context: State<Context>) -> Result<impl Responder, Error> {
     Ok(HttpResponse::Ok().finish())
 }
 
-pub fn get_leaders(context: State<Context>) -> Result<impl Responder, Error> {
+pub fn get_leaders(context: Data<Context>) -> Result<impl Responder, Error> {
     Ok(Json(json! {
         context.try_full()?.enclave.get_leaderids()
     }))
@@ -350,7 +350,7 @@ pub fn get_leaders(context: State<Context>) -> Result<impl Responder, Error> {
 
 pub fn post_leaders(
     secret: Json<NodeSecret>,
-    context: State<Context>,
+    context: Data<Context>,
 ) -> Result<impl Responder, Error> {
     let leader = Leader {
         bft_leader: secret.bft(),
@@ -361,7 +361,7 @@ pub fn post_leaders(
 }
 
 pub fn delete_leaders(
-    context: State<Context>,
+    context: Data<Context>,
     leader_id: Path<EnclaveLeaderId>,
 ) -> Result<impl Responder, Error> {
     match context.try_full()?.enclave.remove_leader(*leader_id) {
@@ -370,7 +370,7 @@ pub fn delete_leaders(
     }
 }
 
-pub fn get_leaders_logs(context: State<Context>) -> ActixFuture!() {
+pub fn get_leaders_logs(context: Data<Context>) -> ActixFuture!() {
     context.try_full_fut().and_then(|context| {
         context
             .leadership_logs
@@ -380,7 +380,7 @@ pub fn get_leaders_logs(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
+pub fn get_stake_pools(context: Data<Context>) -> ActixFuture!() {
     chain_tip_fut(&context).map(|blockchain_tip| {
         let stake_pool_ids = blockchain_tip
             .ledger()
@@ -392,7 +392,7 @@ pub fn get_stake_pools(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
+pub fn get_network_stats(context: Data<Context>) -> ActixFuture!() {
     context.try_full_fut()
         .and_then(move |full_context| context.logger().map(|logger| (full_context, logger)))
         .and_then(|(full_context, logger)| {
@@ -419,7 +419,7 @@ pub fn get_network_stats(context: State<Context>) -> ActixFuture!() {
         })
 }
 
-pub fn get_utxo(context: State<Context>, path_params: Path<(String, u8)>) -> ActixFuture!() {
+pub fn get_utxo(context: Data<Context>, path_params: Path<(String, u8)>) -> ActixFuture!() {
     let (fragment_id_hex, output_index) = path_params.into_inner();
     parse_fragment_id(&fragment_id_hex)
         .into_future()
@@ -442,7 +442,7 @@ pub fn get_utxo(context: State<Context>, path_params: Path<(String, u8)>) -> Act
         })
 }
 
-pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> ActixFuture!() {
+pub fn get_stake_pool(context: Data<Context>, pool_id_hex: Path<String>) -> ActixFuture!() {
     pool_id_hex
         .parse()
         .map_err(ErrorBadRequest)
@@ -484,30 +484,30 @@ pub fn get_stake_pool(context: State<Context>, pool_id_hex: Path<String>) -> Act
         })
 }
 
-pub fn get_diagnostic(context: State<Context>) -> Result<impl Responder, Error> {
+pub fn get_diagnostic(context: Data<Context>) -> Result<impl Responder, Error> {
     let full_context = context.try_full()?;
     serde_json::to_string(&full_context.diagnostic).map_err(ErrorInternalServerError)
 }
 
-pub fn get_network_p2p_quarantined(context: State<Context>) -> ActixFuture!() {
+pub fn get_network_p2p_quarantined(context: Data<Context>) -> ActixFuture!() {
     context
         .try_full_fut()
         .and_then(|ctx| future::ok(Json(json!(ctx.p2p.list_quarantined()))))
 }
 
-pub fn get_network_p2p_non_public(context: State<Context>) -> ActixFuture!() {
+pub fn get_network_p2p_non_public(context: Data<Context>) -> ActixFuture!() {
     context
         .try_full_fut()
         .and_then(|ctx| future::ok(Json(json!(ctx.p2p.list_non_public()))))
 }
 
-pub fn get_network_p2p_available(context: State<Context>) -> ActixFuture!() {
+pub fn get_network_p2p_available(context: Data<Context>) -> ActixFuture!() {
     context
         .try_full_fut()
         .and_then(|ctx| future::ok(Json(json!(ctx.p2p.list_available()))))
 }
 
-pub fn get_network_p2p_view(context: State<Context>) -> ActixFuture!() {
+pub fn get_network_p2p_view(context: Data<Context>) -> ActixFuture!() {
     context.try_full_fut().and_then(|ctx| {
         let v: Vec<poldercast::NodeInfo> = ctx
             .p2p
@@ -519,7 +519,7 @@ pub fn get_network_p2p_view(context: State<Context>) -> ActixFuture!() {
     })
 }
 
-pub fn get_network_p2p_view_topic(context: State<Context>, topic: Path<String>) -> ActixFuture!() {
+pub fn get_network_p2p_view_topic(context: Data<Context>, topic: Path<String>) -> ActixFuture!() {
     fn parse_topic(s: &str) -> Result<poldercast::Selection, Error> {
         use crate::network::p2p::topic;
         use poldercast::Selection;
