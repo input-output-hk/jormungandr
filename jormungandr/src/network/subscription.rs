@@ -1,5 +1,8 @@
 use super::{
     buffer_sizes,
+    p2p::comm::{
+        BlockEventSubscription, FragmentSubscription, GossipSubscription, LockServerComms,
+    },
     p2p::{Gossip as NodeData, Id},
     GlobalStateR,
 };
@@ -19,6 +22,102 @@ use futures::prelude::*;
 use slog::Logger;
 
 use std::fmt::Debug;
+
+#[must_use = "`ServeBlockEvents` needs to be plugged into a service trait implementation"]
+pub struct ServeBlockEvents<In> {
+    inbound: Option<In>,
+    lock: LockServerComms,
+    logger: Logger,
+}
+
+impl<In> ServeBlockEvents<In> {
+    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
+        ServeBlockEvents {
+            inbound: Some(inbound),
+            lock,
+            logger,
+        }
+    }
+}
+
+impl<In> Future for ServeBlockEvents<In> {
+    type Item = Subscription<In, BlockEventSubscription>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let polled_outbound = self
+            .lock
+            .poll_subscribe_with(|comms| comms.subscribe_to_block_events());
+        Ok(polled_outbound.map(|outbound| {
+            let inbound = self.inbound.take().expect("future polled after finish");
+            Subscription::new(inbound, outbound, self.logger.clone())
+        }))
+    }
+}
+
+#[must_use = "`ServeGossip` needs to be plugged into a service trait implementation"]
+pub struct ServeFragments<In> {
+    inbound: Option<In>,
+    lock: LockServerComms,
+    logger: Logger,
+}
+
+impl<In> ServeFragments<In> {
+    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
+        ServeFragments {
+            inbound: Some(inbound),
+            lock,
+            logger,
+        }
+    }
+}
+
+impl<In> Future for ServeFragments<In> {
+    type Item = Subscription<In, FragmentSubscription>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let polled_outbound = self
+            .lock
+            .poll_subscribe_with(|comms| comms.subscribe_to_fragments());
+        Ok(polled_outbound.map(|outbound| {
+            let inbound = self.inbound.take().expect("future polled after finish");
+            Subscription::new(inbound, outbound, self.logger.clone())
+        }))
+    }
+}
+
+#[must_use = "`ServeGossip` needs to be plugged into a service trait implementation"]
+pub struct ServeGossip<In> {
+    inbound: Option<In>,
+    lock: LockServerComms,
+    logger: Logger,
+}
+
+impl<In> ServeGossip<In> {
+    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
+        ServeGossip {
+            inbound: Some(inbound),
+            lock,
+            logger,
+        }
+    }
+}
+
+impl<In> Future for ServeGossip<In> {
+    type Item = Subscription<In, GossipSubscription>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let polled_outbound = self
+            .lock
+            .poll_subscribe_with(|comms| comms.subscribe_to_gossip());
+        Ok(polled_outbound.map(|outbound| {
+            let inbound = self.inbound.take().expect("future polled after finish");
+            Subscription::new(inbound, outbound, self.logger.clone())
+        }))
+    }
+}
 
 #[must_use = "`Subscription` needs to be plugged into a service trait implementation"]
 pub struct Subscription<In, Out> {

@@ -2,7 +2,9 @@ use super::{
     buffer_sizes,
     p2p::comm::{BlockEventSubscription, OutboundSubscription},
     p2p::{Gossip as NodeData, Id},
-    subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor, Subscription},
+    subscription::{
+        self, BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor, Subscription,
+    },
     Channels, GlobalStateR,
 };
 use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
@@ -90,7 +92,7 @@ impl BlockService for NodeService {
     type PushHeadersSink = RequestSink<Header, (), core_error::Error>;
     type UploadBlocksSink = RequestSink<Block, (), core_error::Error>;
     type BlockSubscription = Subscription<BlockAnnouncementProcessor, BlockEventSubscription>;
-    type BlockSubscriptionFuture = FutureResult<Self::BlockSubscription, core_error::Error>;
+    type BlockSubscriptionFuture = subscription::ServeBlockEvents<BlockAnnouncementProcessor>;
 
     fn block0(&mut self) -> HeaderHash {
         self.global_state.block0_hash
@@ -232,10 +234,11 @@ impl BlockService for NodeService {
             logger.new(o!("direction" => "in")),
         );
 
-        let outbound = self.global_state.peers.serve_block_events(subscriber);
-
-        let subscription = Subscription::new(sink, outbound, logger);
-        future::ok(subscription)
+        subscription::ServeBlockEvents::new(
+            sink,
+            self.global_state.peers.lock_server_comms(subscriber),
+            logger,
+        )
     }
 }
 
@@ -245,7 +248,7 @@ impl FragmentService for NodeService {
     type GetFragmentsStream = ReplyStream<Self::Fragment, core_error::Error>;
     type GetFragmentsFuture = FutureResult<Self::GetFragmentsStream, core_error::Error>;
     type FragmentSubscription = Subscription<FragmentProcessor, OutboundSubscription<Fragment>>;
-    type FragmentSubscriptionFuture = FutureResult<Self::FragmentSubscription, core_error::Error>;
+    type FragmentSubscriptionFuture = subscription::ServeFragments<FragmentProcessor>;
 
     fn get_fragments(&mut self, _ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture {
         future::err(core_error::Error::unimplemented())
@@ -266,17 +269,18 @@ impl FragmentService for NodeService {
             logger.new(o!("direction" => "in")),
         );
 
-        let outbound = self.global_state.peers.serve_fragments(subscriber);
-
-        let subscription = Subscription::new(sink, outbound, logger);
-        future::ok(subscription)
+        subscription::ServeFragments::new(
+            sink,
+            self.global_state.peers.lock_server_comms(subscriber),
+            logger,
+        )
     }
 }
 
 impl GossipService for NodeService {
     type Node = NodeData;
     type GossipSubscription = Subscription<GossipProcessor, OutboundSubscription<Gossip<NodeData>>>;
-    type GossipSubscriptionFuture = FutureResult<Self::GossipSubscription, core_error::Error>;
+    type GossipSubscriptionFuture = subscription::ServeGossip<GossipProcessor>;
 
     fn gossip_subscription(&mut self, subscriber: Self::NodeId) -> Self::GossipSubscriptionFuture {
         let logger = self
@@ -289,9 +293,10 @@ impl GossipService for NodeService {
             logger.new(o!("direction" => "in")),
         );
 
-        let outbound = self.global_state.peers.serve_gossip(subscriber);
-
-        let subscription = Subscription::new(sink, outbound, logger);
-        future::ok(subscription)
+        subscription::ServeGossip::new(
+            sink,
+            self.global_state.peers.lock_server_comms(subscriber),
+            logger,
+        )
     }
 }

@@ -1,6 +1,6 @@
 mod peer_map;
 
-use peer_map::CommStatus;
+use peer_map::{CommStatus, PeerMap};
 
 use crate::blockcfg::{Block, Fragment, Header, HeaderHash};
 use crate::network::{
@@ -95,6 +95,10 @@ pub type BlockEventSubscription = stream::Select<
     stream::Select<BlockEventAnnounceStream, BlockEventSolicitStream>,
     BlockEventMissingStream,
 >;
+
+pub type FragmentSubscription = OutboundSubscription<Fragment>;
+
+pub type GossipSubscription = OutboundSubscription<Gossip<NodeData>>;
 
 /// Handle used by the per-peer communication tasks to produce an outbound
 /// subscription stream towards the peer.
@@ -296,11 +300,27 @@ impl PeerComms {
         self.chain_pulls.subscribe()
     }
 
-    pub fn subscribe_to_fragments(&mut self) -> OutboundSubscription<Fragment> {
+    pub fn subscribe_to_block_events(&mut self) -> BlockEventSubscription {
+        let announce_events: BlockEventAnnounceStream = self
+            .block_announcements
+            .subscribe()
+            .map(BlockEvent::Announce);
+        let solicit_events: BlockEventSolicitStream = self
+            .block_solicitations
+            .subscribe()
+            .map(BlockEvent::Solicit);
+        let missing_events: BlockEventMissingStream =
+            self.chain_pulls.subscribe().map(BlockEvent::Missing);
+        announce_events
+            .select(solicit_events)
+            .select(missing_events)
+    }
+
+    pub fn subscribe_to_fragments(&mut self) -> FragmentSubscription {
         self.fragments.subscribe()
     }
 
-    pub fn subscribe_to_gossip(&mut self) -> OutboundSubscription<Gossip<NodeData>> {
+    pub fn subscribe_to_gossip(&mut self) -> GossipSubscription {
         self.gossip.subscribe()
     }
 
@@ -469,46 +489,11 @@ impl Peers {
         self.inner().map(move |mut map| map.remove_peer(id))
     }
 
-    pub fn serve_block_events<E>(
-        &self,
-        id: Id,
-    ) -> impl Future<Item = BlockEventSubscription, Error = E> {
-        self.inner().map(move |mut map| {
-            let handles = map.server_comms(id);
-            let announce_events: BlockEventAnnounceStream = handles
-                .block_announcements
-                .subscribe()
-                .map(BlockEvent::Announce);
-            let solicit_events: BlockEventSolicitStream = handles
-                .block_solicitations
-                .subscribe()
-                .map(BlockEvent::Solicit);
-            let missing_events: BlockEventMissingStream =
-                handles.chain_pulls.subscribe().map(BlockEvent::Missing);
-            announce_events
-                .select(solicit_events)
-                .select(missing_events)
-        })
-    }
-
-    pub fn serve_fragments<E>(
-        &self,
-        id: Id,
-    ) -> impl Future<Item = OutboundSubscription<Fragment>, Error = E> {
-        self.inner().map(move |mut map| {
-            let handles = map.server_comms(id);
-            handles.fragments.subscribe()
-        })
-    }
-
-    pub fn serve_gossip<E>(
-        &self,
-        id: Id,
-    ) -> impl Future<Item = OutboundSubscription<Gossip<NodeData>>, Error = E> {
-        self.inner().map(move |mut map| {
-            let handles = map.server_comms(id);
-            handles.gossip.subscribe()
-        })
+    pub fn lock_server_comms(&self, id: Id) -> LockServerComms {
+        LockServerComms {
+            lock: self.mutex.clone(),
+            peer: id,
+        }
     }
 
     fn propagate_with<T, F>(
@@ -754,5 +739,21 @@ impl Peers {
 
     pub fn infos<E>(&self) -> impl Future<Item = Vec<PeerInfo>, Error = E> {
         self.inner().map(|map| map.infos())
+    }
+}
+
+pub struct LockServerComms {
+    lock: Lock<PeerMap>,
+    peer: Id,
+}
+
+impl LockServerComms {
+    pub fn poll_subscribe_with<F, S>(&mut self, f: F) -> Async<S>
+    where
+        F: FnOnce(&mut PeerComms) -> S,
+    {
+        self.lock
+            .poll_lock()
+            .map(|mut peer_map| f(peer_map.server_comms(self.peer)))
     }
 }
