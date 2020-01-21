@@ -547,7 +547,7 @@ impl Peers {
             "propagating block";
             "hash" => %header.hash(),
         );
-        self.propagate_with(nodes, |status| match status {
+        self.propagate_with(nodes, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_block_announcement(header.clone()),
             CommStatus::Connecting(comms) => {
                 comms.set_pending_block_announcement(header.clone());
@@ -565,7 +565,7 @@ impl Peers {
             self.logger,
             "propagating fragment";
         );
-        self.propagate_with(nodes, |status| match status {
+        self.propagate_with(nodes, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_fragment(fragment.clone()),
             CommStatus::Connecting(comms) => {
                 comms.set_pending_fragment(fragment.clone());

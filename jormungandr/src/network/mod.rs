@@ -262,8 +262,9 @@ pub fn start(
     let initial_nodes = global_state.topology.view(poldercast::Selection::Any);
     let self_node = global_state.topology.node();
     for node in initial_nodes {
-        connect_and_propagate_with(node, global_state.clone(), channels.clone(), |comms| {
-            let gossip = Gossip::from_nodes(iter::once(self_node.clone().into()));
+        let self_node_copy = self_node.clone();
+        connect_and_propagate_with(node, global_state.clone(), channels.clone(), move |comms| {
+            let gossip = Gossip::from_nodes(iter::once(self_node_copy.into()));
             comms.set_pending_gossip(gossip);
         });
     }
@@ -293,7 +294,8 @@ pub fn start(
                 error!(gc_err_logger, "interval timer error: {:?}", e);
             })
             .for_each(move |_| {
-                peers.gc().map(|maybe_gced| {
+                let gc_info_logger = gc_info_logger.clone();
+                peers.gc().map(move |maybe_gced| {
                     if let Some(number_gced) = maybe_gced {
                         warn!(
                             gc_info_logger,
@@ -382,11 +384,13 @@ fn handle_propagation_msg(
 fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = (), Error = ()> {
     let nodes = state.topology.view(poldercast::Selection::Any);
 
-    tokio::prelude::stream::iter_ok(nodes).for_each(|node| {
+    tokio::prelude::stream::iter_ok(nodes).for_each(move |node| {
         let gossip = Gossip::from(state.topology.initiate_gossips(node.id()));
         let res = state.peers.propagate_gossip_to(node.id(), gossip);
-        res.map_err(|gossip| {
-            connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| {
+        let state_err = state.clone();
+        let channels_err = channels.clone();
+        res.map_err(move |gossip| {
+            connect_and_propagate_with(node, state_err, channels_err, |comms| {
                 comms.set_pending_gossip(gossip)
             })
         })
