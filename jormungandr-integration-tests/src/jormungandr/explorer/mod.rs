@@ -4,7 +4,7 @@ use crate::common::{
     process_utils::Wait,
     startup,
 };
-
+use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use std::time::Duration;
 
 #[test]
@@ -14,7 +14,7 @@ pub fn explorer_test() {
 
     let mut config = ConfigurationBuilder::new();
     config
-        .with_consensus_genesis_praos_active_slot_coeff("0.999")
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
         .with_explorer();
 
     let (jormungandr, _) = startup::start_stake_pool(&[faucet.clone()], &mut config).unwrap();

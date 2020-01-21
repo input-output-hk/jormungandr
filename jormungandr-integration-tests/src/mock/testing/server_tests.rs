@@ -1,8 +1,6 @@
 use crate::{
     common::{
-        configuration, file_utils,
-        jormungandr::logger::Level,
-        jormungandr::starter::{Starter, StartupVerificationMode},
+        configuration, file_utils, jormungandr::logger::Level, jormungandr::starter::Starter,
     },
     mock::{
         server::{self, MethodType, MockLogger, ProtocolVersion},

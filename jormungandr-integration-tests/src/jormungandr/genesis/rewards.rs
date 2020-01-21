@@ -3,7 +3,7 @@ use crate::common::{
     process_utils, startup,
 };
 use chain_impl_mockchain::value::Value;
-use jormungandr_lib::interfaces::StakePoolStats;
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, StakePoolStats};
 
 #[test]
 pub fn collect_reward() {
@@ -21,7 +21,7 @@ pub fn collect_reward() {
         &stake_pool_owners,
         ConfigurationBuilder::new()
             .with_slots_per_epoch(20)
-            .with_consensus_genesis_praos_active_slot_coeff("0.999")
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3),
     )
     .unwrap();
@@ -52,16 +52,16 @@ pub fn collect_reward() {
 }
 
 fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
-    let slots_per_epoch = config
-        .genesis_yaml
+    let slots_per_epoch: u32 = config
+        .block0_configuration
         .blockchain_configuration
         .slots_per_epoch
-        .unwrap();
-    let slot_duration = config
-        .genesis_yaml
+        .into();
+    let slot_duration: u8 = config
+        .block0_configuration
         .blockchain_configuration
         .slot_duration
-        .unwrap();
-    let wait_time = ((slots_per_epoch * slot_duration) * 2) + grace_period;
+        .into();
+    let wait_time = ((slots_per_epoch * (slot_duration as u32)) * 2) + grace_period;
     process_utils::sleep(wait_time.into());
 }

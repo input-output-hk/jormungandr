@@ -10,11 +10,12 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU16, Ordering};
 
-pub mod genesis_model;
+mod block0_config_builder;
 pub mod jormungandr_config;
 pub mod node_config_model;
 pub mod secret_model;
 
+pub use block0_config_builder::Block0ConfigurationBuilder;
 pub use jormungandr_config::JormungandrConfig;
 pub use node_config_model::NodeConfig;
 

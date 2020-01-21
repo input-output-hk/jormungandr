@@ -80,6 +80,12 @@ impl Default for NumberOfSlotsPerEpoch {
     }
 }
 
+impl Into<u32> for NumberOfSlotsPerEpoch {
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
 impl<'de> Deserialize<'de> for NumberOfSlotsPerEpoch {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

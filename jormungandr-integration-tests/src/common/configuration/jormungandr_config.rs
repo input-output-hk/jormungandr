@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 
-use crate::common::configuration::genesis_model::GenesisYaml;
-use crate::common::configuration::node_config_model::NodeConfig;
-use crate::common::configuration::secret_model::SecretModel;
+use crate::common::configuration::{
+    node_config_model::NodeConfig, secret_model::SecretModel, Block0ConfigurationBuilder,
+};
 use crate::common::data::address::AddressDataProvider;
 use crate::common::file_utils;
 use chain_core::mempack;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::Fragment;
-use jormungandr_lib::interfaces::UTxOInfo;
+use jormungandr_lib::interfaces::{Block0Configuration, UTxOInfo};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ pub struct JormungandrConfig {
     pub genesis_block_hash: String,
     pub node_config_path: PathBuf,
     pub secret_model_paths: Vec<PathBuf>,
-    pub genesis_yaml: GenesisYaml,
+    pub block0_configuration: Block0Configuration,
     pub node_config: NodeConfig,
     pub secret_models: Vec<SecretModel>,
     pub log_file_path: PathBuf,
@@ -39,17 +39,17 @@ impl JormungandrConfig {
     }
 
     pub fn new() -> Self {
-        JormungandrConfig::from(GenesisYaml::new(), NodeConfig::new())
+        JormungandrConfig::from(Block0ConfigurationBuilder::new().build(), NodeConfig::new())
     }
 
-    pub fn from(genesis_yaml: GenesisYaml, node_config: NodeConfig) -> Self {
+    pub fn from(block0_configuration: Block0Configuration, node_config: NodeConfig) -> Self {
         JormungandrConfig {
             genesis_block_path: PathBuf::from(""),
             genesis_block_hash: String::from(""),
             node_config_path: PathBuf::from(""),
             secret_model_paths: Vec::new(),
             log_file_path: PathBuf::from(""),
-            genesis_yaml: genesis_yaml,
+            block0_configuration: block0_configuration,
             node_config: node_config,
             secret_models: Vec::new(),
         }

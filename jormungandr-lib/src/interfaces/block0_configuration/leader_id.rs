@@ -36,6 +36,12 @@ impl From<Identifier<Ed25519>> for ConsensusLeaderId {
     }
 }
 
+impl From<PublicKey<Ed25519>> for ConsensusLeaderId {
+    fn from(public_key: PublicKey<Ed25519>) -> Self {
+        ConsensusLeaderId(LeaderId::from(public_key))
+    }
+}
+
 impl Serialize for ConsensusLeaderId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::{genesis_model::GenesisYaml, secret_model::SecretModel},
+    configuration::secret_model::SecretModel,
     data::address::{Account, Delegation, Utxo},
     file_utils,
     jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
@@ -7,24 +7,30 @@ use crate::common::{
 };
 use chain_addr::Discrimination;
 use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
+use chain_impl_mockchain::block::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::KeyPair,
-    interfaces::{InitialUTxO, Ratio, TaxType},
+    interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, Ratio, TaxType},
 };
 use std::path::PathBuf;
 
-pub fn get_genesis_block_hash(genesis_yaml: &GenesisYaml) -> String {
-    let path_to_output_block = build_genesis_block(&genesis_yaml);
-
+pub fn get_genesis_block_hash(block0_config: &Block0Configuration) -> String {
+    let path_to_output_block = build_genesis_block(&block0_config);
     jcli_wrapper::assert_genesis_hash(&path_to_output_block)
 }
 
-pub fn build_genesis_block(genesis_yaml: &GenesisYaml) -> PathBuf {
-    let input_yaml_file_path = GenesisYaml::serialize(&genesis_yaml);
+pub fn build_genesis_block(block0_config: &Block0Configuration) -> PathBuf {
+    let input_yaml_file_path = serialize_block0_config(&block0_config);
     let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
 
     path_to_output_block
+}
+
+pub fn serialize_block0_config(block0_config: &Block0Configuration) -> PathBuf {
+    let content = serde_yaml::to_string(&block0_config).unwrap();
+    let input_yaml_file_path = file_utils::create_file_in_temp("genesis.yaml", &content);
+    input_yaml_file_path
 }
 
 pub fn create_new_utxo_address() -> Utxo {
@@ -147,9 +153,9 @@ pub fn start_stake_pool(
     let mut initial_certs = stake_pool_registration_certs.clone();
     initial_certs.extend(stake_pool_owner_delegation_certs.iter().cloned());
 
-    let leaders: Vec<String> = stake_pools
+    let leaders: Vec<ConsensusLeaderId> = stake_pools
         .iter()
-        .map(|x| x.leader.identifier().to_bech32_str())
+        .map(|x| x.leader.identifier().into())
         .collect();
 
     let funds: Vec<InitialUTxO> = owners
@@ -161,10 +167,10 @@ pub fn start_stake_pool(
         .collect();
 
     let mut config = config_builder
-        .with_block0_consensus("genesis_praos")
+        .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .with_consensus_leaders_ids(leaders)
-        .with_initial_certs(initial_certs)
         .with_funds(funds)
+        .with_initial_certs(initial_certs)
         .build();
 
     let secrets: Vec<SecretModel> = stake_pools
