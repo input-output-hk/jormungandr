@@ -4,7 +4,6 @@ use crate::mock::{
 };
 
 use crate::common::{
-    configuration::genesis_model::Fund,
     jcli_wrapper,
     jcli_wrapper::JCLITransactionWrapper,
     jormungandr::{ConfigurationBuilder, Starter},
@@ -12,11 +11,12 @@ use crate::common::{
 };
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{
-    block::{Block, Header},
+    block::{Block, ConsensusVersion, Header},
     key::Hash,
     testing::builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
 };
 use chain_time::{Epoch, TimeEra};
+use jormungandr_lib::interfaces::InitialUTxO;
 
 fn fake_hash() -> Hash {
     Hash::from_str("efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944").unwrap()
@@ -193,10 +193,10 @@ pub fn push_headers() {
         0u64.into(),
         Epoch(0u32),
         config
-            .genesis_yaml
+            .block0_configuration
             .blockchain_configuration
             .slots_per_epoch
-            .unwrap(),
+            .into(),
     );
 
     let block = GenesisPraosBlockBuilder::new()
@@ -222,10 +222,10 @@ pub fn upload_block_incompatible_protocol() {
         0u64.into(),
         Epoch(0u32),
         config
-            .genesis_yaml
+            .block0_configuration
             .blockchain_configuration
             .slots_per_epoch
-            .unwrap(),
+            .into(),
     );
 
     let block = GenesisPraosBlockBuilder::new()
@@ -257,7 +257,7 @@ pub fn upload_block_incompatible_protocol() {
 pub fn upload_block_nonexisting_stake_pool() {
     let config = ConfigurationBuilder::new()
         .with_slot_duration(4)
-        .with_block0_consensus("genesis_praos")
+        .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .build();
     let _server = Starter::new().config(config.clone()).start().unwrap();
     let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
@@ -268,10 +268,10 @@ pub fn upload_block_nonexisting_stake_pool() {
         0u64.into(),
         Epoch(0u32),
         config
-            .genesis_yaml
+            .block0_configuration
             .blockchain_configuration
             .slots_per_epoch
-            .unwrap(),
+            .into(),
     );
 
     let block = GenesisPraosBlockBuilder::new()
@@ -297,8 +297,8 @@ pub fn get_fragments() {
     let output_value = 1u64;
     let config = ConfigurationBuilder::new()
         .with_slot_duration(4)
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address.parse().unwrap(),
             value: 100.into(),
         }])
         .build();

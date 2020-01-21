@@ -43,7 +43,7 @@ pub fn test_jormungandr_passive_node_without_trusted_peers_fails_to_start() {
 #[test]
 pub fn test_jormungandr_without_initial_funds_starts_sucessfully() {
     let mut config = ConfigurationBuilder::new().build();
-    config.genesis_yaml.initial.clear();
+    config.block0_configuration.initial.clear();
     let _jormungandr = Starter::new().config(config).start().unwrap();
 }
 

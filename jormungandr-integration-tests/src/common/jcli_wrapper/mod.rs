@@ -2,8 +2,8 @@
 
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
-    AccountState, FragmentLog, FragmentStatus, SettingsDto, StakePoolStats, UTxOInfo,
-    UTxOOutputInfo,
+    AccountState, Block0Configuration, FragmentLog, FragmentStatus, SettingsDto, StakePoolStats,
+    UTxOInfo, UTxOOutputInfo,
 };
 
 pub mod certificate;
@@ -13,14 +13,13 @@ pub mod jcli_transaction_wrapper;
 pub use jcli_transaction_wrapper::JCLITransactionWrapper;
 
 use super::configuration;
-use super::configuration::genesis_model::GenesisYaml;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
 use super::process_utils::{self, output_extensions::ProcessOutput, ProcessError, Wait};
-use std::{collections::BTreeMap, path::PathBuf};
-
+use crate::common::startup;
 use chain_addr::Discrimination;
+use std::{collections::BTreeMap, path::PathBuf};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -44,8 +43,8 @@ pub fn assert_genesis_encode(
     file_assert::assert_file_exists_and_not_empty(path_to_output_block);
 }
 
-pub fn assert_genesis_encode_fails(genesis_yaml: &GenesisYaml, expected_msg: &str) {
-    let input_yaml_file_path = GenesisYaml::serialize(&genesis_yaml);
+pub fn assert_genesis_encode_fails(block0_configuration: &Block0Configuration, expected_msg: &str) {
+    let input_yaml_file_path = startup::serialize_block0_config(&block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
     process_assert::assert_process_failed_and_matches_message(
         jcli_commands::get_genesis_encode_command(&input_yaml_file_path, &path_to_output_block),

@@ -3,8 +3,8 @@ use crate::common::{
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use crate::mock::client::JormungandrClient;
+use chain_impl_mockchain::block::ConsensusVersion;
 use std::{thread, time::Duration};
-
 const LOCALHOST: &str = "127.0.0.1";
 
 pub struct Config {
@@ -40,7 +40,7 @@ pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
 
     ConfigurationBuilder::new()
         .with_slot_duration(4)
-        .with_block0_consensus("genesis_praos")
+        .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .with_trusted_peers(vec![trusted_peer])
         .build()
 }

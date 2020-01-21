@@ -53,12 +53,12 @@ pub fn collect_reward() {
 
 fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
     let slots_per_epoch: u32 = config
-        .genesis_yaml
+        .block0_configuration
         .blockchain_configuration
         .slots_per_epoch
         .into();
     let slot_duration: u8 = config
-        .genesis_yaml
+        .block0_configuration
         .blockchain_configuration
         .slot_duration
         .into();

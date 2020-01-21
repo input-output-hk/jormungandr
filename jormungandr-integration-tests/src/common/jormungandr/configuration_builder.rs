@@ -1,22 +1,24 @@
 use crate::common::{
     configuration::{
-        genesis_model::GenesisYaml,
         jormungandr_config::JormungandrConfig,
         node_config_model::{Log, LogEntry, NodeConfig, TrustedPeer},
         secret_model::SecretModel,
+        Block0ConfigurationBuilder,
     },
     file_utils, jcli_wrapper,
     startup::build_genesis_block,
 };
 use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, ConsensusLeaderId, EpochStabilityDepth, Initial, InitialUTxO,
-    KESUpdateSpeed, Mempool, NumberOfSlotsPerEpoch, SignedCertificate, SlotDuration,
+    ActiveSlotCoefficient, Block0Configuration, ConsensusLeaderId, EpochStabilityDepth, Initial,
+    InitialUTxO, KESUpdateSpeed, Mempool, NumberOfSlotsPerEpoch, SignedCertificate, SlotDuration,
 };
 
+use std::path::PathBuf;
+
 pub struct ConfigurationBuilder {
-    funds: Vec<InitialUTxO>,
-    certs: Vec<SignedCertificate>,
+    funds: Vec<Initial>,
+    certs: Vec<Initial>,
     trusted_peers: Option<Vec<TrustedPeer>>,
     public_address: Option<String>,
     listen_address: Option<String>,
@@ -94,7 +96,10 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_initial_certs(&mut self, certs: Vec<String>) -> &mut Self {
-        self.certs = certs.iter().map(|cert| cert.parse().unwrap()).collect();
+        self.certs.extend(certs.iter().map(|cert| {
+            let signed_cert: SignedCertificate = cert.parse().unwrap();
+            Initial::Cert(signed_cert)
+        }));
         self
     }
 
@@ -116,8 +121,14 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_funds(&mut self, funds: Vec<InitialUTxO>) -> &mut Self {
-        self.funds = funds.clone();
+    pub fn with_funds(&mut self, initial: Vec<InitialUTxO>) -> &mut Self {
+        self.funds.push(Initial::Fund(initial));
+        self
+    }
+
+    pub fn with_certs(&mut self, initial: Vec<SignedCertificate>) -> &mut Self {
+        self.certs
+            .extend(initial.iter().cloned().map(Initial::Cert));
         self
     }
 
@@ -151,6 +162,12 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn serialize(block0_configuration: &Block0Configuration) -> PathBuf {
+        let content = serde_yaml::to_string(&block0_configuration).unwrap();
+        let input_yaml_file_path = file_utils::create_file_in_temp("genesis.yaml", &content);
+        input_yaml_file_path
+    }
+
     pub fn build(&self) -> JormungandrConfig {
         let mut node_config = NodeConfig::new();
 
@@ -173,27 +190,28 @@ impl ConfigurationBuilder {
         let secret_key = jcli_wrapper::assert_key_generate("ed25519");
         let public_key = jcli_wrapper::assert_key_to_public_default(&secret_key);
 
-        let mut genesis_model = GenesisYaml::new_with_funds(&self.funds);
-
         let mut leaders_ids = self.consensus_leader_ids.clone();
         leaders_ids.push(serde_yaml::from_str(&public_key).unwrap());
-        genesis_model.blockchain_configuration.consensus_leader_ids = leaders_ids;
-        genesis_model.blockchain_configuration.block0_consensus = self.block0_consensus.clone();
-        genesis_model.blockchain_configuration.kes_update_speed = self.kes_update_speed.clone();
-        genesis_model.blockchain_configuration.slots_per_epoch = self.slots_per_epoch;
-        genesis_model.blockchain_configuration.slot_duration = self.slot_duration;
-        genesis_model.blockchain_configuration.epoch_stability_depth = self.epoch_stability_depth;
 
-        genesis_model
-            .blockchain_configuration
-            .consensus_genesis_praos_active_slot_coeff =
-            self.consensus_genesis_praos_active_slot_coeff.clone();
-        genesis_model.blockchain_configuration.linear_fees = self.linear_fees.clone();
-        let certs = self.certs.iter().cloned().map(Initial::Cert);
-        genesis_model.initial.extend(certs);
-        let path_to_output_block = build_genesis_block(&genesis_model);
+        let mut initial: Vec<Initial> = Vec::new();
+        initial.extend(self.funds.iter().cloned());
+        initial.extend(self.certs.iter().cloned());
 
-        let mut config = JormungandrConfig::from(genesis_model, node_config);
+        let block0_config = Block0ConfigurationBuilder::new()
+            .with_initial(initial)
+            .with_leaders(leaders_ids)
+            .with_block0_consensus(self.block0_consensus.clone())
+            .with_kes_update_speed(self.kes_update_speed.clone())
+            .with_slots_per_epoch(self.slots_per_epoch)
+            .with_slot_duration(self.slot_duration)
+            .with_epoch_stability_depth(self.epoch_stability_depth)
+            .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff.clone())
+            .with_linear_fees(self.linear_fees.clone())
+            .build();
+
+        let path_to_output_block = build_genesis_block(&block0_config);
+
+        let mut config = JormungandrConfig::from(block0_config, node_config);
 
         let secret_model = SecretModel::new_bft(&secret_key);
         let secret_model_path = SecretModel::serialize(&secret_model);
