@@ -429,13 +429,10 @@ fn connect_and_propagate_with<F>(
         .new(o!("node_id" => node_id.to_string()));
     info!(conn_logger, "connecting to peer");
     let (handle, connecting) = client::connect(conn_state, channels.clone());
-    let connecting2 = state.peers.connecting_with(node_id, handle, modify_comms);
     let spawn_state = state.clone();
     let conn_err_state = state.clone();
-    let cf = connecting
-        .and_then(|client| {
-            connecting2.map(|()| client)
-        })
+    let cf = state.peers.connecting_with(node_id, handle, modify_comms)
+        .and_then(|()| connecting)
         .or_else(move |e| {
             let benign = match e {
                 ConnectError::Connect(e) => {
