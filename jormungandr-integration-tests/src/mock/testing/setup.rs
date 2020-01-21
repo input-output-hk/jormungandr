@@ -1,6 +1,6 @@
 use crate::common::{
     configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
-    jormungandr::{JormungandrProcess,Starter,ConfigurationBuilder},
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use crate::mock::client::JormungandrClient;
 use std::{thread, time::Duration};
@@ -35,11 +35,12 @@ pub fn bootstrap_node() -> (JormungandrProcess, JormungandrConfig) {
 pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
     let trusted_peer = TrustedPeer {
         address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port),
-        id: "ed25519_pk1hdhe4mnus0uxaf25gxeryskvwtytlzeuvan8glp3n63ztvv0v78qczpm32".to_owned(),
+        id: "fe3332044877b2034c8632a08f08ee47f3fbea6c64165b3b".to_owned(),
     };
 
     ConfigurationBuilder::new()
         .with_slot_duration(4)
+        .with_block0_consensus("genesis_praos")
         .with_trusted_peers(vec![trusted_peer])
         .build()
 }

@@ -1,7 +1,8 @@
 use crate::{
     common::{
-        configuration, file_utils, jormungandr::logger::Level,
-        jormungandr::starter::{Starter,StartupVerificationMode},
+        configuration, file_utils,
+        jormungandr::logger::Level,
+        jormungandr::starter::{Starter, StartupVerificationMode},
     },
     mock::{
         server::{self, MethodType, MockLogger, ProtocolVersion},
@@ -21,7 +22,7 @@ pub enum MockExitCode {
     Success,
 }
 
-pub fn start_mock<F: 'static>(
+pub fn start_mock<F: 'static + std::marker::Send>(
     mock_port: u16,
     genesis_hash: Hash,
     tip_hash: Hash,
@@ -30,10 +31,11 @@ pub fn start_mock<F: 'static>(
 ) -> JoinHandle<MockExitCode>
 where
     F: Fn(&MockLogger) -> bool,
-    F: std::marker::Send,
 {
     let log_file = file_utils::get_path_in_temp("mock.log");
     let logger = MockLogger::new(log_file.clone());
+
+    println!("mock will log into location: {:?}", log_file);
 
     thread::spawn(move || {
         let _server = server::start(
@@ -59,10 +61,8 @@ where
     })
 }
 
-const FAKE_HASH: &str = "efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944";
-
 pub fn fake_hash() -> Hash {
-    Hash::from_str(FAKE_HASH).unwrap()
+    Hash::from_str("efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944").unwrap()
 }
 
 pub fn peer_addr(port: u16) -> Option<String> {
@@ -83,13 +83,7 @@ pub fn wrong_protocol() {
         |logger: &MockLogger| logger.executed_at_least_once(MethodType::Handshake),
     );
 
-    let server = Starter::new()
-                    .passive()
-                    .config(config)
-                    .verify_by(StartupVerificationMode::Log)
-                    .start()
-                    .unwrap();
-
+    let (server, _) = bootstrap_node_with_peer(mock_port);
     assert_eq!(
         mock_thread.join().expect("mock thread error"),
         MockExitCode::Success,
@@ -99,7 +93,7 @@ pub fn wrong_protocol() {
     server.shutdown();
     assert!(
         server.logger.get_log_entries().any(|x| {
-            x.msg == "failed to connect to peer"
+            x.msg == "connection to peer failed"
                 && x.reason_contains("protocol handshake failed: unsupported protocol version 0")
                 && x.peer_addr == peer_addr(mock_port)
                 && x.level == Level::INFO
@@ -129,7 +123,7 @@ pub fn wrong_genesis_hash() {
     server.shutdown();
     assert!(
         server.logger.get_log_entries().any(|x| {
-            x.msg == "failed to connect to peer"
+            x.msg == "connection to peer failed"
                 && x.reason_contains("genesis block hash")
                 && x.peer_addr == peer_addr(mock_port)
                 && x.level == Level::INFO
@@ -150,35 +144,6 @@ pub fn handshake_ok() {
         fake_hash(),
         ProtocolVersion::GenesisPraos,
         |logger: &MockLogger| logger.executed_at_least_once(MethodType::Handshake),
-    );
-
-    let server = Starter::new().config(config.clone()).start().unwrap();
-    assert_eq!(
-        mock_thread.join().expect("mock thread error"),
-        MockExitCode::Success
-    );
-
-    server.shutdown();
-    server.logger.print_error_or_warn_lines();
-    assert!(!server
-        .logger
-        .get_log_entries()
-        .any(|x| { x.peer_addr == peer_addr(mock_port) && x.level == Level::WARN }));
-}
-
-//L1008 Tip request hash discrepancy
-#[ignore] // ignored until issues with missing header will be resolved
-#[test]
-pub fn tip_request_malformed_discrepancy() {
-    let mock_port = configuration::get_available_port();
-    let config = build_configuration(mock_port);
-
-    let mock_thread = start_mock(
-        mock_port,
-        Hash::from_str(&config.genesis_block_hash).unwrap(),
-        fake_hash(),
-        ProtocolVersion::GenesisPraos,
-        |logger: &MockLogger| logger.executed_at_least_once(MethodType::Tip),
     );
 
     let server = Starter::new().config(config.clone()).start().unwrap();

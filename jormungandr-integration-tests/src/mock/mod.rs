@@ -10,6 +10,8 @@ pub mod client;
 pub mod convert;
 pub mod proto;
 pub mod server;
+#[cfg(test)]
+pub mod testing;
 
 pub use client::JormungandrClient;
 pub use convert::*;
