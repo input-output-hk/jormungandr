@@ -1,6 +1,8 @@
 use super::logger::JormungandrLogger;
 use crate::common::{
-    configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
+    configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
+    explorer::Explorer,
+    jcli_wrapper,
 };
 use std::path::PathBuf;
 use std::process::Child;
@@ -71,6 +73,13 @@ impl JormungandrProcess {
                 .listen
                 .clone(),
         )
+    }
+
+    pub fn as_trusted_peer(&self) -> TrustedPeer {
+        TrustedPeer {
+            address: self.config.node_config.p2p.public_address.clone(),
+            id: self.config.node_config.p2p.public_id.clone(),
+        }
     }
 }
 

@@ -12,20 +12,23 @@ pub fn test_jormungandr_leader_node_starts_successfully() {
 #[test]
 pub fn test_jormungandr_passive_node_starts_successfully() {
     let leader_config = ConfigurationBuilder::new().build();
-    let _jormungandr_leader = Starter::new()
+    let jormungandr_leader = Starter::new()
         .config(leader_config.clone())
         .start()
         .unwrap();
 
     let passive_config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![TrustedPeer {
-            address: leader_config.node_config.p2p.public_address.clone(),
-            id: leader_config.node_config.p2p.public_id.clone(),
-        }])
+        .with_trusted_peers(vec![jormungandr_leader.as_trusted_peer()])
         .with_block_hash(leader_config.genesis_block_hash)
         .build();
 
-    let _jormungandr_passive = Starter::new().config(passive_config).start().unwrap();
+    let jormungandr_passive = Starter::new()
+        .config(passive_config)
+        .passive()
+        .start()
+        .unwrap();
+    jormungandr_passive.assert_no_errors_in_log();
+    jormungandr_leader.assert_no_errors_in_log();
 }
 
 #[test]
