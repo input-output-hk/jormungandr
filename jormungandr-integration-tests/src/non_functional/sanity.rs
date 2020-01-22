@@ -5,7 +5,7 @@ use crate::common::{
     jormungandr::ConfigurationBuilder,
     startup,
 };
-use jormungandr_lib::interfaces::Value;
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value};
 use std::iter;
 use std::time::SystemTime;
 
@@ -35,9 +35,9 @@ fn send_100_transaction_in_10_packs_for_recievers(
         &[sender.clone()],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_consensus_genesis_praos_active_slot_coeff("0.999")
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(2)
-            .with_kes_update_speed(43200),
+            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -72,9 +72,9 @@ pub fn test_100_transaction_is_processed() {
         &[sender.clone()],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_consensus_genesis_praos_active_slot_coeff("0.999")
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
-            .with_kes_update_speed(43200),
+            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -91,8 +91,7 @@ pub fn test_100_transaction_is_processed() {
 
         sender.confirm_transaction();
 
-        let fragment_id =
-            jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
+        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
 
         assert_funds_transferred_to(&receiver.address, i.into(), &jormungandr.rest_address());
         jormungandr.assert_no_errors_in_log();
@@ -121,10 +120,10 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
         &[sender.clone()],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_consensus_genesis_praos_active_slot_coeff("0.999")
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(43200),
+            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -142,8 +141,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
         sender.confirm_transaction();
 
-        let fragment_id =
-            jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
+        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
 
         // 900 s = 15 minutes
         if now.elapsed().unwrap().as_secs() > 900 {

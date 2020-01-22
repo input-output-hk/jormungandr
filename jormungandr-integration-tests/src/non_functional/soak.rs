@@ -1,15 +1,12 @@
 #![cfg(feature = "soak-non-functional")]
 use crate::common::{
-    configuration::genesis_model::Fund,
-    data::address::Account,
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
-    jormungandr::{ConfigurationBuilder, Starter},
+    jormungandr::ConfigurationBuilder,
     process_utils::Wait,
     startup,
 };
 
-use jormungandr_lib::interfaces::{Mempool, UTxOInfo};
-use std::iter;
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool};
 use std::time::{Duration, SystemTime};
 
 #[test]
@@ -22,9 +19,9 @@ pub fn test_blocks_are_being_created_for_48_hours() {
         &[sender.clone()],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(20)
-            .with_consensus_genesis_praos_active_slot_coeff("0.999")
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
-            .with_kes_update_speed(43200)
+            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 fragment_ttl: duration_48_hours.clone().into(),
