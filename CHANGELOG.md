@@ -1,5 +1,59 @@
 # Change Log
 
+## [v0.8.7](https://github.com/input-output-hk/jormungandr/tree/v0.8.7) (2020-01-23)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.6...v0.8.7)
+
+**Implemented enhancements:**
+
+- Added p2p stats to node stat output [\#1611](https://github.com/input-output-hk/jormungandr/pull/1611)
+- cleanup the sync Mutex from the PeerMap [\#1594](https://github.com/input-output-hk/jormungandr/pull/1594)
+- keep more room for nodes that are actually giving us blocks [\#1587](https://github.com/input-output-hk/jormungandr/pull/1587)
+- Apply ref on each synchronized block during bootstrap [\#1582](https://github.com/input-output-hk/jormungandr/pull/1582)
+- display the whole 'reason' of some errors with Debug formatting [\#1577](https://github.com/input-output-hk/jormungandr/pull/1577)
+- Switch actix-web to rustls [\#1568](https://github.com/input-output-hk/jormungandr/pull/1568)
+
+**Fixed bugs:**
+
+- Rest - `/api/v0/shutdown` - doesn't shut the node down, just the rest service [\#1563](https://github.com/input-output-hk/jormungandr/issues/1563)
+- use path instead of open option for in-memory sqlite [\#1614](https://github.com/input-output-hk/jormungandr/pull/1614)
+- Fix node not shutting down when inner process finishes [\#1605](https://github.com/input-output-hk/jormungandr/pull/1605)
+
+**Closed issues:**
+
+- Configuration issue with Windows version of Jormungandr poolsecret1.yaml [\#1618](https://github.com/input-output-hk/jormungandr/issues/1618)
+- It still gets stuck [\#1615](https://github.com/input-output-hk/jormungandr/issues/1615)
+- Add Peer Stats to Node Stats Output [\#1610](https://github.com/input-output-hk/jormungandr/issues/1610)
+- Misleading documentation for max\_connections\_threshold default value [\#1602](https://github.com/input-output-hk/jormungandr/issues/1602)
+- Jormungandr Install issues on NixOS [\#1600](https://github.com/input-output-hk/jormungandr/issues/1600)
+- Can a setting be added to throttle blocks uploaded? [\#1595](https://github.com/input-output-hk/jormungandr/issues/1595)
+- remove the sync Mutex to an async Mutex in the PeerMap collection [\#1591](https://github.com/input-output-hk/jormungandr/issues/1591)
+- Ticker not appear [\#1590](https://github.com/input-output-hk/jormungandr/issues/1590)
+- data consistent between node and chain [\#1571](https://github.com/input-output-hk/jormungandr/issues/1571)
+- Consider Rebranding "jormungandr" to "cardano-node-rust" [\#1562](https://github.com/input-output-hk/jormungandr/issues/1562)
+- make public address mandatory for stake pool operators [\#1537](https://github.com/input-output-hk/jormungandr/issues/1537)
+- MultiAddress invalid public\_address  [\#1519](https://github.com/input-output-hk/jormungandr/issues/1519)
+- Lowlevel network improvements [\#1489](https://github.com/input-output-hk/jormungandr/issues/1489)
+- Network Thread Panic at Shutdown [\#1466](https://github.com/input-output-hk/jormungandr/issues/1466)
+
+**Merged pull requests:**
+
+- Async-friendly lock on P2P topology [\#1623](https://github.com/input-output-hk/jormungandr/pull/1623)
+- \[Tests\] compilation fix for perf tests  [\#1619](https://github.com/input-output-hk/jormungandr/pull/1619)
+- \[Tests\] test\_jormungandr\_passive\_node\_starts\_successfull fix [\#1616](https://github.com/input-output-hk/jormungandr/pull/1616)
+- Upgrade Actix-web to 2.0 [\#1613](https://github.com/input-output-hk/jormungandr/pull/1613)
+- Update actix-web to 1.0 [\#1606](https://github.com/input-output-hk/jormungandr/pull/1606)
+- \[Tests\] Private network tests - logging fix  [\#1604](https://github.com/input-output-hk/jormungandr/pull/1604)
+- Update network.md [\#1598](https://github.com/input-output-hk/jormungandr/pull/1598)
+- \[Tests\] Remove genesis model duplication [\#1589](https://github.com/input-output-hk/jormungandr/pull/1589)
+- \[Tests\] Remove linear fees duplication [\#1588](https://github.com/input-output-hk/jormungandr/pull/1588)
+- \[Tests\]\[Perf tests\] updated tests parameters [\#1584](https://github.com/input-output-hk/jormungandr/pull/1584)
+- \[Tests\] Removed duplicated Funds struct from jormungandr-integration-tests [\#1583](https://github.com/input-output-hk/jormungandr/pull/1583)
+- \[Tests\] Refresh grpc mock tests [\#1578](https://github.com/input-output-hk/jormungandr/pull/1578)
+- use a global runtime instead of a local one and new future [\#1572](https://github.com/input-output-hk/jormungandr/pull/1572)
+- \[Tests\] extended bootstrap timeout for testnet integration test [\#1567](https://github.com/input-output-hk/jormungandr/pull/1567)
+- Added common vscode and idea workspace folders to gitignore [\#1566](https://github.com/input-output-hk/jormungandr/pull/1566)
+
 ## [v0.8.6](https://github.com/input-output-hk/jormungandr/tree/v0.8.6) (2020-01-15)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.5...v0.8.6)
