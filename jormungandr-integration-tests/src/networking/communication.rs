@@ -1,11 +1,10 @@
 use crate::common::{
-    configuration::node_config_model::TrustedPeer,
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
 
-use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_lib::interfaces::{InitialUTxO, TrustedPeer};
 
 #[test]
 #[ignore]

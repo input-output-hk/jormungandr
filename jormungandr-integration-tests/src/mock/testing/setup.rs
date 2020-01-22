@@ -1,9 +1,10 @@
 use crate::common::{
-    configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
+    configuration::jormungandr_config::JormungandrConfig,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use crate::mock::client::JormungandrClient;
 use chain_impl_mockchain::block::ConsensusVersion;
+use jormungandr_lib::interfaces::TrustedPeer;
 use std::{thread, time::Duration};
 const LOCALHOST: &str = "127.0.0.1";
 
@@ -34,8 +35,12 @@ pub fn bootstrap_node() -> (JormungandrProcess, JormungandrConfig) {
 
 pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
     let trusted_peer = TrustedPeer {
-        address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port),
-        id: "fe3332044877b2034c8632a08f08ee47f3fbea6c64165b3b".to_owned(),
+        address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port)
+            .parse()
+            .unwrap(),
+        id: "fe3332044877b2034c8632a08f08ee47f3fbea6c64165b3b"
+            .parse()
+            .unwrap(),
     };
 
     ConfigurationBuilder::new()

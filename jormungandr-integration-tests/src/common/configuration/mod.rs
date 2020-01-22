@@ -12,12 +12,13 @@ use std::sync::atomic::{AtomicU16, Ordering};
 
 mod block0_config_builder;
 pub mod jormungandr_config;
-pub mod node_config_model;
-pub mod secret_model;
+mod node_config_builder;
+mod secret_model_factory;
 
 pub use block0_config_builder::Block0ConfigurationBuilder;
 pub use jormungandr_config::JormungandrConfig;
-pub use node_config_model::NodeConfig;
+pub use node_config_builder::NodeConfigBuilder;
+pub use secret_model_factory::SecretModelFactory;
 
 /// Get jormungandr executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {

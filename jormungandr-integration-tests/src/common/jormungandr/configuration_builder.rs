@@ -1,17 +1,17 @@
 use crate::common::{
     configuration::{
-        jormungandr_config::JormungandrConfig,
-        node_config_model::{Log, LogEntry, NodeConfig, TrustedPeer},
-        secret_model::SecretModel,
-        Block0ConfigurationBuilder,
+        jormungandr_config::JormungandrConfig, Block0ConfigurationBuilder, NodeConfigBuilder,
+        SecretModelFactory,
     },
     file_utils, jcli_wrapper,
-    startup::build_genesis_block,
+    startup::{build_genesis_block, create_new_key_pair},
 };
+use chain_crypto::Ed25519;
 use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, Block0Configuration, ConsensusLeaderId, EpochStabilityDepth, Initial,
-    InitialUTxO, KESUpdateSpeed, Mempool, NumberOfSlotsPerEpoch, SignedCertificate, SlotDuration,
+    InitialUTxO, KESUpdateSpeed, Log, Mempool, NumberOfSlotsPerEpoch, SignedCertificate,
+    SlotDuration, TrustedPeer,
 };
 
 use std::path::PathBuf;
@@ -19,12 +19,8 @@ use std::path::PathBuf;
 pub struct ConfigurationBuilder {
     funds: Vec<Initial>,
     certs: Vec<Initial>,
-    trusted_peers: Option<Vec<TrustedPeer>>,
-    public_address: Option<String>,
-    listen_address: Option<String>,
     block0_hash: Option<String>,
     block0_consensus: ConsensusVersion,
-    log: Option<Log>,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     slots_per_epoch: NumberOfSlotsPerEpoch,
     slot_duration: SlotDuration,
@@ -32,8 +28,7 @@ pub struct ConfigurationBuilder {
     kes_update_speed: KESUpdateSpeed,
     linear_fees: LinearFee,
     consensus_leader_ids: Vec<ConsensusLeaderId>,
-    mempool: Option<Mempool>,
-    enable_explorer: bool,
+    node_config_builder: NodeConfigBuilder,
 }
 
 impl ConfigurationBuilder {
@@ -42,23 +37,15 @@ impl ConfigurationBuilder {
             funds: vec![],
             certs: vec![],
             consensus_leader_ids: vec![],
-            trusted_peers: None,
-            listen_address: None,
-            public_address: None,
             block0_hash: None,
             block0_consensus: ConsensusVersion::Bft,
             slots_per_epoch: NumberOfSlotsPerEpoch::new(100).unwrap(),
             slot_duration: SlotDuration::new(1).unwrap(),
             epoch_stability_depth: 2600u32.into(),
-            log: Some(Log(vec![LogEntry {
-                level: Some("info".to_string()),
-                format: Some("json".to_string()),
-            }])),
             linear_fees: LinearFee::new(0, 0, 0),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
             kes_update_speed: KESUpdateSpeed::new(12 * 3600).unwrap(),
-            mempool: None,
-            enable_explorer: false,
+            node_config_builder: NodeConfigBuilder::new(),
         }
     }
 
@@ -104,7 +91,7 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_explorer(&mut self) -> &mut Self {
-        self.enable_explorer = true;
+        self.node_config_builder.with_explorer();
         self
     }
 
@@ -133,22 +120,23 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_log(&mut self, log: Log) -> &mut Self {
-        self.log = Some(log.clone());
+        self.node_config_builder.with_log(log);
         self
     }
 
     pub fn with_trusted_peers(&mut self, trusted_peers: Vec<TrustedPeer>) -> &mut Self {
-        self.trusted_peers = Some(trusted_peers.clone());
+        self.node_config_builder.with_trusted_peers(trusted_peers);
         self
     }
 
     pub fn with_public_address(&mut self, public_address: String) -> &mut Self {
-        self.public_address = Some(public_address.clone());
+        self.node_config_builder.with_public_address(public_address);
         self
     }
 
     pub fn with_listen_address(&mut self, listen_address: String) -> &mut Self {
-        self.listen_address = Some(listen_address.clone());
+        self.node_config_builder
+            .with_listen_address(listen_address.parse().unwrap());
         self
     }
 
@@ -158,7 +146,7 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_mempool(&mut self, mempool: Mempool) -> &mut Self {
-        self.mempool = Some(mempool);
+        self.node_config_builder.with_mempool(mempool);
         self
     }
 
@@ -169,29 +157,12 @@ impl ConfigurationBuilder {
     }
 
     pub fn build(&self) -> JormungandrConfig {
-        let mut node_config = NodeConfig::new();
+        let node_config = self.node_config_builder.build();
+        let node_config_path = NodeConfigBuilder::serialize(&node_config);
 
-        if let Some(listen_address) = &self.listen_address {
-            node_config.p2p.listen_address = listen_address.to_string();
-        }
-        if let Some(public_address) = &self.public_address {
-            node_config.p2p.public_address = public_address.to_string();
-        }
-        if let Some(mempool) = &self.mempool {
-            node_config.mempool = mempool.clone();
-        }
-
-        node_config.p2p.trusted_peers = self.trusted_peers.clone();
-        node_config.log = self.log.clone();
-        node_config.explorer.enabled = self.enable_explorer;
-
-        let node_config_path = NodeConfig::serialize(&node_config);
-
-        let secret_key = jcli_wrapper::assert_key_generate("ed25519");
-        let public_key = jcli_wrapper::assert_key_to_public_default(&secret_key);
-
+        let leader_key_pair = create_new_key_pair::<Ed25519>();
         let mut leaders_ids = self.consensus_leader_ids.clone();
-        leaders_ids.push(serde_yaml::from_str(&public_key).unwrap());
+        leaders_ids.push(leader_key_pair.identifier().into());
 
         let mut initial: Vec<Initial> = Vec::new();
         initial.extend(self.funds.iter().cloned());
@@ -213,8 +184,8 @@ impl ConfigurationBuilder {
 
         let mut config = JormungandrConfig::from(block0_config, node_config);
 
-        let secret_model = SecretModel::new_bft(&secret_key);
-        let secret_model_path = SecretModel::serialize(&secret_model);
+        let secret_model = SecretModelFactory::bft(leader_key_pair.signing_key());
+        let secret_model_path = SecretModelFactory::serialize(&secret_model);
 
         config.secret_models = vec![secret_model];
         config.secret_model_paths = vec![secret_model_path];

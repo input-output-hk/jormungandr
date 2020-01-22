@@ -26,7 +26,7 @@ fn fake_hash() -> Hash {
 #[test]
 pub fn handshake_sanity() {
     let (_server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let handshake_response = client.handshake();
 
     assert_eq!(
@@ -41,7 +41,7 @@ pub fn handshake_sanity() {
 #[test]
 pub fn tip_request() {
     let (server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
 
     let tip_header = client.get_tip();
     let block_hashes = server.logger.get_created_blocks_hashes();
@@ -53,7 +53,7 @@ pub fn tip_request() {
 #[test]
 pub fn get_headers_correct_hash() {
     let (server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
 
     let block_hashes = server.logger.get_created_blocks_hashes();
     let headers: Vec<Header> = response_to_vec!(client.get_headers(&block_hashes));
@@ -65,7 +65,7 @@ pub fn get_headers_correct_hash() {
 #[test]
 pub fn get_headers_incorrect_hash() {
     let (_server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let err = response_to_err!(client.get_headers(&vec![fake_hash()]));
     match err {
         grpc::Error::GrpcMessage(grpc_error_message) => {
@@ -79,7 +79,7 @@ pub fn get_headers_incorrect_hash() {
 #[test]
 pub fn get_blocks_correct_hash() {
     let (_server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
 
     let tip = client.get_tip();
     let blocks: Vec<Block> = response_to_vec!(client.get_blocks(&vec![tip.hash()]));
@@ -89,7 +89,7 @@ pub fn get_blocks_correct_hash() {
 #[test]
 pub fn get_blocks_incorrect_hash() {
     let (_server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let err = response_to_err!(client.get_blocks(&vec![fake_hash()]));
 
     match err {
@@ -104,7 +104,7 @@ pub fn get_blocks_incorrect_hash() {
 #[test]
 pub fn pull_blocks_to_tip_correct_hash() {
     let (server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let blocks_headers: Vec<Block> = response_to_vec!(
         client.pull_blocks_to_tip(Hash::from_str(&config.genesis_block_hash).unwrap())
     );
@@ -118,7 +118,7 @@ pub fn pull_blocks_to_tip_correct_hash() {
 #[test]
 pub fn pull_blocks_to_tip_incorrect_hash() {
     let (server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let blocks: Vec<Block> = response_to_vec!(client.pull_blocks_to_tip(
         Hash::from_str("bfe2d2e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c933").unwrap(),
     ));
@@ -138,7 +138,7 @@ pub fn pull_blocks_to_tip_incorrect_hash() {
 #[test]
 pub fn pull_headers_correct_hash() {
     let (server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let tip_header = client.get_tip();
     let headers: Vec<Header> = response_to_vec!(client.pull_headers(None, Some(tip_header.hash())));
     let hashes: Vec<Hash> = headers.iter().map(|x| x.hash()).collect();
@@ -151,7 +151,7 @@ pub fn pull_headers_correct_hash() {
 #[test]
 pub fn pull_headers_incorrect_hash() {
     let (_server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let err = response_to_err!(client.pull_headers(
         Some(
             Hash::from_str("efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944")
@@ -171,7 +171,7 @@ pub fn pull_headers_incorrect_hash() {
 #[test]
 pub fn pull_headers_empty_hash() {
     let (_server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let err = response_to_err!(client.pull_headers(None, None));
     match err {
         grpc::Error::GrpcMessage(grpc_error_message) => {
@@ -185,7 +185,7 @@ pub fn pull_headers_empty_hash() {
 #[test]
 pub fn push_headers() {
     let (server, config) = bootstrap_node();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let tip_header = client.get_tip();
     let stake_pool = StakePoolBuilder::new().build();
 
@@ -214,7 +214,7 @@ pub fn push_headers() {
 pub fn upload_block_incompatible_protocol() {
     let config = ConfigurationBuilder::new().with_slot_duration(4).build();
     let server = Starter::new().config(config.clone()).start().unwrap();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let tip_header = client.get_tip();
     let stake_pool = StakePoolBuilder::new().build();
 
@@ -260,7 +260,7 @@ pub fn upload_block_nonexisting_stake_pool() {
         .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .build();
     let _server = Starter::new().config(config.clone()).start().unwrap();
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     let tip_header = client.get_tip();
     let stake_pool = StakePoolBuilder::new().build();
 
@@ -313,7 +313,7 @@ pub fn get_fragments() {
         .assert_to_message();
 
     let fragment_id = jcli_wrapper::assert_transaction_in_block(&transaction, &server);
-    let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
+    let client = Config::attach_to_local_node(config.get_p2p_port()).client();
     match response_to_err!(client.get_fragments(vec![fragment_id.into_hash()])) {
         grpc::Error::GrpcMessage(grpc_error_message) => {
             assert_eq!(grpc_error_message.grpc_message, "not%20implemented");

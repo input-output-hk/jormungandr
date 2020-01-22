@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::secret_model::SecretModel,
+    configuration::SecretModelFactory,
     file_utils,
     jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
     jormungandr::{ConfigurationBuilder, Starter},
@@ -76,12 +76,12 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         ])
         .build();
 
-    let secret = SecretModel::new_genesis(
-        &pool_kes.signing_key().to_bech32_str(),
-        &pool_vrf.signing_key().to_bech32_str(),
+    let secret = SecretModelFactory::genesis(
+        pool_kes.signing_key(),
+        pool_vrf.signing_key(),
         &stake_pool_id,
     );
-    let secret_file = SecretModel::serialize(&secret);
+    let secret_file = SecretModelFactory::serialize(&secret);
     config.secret_models = vec![secret];
     config.secret_model_paths = vec![secret_file];
 
