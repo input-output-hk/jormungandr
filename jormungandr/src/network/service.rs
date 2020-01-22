@@ -70,7 +70,7 @@ impl P2pService for NodeService {
     type NodeId = Id;
 
     fn node_id(&self) -> Id {
-        (*self.global_state.topology.node().id()).into()
+        self.global_state.topology.node_id()
     }
 }
 
