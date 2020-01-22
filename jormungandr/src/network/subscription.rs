@@ -405,9 +405,11 @@ impl GossipProcessor {
                     Ok(())
                 }),
         );
-        self.global_state
-            .topology
-            .accept_gossips(self.node_id, nodes.into());
+        self.global_state.spawn(
+            self.global_state
+                .topology
+                .accept_gossips(self.node_id, nodes.into()),
+        );
     }
 }
 

@@ -154,10 +154,9 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
         })
         .collect::<Result<(), ValueError>>()
         .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
-    let stats = &context.stats_counter;
+    let nodes_count = &context.p2p.nodes_count::<Error>().compat().await?;
     let tip_header = tip.header();
     let stats = &context.stats_counter;
-    let nodes_count = &context.p2p.nodes_count();
     Ok(json!({
         "txRecvCnt": stats.tx_recv_cnt(),
         "blockRecvCnt": stats.block_recv_cnt(),
@@ -453,31 +452,31 @@ pub async fn get_diagnostic(context: Data<Context>) -> Result<impl Responder, Er
 }
 
 pub async fn get_network_p2p_quarantined(context: Data<Context>) -> Result<impl Responder, Error> {
-    context
-        .try_full()
-        .map(|ctx| Json(json!(ctx.p2p.list_quarantined())))
+    let ctx = context.try_full()?;
+    let list = ctx.p2p.list_quarantined::<Error>().compat().await?;
+    Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_non_public(context: Data<Context>) -> Result<impl Responder, Error> {
-    context
-        .try_full()
-        .map(|ctx| Json(json!(ctx.p2p.list_non_public())))
+    let ctx = context.try_full()?;
+    let list = ctx.p2p.list_non_public::<Error>().compat().await?;
+    Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_available(context: Data<Context>) -> Result<impl Responder, Error> {
-    context
-        .try_full()
-        .map(|ctx| Json(json!(ctx.p2p.list_available())))
+    let ctx = context.try_full()?;
+    let list = ctx.p2p.list_available::<Error>().compat().await?;
+    Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_view(context: Data<Context>) -> Result<impl Responder, Error> {
-    let node_infos: Vec<poldercast::NodeInfo> = context
-        .try_full()?
+    let ctx = context.try_full()?;
+    let view = ctx
         .p2p
-        .view(poldercast::Selection::Any)
-        .into_iter()
-        .map(Into::into)
-        .collect();
+        .view::<Error>(poldercast::Selection::Any)
+        .compat()
+        .await?;
+    let node_infos: Vec<poldercast::NodeInfo> = view.peers.into_iter().map(Into::into).collect();
     Ok(Json(json!(node_infos)))
 }
 
@@ -499,15 +498,10 @@ pub async fn get_network_p2p_view_topic(
             _ => Err(ErrorBadRequest("invalid topic")),
         }
     }
-    dbg!(&topic);
 
     let topic = parse_topic(&topic.into_inner())?;
-    let node_infos: Vec<poldercast::NodeInfo> = context
-        .try_full()?
-        .p2p
-        .view(topic)
-        .into_iter()
-        .map(Into::into)
-        .collect();
+    let ctx = context.try_full()?;
+    let view = ctx.p2p.view::<Error>(topic).compat().await?;
+    let node_infos: Vec<poldercast::NodeInfo> = view.peers.into_iter().map(Into::into).collect();
     Ok(Json(json!(node_infos)))
 }

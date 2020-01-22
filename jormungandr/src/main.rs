@@ -100,7 +100,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         bootstrapped_node.settings.leadership.log_ttl.into();
 
     let topology = P2pTopology::new(
-        bootstrapped_node.settings.network.profile.clone(),
+        &bootstrapped_node.settings.network,
         bootstrapped_node
             .logger
             .new(o!(log::KEY_TASK => "poldercast")),
