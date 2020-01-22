@@ -348,7 +348,7 @@ fn handle_propagation_msg(
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
     trace!(state.logger(), "to propagate: {:?}", &msg);
-    let res = match msg {
+    let send_to_peers = match msg {
         PropagateMsg::Block(ref header) => {
             let nodes = state.topology.view(poldercast::Selection::Topic {
                 topic: p2p::topic::BLOCKS,
@@ -365,19 +365,22 @@ fn handle_propagation_msg(
     // If any nodes selected for propagation are not in the
     // active subscriptions map, connect to them and deliver
     // the item.
-    res.map_err(move |unreached_nodes| {
-        debug!(
-            state.logger(),
-            "{} of the peers selected for propagation have not been reached, will try to connect",
-            unreached_nodes.len(),
-        );
-        for node in unreached_nodes {
-            let msg = msg.clone();
-            connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| match msg {
-                PropagateMsg::Block(header) => comms.set_pending_block_announcement(header),
-                PropagateMsg::Fragment(fragment) => comms.set_pending_fragment(fragment),
-            });
+    send_to_peers.then(move |res| {
+        if let Err(unreached_nodes) = res {
+            debug!(
+                state.logger(),
+                "{} of the peers selected for propagation have not been reached, will try to connect",
+                unreached_nodes.len(),
+            );
+            for node in unreached_nodes {
+                let msg = msg.clone();
+                connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| match msg {
+                    PropagateMsg::Block(header) => comms.set_pending_block_announcement(header),
+                    PropagateMsg::Fragment(fragment) => comms.set_pending_fragment(fragment),
+                });
+            }
         }
+        Ok(())
     })
 }
 
@@ -386,13 +389,16 @@ fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = ()
 
     tokio::prelude::stream::iter_ok(nodes).for_each(move |node| {
         let gossip = Gossip::from(state.topology.initiate_gossips(node.id()));
-        let res = state.peers.propagate_gossip_to(node.id(), gossip);
+        let send_to_peer = state.peers.propagate_gossip_to(node.id(), gossip);
         let state_err = state.clone();
         let channels_err = channels.clone();
-        res.map_err(move |gossip| {
-            connect_and_propagate_with(node, state_err, channels_err, |comms| {
-                comms.set_pending_gossip(gossip)
-            })
+        send_to_peer.then(move |res| {
+            if let Err(gossip) = res {
+                connect_and_propagate_with(node, state_err, channels_err, |comms| {
+                    comms.set_pending_gossip(gossip)
+                })
+            }
+            Ok(())
         })
     })
 }
