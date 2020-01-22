@@ -330,6 +330,79 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     Ok(ScenarioResult::Passed)
 }
 
+pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let scenario_settings = prepare_scenario! {
+        "T3005-Point-to-Point-file-storage",
+        &mut context,
+        topology [
+            LEADER_4,
+            LEADER_3 -> LEADER_4,
+            LEADER_2 -> LEADER_3,
+            LEADER_1 -> LEADER_2,
+        ]
+        blockchain {
+            consensus = GenesisPraos,
+            number_of_slots_per_epoch = 60,
+            slot_duration = 1,
+            leaders = [ LEADER_1 ],
+            initials = [
+                account "unassigned1" with   500_000_000,
+                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
+            ],
+        }
+    };
+
+    let mut controller = scenario_settings.build(context)?;
+
+    controller.monitor_nodes();
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+
+    leader4.wait_for_bootstrap()?;
+    leader3.wait_for_bootstrap()?;
+    leader2.wait_for_bootstrap()?;
+    leader1.wait_for_bootstrap()?;
+
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
+
+    utils::sending_transactions_to_node_sequentially(
+        40,
+        &mut controller,
+        &mut wallet1,
+        &mut wallet2,
+        &leader1,
+    )?;
+
+    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
+
+    leader4.shutdown()?;
+    leader3.shutdown()?;
+    leader2.shutdown()?;
+    leader1.shutdown()?;
+
+    controller.finalize();
+    Ok(ScenarioResult::Passed)
+}
+
 pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "T3006-Tree",

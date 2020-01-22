@@ -81,12 +81,14 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut controller = scenario_settings.build(context)?;
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-
     leader.wait_for_bootstrap()?;
+
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;

@@ -276,6 +276,11 @@ fn scenarios_repository() -> Vec<Scenario> {
         point_to_point,
         vec![Tag::Short],
     ));
+    repository.push(Scenario::new(
+        "point_to_point_on_file_storage",
+        point_to_point_on_file_storage,
+        vec![Tag::Short],
+    ));
     repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
     repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
