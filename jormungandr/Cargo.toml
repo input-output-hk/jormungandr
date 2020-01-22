@@ -12,10 +12,10 @@ Midgard Serpent
 edition = "2018"
 
 [dependencies]
-actix-cors = "0.1.0"
-actix-rt = "0.2.6"
-actix-threadpool = "0.1.2"
-actix-web = { version = "1.0.9", default-features = false, features = [ "rust-tls" ] }
+actix-cors = "0.2.0"
+actix-rt = "^1.0.0"
+actix-threadpool = "^0.3.1"
+actix-web = { version = "2.0.0", default-features = false, features = [ "rustls" ] }
 juniper = "0.13.1"
 bincode = "1.0.1"
 bytes = "0.4"
@@ -30,6 +30,7 @@ cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 error-chain = "0.12"
 futures    = "0.1"
+futures03 = { package = "futures", version = "0.3.1", features = ["compat"] }
 http = "0.1.16"
 humantime = "1.2"
 hyper = "0.12"
@@ -40,7 +41,7 @@ network-core    = { path = "../chain-deps/network-core" }
 network-grpc    = { path = "../chain-deps/network-grpc" }
 poldercast = "0.11"
 rand = "0.7"
-rustls = "0.15.2"
+rustls = "^0.16.0 "
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0.38"

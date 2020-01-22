@@ -6,7 +6,7 @@ mod error;
 pub use self::error::Error;
 
 use crate::settings::start::{Cors as CorsConfig, Rest, Tls as TlsConfig};
-use actix_cors::Cors;
+use actix_cors::{Cors, CorsFactory};
 use actix_rt::System;
 use actix_web::{dev::Server as ActixServer, web::ServiceConfig, App, HttpServer};
 use futures::sync::oneshot::{self, Receiver};
@@ -120,12 +120,12 @@ fn load_priv_key(path: &str) -> ServerResult<PrivateKey> {
     Ok(priv_keys.pop().unwrap())
 }
 
-fn create_cors_factory(cors_cfg: CorsConfig) -> impl Fn() -> Cors + Clone + Send + 'static {
+fn create_cors_factory(cors_cfg: CorsConfig) -> impl Fn() -> CorsFactory + Clone + Send + 'static {
     let cors_cfg_shared = Arc::new(cors_cfg);
     move || create_cors(&*cors_cfg_shared)
 }
 
-fn create_cors(cors_cfg: &CorsConfig) -> Cors {
+fn create_cors(cors_cfg: &CorsConfig) -> CorsFactory {
     let mut cors = Cors::new();
     if let Some(max_age_secs) = cors_cfg.max_age_secs {
         cors = cors.max_age(max_age_secs as usize);
@@ -133,13 +133,13 @@ fn create_cors(cors_cfg: &CorsConfig) -> Cors {
     for origin in &cors_cfg.allowed_origins {
         cors = cors.allowed_origin(origin);
     }
-    cors
+    cors.finish()
 }
 
 fn start_server_curr_sys(
     address: impl ToSocketAddrs,
     tls_config_opt: Option<ServerConfig>,
-    cors_factory: Option<impl Fn() -> Cors + Clone + Send + 'static>,
+    cors_factory: Option<impl Fn() -> CorsFactory + Clone + Send + 'static>,
     app_config: impl FnOnce(&mut ServiceConfig) + Clone + Send + 'static,
 ) -> ServerResult<ActixServer> {
     // This macro-based pseud generic is needed because addition of CORS changes server type.
@@ -163,8 +163,8 @@ fn start_server_curr_sys(
                 None => server.bind(address),
             }
             .map_err(Error::BindFailed)?;
-            let server_addr = server.start();
-            Ok(server_addr)
+            let actix_server = server.run();
+            Ok(actix_server)
         }}
     }
 
