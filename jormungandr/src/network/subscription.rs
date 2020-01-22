@@ -1,5 +1,8 @@
 use super::{
     buffer_sizes,
+    p2p::comm::{
+        BlockEventSubscription, FragmentSubscription, GossipSubscription, LockServerComms,
+    },
     p2p::{Gossip as NodeData, Id},
     GlobalStateR,
 };
@@ -19,6 +22,102 @@ use futures::prelude::*;
 use slog::Logger;
 
 use std::fmt::Debug;
+
+#[must_use = "`ServeBlockEvents` needs to be plugged into a service trait implementation"]
+pub struct ServeBlockEvents<In> {
+    inbound: Option<In>,
+    lock: LockServerComms,
+    logger: Logger,
+}
+
+impl<In> ServeBlockEvents<In> {
+    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
+        ServeBlockEvents {
+            inbound: Some(inbound),
+            lock,
+            logger,
+        }
+    }
+}
+
+impl<In> Future for ServeBlockEvents<In> {
+    type Item = Subscription<In, BlockEventSubscription>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let polled_outbound = self
+            .lock
+            .poll_subscribe_with(|comms| comms.subscribe_to_block_events());
+        Ok(polled_outbound.map(|outbound| {
+            let inbound = self.inbound.take().expect("future polled after finish");
+            Subscription::new(inbound, outbound, self.logger.clone())
+        }))
+    }
+}
+
+#[must_use = "`ServeGossip` needs to be plugged into a service trait implementation"]
+pub struct ServeFragments<In> {
+    inbound: Option<In>,
+    lock: LockServerComms,
+    logger: Logger,
+}
+
+impl<In> ServeFragments<In> {
+    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
+        ServeFragments {
+            inbound: Some(inbound),
+            lock,
+            logger,
+        }
+    }
+}
+
+impl<In> Future for ServeFragments<In> {
+    type Item = Subscription<In, FragmentSubscription>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let polled_outbound = self
+            .lock
+            .poll_subscribe_with(|comms| comms.subscribe_to_fragments());
+        Ok(polled_outbound.map(|outbound| {
+            let inbound = self.inbound.take().expect("future polled after finish");
+            Subscription::new(inbound, outbound, self.logger.clone())
+        }))
+    }
+}
+
+#[must_use = "`ServeGossip` needs to be plugged into a service trait implementation"]
+pub struct ServeGossip<In> {
+    inbound: Option<In>,
+    lock: LockServerComms,
+    logger: Logger,
+}
+
+impl<In> ServeGossip<In> {
+    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
+        ServeGossip {
+            inbound: Some(inbound),
+            lock,
+            logger,
+        }
+    }
+}
+
+impl<In> Future for ServeGossip<In> {
+    type Item = Subscription<In, GossipSubscription>;
+    type Error = core_error::Error;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let polled_outbound = self
+            .lock
+            .poll_subscribe_with(|comms| comms.subscribe_to_gossip());
+        Ok(polled_outbound.map(|outbound| {
+            let inbound = self.inbound.take().expect("future polled after finish");
+            Subscription::new(inbound, outbound, self.logger.clone())
+        }))
+    }
+}
 
 #[must_use = "`Subscription` needs to be plugged into a service trait implementation"]
 pub struct Subscription<In, Out> {
@@ -204,6 +303,24 @@ impl BlockAnnouncementProcessor {
         );
         core_error::Error::new(core_error::Code::Internal, err)
     }
+
+    fn refresh_stat(&self) {
+        let refresh_logger = self.logger.clone();
+        self.global_state.spawn(
+            self.global_state
+                .peers
+                .refresh_peer_on_block(self.node_id)
+                .and_then(move |refreshed| {
+                    if !refreshed {
+                        debug!(
+                            refresh_logger,
+                            "received block from node that is not in the peer map",
+                        );
+                    }
+                    Ok(())
+                }),
+        );
+    }
 }
 
 #[must_use = "sinks do nothing unless polled"]
@@ -230,6 +347,24 @@ impl FragmentProcessor {
             buffered_fragments: Vec::new(),
         }
     }
+
+    fn refresh_stat(&self) {
+        let refresh_logger = self.logger.clone();
+        self.global_state.spawn(
+            self.global_state
+                .peers
+                .refresh_peer_on_fragment(self.node_id)
+                .and_then(move |refreshed| {
+                    if !refreshed {
+                        debug!(
+                            refresh_logger,
+                            "received fragment from node that is not in the peer map",
+                        );
+                    }
+                    Ok(())
+                }),
+        );
+    }
 }
 
 pub struct GossipProcessor {
@@ -255,12 +390,21 @@ impl GossipProcessor {
         if filtered_out.len() > 0 {
             debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
         }
-        if !self.global_state.peers.refresh_peer_on_gossip(self.node_id) {
-            debug!(
-                self.logger,
-                "received gossip from node that is not in the peer map",
-            );
-        }
+        let refresh_logger = self.logger.clone();
+        self.global_state.spawn(
+            self.global_state
+                .peers
+                .refresh_peer_on_gossip(self.node_id)
+                .and_then(move |refreshed| {
+                    if !refreshed {
+                        debug!(
+                            refresh_logger,
+                            "received gossip from node that is not in the peer map",
+                        );
+                    }
+                    Ok(())
+                }),
+        );
         self.global_state
             .topology
             .accept_gossips(self.node_id, nodes.into());
@@ -284,7 +428,7 @@ impl Sink for BlockAnnouncementProcessor {
             .map_err(|e| self.mbox_error(e))?;
         match polled {
             AsyncSink::Ready => {
-                self.global_state.peers.refresh_peer_on_block(self.node_id);
+                self.refresh_stat();
                 Ok(AsyncSink::Ready)
             }
             AsyncSink::NotReady(BlockMsg::AnnouncedBlock(header, _)) => {
@@ -384,9 +528,7 @@ impl FragmentProcessor {
             })?;
         match polled {
             AsyncSink::Ready => {
-                self.global_state
-                    .peers
-                    .refresh_peer_on_fragment(self.node_id);
+                self.refresh_stat();
                 Ok(AsyncSink::Ready)
             }
             AsyncSink::NotReady(TransactionMsg::SendTransaction(_, fragments)) => {

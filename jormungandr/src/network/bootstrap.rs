@@ -15,6 +15,8 @@ use std::fmt::Debug;
 use std::io;
 use std::sync::Arc;
 
+const APPLY_FREQUENCY_BOOTSTRAP: usize = 128;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("runtime initialization failed")]
@@ -88,22 +90,23 @@ where
         .map_err(|e| Error::PullStreamFailed { source: e })
         .filter(move |block| block.header.hash() != block0)
         .and_then(move |block| handle_block(blockchain.clone(), block, logger.clone()))
-        .and_then(move |new_tip| {
-            // A further optimization could be to process bootstrap blocks in batches (e.g. of 100)
-            // and then only call process_new_ref on the last value of each processed batch. However,
-            // at this time, it would seem processing_new_ref for every bootstrap block does not
-            // introduce too much overhead. Thus such an optimization may be premature and/or
-            // unnecessary.
-            blockchain::process_new_ref(
-                logger2.clone(),
-                blockchain2.clone(),
-                branch.clone(),
-                new_tip.clone(),
-            )
-            .map_err(|e| Error::ChainSelectionFailed { source: e })
-            .map(|()| new_tip)
+        .fold((tip, 0), move |(_old_tip, counter), new_tip| {
+            use futures::future::Either::{A, B};
+
+            if counter >= APPLY_FREQUENCY_BOOTSTRAP {
+                A(future::ok((new_tip, counter + 1)))
+            } else {
+                B(blockchain::process_new_ref(
+                    logger2.clone(),
+                    blockchain2.clone(),
+                    branch.clone(),
+                    new_tip.clone(),
+                )
+                .map_err(|e| Error::ChainSelectionFailed { source: e })
+                .map(|()| (new_tip, 0)))
+            }
         })
-        .fold(tip, |_, block| future::ok(block))
+        .map(|(tip, _)| tip)
 }
 
 fn handle_block(

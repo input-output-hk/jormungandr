@@ -14,7 +14,6 @@ use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
-use chain_impl_mockchain::ledger;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
 use std::convert::TryFrom;
