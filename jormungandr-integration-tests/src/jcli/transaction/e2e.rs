@@ -406,7 +406,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
     );
     jcli_wrapper::assert_transaction_rejected(
         &transaction_message,
-        &jormungandr.rest_address(),
+        &jormungandr,
         "The UTxO value (99) in the transaction does not match the actually state value: 100",
     );
 }
@@ -432,11 +432,7 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         &sender,
         &block0_hash,
     );
-    jcli_wrapper::assert_transaction_rejected(
-        &transaction_message,
-        &jormungandr.rest_address(),
-        "Invalid UTxO",
-    );
+    jcli_wrapper::assert_transaction_rejected(&transaction_message, &jormungandr, "Invalid UTxO");
 }
 
 #[test]
@@ -487,7 +483,7 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
 
     jcli_wrapper::assert_transaction_rejected(
         &transaction_message,
-        &jormungandr.rest_address(),
+        &jormungandr,
         "Failed to validate transaction balance: transaction value not balanced, has inputs sum 100 and outputs sum 50",
     );
 }

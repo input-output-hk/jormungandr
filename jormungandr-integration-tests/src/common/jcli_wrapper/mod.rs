@@ -335,7 +335,7 @@ pub fn assert_transaction_in_block(
 ) -> Hash {
     let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
     let wait: Wait = Default::default();
-    wait_until_transaction_processed(fragment_id, &jormungandr.rest_address(), &wait).unwrap();
+    wait_until_transaction_processed(fragment_id, jormungandr, &wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, jormungandr);
     fragment_id.clone()
 }
@@ -346,25 +346,29 @@ pub fn assert_transaction_in_block_with_wait(
     wait: &Wait,
 ) -> Hash {
     let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
-    wait_until_transaction_processed(fragment_id, &jormungandr.rest_address(), wait).unwrap();
+    wait_until_transaction_processed(fragment_id, jormungandr, wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, jormungandr);
     fragment_id.clone()
 }
 
-pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
-    let fragment_id = assert_post_transaction(&transaction_message, &host);
+pub fn assert_transaction_rejected(
+    transaction_message: &str,
+    jormungandr: &JormungandrProcess,
+    expected_reason: &str,
+) {
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
     let wait: Wait = Default::default();
-    wait_until_transaction_processed(fragment_id, &host, &wait).unwrap();
-    assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
+    wait_until_transaction_processed(fragment_id, jormungandr, &wait).unwrap();
+    assert_transaction_log_shows_rejected(fragment_id, jormungandr, &expected_reason);
 }
 
 pub fn wait_until_transaction_processed(
     fragment_id: Hash,
-    host: &str,
+    jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> Result<(), Error> {
     process_utils::run_process_until_response_matches(
-        jcli_commands::get_rest_message_log_command(&host),
+        jcli_commands::get_rest_message_log_command(&jormungandr.rest_address()),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
@@ -386,7 +390,11 @@ pub fn wait_until_transaction_processed(
             "Waiting for transaction: '{}' to be inBlock or rejected",
             fragment_id
         ),
-        &format!("transaction: '{}' is pending for too long", fragment_id),
+        &format!(
+            "transaction: '{}' is pending for too long, Logs: {:?}",
+            fragment_id,
+            jormungandr.logger.get_log_content()
+        ),
     )
     .map_err(|err| Error::TransactionNotInBlock {
         source: err,
@@ -411,14 +419,19 @@ pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, jormungandr: &Jo
     }
 }
 
-pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expected_msg: &str) {
-    let fragments = assert_get_rest_message_log(&host);
+pub fn assert_transaction_log_shows_rejected(
+    fragment_id: Hash,
+    jormungandr: &JormungandrProcess,
+    expected_msg: &str,
+) {
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => {
             assert!(
                 x.is_rejected(),
-                "Fragment should be rejected, actual: {:?}",
-                &x
+                "Fragment should be rejected, actual: {:?}. Logs: {:?}",
+                &x,
+                jormungandr.logger.get_log_content()
             );
             match x.status() {
                 FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
@@ -426,8 +439,9 @@ pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expe
             }
         }
         None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
+            "cannot find any fragment in rest message log, output: {:?}. Logs: {:?}",
+            &fragments,
+            jormungandr.logger.get_log_content()
         ),
     }
 }
