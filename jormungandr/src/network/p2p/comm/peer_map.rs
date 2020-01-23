@@ -155,10 +155,14 @@ impl PeerMap {
     }
 
     pub fn next_peer_for_block_fetch(&mut self) -> Option<(Id, &mut PeerComms)> {
-        self.map
-            .iter_mut()
-            .next_back()
-            .map(|(&id, data)| (id, data.update_comm_status().comms()))
+        let mut iter = self.map.iter_mut();
+        while let Some((&id, data)) = iter.next_back() {
+            match data.update_comm_status() {
+                CommStatus::Established(comms) => return Some((id, comms)),
+                CommStatus::Connecting(_) => {}
+            }
+        }
+        None
     }
 
     pub fn infos(&self) -> Vec<PeerInfo> {
