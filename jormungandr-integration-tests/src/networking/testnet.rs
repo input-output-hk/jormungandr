@@ -110,24 +110,20 @@ pub fn e2e_stake_pool() {
         .build();
 
     //register stake pool
-    let stake_pool_id = create_new_stake_pool(
-        &mut actor_account,
-        &block0_hash,
-        &jormungandr.rest_address(),
-        &long_wait,
-    );
+    let stake_pool_id =
+        create_new_stake_pool(&mut actor_account, &block0_hash, &jormungandr, &long_wait);
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
         &block0_hash,
-        &jormungandr.rest_address(),
+        &jormungandr,
         &long_wait,
     );
     retire_stake_pool(
         &stake_pool_id,
         &mut actor_account,
         &block0_hash,
-        &jormungandr.rest_address(),
+        &jormungandr,
         &long_wait,
     );
 }

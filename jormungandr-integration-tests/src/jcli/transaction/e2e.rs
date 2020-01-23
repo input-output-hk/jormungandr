@@ -79,7 +79,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     );
 
     let first_transaction_id =
-        jcli_wrapper::assert_transaction_in_block(&first_transaction, &jormungandr.rest_address());
+        jcli_wrapper::assert_transaction_in_block(&first_transaction, &jormungandr);
 
     let second_transaction = JCLITransactionWrapper::build_transaction(
         &first_transaction_id,
@@ -90,7 +90,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         &middle_man,
         &block0_hash,
     );
-    jcli_wrapper::assert_transaction_in_block(&second_transaction, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&second_transaction, &jormungandr);
 }
 
 #[test]
@@ -115,7 +115,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -153,7 +153,7 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &utxo);
     jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&rest_addr, &new_utxo);
 
-    jcli_wrapper::assert_transaction_in_block(&tx_message, &rest_addr);
+    jcli_wrapper::assert_transaction_in_block(&tx_message, &jormungandr);
 
     jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&rest_addr, &utxo);
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &new_utxo);
@@ -186,7 +186,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&jormungandr.rest_address(), &utxo);
 
     // assert account received funds
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 
     let account_state =
         jcli_wrapper::assert_rest_account_get_stats(&receiver.address, &jormungandr.rest_address());
@@ -227,7 +227,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -253,7 +253,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -279,7 +279,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -304,7 +304,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -329,7 +329,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -353,7 +353,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -379,7 +379,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -460,7 +460,7 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
         &config.genesis_block_hash,
     );
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
 
 #[test]
@@ -517,7 +517,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
     let tx_id = tx.get_fragment_id();
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&jormungandr.rest_address(), &utxo);
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 
     jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&jormungandr.rest_address(), &utxo);
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(
