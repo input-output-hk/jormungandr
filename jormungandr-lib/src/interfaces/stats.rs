@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Stats {
     pub version: String,
+    pub peer_available_cnt: String,
+    pub peer_quarantined_cnt: String,
+    pub peer_unreachable_cnt: String,
     pub tx_recv_cnt: u32,
     pub block_recv_cnt: u32,
     pub uptime: u32,
