@@ -312,8 +312,7 @@ pub fn get_fragments() {
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
 
-    let fragment_id =
-        jcli_wrapper::assert_transaction_in_block(&transaction, &server.rest_address());
+    let fragment_id = jcli_wrapper::assert_transaction_in_block(&transaction, &server);
     let client = Config::attach_to_local_node(config.node_config.get_p2p_port()).client();
     match response_to_err!(client.get_fragments(vec![fragment_id.into_hash()])) {
         grpc::Error::GrpcMessage(grpc_error_message) => {

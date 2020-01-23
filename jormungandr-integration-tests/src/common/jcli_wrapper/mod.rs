@@ -17,7 +17,7 @@ use super::file_assert;
 use super::file_utils;
 use super::process_assert;
 use super::process_utils::{self, output_extensions::ProcessOutput, ProcessError, Wait};
-use crate::common::startup;
+use crate::common::{jormungandr::JormungandrProcess, startup};
 use chain_addr::Discrimination;
 use std::{collections::BTreeMap, path::PathBuf};
 use thiserror::Error;
@@ -329,22 +329,25 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
     single_line
 }
 
-pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
-    let fragment_id = assert_post_transaction(&transaction_message, &host);
+pub fn assert_transaction_in_block(
+    transaction_message: &str,
+    jormungandr: &JormungandrProcess,
+) -> Hash {
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
     let wait: Wait = Default::default();
-    wait_until_transaction_processed(fragment_id, &host, &wait).unwrap();
-    assert_transaction_log_shows_in_block(fragment_id, &host);
+    wait_until_transaction_processed(fragment_id, &jormungandr.rest_address(), &wait).unwrap();
+    assert_transaction_log_shows_in_block(fragment_id, jormungandr);
     fragment_id.clone()
 }
 
 pub fn assert_transaction_in_block_with_wait(
     transaction_message: &str,
-    host: &str,
+    jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> Hash {
-    let fragment_id = assert_post_transaction(&transaction_message, &host);
-    wait_until_transaction_processed(fragment_id, &host, wait).unwrap();
-    assert_transaction_log_shows_in_block(fragment_id, &host);
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
+    wait_until_transaction_processed(fragment_id, &jormungandr.rest_address(), wait).unwrap();
+    assert_transaction_log_shows_in_block(fragment_id, jormungandr);
     fragment_id.clone()
 }
 
@@ -391,17 +394,19 @@ pub fn wait_until_transaction_processed(
     })
 }
 
-pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, host: &str) {
-    let fragments = assert_get_rest_message_log(&host);
+pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, jormungandr: &JormungandrProcess) {
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => assert!(
             x.is_in_a_block(),
-            "Fragment should be in block, actual: {:?}",
-            &x
+            "Fragment should be in block, actual: {:?}. Logs: {:?}",
+            &x,
+            jormungandr.logger.get_log_content()
         ),
         None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
+            "cannot find any fragment in rest message log, output: {:?}. Node log: {:?}",
+            &fragments,
+            jormungandr.logger.get_log_content()
         ),
     }
 }

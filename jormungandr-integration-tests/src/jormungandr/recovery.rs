@@ -61,7 +61,7 @@ pub fn do_simple_transaction<T: AddressDataProvider>(
         .assert_to_message();
     let tx_id = tx.get_fragment_id();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 
     UTxOInfo::new(
         tx_id,

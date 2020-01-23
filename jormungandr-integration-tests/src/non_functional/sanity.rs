@@ -91,7 +91,7 @@ pub fn test_100_transaction_is_processed() {
 
         sender.confirm_transaction();
 
-        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
+        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
 
         assert_funds_transferred_to(&receiver.address, i.into(), &jormungandr.rest_address());
         jormungandr.assert_no_errors_in_log();
@@ -141,7 +141,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
         sender.confirm_transaction();
 
-        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
+        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
 
         // 900 s = 15 minutes
         if now.elapsed().unwrap().as_secs() > 900 {

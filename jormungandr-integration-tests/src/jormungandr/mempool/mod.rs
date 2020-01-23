@@ -38,7 +38,7 @@ pub fn test_log_ttl() {
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr.rest_address());
+    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
 
     process_utils::sleep(log_ttl_timeout + timeout_grace_period);
     assert!(jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_address()).is_empty());

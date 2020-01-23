@@ -29,11 +29,8 @@ pub fn explorer_test() {
 
     let wait = Wait::new(Duration::from_secs(3), 20);
 
-    let fragment_id = jcli_wrapper::assert_transaction_in_block_with_wait(
-        &transaction,
-        &jormungandr.rest_address(),
-        &wait,
-    );
+    let fragment_id =
+        jcli_wrapper::assert_transaction_in_block_with_wait(&transaction, &jormungandr, &wait);
 
     let explorer = jormungandr.explorer();
     let explorer_transaction = explorer

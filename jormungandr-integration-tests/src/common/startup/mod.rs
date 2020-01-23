@@ -6,7 +6,7 @@ use crate::common::{
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
 };
 use chain_addr::Discrimination;
-use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
+use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Extended, SumEd25519_12};
 use chain_impl_mockchain::block::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::KeyPair,
@@ -34,8 +34,10 @@ pub fn serialize_block0_config(block0_config: &Block0Configuration) -> PathBuf {
 }
 
 pub fn create_new_utxo_address() -> Utxo {
-    let private_key = jcli_wrapper::assert_key_generate_default();
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+    let key_pair = create_new_key_pair::<Ed25519Extended>();
+    let private_key = key_pair.signing_key().to_bech32_str();
+    let public_key = key_pair.identifier().to_bech32_str();
+
     let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
     let utxo = Utxo {
         private_key,
@@ -46,15 +48,18 @@ pub fn create_new_utxo_address() -> Utxo {
 }
 
 pub fn create_new_account_address() -> Account {
-    let private_key = jcli_wrapper::assert_key_generate_default();
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+    let key_pair = create_new_key_pair::<Ed25519Extended>();
+    let private_key = key_pair.signing_key().to_bech32_str();
+    let public_key = key_pair.identifier().to_bech32_str();
+
     let address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
     Account::new(&private_key, &public_key, &address)
 }
 
 pub fn create_new_delegation_address() -> Delegation {
-    let private_delegation_key = jcli_wrapper::assert_key_generate_default();
-    let public_delegation_key = jcli_wrapper::assert_key_to_public_default(&private_delegation_key);
+    let key_pair = create_new_key_pair::<Ed25519Extended>();
+    let public_delegation_key = key_pair.identifier().to_bech32_str();
+
     create_new_delegation_address_for(&public_delegation_key)
 }
 
