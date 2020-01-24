@@ -127,7 +127,6 @@ pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
                 first_node.log_content(),
                 node.alias(),
                 node.log_content()),
-
         )?;
         assert_equals(
             &block_height,
