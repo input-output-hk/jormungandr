@@ -45,11 +45,9 @@ pub fn test_blocks_are_being_created_for_48_hours() {
         let wait: Wait = Wait::new(Duration::from_secs(10), 10);
         let fragment_id =
             jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_address());
-        if let Err(err) = jcli_wrapper::wait_until_transaction_processed(
-            fragment_id.clone(),
-            &jormungandr.rest_address(),
-            &wait,
-        ) {
+        if let Err(err) =
+            jcli_wrapper::wait_until_transaction_processed(fragment_id.clone(), &jormungandr, &wait)
+        {
             panic!(format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
                 err,
                 fragment_id,
