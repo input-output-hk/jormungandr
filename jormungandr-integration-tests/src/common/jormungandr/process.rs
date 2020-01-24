@@ -1,9 +1,8 @@
 use super::logger::JormungandrLogger;
 use crate::common::{
-    configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
-    explorer::Explorer,
-    jcli_wrapper,
+    configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
 };
+use jormungandr_lib::interfaces::TrustedPeer;
 use std::path::PathBuf;
 use std::process::Child;
 
