@@ -268,6 +268,7 @@ fn generate_network(
             .map(|d| d.into())
             .unwrap_or(std::time::Duration::from_secs(10)),
         topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
+        max_bootstrap_attempts: p2p.max_bootstrap_attempts,
     };
 
     Ok(network)
