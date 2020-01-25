@@ -1,11 +1,89 @@
 use crate::{
     node::NodeController,
+    scenario::repository::{Measurement, MeasurementThresholds},
     scenario::Controller,
     test::{ErrorKind, Result},
     wallet::Wallet,
 };
 use jormungandr_lib::interfaces::FragmentStatus;
-use std::{fmt, thread, time::Duration};
+use std::{
+    fmt, thread,
+    time::{Duration, SystemTime},
+};
+
+#[derive(Clone, Debug)]
+pub struct SyncWaitParams {
+    pub no_of_nodes: u64,
+    pub longest_path_length: u64,
+}
+
+impl SyncWaitParams {
+    pub fn two_nodes() -> Self {
+        SyncWaitParams {
+            no_of_nodes: 2,
+            longest_path_length: 2,
+        }
+    }
+
+    pub fn no_of_nodes(&self) -> u64 {
+        self.no_of_nodes
+    }
+
+    pub fn longest_path_length(&self) -> u64 {
+        self.longest_path_length
+    }
+
+    fn calculate_wait_time(&self) -> u64 {
+        self.no_of_nodes + self.longest_path_length * 2
+    }
+
+    pub fn wait_time(&self) -> Duration {
+        Duration::from_secs(self.calculate_wait_time())
+    }
+
+    pub fn timeout(&self) -> Duration {
+        Duration::from_secs(self.calculate_wait_time() * 2)
+    }
+}
+
+pub fn wait_for_nodes_sync(sync_wait_params: SyncWaitParams) {
+    let wait_time = sync_wait_params.wait_time();
+    std::thread::sleep(wait_time);
+}
+
+pub fn get_nodes_block_height_summary(nodes: Vec<&NodeController>) -> Vec<String> {
+    nodes
+        .iter()
+        .map({
+            |node| {
+                return format!(
+                    "node '{}' has block height: '{:?}'\n",
+                    node.alias(),
+                    node.stats().unwrap().last_block_height
+                );
+            }
+        })
+        .collect()
+}
+
+pub fn measure_sync_time(
+    nodes: Vec<&NodeController>,
+    sync_wait: MeasurementThresholds,
+    info: &str,
+) -> Measurement {
+    let now = SystemTime::now();
+    while now.elapsed().unwrap() < sync_wait.timeout() {
+        let block_heights: Vec<u32> = nodes
+            .iter()
+            .map(|node| node.stats().unwrap().last_block_height.parse().unwrap())
+            .collect();
+        let max_block_height = block_heights.iter().max().unwrap();
+        if !block_heights.iter().any(|x| *x != *max_block_height) {
+            return Measurement::new(info.to_owned(), now.elapsed().unwrap(), sync_wait.clone());
+        }
+    }
+    Measurement::new(info.to_owned(), now.elapsed().unwrap(), sync_wait.clone())
+}
 
 pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str) -> Result<()> {
     if left != right {
