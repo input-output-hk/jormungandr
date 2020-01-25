@@ -1,6 +1,7 @@
 mod blockchain;
 mod context;
 mod controller;
+pub mod repository;
 pub mod settings;
 mod topology;
 mod wallet;

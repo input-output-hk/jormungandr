@@ -1,5 +1,8 @@
 pub mod disruption;
 pub mod soak;
+pub mod sync;
+
+use crate::{scenario::repository::MeasurementThresholds, test::utils::SyncWaitParams};
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";

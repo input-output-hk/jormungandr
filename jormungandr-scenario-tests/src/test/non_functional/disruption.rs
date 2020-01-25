@@ -1,7 +1,8 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
+    scenario::repository::ScenarioResult,
     test::{non_functional::*, utils, Result},
-    Context, ScenarioResult,
+    Context,
 };
 use rand_chacha::ChaChaRng;
 use std::time::Duration;
@@ -92,5 +93,5 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
