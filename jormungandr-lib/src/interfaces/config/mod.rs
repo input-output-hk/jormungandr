@@ -3,7 +3,7 @@ mod mempool;
 mod node;
 mod secret;
 
-pub use log::*;
-pub use mempool::*;
-pub use node::*;
-pub use secret::*;
+pub use log::{Log, LogEntry, LogOutput};
+pub use mempool::{LogMaxEntries, Mempool, PoolMaxEntries};
+pub use node::{Explorer, NodeConfig, P2p, Rest, TopicsOfInterest, TrustedPeer};
+pub use secret::{Bft, GenesisPraos, NodeSecret};
