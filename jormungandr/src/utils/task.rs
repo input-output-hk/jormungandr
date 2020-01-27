@@ -5,14 +5,17 @@
 //! modules utilized in jormungandr.
 //!
 
+use crate::log;
 use crate::utils::async_msg::{self, MessageBox};
+
 use slog::Logger;
-use std::{
-    sync::mpsc::{self, Receiver, RecvError, Sender},
-    time::{Duration, Instant},
-};
 use tokio::prelude::{stream, Future, IntoFuture, Stream};
 use tokio::runtime::{self, Runtime, TaskExecutor};
+use tokio::timer::Interval;
+
+use std::fmt::Debug;
+use std::sync::mpsc::{self, Receiver, RecvError, Sender};
+use std::time::{Duration, Instant};
 
 // Limit on the length of a task message queue
 const MESSAGE_QUEUE_LEN: usize = 1000;
@@ -194,6 +197,46 @@ impl TokioServiceInfo {
             }
             res
         }));
+    }
+
+    // Run the closure with the specified period on the executor
+    // and execute the resulting closure.
+    pub fn run_periodic<F, U>(&self, name: &'static str, period: Duration, mut f: F)
+    where
+        F: FnMut() -> U,
+        F: Send + 'static,
+        U: IntoFuture<Item = ()>,
+        U::Future: Send + 'static,
+        U::Error: Debug,
+    {
+        let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
+        let error_logger = logger.clone();
+        let task = Interval::new_interval(period)
+            .map_err(move |e| {
+                error!(error_logger, "cannot run periodic task"; "reason" => %e);
+            })
+            .fold(Instant::now(), move |t_last, t_now| {
+                let logger = logger.clone();
+                let elapsed = t_now.duration_since(t_last);
+                if elapsed > period * 2 {
+                    warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
+                }
+                trace!(logger, "periodic {} started", name; "triggered_at" => ?t_now);
+                f().into_future().then(move |res| {
+                    match res {
+                        Ok(()) => {
+                            trace!(logger, "periodic {} finished successfully", name; "triggered_at" => ?t_now);
+                            Ok(t_now)
+                        }
+                        Err(e) => {
+                            error!(logger, "periodic task failed"; "error" => ?e, "triggered_at" => ?t_now);
+                            Err(())
+                        }
+                    }
+                })
+            })
+            .map(|_| {});
+        self.spawn(name, task);
     }
 }
 

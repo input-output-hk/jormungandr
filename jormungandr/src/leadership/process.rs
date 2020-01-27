@@ -29,7 +29,7 @@ use std::{
 use thiserror::Error;
 use tokio::{
     prelude::{future::Either, *},
-    timer::{self, Delay, Interval, Timeout},
+    timer::{self, Delay, Timeout},
 };
 
 #[derive(Error, Debug)]
@@ -92,22 +92,11 @@ impl Module {
         block_message: MessageBox<BlockMsg>,
     ) -> impl Future<Item = Self, Error = LeadershipError> {
         let mut logs_to_purge = logs.clone();
-        let garbage_collection_interval = garbage_collection_interval;
-        let logger = service_info
-            .logger()
-            .new(o!("sub task" => "garbage collection"));
-        let error_logger = logger.clone();
-        let purge_logs = Interval::new_interval(garbage_collection_interval)
-                .for_each(move |_instant| {
-                    debug!(logger, "garbage collect entries in the logs");
-                    logs_to_purge.poll_purge()
-                })
-                .map_err(move |error| {
-                    error!(error_logger, "Cannot run the garbage collection" ; "reason" => error.to_string());
-                });
-
-        service_info.spawn("purge logs", purge_logs);
-
+        service_info.run_periodic(
+            "garbage collection",
+            garbage_collection_interval,
+            move || logs_to_purge.poll_purge(),
+        );
         tip.get_ref().map(move |tip_ref| Self {
             schedule: Schedule::default(),
             service_info,

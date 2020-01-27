@@ -7,14 +7,10 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-use slog::Logger;
 use std::time::Duration;
-use tokio::{
-    prelude::{
-        future::Either::{A, B},
-        Future, Stream,
-    },
-    timer::Interval,
+use tokio::prelude::{
+    future::Either::{A, B},
+    Future, Stream,
 };
 
 pub struct Process {
@@ -53,10 +49,7 @@ impl Process {
         stats_counter: StatsCounter,
         input: MessageQueue<TransactionMsg>,
     ) -> impl Future<Item = (), Error = ()> {
-        service_info.spawn(
-            "pool garbage collector",
-            self.start_pool_garbage_collector(service_info.logger().clone()),
-        );
+        self.start_pool_garbage_collector(&service_info);
         input.for_each(move |input| {
             match input {
                 TransactionMsg::SendTransaction(origin, txs) => {
@@ -86,17 +79,12 @@ impl Process {
         })
     }
 
-    fn start_pool_garbage_collector(&self, logger: Logger) -> impl Future<Item = (), Error = ()> {
+    fn start_pool_garbage_collector(&self, service_info: &TokioServiceInfo) {
         let mut pool = self.pool().clone();
-        let garbage_collection_interval = self.garbage_collection_interval;
-        let error_logger = logger.clone();
-        Interval::new_interval(garbage_collection_interval)
-            .for_each(move |_instant| {
-                debug!(logger, "garbage collect entries in the MemPool and in the logs");
-                pool.poll_purge()
-            })
-            .map_err(move |error| {
-                error!(error_logger, "Cannot run the MemPool garbage collection" ; "reason" => error.to_string());
-            })
+        service_info.run_periodic(
+            "pool garbage collection",
+            self.garbage_collection_interval,
+            move || pool.poll_purge(),
+        )
     }
 }

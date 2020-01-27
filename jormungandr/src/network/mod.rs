@@ -67,6 +67,7 @@ use slog::Logger;
 use tokio::runtime::TaskExecutor;
 use tokio::timer::Interval;
 
+use std::convert::Infallible;
 use std::error;
 use std::fmt;
 use std::io;
@@ -246,41 +247,33 @@ pub fn start(
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
     let gossip_err_logger = global_state.logger.clone();
-    let reset_err_logger = global_state.logger.clone();
     let tp2p = global_state.topology.clone();
 
     if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
-        global_state.spawn(
-            Interval::new_interval(interval)
-                .map_err(move |e| {
-                    error!(reset_err_logger, "interval timer error: {:?}", e);
-                })
-                .for_each(move |_| tp2p.force_reset_layers()),
-        );
+        service_info.run_periodic("force reset topology", interval, move || {
+            tp2p.force_reset_layers::<Infallible>()
+        });
     }
 
     let peers = global_state.peers.clone();
-    let gc_err_logger = global_state.logger.clone();
     let gc_info_logger = global_state.logger.clone();
-    global_state.spawn(
-        Interval::new_interval(DEFAULT_PEER_GC_INTERVAL)
-            .map_err(move |e| {
-                error!(gc_err_logger, "interval timer error: {:?}", e);
+    service_info.run_periodic(
+        "peer garbage collection",
+        DEFAULT_PEER_GC_INTERVAL,
+        move || {
+            let gc_info_logger = gc_info_logger.clone();
+            peers.gc::<Infallible>().map(move |maybe_gced| {
+                if let Some(number_gced) = maybe_gced {
+                    warn!(
+                        gc_info_logger,
+                        "Peer GCed {number_gced} nodes",
+                        number_gced = number_gced
+                    );
+                } else {
+                    debug!(gc_info_logger, "Peer GCed nothing");
+                }
             })
-            .for_each(move |_| {
-                let gc_info_logger = gc_info_logger.clone();
-                peers.gc().map(move |maybe_gced| {
-                    if let Some(number_gced) = maybe_gced {
-                        warn!(
-                            gc_info_logger,
-                            "Peer GCed {number_gced} nodes",
-                            number_gced = number_gced
-                        );
-                    } else {
-                        debug!(gc_info_logger, "Peer GCed nothing");
-                    }
-                })
-            }),
+        },
     );
 
     let gossip = Interval::new_interval(global_state.config.gossip_interval.clone())
