@@ -53,7 +53,10 @@ impl Process {
         stats_counter: StatsCounter,
         input: MessageQueue<TransactionMsg>,
     ) -> impl Future<Item = (), Error = ()> {
-        service_info.spawn(self.start_pool_garbage_collector(service_info.logger().clone()));
+        service_info.spawn(
+            "pool garbage collector",
+            self.start_pool_garbage_collector(service_info.logger().clone()),
+        );
         input.for_each(move |input| {
             match input {
                 TransactionMsg::SendTransaction(origin, txs) => {

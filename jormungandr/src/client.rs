@@ -36,6 +36,7 @@ pub fn handle_input(
             let fut = handle.async_reply(get_block_tip(&task_data.blockchain_tip));
             let logger = info.logger().new(o!("request" => "GetBlockTip"));
             info.spawn(
+                "get block tip",
                 Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCK_TIP)).map_err(
                     move |e| {
                         error!(
@@ -51,6 +52,7 @@ pub fn handle_input(
             let fut = handle.async_reply(get_headers(task_data.storage.clone(), ids));
             let logger = info.logger().new(o!("request" => "GetHeaders"));
             info.spawn(
+                "GetHeaders",
                 Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS)).map_err(
                     move |e| {
                         warn!(
@@ -66,6 +68,7 @@ pub fn handle_input(
             let fut = handle_get_headers_range(task_data, checkpoints, to, handle);
             let logger = info.logger().new(o!("request" => "GetHeadersRange"));
             info.spawn(
+                "GetHeadersRange",
                 Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS_RANGE)).map_err(
                     move |e| {
                         warn!(
@@ -81,6 +84,7 @@ pub fn handle_input(
             let fut = handle.async_reply(get_blocks(task_data.storage.clone(), ids));
             let logger = info.logger().new(o!("request" => "GetBlocks"));
             info.spawn(
+                "get blocks",
                 Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCKS)).map_err(
                     move |e| {
                         warn!(
@@ -96,6 +100,7 @@ pub fn handle_input(
             let fut = handle_pull_blocks_to_tip(task_data, from, handle);
             let logger = info.logger().new(o!("request" => "PullBlocksToTip"));
             info.spawn(
+                "PullBlocksToTip",
                 Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP)).map_err(
                     move |e| {
                         warn!(

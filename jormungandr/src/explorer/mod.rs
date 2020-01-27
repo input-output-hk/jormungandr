@@ -123,13 +123,16 @@ impl Explorer {
         let mut explorer_db = self.db.clone();
         let logger = info.logger().clone();
         match bquery {
-            ExplorerMsg::NewBlock(block) => info.spawn(explorer_db.apply_block(block).then(
-                move |result| match result {
-                    // XXX: There is no garbage collection now, so the GCRoot is not used
-                    Ok(_gc_root) => Ok(()),
-                    Err(err) => Err(error!(logger, "Explorer error: {}", err)),
-                },
-            )),
+            ExplorerMsg::NewBlock(block) => info.spawn(
+                "apply block",
+                explorer_db
+                    .apply_block(block)
+                    .then(move |result| match result {
+                        // XXX: There is no garbage collection now, so the GCRoot is not used
+                        Ok(_gc_root) => Ok(()),
+                        Err(err) => Err(error!(logger, "Explorer error: {}", err)),
+                    }),
+            ),
         }
         future::ok::<(), ()>(())
     }

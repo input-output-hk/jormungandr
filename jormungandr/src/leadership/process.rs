@@ -106,7 +106,7 @@ impl Module {
                     error!(error_logger, "Cannot run the garbage collection" ; "reason" => error.to_string());
                 });
 
-        service_info.spawn(purge_logs);
+        service_info.spawn("purge logs", purge_logs);
 
         tip.get_ref().map(move |tip_ref| Self {
             schedule: Schedule::default(),
