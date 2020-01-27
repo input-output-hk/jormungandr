@@ -4,7 +4,7 @@ use crate::{
         utils::{self, SyncWaitParams},
         Result,
     },
-    Context, ScenarioResult
+    Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
 use std::time::Duration;

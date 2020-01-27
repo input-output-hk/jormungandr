@@ -6,10 +6,7 @@ use crate::{
     wallet::Wallet,
 };
 use jormungandr_lib::interfaces::FragmentStatus;
-use std::{
-    fmt, thread,
-    time::{Duration, SystemTime},
-};
+use std::{fmt, thread, time::Duration};
 
 #[derive(Clone, Debug)]
 pub struct SyncWaitParams {
