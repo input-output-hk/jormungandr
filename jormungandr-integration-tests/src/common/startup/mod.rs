@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::secret_model::SecretModel,
+    configuration::SecretModelFactory,
     data::address::{Account, Delegation, Utxo},
     file_utils,
     jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
@@ -10,7 +10,7 @@ use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, Ed25519Extended, 
 use chain_impl_mockchain::block::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::KeyPair,
-    interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, Ratio, TaxType},
+    interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, Ratio, TaxType},
 };
 use std::path::PathBuf;
 
@@ -178,18 +178,21 @@ pub fn start_stake_pool(
         .with_initial_certs(initial_certs)
         .build();
 
-    let secrets: Vec<SecretModel> = stake_pools
+    let secrets: Vec<NodeSecret> = stake_pools
         .iter()
         .map(|x| {
-            SecretModel::new_genesis(
-                &x.pool_kes.signing_key().to_bech32_str(),
-                &x.pool_vrf.signing_key().to_bech32_str(),
+            SecretModelFactory::genesis(
+                x.pool_kes.signing_key(),
+                x.pool_vrf.signing_key(),
                 &x.stake_pool_id,
             )
         })
         .collect();
 
-    let secret_model_paths = secrets.iter().map(|x| SecretModel::serialize(&x)).collect();
+    let secret_model_paths = secrets
+        .iter()
+        .map(|x| SecretModelFactory::serialize(&x))
+        .collect();
 
     config.secret_models = secrets;
     config.secret_model_paths = secret_model_paths;

@@ -1,7 +1,6 @@
-use crate::common::{
-    configuration::node_config_model::{Log, LogEntry, TrustedPeer},
-    jormungandr::{ConfigurationBuilder, Starter},
-};
+use crate::common::jormungandr::{ConfigurationBuilder, Starter};
+
+use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, TrustedPeer};
 
 #[test]
 pub fn test_jormungandr_leader_node_starts_successfully() {
@@ -62,8 +61,9 @@ pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
 pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
     let config = ConfigurationBuilder::new()
         .with_log(Log(vec![LogEntry {
-            format: Some("xml".to_string()),
-            level: None,
+            format: "xml".to_string(),
+            level: "info".to_string(),
+            output: LogOutput::Stderr,
         }]))
         .build();
     Starter::new().config(config).start_fail(

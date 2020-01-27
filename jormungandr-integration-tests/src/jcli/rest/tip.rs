@@ -1,6 +1,5 @@
 use crate::common::{
-    configuration::node_config_model::NodeConfig, jcli_wrapper, jormungandr::starter::Starter,
-    process_assert,
+    configuration::JormungandrConfig, jcli_wrapper, jormungandr::starter::Starter, process_assert,
 };
 
 #[test]
@@ -13,8 +12,8 @@ pub fn test_correct_id_is_returned_for_block_tip_if_only_genesis_block_exists() 
 
 #[test]
 pub fn test_correct_error_is_returned_for_incorrect_path() {
-    let node_config = NodeConfig::new();
-    let mut incorrect_host = node_config.get_node_address();
+    let config = JormungandrConfig::new();
+    let mut incorrect_host = config.get_node_address();
     incorrect_host.push_str("/api");
 
     process_assert::assert_process_failed_and_matches_message(

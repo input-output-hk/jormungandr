@@ -2,7 +2,7 @@
 
 use crate::{
     common::{
-        configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
+        configuration::jormungandr_config::JormungandrConfig,
         data::address::Account,
         jcli_wrapper,
         jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
@@ -11,6 +11,7 @@ use crate::{
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
 use chain_addr::Discrimination;
+use jormungandr_lib::interfaces::TrustedPeer;
 use std::env;
 use std::time::Duration;
 
@@ -59,8 +60,14 @@ impl TestnetConfig {
             }
 
             trusted_peers.push(TrustedPeer {
-                address: trusted_peer_address.unwrap(),
-                id: trusted_peer_id.unwrap(),
+                address: trusted_peer_address
+                    .expect("incorrect trusted peer address")
+                    .parse()
+                    .expect("cannot parse trusted peer address"),
+                id: trusted_peer_id
+                    .expect("incorrect trusted peer id")
+                    .parse()
+                    .expect("cannot parse trusted peer address"),
             });
         }
         trusted_peers

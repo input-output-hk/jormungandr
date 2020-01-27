@@ -1,9 +1,8 @@
 use super::logger::JormungandrLogger;
 use crate::common::{
-    configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
-    explorer::Explorer,
-    jcli_wrapper,
+    configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
 };
+use jormungandr_lib::interfaces::TrustedPeer;
 use std::path::PathBuf;
 use std::process::Child;
 
@@ -64,15 +63,7 @@ impl JormungandrProcess {
     }
 
     pub fn explorer(&self) -> Explorer {
-        Explorer::new(
-            self.config
-                .node_config
-                .rest
-                .as_ref()
-                .unwrap()
-                .listen
-                .clone(),
-        )
+        Explorer::new(self.config.node_config.rest.listen.to_string())
     }
 
     pub fn as_trusted_peer(&self) -> TrustedPeer {

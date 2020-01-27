@@ -377,7 +377,14 @@ impl NodeController {
     }
 
     fn logger(&self) -> JormungandrLogger {
-        let log_file = self.settings.config.log.log_file().unwrap();
+        let log_file = self
+            .settings
+            .config
+            .log
+            .clone()
+            .unwrap()
+            .log_file()
+            .unwrap();
         JormungandrLogger::new(log_file)
     }
 
