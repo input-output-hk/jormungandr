@@ -5,7 +5,7 @@ use crate::{
 use async_trait::async_trait;
 use bb8::{ManageConnection, Pool, PooledConnection};
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
-use futures_03::{
+use futures03::{
     future,
     prelude::*,
     sink::{Sink, SinkExt},
