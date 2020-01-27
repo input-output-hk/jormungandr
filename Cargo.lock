@@ -477,6 +477,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bb8"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12be5a75061a84c94149b8120651576c138bbade70c6d6d3659cbe8af6a8cbd2"
+dependencies = [
+ "async-trait",
+ "futures 0.3.3",
+ "tokio 0.2.11",
+]
+
+[[package]]
 name = "bech32"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1876,6 +1887,8 @@ dependencies = [
  "actix-rt",
  "actix-threadpool",
  "actix-web",
+ "async-trait",
+ "bb8",
  "bech32 0.7.2",
  "bincode",
  "bytes 0.4.12",
