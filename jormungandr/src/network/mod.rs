@@ -321,7 +321,6 @@ fn handle_propagation_msg(
     state: GlobalStateR,
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
-    trace!(state.logger(), "to propagate: {:?}", &msg);
     let prop_state = state.clone();
     let send_to_peers = match msg {
         PropagateMsg::Block(ref header) => {
