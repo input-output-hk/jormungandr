@@ -1,8 +1,9 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
+    scenario::repository::ScenarioResult,
     test::utils,
     test::Result,
-    Context, ScenarioResult,
+    Context,
 };
 use rand_chacha::ChaChaRng;
 use std::time::{Duration, SystemTime};
@@ -156,5 +157,5 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     relay2.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }

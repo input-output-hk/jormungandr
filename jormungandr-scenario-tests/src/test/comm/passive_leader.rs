@@ -1,8 +1,8 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    test::utils,
-    test::Result,
-    Context, ScenarioResult,
+    scenario::repository::ScenarioResult,
+    test::{utils, Result},
+    Context,
 };
 use rand_chacha::ChaChaRng;
 
@@ -55,7 +55,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     passive.shutdown()?;
     leader.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -129,7 +129,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -181,5 +181,5 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }

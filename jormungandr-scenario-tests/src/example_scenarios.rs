@@ -1,7 +1,8 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
+    scenario::repository::ScenarioResult,
     test::Result,
-    Context, ScenarioResult,
+    Context,
 };
 use rand_chacha::ChaChaRng;
 use std::{thread, time::Duration};
@@ -47,7 +48,7 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     node2.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -116,13 +117,13 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             if status.is_in_a_block() {
                 wallet1.confirm_transaction();
             } else {
-                return Ok(ScenarioResult::Failed(format!(
+                return Ok(ScenarioResult::failed(format!(
                     "transaction no. {} not confirmed",
                     i
                 )));
             }
         } else {
-            return Ok(ScenarioResult::Failed(format!(
+            return Ok(ScenarioResult::failed(format!(
                 "cannot get status from leader1"
             )));
         }
@@ -133,5 +134,5 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     passive2.shutdown()?;
     passive3.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }

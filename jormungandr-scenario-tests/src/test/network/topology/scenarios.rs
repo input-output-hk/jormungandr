@@ -75,7 +75,7 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -141,7 +141,7 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -202,7 +202,7 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -266,7 +266,7 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -327,7 +327,7 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -400,7 +400,7 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -478,7 +478,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -617,5 +617,5 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     relay2.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }

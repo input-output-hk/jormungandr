@@ -1,8 +1,8 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    test::utils,
-    test::Result,
-    Context, ScenarioResult,
+    scenario::repository::ScenarioResult,
+    test::{utils, Result},
+    Context,
 };
 use rand_chacha::ChaChaRng;
 use std::time::Duration;
@@ -65,5 +65,5 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     leader_1.shutdown().unwrap();
     leader_2.shutdown().unwrap();
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
