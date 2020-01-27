@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use bb8::{ManageConnection, Pool, PooledConnection};
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
 use futures03::{
-    future,
+    executor::block_on,
     prelude::*,
     sink::{Sink, SinkExt},
     stream::{self, Stream},
@@ -78,16 +78,18 @@ struct BlockIterState {
 }
 
 impl Storage {
-    pub async fn new(storage: NodeStorage) -> Self {
-        let manager = ConnectionManager::new(storage);
-        let pool = Pool::builder().build(manager).await.unwrap();
-        let write_connection_lock =
-            Arc::new(Mutex::new(pool.dedicated_connection().await.unwrap()));
+    pub fn new(storage: NodeStorage) -> Self {
+        block_on(async move {
+            let manager = ConnectionManager::new(storage);
+            let pool = Pool::builder().build(manager).await.unwrap();
+            let write_connection_lock =
+                Arc::new(Mutex::new(pool.dedicated_connection().await.unwrap()));
 
-        Storage {
-            pool,
-            write_connection_lock,
-        }
+            Storage {
+                pool,
+                write_connection_lock,
+            }
+        })
     }
 
     async fn run<F, R>(&self, f: F) -> Result<R, StorageError>
