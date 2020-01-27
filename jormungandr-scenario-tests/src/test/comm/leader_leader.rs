@@ -1,8 +1,10 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    scenario::repository::ScenarioResult,
-    test::{utils, Result},
-    Context,
+    test::{
+        utils::{self, SyncWaitParams},
+        Result,
+    },
+    Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
 use std::time::Duration;
@@ -60,6 +62,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         wallet2.confirm_transaction();
     }
 
+    utils::wait_for_nodes_sync(SyncWaitParams::two_nodes());
     utils::assert_are_in_sync(vec![&leader_1, &leader_2])?;
 
     leader_1.shutdown().unwrap();

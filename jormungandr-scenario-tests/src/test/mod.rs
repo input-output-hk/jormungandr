@@ -5,6 +5,8 @@ pub mod utils;
 
 use jormungandr_lib::interfaces::FragmentStatus;
 
+use std::time::Duration;
+
 error_chain! {
     links {
         Node(crate::node::Error, crate::node::ErrorKind);
@@ -13,6 +15,11 @@ error_chain! {
     }
 
     errors {
+        SyncTimeoutOccurred(info: String, timeout: Duration) {
+            description("synchronization for nodes has failed"),
+            display("synchronization for nodes has failed. {}. Timeout was: {} s", info, timeout.as_secs()),
+        }
+
         AssertionFailed(info: String) {
             description("assertion has failed"),
             display("{}", info),
@@ -21,5 +28,7 @@ error_chain! {
             description("transaction not in block"),
             display("transaction should be 'In Block'. status: {:?}, node: {}", status, node),
         }
+
+
     }
 }
