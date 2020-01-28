@@ -28,7 +28,7 @@ use futures::future::{Either, Loop};
 use slog::Logger;
 use tokio::{
     prelude::*,
-    timer::{timeout, Interval, Timeout},
+    timer::{timeout, Timeout},
 };
 
 use std::{sync::Arc, time::Duration};
@@ -36,6 +36,8 @@ use std::{sync::Arc, time::Duration};
 type TimeoutError = timeout::Error<Error>;
 type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
 type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
+
+const BRANCH_REPROCESSING_INTERVAL: Duration = Duration::from_secs(60);
 
 const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
@@ -72,7 +74,7 @@ impl Process {
         service_info: TokioServiceInfo,
         input: MessageQueue<BlockMsg>,
     ) -> impl Future<Item = (), Error = ()> {
-        service_info.spawn(self.start_branch_reprocessing(service_info.logger().clone()));
+        self.start_branch_reprocessing(&service_info);
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
         input.for_each(move |msg| {
@@ -148,6 +150,7 @@ impl Process {
                 });
 
                 info.spawn(
+                    "process leadership block",
                     Timeout::new(notify_explorer, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP))
                         .map_err(move |err: TimeoutError| {
                             error!(logger, "cannot process leadership block" ; "reason" => ?err)
@@ -173,7 +176,7 @@ impl Process {
                     logger.clone(),
                 );
 
-                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT)).map_err(move |err: TimeoutError| {
+                info.spawn("process block announcement", Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT)).map_err(move |err: TimeoutError| {
                     error!(logger, "cannot process block announcement" ; "reason" => ?err)
                 }))
             }
@@ -263,7 +266,8 @@ impl Process {
                     None => Either::B(future::ok(())),
                 });
 
-                info.spawn(Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS)).map_err(move |err: TimeoutError| {
+                info.spawn(
+                    "process network blocks", Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS)).map_err(move |err: TimeoutError| {
                     error!(logger_err, "cannot process network blocks" ; "reason" => ?err)
                 }))
             }
@@ -311,26 +315,21 @@ impl Process {
                     .map_err(move |err: TimeoutError| {
                         error!(logger_err2, "cannot process network headers" ; "reason" => ?err)
                     });
-                info.spawn(future);
+                info.spawn("process network headers", future);
             }
         }
     }
 
-    fn start_branch_reprocessing(&self, logger: Logger) -> impl Future<Item = (), Error = ()> {
+    fn start_branch_reprocessing(&self, info: &TokioServiceInfo) {
         let tip = self.blockchain_tip.clone();
         let blockchain = self.blockchain.clone();
-        let error_logger = logger.clone();
+        let logger = info.logger().clone();
 
-        Interval::new_interval(Duration::from_secs(60))
-            .map_err(move |e| {
-                error!(error_logger, "cannot run branch reprocessing" ; "reason" => ?e);
-            })
-            .for_each(move |_instance| {
-                let error_logger = logger.clone();
-                reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()).map_err(move |e| {
-                    error!(error_logger, "cannot run branch reprocessing" ; "reason" => ?e);
-                })
-            })
+        info.run_periodic(
+            "branch reprocessing",
+            BRANCH_REPROCESSING_INTERVAL,
+            move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
+        )
     }
 
     fn spawn_pull_headers_scheduler(&self, info: &TokioServiceInfo) -> PullHeadersScheduler {
@@ -353,7 +352,7 @@ impl Process {
         let future = scheduler_future
             .map(|never| match never {})
             .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
-        info.spawn(future);
+        info.spawn("pull headers scheduling", future);
         scheduler
     }
 
@@ -379,7 +378,7 @@ impl Process {
         let future = scheduler_future
             .map(|never| match never {})
             .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
-        info.spawn(future);
+        info.spawn("get next block scheduling", future);
         scheduler
     }
 }

@@ -147,15 +147,7 @@ where
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         match self.outbound.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(Some(item))) => {
-                trace!(
-                    self.logger,
-                    "sending";
-                    "item" => ?item,
-                    "direction" => "out",
-                );
-                Ok(Some(item).into())
-            }
+            Ok(Async::Ready(Some(item))) => Ok(Some(item).into()),
             Ok(Async::Ready(None)) => {
                 debug!(
                     self.logger,
@@ -471,11 +463,6 @@ impl Sink for FragmentProcessor {
         if self.buffered_fragments.len() >= buffer_sizes::inbound::FRAGMENTS {
             return Ok(AsyncSink::NotReady(fragment));
         }
-        trace!(
-            self.logger,
-            "received";
-            "item" => ?fragment,
-        );
         self.buffered_fragments.push(fragment);
         let async_send = self.try_send_fragments()?;
         Ok(async_send.map(|()| self.buffered_fragments.pop().unwrap()))
@@ -550,11 +537,6 @@ impl Sink for GossipProcessor {
         &mut self,
         gossip: Gossip<NodeData>,
     ) -> StartSend<Self::SinkItem, core_error::Error> {
-        trace!(
-            self.logger,
-            "received";
-            "item" => ?gossip,
-        );
         self.process_item(gossip);
         Ok(AsyncSink::Ready)
     }
