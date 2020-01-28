@@ -414,8 +414,6 @@ impl Sink for BlockAnnouncementProcessor {
         if polled_ready.is_not_ready() {
             return Ok(AsyncSink::NotReady(header));
         }
-        let block_hash = header.hash();
-        info!(self.logger, "received block announcement"; "hash" => %block_hash);
         let polled = self
             .mbox
             .start_send(BlockMsg::AnnouncedBlock(header, self.node_id))
