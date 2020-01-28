@@ -453,10 +453,7 @@ pub fn process_new_ref(
                 A(A(tip.update_ref(candidate).map(|_| true)))
             } else {
                 match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
-                    ComparisonResult::PreferCurrent => {
-                        info!(logger, "create new branch");
-                        A(B(future::ok(false)))
-                    }
+                    ComparisonResult::PreferCurrent => A(B(future::ok(false))),
                     ComparisonResult::PreferCandidate => {
                         info!(logger, "switching to new candidate branch");
                         B(blockchain
