@@ -14,10 +14,23 @@ use futures03::{
 };
 use futures_util::compat::Compat;
 use std::{convert::identity, pin::Pin, sync::Arc};
-use tokio_02::{sync::Semaphore, task::spawn_blocking};
+use tokio_02::sync::Semaphore;
 use tokio_compat::prelude::*;
 
 pub use chain_storage::error::Error as StorageError;
+
+async fn run_blocking_storage<F, R>(f: F) -> Result<R, StorageError>
+where
+    F: FnOnce() -> Result<R, StorageError> + Send + 'static,
+    R: Send + 'static,
+{
+    use tokio_02::task::spawn_blocking;
+
+    spawn_blocking(f)
+        .await
+        .map_err(|e| StorageError::BackendError(Box::new(e)))
+        .and_then(identity)
+}
 
 #[derive(Clone)]
 struct ConnectionManager {
@@ -39,17 +52,11 @@ impl ManageConnection for ConnectionManager {
 
     async fn connect(&self) -> Result<Self::Connection, Self::Error> {
         let inner = self.inner.clone();
-        spawn_blocking(move || inner.connect())
-            .await
-            .map_err(|e| StorageError::BackendError(Box::new(e)))
-            .and_then(identity)
+        run_blocking_storage(move || inner.connect()).await
     }
 
     async fn is_valid(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
-        spawn_blocking(move || conn.ping().and(Ok(conn)))
-            .await
-            .map_err(|e| StorageError::BackendError(Box::new(e)))
-            .and_then(identity)
+        run_blocking_storage(move || conn.ping().and(Ok(conn))).await
     }
 
     fn has_broken(&self, conn: &mut Self::Connection) -> bool {
@@ -107,14 +114,12 @@ impl Storage03 {
     {
         let pool = self.pool.clone();
 
-        spawn_blocking(move || {
+        run_blocking_storage(move || {
             let connection =
                 block_on(pool.get()).map_err(|e| StorageError::BackendError(Box::new(e)))?;
             f(connection)
         })
         .await
-        .map_err(|e| StorageError::BackendError(Box::new(e)))
-        .and_then(identity)
     }
 
     pub async fn get_tag(&self, tag: String) -> Result<Option<HeaderHash>, StorageError> {
@@ -416,7 +421,7 @@ impl BlockIterState {
 
         let cur_depth = self.cur_depth;
 
-        let (mut pending_infos, block) = spawn_blocking(move || {
+        let (mut pending_infos, block) = run_blocking_storage(move || {
             let store =
                 block_on(pool.get()).map_err(|e| StorageError::BackendError(Box::new(e)))?;
 
@@ -445,9 +450,7 @@ impl BlockIterState {
                 Ok((pending_infos, block))
             }
         })
-        .await
-        .map_err(|e| StorageError::BackendError(Box::new(e)))
-        .and_then(identity)?;
+        .await?;
 
         self.pending_infos.append(&mut pending_infos);
 
