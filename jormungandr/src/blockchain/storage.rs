@@ -218,6 +218,8 @@ impl Storage03 {
         S: Sink<Result<Block, E>>,
         E: From<StorageError>,
     {
+        let mut sink = sink;
+
         let res = self
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
@@ -228,19 +230,14 @@ impl Storage03 {
             .await;
 
         match res {
-            Ok(iter) => {
-                let mut state = SendState {
-                    sink,
-                    iter,
-                    pending: None,
-                };
-
-                while state.r#continue().await? {
-                    state.fill_sink(self.pool.clone()).await?;
+            Ok(mut iter) => {
+                while iter.has_next() {
+                    let item = iter.get_next(self.pool.clone()).await.map_err(Into::into);
+                    sink.send(item).await?;
                 }
+                sink.close().await?;
             }
             Err(e) => {
-                let mut sink = sink;
                 sink.send_all(&mut stream::once(Box::pin(async { Ok(Err(e.into())) })))
                     .await?;
             }
@@ -455,45 +452,5 @@ impl BlockIterState {
         self.pending_infos.append(&mut pending_infos);
 
         Ok(block)
-    }
-}
-
-struct SendState<S, E> {
-    sink: Pin<Box<S>>,
-    iter: BlockIterState,
-    pending: Option<Result<Block, E>>,
-}
-
-impl<S, E> SendState<S, E>
-where
-    S: Sink<Result<Block, E>>,
-    E: From<StorageError>,
-{
-    async fn r#continue(&mut self) -> Result<bool, S::Error> {
-        let mut sink = self.sink.as_mut();
-        if let Some(item) = self.pending.take() {
-            sink.send(item).await?;
-        }
-
-        let has_next = self.iter.has_next();
-
-        if !has_next {
-            sink.close().await?;
-        }
-
-        Ok(has_next)
-    }
-
-    async fn fill_sink(&mut self, store: Pool<ConnectionManager>) -> Result<(), S::Error> {
-        assert!(self.iter.has_next());
-        loop {
-            if !self.iter.has_next() {
-                return Ok(());
-            }
-            let store = store.clone();
-            let item = self.iter.get_next(store).await.map_err(Into::into);
-            self.sink.flush().await?;
-            self.sink.as_mut().start_send(item)?
-        }
     }
 }
