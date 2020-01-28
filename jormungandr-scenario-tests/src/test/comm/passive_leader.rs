@@ -84,7 +84,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     //controller.monitor_nodes();
 
     let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
     let passive =
@@ -114,7 +114,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     )?;
 
     let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
     utils::sending_transactions_to_node_sequentially(
         10,
