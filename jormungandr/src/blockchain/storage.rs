@@ -487,6 +487,9 @@ where
     async fn fill_sink(&mut self, store: Pool<ConnectionManager>) -> Result<(), S::Error> {
         assert!(self.iter.has_next());
         loop {
+            if !self.iter.has_next() {
+                return Ok(());
+            }
             let store = store.clone();
             let item = self.iter.get_next(store).await.map_err(Into::into);
             self.sink.as_mut().start_send(item)?
