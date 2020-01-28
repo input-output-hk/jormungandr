@@ -492,6 +492,7 @@ where
             }
             let store = store.clone();
             let item = self.iter.get_next(store).await.map_err(Into::into);
+            self.sink.flush().await?;
             self.sink.as_mut().start_send(item)?
         }
     }
