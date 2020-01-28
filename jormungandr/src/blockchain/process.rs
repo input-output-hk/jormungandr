@@ -126,7 +126,6 @@ impl Process {
                 });
 
                 let process_new_ref = update_mempool.and_then(move |new_block_ref| {
-                    debug!(logger3, "processing the new block and propagating");
                     process_and_propagate_new_ref(
                         logger3,
                         blockchain,
@@ -488,10 +487,13 @@ fn process_and_propagate_new_ref(
     new_block_ref: Arc<Ref>,
     network_msg_box: MessageBox<NetworkMsg>,
 ) -> impl Future<Item = (), Error = Error> {
-    let process_new_ref = process_new_ref(logger.clone(), blockchain, tip, new_block_ref.clone());
+    let header = new_block_ref.header().clone();
+
+    debug!(logger, "processing the new block and propagating"; "hash" => %header.hash());
+
+    let process_new_ref = process_new_ref(logger.clone(), blockchain, tip, new_block_ref);
 
     process_new_ref.and_then(move |()| {
-        let header = new_block_ref.header().clone();
         debug!(logger, "propagating block to the network"; "hash" => %header.hash());
         network_msg_box
             .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
