@@ -8,14 +8,13 @@ use network_core::error::Error as NetworkError;
 use network_grpc::client::Connection;
 use slog::Logger;
 use thiserror::Error;
+use tokio::prelude::future::Either;
 use tokio::prelude::*;
 use tokio::runtime::Runtime;
 
 use std::fmt::Debug;
 use std::io;
 use std::sync::Arc;
-
-const APPLY_FREQUENCY_BOOTSTRAP: usize = 128;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -87,28 +86,29 @@ where
     let block0 = blockchain.block0().clone();
     let logger2 = logger.clone();
     let blockchain2 = blockchain.clone();
+    let branch2 = branch.clone();
 
     stream
-        .map_err(|e| Error::PullStreamFailed { source: e })
-        .filter(move |block| block.header.hash() != block0)
-        .and_then(move |block| handle_block(blockchain.clone(), block, logger.clone()))
-        .fold((tip, 0), move |(_old_tip, counter), new_tip| {
-            use futures::future::Either::{A, B};
-
-            if counter < APPLY_FREQUENCY_BOOTSTRAP {
-                A(future::ok((new_tip, counter + 1)))
-            } else {
-                B(blockchain::process_new_ref(
-                    logger2.clone(),
-                    blockchain2.clone(),
+        .skip_while(move |block| Ok(block.header.hash() == block0))
+        .then(|res| Ok(res))
+        .fold(tip, move |parent_tip, block_or_err| match block_or_err {
+            Ok(block) => Either::A(handle_block(blockchain.clone(), block, logger.clone())),
+            Err(e) => {
+                let fut = blockchain::process_new_ref(
+                    logger.clone(),
+                    blockchain.clone(),
                     branch.clone(),
-                    new_tip.clone(),
+                    parent_tip.clone(),
                 )
-                .map_err(|e| Error::ChainSelectionFailed { source: e })
-                .map(|()| (new_tip, 0)))
+                .then(|_| Err(Error::PullStreamFailed { source: e }));
+                Either::B(fut)
             }
         })
-        .map(|(tip, _)| tip)
+        .and_then(move |new_tip| {
+            blockchain::process_new_ref(logger2, blockchain2, branch2, new_tip.clone())
+                .map_err(|e| Error::ChainSelectionFailed { source: e })
+                .map(|()| new_tip)
+        })
 }
 
 fn handle_block(
