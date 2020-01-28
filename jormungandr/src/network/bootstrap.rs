@@ -144,6 +144,7 @@ fn handle_block(
             );
             end_blockchain
                 .apply_and_store_block(post_checked, block)
+                .map(|applied| applied.expect("validated block must be unique"))
                 .map_err(|e| Error::ApplyBlockFailed { source: e })
         })
 }

@@ -226,13 +226,17 @@ impl Process {
                                     logger.clone(),
                                 )
                                 .then(move |res| match res {
-                                    Ok(candidate) => {
+                                    Ok(Some(candidate)) => {
                                         stats_counter.add_block_recv_cnt(1);
                                         Ok(Loop::Continue(State {
                                             stream,
                                             reply,
-                                            candidate,
+                                            candidate: Some(candidate),
                                         }))
+                                    }
+                                    Ok(None) => {
+                                        reply.reply_ok(());
+                                        Ok(Loop::Break(candidate))
                                     }
                                     Err(e) => {
                                         info!(
@@ -529,9 +533,10 @@ pub fn process_leadership_block(
             end_blockchain.apply_and_store_block(post_checked, block)
         })
         .map_err(|err| Error::with_chain(err, "cannot process leadership block"))
-        .map(move |e| {
+        .map(move |applied| {
+            let new_ref = applied.expect("block from leadership must be unique");
             info!(logger, "block from leader event successfully stored");
-            e
+            new_ref
         })
 }
 
@@ -639,8 +644,7 @@ fn process_network_block(
                     tx_msg_box,
                     explorer_msg_box,
                     logger,
-                )
-                .map(Some);
+                );
                 Either::B(post_check_and_apply)
             }
         })
@@ -653,7 +657,7 @@ fn check_and_apply_block(
     tx_msg_box: MessageBox<TransactionMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     logger: Logger,
-) -> impl Future<Item = Arc<Ref>, Error = chain::Error> {
+) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
     let blockchain1 = blockchain.clone();
     let mut tx_msg_box = tx_msg_box.clone();
@@ -664,10 +668,11 @@ fn check_and_apply_block(
         .post_check_header(header, parent_ref)
         .and_then(move |post_checked| {
             let header = post_checked.header();
+            let block_hash = header.hash();
             debug!(
                 logger,
                 "applying block to storage";
-                "hash" => %header.hash(),
+                "hash" => %block_hash,
                 "parent" => %header.parent_id(),
                 "date" => %header.block_date(),
             );
@@ -679,18 +684,34 @@ fn check_and_apply_block(
             let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
             blockchain1
                 .apply_and_store_block(post_checked, block)
-                .and_then(move |block_ref| {
-                    try_request_fragment_removal(&mut tx_msg_box, fragment_ids, block_ref.header()).unwrap_or_else(|err| {
-                        error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
-                    });
-                    if let Some(msg_box) = explorer_msg_box.as_mut() {
-                        msg_box
-                            .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
-                            .unwrap_or_else(|err| {
-                                error!(logger, "cannot add block to explorer: {}", err)
-                            });
+                .and_then(move |maybe_block_ref| {
+                    if let Some(ref block_ref) = maybe_block_ref {
+                        let header = block_ref.header();
+                        debug!(
+                            logger,
+                            "applied block to storage";
+                            "hash" => %block_hash,
+                            "parent" => %header.parent_id(),
+                            "date" => %header.block_date(),
+                        );
+                        try_request_fragment_removal(&mut tx_msg_box, fragment_ids, header).unwrap_or_else(|err| {
+                            error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
+                        });
+                        if let Some(msg_box) = explorer_msg_box.as_mut() {
+                            msg_box
+                                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
+                                .unwrap_or_else(|err| {
+                                    error!(logger, "cannot add block to explorer: {}", err)
+                                });
+                        }
+                    } else {
+                        debug!(
+                            logger,
+                            "block is already present in storage, not applied";
+                            "hash" => %block_hash,
+                        );
                     }
-                    Ok(block_ref)
+                    Ok(maybe_block_ref)
                 })
         })
 }

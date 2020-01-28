@@ -487,22 +487,24 @@ impl Blockchain {
     }
 
     /// Apply the block on the blockchain from a post checked header
-    /// and add it to the storage.
+    /// and add it to the storage. If the block is already present in
+    /// the storage, the returned future resolves to None. Otherwise
+    /// it returns the reference to the block.
     pub fn apply_and_store_block(
         &self,
         post_checked_header: PostCheckedHeader,
         block: Block,
-    ) -> impl Future<Item = Arc<Ref>, Error = Error> {
+    ) -> impl Future<Item = Option<Arc<Ref>>, Error = Error> {
         let mut storage = self.storage.clone();
         self.apply_block(post_checked_header, &block)
             .and_then(move |block_ref| {
                 storage
                     .put_block(block)
+                    .map(|()| Some(block_ref))
                     .or_else(|err| match err {
-                        StorageError::BlockAlreadyPresent => Ok(()),
+                        StorageError::BlockAlreadyPresent => Ok(None),
                         err => Err(err.into()),
                     })
-                    .and_then(move |()| Ok(block_ref))
             })
     }
 
