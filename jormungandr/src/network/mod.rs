@@ -64,6 +64,7 @@ use network_core::gossip::{Gossip, Node};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
+use tokio::runtime::TaskExecutor;
 use tokio::timer::Interval;
 
 use std::error;
@@ -121,6 +122,7 @@ pub struct GlobalState {
     pub config: Configuration,
     pub topology: P2pTopology,
     pub peers: Peers,
+    pub executor: TaskExecutor,
     pub logger: Logger,
 }
 
@@ -132,6 +134,7 @@ impl GlobalState {
         block0_hash: HeaderHash,
         config: Configuration,
         topology: P2pTopology,
+        executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
         let peers = Peers::new(
@@ -145,6 +148,7 @@ impl GlobalState {
             config,
             topology,
             peers,
+            executor,
             logger,
         }
     }
@@ -157,7 +161,7 @@ impl GlobalState {
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
-        tokio::spawn(f);
+        self.executor.spawn(f)
     }
 }
 
@@ -210,6 +214,7 @@ pub fn start(
         params.block0_hash,
         params.config,
         topology,
+        service_info.executor().clone(),
         service_info.logger().clone(),
     ));
 
@@ -531,7 +536,7 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
     peers
 }
 
-pub async fn bootstrap(
+pub fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
     branch: Tip,
@@ -555,8 +560,7 @@ pub async fn bootstrap(
             blockchain.clone(),
             branch.clone(),
             logger.clone(),
-        )
-        .await;
+        );
 
         match res {
             Err(bootstrap::Error::Connect { source: e }) => {
@@ -580,7 +584,7 @@ pub async fn bootstrap(
 /// The calling thread is blocked until the block is retrieved.
 /// This function is called during blockchain initialization
 /// to retrieve the genesis block.
-pub async fn fetch_block(
+pub fn fetch_block(
     config: &Configuration,
     hash: HeaderHash,
     logger: &Logger,
@@ -600,7 +604,7 @@ pub async fn fetch_block(
     for address in trusted_peers_shuffled(&config) {
         let logger = logger.new(o!("peer_address" => address.to_string()));
         let peer = Peer::new(address, Protocol::Grpc);
-        match grpc::fetch_block(peer, hash, &logger).await {
+        match grpc::fetch_block(peer, hash, &logger) {
             Err(grpc::FetchBlockError::Connect { source: e }) => {
                 warn!(logger, "unable to reach peer for block download"; "reason" => %e);
             }

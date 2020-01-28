@@ -9,7 +9,7 @@ use network_grpc::client::Connection;
 use slog::Logger;
 use thiserror::Error;
 use tokio::prelude::*;
-use tokio_compat::prelude::*;
+use tokio::runtime::Runtime;
 
 use std::fmt::Debug;
 use std::io;
@@ -41,7 +41,7 @@ pub enum Error {
     ChainSelectionFailed { source: BlockchainError },
 }
 
-pub async fn bootstrap_from_peer(
+pub fn bootstrap_from_peer(
     peer: Peer,
     blockchain: Blockchain,
     branch: Tip,
@@ -49,7 +49,9 @@ pub async fn bootstrap_from_peer(
 ) -> Result<Arc<Ref>, Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let bootstrap = grpc::connect(peer.address(), None)
+    let runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
+
+    let bootstrap = grpc::connect(peer.address(), None, runtime.executor())
         .map_err(|e| Error::Connect { source: e })
         .and_then(|client: Connection<BlockConfig>| {
             client
@@ -68,7 +70,7 @@ pub async fn bootstrap_from_peer(
                 })
         });
 
-    bootstrap.compat().await
+    runtime.block_on_all(bootstrap)
 }
 
 fn bootstrap_from_stream<S>(
