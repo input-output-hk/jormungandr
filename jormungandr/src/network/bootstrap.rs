@@ -95,7 +95,7 @@ where
         .fold((tip, 0), move |(_old_tip, counter), new_tip| {
             use futures::future::Either::{A, B};
 
-            if counter >= APPLY_FREQUENCY_BOOTSTRAP {
+            if counter < APPLY_FREQUENCY_BOOTSTRAP {
                 A(future::ok((new_tip, counter + 1)))
             } else {
                 B(blockchain::process_new_ref(
