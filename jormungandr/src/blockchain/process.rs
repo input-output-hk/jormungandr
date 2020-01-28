@@ -487,8 +487,8 @@ fn process_and_propagate_new_ref(
     let process_new_ref = process_new_ref(logger.clone(), blockchain, tip, new_block_ref.clone());
 
     process_new_ref.and_then(move |()| {
-        debug!(logger, "propagating block to the network");
         let header = new_block_ref.header().clone();
+        debug!(logger, "propagating block to the network"; "hash" => %header.hash());
         network_msg_box
             .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
             .map_err(|_| "Cannot propagate block to network".into())

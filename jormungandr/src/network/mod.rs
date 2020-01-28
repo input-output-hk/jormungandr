@@ -317,6 +317,7 @@ fn handle_propagation_msg(
     let prop_state = state.clone();
     let send_to_peers = match msg {
         PropagateMsg::Block(ref header) => {
+            debug!(state.logger(), "block to propagate"; "hash" => %header.hash());
             let header = header.clone();
             let future = state
                 .topology
@@ -327,6 +328,7 @@ fn handle_propagation_msg(
             A(future)
         }
         PropagateMsg::Fragment(ref fragment) => {
+            debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
             let fragment = fragment.clone();
             let future = state
                 .topology
