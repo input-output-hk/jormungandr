@@ -80,6 +80,7 @@ pub struct BootstrappedNode {
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
+const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
     if let Some(context) = bootstrapped_node.rest_context.as_ref() {
@@ -343,12 +344,41 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let (blockchain, blockchain_tip) = start_up::load_blockchain(block0, storage, block_cache_ttl)?;
 
-    let bootstrapped = network::bootstrap(
-        &settings.network,
-        blockchain.clone(),
-        blockchain_tip.clone(),
-        &bootstrap_logger,
-    )?;
+    let mut bootstrap_attempt: usize = 0;
+    loop {
+        bootstrap_attempt += 1;
+
+        // If we have exceeded the maximum number of bootstrap attempts, then we break out of the
+        // bootstrap loop.
+        if let Some(max_bootstrap_attempt) = settings.network.max_bootstrap_attempts {
+            if bootstrap_attempt > max_bootstrap_attempt {
+                warn!(
+                    &bootstrap_logger,
+                    "maximum allowable bootstrap attempts exceeded, continuing..."
+                );
+                break; // maximum bootstrap attempts exceeded, exit loop
+            };
+        }
+
+        // Will return true if we successfully bootstrap or there are no trusted peers defined.
+        if network::bootstrap(
+            &settings.network,
+            blockchain.clone(),
+            blockchain_tip.clone(),
+            &bootstrap_logger,
+        )? {
+            break; // bootstrap succeeded, exit loop
+        }
+
+        info!(
+            &bootstrap_logger,
+            "bootstrap attempt #{} failed, trying again in {} seconds...",
+            bootstrap_attempt,
+            BOOTSTRAP_RETRY_WAIT.as_secs()
+        );
+        // Sleep for a little while before trying again.
+        std::thread::sleep(BOOTSTRAP_RETRY_WAIT);
+    }
 
     let explorer_db = if settings.explorer {
         Some(explorer::ExplorerDB::bootstrap(
@@ -358,13 +388,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     } else {
         None
     };
-
-    if !bootstrapped {
-        // TODO, the node didn't manage to connect to any other nodes
-        // for the initial bootstrap, that may be an error however
-        // it is not necessarily an error, especially in the case the node is
-        // the first ever to wake
-    }
 
     Ok(BootstrappedNode {
         settings,

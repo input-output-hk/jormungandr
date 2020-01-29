@@ -88,6 +88,8 @@ pub struct Configuration {
     pub gossip_interval: Duration,
 
     pub topology_force_reset_interval: Option<Duration>,
+
+    pub max_bootstrap_attempts: Option<usize>,
 }
 
 #[derive(Clone)]

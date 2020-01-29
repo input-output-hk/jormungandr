@@ -544,11 +544,12 @@ pub fn bootstrap(
         unimplemented!()
     }
 
+    let mut bootstrapped = false;
+
     if config.trusted_peers.is_empty() {
         warn!(logger, "No trusted peers joinable to bootstrap the network");
+        bootstrapped = true;
     }
-
-    let mut bootstrapped = false;
 
     for address in trusted_peers_shuffled(&config) {
         let logger = logger.new(o!("peer_addr" => address.to_string()));

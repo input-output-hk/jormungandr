@@ -147,6 +147,17 @@ pub struct P2pConfig {
     ///
     #[serde(default)]
     pub topology_force_reset_interval: Option<Duration>,
+
+    /// The number of times to retry bootstrapping from trusted peers. The default
+    /// value of None will result in the bootstrap process retrying indefinitely. A
+    /// value of zero will skip bootstrap all together -- even if trusted peers are
+    /// defined. If the node fails to bootstrap from any of the trusted peers and the
+    /// number of bootstrap retry attempts is exceeded, then the node will continue to
+    /// run without completing the bootstrap process. This will allow the node to act
+    /// as the first node in the p2p network (i.e. genesis node), or immediately begin
+    /// gossip with the trusted peers if any are defined.
+    #[serde(default)]
+    pub max_bootstrap_attempts: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -211,6 +222,7 @@ impl Default for P2pConfig {
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
             topology_force_reset_interval: None,
+            max_bootstrap_attempts: None,
         }
     }
 }
