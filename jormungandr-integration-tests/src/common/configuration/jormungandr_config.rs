@@ -58,8 +58,8 @@ impl JormungandrConfig {
         .unwrap();
     }
 
-    pub fn get_p2p_port(&self) -> u16 {
-        let address = self.node_config.p2p.public_address.clone().to_string();
+    pub fn get_p2p_listen_port(&self) -> u16 {
+        let address = self.node_config.p2p.listen_address.clone().to_string();
         let tokens: Vec<&str> = address.split("/").collect();
         let port_str = tokens
             .get(4)
