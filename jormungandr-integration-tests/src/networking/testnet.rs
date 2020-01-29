@@ -21,6 +21,7 @@ pub struct TestnetConfig {
     block0_hash: String,
     public_ip: String,
     public_port: String,
+    listen_port: String,
     trusted_peers: Vec<TrustedPeer>,
 }
 
@@ -30,6 +31,7 @@ impl TestnetConfig {
         let block0_hash = env::var("BLOCK0_HASH").expect("BLOCK0_HASH env is not set");
         let public_ip = env::var("PUBLIC_IP").expect("PUBLIC_IP env is not set");
         let public_port = env::var("PUBLIC_PORT").expect("PUBLIC_PORT env is not set");
+        let listen_port = env::var("LISTEN_PORT").expect("LISTEN_PORT env is not set");
         let actor_account =
             Self::create_account_from_secret_key(actor_account_private_key.to_string());
         let trusted_peers = Self::initialize_trusted_peers();
@@ -39,6 +41,7 @@ impl TestnetConfig {
             block0_hash,
             public_ip,
             public_port,
+            listen_port,
             trusted_peers,
         }
     }
@@ -78,7 +81,7 @@ impl TestnetConfig {
             .with_block_hash(self.block0_hash.to_string())
             .with_trusted_peers(self.trusted_peers.clone())
             .with_public_address(format!("/ip4/{}/tcp/{}", self.public_ip, self.public_port))
-            .with_listen_address(format!("/ip4/0.0.0.0/tcp/{}", self.public_port))
+            .with_listen_address(format!("/ip4/0.0.0.0/tcp/{}", self.listen_port))
             .build()
     }
 

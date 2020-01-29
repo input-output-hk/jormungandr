@@ -427,14 +427,12 @@ impl Prepare for P2p {
     where
         RNG: RngCore + CryptoRng,
     {
-        let public_address = context.generate_new_grpc_public_address();
-
         P2p {
-            public_address: public_address.clone(),
+            public_address: context.generate_new_grpc_public_address(),
             public_id: poldercast::Id::generate(context.rng_mut()),
             trusted_peers: Vec::new(),
             allow_private_addresses: true,
-            listen_address: public_address.clone(),
+            listen_address: context.generate_new_grpc_public_address(),
             topics_of_interest: Some(TopicsOfInterest::prepare(context)),
         }
     }
