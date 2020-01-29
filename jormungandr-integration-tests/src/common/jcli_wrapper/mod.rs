@@ -446,12 +446,15 @@ pub fn assert_transaction_log_shows_rejected(
     }
 }
 
-pub fn assert_all_transactions_in_block(transactions_messages: &Vec<String>, host: &str) {
+pub fn assert_all_transactions_in_block(
+    transactions_messages: &Vec<String>,
+    jormungandr: &JormungandrProcess,
+) {
     for transactions_message in transactions_messages.iter() {
-        assert_post_transaction(&transactions_message, &host);
+        assert_post_transaction(&transactions_message, &jormungandr.rest_address());
     }
-    wait_until_all_transactions_processed(&host);
-    assert_all_transaction_log_shows_in_block(&host);
+    wait_until_all_transactions_processed(&jormungandr.rest_address());
+    assert_all_transaction_log_shows_in_block(&jormungandr);
 }
 
 pub fn wait_until_all_transactions_processed(host: &str) {
@@ -472,13 +475,14 @@ pub fn wait_until_all_transactions_processed(host: &str) {
     .expect("internal error while waiting until all transactions is processed");
 }
 
-pub fn assert_all_transaction_log_shows_in_block(host: &str) {
-    let fragments = assert_get_rest_message_log(&host);
+pub fn assert_all_transaction_log_shows_in_block(jormungandr: &JormungandrProcess) {
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
     for fragment in fragments {
         assert!(
             fragment.is_in_a_block(),
-            "Fragment should be in block, actual: {:?}",
-            &fragment
+            "Fragment should be in block, actual: {:?}. Logs: {:?}",
+            &fragment,
+            jormungandr.logger.get_log_content()
         );
     }
 }

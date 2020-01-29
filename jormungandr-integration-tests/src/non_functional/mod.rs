@@ -15,13 +15,14 @@ pub fn send_transaction_and_ensure_block_was_produced(
     transation_messages: &Vec<String>,
     jormungandr: &JormungandrProcess,
 ) {
-    let host = &jormungandr.config.get_node_address();
-    let block_tip_before_transaction = jcli_wrapper::assert_rest_get_block_tip(host);
+    let block_tip_before_transaction =
+        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
     let block_counter_before_transaction = jormungandr.logger.get_created_blocks_counter();
 
-    jcli_wrapper::assert_all_transactions_in_block(&transation_messages, host);
+    jcli_wrapper::assert_all_transactions_in_block(&transation_messages, &jormungandr);
 
-    let block_tip_after_transaction = jcli_wrapper::assert_rest_get_block_tip(host);
+    let block_tip_after_transaction =
+        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
     let block_counter_after_transaction = jormungandr.logger.get_created_blocks_counter();
 
     let is_block_tip_different = block_tip_before_transaction != block_tip_after_transaction;
