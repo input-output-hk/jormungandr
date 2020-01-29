@@ -24,6 +24,7 @@ impl NodeConfigBuilder {
     pub fn new() -> NodeConfigBuilder {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
+        let listen_address_port = super::get_available_port();
         let storage_file = file_utils::get_path_in_temp("storage");
         let public_id = poldercast::Id::generate(rand::rngs::OsRng);
         let log = Some(Log(vec![LogEntry {
@@ -31,10 +32,18 @@ impl NodeConfigBuilder {
             format: "json".to_string(),
             output: LogOutput::Stderr,
         }]));
-        let grpc_address: poldercast::Address = format!(
+        let grpc_public_address: poldercast::Address = format!(
             "/ip4/{}/tcp/{}",
             DEFAULT_HOST,
             public_address_port.to_string()
+        )
+        .parse()
+        .unwrap();
+
+        let grpc_listen_address: poldercast::Address = format!(
+            "/ip4/{}/tcp/{}",
+            DEFAULT_HOST,
+            listen_address_port.to_string()
         )
         .parse()
         .unwrap();
@@ -49,9 +58,9 @@ impl NodeConfigBuilder {
             },
             p2p: P2p {
                 trusted_peers: vec![],
-                public_address: grpc_address.clone(),
+                public_address: grpc_public_address,
                 public_id: public_id.clone(),
-                listen_address: grpc_address.clone(),
+                listen_address: grpc_listen_address,
                 topics_of_interest: Some(TopicsOfInterest {
                     messages: String::from("high"),
                     blocks: String::from("high"),
