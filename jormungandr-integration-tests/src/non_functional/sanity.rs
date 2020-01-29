@@ -2,7 +2,7 @@
 use crate::common::{
     data::address::Account,
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
-    jormungandr::ConfigurationBuilder,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess},
     startup,
 };
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value};
@@ -10,7 +10,7 @@ use std::iter;
 use std::time::SystemTime;
 
 #[test]
-pub fn test_100_transaction_is_processed_in_10_packs() {
+pub fn test_100_transaction_is_processed_in_10_packs_to_many_accounts() {
     let receivers: Vec<Account> = iter::from_fn(|| Some(startup::create_new_account_address()))
         .take(10)
         .collect();
@@ -64,7 +64,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
 }
 
 #[test]
-pub fn test_100_transaction_is_processed() {
+pub fn test_100_transaction_is_processed_simple() {
     let mut sender = startup::create_new_account_address();
     let mut receiver = startup::create_new_account_address();
 
@@ -93,21 +93,22 @@ pub fn test_100_transaction_is_processed() {
 
         jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
 
-        assert_funds_transferred_to(&receiver.address, i.into(), &jormungandr.rest_address());
+        assert_funds_transferred_to(&receiver.address, (i + 1).into(), &jormungandr);
         jormungandr.assert_no_errors_in_log();
-        std::mem::swap(&mut sender, &mut receiver);
     }
 
-    jcli_wrapper::assert_all_transaction_log_shows_in_block(&jormungandr.rest_address());
+    jcli_wrapper::assert_all_transaction_log_shows_in_block(&jormungandr);
 }
 
-fn assert_funds_transferred_to(address: &str, value: Value, host: &str) {
-    let account_state = jcli_wrapper::assert_rest_account_get_stats(address, host);
+fn assert_funds_transferred_to(address: &str, value: Value, jormungandr: &JormungandrProcess) {
+    let account_state =
+        jcli_wrapper::assert_rest_account_get_stats(address, &jormungandr.rest_address());
 
     assert_eq!(
         *account_state.value(),
         value,
-        "funds were transfer on wrong account (or didn't at all). AccountState: {:?}, expected funds : {:?}",account_state,value
+        "funds were transfer on wrong account (or didn't at all). AccountState: {:?}, expected funds : {:?}. Logs: {:?}",account_state,value,
+         jormungandr.logger.get_log_content()
     );
 }
 
