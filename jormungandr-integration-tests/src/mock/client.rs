@@ -51,8 +51,8 @@ macro_rules! response_to_err {
 
 error_chain! {
     errors {
-        InvalidRequest (message: String) {
-            display("request failed with message {}", message),
+        InvalidRequest (grpc_error: grpc::Error) {
+            display("request failed with message {}", grpc_error),
         }
 
         InvalidAddressFormat (address: String) {
@@ -157,7 +157,7 @@ impl JormungandrClient {
             grpc::StreamingRequest::single(block),
         );
         resp.wait()
-            .map_err(|err| ErrorKind::InvalidRequest(err.to_string()).into())
+            .map_err(|err| ErrorKind::InvalidRequest(err).into())
     }
 
     pub fn pull_blocks_to_tip(&self, from: Hash) -> grpc::StreamingResponse<Block> {
@@ -196,7 +196,7 @@ impl JormungandrClient {
             grpc::StreamingRequest::single(header),
         );
         resp.wait()
-            .map_err(|err| ErrorKind::InvalidRequest(err.to_string()).into())
+            .map_err(|err| ErrorKind::InvalidRequest(err).into())
     }
 
     pub fn get_fragments(&self, ids: Vec<Hash>) -> grpc::StreamingResponse<Fragment> {
