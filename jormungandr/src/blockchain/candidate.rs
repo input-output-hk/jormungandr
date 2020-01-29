@@ -200,7 +200,10 @@ fn land_header_chain(
                 };
                 future::ok(Some(landing))
             }
-            None => future::ok(None),
+            None => {
+                debug!(logger, "all blocks already present for the header chain");
+                future::ok(None)
+            }
         })
 }
 
