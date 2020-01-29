@@ -86,7 +86,11 @@ pub struct ListenError {
 
 impl fmt::Display for ListenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "failed to listen for connections on {}", self.sockaddr)
+        write!(
+            f,
+            "failed to listen for connections on {}: {}",
+            self.sockaddr, self.cause
+        )
     }
 }
 
