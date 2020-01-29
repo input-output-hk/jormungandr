@@ -85,18 +85,36 @@ pub fn load_blockchain(
     block0: Block,
     storage: NodeStorage,
     block_cache_ttl: Duration,
+    logger: &Logger,
 ) -> Result<(Blockchain, Tip), Error> {
     use tokio::prelude::*;
 
     let blockchain = Blockchain::new(block0.header.hash(), storage, block_cache_ttl);
 
+    info!(logger, "Loading from storage");
     let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
         Err(error) => match error.kind() {
-            BlockchainError::Block0AlreadyInStorage => blockchain.load_from_storage(block0).wait(),
+            BlockchainError::Block0AlreadyInStorage => {
+                blockchain.load_from_storage(block0, logger).wait()
+            }
             _ => Err(error),
         },
         Ok(branch) => Ok(branch),
     }?;
 
-    Ok((blockchain, Tip::new(main_branch)))
+    let tip = Tip::new(main_branch);
+    let _: Result<(), ()> = tip
+        .get_ref()
+        .and_then(move |tip_ref| {
+            info!(
+                logger,
+                "Loaded from storage tip is : {}",
+                tip_ref.header().description()
+            );
+            future::ok(())
+        })
+        .map_err(|_: std::convert::Infallible| unreachable!())
+        .wait();
+
+    Ok((blockchain, tip))
 }
