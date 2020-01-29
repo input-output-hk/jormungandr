@@ -34,7 +34,7 @@ impl SyncWaitParams {
     }
 
     fn calculate_wait_time(&self) -> u64 {
-        self.no_of_nodes + self.longest_path_length * 2
+        (self.no_of_nodes + self.longest_path_length * 2) * 2
     }
 
     pub fn wait_time(&self) -> Duration {

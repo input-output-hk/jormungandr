@@ -66,9 +66,9 @@ error_chain! {
             display("fragment '{}' not in the mempool of the node '{}'. logs: {}", fragment_id, alias, log),
         }
 
-        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration, log: String) {
+        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration, alias: String, log: String) {
             description("fragment is pending for too long"),
-            display("fragment '{}' is pending for too long ({} s). Logs: {}", fragment_id, duration.as_secs(), log),
+            display("fragment '{}' is pending for too long ({} s). Node: {}, Logs: {}", fragment_id, duration.as_secs(), alias, log),
         }
     }
 }
@@ -328,6 +328,7 @@ impl NodeController {
         bail!(ErrorKind::FragmentIsPendingForTooLong(
             check.fragment_id.clone(),
             Duration::from_secs(duration.as_secs() * max_try),
+            self.alias().to_string(),
             self.logger().get_log_content()
         ))
     }

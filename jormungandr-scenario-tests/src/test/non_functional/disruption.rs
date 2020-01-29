@@ -34,16 +34,31 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let mut leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let mut leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let mut leader5 = controller.spawn_node(
+        LEADER_5,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let mut leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     leader5.wait_for_bootstrap()?;
     leader4.wait_for_bootstrap()?;
@@ -63,7 +78,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     )?;
 
     leader2 =
-        controller.restart_node(leader2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.restart_node(leader2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
     utils::sending_transactions_to_node_sequentially(
         10,
@@ -74,8 +89,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     )?;
 
     leader5 =
-        controller.restart_node(leader5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-
+        controller.restart_node(leader5, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     utils::sending_transactions_to_node_sequentially(
         10,
         &mut controller,
