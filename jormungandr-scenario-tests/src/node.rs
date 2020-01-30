@@ -349,8 +349,10 @@ impl NodeController {
             let stats = self.stats();
             match stats {
                 Ok(stats) => {
-                    if stats.uptime > 0 {
-                        return Ok(());
+                    if let Some(uptime) = stats.uptime {
+                        if uptime > 0 {
+                            return Ok(());
+                        }
                     }
                 }
                 Err(err) => self
