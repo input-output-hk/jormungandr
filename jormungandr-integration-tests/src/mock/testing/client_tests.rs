@@ -69,7 +69,7 @@ pub fn get_headers_incorrect_hash() {
     let err = response_to_err!(client.get_headers(&vec![fake_hash()]));
     match err {
         grpc::Error::GrpcMessage(grpc_error_message) => {
-            assert_eq!(grpc_error_message.grpc_message, "not%20found");
+            assert_eq!(grpc_error_message.grpc_status, 5);
         }
         _ => panic!("Wrong error"),
     }
@@ -94,7 +94,7 @@ pub fn get_blocks_incorrect_hash() {
 
     match err {
         grpc::Error::GrpcMessage(grpc_error_message) => {
-            assert_eq!(grpc_error_message.grpc_message, "not%20found");
+            assert_eq!(grpc_error_message.grpc_status, 5);
         }
         _ => panic!("Wrong error"),
     }
@@ -161,7 +161,7 @@ pub fn pull_headers_incorrect_hash() {
     ));
     match err {
         grpc::Error::GrpcMessage(grpc_error_message) => {
-            assert_eq!(grpc_error_message.grpc_message, "invalid%20request%20data");
+            assert_eq!(grpc_error_message.grpc_status, 3);
         }
         _ => panic!("Wrong error"),
     }
@@ -175,7 +175,7 @@ pub fn pull_headers_empty_hash() {
     let err = response_to_err!(client.pull_headers(None, None));
     match err {
         grpc::Error::GrpcMessage(grpc_error_message) => {
-            assert_eq!(grpc_error_message.grpc_message, "invalid%20request%20data");
+            assert_eq!(grpc_error_message.grpc_status, 3);
         }
         _ => panic!("Wrong error"),
     }
@@ -233,11 +233,11 @@ pub fn upload_block_incompatible_protocol() {
         .build(&stake_pool, &time_era);
 
     match client.upload_blocks(block).err().unwrap() {
-        client::Error(client::ErrorKind::InvalidRequest(grpc_error), _) => {
-            assert_eq!(
-                grpc_error.to_string(),
-                "grpc message error: invalid%20request%20data"
-            );
+        client::Error(
+            client::ErrorKind::InvalidRequest(grpc::Error::GrpcMessage(grpc_error)),
+            _,
+        ) => {
+            assert_eq!(grpc_error.grpc_status, 3);
         }
         _ => panic!("Wrong error"),
     }
@@ -279,11 +279,11 @@ pub fn upload_block_nonexisting_stake_pool() {
         .build(&stake_pool, &time_era);
 
     match client.upload_blocks(block).err().unwrap() {
-        client::Error(client::ErrorKind::InvalidRequest(grpc_error), _) => {
-            assert_eq!(
-                grpc_error.to_string(),
-                "grpc message error: invalid%20request%20data"
-            );
+        client::Error(
+            client::ErrorKind::InvalidRequest(grpc::Error::GrpcMessage(grpc_error)),
+            _,
+        ) => {
+            assert_eq!(grpc_error.grpc_status, 3);
         }
         _ => panic!("Wrong error"),
     }
@@ -316,7 +316,7 @@ pub fn get_fragments() {
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     match response_to_err!(client.get_fragments(vec![fragment_id.into_hash()])) {
         grpc::Error::GrpcMessage(grpc_error_message) => {
-            assert_eq!(grpc_error_message.grpc_message, "not%20implemented");
+            assert_eq!(grpc_error_message.grpc_status, 12); // not implemented
         }
         _ => panic!("Wrong error"),
     };
