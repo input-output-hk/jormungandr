@@ -1,5 +1,21 @@
 # Change Log
 
+## [v0.8.9](https://github.com/input-output-hk/jormungandr/tree/v0.8.9) (2020-01-30)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.8...v0.8.9)
+
+**Fixed bugs:**
+
+- Tokio Thread Panicked: Validated Block Must Be Unique [\#1677](https://github.com/input-output-hk/jormungandr/issues/1677)
+
+**Closed issues:**
+
+- node crashed shortly after upgrade 0.8.8 [\#1679](https://github.com/input-output-hk/jormungandr/issues/1679)
+
+**Merged pull requests:**
+
+- Use checkpoints when bootstrapping [\#1682](https://github.com/input-output-hk/jormungandr/pull/1682)
+
 ## [v0.8.8](https://github.com/input-output-hk/jormungandr/tree/v0.8.8) (2020-01-30)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.7...v0.8.8)
