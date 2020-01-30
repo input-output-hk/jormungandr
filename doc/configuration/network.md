@@ -1,5 +1,4 @@
-
-There's 2 differents network interfaces which are covered by their respective section:
+There are 2 different network interfaces which are covered by their respective section:
 
 ```yaml
 rest:
@@ -12,8 +11,8 @@ p2p:
 
 - `listen`: listen address
 - `tls`: (optional) enables TLS and disables plain HTTP if provided
-    - `cert_file`: path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
-    - `priv_key_file`: path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
+  - `cert_file`: path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
+  - `priv_key_file`: path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
 - `cors`: (optional) CORS configuration, if not provided, CORS is disabled
   - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin
   - `max_age_secs`: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
@@ -69,9 +68,9 @@ rest:
     will listen to to receive p2p connection. Can be left empty and the node will listen
     to whatever value was given to `public_address`.
 - `topics_of_interest`: (optional) the different topics we are interested to hear about:
-    - `messages`: notify other peers this node is interested about Transactions
+  - `messages`: notify other peers this node is interested about Transactions
     typical setting for a non mining node: `"low"`. For a stakepool: `"high"`;
-    - `blocks`: notify other peers this node is interested about new Blocs.
+  - `blocks`: notify other peers this node is interested about new Blocs.
     typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`.
 - `max_connections`: the maximum number of P2P connections this node should
     maintain. If not specified, an internal limit is used by default `[default: 256]`
@@ -80,7 +79,7 @@ rest:
   from time to time if the `max_connections - max_connections_threshold` is reached.
   `[default: 64]`
 - `policy`: (optional) set the setting for the policy module
-    - `quarantine_duration` set the time to leave a node in quarantine before allowing
+  - `quarantine_duration` set the time to leave a node in quarantine before allowing
     it back (or not) into the fold.
     It is recommended to leave the default value `[default: 30min]`.
 - `max_unreachable_nodes_to_connect_per_event`: (optional) set the maximum number of unreachable nodes
@@ -95,6 +94,13 @@ rest:
 - `topology_force_reset_interval`: (optional) If this value is set, it will
   trigger a force reset of the topology layers. The default is to not do
   force the reset. It is recommended to let the protocol handle it.
+- `max_bootstrap_attempts`: (optional) number of times to retry bootstrapping from trusted peers.
+  If not set, default beavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
+  If set to *0* (zero), the node will skip bootstrap all together -- *even if trusted peers are defined*.
+  If the node fails to bootstrap from any of the trusted peers and the number of bootstrap retry attempts is exceeded,
+  then the node will continue to run without completing the bootstrap process.
+  This will allow the node to act as the first node in the p2p network (i.e. genesis node),
+  or immediately begin gossip with the trusted peers if any are defined.
 
 ### The trusted peers
 
@@ -113,7 +119,7 @@ You can generate a public id with **openssl**, for example: `openssl rand -hex 2
 
 This is optional an optional value to set. The default is:
 
-```
+```yaml
 messages: low
 blocks: normal
 ```
@@ -123,14 +129,14 @@ that are not even publicly reachable.
 
 However for a publicly reachable node, the recommended setting would be:
 
-```
+```yaml
 messages: normal
 blocks: normal
 ```
 
 and for a stake pool
 
-```
+```yaml
 messages: high
 blocks: high
 ```
