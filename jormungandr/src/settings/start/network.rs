@@ -37,12 +37,9 @@ pub struct Listen {
 /// used unless the corresponding configuration option is specified.
 pub const DEFAULT_MAX_CONNECTIONS: usize = 256;
 
-/// try to keep at least 25% of the remaining connections
-/// dedicated to nodes with network improvements capacity
-pub const DEFAULT_MAX_CONNECTIONS_THRESHOLD: usize = DEFAULT_MAX_CONNECTIONS / 4;
-
-/// the interval to run the GC on the peer map connections
-pub const DEFAULT_PEER_GC_INTERVAL: Duration = Duration::from_secs(13);
+/// The limit on the number of simultaneous P2P client connections
+/// used unless the corresponding configuration option is specified.
+pub const DEFAULT_MAX_CLIENT_CONNECTIONS: usize = 8;
 
 const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 
@@ -66,14 +63,8 @@ pub struct Configuration {
     /// Maximum allowed number of peer connections.
     pub max_connections: usize,
 
-    /// capacity threshold delta
-    ///
-    /// this value will be compared to the delta between the number
-    /// of connections and the max_connections. If the threshold
-    /// has been reached (less then max_connections_threshold remaining)
-    /// the connections will be GCed in order to make some space for
-    /// nodes that are actually propagating blocks
-    pub max_connections_threshold: usize,
+    /// Maximum allowed number of client connections.
+    pub max_client_connections: usize,
 
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,

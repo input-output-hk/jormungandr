@@ -74,10 +74,8 @@ rest:
     typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`.
 - `max_connections`: the maximum number of P2P connections this node should
     maintain. If not specified, an internal limit is used by default `[default: 256]`
-- `max_connections_threshold`: this is the number of available connections to keep
-  reserved for actually active connections. The node will apply this GC operation
-  from time to time if the `max_connections - max_connections_threshold` is reached.
-  `[default: 64]`
+- `max_client_connections`: the maximum number of client P2P connections this
+    node should keep open. `[default: 8]`
 - `policy`: (optional) set the setting for the policy module
   - `quarantine_duration` set the time to leave a node in quarantine before allowing
     it back (or not) into the fold.
