@@ -578,7 +578,7 @@ fn process_block_announcement(
                 let to = header.hash();
                 Either::B(
                     blockchain
-                        .get_checkpoints(blockchain_tip.branch().clone())
+                        .get_checkpoints(blockchain_tip.branch())
                         .map(move |from| {
                             pull_headers_scheduler
                                 .schedule(to, node_id, from)

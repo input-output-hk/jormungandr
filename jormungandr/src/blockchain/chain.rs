@@ -749,7 +749,7 @@ impl Blockchain {
 
     pub fn get_checkpoints(
         &self,
-        branch: Branch,
+        branch: &Branch,
     ) -> impl Future<Item = Checkpoints, Error = Error> {
         branch.get_ref().map(Checkpoints::new_from)
     }
