@@ -57,7 +57,7 @@ pub struct NodeConfig {
 impl P2p {
     pub fn make_trusted_peer_setting(&self) -> TrustedPeer {
         TrustedPeer {
-            address: self.public_address.clone(),
+            address: self.listen_address.clone(),
             id: self.public_id.clone(),
         }
     }
