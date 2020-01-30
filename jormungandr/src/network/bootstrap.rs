@@ -168,7 +168,7 @@ fn handle_block(
                         );
                         blockchain
                             .apply_and_store_block(post_checked, block)
-                            .map(|applied| applied.expect("validated block must be unique"))
+                            .map(|applied| applied.cached_ref())
                             .map_err(|e| Error::ApplyBlockFailed { source: e })
                     });
                 Either::B(future)
