@@ -1,5 +1,6 @@
 use super::{
-    candidate, chain,
+    candidate,
+    chain::{self, AppliedBlock},
     chain_selection::{self, ComparisonResult},
     Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
@@ -551,7 +552,9 @@ pub fn process_leadership_block(
         })
         .map_err(|err| Error::with_chain(err, "cannot process leadership block"))
         .map(move |applied| {
-            let new_ref = applied.expect("block from leadership must be unique");
+            let new_ref = applied
+                .new_ref()
+                .expect("block from leadership must be unique");
             info!(logger, "block from leader event successfully stored");
             new_ref
         })
@@ -578,7 +581,7 @@ fn process_block_announcement(
                 let to = header.hash();
                 Either::B(
                     blockchain
-                        .get_checkpoints(blockchain_tip.branch().clone())
+                        .get_checkpoints(blockchain_tip.branch())
                         .map(move |from| {
                             pull_headers_scheduler
                                 .schedule(to, node_id, from)
@@ -701,8 +704,8 @@ fn check_and_apply_block(
             let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
             blockchain1
                 .apply_and_store_block(post_checked, block)
-                .and_then(move |maybe_block_ref| {
-                    if let Some(ref block_ref) = maybe_block_ref {
+                .and_then(move |applied_block| {
+                    if let AppliedBlock::New(block_ref) = applied_block {
                         let header = block_ref.header();
                         debug!(
                             logger,
@@ -721,14 +724,15 @@ fn check_and_apply_block(
                                     error!(logger, "cannot add block to explorer: {}", err)
                                 });
                         }
+                        Ok(Some(block_ref))
                     } else {
                         debug!(
                             logger,
                             "block is already present in storage, not applied";
                             "hash" => %block_hash,
                         );
+                        Ok(None)
                     }
-                    Ok(maybe_block_ref)
                 })
         })
 }

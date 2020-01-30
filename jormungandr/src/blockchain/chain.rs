@@ -237,6 +237,27 @@ impl PostCheckedHeader {
     }
 }
 
+pub enum AppliedBlock {
+    New(Arc<Ref>),
+    Existing(Arc<Ref>),
+}
+
+impl AppliedBlock {
+    pub fn cached_ref(&self) -> Arc<Ref> {
+        match self {
+            AppliedBlock::New(r) => r.clone(),
+            AppliedBlock::Existing(r) => r.clone(),
+        }
+    }
+
+    pub fn new_ref(&self) -> Option<Arc<Ref>> {
+        match self {
+            AppliedBlock::New(r) => Some(r.clone()),
+            AppliedBlock::Existing(_) => None,
+        }
+    }
+}
+
 impl Blockchain {
     pub fn new(block0: HeaderHash, storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
@@ -495,17 +516,15 @@ impl Blockchain {
         &self,
         post_checked_header: PostCheckedHeader,
         block: Block,
-    ) -> impl Future<Item = Option<Arc<Ref>>, Error = Error> {
+    ) -> impl Future<Item = AppliedBlock, Error = Error> {
         let mut storage = self.storage.clone();
         self.apply_block(post_checked_header, &block)
             .and_then(move |block_ref| {
-                storage
-                    .put_block(block)
-                    .map(|()| Some(block_ref))
-                    .or_else(|err| match err {
-                        StorageError::BlockAlreadyPresent => Ok(None),
-                        err => Err(err.into()),
-                    })
+                storage.put_block(block).then(|res| match res {
+                    Ok(()) => Ok(AppliedBlock::New(block_ref)),
+                    Err(StorageError::BlockAlreadyPresent) => Ok(AppliedBlock::Existing(block_ref)),
+                    Err(e) => Err(e.into()),
+                })
             })
     }
 
@@ -749,7 +768,7 @@ impl Blockchain {
 
     pub fn get_checkpoints(
         &self,
-        branch: Branch,
+        branch: &Branch,
     ) -> impl Future<Item = Checkpoints, Error = Error> {
         branch.get_ref().map(Checkpoints::new_from)
     }

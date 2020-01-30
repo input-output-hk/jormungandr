@@ -568,7 +568,7 @@ pub fn bootstrap(
             Err(e) => {
                 warn!(logger, "initial bootstrap failed"; "error" => ?e);
             }
-            Ok(_) => {
+            Ok(()) => {
                 info!(logger, "initial bootstrap completed");
                 bootstrapped = true;
                 break;
