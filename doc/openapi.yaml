@@ -536,7 +536,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastReceivedBlockTime, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version]
+                required: [blockRecvCnt, lastReceivedBlockTime, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version, peerAvailableCnt, peerQuarantinedCnt, peerUnreachableCnt]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
@@ -575,6 +575,18 @@ paths:
                     description: Number of transactions in last block
                     type: integer
                     minimum: 0
+                  peerAvailableCnt:
+                    description: Number of nodes that are available for p2p discovery and events propagation
+                    type: integer
+                    minimum: 0
+                  peerQuarantinedCnt:
+                    description: Number of nodes that have been quarantined
+                    type: integer
+                    minimum: 0
+                  peerUnreachableCnt:
+                    description: Number of nodes that are connected to ours but that are not publicly reachable
+                    type: integer
+                    minimum: 0
                   state:
                     description: State of the node
                     type: string
@@ -599,12 +611,16 @@ paths:
                   "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
                   "lastBlockHeight": 202901,
                   "lastBlockSum": 51604,
-                  "lastBlockTime": "2019-08-12T11:20:52.316544007+00:00",
+                  "lastBlockTime": "2020-01-30T23:08:22+00:00",
                   "lastBlockTx": 2,
+                  "lastReceivedBlockTime": "2020-01-30T23:08:04+00:00",
+                  "peerAvailableCnt": 321,
+                  "peerQuarantinedCnt": 123,
+                  "peerUnreachableCnt": 5,
                   "state": "Running",
                   "txRecvCnt": 5440,
                   "uptime": 20032,
-                  "version": "jormungandr 0.8.0-rc4-67477249"
+                  "version": "jormungandr 0.8.9-30d20d2e"
                 }
   /api/v0/settings:
     get:
