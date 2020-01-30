@@ -1,5 +1,56 @@
 # Change Log
 
+## [v0.8.8](https://github.com/input-output-hk/jormungandr/tree/v0.8.8) (2020-01-30)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.7...v0.8.8)
+
+**Implemented enhancements:**
+
+- Increase selection information in the existing chain-selection/application [\#1670](https://github.com/input-output-hk/jormungandr/issues/1670)
+- bootstrap with large number of blocks looked block [\#1669](https://github.com/input-output-hk/jormungandr/issues/1669)
+- Update chain-deps [\#1674](https://github.com/input-output-hk/jormungandr/pull/1674)
+- Add/Improve some early logging and network related choices [\#1671](https://github.com/input-output-hk/jormungandr/pull/1671)
+- Fixes bootstrapping from trusted peers falling through when node is n… [\#1646](https://github.com/input-output-hk/jormungandr/pull/1646)
+
+**Fixed bugs:**
+
+- DatabaseLocked error when using in-memory database [\#1638](https://github.com/input-output-hk/jormungandr/issues/1638)
+- Wrong parent hash selection due to low number of block announcements [\#1596](https://github.com/input-output-hk/jormungandr/issues/1596)
+- integrate fix for DatabaseLocked error [\#1641](https://github.com/input-output-hk/jormungandr/pull/1641)
+
+**Closed issues:**
+
+- As a small stake pool operator \(and hopefully as an “anyone else”\), I would like to have incentives baked into a Cardano Constitution \(and the Ouroboros protocol\), so that we can assure the ongoing decentralization of Cardano ecosystem. [\#1657](https://github.com/input-output-hk/jormungandr/issues/1657)
+- Competitive fork slot and timestamps do not match  [\#1651](https://github.com/input-output-hk/jormungandr/issues/1651)
+- Compiled v0.8.7 jcli binary doesn't execute MacOS Catalina [\#1644](https://github.com/input-output-hk/jormungandr/issues/1644)
+- Tokio-runtime PoisonError Panic, v0.8.6 [\#1643](https://github.com/input-output-hk/jormungandr/issues/1643)
+- REST API STOPS RESPONDING WHILE JORMUNGANDR CONTINUES TO RUN [\#1642](https://github.com/input-output-hk/jormungandr/issues/1642)
+- Remote node not yet fully connected should not be picked for fetching block, otherwise it fails - block fetch from xxxx failed: PropagateError { kind: NotSubscribed,... [\#1630](https://github.com/input-output-hk/jormungandr/issues/1630)
+- What is the Genesis Block Hash for 0.8.6? [\#1629](https://github.com/input-output-hk/jormungandr/issues/1629)
+- Different leader schedule showing on 0.8.7 than 0.8.6 [\#1624](https://github.com/input-output-hk/jormungandr/issues/1624)
+
+**Merged pull requests:**
+
+- Poldercast update 0.11.1 [\#1672](https://github.com/input-output-hk/jormungandr/pull/1672)
+- \[Tests\] Changed public and listen port to be different  [\#1667](https://github.com/input-output-hk/jormungandr/pull/1667)
+- \[Tests\] Print logs to console on error [\#1666](https://github.com/input-output-hk/jormungandr/pull/1666)
+- \[Tests\] Private network tests improvements [\#1665](https://github.com/input-output-hk/jormungandr/pull/1665)
+- Block processing fixes [\#1661](https://github.com/input-output-hk/jormungandr/pull/1661)
+- Display the cause of ListenError [\#1660](https://github.com/input-output-hk/jormungandr/pull/1660)
+- Go back to local runtimes again [\#1658](https://github.com/input-output-hk/jormungandr/pull/1658)
+- Trace spawned futures [\#1656](https://github.com/input-output-hk/jormungandr/pull/1656)
+- \[Tests\] update quarantine stats from string to u32 [\#1650](https://github.com/input-output-hk/jormungandr/pull/1650)
+- \[Tests\] wait for block sync  [\#1649](https://github.com/input-output-hk/jormungandr/pull/1649)
+- \[Tests\] Performance block sync test [\#1648](https://github.com/input-output-hk/jormungandr/pull/1648)
+- Changed peers counts from strings to int [\#1640](https://github.com/input-output-hk/jormungandr/pull/1640)
+- Bypass peers that are not connected for fetching blocks [\#1633](https://github.com/input-output-hk/jormungandr/pull/1633)
+- Disable the audit job in CircleCI [\#1632](https://github.com/input-output-hk/jormungandr/pull/1632)
+- \[Tests\] dumps log on transaction not in block when timeout is reached [\#1631](https://github.com/input-output-hk/jormungandr/pull/1631)
+- \[Tests\] more logs for failed 'transaction is block' assertion [\#1628](https://github.com/input-output-hk/jormungandr/pull/1628)
+- \[Tests\] Updated NodeStats with new fields [\#1627](https://github.com/input-output-hk/jormungandr/pull/1627)
+- \[Tests\] Private network test maintenance [\#1621](https://github.com/input-output-hk/jormungandr/pull/1621)
+- \[Tests\] Move config structs to jormungandr lib [\#1620](https://github.com/input-output-hk/jormungandr/pull/1620)
+
 ## [v0.8.7](https://github.com/input-output-hk/jormungandr/tree/v0.8.7) (2020-01-23)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.6...v0.8.7)
