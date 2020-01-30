@@ -13,7 +13,7 @@ use actix_web::web::ServiceConfig;
 use slog::Logger;
 use std::sync::{Arc, RwLock};
 
-use crate::blockchain::{Blockchain, Tip};
+use crate::blockchain::Tip;
 use crate::fragment::Logs;
 use crate::leadership::Logs as LeadershipLogs;
 use crate::network::p2p::P2pTopology;
@@ -21,7 +21,7 @@ use crate::secure::enclave::Enclave;
 use crate::settings::start::{Error as ConfigError, Rest};
 use crate::stats_counter::StatsCounter;
 
-use crate::intercom::{NetworkMsg, TransactionMsg};
+use crate::intercom::{ClientMsg, NetworkMsg, TransactionMsg};
 use crate::utils::async_msg::MessageBox;
 
 use jormungandr_lib::interfaces::NodeState;
@@ -101,8 +101,8 @@ impl Context {
 #[derive(Clone)]
 pub struct FullContext {
     pub stats_counter: StatsCounter,
-    pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
+    pub client_task: MessageBox<ClientMsg>,
     pub network_task: MessageBox<NetworkMsg>,
     pub transaction_task: MessageBox<TransactionMsg>,
     pub logs: Logs,

@@ -7,7 +7,7 @@ use jormungandr_lib::time::SystemTime;
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::web::{Bytes, BytesMut, Data, Json, Path, Query};
 use actix_web::{Error, HttpResponse, Responder};
-use chain_core::property::{Block, Deserialize, Serialize as _};
+use chain_core::property::{Deserialize, Serialize as _};
 use chain_crypto::{bech32::Bech32, Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
@@ -16,18 +16,23 @@ use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
 use chain_impl_mockchain::stake::StakeDistribution;
 use chain_impl_mockchain::transaction::Transaction;
 use chain_impl_mockchain::value::{Value, ValueError};
-use chain_storage::error::Error as StorageError;
 
 use crate::blockchain::Ref;
-use crate::intercom::{self, NetworkMsg, TransactionMsg};
+use crate::intercom::{self, ClientMsg, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
-use futures::Stream;
+use futures::{Sink, Stream};
 use futures03::compat::Future01CompatExt;
 use jormungandr_lib::interfaces::NodeState;
 use std::str::FromStr;
 use std::sync::Arc;
 
 pub use crate::rest::{Context, FullContext};
+
+impl From<intercom::Error> for Error {
+    fn from(e: intercom::Error) -> Error {
+        ErrorInternalServerError(e)
+    }
+}
 
 async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
     chain_tip_from_full(&*context.try_full()?).await
@@ -104,7 +109,7 @@ struct NodeStatsDto {
 
 pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder, Error> {
     let stats = match context.try_full() {
-        Ok(full_context) => Some(create_stats(&*full_context).await?),
+        Ok(full_context) => Some(create_stats(&*full_context, context.logger()?).await?),
         Err(_) => None,
     };
     Ok(Json(NodeStatsDto {
@@ -114,18 +119,31 @@ pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder,
     }))
 }
 
-async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error> {
+async fn create_stats(
+    context: &FullContext,
+    logger: slog::Logger,
+) -> Result<serde_json::Value, Error> {
     let tip = chain_tip_from_full(context).await?;
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
+
+    let (reply_handle, reply_stream) = intercom::stream_reply::<_, Error>(1, logger);
+
     context
-        .blockchain
-        .storage()
-        .get(tip.hash())
+        .client_task
+        .clone()
+        .send(ClientMsg::GetBlocks(vec![tip.hash()], reply_handle))
         .compat()
         .await
-        .map_err(ErrorInternalServerError)?
+        .map_err(ErrorInternalServerError)?;
+
+    reply_stream
+        .into_future()
+        .compat()
+        .await
+        .map(|(maybe_block, _)| maybe_block)
+        .map_err(|(http_err, _)| http_err)?
         .ok_or(ErrorInternalServerError("Could not find block for tip"))?
         .contents
         .iter()
@@ -180,18 +198,32 @@ pub async fn get_block_id(
     context: Data<Context>,
     block_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
+    let block_id = parse_block_hash(&block_id_hex)?;
+    let (reply_handle, reply_stream) = intercom::stream_reply::<_, Error>(1, context.logger()?);
+
     context
         .try_full()?
-        .blockchain
-        .storage()
-        .get(parse_block_hash(&block_id_hex)?)
+        .client_task
+        .clone()
+        .send(ClientMsg::GetBlocks(vec![block_id], reply_handle))
         .compat()
         .await
-        .map_err(ErrorInternalServerError)?
-        .ok_or(ErrorNotFound("Block not found"))?
-        .serialize_as_vec()
-        .map_err(ErrorInternalServerError)
-        .map(Bytes::from)
+        .map_err(ErrorInternalServerError)?;
+
+    let maybe_block = reply_stream
+        .into_future()
+        .compat()
+        .await
+        .map(|(maybe_block, _)| maybe_block)
+        .map_err(|(http_err, _)| http_err)?;
+
+    match maybe_block {
+        Some(block) => block
+            .serialize_as_vec()
+            .map_err(ErrorInternalServerError)
+            .map(Bytes::from),
+        None => Err(ErrorNotFound("Block not found")),
+    }
 }
 
 pub async fn get_block_next_id(
@@ -202,17 +234,22 @@ pub async fn get_block_next_id(
     let full_context = context.try_full()?;
     let block_id = parse_block_hash(&block_id_hex)?;
     let tip = chain_tip_from_full(&full_context).await?;
-    full_context
-        .blockchain
-        .storage()
-        .stream_from_to(block_id, tip.hash())
+    let (reply_handle, reply_stream) = intercom::stream_reply::<_, Error>(1, context.logger()?);
+
+    context
+        .try_full()?
+        .client_task
+        .clone()
+        .send(ClientMsg::GetHeadersRange(
+            vec![block_id],
+            tip.hash(),
+            reply_handle,
+        ))
         .compat()
         .await
-        .map_err(|e| match e {
-            StorageError::CannotIterate => ErrorNotFound("Block is not in chain of the tip"),
-            StorageError::BlockNotFound => ErrorNotFound(e),
-            _ => ErrorInternalServerError(e),
-        })?
+        .map_err(ErrorInternalServerError)?;
+
+    reply_stream
         .map_err(ErrorInternalServerError)
         .take(query_params.get_count())
         .fold(BytesMut::new(), |mut bytes, block| {
