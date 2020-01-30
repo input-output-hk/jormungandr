@@ -61,6 +61,7 @@ use crate::{
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_storage::error::Error as StorageError;
 use chain_time::TimeFrame;
+use slog::Logger;
 use std::{convert::Infallible, sync::Arc, time::Duration};
 use tokio::prelude::*;
 
@@ -650,7 +651,11 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub fn load_from_storage(&self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
+    pub fn load_from_storage(
+        &self,
+        block0: Block,
+        logger: &Logger,
+    ) -> impl Future<Item = Branch, Error = Error> {
         let block0_header = block0.header.clone();
         let block0_id = block0_header.hash();
         let block0_id_2 = block0_id.clone();
@@ -658,6 +663,8 @@ impl Blockchain {
         let self2 = self.clone();
         let self3 = self.clone();
         let self4 = self.clone();
+
+        let logger = logger.clone();
 
         self.storage
             .block_exists(block0_id.clone())
@@ -697,8 +704,13 @@ impl Blockchain {
                             .map_err(|e| {
                                 Error::with_chain(e, "Error while iterating between block0 and HEAD")
                             })
-                            .fold((branch, self4), move |(branch, self4), block: Block| {
+                            .fold((branch, 0u64, self4), move |(branch, processed, self4), block: Block| {
                                 let header = block.header.clone();
+
+                                const PROCESS_LOGGING_DISTANCE : u64 = 2500;
+                                if processed % PROCESS_LOGGING_DISTANCE == 0 {
+                                    info!(logger, "loading from storage, currently at {} ...", block.header.description());
+                                }
 
                                 let self5 = self4.clone();
                                 let self6 = self4.clone();
@@ -726,11 +738,11 @@ impl Blockchain {
                                         branch
                                             .clone()
                                             .update_ref(new_ref)
-                                            .map(move |_old_ref| (branch, returned))
+                                            .map(move |_old_ref| (branch, processed+1, returned))
                                             .map_err(|_: Infallible| unreachable!())
                                     })
                             })
-                            .map(|(branch, _)| branch)
+                            .map(|(branch, _, _)| branch)
                     })
             })
     }

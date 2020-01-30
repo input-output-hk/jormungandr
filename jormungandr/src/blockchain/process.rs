@@ -449,13 +449,31 @@ pub fn process_new_ref(
         .get_ref()
         .and_then(move |tip_ref| {
             if tip_ref.hash() == candidate.block_parent_hash() {
-                info!(logger, "update current branch tip");
+                info!(
+                    logger,
+                    "update current branch tip: {} -> {}",
+                    tip_ref.header().description(),
+                    candidate.header().description(),
+                );
                 A(A(tip.update_ref(candidate).map(|_| true)))
             } else {
                 match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
-                    ComparisonResult::PreferCurrent => A(B(future::ok(false))),
+                    ComparisonResult::PreferCurrent => {
+                        info!(
+                            logger,
+                            "create new branch with tip {} | current-tip {}",
+                            candidate.header().description(),
+                            tip_ref.header().description(),
+                        );
+                        A(B(future::ok(false)))
+                    }
                     ComparisonResult::PreferCandidate => {
-                        info!(logger, "switching to new candidate branch");
+                        info!(
+                            logger,
+                            "switching branch from {} to {}",
+                            tip_ref.header().description(),
+                            candidate.header().description(),
+                        );
                         B(blockchain
                             .branches_mut()
                             .apply_or_create(candidate)
