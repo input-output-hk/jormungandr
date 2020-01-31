@@ -52,11 +52,11 @@ impl Service for Echo {
             Ok(())
         });
 
-        self.state.handle.spawn(async move {
+        self.state.spawn(async move {
             future.compat().await.unwrap();
         });
 
-        while let Some(QueryLine(reply)) = self.state.intercom_receiver.recv().await {
+        while let Some(QueryLine(reply)) = self.state.intercom_mut().recv().await {
             reply.send(self.sender.clone()).unwrap();
         }
     }
@@ -77,7 +77,7 @@ impl Service for Client {
     async fn start(mut self) {
         use legacy_futures::sink::Sink as _;
 
-        let mut echo = self.state.watchdog_query.intercom::<Echo>();
+        let mut echo = self.state.intercom_with::<Echo>();
         let (sender, receiver) = tokio::sync::oneshot::channel();
 
         echo.send(QueryLine(sender)).await.unwrap();

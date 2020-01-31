@@ -17,8 +17,12 @@ use futures_util::{
     future::abortable,
     future::{select, Either},
 };
+use std::future::Future;
 use thiserror::Error;
-use tokio::runtime::{Builder, Handle, Runtime};
+use tokio::{
+    runtime::{Builder, Handle, Runtime},
+    task::JoinHandle,
+};
 
 pub type ServiceIdentifier = &'static str;
 
@@ -64,14 +68,82 @@ pub struct ServiceRuntime<T: Service> {
     control: ControlReader,
 }
 
+/// this is the object that every services has access to
+///
+/// each service has its own ServiceState. It allows to connect to
+/// other services [`intercom_with`] as well as getting access to the
+/// service's settings or state
 pub struct ServiceState<T: Service> {
-    pub identifier: ServiceIdentifier,
+    identifier: ServiceIdentifier,
+    handle: Handle,
+    settings: SettingsReader<T::Settings>,
+    state: StateHandler<T::State>,
+    intercom_receiver: IntercomReceiver<T::Intercom>,
+    watchdog_query: WatchdogQuery,
+}
 
-    pub handle: Handle,
-    pub settings: SettingsReader<T::Settings>,
-    pub state: StateHandler<T::State>,
-    pub intercom_receiver: IntercomReceiver<T::Intercom>,
-    pub watchdog_query: WatchdogQuery,
+impl<T: Service> ServiceState<T> {
+    /// access the service's Identifier
+    ///
+    /// this is just similar to calling `<T as Service>::SERVICE_IDENTIFIER`
+    pub fn identifier(&self) -> ServiceIdentifier {
+        self.identifier
+    }
+
+    /// open an [`Intercom`] handle with the given service `O`
+    ///
+    /// [`Intercom`]: ./struct.Intercom.html
+    pub fn intercom_with<O: Service>(&self) -> Intercom<O> {
+        self.watchdog_query.intercom::<O>()
+    }
+
+    /// access the service's IntercomReceiver end
+    ///
+    /// this is the end that will receive intercom messages from other services
+    pub fn intercom_mut(&mut self) -> &mut IntercomReceiver<T::Intercom> {
+        &mut self.intercom_receiver
+    }
+
+    /// get the [`SettingsReader`] for the given running Service
+    ///
+    /// this from there one can "borrow" the settings or clone the reader
+    ///
+    /// [`SettingsReader`]: ./struct.SettingsReader.html
+    pub fn settings(&self) -> &SettingsReader<T::Settings> {
+        &self.settings
+    }
+
+    /// access the [`StateHandler`] of the running service
+    ///
+    /// this will allow to access or update the state of the service.
+    /// Every time the state is updated, the watchdog is notified and can
+    /// save a copy of the state for future uses.
+    ///
+    /// [`StateHandler`]: ./struct.StateHandler.html
+    pub fn state(&self) -> &StateHandler<T::State> {
+        &self.state
+    }
+
+    /// access the service's Runtime's handle
+    ///
+    /// This object can be cloned and send between tasks allowing for
+    /// other tasks to create their own subtasks and so on
+    pub fn runtime_handle(&self) -> &Handle {
+        &self.handle
+    }
+
+    /// spawn the given future in the context of the Service's Runtime.
+    ///
+    /// While there is no way to enforce the users to actually spawn tasks
+    /// within the Runtime we can at least urge the users to do so and avoid
+    /// using the global runtime context as it may be used for other purposes.
+    pub fn spawn<F>(&self, future: F) -> JoinHandle<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        self.runtime_handle().spawn(future)
+    }
 }
 
 impl<T: Service> ServiceManager<T> {

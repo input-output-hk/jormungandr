@@ -38,9 +38,9 @@ impl Service for Ping {
     }
 
     async fn start(mut self) {
-        let mut pong = self.state.watchdog_query.intercom::<Pong>();
+        let mut pong = self.state.intercom_with::<Pong>();
 
-        while let Some(msg) = self.state.intercom_receiver.recv().await {
+        while let Some(msg) = self.state.intercom_mut().recv().await {
             dbg!(msg);
             delay_for(Duration::from_millis(50)).await;
             if let Err(err) = pong.send(PongMsg).await {
@@ -64,11 +64,11 @@ impl Service for Pong {
     }
 
     async fn start(mut self) {
-        let mut ping = self.state.watchdog_query.intercom::<Ping>();
+        let mut ping = self.state.intercom_with::<Ping>();
 
         ping.send(PingMsg).await.unwrap();
 
-        while let Some(msg) = self.state.intercom_receiver.recv().await {
+        while let Some(msg) = self.state.intercom_mut().recv().await {
             dbg!(msg);
             delay_for(Duration::from_millis(50)).await;
             if let Err(err) = ping.send(PingMsg).await {
