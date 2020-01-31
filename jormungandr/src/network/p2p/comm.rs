@@ -104,23 +104,38 @@ pub type GossipSubscription = OutboundSubscription<Gossip<NodeData>>;
 /// subscription stream towards the peer.
 pub struct CommHandle<T> {
     state: SubscriptionState<T>,
+    direction: SubscriptionDirection,
+}
+
+/// Indicates whether this subscription belongs to a client or a server
+/// connection.
+#[derive(Copy, Clone)]
+pub enum SubscriptionDirection {
+    Client,
+    Server,
 }
 
 impl<T> Default for CommHandle<T> {
     fn default() -> Self {
         CommHandle {
             state: SubscriptionState::NotSubscribed,
+            direction: SubscriptionDirection::Server,
         }
     }
 }
 
 impl<T> CommHandle<T> {
-    /// Creates a handle with an item waiting to be sent,
+    /// Creates a handle with the `Client` direction and an item waiting to be sent,
     /// in expectation for a subscription to be established.
-    pub fn pending(item: T) -> Self {
+    pub fn client_pending(item: T) -> Self {
         CommHandle {
             state: SubscriptionState::Pending(item),
+            direction: SubscriptionDirection::Client,
         }
+    }
+
+    pub fn direction(&self) -> SubscriptionDirection {
+        self.direction
     }
 
     pub fn clear_pending(&mut self) {
@@ -134,6 +149,7 @@ impl<T> CommHandle<T> {
     /// to the same peer. This method is used instead of replacing
     /// the handle to send a potential pending item over the new subscription.
     pub fn update(&mut self, newer: CommHandle<T>) {
+        self.direction = newer.direction;
         match mem::replace(&mut self.state, newer.state) {
             SubscriptionState::Pending(item) => {
                 // If there is an error sending the pending item,
@@ -254,15 +270,15 @@ impl PeerComms {
     }
 
     pub fn set_pending_block_announcement(&mut self, header: Header) {
-        self.block_announcements = CommHandle::pending(header);
+        self.block_announcements = CommHandle::client_pending(header);
     }
 
     pub fn set_pending_fragment(&mut self, fragment: Fragment) {
-        self.fragments = CommHandle::pending(fragment);
+        self.fragments = CommHandle::client_pending(fragment);
     }
 
     pub fn set_pending_gossip(&mut self, gossip: Gossip<NodeData>) {
-        self.gossip = CommHandle::pending(gossip);
+        self.gossip = CommHandle::client_pending(gossip);
     }
 
     pub fn try_send_block_announcement(
