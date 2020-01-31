@@ -1,7 +1,7 @@
 mod control_command;
 mod monitor;
 
-use self::control_command::ControlCommand;
+pub(crate) use self::control_command::ControlCommand;
 pub use self::{
     control_command::{ControlHandler, WatchdogQuery},
     monitor::WatchdogMonitor,
@@ -46,6 +46,12 @@ pub enum WatchdogError {
     CannotStartService {
         service_identifier: ServiceIdentifier,
         source: ServiceError,
+    },
+
+    #[error("Cannot connect to service {service_identifier}, service might be shutdown")]
+    CannotConnectToService {
+        service_identifier: ServiceIdentifier,
+        retry_attempted: bool,
     },
 }
 

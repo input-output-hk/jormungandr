@@ -6,7 +6,7 @@ mod status;
 
 pub use self::{
     control::{Control, ControlReader, Controller},
-    intercom::{Intercom, IntercomReceiver, IntercomSender, NoIntercom},
+    intercom::{Intercom, IntercomMsg, IntercomReceiver, IntercomSender, NoIntercom},
     settings::{NoSettings, Settings, SettingsReader, SettingsUpdater},
     state::{NoState, State, StateHandler, StateSaver},
     status::{Status, StatusReader, StatusUpdater},
@@ -28,7 +28,7 @@ pub trait Service: Send + Sized + 'static {
 
     type State: State;
     type Settings: Settings;
-    type Intercom: Intercom;
+    type Intercom: IntercomMsg;
 
     fn prepare(service_state: ServiceState<Self>) -> Self;
 

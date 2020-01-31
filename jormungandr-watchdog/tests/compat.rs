@@ -24,7 +24,7 @@ struct EchoMsg(String);
 #[derive(Debug)]
 struct QueryLine(tokio::sync::oneshot::Sender<legacy_tokio::sync::mpsc::Sender<EchoMsg>>);
 
-impl service::Intercom for QueryLine {}
+impl service::IntercomMsg for QueryLine {}
 
 #[async_trait]
 impl Service for Echo {
@@ -77,7 +77,7 @@ impl Service for Client {
     async fn start(mut self) {
         use legacy_futures::sink::Sink as _;
 
-        let mut echo = self.state.watchdog_query.intercom::<Echo>().await.unwrap();
+        let mut echo = self.state.watchdog_query.intercom::<Echo>();
         let (sender, receiver) = tokio::sync::oneshot::channel();
 
         echo.send(QueryLine(sender)).await.unwrap();

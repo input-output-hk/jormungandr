@@ -1,8 +1,8 @@
-use crate::{service::IntercomSender, watchdog::WatchdogError, Service, ServiceIdentifier};
+use crate::{service::Intercom, watchdog::WatchdogError, Service, ServiceIdentifier};
 use std::any::Any;
 use tokio::sync::{mpsc, oneshot};
 
-pub enum ControlCommand {
+pub(crate) enum ControlCommand {
     Shutdown,
     Kill,
     Start {
@@ -32,42 +32,13 @@ impl WatchdogQuery {
         Self { sender }
     }
 
-    pub async fn intercom<T>(&mut self) -> Result<IntercomSender<T::Intercom>, WatchdogError>
-    where
-        T: Service,
-    {
-        let (reply, receiver) = oneshot::channel();
-
-        let command = ControlCommand::Intercom {
-            service_identifier: T::SERVICE_IDENTIFIER,
-            reply,
-        };
-        self.send(command).await;
-
-        match receiver.await {
-            Ok(Ok(intercom_sender)) => {
-                let tid = intercom_sender.type_id();
-                match intercom_sender.downcast_ref::<IntercomSender<T::Intercom>>() {
-                    Some(intercom_sender_ref) => Ok(intercom_sender_ref.clone()),
-                    None => unreachable!(
-                        "cannot downcast the intercom object to {}, {:?}",
-                        std::any::type_name::<T::Intercom>(),
-                        tid,
-                    ),
-                }
-            }
-            Ok(Err(err)) => Err(err),
-            Err(err) => {
-                // we assume the server will always reply one way or another
-                unreachable!(
-                    "The watchdog didn't reply to on the intercom query, {:#?}",
-                    err
-                )
-            }
-        }
+    /// retrieve an intercom object, allows to connect and send messages to
+    /// any given services
+    pub fn intercom<T: Service>(&self) -> Intercom<T> {
+        Intercom::new(self.clone())
     }
 
-    async fn send(&mut self, cc: ControlCommand) {
+    pub(crate) async fn send(&mut self, cc: ControlCommand) {
         if self.sender.send(cc).await.is_err() {
             // ignore the case where the watchdog is already gone
         }

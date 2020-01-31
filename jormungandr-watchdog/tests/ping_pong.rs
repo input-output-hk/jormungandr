@@ -22,8 +22,8 @@ struct PingMsg;
 #[derive(Debug)]
 struct PongMsg;
 
-impl service::Intercom for PingMsg {}
-impl service::Intercom for PongMsg {}
+impl service::IntercomMsg for PingMsg {}
+impl service::IntercomMsg for PongMsg {}
 
 #[async_trait]
 impl Service for Ping {
@@ -38,16 +38,14 @@ impl Service for Ping {
     }
 
     async fn start(mut self) {
-        let mut pong = self.state.watchdog_query.intercom::<Pong>().await.unwrap();
+        let mut pong = self.state.watchdog_query.intercom::<Pong>();
 
         while let Some(msg) = self.state.intercom_receiver.recv().await {
             dbg!(msg);
             delay_for(Duration::from_millis(50)).await;
-            if let Err(_err) = pong.send(PongMsg).await {
-                pong = self.state.watchdog_query.intercom::<Pong>().await.unwrap();
-                if pong.send(PongMsg).await.is_err() {
-                    break;
-                }
+            if let Err(err) = pong.send(PongMsg).await {
+                dbg!(err);
+                break;
             }
         }
     }
@@ -66,18 +64,16 @@ impl Service for Pong {
     }
 
     async fn start(mut self) {
-        let mut ping = self.state.watchdog_query.intercom::<Ping>().await.unwrap();
+        let mut ping = self.state.watchdog_query.intercom::<Ping>();
 
         ping.send(PingMsg).await.unwrap();
 
         while let Some(msg) = self.state.intercom_receiver.recv().await {
             dbg!(msg);
             delay_for(Duration::from_millis(50)).await;
-            if let Err(_err) = ping.send(PingMsg).await {
-                ping = self.state.watchdog_query.intercom::<Ping>().await.unwrap();
-                if ping.send(PingMsg).await.is_err() {
-                    break;
-                }
+            if let Err(err) = ping.send(PingMsg).await {
+                dbg!(err);
+                break;
             }
         }
     }
@@ -92,7 +88,7 @@ struct PingPongServices {
 /// test that the execution of the watchdog will be stopped shortly
 /// after receiving the shutdown command from the controller
 #[tokio::test]
-async fn start_shutdown_watchdog() {
+async fn ping_pong() {
     let watchdog = WatchdogBuilder::new().build(PingPongServices {
         ping: service::ServiceManager::new().await,
         pong: service::ServiceManager::new().await,

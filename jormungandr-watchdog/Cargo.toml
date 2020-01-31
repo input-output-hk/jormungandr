@@ -14,7 +14,7 @@ Process and service management and API
 
 [dependencies]
 jormungandr-watchdog-derive = { path = "../jormungandr-watchdog-derive" }
-tokio = { version = "^0.2.9", features = ["sync", "rt-threaded", "parking_lot"] }
+tokio = { version = "^0.2.9", features = ["sync", "rt-threaded", "parking_lot", "time"] }
 futures-util = "0.3"
 thiserror = "1.0"
 async-trait = "^0.1.22"
