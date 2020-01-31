@@ -59,7 +59,10 @@ impl WatchdogQuery {
             Ok(Err(err)) => Err(err),
             Err(err) => {
                 // we assume the server will always reply one way or another
-                unreachable!("The watchdog didn't reply to the stop query, {:#?}", err)
+                unreachable!(
+                    "The watchdog didn't reply to on the intercom query, {:#?}",
+                    err
+                )
             }
         }
     }

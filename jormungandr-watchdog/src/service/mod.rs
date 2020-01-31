@@ -18,6 +18,7 @@ use futures_util::{
     future::{select, Either},
 };
 use thiserror::Error;
+use tokio::runtime::{Builder, Handle, Runtime};
 
 pub type ServiceIdentifier = &'static str;
 
@@ -49,6 +50,7 @@ pub struct ServiceManager<T: Service> {
 
     status: StatusReader,
     controller: Controller,
+    runtime: Runtime,
 }
 
 /// not to mistake for `tokio`'s runtime. This is the object that
@@ -65,6 +67,7 @@ pub struct ServiceRuntime<T: Service> {
 pub struct ServiceState<T: Service> {
     pub identifier: ServiceIdentifier,
 
+    pub handle: Handle,
     pub settings: SettingsReader<T::Settings>,
     pub state: StateHandler<T::State>,
     pub intercom_receiver: IntercomReceiver<T::Intercom>,
@@ -81,6 +84,14 @@ impl<T: Service> ServiceManager<T> {
         let controller = Controller::new().await;
         let (intercom_sender, _) = intercom::channel();
 
+        let runtime = Builder::new()
+            .enable_io()
+            .enable_time()
+            .thread_name(identifier)
+            .threaded_scheduler()
+            .build()
+            .unwrap();
+
         Self {
             identifier,
             settings,
@@ -88,6 +99,7 @@ impl<T: Service> ServiceManager<T> {
             intercom_sender,
             status,
             controller,
+            runtime,
         }
     }
 
@@ -124,6 +136,7 @@ impl<T: Service> ServiceManager<T> {
             Ok(ServiceRuntime {
                 service_state: ServiceState {
                     identifier: self.identifier,
+                    handle: self.runtime.handle().clone(),
                     settings: self.settings.reader(),
                     state: self.state.handler(),
                     intercom_receiver,
@@ -146,12 +159,18 @@ impl<T: Service> ServiceRuntime<T> {
 
         status.update(Status::Starting);
 
+        let handle = service_state.handle.clone();
         let runner = T::prepare(service_state);
 
         let (runner, abort_handle) = abortable(async move { runner.start().await });
 
-        let mut service_join_handle = tokio::spawn(runner);
+        let mut service_join_handle = handle.spawn(runner);
 
+        // the runner (the service) has been started into its current runtime. They must use
+        // the `handle` to spawn new tasks.
+        //
+        // however the control of the service is still spawned in the watchdog current context
+        // so we can perform the management tasks without disrupting the service's runtime
         tokio::spawn(async move {
             status.update(Status::Started);
 

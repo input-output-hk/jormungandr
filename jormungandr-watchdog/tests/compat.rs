@@ -52,7 +52,7 @@ impl Service for Echo {
             Ok(())
         });
 
-        tokio::spawn(async move {
+        self.state.handle.spawn(async move {
             future.compat().await.unwrap();
         });
 
