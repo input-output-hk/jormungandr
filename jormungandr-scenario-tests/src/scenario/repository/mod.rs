@@ -143,7 +143,6 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short],
     ));
     repository.push(Scenario::new("star", star, vec![Tag::Short]));
-    repository.push(Scenario::new("ring", ring, vec![Tag::Short]));
     repository.push(Scenario::new("mesh", mesh, vec![Tag::Short]));
     repository.push(Scenario::new(
         "point_to_point",
