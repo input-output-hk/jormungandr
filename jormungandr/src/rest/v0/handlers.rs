@@ -96,7 +96,14 @@ pub async fn post_message(context: Data<Context>, message: Bytes) -> Result<impl
 }
 
 pub async fn get_tip(context: Data<Context>) -> Result<impl Responder, Error> {
-    chain_tip(&context).await.map(|tip| tip.hash().to_string())
+    intercom::unary_future(
+        context.try_full()?.client_task.clone(),
+        context.logger()?,
+        |reply_handle| ClientMsg::GetBlockTip(reply_handle),
+    )
+    .compat()
+    .await
+    .map(|tip| tip.hash().to_string())
 }
 
 #[derive(Serialize)]
