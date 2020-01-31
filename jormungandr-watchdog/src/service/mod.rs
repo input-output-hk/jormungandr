@@ -13,10 +13,7 @@ pub use self::{
 };
 use crate::watchdog::WatchdogQuery;
 use async_trait::async_trait;
-use futures_util::{
-    future::abortable,
-    future::{select, Either},
-};
+use futures_util::future::abortable;
 use std::future::Future;
 use thiserror::Error;
 use tokio::{
@@ -247,44 +244,41 @@ impl<T: Service> ServiceRuntime<T> {
             status.update(Status::Started);
 
             loop {
-                let sjh = std::pin::Pin::new(&mut service_join_handle);
-                let control = std::pin::Pin::new(&mut control);
-                let control = select(sjh, control).await;
+                tokio::select! {
+                    join_result = &mut service_join_handle => {
+                        if let Err(join_error) = join_result {
+                            // TODO: the task could not join, either cancelled
+                            //       or panicked. Ideally we need to document
+                            //       this panic and see what kind of strategy
+                            //       can be applied (can we restart the service?)
+                            //       or is it a fatal panic and we cannot recover?
 
-                match control {
-                    Either::Right((Some(Control::Shutdown), _)) => {
-                        status.update(Status::ShuttingDown);
-                        // TODO: send the shutdown signal to the task
-                    }
-                    Either::Left((Err(join_error), _)) => {
-                        // TODO: the task could not join, either cancelled
-                        //       or panicked. Ideally we need to document
-                        //       this panic and see what kind of strategy
-                        //       can be applied (can we restart the service?)
-                        //       or is it a fatal panic and we cannot recover?
+                            eprintln!(
+                                "{}'s main process failed with following error {:#?}",
+                                T::SERVICE_IDENTIFIER,
+                                join_error
+                            );
 
-                        eprintln!(
-                            "{}'s main process failed with following error {:#?}",
-                            T::SERVICE_IDENTIFIER,
-                            join_error
-                        );
-
+                        } else {
+                            abort_handle.abort();
+                        }
                         status.update(Status::Shutdown);
                         break;
                     }
-                    // If the service join handle has been notified that the
-                    // associated task has finished or has been aborted
-                    Either::Left((Ok(_), _))
-                    // or if the controller received the signal the service's
-                    // Controller has been closed
-                    | Either::Right((None, _))
-                    // or if the object has been signaled to be terminated now
-                    | Either::Right((Some(Control::Kill), _)) => {
-                        status.update(Status::Shutdown);
-                        abort_handle.abort();
-                        break;
+                    control = &mut control => {
+                        match control {
+                            Some(Control::Shutdown) => {
+                                status.update(Status::ShuttingDown);
+                                // TODO: send the shutdown signal to the task
+                            }
+                            None | Some(Control::Kill) => {
+                                status.update(Status::Shutdown);
+                                abort_handle.abort();
+                                break;
+                            }
+                        }
                     }
-                }
+                };
             }
         });
     }
