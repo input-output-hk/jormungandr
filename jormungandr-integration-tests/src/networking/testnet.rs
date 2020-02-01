@@ -102,7 +102,7 @@ pub fn e2e_stake_pool() {
 
     let jormungandr = Starter::new()
         .config(testnet_config.make_config())
-        .timeout(Duration::from_secs(2000))
+        .timeout(Duration::from_secs(4000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
@@ -115,7 +115,7 @@ pub fn e2e_stake_pool() {
     actor_account.spending_key = account_state.counter();
 
     let long_wait = WaitBuilder::new()
-        .tries(100)
+        .tries(200)
         .sleep_between_tries(120)
         .build();
 
