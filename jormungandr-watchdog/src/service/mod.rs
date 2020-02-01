@@ -2,13 +2,18 @@ mod control;
 mod intercom;
 mod settings;
 mod state;
+mod stats;
 mod status;
 
 pub use self::{
     control::{Control, ControlReader, Controller},
-    intercom::{Intercom, IntercomMsg, IntercomReceiver, IntercomSender, NoIntercom},
+    intercom::{
+        Intercom, IntercomMsg, IntercomReceiver, IntercomSender, IntercomStats, IntercomStatus,
+        NoIntercom,
+    },
     settings::{NoSettings, Settings, SettingsReader, SettingsUpdater},
     state::{NoState, State, StateHandler, StateSaver},
+    stats::Stats,
     status::{Status, StatusReader, StatusUpdater},
 };
 use crate::watchdog::WatchdogQuery;
@@ -42,12 +47,21 @@ pub enum ServiceError {
     CannotStart { status: Status },
 }
 
+#[derive(Debug, Clone)]
+pub struct StatusReport {
+    pub identifier: ServiceIdentifier,
+    pub status: Status,
+    pub intercom: IntercomStatus,
+    // add uptime
+}
+
 pub struct ServiceManager<T: Service> {
     identifier: ServiceIdentifier,
 
     settings: SettingsUpdater<T::Settings>,
     state: StateSaver<T::State>,
     intercom_sender: IntercomSender<T::Intercom>,
+    intercom_stats: IntercomStats,
 
     status: StatusReader,
     controller: Controller,
@@ -149,9 +163,9 @@ impl<T: Service> ServiceManager<T> {
 
         let settings = SettingsUpdater::new(T::Settings::default()).await;
         let state = StateSaver::new(T::State::default()).await;
-        let status = StatusReader::new(Status::Shutdown);
+        let status = StatusReader::new(Status::shutdown());
         let controller = Controller::new().await;
-        let (intercom_sender, _) = intercom::channel();
+        let (intercom_sender, _, intercom_stats) = intercom::channel();
 
         let runtime = Builder::new()
             .enable_io()
@@ -166,6 +180,7 @@ impl<T: Service> ServiceManager<T> {
             settings,
             state,
             intercom_sender,
+            intercom_stats,
             status,
             controller,
             runtime,
@@ -176,13 +191,21 @@ impl<T: Service> ServiceManager<T> {
         self.intercom_sender.clone()
     }
 
+    pub async fn status(&self) -> StatusReport {
+        StatusReport {
+            identifier: self.identifier,
+            status: self.status.status(),
+            intercom: self.intercom_stats.status().await,
+        }
+    }
+
     pub fn shutdown(&mut self) {
         match self.status.status() {
-            Status::Shutdown | Status::ShuttingDown => {
+            Status::Shutdown { .. } | Status::ShuttingDown { .. } => {
                 // Ignore as the node is either shutdown or already shutting
                 // down
             }
-            Status::Starting | Status::Started => {
+            Status::Starting { .. } | Status::Started { .. } => {
                 // send only if the node will have a chance to actually read
                 // the command
                 self.controller.send(Control::Shutdown)
@@ -195,12 +218,14 @@ impl<T: Service> ServiceManager<T> {
         watchdog_query: WatchdogQuery,
     ) -> Result<ServiceRuntime<T>, ServiceError> {
         let status = self.status.status();
-        if status != Status::Shutdown {
+        if !status.is_shutdown() {
             Err(ServiceError::CannotStart { status })
         } else {
-            let (intercom_sender, intercom_receiver) = intercom::channel::<T::Intercom>();
+            let (intercom_sender, intercom_receiver, intercom_stats) =
+                intercom::channel::<T::Intercom>();
 
             std::mem::replace(&mut self.intercom_sender, intercom_sender);
+            std::mem::replace(&mut self.intercom_stats, intercom_stats);
 
             Ok(ServiceRuntime {
                 service_state: ServiceState {
@@ -226,7 +251,7 @@ impl<T: Service> ServiceRuntime<T> {
             mut control,
         } = self;
 
-        status.update(Status::Starting);
+        status.update(Status::starting());
 
         let handle = service_state.handle.clone();
         let runner = T::prepare(service_state);
@@ -241,7 +266,7 @@ impl<T: Service> ServiceRuntime<T> {
         // however the control of the service is still spawned in the watchdog current context
         // so we can perform the management tasks without disrupting the service's runtime
         tokio::spawn(async move {
-            status.update(Status::Started);
+            status.update(Status::started());
 
             loop {
                 tokio::select! {
@@ -262,17 +287,17 @@ impl<T: Service> ServiceRuntime<T> {
                         } else {
                             abort_handle.abort();
                         }
-                        status.update(Status::Shutdown);
+                        status.update(Status::shutdown());
                         break;
                     }
                     control = &mut control => {
                         match control {
                             Some(Control::Shutdown) => {
-                                status.update(Status::ShuttingDown);
+                                status.update(Status::shutting_down());
                                 // TODO: send the shutdown signal to the task
                             }
                             None | Some(Control::Kill) => {
-                                status.update(Status::Shutdown);
+                                status.update(Status::shutdown());
                                 abort_handle.abort();
                                 break;
                             }
@@ -286,7 +311,7 @@ impl<T: Service> ServiceRuntime<T> {
 
 impl<T: Service> Drop for ServiceManager<T> {
     fn drop(&mut self) {
-        if self.status.status() != Status::Shutdown {
+        if !self.status.status().is_shutdown() {
             self.controller.send(Control::Kill)
         }
     }

@@ -6,15 +6,21 @@ pub use self::{
     control_command::{ControlHandler, WatchdogQuery},
     monitor::WatchdogMonitor,
 };
-use crate::{service::ServiceError, ServiceIdentifier};
+use crate::service::{ServiceError, ServiceIdentifier, StatusReport};
+use async_trait::async_trait;
 use std::any::Any;
 use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
 
 /// trait to define the different core services and their
 /// associated metadata
+#[async_trait]
 pub trait CoreServices: Send + Sync {
     fn stop(&mut self, service_identifier: ServiceIdentifier) -> Result<(), WatchdogError>;
+    async fn status(
+        &mut self,
+        service_identifier: ServiceIdentifier,
+    ) -> Result<StatusReport, WatchdogError>;
     fn start(
         &mut self,
         service_identifier: ServiceIdentifier,
@@ -96,6 +102,26 @@ where
                     //       signal to every services so they can save state and
                     //       release resources properly
                     break;
+                }
+                ControlCommand::Status {
+                    service_identifier,
+                    reply,
+                } => {
+                    let status_report = self.services.status(service_identifier).await;
+                    if let Err(reply) = reply.send(status_report) {
+                        if let Err(err) = reply {
+                            dbg!(
+                                "Cannot reply to the ControlHandler that the service {} failed to return status: {}",
+                                service_identifier,
+                                err
+                            );
+                        } else {
+                            dbg!(
+                                "Cannot reply to the ControlHandler the service {} 's status",
+                                service_identifier
+                            );
+                        }
+                    }
                 }
                 ControlCommand::Start {
                     service_identifier,

@@ -1,4 +1,8 @@
-use crate::{service::Intercom, watchdog::WatchdogError, Service, ServiceIdentifier};
+use crate::{
+    service::{Intercom, StatusReport},
+    watchdog::WatchdogError,
+    Service, ServiceIdentifier,
+};
 use std::any::Any;
 use tokio::sync::{mpsc, oneshot};
 
@@ -16,6 +20,10 @@ pub(crate) enum ControlCommand {
     Intercom {
         service_identifier: ServiceIdentifier,
         reply: oneshot::Sender<Result<Box<dyn Any + 'static + Send>, WatchdogError>>,
+    },
+    Status {
+        service_identifier: ServiceIdentifier,
+        reply: oneshot::Sender<Result<StatusReport, WatchdogError>>,
     },
 }
 
@@ -36,6 +44,23 @@ impl WatchdogQuery {
     /// any given services
     pub fn intercom<T: Service>(&self) -> Intercom<T> {
         Intercom::new(self.clone())
+    }
+
+    pub async fn status<T: Service>(&mut self) -> Result<StatusReport, WatchdogError> {
+        let (reply, receiver) = oneshot::channel();
+        self.send(ControlCommand::Status {
+            service_identifier: T::SERVICE_IDENTIFIER,
+            reply,
+        })
+        .await;
+
+        match receiver.await {
+            Ok(v) => v,
+            Err(err) => {
+                // we assume the server will always reply one way or another
+                unreachable!("The watchdog didn't reply to the status query, {:#?}", err)
+            }
+        }
     }
 
     pub(crate) async fn send(&mut self, cc: ControlCommand) {
@@ -125,6 +150,23 @@ impl ControlHandler {
             Err(err) => {
                 // we assume the server will always reply one way or another
                 unreachable!("The watchdog didn't reply to the stop query, {:#?}", err)
+            }
+        }
+    }
+
+    pub async fn status<T: Service>(&mut self) -> Result<StatusReport, WatchdogError> {
+        let (reply, receiver) = oneshot::channel();
+        self.send(ControlCommand::Status {
+            service_identifier: T::SERVICE_IDENTIFIER,
+            reply,
+        })
+        .await;
+
+        match receiver.await {
+            Ok(v) => v,
+            Err(err) => {
+                // we assume the server will always reply one way or another
+                unreachable!("The watchdog didn't reply to the status query, {:#?}", err)
             }
         }
     }

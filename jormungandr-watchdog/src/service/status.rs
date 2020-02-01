@@ -3,6 +3,7 @@ use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
+    time::SystemTime,
 };
 use tokio::{
     stream::Stream,
@@ -23,10 +24,44 @@ pub struct StatusUpdater {
 /// these are the different status of the service
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Status {
-    Starting,
-    Started,
-    ShuttingDown,
-    Shutdown,
+    Starting { since: SystemTime },
+    Started { since: SystemTime },
+    ShuttingDown { since: SystemTime },
+    Shutdown { since: SystemTime },
+}
+
+impl Status {
+    pub fn starting() -> Self {
+        Status::Starting {
+            since: SystemTime::now(),
+        }
+    }
+
+    pub fn started() -> Self {
+        Status::Started {
+            since: SystemTime::now(),
+        }
+    }
+
+    pub fn shutting_down() -> Self {
+        Status::ShuttingDown {
+            since: SystemTime::now(),
+        }
+    }
+
+    pub fn shutdown() -> Self {
+        Status::Shutdown {
+            since: SystemTime::now(),
+        }
+    }
+
+    pub fn is_shutdown(&self) -> bool {
+        if let Status::Shutdown { .. } = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl StatusReader {
@@ -77,19 +112,22 @@ impl Stream for StatusReader {
 
 impl Drop for StatusUpdater {
     fn drop(&mut self) {
-        self.update(Status::ShuttingDown)
+        self.update(Status::ShuttingDown {
+            since: SystemTime::now(),
+        })
     }
 }
 
 impl fmt::Display for Status {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let v = match self {
-            Status::Starting => "starting",
-            Status::Started => "started",
-            Status::ShuttingDown => "shutting down",
-            Status::Shutdown => "shutdown",
+        let (v, since) = match self {
+            Status::Starting { since } => ("starting", since),
+            Status::Started { since } => ("started", since),
+            Status::ShuttingDown { since } => ("shutting down", since),
+            Status::Shutdown { since } => ("shutdown", since),
         };
 
-        v.fmt(f)
+        // TODO: display time in better format
+        write!(f, "{} (since {:?})", v, since)
     }
 }

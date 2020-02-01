@@ -132,17 +132,57 @@ fn gen_intercom(fields: &Punctuated<Field, Comma>) -> TokenStream {
     }
 }
 
+fn gen_status(fields: &Punctuated<Field, Comma>) -> TokenStream {
+    let possible_values = fields.iter().map(|field| {
+        let field_name = field.ident.as_ref().unwrap();
+
+        let entry = field_name.to_string();
+
+        quote! {
+            #entry
+        }
+    });
+
+    let cases = fields.iter().map(|field| {
+        let field_name = field.ident.as_ref().unwrap();
+
+        let entry = field_name.to_string();
+
+        quote! {
+            #entry => { Ok(self.#field_name.status().await) }
+        }
+    });
+
+    quote! {
+        async fn status(
+            &mut self,
+            service_identifier: ::jormungandr_watchdog::ServiceIdentifier,
+        ) -> Result<::jormungandr_watchdog::service::StatusReport, ::jormungandr_watchdog::WatchdogError> {
+            match service_identifier {
+                #( #cases ),*
+                _ => Err(::jormungandr_watchdog::WatchdogError::UnknownService {
+                    service_identifier,
+                    possible_values: &[#( #possible_values ),*],
+                })
+            }
+        }
+    }
+}
+
 fn impl_core_services_for_struct(
     struct_name: &Ident,
     fields: &Punctuated<Field, Comma>,
 ) -> TokenStream {
     let start = gen_start(fields);
     let stop = gen_stop(fields);
+    let status = gen_status(fields);
     let intercom = gen_intercom(fields);
 
     quote! {
+        #[async_trait::async_trait]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
             #start
+            #status
             #stop
             #intercom
         }
@@ -152,12 +192,22 @@ fn impl_core_services_for_struct(
 // create the impl of CoreServices for Unit Structure
 fn impl_core_services_for_struct_unit(struct_name: &Ident) -> TokenStream {
     quote! {
+        #[async_trait::async_trait]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
             fn start(
                 &mut self,
                 service_identifier: ::jormungandr_watchdog::ServiceIdentifier,
                 _watchdog_query: ::jormungandr_watchdog::WatchdogQuery,
             ) -> Result<(), ::jormungandr_watchdog::WatchdogError> {
+                Err(::jormungandr_watchdog::WatchdogError::UnknownService {
+                    service_identifier,
+                    possible_values: &[],
+                })
+            }
+            async fn status(
+                &mut self,
+                service_identifier: ::jormungandr_watchdog::ServiceIdentifier
+            ) -> Result<::jormungandr_watchdog::service::StatusReport, ::jormungandr_watchdog::WatchdogError> {
                 Err(::jormungandr_watchdog::WatchdogError::UnknownService {
                     service_identifier,
                     possible_values: &[],
@@ -188,6 +238,7 @@ fn impl_core_services(input: &DeriveInput) -> TokenStream {
     let struct_name = &input.ident;
 
     set_dummy(quote! {
+        #[async_trait::async_trait]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
             fn start(
                 &mut self,
@@ -200,6 +251,12 @@ fn impl_core_services(input: &DeriveInput) -> TokenStream {
                 &mut self,
                 _service_identifier: ::jormungandr_watchdog::ServiceIdentifier
             ) -> Result<(), ::jormungandr_watchdog::WatchdogError> {
+                unimplemented!()
+            }
+            async fn status(
+                &mut self,
+                _service_identifier: ::jormungandr_watchdog::ServiceIdentifier
+            ) -> Result<::jormungandr_watchdog::service::StatusReport, ::jormungandr_watchdog::WatchdogError> {
                 unimplemented!()
             }
             fn intercoms(
