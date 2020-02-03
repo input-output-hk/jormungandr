@@ -84,7 +84,7 @@ const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
     if let Some(context) = bootstrapped_node.rest_context.as_ref() {
-        context.set_node_state(NodeState::StartingWorkers)
+        block_on(context.set_node_state(NodeState::StartingWorkers));
     }
 
     let mut services = bootstrapped_node.services;
@@ -265,8 +265,10 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
             diagnostic: bootstrapped_node.diagnostic,
         };
-        rest_context.set_full(full_context);
-        rest_context.set_node_state(NodeState::Running);
+        block_on(async {
+            rest_context.set_full(full_context).await;
+            rest_context.set_node_state(NodeState::Running).await;
+        })
     };
 
     {
@@ -332,7 +334,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
-        context.set_node_state(NodeState::Bootstrapping)
+        block_on(context.set_node_state(NodeState::Bootstrapping))
     }
 
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
@@ -447,7 +449,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let explorer = settings.explorer;
             let server_handler = rest::start_rest_server(rest, explorer, &context)?;
             services.spawn_future("rest", move |info| {
-                service_context.set_logger(info.into_logger());
+                block_on(service_context.set_logger(info.into_logger()));
                 server_handler
             });
             Some(context)
@@ -456,14 +458,14 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     };
 
     if let Some(context) = rest_context.as_ref() {
-        context.set_node_state(NodeState::PreparingStorage)
+        block_on(context.set_node_state(NodeState::PreparingStorage))
     }
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 
     if let Some(context) = rest_context.as_ref() {
-        context.set_node_state(NodeState::PreparingBlock0)
+        block_on(context.set_node_state(NodeState::PreparingBlock0))
     }
     let block0 = start_up::prepare_block_0(
         &settings,
