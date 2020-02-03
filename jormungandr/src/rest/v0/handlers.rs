@@ -35,7 +35,7 @@ impl From<intercom::Error> for Error {
 }
 
 async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
-    chain_tip_from_full(&*context.try_full()?).await
+    chain_tip_from_full(&*context.try_full().await?).await
 }
 
 async fn chain_tip_from_full(context: &FullContext) -> Result<Arc<Ref>, Error> {
@@ -74,7 +74,8 @@ pub async fn get_account_state(
 
 pub async fn get_message_logs(context: Data<Context>) -> Result<impl Responder, Error> {
     context
-        .try_full()?
+        .try_full()
+        .await?
         .logs
         .logs()
         .compat()
@@ -87,7 +88,8 @@ pub async fn post_message(context: Data<Context>, message: Bytes) -> Result<impl
     let fragment = Fragment::deserialize(&*message).map_err(ErrorBadRequest)?;
     let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
     context
-        .try_full()?
+        .try_full()
+        .await?
         .transaction_task
         .clone()
         .try_send(msg)
@@ -97,8 +99,8 @@ pub async fn post_message(context: Data<Context>, message: Bytes) -> Result<impl
 
 pub async fn get_tip(context: Data<Context>) -> Result<impl Responder, Error> {
     intercom::unary_future(
-        context.try_full()?.client_task.clone(),
-        context.logger()?,
+        context.try_full().await?.client_task.clone(),
+        context.logger().await?,
         |reply_handle| ClientMsg::GetBlockTip(reply_handle),
     )
     .compat()
@@ -115,13 +117,13 @@ struct NodeStatsDto {
 }
 
 pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder, Error> {
-    let stats = match context.try_full() {
-        Ok(full_context) => Some(create_stats(&*full_context, context.logger()?).await?),
+    let stats = match context.try_full().await {
+        Ok(full_context) => Some(create_stats(&*full_context, context.logger().await?).await?),
         Err(_) => None,
     };
     Ok(Json(NodeStatsDto {
         version: env!("SIMPLE_VERSION"),
-        state: context.node_state(),
+        state: context.node_state().await,
         stats,
     }))
 }
@@ -206,10 +208,12 @@ pub async fn get_block_id(
     block_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
     let block_id = parse_block_hash(&block_id_hex)?;
-    let (reply_handle, reply_stream) = intercom::stream_reply::<_, Error>(1, context.logger()?);
+    let (reply_handle, reply_stream) =
+        intercom::stream_reply::<_, Error>(1, context.logger().await?);
 
     context
-        .try_full()?
+        .try_full()
+        .await?
         .client_task
         .clone()
         .send(ClientMsg::GetBlocks(vec![block_id], reply_handle))
@@ -238,13 +242,15 @@ pub async fn get_block_next_id(
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<impl Responder, Error> {
-    let full_context = context.try_full()?;
+    let full_context = context.try_full().await?;
     let block_id = parse_block_hash(&block_id_hex)?;
     let tip = chain_tip_from_full(&full_context).await?;
-    let (reply_handle, reply_stream) = intercom::stream_reply::<_, Error>(1, context.logger()?);
+    let (reply_handle, reply_stream) =
+        intercom::stream_reply::<_, Error>(1, context.logger().await?);
 
     context
-        .try_full()?
+        .try_full()
+        .await?
         .client_task
         .clone()
         .send(ClientMsg::GetHeadersRange(
@@ -311,7 +317,7 @@ fn create_stake(stake: &StakeDistribution) -> serde_json::Value {
 }
 
 pub async fn get_settings(context: Data<Context>) -> Result<impl Responder, Error> {
-    let full_context = context.try_full()?;
+    let full_context = context.try_full().await?;
     let blockchain_tip = chain_tip_from_full(&full_context).await?;
     let ledger = blockchain_tip.ledger();
     let static_params = ledger.get_static_parameters();
@@ -345,16 +351,16 @@ pub async fn get_settings(context: Data<Context>) -> Result<impl Responder, Erro
 
 pub async fn get_shutdown(context: Data<Context>) -> Result<impl Responder, Error> {
     // Verify that node has fully started and is able to process shutdown
-    context.try_full()?;
+    context.try_full().await?;
     // Server finishes ongoing tasks before stopping, so user will get response to this request
     // Node should be shutdown automatically when server stopping is finished
-    context.server_stopper()?.stop();
+    context.server_stopper().await?.stop();
     Ok(HttpResponse::Ok().finish())
 }
 
 pub async fn get_leaders(context: Data<Context>) -> Result<impl Responder, Error> {
     Ok(Json(json! {
-        context.try_full()?.enclave.get_leaderids()
+        context.try_full().await?.enclave.get_leaderids()
     }))
 }
 
@@ -366,7 +372,7 @@ pub async fn post_leaders(
         bft_leader: secret.bft(),
         genesis_leader: secret.genesis(),
     };
-    let leader_id = context.try_full()?.enclave.add_leader(leader);
+    let leader_id = context.try_full().await?.enclave.add_leader(leader);
     Ok(Json(leader_id))
 }
 
@@ -374,7 +380,7 @@ pub async fn delete_leaders(
     context: Data<Context>,
     leader_id: Path<EnclaveLeaderId>,
 ) -> Result<impl Responder, Error> {
-    match context.try_full()?.enclave.remove_leader(*leader_id) {
+    match context.try_full().await?.enclave.remove_leader(*leader_id) {
         true => Ok(HttpResponse::Ok().finish()),
         false => Err(ErrorNotFound("Leader with given ID not found")),
     }
@@ -382,7 +388,8 @@ pub async fn delete_leaders(
 
 pub async fn get_leaders_logs(context: Data<Context>) -> Result<impl Responder, Error> {
     context
-        .try_full()?
+        .try_full()
+        .await?
         .leadership_logs
         .logs()
         .compat()
@@ -403,10 +410,10 @@ pub async fn get_stake_pools(context: Data<Context>) -> Result<impl Responder, E
 }
 
 pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder, Error> {
-    let full_context = context.try_full()?;
+    let full_context = context.try_full().await?;
     let peer_stats = intercom::unary_future(
         full_context.network_task.clone(),
-        context.logger()?,
+        context.logger().await?,
         |reply_handle| NetworkMsg::PeerInfo(reply_handle),
     )
     .compat()
@@ -491,30 +498,30 @@ pub async fn get_stake_pool(
 }
 
 pub async fn get_diagnostic(context: Data<Context>) -> Result<impl Responder, Error> {
-    let full_context = context.try_full()?;
+    let full_context = context.try_full().await?;
     serde_json::to_string(&full_context.diagnostic).map_err(ErrorInternalServerError)
 }
 
 pub async fn get_network_p2p_quarantined(context: Data<Context>) -> Result<impl Responder, Error> {
-    let ctx = context.try_full()?;
+    let ctx = context.try_full().await?;
     let list = ctx.p2p.list_quarantined::<Error>().compat().await?;
     Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_non_public(context: Data<Context>) -> Result<impl Responder, Error> {
-    let ctx = context.try_full()?;
+    let ctx = context.try_full().await?;
     let list = ctx.p2p.list_non_public::<Error>().compat().await?;
     Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_available(context: Data<Context>) -> Result<impl Responder, Error> {
-    let ctx = context.try_full()?;
+    let ctx = context.try_full().await?;
     let list = ctx.p2p.list_available::<Error>().compat().await?;
     Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_view(context: Data<Context>) -> Result<impl Responder, Error> {
-    let ctx = context.try_full()?;
+    let ctx = context.try_full().await?;
     let view = ctx
         .p2p
         .view::<Error>(poldercast::Selection::Any)
@@ -544,7 +551,7 @@ pub async fn get_network_p2p_view_topic(
     }
 
     let topic = parse_topic(&topic.into_inner())?;
-    let ctx = context.try_full()?;
+    let ctx = context.try_full().await?;
     let view = ctx.p2p.view::<Error>(topic).compat().await?;
     let node_infos: Vec<poldercast::NodeInfo> = view.peers.into_iter().map(Into::into).collect();
     Ok(Json(json!(node_infos)))
