@@ -30,7 +30,7 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
-use futures::Future;
+use futures03::{executor::block_on, future::TryFutureExt};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
@@ -225,7 +225,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         })
         .collect();
     let leader_secrets = leader_secrets?;
-    let enclave = Enclave::from_vec(leader_secrets);
+    let enclave = block_on(Enclave::from_vec(leader_secrets));
 
     {
         let leadership_logs = leadership_logs.clone();
@@ -235,7 +235,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let enclave = leadership::Enclave::new(enclave.clone());
 
         services.spawn_future("leadership", move |info| {
-            leadership::Module::new(
+            let fut = leadership::Module::new(
                 info,
                 leadership_logs,
                 leadership_garbage_collection_interval,
@@ -245,7 +245,9 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 block_msgbox,
             )
             .and_then(|module| module.run())
-            .map_err(|e| unimplemented!("error in leadership {}", e))
+            .map_err(|e| unimplemented!("error in leadership {}", e));
+
+            Box::pin(fut).compat()
         });
     }
 
