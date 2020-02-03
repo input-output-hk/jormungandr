@@ -48,6 +48,7 @@ use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
+use crate::log;
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
@@ -335,10 +336,11 @@ fn handle_propagation_msg(
     // active subscriptions map, connect to them and deliver
     // the item.
     send_to_peers.then(move |res| {
-        if let Err(unreached_nodes) = res {
+        if let Err(mut unreached_nodes) = res {
+            unreached_nodes.truncate(state.config.max_client_connections);
             debug!(
                 state.logger(),
-                "{} of the peers selected for propagation have not been reached, will try to connect",
+                "will try to connect to {} of the peers not immediately reachable for propagation",
                 unreached_nodes.len(),
             );
             for node in unreached_nodes {
@@ -397,10 +399,14 @@ fn start_gossiping(state: GlobalStateR, channels: Channels) -> impl Future<Item 
 
 fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = (), Error = ()> {
     let topology = state.topology.clone();
+    let logger = state.logger().new(o!(log::KEY_SUB_TASK => "send_gossip"));
     topology
         .view(poldercast::Selection::Any)
         .and_then(move |view| {
-            stream::iter_ok(view.peers).for_each(move |node| {
+            let mut peers = view.peers;
+            peers.truncate(state.config.max_client_connections);
+            debug!(logger, "sending gossip to {} peers", peers.len());
+            stream::iter_ok(peers).for_each(move |node| {
                 let peer_id = node.id();
                 let state_prop = state.clone();
                 let state_err = state.clone();
