@@ -375,8 +375,9 @@ pub struct ConnectOptions {
     pub pending_fragment: Option<Fragment>,
     /// Gossip to send once the subscription is established
     pub pending_gossip: Option<Gossip<NodeData>>,
-    /// Set to true if a client peer connection needs to be removed
-    pub evict_client: bool,
+    /// The to number of client connections that need to be removed
+    /// prior to connecting.
+    pub evict_clients: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -503,14 +504,11 @@ impl Peers {
         handle: ConnectHandle,
         options: ConnectOptions,
     ) -> impl Future<Item = (), Error = E> {
-        let logger = self.logger.clone();
+        if options.evict_clients != 0 {
+            debug!(self.logger, "will evict {} clients", options.evict_clients);
+        }
         self.inner().map(move |mut map| {
-            if options.evict_client {
-                let evicted = map.evict_client();
-                if let Some(id) = evicted {
-                    debug!(logger, "evicted client peer"; "node_id" => %id);
-                }
-            }
+            map.evict_clients(options.evict_clients);
             let comms = map.add_connecting(id, handle);
             if let Some(header) = options.pending_block_announcement {
                 comms.set_pending_block_announcement(header);

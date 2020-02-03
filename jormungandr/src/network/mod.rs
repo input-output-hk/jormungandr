@@ -178,6 +178,15 @@ impl GlobalState {
         let prev_count = self.client_count.fetch_sub(1, atomic::Ordering::SeqCst);
         assert!(prev_count != 0);
     }
+
+    fn num_surplus_clients(&self) -> usize {
+        let count = self.client_count.load(atomic::Ordering::Relaxed);
+        if count > self.config.max_client_connections {
+            count - self.config.max_client_connections
+        } else {
+            0
+        }
+    }
 }
 
 pub struct ConnectionState {
@@ -449,9 +458,7 @@ fn connect_and_propagate(
             return;
         }
     };
-    if state.client_count() >= state.config.max_client_connections {
-        options.evict_client = true;
-    }
+    options.evict_clients = state.num_surplus_clients();
     let node_id = node.id();
     assert_ne!(
         node_id,

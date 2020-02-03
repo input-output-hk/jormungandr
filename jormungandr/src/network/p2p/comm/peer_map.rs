@@ -157,19 +157,21 @@ impl PeerMap {
             .collect()
     }
 
-    pub fn evict_client(&mut self) -> Option<Id> {
-        let found_client_id = self.map.iter().find_map(|(&id, data)| {
-            if data.comms.has_client_subscriptions() {
-                Some(id)
-            } else {
-                None
-            }
-        });
-        if let Some(id) = found_client_id {
+    pub fn evict_clients(&mut self, num: usize) {
+        let ids = self
+            .map
+            .iter()
+            .filter_map(|(&id, data)| {
+                if data.comms.has_client_subscriptions() {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .take(num)
+            .collect::<Vec<_>>();
+        for id in ids {
             self.map.remove(&id);
-            Some(id)
-        } else {
-            None
         }
     }
 
