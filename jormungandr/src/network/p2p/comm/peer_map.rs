@@ -173,14 +173,6 @@ impl PeerMap {
             self.map.pop_front();
         }
     }
-
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }
-
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
 }
 
 pub struct Entry<'a> {
