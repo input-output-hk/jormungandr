@@ -72,9 +72,20 @@ impl Gossip {
                 if ip.is_loopback() {
                     return false;
                 }
-                // FIXME: add more tests when Ipv6Addr convenience methods
-                // get stabilized:
+                // Try using same methods by trying to cast address to ipv4
+                // FIXME: use Ipv6 tests when Ipv6Addr convenience methods are get stabilized:
                 // https://github.com/rust-lang/rust/issues/27709
+                match ip.to_ipv4() {
+                    Some(ipv4) => {
+                        if ipv4.is_private() {
+                            return false;
+                        }
+                        if ipv4.is_link_local() {
+                            return false;
+                        }
+                    }
+                    None => {}
+                }
             }
         }
 
