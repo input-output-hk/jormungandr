@@ -175,8 +175,12 @@ mod test {
                     use crate::crypto::key::KeyPair;
                     use chain_crypto::Ed25519Bip32;
                     let kp: KeyPair<Ed25519Bip32> = KeyPair::arbitrary(g);
-                    Witness::OldUtxo(kp.identifier().as_ref().clone(), Arbitrary::arbitrary(g))
-                        .into()
+
+                    let pk = kp.identifier().into_public_key().inner();
+                    let cc = pk.chain_code();
+                    let pk_ed = chain_crypto::PublicKey::from_binary(&pk.public_key()).unwrap();
+
+                    Witness::OldUtxo(pk_ed, cc, Arbitrary::arbitrary(g)).into()
                 }
                 3 => unimplemented!(), // Multisig
                 _ => unreachable!(),

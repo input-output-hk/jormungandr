@@ -7,7 +7,7 @@ use chain_crypto::{
 };
 use ed25519_bip32::{DerivationError, DerivationScheme};
 use hex::FromHexError;
-use rand::{rngs::EntropyRng, SeedableRng};
+use rand::{rngs::OsRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{
     io::{Read, Write},
@@ -426,7 +426,7 @@ fn gen_priv_key<K: AsymmetricKey>(seed: Option<Seed>) -> Result<Bech32, Error> {
     let rng = if let Some(seed) = seed {
         ChaChaRng::from_seed(seed.0)
     } else {
-        ChaChaRng::from_rng(EntropyRng::new())?
+        ChaChaRng::from_rng(OsRng)?
     };
     let secret = K::generate(rng);
     let hrp = K::SECRET_BECH32_HRP.to_string();
