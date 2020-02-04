@@ -87,22 +87,21 @@ struct PingPongServices {
 
 /// test that the execution of the watchdog will be stopped shortly
 /// after receiving the shutdown command from the controller
-#[tokio::test]
-async fn ping_pong() {
-    let watchdog = WatchdogBuilder::new().build(PingPongServices {
-        ping: service::ServiceManager::new().await,
-        pong: service::ServiceManager::new().await,
-    });
+#[test]
+fn ping_pong() {
+    let (ping_rt, ping) = service::ServiceManager::new();
+    let (pong_rt, pong) = service::ServiceManager::new();
+
+    let watchdog = WatchdogBuilder::new().build(PingPongServices { ping, pong });
 
     let mut controller = watchdog.control();
-    tokio::spawn(async move {
+    watchdog.spawn(async move {
+        controller.start("ping").await.unwrap();
+        controller.start("pong").await.unwrap();
         delay_for(Duration::from_millis(400)).await;
         controller.shutdown().await;
     });
 
-    let mut controller = watchdog.control();
-    controller.start("ping").await.unwrap();
-    controller.start("pong").await.unwrap();
-
-    watchdog.await
+    watchdog.wait_finished();
+    std::mem::drop((ping_rt, pong_rt));
 }

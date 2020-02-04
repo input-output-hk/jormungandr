@@ -3,8 +3,12 @@ use crate::{
     watchdog::WatchdogError,
     Service, ServiceIdentifier,
 };
-use std::any::Any;
-use tokio::sync::{mpsc, oneshot};
+use std::{any::Any, future::Future};
+use tokio::{
+    runtime::Handle,
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 
 pub(crate) enum ControlCommand {
     Shutdown,
@@ -30,20 +34,29 @@ pub(crate) enum ControlCommand {
 #[derive(Clone)]
 pub struct WatchdogQuery {
     sender: mpsc::Sender<ControlCommand>,
+    handle: Handle,
 }
 
 impl WatchdogQuery {
     /// This function creates a control handler from a given [`Watchdog`].
     ///
     /// [`Watchdog`]: ./struct.Watchdog.html
-    pub(crate) fn new(sender: mpsc::Sender<ControlCommand>) -> Self {
-        Self { sender }
+    pub(crate) fn new(handle: Handle, sender: mpsc::Sender<ControlCommand>) -> Self {
+        Self { sender, handle }
     }
 
     /// retrieve an intercom object, allows to connect and send messages to
     /// any given services
     pub fn intercom<T: Service>(&self) -> Intercom<T> {
         Intercom::new(self.clone())
+    }
+
+    pub(crate) fn spawn<F>(&self, future: F) -> JoinHandle<F::Output>
+    where
+        F: Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        self.handle.spawn(future)
     }
 
     pub async fn status<T: Service>(&mut self) -> Result<StatusReport, WatchdogError> {

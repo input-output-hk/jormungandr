@@ -78,10 +78,18 @@ impl WatchdogBuilder {
             services,
         };
 
-        let query = WatchdogQuery::new(sender.clone());
-        tokio::spawn(async move { watchdog.watchdog(receiver, query).await });
+        let rt = tokio::runtime::Builder::new()
+            .enable_all()
+            .thread_name("watchdog")
+            .threaded_scheduler()
+            .build()
+            .unwrap();
 
-        WatchdogMonitor::new(sender, on_drop_receive)
+        let query = WatchdogQuery::new(rt.handle().clone(), sender.clone());
+
+        rt.spawn(async move { watchdog.watchdog(receiver, query).await });
+
+        WatchdogMonitor::new(rt, sender, on_drop_receive)
     }
 }
 

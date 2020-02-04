@@ -65,7 +65,7 @@ pub struct ServiceManager<T: Service> {
 
     status: StatusReader,
     controller: Controller,
-    runtime: Runtime,
+    runtime: Handle,
 }
 
 /// not to mistake for `tokio`'s runtime. This is the object that
@@ -158,16 +158,10 @@ impl<T: Service> ServiceState<T> {
 }
 
 impl<T: Service> ServiceManager<T> {
-    pub async fn new() -> Self {
+    pub fn new() -> (Runtime, Self) {
         let identifier = T::SERVICE_IDENTIFIER;
 
-        let settings = SettingsUpdater::new(T::Settings::default()).await;
-        let state = StateSaver::new(T::State::default()).await;
-        let status = StatusReader::new(Status::shutdown());
-        let controller = Controller::new().await;
-        let (intercom_sender, _, intercom_stats) = intercom::channel();
-
-        let runtime = Builder::new()
+        let mut runtime = Builder::new()
             .enable_io()
             .enable_time()
             .thread_name(identifier)
@@ -175,7 +169,14 @@ impl<T: Service> ServiceManager<T> {
             .build()
             .unwrap();
 
-        Self {
+        let settings =
+            runtime.block_on(async { SettingsUpdater::new(T::Settings::default()).await });
+        let state = runtime.block_on(async { StateSaver::new(T::State::default()).await });
+        let status = StatusReader::new(Status::shutdown());
+        let controller = runtime.block_on(async { Controller::new().await });
+        let (intercom_sender, _, intercom_stats) = intercom::channel();
+
+        let sm = Self {
             identifier,
             settings,
             state,
@@ -183,8 +184,10 @@ impl<T: Service> ServiceManager<T> {
             intercom_stats,
             status,
             controller,
-            runtime,
-        }
+            runtime: runtime.handle().clone(),
+        };
+
+        (runtime, sm)
     }
 
     pub fn intercom(&self) -> IntercomSender<T::Intercom> {
@@ -230,7 +233,7 @@ impl<T: Service> ServiceManager<T> {
             Ok(ServiceRuntime {
                 service_state: ServiceState {
                     identifier: self.identifier,
-                    handle: self.runtime.handle().clone(),
+                    handle: self.runtime.clone(),
                     settings: self.settings.reader(),
                     state: self.state.handler(),
                     intercom_receiver,
@@ -253,6 +256,7 @@ impl<T: Service> ServiceRuntime<T> {
 
         status.update(Status::starting());
 
+        let watchdog_query = service_state.watchdog_query.clone();
         let handle = service_state.handle.clone();
         let runner = T::prepare(service_state);
 
@@ -265,7 +269,7 @@ impl<T: Service> ServiceRuntime<T> {
         //
         // however the control of the service is still spawned in the watchdog current context
         // so we can perform the management tasks without disrupting the service's runtime
-        tokio::spawn(async move {
+        watchdog_query.spawn(async move {
             status.update(Status::started());
 
             loop {
