@@ -179,8 +179,13 @@ impl GlobalState {
         assert!(prev_count != 0);
     }
 
-    fn num_surplus_clients(&self) -> usize {
-        let count = self.client_count.load(atomic::Ordering::Relaxed);
+    // How many client connections to bump when a new one is about to be
+    // established
+    fn num_clients_to_bump(&self) -> usize {
+        let count = self
+            .client_count
+            .load(atomic::Ordering::Relaxed)
+            .saturating_add(1);
         if count > self.config.max_client_connections {
             count - self.config.max_client_connections
         } else {
@@ -458,7 +463,7 @@ fn connect_and_propagate(
             return;
         }
     };
-    options.evict_clients = state.num_surplus_clients();
+    options.evict_clients = state.num_clients_to_bump();
     let node_id = node.id();
     assert_ne!(
         node_id,
