@@ -1,8 +1,5 @@
 use crate::jcli_app::transaction::Error;
-use crate::jcli_app::utils::{
-    io,
-    key_parser::{read_ed25519_secret_key_from_file, read_secret_key_from_file},
-};
+use crate::jcli_app::utils::{io, key_parser::read_ed25519_secret_key_from_file};
 use bech32::{Bech32, ToBase32 as _};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain::{
@@ -66,11 +63,18 @@ impl MkWitness {
         let witness = match self.witness_type {
             WitnessType::UTxO => {
                 let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-                Witness::new_utxo(&self.genesis_block_hash, &self.sign_data_hash, &secret_key)
+                Witness::new_utxo(&self.genesis_block_hash, &self.sign_data_hash, |d| {
+                    secret_key.sign(d)
+                })
             }
             WitnessType::OldUTxO => {
-                let secret_key = read_secret_key_from_file(&self.secret)?;
-                Witness::new_old_utxo(&self.genesis_block_hash, &self.sign_data_hash, &secret_key)
+                let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
+                Witness::new_old_utxo(
+                    &self.genesis_block_hash,
+                    &self.sign_data_hash,
+                    |d| (secret_key.to_public(), secret_key.sign(d)),
+                    &[0; 32],
+                )
             }
             WitnessType::Account => {
                 let account_spending_counter = self
@@ -83,7 +87,7 @@ impl MkWitness {
                     &self.genesis_block_hash,
                     &self.sign_data_hash,
                     &account_spending_counter,
-                    &secret_key,
+                    |d| secret_key.sign(d),
                 )
             }
         };

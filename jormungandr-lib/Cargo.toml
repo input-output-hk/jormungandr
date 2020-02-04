@@ -24,6 +24,6 @@ poldercast = "0.11.1"
 rand = "0.7"
 quickcheck = "0.9"
 chain-crypto    = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
-ed25519-bip32 = "0.1"
+ed25519-bip32 = "0.3"
 serde_yaml = "0.8"
 bincode = "1.1"

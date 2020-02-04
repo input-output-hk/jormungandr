@@ -10,7 +10,6 @@ use chain_impl_mockchain::{
     block::ConsensusVersion,
     certificate::{PoolPermissions, PoolSignature},
     fee::LinearFee,
-    key::EitherEd25519SecretKey,
     rewards::TaxType,
     transaction::{SingleAccountBindingSignature, TxBuilder},
 };
@@ -180,10 +179,9 @@ impl Settings {
                             .set_ios(&[], &[])
                             .set_witnesses(&[]);
                         let auth_data = txb.get_auth_data();
-                        let sig0 = SingleAccountBindingSignature::new(
-                            &EitherEd25519SecretKey::Normal(owner),
-                            &auth_data,
-                        );
+                        let sig0 = SingleAccountBindingSignature::new(&auth_data, |d| {
+                            owner.sign_slice(&d.0)
+                        });
                         let owner_signed = PoolOwnersSigned {
                             signatures: vec![(0, sig0)],
                         };
@@ -414,7 +412,7 @@ impl Prepare for Mempool {
 }
 
 impl Prepare for Explorer {
-    fn prepare<RNG>(c_ontext: &mut Context<RNG>) -> Self
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
     where
         RNG: RngCore,
     {

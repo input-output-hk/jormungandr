@@ -86,7 +86,9 @@ impl Wallet {
             .set_witnesses(&[]);
         let auth_data = txb.get_auth_data();
 
-        let sig = AccountBindingSignature::new_single(self.signing_key.as_ref(), &auth_data);
+        let sig = AccountBindingSignature::new_single(&auth_data, |d| {
+            self.signing_key.as_ref().sign_slice(&d.0)
+        });
         SignedCertificate::StakeDelegation(stake_delegation, sig)
     }
 
@@ -99,7 +101,7 @@ impl Wallet {
             &block0_hash.clone().into_hash(),
             signing_data,
             self.internal_counter(),
-            self.signing_key().as_ref(),
+            |d| self.signing_key().as_ref().sign(d),
         ))
     }
 
