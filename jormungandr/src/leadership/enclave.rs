@@ -9,7 +9,6 @@ use crate::{
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::sync::Arc;
 use thiserror::Error;
-use tokio::{prelude::*, sync::lock::Lock};
 
 #[derive(Debug, Clone, Error)]
 pub enum EnclaveError {
@@ -26,7 +25,7 @@ pub struct Enclave {
     /// external service (running in the secure enclave). For now we
     /// hold on the `SecureEnclave` . But it will need to be separated
     /// when we have the necessary crypto done.
-    inner: Lock<SecureEnclave>,
+    inner: Arc<SecureEnclave>,
 }
 
 impl Enclave {
@@ -34,7 +33,7 @@ impl Enclave {
     /// with a parameter to contact the secure enclave instead of the dummy type.
     pub fn new(secure_enclave: SecureEnclave) -> Self {
         Enclave {
-            inner: Lock::new(secure_enclave),
+            inner: Arc::new(secure_enclave),
         }
     }
 
@@ -43,15 +42,16 @@ impl Enclave {
     ///
     /// TODO: for now we are utilizing the Leadership object fully but on the long
     ///       run this might be limited to only the required data.
-    pub fn query_schedules(
+    pub async fn query_schedules(
         &self,
         leadership: Arc<Leadership>,
         slot_start: u32,
         nb_slots: u32,
-    ) -> impl Future<Item = Vec<LeaderEvent>, Error = EnclaveError> {
-        let mut inner = self.inner.clone();
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .map(move |guard| guard.leadership_evaluate(&leadership, slot_start, nb_slots))
+    ) -> Result<Vec<LeaderEvent>, EnclaveError> {
+        Ok(self
+            .inner
+            .leadership_evaluate(&leadership, slot_start, nb_slots)
+            .await)
     }
 
     /// ask the leader associated to the `LeaderEvent` to finalize the given
@@ -59,20 +59,16 @@ impl Enclave {
     ///
     /// TODO: for now we are querying the whole with the block builder but on the long
     ///       run we will only need the block signing data.
-    pub fn query_header_bft_finalize(
+    pub async fn query_header_bft_finalize(
         &self,
         block_builder: HeaderBftBuilder<HeaderSetConsensusSignature>,
         id: LeaderId,
-    ) -> impl Future<Item = HeaderBft, Error = EnclaveError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
-            if let Some(block) = guard.create_header_bft(block_builder, id) {
-                future::ok(block)
-            } else {
-                future::err(EnclaveError::NotInEnclave { id })
-            }
-        })
+    ) -> Result<HeaderBft, EnclaveError> {
+        if let Some(block) = self.inner.create_header_bft(block_builder, id).await {
+            Ok(block)
+        } else {
+            Err(EnclaveError::NotInEnclave { id })
+        }
     }
 
     /// ask the leader associated to the `LeaderEvent` to finalize the given
@@ -80,19 +76,19 @@ impl Enclave {
     ///
     /// TODO: for now we are querying the whole with the block builder but on the long
     ///       run we will only need the block signing data.
-    pub fn query_header_genesis_praos_finalize(
+    pub async fn query_header_genesis_praos_finalize(
         &self,
         block_builder: HeaderGenesisPraosBuilder<HeaderSetConsensusSignature>,
         id: LeaderId,
-    ) -> impl Future<Item = HeaderGenesisPraos, Error = EnclaveError> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).and_then(move |guard| {
-            if let Some(block) = guard.create_header_genesis_praos(block_builder, id) {
-                future::ok(block)
-            } else {
-                future::err(EnclaveError::NotInEnclave { id })
-            }
-        })
+    ) -> Result<HeaderGenesisPraos, EnclaveError> {
+        if let Some(block) = self
+            .inner
+            .create_header_genesis_praos(block_builder, id)
+            .await
+        {
+            Ok(block)
+        } else {
+            Err(EnclaveError::NotInEnclave { id })
+        }
     }
 }

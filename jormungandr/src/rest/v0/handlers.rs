@@ -310,7 +310,7 @@ pub async fn get_shutdown(context: Data<Context>) -> Result<impl Responder, Erro
 
 pub async fn get_leaders(context: Data<Context>) -> Result<impl Responder, Error> {
     Ok(Json(json! {
-        context.try_full()?.enclave.get_leaderids()
+        context.try_full()?.enclave.get_leaderids().await
     }))
 }
 
@@ -322,7 +322,7 @@ pub async fn post_leaders(
         bft_leader: secret.bft(),
         genesis_leader: secret.genesis(),
     };
-    let leader_id = context.try_full()?.enclave.add_leader(leader);
+    let leader_id = context.try_full()?.enclave.add_leader(leader).await;
     Ok(Json(leader_id))
 }
 
@@ -330,21 +330,15 @@ pub async fn delete_leaders(
     context: Data<Context>,
     leader_id: Path<EnclaveLeaderId>,
 ) -> Result<impl Responder, Error> {
-    match context.try_full()?.enclave.remove_leader(*leader_id) {
+    match context.try_full()?.enclave.remove_leader(*leader_id).await {
         true => Ok(HttpResponse::Ok().finish()),
         false => Err(ErrorNotFound("Leader with given ID not found")),
     }
 }
 
 pub async fn get_leaders_logs(context: Data<Context>) -> Result<impl Responder, Error> {
-    context
-        .try_full()?
-        .leadership_logs
-        .logs()
-        .compat()
-        .await
-        .map(Json)
-        .map_err(|_| ErrorInternalServerError("Failed to get leader logs"))
+    let logs = context.try_full()?.leadership_logs.logs().await;
+    Ok(Json(logs))
 }
 
 pub async fn get_stake_pools(context: Data<Context>) -> Result<impl Responder, Error> {
