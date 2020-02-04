@@ -62,8 +62,8 @@ use network_core::gossip::{Gossip, Node};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
-use tokio::runtime::TaskExecutor;
 use tokio::timer::Interval;
+use tokio_compat::runtime::TaskExecutor;
 
 use std::convert::Infallible;
 use std::error;

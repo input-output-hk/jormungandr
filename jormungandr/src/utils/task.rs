@@ -10,8 +10,8 @@ use crate::utils::async_msg::{self, MessageBox};
 
 use slog::Logger;
 use tokio::prelude::{stream, Future, IntoFuture, Stream};
-use tokio::runtime::{self, Runtime, TaskExecutor};
 use tokio::timer::Interval;
+use tokio_compat::runtime::{self, Runtime, TaskExecutor};
 
 use std::fmt::Debug;
 use std::sync::mpsc::{self, Receiver, RecvError, Sender};
@@ -75,7 +75,7 @@ impl Services {
             logger: logger,
             services: Vec::new(),
             finish_listener: ServiceFinishListener::new(),
-            runtime: runtime::Builder::new().keep_alive(None).build().unwrap(),
+            runtime: runtime::Builder::new().build().unwrap(),
         }
     }
 

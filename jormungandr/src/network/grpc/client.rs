@@ -11,7 +11,7 @@ use network_core::error as core_error;
 use network_grpc::client::Connect;
 use slog::Logger;
 use thiserror::Error;
-use tokio::runtime::{Runtime, TaskExecutor};
+use tokio_compat::runtime::{Runtime, TaskExecutor};
 
 use std::io;
 use std::net::{IpAddr, SocketAddr};
@@ -66,7 +66,7 @@ pub fn fetch_block(
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     info!(logger, "fetching block {}", hash);
-    let runtime = Runtime::new().map_err(|e| FetchBlockError::RuntimeInit { source: e })?;
+    let mut runtime = Runtime::new().map_err(|e| FetchBlockError::RuntimeInit { source: e })?;
     let fetch = connect(peer.address(), None, runtime.executor())
         .map_err(|err| FetchBlockError::Connect { source: err })
         .and_then(move |client: Connection| {
@@ -88,5 +88,5 @@ pub fn fetch_block(
             None => Err(FetchBlockError::NoBlocks),
             Some(block) => Ok(block),
         });
-    runtime.block_on_all(fetch)
+    runtime.block_on(fetch)
 }
