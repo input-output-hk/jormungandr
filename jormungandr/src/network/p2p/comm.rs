@@ -104,22 +104,44 @@ pub type GossipSubscription = OutboundSubscription<Gossip<NodeData>>;
 /// subscription stream towards the peer.
 pub struct CommHandle<T> {
     state: SubscriptionState<T>,
+    direction: SubscriptionDirection,
+}
+
+/// Indicates whether this subscription belongs to a client or a server
+/// connection.
+#[derive(Copy, Clone)]
+pub enum SubscriptionDirection {
+    Client,
+    Server,
 }
 
 impl<T> Default for CommHandle<T> {
     fn default() -> Self {
         CommHandle {
             state: SubscriptionState::NotSubscribed,
+            direction: SubscriptionDirection::Server,
         }
     }
 }
 
 impl<T> CommHandle<T> {
-    /// Creates a handle with an item waiting to be sent,
+    /// Creates a handle with the `Client` direction and an item waiting to be sent,
     /// in expectation for a subscription to be established.
-    pub fn pending(item: T) -> Self {
+    pub fn client_pending(item: T) -> Self {
         CommHandle {
             state: SubscriptionState::Pending(item),
+            direction: SubscriptionDirection::Client,
+        }
+    }
+
+    pub fn direction(&self) -> SubscriptionDirection {
+        self.direction
+    }
+
+    pub fn is_client(&self) -> bool {
+        match self.direction {
+            SubscriptionDirection::Client => true,
+            _ => false,
         }
     }
 
@@ -134,6 +156,7 @@ impl<T> CommHandle<T> {
     /// to the same peer. This method is used instead of replacing
     /// the handle to send a potential pending item over the new subscription.
     pub fn update(&mut self, newer: CommHandle<T>) {
+        self.direction = newer.direction;
         match mem::replace(&mut self.state, newer.state) {
             SubscriptionState::Pending(item) => {
                 // If there is an error sending the pending item,
@@ -234,6 +257,12 @@ impl PeerComms {
         Default::default()
     }
 
+    pub fn has_client_subscriptions(&self) -> bool {
+        self.block_announcements.is_client()
+            || self.fragments.is_client()
+            || self.gossip.is_client()
+    }
+
     pub fn update(&mut self, newer: PeerComms) {
         // If there would be a need to tell the old connection that
         // it is replaced in any better way than just dropping all its
@@ -254,15 +283,15 @@ impl PeerComms {
     }
 
     pub fn set_pending_block_announcement(&mut self, header: Header) {
-        self.block_announcements = CommHandle::pending(header);
+        self.block_announcements = CommHandle::client_pending(header);
     }
 
     pub fn set_pending_fragment(&mut self, fragment: Fragment) {
-        self.fragments = CommHandle::pending(fragment);
+        self.fragments = CommHandle::client_pending(fragment);
     }
 
     pub fn set_pending_gossip(&mut self, gossip: Gossip<NodeData>) {
-        self.gossip = CommHandle::pending(gossip);
+        self.gossip = CommHandle::client_pending(gossip);
     }
 
     pub fn try_send_block_announcement(
@@ -335,6 +364,20 @@ impl PeerComms {
     pub fn gossip_subscribed(&self) -> bool {
         self.gossip.is_subscribed()
     }
+}
+
+/// Options for Peers::add_connecting
+#[derive(Default)]
+pub struct ConnectOptions {
+    /// Block announcement to send once the subscription is established
+    pub pending_block_announcement: Option<Header>,
+    /// Fragment to send once the subscription is established
+    pub pending_fragment: Option<Fragment>,
+    /// Gossip to send once the subscription is established
+    pub pending_gossip: Option<Gossip<NodeData>>,
+    /// The to number of client connections that need to be removed
+    /// prior to connecting.
+    pub evict_clients: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -426,15 +469,13 @@ pub struct PeerInfo {
 pub struct Peers {
     mutex: Lock<peer_map::PeerMap>,
     logger: Logger,
-    capacity_threshold: usize,
 }
 
 impl Peers {
-    pub fn new(capacity: usize, capacity_threshold: usize, logger: Logger) -> Self {
+    pub fn new(capacity: usize, logger: Logger) -> Self {
         Peers {
             mutex: Lock::new(peer_map::PeerMap::new(capacity)),
             logger,
-            capacity_threshold,
         }
     }
 
@@ -447,19 +488,6 @@ impl Peers {
         self.inner().map(|mut map| map.clear())
     }
 
-    pub fn gc<E>(&self) -> impl Future<Item = Option<usize>, Error = E> {
-        let capacity_threshold = self.capacity_threshold;
-        self.inner().map(move |mut map| {
-            let delta = map.capacity() - map.len();
-
-            if delta < capacity_threshold {
-                Some(map.gc(delta))
-            } else {
-                None
-            }
-        })
-    }
-
     pub fn insert_peer<E>(
         &self,
         id: Id,
@@ -470,18 +498,27 @@ impl Peers {
             .map(move |mut map| map.insert_peer(id, comms, addr))
     }
 
-    pub fn connecting_with<F, E>(
+    pub fn add_connecting<E>(
         &self,
         id: Id,
         handle: ConnectHandle,
-        modify_comms: F,
-    ) -> impl Future<Item = (), Error = E>
-    where
-        F: FnOnce(&mut PeerComms),
-    {
+        options: ConnectOptions,
+    ) -> impl Future<Item = (), Error = E> {
+        if options.evict_clients != 0 {
+            debug!(self.logger, "will evict {} clients", options.evict_clients);
+        }
         self.inner().map(move |mut map| {
+            map.evict_clients(options.evict_clients);
             let comms = map.add_connecting(id, handle);
-            modify_comms(comms);
+            if let Some(header) = options.pending_block_announcement {
+                comms.set_pending_block_announcement(header);
+            }
+            if let Some(fragment) = options.pending_fragment {
+                comms.set_pending_fragment(fragment);
+            }
+            if let Some(gossip) = options.pending_gossip {
+                comms.set_pending_gossip(gossip);
+            }
         })
     }
 

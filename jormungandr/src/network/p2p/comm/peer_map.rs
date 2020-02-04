@@ -93,25 +93,6 @@ impl PeerMap {
         self.map.clear()
     }
 
-    pub fn gc(&mut self, at_most: usize) -> usize {
-        let mut len = 0;
-
-        for entry in self.map.entries() {
-            if let Some(_peer) = entry.get().stats.last_block_received() {
-                // TODO: check for more reasons to evict
-            } else {
-                let _peer = entry.remove();
-                len += 1;
-            }
-
-            if len >= at_most {
-                break;
-            }
-        }
-
-        len
-    }
-
     pub fn refresh_peer(&mut self, id: &Id) -> Option<&mut PeerStats> {
         self.map.get_refresh(&id).map(|data| &mut data.stats)
     }
@@ -176,18 +157,21 @@ impl PeerMap {
             .collect()
     }
 
+    pub fn evict_clients(&mut self, num: usize) {
+        for entry in self
+            .map
+            .entries()
+            .filter(|entry| entry.get().comms.has_client_subscriptions())
+            .take(num)
+        {
+            entry.remove();
+        }
+    }
+
     fn evict_if_full(&mut self) {
         if self.map.len() >= self.capacity {
             self.map.pop_front();
         }
-    }
-
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }
-
-    pub fn len(&self) -> usize {
-        self.map.len()
     }
 }
 

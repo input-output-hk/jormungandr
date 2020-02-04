@@ -44,14 +44,12 @@ mod buffer_sizes {
 }
 
 use self::client::ConnectError;
-use self::p2p::{
-    comm::{PeerComms, Peers},
-    P2pTopology,
-};
+use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
-use crate::settings::start::network::{Configuration, Peer, Protocol, DEFAULT_PEER_GC_INTERVAL};
+use crate::log;
+use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TokioServiceInfo,
@@ -73,6 +71,7 @@ use std::fmt;
 use std::io;
 use std::iter;
 use std::net::SocketAddr;
+use std::sync::atomic::{self, AtomicUsize};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -129,6 +128,7 @@ pub struct GlobalState {
     pub peers: Peers,
     pub executor: TaskExecutor,
     pub logger: Logger,
+    client_count: AtomicUsize,
 }
 
 type GlobalStateR = Arc<GlobalState>;
@@ -142,11 +142,7 @@ impl GlobalState {
         executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
-        let peers = Peers::new(
-            config.max_connections,
-            config.max_connections_threshold,
-            logger.clone(),
-        );
+        let peers = Peers::new(config.max_connections, logger.clone());
 
         GlobalState {
             block0_hash,
@@ -155,6 +151,7 @@ impl GlobalState {
             peers,
             executor,
             logger,
+            client_count: AtomicUsize::new(0),
         }
     }
 
@@ -167,6 +164,33 @@ impl GlobalState {
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
         self.executor.spawn(f)
+    }
+
+    fn client_count(&self) -> usize {
+        self.client_count.load(atomic::Ordering::Relaxed)
+    }
+
+    fn inc_client_count(&self) {
+        self.client_count.fetch_add(1, atomic::Ordering::SeqCst);
+    }
+
+    fn dec_client_count(&self) {
+        let prev_count = self.client_count.fetch_sub(1, atomic::Ordering::SeqCst);
+        assert!(prev_count != 0);
+    }
+
+    // How many client connections to bump when a new one is about to be
+    // established
+    fn num_clients_to_bump(&self) -> usize {
+        let count = self
+            .client_count
+            .load(atomic::Ordering::Relaxed)
+            .saturating_add(1);
+        if count > self.config.max_client_connections {
+            count - self.config.max_client_connections
+        } else {
+            0
+        }
     }
 }
 
@@ -259,27 +283,6 @@ pub fn start(
         });
     }
 
-    let peers = global_state.peers.clone();
-    let gc_info_logger = global_state.logger.clone();
-    service_info.run_periodic(
-        "peer garbage collection",
-        DEFAULT_PEER_GC_INTERVAL,
-        move || {
-            let gc_info_logger = gc_info_logger.clone();
-            peers.gc::<Infallible>().map(move |maybe_gced| {
-                if let Some(number_gced) = maybe_gced {
-                    warn!(
-                        gc_info_logger,
-                        "Peer GCed {number_gced} nodes",
-                        number_gced = number_gced
-                    );
-                } else {
-                    debug!(gc_info_logger, "Peer GCed nothing");
-                }
-            })
-        },
-    );
-
     let gossip = Interval::new_interval(global_state.config.gossip_interval.clone())
         .map_err(move |e| {
             error!(gossip_err_logger, "interval timer error: {:?}", e);
@@ -347,18 +350,24 @@ fn handle_propagation_msg(
     // active subscriptions map, connect to them and deliver
     // the item.
     send_to_peers.then(move |res| {
-        if let Err(unreached_nodes) = res {
+        if let Err(mut unreached_nodes) = res {
+            unreached_nodes.truncate(state.config.max_client_connections);
             debug!(
                 state.logger(),
-                "{} of the peers selected for propagation have not been reached, will try to connect",
+                "will try to connect to {} of the peers not immediately reachable for propagation",
                 unreached_nodes.len(),
             );
             for node in unreached_nodes {
-                let msg = msg.clone();
-                connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| match msg {
-                    PropagateMsg::Block(header) => comms.set_pending_block_announcement(header),
-                    PropagateMsg::Fragment(fragment) => comms.set_pending_fragment(fragment),
-                });
+                let mut options = p2p::comm::ConnectOptions::default();
+                match &msg {
+                    PropagateMsg::Block(header) => {
+                        options.pending_block_announcement = Some(header.clone());
+                    }
+                    PropagateMsg::Fragment(fragment) => {
+                        options.pending_fragment = Some(fragment.clone());
+                    }
+                };
+                connect_and_propagate(node, state.clone(), channels.clone(), options);
             }
         }
         Ok(())
@@ -392,14 +401,11 @@ fn start_gossiping(state: GlobalStateR, channels: Channels) -> impl Future<Item 
             for node in view.peers {
                 let self_node = view.self_node.clone();
                 let gossip = Gossip::from_nodes(iter::once(self_node.into()));
-                connect_and_propagate_with(
-                    node,
-                    conn_state.clone(),
-                    channels.clone(),
-                    move |comms| {
-                        comms.set_pending_gossip(gossip);
-                    },
-                );
+                let options = p2p::comm::ConnectOptions {
+                    pending_gossip: Some(gossip),
+                    ..Default::default()
+                };
+                connect_and_propagate(node, conn_state.clone(), channels.clone(), options);
             }
             Ok(())
         })
@@ -407,10 +413,14 @@ fn start_gossiping(state: GlobalStateR, channels: Channels) -> impl Future<Item 
 
 fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = (), Error = ()> {
     let topology = state.topology.clone();
+    let logger = state.logger().new(o!(log::KEY_SUB_TASK => "send_gossip"));
     topology
         .view(poldercast::Selection::Any)
         .and_then(move |view| {
-            stream::iter_ok(view.peers).for_each(move |node| {
+            let mut peers = view.peers;
+            peers.truncate(state.config.max_client_connections);
+            debug!(logger, "sending gossip to {} peers", peers.len());
+            stream::iter_ok(peers).for_each(move |node| {
                 let peer_id = node.id();
                 let state_prop = state.clone();
                 let state_err = state.clone();
@@ -424,9 +434,11 @@ fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = ()
                     })
                     .then(move |res| {
                         if let Err(gossip) = res {
-                            connect_and_propagate_with(node, state_err, channels_err, |comms| {
-                                comms.set_pending_gossip(gossip)
-                            })
+                            let options = p2p::comm::ConnectOptions {
+                                pending_gossip: Some(gossip),
+                                ..Default::default()
+                            };
+                            connect_and_propagate(node, state_err, channels_err, options);
                         }
                         Ok(())
                     })
@@ -434,14 +446,12 @@ fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = ()
         })
 }
 
-fn connect_and_propagate_with<F>(
+fn connect_and_propagate(
     node: p2p::Node,
     state: GlobalStateR,
     channels: Channels,
-    modify_comms: F,
-) where
-    F: FnOnce(&mut PeerComms) + Send + 'static,
-{
+    mut options: p2p::comm::ConnectOptions,
+) {
     let addr = match node.address() {
         Some(addr) => addr,
         None => {
@@ -453,6 +463,7 @@ fn connect_and_propagate_with<F>(
             return;
         }
     };
+    options.evict_clients = state.num_clients_to_bump();
     let node_id = node.id();
     assert_ne!(
         node_id,
@@ -468,7 +479,7 @@ fn connect_and_propagate_with<F>(
     let (handle, connecting) = client::connect(conn_state, channels.clone());
     let spawn_state = state.clone();
     let conn_err_state = state.clone();
-    let cf = state.peers.connecting_with(node_id, handle, modify_comms)
+    let cf = state.peers.add_connecting(node_id, handle, options)
         .and_then(|()| connecting)
         .or_else(move |e| {
             let benign = match e {
@@ -509,17 +520,26 @@ fn connect_and_propagate_with<F>(
                     client.logger(),
                     "peer node ID differs from the expected {}", node_id
                 );
-                let future = state
+                let report_and_fail = state
                     .topology
                     .report_node(node_id, StrikeReason::InvalidPublicId)
                     .join(state.peers.remove_peer(node_id))
                     .and_then(|_| future::err(()));
-                A(future)
+                A(report_and_fail)
             } else {
-                B(future::ok(client))
+                state.inc_client_count();
+                debug!(
+                    client.logger(),
+                    "connected to peer";
+                    "client_count" => state.client_count(),
+                );
+                let future = client.then(move |res| {
+                    state.dec_client_count();
+                    res
+                });
+                B(future)
             }
-        })
-        .and_then(|client| client);
+        });
     spawn_state.spawn(cf);
 }
 
