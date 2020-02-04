@@ -10,7 +10,7 @@ use slog::Logger;
 use thiserror::Error;
 use tokio::prelude::future::Either;
 use tokio::prelude::*;
-use tokio::runtime::Runtime;
+use tokio_compat::runtime::Runtime;
 
 use std::fmt::Debug;
 use std::io;
@@ -52,7 +52,7 @@ pub fn bootstrap_from_peer(
 ) -> Result<(), Error> {
     info!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
+    let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
 
     let bootstrap = grpc::connect(peer.address(), None, runtime.executor())
         .map_err(|e| Error::Connect { source: e })
@@ -77,7 +77,7 @@ pub fn bootstrap_from_peer(
                 .and_then(move |stream| bootstrap_from_stream(blockchain, tip, stream, logger))
         });
 
-    runtime.block_on_all(bootstrap)
+    runtime.block_on(bootstrap)
 }
 
 fn bootstrap_from_stream<S>(
