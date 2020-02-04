@@ -28,15 +28,10 @@ use std::{
     time::{Duration, Instant},
 };
 use thiserror::Error;
-// TODO this should be changed to tokio 0.2 time once we have at least
-// tokio-compat runtime
-use tokio::timer::{self, Delay, Timeout};
+use tokio02::time::{delay_until, timeout_at, Instant as TokioInstant};
 
 #[derive(Error, Debug)]
 pub enum LeadershipError {
-    #[error("Error while awaiting for next leader event to process")]
-    AwaitError(#[from] timer::Error),
-
     #[error("The blockchain Timeline hasn't started yet")]
     TooEarlyForTimeFrame {
         time: jormungandr_lib::time::SystemTime,
@@ -240,10 +235,7 @@ impl Module {
 
     async fn wait(mut self) -> Result<Self, LeadershipError> {
         let deadline = self.wait_peek_deadline()?;
-        Delay::new(deadline)
-            .compat()
-            .map_err(LeadershipError::AwaitError)
-            .await?;
+        delay_until(TokioInstant::from_std(deadline)).await;
         let tip = self.tip.clone();
         self.tip_ref = tip.get_ref::<LeadershipError>().compat().await?;
         Ok(self)
@@ -333,10 +325,7 @@ impl Module {
                 );
 
                 // await the right_time before starting the action
-                Delay::new(right_time)
-                    .compat()
-                    .map_err(LeadershipError::AwaitError)
-                    .await?;
+                delay_until(TokioInstant::from_std(right_time)).await;
                 self.action_run_entry_in_bound(entry, logger, event_end)
                     .await
             } else {
@@ -378,24 +367,24 @@ impl Module {
 
         let timed_out_log = logger.clone();
 
-        let res = Timeout::new_at(
-            Box::pin(self.action_run_entry_build_block(entry, logger)).compat(),
-            deadline,
+        let res = timeout_at(
+            TokioInstant::from_std(deadline),
+            self.action_run_entry_build_block(entry, logger),
         )
-        .compat()
         .await;
 
-        if let Err(timeout_error) = res {
-            error!(timed_out_log, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
-            event_logs
-                .set_status::<LeadershipError>(LeadershipLogStatus::Rejected {
-                    reason: "Failed to compute the schedule within time boundaries".to_owned(),
-                })
-                .compat()
-                .await?
-        }
-
-        Ok(self)
+        match res {
+            Ok(future_res) => future_res,
+            Err(timeout_error) => {
+                error!(timed_out_log, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
+                event_logs
+                    .set_status::<LeadershipError>(LeadershipLogStatus::Rejected {
+                        reason: "Failed to compute the schedule within time boundaries".to_owned(),
+                    })
+                    .compat()
+                    .await
+            }
+        }.map(|()| self)
     }
 
     async fn action_run_entry_build_block(
