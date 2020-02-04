@@ -8,6 +8,7 @@ use tokio::{
 
 pub struct WatchdogMonitor {
     runtime: runtime::Runtime,
+    _service_runtimes: Vec<runtime::Runtime>,
     control_command: mpsc::Sender<ControlCommand>,
     watchdog_finished: oneshot::Receiver<()>,
 }
@@ -15,6 +16,7 @@ pub struct WatchdogMonitor {
 impl WatchdogMonitor {
     pub(crate) fn new(
         runtime: runtime::Runtime,
+        service_runtimes: Vec<runtime::Runtime>,
         control_command: mpsc::Sender<ControlCommand>,
         watchdog_finished: oneshot::Receiver<()>,
     ) -> Self {
@@ -22,6 +24,7 @@ impl WatchdogMonitor {
             runtime,
             control_command,
             watchdog_finished,
+            _service_runtimes: service_runtimes,
         }
     }
 

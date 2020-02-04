@@ -10,12 +10,17 @@ use crate::service::{ServiceError, ServiceIdentifier, StatusReport};
 use async_trait::async_trait;
 use std::any::Any;
 use thiserror::Error;
-use tokio::sync::{mpsc, oneshot};
+use tokio::{
+    runtime::Runtime,
+    sync::{mpsc, oneshot},
+};
 
 /// trait to define the different core services and their
 /// associated metadata
 #[async_trait]
 pub trait CoreServices: Send + Sync {
+    fn new() -> (Vec<Runtime>, Self);
+
     fn stop(&mut self, service_identifier: ServiceIdentifier) -> Result<(), WatchdogError>;
     async fn status(
         &mut self,
@@ -66,10 +71,12 @@ impl WatchdogBuilder {
         Self::default()
     }
 
-    pub fn build<T>(&self, services: T) -> WatchdogMonitor
+    pub fn build<T>(&self) -> WatchdogMonitor
     where
         T: CoreServices + 'static,
     {
+        let (runtimes, services) = T::new();
+
         let (sender, receiver) = mpsc::channel(10);
         let (on_drop_send, on_drop_receive) = oneshot::channel();
 
@@ -89,7 +96,7 @@ impl WatchdogBuilder {
 
         rt.spawn(async move { watchdog.watchdog(receiver, query).await });
 
-        WatchdogMonitor::new(rt, sender, on_drop_receive)
+        WatchdogMonitor::new(rt, runtimes, sender, on_drop_receive)
     }
 }
 

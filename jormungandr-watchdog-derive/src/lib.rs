@@ -12,6 +12,32 @@ pub fn derive_core_services(input: proc_macro::TokenStream) -> proc_macro::Token
     gen.into()
 }
 
+fn gen_new(fields: &Punctuated<Field, Comma>) -> TokenStream {
+    let cases = fields.iter().map(|field| {
+        let field_name = field.ident.as_ref().unwrap();
+
+        quote! {
+            #field_name: {
+                let (rt, sm) = ::jormungandr_watchdog::service::ServiceManager::new();
+                runtimes.push(rt);
+                sm
+            }
+        }
+    });
+
+    quote! {
+        fn new() -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
+            let mut runtimes = ::std::vec::Vec::new();
+
+            let entity = Self {
+                #( #cases ),*
+            };
+
+            (runtimes, entity)
+        }
+    }
+}
+
 fn gen_start(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let possible_values = fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
@@ -173,6 +199,7 @@ fn impl_core_services_for_struct(
     struct_name: &Ident,
     fields: &Punctuated<Field, Comma>,
 ) -> TokenStream {
+    let new = gen_new(fields);
     let start = gen_start(fields);
     let stop = gen_stop(fields);
     let status = gen_status(fields);
@@ -181,6 +208,7 @@ fn impl_core_services_for_struct(
     quote! {
         #[async_trait::async_trait]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
+            #new
             #start
             #status
             #stop
@@ -194,6 +222,10 @@ fn impl_core_services_for_struct_unit(struct_name: &Ident) -> TokenStream {
     quote! {
         #[async_trait::async_trait]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
+            fn new() -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
+                (::std::vec::Vec::new(), Self)
+            }
+
             fn start(
                 &mut self,
                 service_identifier: ::jormungandr_watchdog::ServiceIdentifier,
@@ -240,6 +272,9 @@ fn impl_core_services(input: &DeriveInput) -> TokenStream {
     set_dummy(quote! {
         #[async_trait::async_trait]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
+            fn new() -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
+                unimplemented!()
+            }
             fn start(
                 &mut self,
                 _service_identifier: ::jormungandr_watchdog::ServiceIdentifier,

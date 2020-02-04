@@ -89,10 +89,7 @@ struct PingPongServices {
 /// after receiving the shutdown command from the controller
 #[test]
 fn ping_pong() {
-    let (ping_rt, ping) = service::ServiceManager::new();
-    let (pong_rt, pong) = service::ServiceManager::new();
-
-    let watchdog = WatchdogBuilder::new().build(PingPongServices { ping, pong });
+    let watchdog = WatchdogBuilder::new().build::<PingPongServices>();
 
     let mut controller = watchdog.control();
     watchdog.spawn(async move {
@@ -103,5 +100,4 @@ fn ping_pong() {
     });
 
     watchdog.wait_finished();
-    std::mem::drop((ping_rt, pong_rt));
 }

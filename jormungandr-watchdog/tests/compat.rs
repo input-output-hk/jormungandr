@@ -93,7 +93,7 @@ impl Service for Client {
 }
 
 #[derive(CoreServices)]
-struct PingPongServices {
+struct EchoServices {
     echo: service::ServiceManager<Echo>,
     client: service::ServiceManager<Client>,
 }
@@ -102,10 +102,7 @@ struct PingPongServices {
 /// after receiving the shutdown command from the controller
 #[test]
 fn compat() {
-    let (echo_rt, echo) = service::ServiceManager::new();
-    let (client_rt, client) = service::ServiceManager::new();
-
-    let watchdog = WatchdogBuilder::new().build(PingPongServices { echo, client });
+    let watchdog = WatchdogBuilder::new().build::<EchoServices>();
 
     let mut controller = watchdog.control();
     watchdog.spawn(async move {
@@ -116,5 +113,4 @@ fn compat() {
     });
 
     watchdog.wait_finished();
-    std::mem::drop((echo_rt, client_rt));
 }
