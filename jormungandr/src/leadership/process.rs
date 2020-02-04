@@ -86,12 +86,15 @@ impl Module {
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
     ) -> Result<Self, LeadershipError> {
-        let mut logs_to_purge = logs.clone();
+        let logs_to_purge = logs.clone();
 
         service_info.run_periodic(
             "garbage collection",
             garbage_collection_interval,
-            move || logs_to_purge.poll_purge(),
+            move || {
+                let mut logs_to_purge_local = logs_to_purge.clone();
+                Box::pin(async move { logs_to_purge_local.poll_purge().await }).compat()
+            },
         );
 
         tip.get_ref().compat().await.map(move |tip_ref| Self {
@@ -281,9 +284,9 @@ impl Module {
 
     async fn action_entry(self, entry: Entry) -> Result<Self, LeadershipError> {
         let end_log = entry.log.clone();
-        entry.log.mark_wake::<LeadershipError>().compat().await?;
+        entry.log.mark_wake().await;
         let module = self.action_run_entry(entry).await?;
-        end_log.mark_finished::<LeadershipError>().compat().await?;
+        end_log.mark_finished().await;
         Ok(module)
     }
 
@@ -308,11 +311,10 @@ impl Module {
 
             entry
                 .log
-                .set_status::<LeadershipError>(LeadershipLogStatus::Rejected {
+                .set_status(LeadershipLogStatus::Rejected {
                     reason: "Missed the deadline to compute the schedule".to_owned(),
                 })
-                .compat()
-                .await?;
+                .await;
 
             Ok(self)
         } else {
@@ -378,11 +380,11 @@ impl Module {
             Err(timeout_error) => {
                 error!(timed_out_log, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
                 event_logs
-                    .set_status::<LeadershipError>(LeadershipLogStatus::Rejected {
+                    .set_status(LeadershipLogStatus::Rejected {
                         reason: "Failed to compute the schedule within time boundaries".to_owned(),
                     })
-                    .compat()
-                    .await
+                    .await;
+                Ok(())
             }
         }.map(|()| self)
     }
@@ -423,13 +425,13 @@ impl Module {
                 "It appears the node is running a bit behind schedule, system time might be off?"
             );
 
-            let tell_user_about_failure = event_logs.set_status(
+            event_logs.set_status(
                     LeadershipLogStatus::Rejected {
                         reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
                     }
-                );
+                ).await;
 
-            return tell_user_about_failure.compat().await;
+            return Ok(());
         };
 
         let contents = prepare_block(pool, event.date, ledger, ledger_parameters).await?;
@@ -469,11 +471,10 @@ impl Module {
                         })
                         .or_else(|e| async move {
                             event_logs_error
-                                .set_status::<LeadershipError>(LeadershipLogStatus::Rejected {
+                                .set_status(LeadershipLogStatus::Rejected {
                                     reason: format!("Cannot sign the block: {}", e),
                                 })
-                                .compat()
-                                .await?;
+                                .await;
                             Ok(None)
                         })
                         .await
@@ -493,19 +494,16 @@ impl Module {
                         })
                         .or_else(|e| async move {
                             event_logs_error
-                                .set_status::<LeadershipError>(LeadershipLogStatus::Rejected {
+                                .set_status(LeadershipLogStatus::Rejected {
                                     reason: format!("Cannot sign the block: {}", e),
                                 })
-                                .compat()
-                                .await?;
+                                .await;
                             Ok(None)
                         })
                         .await
                 }
             }
         };
-
-        let event_logs_success = event_logs.clone();
 
         match signing {
             Ok(maybe_block) => {
@@ -516,18 +514,15 @@ impl Module {
                         .sink_compat()
                         .send(BlockMsg::LeadershipBlock(block))
                         .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
-                        .and_then(|_| {
-                            event_logs_success
-                                .set_status(LeadershipLogStatus::Block {
-                                    block: id.into(),
-                                    chain_length,
-                                })
-                                .compat()
+                        .await?;
+                    event_logs
+                        .set_status(LeadershipLogStatus::Block {
+                            block: id.into(),
+                            chain_length,
                         })
-                        .await
-                } else {
-                    Ok(())
-                }
+                        .await;
+                };
+                Ok(())
             }
             Err(e) => Err(e),
         }
@@ -608,7 +603,7 @@ impl Module {
             let scheduled_at_time = module.slot_time(epoch, slot);
             let log = LeadershipLog::new(schedule.id, schedule.date.into(), scheduled_at_time);
 
-            match module.logs.insert(log).compat().await {
+            match module.logs.insert(log).await {
                 Ok(log) => module.schedule.push(Entry {
                     event: schedule,
                     log,

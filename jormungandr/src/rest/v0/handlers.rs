@@ -337,14 +337,8 @@ pub async fn delete_leaders(
 }
 
 pub async fn get_leaders_logs(context: Data<Context>) -> Result<impl Responder, Error> {
-    context
-        .try_full()?
-        .leadership_logs
-        .logs()
-        .compat()
-        .await
-        .map(Json)
-        .map_err(|_| ErrorInternalServerError("Failed to get leader logs"))
+    let logs = context.try_full()?.leadership_logs.logs().await;
+    Ok(Json(logs))
 }
 
 pub async fn get_stake_pools(context: Data<Context>) -> Result<impl Responder, Error> {
