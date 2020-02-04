@@ -75,7 +75,14 @@ pub fn measure_sync_time(
     while now.elapsed().unwrap() < sync_wait.timeout() {
         let block_heights: Vec<u32> = nodes
             .iter()
-            .map(|node| node.stats().unwrap().last_block_height.parse().unwrap())
+            .map(|node| {
+                node.stats()
+                    .unwrap()
+                    .last_block_height
+                    .unwrap()
+                    .parse()
+                    .unwrap()
+            })
             .collect();
         let max_block_height = block_heights.iter().max().unwrap();
         if !block_heights.iter().any(|x| *x != *max_block_height) {

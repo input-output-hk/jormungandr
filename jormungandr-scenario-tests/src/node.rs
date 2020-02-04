@@ -61,6 +61,11 @@ error_chain! {
             display("node '{}' failed to start after {} s. log: {}", alias, duration.as_secs(), log),
         }
 
+        NodeFailedToShutdown (alias: String, message: String, log: String) {
+            description("cannot shutdown node"),
+            display("node '{}' failed to shutdown. Message: {}. Log: {}", alias, message, log),
+        }
+
         FragmentNoInMemPoolLogs (alias: String, fragment_id: FragmentId, log: String) {
             description("cannot find fragment in mempool logs"),
             display("fragment '{}' not in the mempool of the node '{}'. logs: {}", fragment_id, alias, log),
@@ -349,8 +354,10 @@ impl NodeController {
             let stats = self.stats();
             match stats {
                 Ok(stats) => {
-                    if stats.uptime > 0 {
-                        return Ok(());
+                    if let Some(uptime) = stats.uptime {
+                        if uptime > 0 {
+                            return Ok(());
+                        }
                     }
                 }
                 Err(err) => self
@@ -366,14 +373,37 @@ impl NodeController {
         ))
     }
 
-    pub fn shutdown(&self) -> Result<bool> {
+    pub fn wait_for_shutdown(&self) -> Result<()> {
+        let max_try = 2;
+        let sleep = Duration::from_secs(2);
+        for _ in 0..max_try {
+            if let Err(err) = self.stats() {
+                return Ok(());
+            };
+            std::thread::sleep(sleep);
+        }
+        bail!(ErrorKind::NodeFailedToShutdown(
+            self.alias().to_string(),
+            format!(
+                "node is still up after {} s from sending shutdown request",
+                sleep.as_secs()
+            ),
+            self.logger().get_log_content()
+        ))
+    }
+
+    pub fn shutdown(&self) -> Result<()> {
         let result = self.get("shutdown")?.text()?;
 
-        if result == "Success" {
+        if result == "" {
             self.progress_bar.log_info("shuting down");
-            Ok(true)
+            return self.wait_for_shutdown();
         } else {
-            Ok(false)
+            bail!(ErrorKind::NodeFailedToShutdown(
+                self.alias().to_string(),
+                result,
+                self.logger().get_log_content()
+            ))
         }
     }
 
@@ -400,7 +430,7 @@ impl Node {
     }
 
     pub fn controller(&self) -> NodeController {
-        let p2p_address = format!("{}", self.node_settings.config().p2p.public_address);
+        let p2p_address = format!("{}", self.node_settings.config().p2p.listen_address);
 
         NodeController {
             alias: self.alias().clone(),
