@@ -1,20 +1,14 @@
-use super::{ErrorKind, Result, ResultExt};
-use chain_addr::Discrimination;
-use chain_impl_mockchain::{
-    account,
-    certificate::{PoolId, SignedCertificate, StakeDelegation},
-    fee::{FeeAlgorithm, LinearFee},
-    transaction::{
-        AccountBindingSignature, Balance, Input, InputOutputBuilder, Payload, PayloadSlice,
-        TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier, Witness,
-    },
-};
-use jormungandr_lib::{
+use crate::{
     crypto::{
         account::{Identifier, SigningKey},
         hash::Hash,
     },
     interfaces::Address,
+};
+use chain_addr::Discrimination;
+use chain_impl_mockchain::{
+    account,
+    transaction::{TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness},
 };
 use rand_core::{CryptoRng, RngCore};
 
@@ -96,41 +90,12 @@ impl Wallet {
         &self,
         block0_hash: &Hash,
         signing_data: &TransactionSignDataHash,
-    ) -> Result<Witness> {
-        Ok(Witness::new_account(
+    ) -> Witness {
+        Witness::new_account(
             &block0_hash.clone().into_hash(),
             signing_data,
             self.internal_counter(),
             |d| self.signing_key().as_ref().sign(d),
-        ))
-    }
-
-    pub fn add_input<'a, Extra: Payload>(
-        &self,
-        payload: PayloadSlice<'a, Extra>,
-        iobuilder: &mut InputOutputBuilder,
-        fees: &LinearFee,
-    ) -> Result<()>
-    where
-        LinearFee: FeeAlgorithm,
-    {
-        let identifier: chain_impl_mockchain::account::Identifier =
-            self.identifier().to_inner().into();
-        let balance = iobuilder
-            .get_balance_with_placeholders(payload, fees, 1, 0)
-            .chain_err(|| ErrorKind::CannotComputeBalance)?;
-        let value = match balance {
-            Balance::Negative(value) => value,
-            Balance::Zero => bail!(ErrorKind::TransactionAlreadyBalanced),
-            Balance::Positive(value) => {
-                bail!(ErrorKind::TransactionAlreadyExtraValue(value.into()))
-            }
-        };
-
-        let input = Input::from_account_single(identifier, value);
-
-        iobuilder.add_input(&input).unwrap();
-
-        Ok(())
+        )
     }
 }

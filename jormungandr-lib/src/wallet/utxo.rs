@@ -1,7 +1,17 @@
-use jormungandr_lib::{crypto::key, interfaces::UTxOInfo};
+use crate::{
+    crypto::{hash::Hash, key},
+    interfaces::{Address, UTxOInfo},
+};
+use chain_addr::Discrimination;
+use chain_impl_mockchain::{
+    key::EitherEd25519SecretKey,
+    transaction::{
+        AccountBindingSignature, Balance, Input, InputOutputBuilder, Payload, PayloadSlice,
+        TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier, Witness,
+    },
+};
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
-
 pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519>;
 
 /// wallet for an account
@@ -39,6 +49,33 @@ impl Wallet {
         self.signing_keys.push(key);
 
         self.signing_keys.get(self.signing_keys.len() - 1).unwrap()
+    }
+
+    pub fn address(&self, discrimination: Discrimination) -> Address {
+        self.address_nth(0, discrimination)
+    }
+
+    pub fn address_nth(&self, i: usize, discrimination: Discrimination) -> Address {
+        self.signing_key(i)
+            .identifier()
+            .to_single_address(discrimination)
+            .into()
+    }
+
+    pub fn signing_key(&self, i: usize) -> &SpendingKey {
+        self.signing_keys.get(i).expect("no signing key found")
+    }
+
+    pub fn mk_witness(
+        &self,
+        block0_hash: &Hash,
+        signing_data: &TransactionSignDataHash,
+        i: usize,
+    ) -> Witness {
+        let secret_key =
+            EitherEd25519SecretKey::Normal(self.signing_key(i).clone().into_secret_key());
+
+        Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, &secret_key)
     }
 }
 
