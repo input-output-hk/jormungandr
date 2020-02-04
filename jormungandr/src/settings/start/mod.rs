@@ -130,7 +130,7 @@ impl RawSettings {
             config,
         } = self;
         let command_arguments = &command_line.start_arguments;
-        let network = generate_network(&command_arguments, &config)?;
+        let network = generate_network(&command_arguments, &config, &logger)?;
 
         let storage = match (
             command_arguments.storage.as_ref(),
@@ -197,6 +197,7 @@ impl RawSettings {
 fn generate_network(
     command_arguments: &StartArguments,
     config: &Option<Config>,
+    logger: &Logger,
 ) -> Result<network::Configuration, Error> {
     let mut p2p = if let Some(cfg) = config {
         cfg.p2p.clone()
@@ -233,7 +234,7 @@ fn generate_network(
         profile.add_subscription(sub);
     }
 
-    let network = network::Configuration {
+    let mut network = network::Configuration {
         profile: profile.build(),
         listen_address: match &p2p.listen_address {
             None => None,
@@ -270,6 +271,16 @@ fn generate_network(
         topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
         max_bootstrap_attempts: p2p.max_bootstrap_attempts,
     };
+
+    if network.max_client_connections > network.max_connections {
+        warn!(
+            logger,
+            "p2p.max_client_connections is larger than p2p.max_connections, decreasing from {} to {}",
+            network.max_client_connections,
+            network.max_connections
+        );
+        network.max_client_connections = network.max_connections;
+    }
 
     Ok(network)
 }
