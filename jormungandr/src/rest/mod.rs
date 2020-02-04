@@ -11,7 +11,7 @@ use actix_web::error::{Error as ActixError, ErrorInternalServerError, ErrorServi
 use actix_web::web::ServiceConfig;
 
 use slog::Logger;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use crate::blockchain::{Blockchain, Tip};
 use crate::fragment::Logs;
@@ -24,7 +24,9 @@ use crate::stats_counter::StatsCounter;
 use crate::intercom::{NetworkMsg, TransactionMsg};
 use crate::utils::async_msg::MessageBox;
 
+use futures03::executor::block_on;
 use jormungandr_lib::interfaces::NodeState;
+use tokio02::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Context {
@@ -44,57 +46,48 @@ impl Context {
         }
     }
 
-    pub fn set_full(&self, full_context: FullContext) {
-        *self.full.write().expect("Context state poisoned") = Some(Arc::new(full_context));
+    pub async fn set_full(&self, full_context: FullContext) {
+        *self.full.write().await = Some(Arc::new(full_context));
     }
 
-    pub fn try_full(&self) -> Result<Arc<FullContext>, ActixError> {
+    pub async fn try_full(&self) -> Result<Arc<FullContext>, ActixError> {
         self.full
             .read()
-            .expect("Context state poisoned")
+            .await
             .clone()
             .ok_or_else(|| ErrorServiceUnavailable("Full REST context not available yet"))
     }
 
-    fn set_server_stopper(&self, server_stopper: ServerStopper) {
-        *self
-            .server_stopper
-            .write()
-            .expect("Context server stopper poisoned") = Some(server_stopper);
+    async fn set_server_stopper(&self, server_stopper: ServerStopper) {
+        *self.server_stopper.write().await = Some(server_stopper);
     }
 
-    pub fn server_stopper(&self) -> Result<ServerStopper, ActixError> {
+    pub async fn server_stopper(&self) -> Result<ServerStopper, ActixError> {
         self.server_stopper
             .read()
-            .expect("Context server stopper poisoned")
+            .await
             .clone()
-            .ok_or_else(|| ErrorInternalServerError("Server stopper not set in  REST context"))
+            .ok_or_else(|| ErrorInternalServerError("Server stopper not set in REST context"))
     }
 
-    pub fn set_node_state(&self, node_state: NodeState) {
-        *self
-            .node_state
-            .write()
-            .expect("Context node state poisoned") = node_state;
+    pub async fn set_node_state(&self, node_state: NodeState) {
+        *self.node_state.write().await = node_state;
     }
 
-    pub fn node_state(&self) -> NodeState {
-        self.node_state
-            .read()
-            .expect("Context node state poisoned")
-            .clone()
+    pub async fn node_state(&self) -> NodeState {
+        self.node_state.read().await.clone()
     }
 
-    pub fn set_logger(&self, logger: Logger) {
-        *self.logger.write().expect("Context logger poisoned") = Some(logger);
+    pub async fn set_logger(&self, logger: Logger) {
+        *self.logger.write().await = Some(logger);
     }
 
-    pub fn logger(&self) -> Result<Logger, ActixError> {
+    pub async fn logger(&self) -> Result<Logger, ActixError> {
         self.logger
             .read()
-            .expect("Context logger poisoned")
+            .await
             .clone()
-            .ok_or_else(|| ErrorInternalServerError("Logger not set in  REST context"))
+            .ok_or_else(|| ErrorInternalServerError("Logger not set in REST context"))
     }
 }
 
@@ -120,7 +113,7 @@ pub fn start_rest_server(
 ) -> Result<Server, ConfigError> {
     let app_config = app_config_factory(explorer_enabled, context.clone());
     let server = Server::start(config, app_config)?;
-    context.set_server_stopper(server.stopper());
+    block_on(context.set_server_stopper(server.stopper()));
     Ok(server)
 }
 

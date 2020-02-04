@@ -18,7 +18,8 @@ pub async fn graphql(
     data: Json<GraphQLRequest>,
 ) -> Result<impl Responder, Error> {
     let explorer = context
-        .try_full()?
+        .try_full()
+        .await?
         .explorer
         .clone()
         .ok_or(ErrorServiceUnavailable("Explorer not enabled"))?;
