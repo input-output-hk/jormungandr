@@ -46,6 +46,9 @@ impl Gossip {
         true
     }
 
+    /// Check if the bind address is a global address
+    /// Note: This method relies on IPV4 checks even for IPV6 addresses. If the IPV6 address
+    /// can not be transformed into a IPV4 one then the private and link_local checks are not performed on it.
     pub fn is_global(&self) -> bool {
         if !self.has_valid_address() {
             return false;
@@ -72,9 +75,20 @@ impl Gossip {
                 if ip.is_loopback() {
                     return false;
                 }
-                // FIXME: add more tests when Ipv6Addr convenience methods
-                // get stabilized:
+                // Check using same methods by trying to cast address to ipv4
+                // FIXME: use Ipv6 tests when Ipv6Addr convenience methods get stabilized:
                 // https://github.com/rust-lang/rust/issues/27709
+                match ip.to_ipv4() {
+                    Some(ipv4) => {
+                        if ipv4.is_private() {
+                            return false;
+                        }
+                        if ipv4.is_link_local() {
+                            return false;
+                        }
+                    }
+                    None => {}
+                }
             }
         }
 
@@ -156,5 +170,80 @@ impl property::Deserialize for Gossip {
         config.limit(limits::MAX_GOSSIP_SIZE);
 
         config.deserialize_from(reader).map(Gossip)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use poldercast::{Address, NodeProfile, NodeProfileBuilder};
+    use std::net::{Ipv4Addr, Ipv6Addr};
+    use std::str::FromStr;
+
+    #[test]
+    fn gossip_global_ipv4_private() {
+        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
+        let ip = Ipv4Addr::new(10, 0, 0, 1);
+        builder.address(Address::new(ip).ok().unwrap());
+        let node: Gossip = Gossip::from(builder.build());
+        assert!(!node.is_global());
+    }
+
+    #[test]
+    fn gossip_global_ipv6_private() {
+        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
+        let ip = Ipv4Addr::new(0, 0, 0, 0);
+        let ipv6 = ip.to_ipv6_compatible();
+        builder.address(Address::new(ipv6).ok().unwrap());
+        let node: Gossip = Gossip::from(builder.build());
+        assert!(!node.is_global());
+    }
+
+    #[test]
+    fn gossip_global_ipv4_loopback() {
+        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
+        let ip = Ipv4Addr::new(127, 255, 255, 255);
+        // Address should not be private but be loopback
+        assert!(!ip.is_private());
+        builder.address(Address::new(ip).ok().unwrap());
+        let node: Gossip = Gossip::from(builder.build());
+        assert!(!node.is_global());
+    }
+
+    #[test]
+    fn gossip_global_ipv6_loopback() {
+        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
+        let ip = Ipv4Addr::new(127, 255, 255, 255);
+        // Address should not be private but be loopback
+        assert!(!ip.is_private());
+        let ipv6 = ip.to_ipv6_compatible();
+        builder.address(Address::new(ipv6).ok().unwrap());
+        let node: Gossip = Gossip::from(builder.build());
+        assert!(!node.is_global());
+    }
+
+    #[test]
+    fn gossip_global_ipv4_link_local() {
+        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
+        let ip = Ipv4Addr::new(169, 254, 10, 65);
+        // Address should not be private nor loopback
+        assert!(!ip.is_private());
+        assert!(!ip.is_loopback());
+        builder.address(Address::new(ip).ok().unwrap());
+        let node: Gossip = Gossip::from(builder.build());
+        assert!(!node.is_global());
+    }
+
+    #[test]
+    fn gossip_global_ipv6_link_local() {
+        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
+        let ip = Ipv4Addr::new(169, 254, 10, 65);
+        // Address should not be private not loopback
+        assert!(!ip.is_private());
+        assert!(!ip.is_loopback());
+        let ipv6 = ip.to_ipv6_compatible();
+        builder.address(Address::new(ipv6).ok().unwrap());
+        let node: Gossip = Gossip::from(builder.build());
+        assert!(!node.is_global());
     }
 }
