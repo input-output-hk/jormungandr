@@ -1,7 +1,7 @@
 use crate::blockcfg::{
     BlockDate, ChainLength, Header, HeaderHash, Leadership, Ledger, LedgerParameters,
 };
-use chain_impl_mockchain::multiverse::GCRoot;
+use chain_impl_mockchain::multiverse;
 use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot, TimeFrame,
@@ -14,10 +14,8 @@ use std::{
 /// a reference to a block in the blockchain
 #[derive(Clone)]
 pub struct Ref {
-    /// GCRoot holder for the object in the `Multiverse<Ledger>`.
-    ledger_gc: Arc<GCRoot>,
-
-    ledger: Arc<Ledger>,
+    /// Reference holder for the object in the `Multiverse<Ledger>`.
+    ledger: multiverse::Ref<Ledger>,
 
     /// the time frame applicable in the current branch of the blockchain
     time_frame: Arc<TimeFrame>,
@@ -46,21 +44,20 @@ pub struct Ref {
 impl Ref {
     /// create a new `Ref`
     pub fn new(
-        ledger_pointer: GCRoot,
-        ledger: Arc<Ledger>,
+        ledger: multiverse::Ref<Ledger>,
         time_frame: Arc<TimeFrame>,
         epoch_leadership_schedule: Arc<Leadership>,
         epoch_ledger_parameters: Arc<LedgerParameters>,
         header: Header,
         previous_epoch_state: Option<Arc<Ref>>,
     ) -> Self {
-        debug_assert!(
-            (*ledger_pointer) == header.hash(),
-            "expect the GCRoot to be for the same `Header`"
+        debug_assert_eq!(
+            *ledger.id(),
+            header.hash(),
+            "expect the ledger reference to be for the same `Header`"
         );
 
         Ref {
-            ledger_gc: Arc::new(ledger_pointer),
             ledger,
             time_frame,
             epoch_leadership_schedule,
@@ -72,7 +69,7 @@ impl Ref {
 
     /// retrieve the header hash of the `Ref`
     pub fn hash(&self) -> HeaderHash {
-        **self.ledger_gc
+        *self.ledger.id()
     }
 
     /// access the reference's parent hash
@@ -97,8 +94,8 @@ impl Ref {
         &self.header
     }
 
-    pub fn ledger(&self) -> &Arc<Ledger> {
-        &self.ledger
+    pub fn ledger(&self) -> Arc<Ledger> {
+        self.ledger.state_arc()
     }
 
     /// get the time frame in application in the current branch of the blockchain

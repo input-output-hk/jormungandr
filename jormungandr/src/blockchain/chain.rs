@@ -178,7 +178,7 @@ pub struct Blockchain {
 
     ref_cache: RefCache,
 
-    ledgers: Multiverse<Arc<Ledger>>,
+    ledgers: Multiverse<Ledger>,
 
     storage: Storage,
 
@@ -289,7 +289,7 @@ impl Blockchain {
         &self,
         header_hash: HeaderHash,
         header: Header,
-        ledger: Arc<Ledger>,
+        ledger: Ledger,
         time_frame: Arc<TimeFrame>,
         leadership: Arc<Leadership>,
         ledger_parameters: Arc<LedgerParameters>,
@@ -301,11 +301,10 @@ impl Blockchain {
         let ref_cache = self.ref_cache.clone();
 
         multiverse
-            .insert(chain_length, header_hash, ledger.clone())
-            .and_then(move |ledger_gcroot| {
+            .insert(chain_length, header_hash, ledger)
+            .and_then(move |ledger_ref| {
                 let reference = Ref::new(
-                    ledger_gcroot,
-                    ledger,
+                    ledger_ref,
                     time_frame,
                     leadership,
                     ledger_parameters,
@@ -497,7 +496,7 @@ impl Blockchain {
                 .create_and_store_reference(
                     block_id,
                     header,
-                    Arc::new(new_ledger),
+                    new_ledger,
                     time_frame,
                     epoch_leadership_schedule,
                     epoch_ledger_parameters,
@@ -575,7 +574,7 @@ impl Blockchain {
             .create_and_store_reference(
                 block0_id,
                 block0.header.clone(),
-                Arc::new(block0_ledger),
+                block0_ledger,
                 Arc::new(time_frame),
                 Arc::new(block0_leadership),
                 Arc::new(ledger_parameters),
