@@ -15,36 +15,6 @@ use slog::Logger;
 use tokio::prelude::future::{self, Future};
 use tokio::sync::lock::{Lock, LockGuard};
 
-// object holding a count of available, unreachable and quarantined nodes.
-#[derive(Clone)]
-pub struct NodeCount {
-    all_available_nodes: usize,
-    all_unreachable_nodes: usize,
-    all_quarantined_nodes: usize,
-}
-
-impl NodeCount {
-    pub fn new(nodes: &poldercast::Nodes) -> Self {
-        NodeCount {
-            all_available_nodes: nodes.all_available_nodes().len(),
-            all_unreachable_nodes: nodes.all_unreachable_nodes().len(),
-            all_quarantined_nodes: nodes.all_quarantined_nodes().len(),
-        }
-    }
-
-    pub fn all_available_nodes_count(&self) -> usize {
-        self.all_available_nodes
-    }
-
-    pub fn all_unreachable_nodes_count(&self) -> usize {
-        self.all_unreachable_nodes
-    }
-
-    pub fn all_quarantined_nodes_count(&self) -> usize {
-        self.all_quarantined_nodes
-    }
-}
-
 pub struct View {
     pub self_node: NodeProfile,
     pub peers: Vec<Node>,
@@ -218,8 +188,8 @@ impl P2pTopology {
         })
     }
 
-    pub fn nodes_count<E>(&self) -> impl Future<Item = NodeCount, Error = E> {
-        self.read().map(|topology| NodeCount::new(topology.nodes()))
+    pub fn nodes_count<E>(&self) -> impl Future<Item = poldercast::Count, Error = E> {
+        self.read().map(|topology| topology.nodes().node_count())
     }
 
     /// register a strike against the given node id

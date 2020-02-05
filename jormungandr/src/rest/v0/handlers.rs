@@ -172,9 +172,10 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
         "lastBlockContentSize": tip_header.block_content_size(),
         "lastBlockSum": block_input_sum.0,
         "lastBlockFees": block_fee_sum.0,
-        "peerAvailableCnt": nodes_count.all_available_nodes_count(),
-        "peerUnreachableCnt": nodes_count.all_unreachable_nodes_count(),
-        "peerQuarantinedCnt": nodes_count.all_quarantined_nodes_count(),
+        "peerTotalCnt": nodes_count.all_count,
+        "peerAvailableCnt": nodes_count.available_count,
+        "peerUnreachableCnt": nodes_count.not_reachable_count,
+        "peerQuarantinedCnt": nodes_count.quarantined_count,
     }))
 }
 
