@@ -7,15 +7,14 @@ use bb8::{ManageConnection, Pool, PooledConnection};
 use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
 use futures::{Future as Future01, Sink as Sink01, Stream as Stream01};
 use futures03::{
+    compat::*,
     executor::block_on,
     prelude::*,
     sink::{Sink, SinkExt},
     stream::{self, Stream},
 };
-use futures_util::compat::Compat;
 use std::{convert::identity, pin::Pin, sync::Arc};
-use tokio_02::sync::Semaphore;
-use tokio_compat::prelude::*;
+use tokio02::sync::Semaphore;
 
 pub use chain_storage::error::Error as StorageError;
 
@@ -24,7 +23,7 @@ where
     F: FnOnce() -> Result<R, StorageError> + Send + 'static,
     R: Send + 'static,
 {
-    use tokio_02::task::spawn_blocking;
+    use tokio02::task::spawn_blocking;
 
     spawn_blocking(f)
         .await
@@ -98,8 +97,7 @@ impl Storage03 {
         block_on(async move {
             let manager = ConnectionManager::new(storage);
             let pool = Pool::builder().build(manager).await.unwrap();
-            let write_connection_lock =
-                Arc::new(Mutex::new(pool.dedicated_connection().await.unwrap()));
+            let write_lock = Arc::new(Semaphore::new(1));
 
             Storage03 { pool, write_lock }
         })
@@ -197,15 +195,16 @@ impl Storage03 {
 
         let pool = self.pool.clone();
 
-        Ok(stream::unfold((init_state, pool), |(mut state, pool)| {
-            async move {
+        Ok(stream::unfold(
+            (init_state, pool),
+            |(mut state, pool)| async move {
                 if !state.has_next() {
                     return None;
                 }
                 let res = state.get_next(pool.clone()).await;
                 Some((res, (state, pool)))
-            }
-        }))
+            },
+        ))
     }
 
     /// Stream a branch ending at `to` and starting from the ancestor
