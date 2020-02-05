@@ -24,7 +24,7 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -36,7 +36,7 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
     let transaction_wrapper = transaction_wrapper
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &utxo.associated_fund())
+        .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
         .assert_finalize();
 
     let witness1 = transaction_wrapper.create_witness_default("utxo", None);
@@ -60,7 +60,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -97,23 +97,26 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
 pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
+    println!("Sender: {:?}", sender);
+    println!("Receiver: {:?}", sender);
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new().config(config).start().unwrap();
 
-    let utxo = config.block0_utxo_for_address(&sender);
-    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
-        .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &utxo.associated_fund())
-        .assert_finalize()
-        .seal_with_witness_for_address(&sender)
-        .assert_to_message();
+    let utxo = jormungandr.config.block0_utxo_for_address(&sender);
+    let transaction_message =
+        JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
+            .assert_add_input_from_utxo(&utxo)
+            .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
+            .assert_finalize()
+            .seal_with_witness_for_address(&sender)
+            .assert_to_message();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 }
@@ -127,7 +130,7 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: TX_VALUE.into(),
         }])
         .build();
@@ -139,16 +142,11 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
     let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
     let tx_message = tx
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &utxo.associated_fund())
+        .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
-    let new_utxo = UTxOInfo::new(
-        tx.get_fragment_id(),
-        0,
-        receiver.address.parse().unwrap(),
-        TX_VALUE.into(),
-    );
+    let new_utxo = UTxOInfo::new(tx.get_fragment_id(), 0, receiver.address(), TX_VALUE.into());
 
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &utxo);
     jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&rest_addr, &new_utxo);
@@ -167,7 +165,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: transfer_amount,
         }])
         .build();
@@ -177,7 +175,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
 
     let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &transfer_amount)
+        .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -188,8 +186,10 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
     // assert account received funds
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 
-    let account_state =
-        jcli_wrapper::assert_rest_account_get_stats(&receiver.address, &jormungandr.rest_address());
+    let account_state = jcli_wrapper::assert_rest_account_get_stats(
+        &receiver.address().to_string(),
+        &jormungandr.rest_address(),
+    );
     assert_eq!(
         account_state.value().to_string(),
         transfer_amount.to_string(),
@@ -212,7 +212,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: transfer_amount,
         }])
         .build();
@@ -222,7 +222,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &transfer_amount)
+        .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -238,7 +238,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: transfer_amount,
         }])
         .build();
@@ -248,7 +248,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &transfer_amount)
+        .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -264,7 +264,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: transfer_amount,
         }])
         .build();
@@ -274,7 +274,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &transfer_amount)
+        .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -289,7 +289,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -299,7 +299,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &utxo.associated_fund())
+        .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -315,7 +315,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: transfer_amount,
         }])
         .build();
@@ -323,8 +323,8 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
-        .assert_add_account(&sender.address, &transfer_amount)
-        .assert_add_output(&receiver.address, &transfer_amount)
+        .assert_add_account(&sender.address().to_string(), &transfer_amount)
+        .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -340,7 +340,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: transfer_amount,
         }])
         .build();
@@ -348,8 +348,8 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
-        .assert_add_account(&sender.address, &transfer_amount)
-        .assert_add_output(&receiver.address, &transfer_amount)
+        .assert_add_account(&sender.address().to_string(), &transfer_amount)
+        .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -364,7 +364,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: transfer_amount,
         }])
         .build();
@@ -374,7 +374,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
     let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &transfer_amount)
+        .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
@@ -388,7 +388,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -417,7 +417,7 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -440,7 +440,7 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
     let sender = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -465,7 +465,7 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -495,7 +495,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
     let fee = LinearFee::new(10, 1, 0);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .with_linear_fees(fee.clone())
@@ -506,8 +506,8 @@ pub fn test_transaction_with_non_zero_linear_fees() {
     let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
     let transaction_message = tx
         .assert_add_input_from_utxo(&utxo)
-        .assert_add_output(&receiver.address, &50.into())
-        .assert_finalize_with_fee(&sender.address, &fee)
+        .assert_add_output(&receiver.address().to_string(), &50.into())
+        .assert_finalize_with_fee(&sender.address().to_string(), &fee)
         .seal_with_witness_for_address(&sender)
         .assert_to_message();
     let tx_id = tx.get_fragment_id();
@@ -518,10 +518,10 @@ pub fn test_transaction_with_non_zero_linear_fees() {
     jcli_wrapper::assert_rest_utxo_get_by_utxo_not_found(&jormungandr.rest_address(), &utxo);
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(
         &jormungandr.rest_address(),
-        &UTxOInfo::new(tx_id, 0, receiver.address.parse().unwrap(), 50.into()),
+        &UTxOInfo::new(tx_id, 0, receiver.address(), 50.into()),
     );
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(
         &jormungandr.rest_address(),
-        &UTxOInfo::new(tx_id, 1, sender.address.parse().unwrap(), 37.into()),
+        &UTxOInfo::new(tx_id, 1, sender.address(), 37.into()),
     );
 }

@@ -3,7 +3,6 @@
 pub mod jcli_transaction_commands;
 
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::data::address::AddressDataProvider;
 use crate::common::data::witness::Witness;
 use crate::common::file_utils;
 use crate::common::jcli_wrapper;
@@ -15,6 +14,7 @@ use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{LegacyUTxO, UTxOInfo, Value},
+    wallet::Wallet,
 };
 use std::path::PathBuf;
 
@@ -40,12 +40,12 @@ impl JCLITransactionWrapper {
         transaction_builder
     }
 
-    pub fn build_transaction_from_utxo<T: AddressDataProvider, U: AddressDataProvider>(
+    pub fn build_transaction_from_utxo(
         utxo: &UTxOInfo,
         input_amount: &Value,
-        receiver: &T,
+        receiver: &Wallet,
         output_amount: &Value,
-        sender: &U,
+        sender: &Wallet,
         genesis_hash: &str,
     ) -> String {
         JCLITransactionWrapper::new_transaction(genesis_hash)
@@ -54,34 +54,26 @@ impl JCLITransactionWrapper {
                 utxo.index_in_transaction(),
                 input_amount,
             )
-            .assert_add_output(&receiver.get_address(), output_amount)
+            .assert_add_output(&receiver.address().to_string(), output_amount)
             .assert_finalize()
-            .seal_with_witness_default(
-                &sender.get_private_key(),
-                &receiver.get_address_type(),
-                sender.get_spending_key(),
-            )
+            .seal_with_witness_for_address(&sender)
             .assert_to_message()
     }
 
-    pub fn build_transaction<T: AddressDataProvider, U: AddressDataProvider>(
+    pub fn build_transaction(
         transaction_id: &Hash,
         transaction_index: u8,
         input_amount: &Value,
-        receiver: &T,
+        receiver: &Wallet,
         output_amount: &Value,
-        sender: &U,
+        sender: &Wallet,
         genesis_hash: &str,
     ) -> String {
         JCLITransactionWrapper::new_transaction(genesis_hash)
             .assert_add_input(transaction_id, transaction_index, input_amount)
-            .assert_add_output(&receiver.get_address(), &output_amount)
+            .assert_add_output(&receiver.address().to_string(), &output_amount)
             .assert_finalize()
-            .seal_with_witness_default(
-                &sender.get_private_key(),
-                &receiver.get_address_type(),
-                sender.get_spending_key(),
-            )
+            .seal_with_witness_for_address(&sender)
             .assert_to_message()
     }
 
@@ -238,27 +230,17 @@ impl JCLITransactionWrapper {
         self
     }
 
-    pub fn make_and_add_witness_default(
-        &mut self,
-        private_key: &str,
-        transaction_type: &str,
-        spending_key: Option<u32>,
-    ) -> &mut Self {
-        let witness = self.create_witness_from_key(&private_key, &transaction_type, spending_key);
+    pub fn make_and_add_witness_default(&mut self, wallet: &Wallet) -> &mut Self {
+        let witness = self.create_witness_from_wallet(&wallet);
         self.assert_make_witness(&witness);
         self.assert_add_witness(&witness);
         self
     }
 
-    pub fn seal_with_witness_for_address<'a, T: AddressDataProvider>(
-        &mut self,
-        address: &T,
-    ) -> &mut Self {
-        self.seal_with_witness_default(
-            &address.get_private_key(),
-            &address.get_address_type(),
-            address.get_spending_key(),
-        )
+    pub fn seal_with_witness_for_address(&mut self, wallet: &Wallet) -> &mut Self {
+        let witness = self.create_witness_from_wallet(&wallet);
+        self.seal_with_witness(&witness);
+        self
     }
 
     pub fn seal_with_witness_default(
@@ -305,6 +287,26 @@ impl JCLITransactionWrapper {
             ),
             &expected_msg,
         );
+    }
+
+    pub fn create_witness_from_wallet(&self, wallet: &Wallet) -> Witness {
+        match wallet {
+            Wallet::Account(account) => self.create_witness_from_key(
+                &account.signing_key().to_bech32_str(),
+                &"account",
+                Some((*account.internal_counter()).into()),
+            ),
+            Wallet::UTxO(utxo) => self.create_witness_from_key(
+                &utxo.last_signing_key().to_bech32_str(),
+                &"utxo",
+                None,
+            ),
+            Wallet::Delegation(delegation) => self.create_witness_from_key(
+                &delegation.last_signing_key().to_bech32_str(),
+                &"utxo",
+                None,
+            ),
+        }
     }
 
     pub fn create_witness_from_key(

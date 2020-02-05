@@ -1,5 +1,4 @@
 use crate::common::{
-    data::address::{Account, AddressDataProvider, Utxo},
     jcli_wrapper,
     jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper,
     jormungandr::{
@@ -8,7 +7,10 @@ use crate::common::{
     startup,
 };
 
-use jormungandr_lib::interfaces::{AccountState, InitialUTxO, SettingsDto, UTxOInfo};
+use jormungandr_lib::{
+    interfaces::{AccountState, InitialUTxO, SettingsDto, UTxOInfo},
+    wallet::Wallet,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 struct LedgerSnapshot {
@@ -28,13 +30,13 @@ impl LedgerSnapshot {
 }
 
 fn take_snapshot(
-    account_receiver: &Account,
+    account_receiver: &Wallet,
     jormungandr: &JormungandrProcess,
     utxo_info: UTxOInfo,
 ) -> LedgerSnapshot {
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
     let account = jcli_wrapper::assert_rest_account_get_stats(
-        &account_receiver.address,
+        &account_receiver.address().to_string(),
         &jormungandr.rest_address(),
     );
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&jormungandr.rest_address(), &utxo_info);
@@ -42,11 +44,11 @@ fn take_snapshot(
     LedgerSnapshot::new(settings, utxo_info, account)
 }
 
-pub fn do_simple_transaction<T: AddressDataProvider>(
-    sender: &T,
-    account_receiver: &Account,
+pub fn do_simple_transaction(
+    sender: &Wallet,
+    account_receiver: &Wallet,
     utxo_sender: &UTxOInfo,
-    utxo_receiver: &Utxo,
+    utxo_receiver: &Wallet,
     jormungandr: &JormungandrProcess,
 ) -> UTxOInfo {
     const TX_VALUE: u64 = 50;
@@ -54,21 +56,16 @@ pub fn do_simple_transaction<T: AddressDataProvider>(
     let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
     let transaction_message = tx
         .assert_add_input_from_utxo(utxo_sender)
-        .assert_add_output(&account_receiver.address, &TX_VALUE.into())
-        .assert_add_output(&utxo_receiver.address, &TX_VALUE.into())
+        .assert_add_output(&account_receiver.address().to_string(), &TX_VALUE.into())
+        .assert_add_output(&utxo_receiver.address().to_string(), &TX_VALUE.into())
         .assert_finalize()
-        .seal_with_witness_for_address(sender)
+        .seal_with_witness_for_address(&sender)
         .assert_to_message();
     let tx_id = tx.get_fragment_id();
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
 
-    UTxOInfo::new(
-        tx_id,
-        1,
-        utxo_receiver.address.parse().unwrap(),
-        TX_VALUE.into(),
-    )
+    UTxOInfo::new(tx_id, 1, utxo_receiver.address(), TX_VALUE.into())
 }
 
 #[test]
@@ -79,7 +76,7 @@ pub fn test_node_recovers_from_node_restart() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -113,7 +110,7 @@ pub fn test_node_recovers_kill_signal() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();

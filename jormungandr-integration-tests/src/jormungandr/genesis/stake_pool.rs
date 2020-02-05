@@ -1,5 +1,4 @@
 use crate::common::{
-    data::address::Account,
     file_utils,
     jcli_wrapper::{
         self, certificate::wrapper::JCLICertificateWrapper,
@@ -16,15 +15,9 @@ use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{InitialUTxO, Ratio, TaxType, Value},
+    wallet::Wallet,
 };
 use std::str::FromStr;
-
-#[allow(dead_code)]
-fn create_account_from_secret_key(private_key: String) -> Account {
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
-    Account::new(&private_key, &public_key, &address)
-}
 
 #[test]
 pub fn create_delegate_retire_stake_pool() {
@@ -34,7 +27,7 @@ pub fn create_delegate_retire_stake_pool() {
         .with_linear_fees(LinearFee::new(100, 100, 200))
         .with_funds(vec![InitialUTxO {
             value: 1000000.into(),
-            address: actor_account.address.parse().unwrap(),
+            address: actor_account.address(),
         }])
         .build();
 
@@ -63,7 +56,7 @@ pub fn create_delegate_retire_stake_pool() {
 }
 
 pub fn create_new_stake_pool(
-    account: &mut Account,
+    account: &mut Wallet,
     genesis_block_hash: &str,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
@@ -72,7 +65,7 @@ pub fn create_new_stake_pool(
     let vrf = startup::create_new_key_pair::<SumEd25519_12>();
 
     let owner_stake_key =
-        file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
+        file_utils::create_file_in_temp("stake_key.private_key", &account.signing_key_as_str());
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
     let fees: LinearFee = settings.fees.into();
@@ -85,7 +78,7 @@ pub fn create_new_stake_pool(
         &kes.identifier().to_bech32_str(),
         0u32,
         1u32,
-        &account.public_key,
+        &account.identifier().to_bech32_str(),
         Some(TaxType {
             fixed: 0.into(),
             ratio: Ratio::new_checked(1, 2).unwrap(),
@@ -96,9 +89,9 @@ pub fn create_new_stake_pool(
         file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_certificate);
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)
-        .assert_add_account(&account.address, &fee_value)
+        .assert_add_account(&account.address().to_string(), &fee_value)
         .assert_add_certificate(&stake_pool_certificate)
-        .assert_finalize_with_fee(&account.address, &fees)
+        .assert_finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
         .assert_add_auth(&owner_stake_key)
         .assert_to_message();
@@ -118,26 +111,26 @@ pub fn create_new_stake_pool(
 }
 
 pub fn delegate_stake(
-    account: &mut Account,
+    account: &mut Wallet,
     stake_pool_id: &str,
     genesis_block_hash: &str,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
     let owner_stake_key =
-        file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
+        file_utils::create_file_in_temp("stake_key.private_key", &account.signing_key_as_str());
     let certificate_wrapper = JCLICertificateWrapper::new();
-    let stake_pool_delegation =
-        certificate_wrapper.assert_new_stake_delegation(&stake_pool_id, &account.public_key);
+    let stake_pool_delegation = certificate_wrapper
+        .assert_new_stake_delegation(&stake_pool_id, &account.identifier().to_bech32_str());
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
     let fees: LinearFee = settings.fees.into();
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)
-        .assert_add_account(&account.address, &fee_value)
+        .assert_add_account(&account.address().to_string(), &fee_value)
         .assert_add_certificate(&stake_pool_delegation)
-        .assert_finalize_with_fee(&account.address, &fees)
+        .assert_finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
         .assert_add_auth(&owner_stake_key)
         .assert_to_message();
@@ -145,8 +138,10 @@ pub fn delegate_stake(
     account.confirm_transaction();
     jcli_wrapper::assert_transaction_in_block_with_wait(&transaction, &jormungandr, wait);
 
-    let account_state_after_delegation =
-        jcli_wrapper::assert_rest_account_get_stats(&account.address, &jormungandr.rest_address());
+    let account_state_after_delegation = jcli_wrapper::assert_rest_account_get_stats(
+        &account.address().to_string(),
+        &jormungandr.rest_address(),
+    );
 
     let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
     assert!(
@@ -161,13 +156,13 @@ pub fn delegate_stake(
 
 pub fn retire_stake_pool(
     stake_pool_id: &str,
-    account: &mut Account,
+    account: &mut Wallet,
     genesis_block_hash: &str,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
     let owner_private_key =
-        file_utils::create_file_in_temp("stake_key.private_key", &account.private_key);
+        file_utils::create_file_in_temp("stake_key.private_key", &account.signing_key_as_str());
 
     let certificate_wrapper = JCLICertificateWrapper::new();
 
@@ -178,18 +173,20 @@ pub fn retire_stake_pool(
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)
-        .assert_add_account(&account.address, &fee_value)
+        .assert_add_account(&account.address().to_string(), &fee_value)
         .assert_add_certificate(&retirement_cert)
-        .assert_finalize_with_fee(&account.address, &fees)
-        .seal_with_witness_for_address(account)
+        .assert_finalize_with_fee(&account.address().to_string(), &fees)
+        .seal_with_witness_for_address(&account)
         .assert_add_auth(&owner_private_key)
         .assert_to_message();
 
     account.confirm_transaction();
     jcli_wrapper::assert_transaction_in_block_with_wait(&transaction, &jormungandr, wait);
 
-    let account_state_after_stake_pool_retire =
-        jcli_wrapper::assert_rest_account_get_stats(&account.address, &jormungandr.rest_address());
+    let account_state_after_stake_pool_retire = jcli_wrapper::assert_rest_account_get_stats(
+        &account.address().to_string(),
+        &jormungandr.rest_address(),
+    );
 
     let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
 
