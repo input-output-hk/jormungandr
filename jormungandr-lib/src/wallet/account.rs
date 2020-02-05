@@ -40,6 +40,16 @@ impl Wallet {
         }
     }
 
+    pub fn from_existing_account(bech32_str: &str, spending_counter: Option<u32>) -> Self {
+        let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
+        let identifier = signing_key.identifier();
+        Wallet {
+            signing_key,
+            identifier,
+            internal_counter: spending_counter.unwrap_or_else(|| 0).into(),
+        }
+    }
+
     pub fn save_to<W: std::io::Write>(&self, mut w: W) -> std::io::Result<()> {
         writeln!(w, "{}", self.signing_key().to_bech32_str())
     }

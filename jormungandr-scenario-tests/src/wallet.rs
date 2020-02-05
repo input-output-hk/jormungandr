@@ -141,10 +141,7 @@ impl Wallet {
     }
 
     pub fn confirm_transaction(&mut self) {
-        match &mut self.inner {
-            Inner::Account(account) => account.increment_counter(),
-            _ => unimplemented!(),
-        }
+        self.inner.confirm_transaction()
     }
 
     pub fn identifier(&mut self) -> chain_impl_mockchain::account::Identifier {

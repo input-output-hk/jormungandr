@@ -1,11 +1,15 @@
 use crate::{
-    crypto::{account::Identifier, hash::Hash, key::SigningKey},
+    crypto::{
+        account::Identifier as AccountIdentifier,
+        hash::Hash,
+        key::{Identifier, SigningKey},
+    },
     interfaces::Address,
 };
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     key::EitherEd25519SecretKey,
-    transaction::{TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness},
+    transaction::{TransactionSignDataHash, Witness},
 };
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
@@ -25,7 +29,7 @@ pub struct Wallet {
     signing_keys: Vec<SpendingKey>,
 
     /// the identifier of delegated account
-    delegations: Vec<Identifier>,
+    delegations: Vec<AccountIdentifier>,
 }
 
 impl Wallet {
@@ -38,14 +42,14 @@ impl Wallet {
         seed.into()
     }
 
-    pub fn generate_new_signing_key(&mut self, delegation: Identifier) -> &SpendingKey {
+    pub fn generate_new_signing_key(&mut self, delegation: AccountIdentifier) -> &SpendingKey {
         let key = SigningKey::generate(&mut self.rng);
         self.signing_keys.push(key);
         self.delegations.push(delegation);
         self.signing_keys.get(self.signing_keys.len() - 1).unwrap()
     }
 
-    pub fn delegation(&self, i: usize) -> &Identifier {
+    pub fn delegation(&self, i: usize) -> &AccountIdentifier {
         &self.delegations.get(i).unwrap()
     }
 
@@ -60,8 +64,22 @@ impl Wallet {
             .into()
     }
 
+    pub fn identifier(&self) -> Identifier<chain_crypto::Ed25519> {
+        self.last_signing_key().identifier()
+    }
+
     pub fn signing_key(&self, i: usize) -> &SpendingKey {
         self.signing_keys.get(i).expect("no signing key found")
+    }
+
+    pub fn last_delegation_identifier(&self) -> AccountIdentifier {
+        let index = self.delegations.len() - 1;
+        self.delegations.get(index).unwrap().clone()
+    }
+
+    pub fn last_signing_key(&self) -> &SpendingKey {
+        let index = self.signing_keys.len() - 1;
+        self.signing_keys.get(index).expect("no signing key found")
     }
 
     pub fn mk_witness(

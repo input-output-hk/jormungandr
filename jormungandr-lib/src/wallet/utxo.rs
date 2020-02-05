@@ -1,18 +1,19 @@
 use crate::{
-    crypto::{hash::Hash, key},
+    crypto::{
+        hash::Hash,
+        key::{self, Identifier},
+    },
     interfaces::{Address, UTxOInfo},
 };
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     key::EitherEd25519SecretKey,
-    transaction::{
-        AccountBindingSignature, Balance, Input, InputOutputBuilder, Payload, PayloadSlice,
-        TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier, Witness,
-    },
+    transaction::{TransactionSignDataHash, Witness},
 };
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519>;
+use std::fmt;
 
 /// wallet for an account
 #[derive(Debug, Clone)]
@@ -45,10 +46,8 @@ impl Wallet {
 
     pub fn generate_new_signing_key(&mut self) -> &SpendingKey {
         let key = key::SigningKey::generate(&mut self.rng);
-
         self.signing_keys.push(key);
-
-        self.signing_keys.get(self.signing_keys.len() - 1).unwrap()
+        self.last_signing_key()
     }
 
     pub fn address(&self, discrimination: Discrimination) -> Address {
@@ -62,8 +61,17 @@ impl Wallet {
             .into()
     }
 
+    pub fn identifier(&self) -> Identifier<chain_crypto::Ed25519> {
+        self.last_signing_key().identifier()
+    }
+
     pub fn signing_key(&self, i: usize) -> &SpendingKey {
         self.signing_keys.get(i).expect("no signing key found")
+    }
+
+    pub fn last_signing_key(&self) -> &SpendingKey {
+        let index = self.signing_keys.len() - 1;
+        self.signing_keys.get(index).expect("no signing key found")
     }
 
     pub fn mk_witness(
