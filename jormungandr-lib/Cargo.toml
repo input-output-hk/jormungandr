@@ -16,7 +16,7 @@ typed-bytes = { path = "../chain-deps/typed-bytes" }
 rand_core = "0.5"
 rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
-humantime = "1.2"
+humantime = "2.0"
 thiserror = "1.0"
 poldercast = "0.11.1"
 

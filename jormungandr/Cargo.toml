@@ -32,7 +32,7 @@ error-chain = "0.12"
 futures    = "0.1"
 futures03 = { package = "futures", version = "0.3.1", features = ["compat"] }
 http = "0.1.16"
-humantime = "1.2"
+humantime = "2.0"
 hyper = "0.12"
 jormungandr-lib = { path = "../jormungandr-lib" }
 lazy_static = "1.3"
