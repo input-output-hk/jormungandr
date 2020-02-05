@@ -80,10 +80,9 @@ impl Wallet {
         signing_data: &TransactionSignDataHash,
         i: usize,
     ) -> Witness {
-        let secret_key =
-            EitherEd25519SecretKey::Normal(self.signing_key(i).clone().into_secret_key());
-
-        Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, &secret_key)
+        Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, |d| {
+            self.last_signing_key().as_ref().sign(d)
+        })
     }
 }
 

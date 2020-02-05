@@ -8,7 +8,11 @@ use crate::{
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     account,
-    transaction::{TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness},
+    certificate::{PoolId, SignedCertificate, StakeDelegation},
+    transaction::{
+        AccountBindingSignature, TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier,
+        Witness,
+    },
 };
 use rand_core::{CryptoRng, RngCore};
 
