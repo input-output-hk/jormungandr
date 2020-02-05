@@ -159,6 +159,7 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
     let nodes_count = &context.p2p.nodes_count::<Error>().compat().await?;
     let tip_header = tip.header();
     let stats = &context.stats_counter;
+    let node_id = &context.p2p.node_id().to_string();
     Ok(json!({
         "txRecvCnt": stats.tx_recv_cnt(),
         "blockRecvCnt": stats.block_recv_cnt(),
@@ -176,6 +177,7 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
         "peerAvailableCnt": nodes_count.available_count,
         "peerUnreachableCnt": nodes_count.not_reachable_count,
         "peerQuarantinedCnt": nodes_count.quarantined_count,
+        "nodeId": node_id,
     }))
 }
 
