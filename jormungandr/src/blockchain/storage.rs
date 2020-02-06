@@ -15,6 +15,7 @@ use futures03::{
 };
 use std::{convert::identity, pin::Pin, sync::Arc};
 use tokio02::sync::Semaphore;
+use tokio_compat::runtime;
 
 pub use chain_storage::error::Error as StorageError;
 
@@ -94,7 +95,13 @@ struct BlockIterState {
 
 impl Storage03 {
     pub fn new(storage: NodeStorage) -> Self {
-        block_on(async move {
+        let mut rt = runtime::Builder::new()
+            .name_prefix("new-storage-worker-")
+            .core_threads(1)
+            .build()
+            .unwrap();
+
+        rt.block_on_std(async move {
             let manager = ConnectionManager::new(storage);
             let pool = Pool::builder().build(manager).await.unwrap();
             let write_lock = Arc::new(Semaphore::new(1));
