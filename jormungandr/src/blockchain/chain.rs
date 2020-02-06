@@ -56,7 +56,6 @@ use crate::{
         Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
     },
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
-    start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_storage::error::Error as StorageError;
@@ -259,12 +258,12 @@ impl AppliedBlock {
 }
 
 impl Blockchain {
-    pub fn new(block0: HeaderHash, storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
+    pub fn new(block0: HeaderHash, storage: Storage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
             ledgers: Multiverse::new(),
-            storage: Storage::new(storage),
+            storage,
             block0,
         }
     }
@@ -591,7 +590,7 @@ impl Blockchain {
     }
 
     /// function to do the initial application of the block0 in the `Blockchain` and its
-    /// storage. We assume `Block0` is not already in the `NodeStorage`.
+    /// storage. We assume `Block0` is not already in the `Storage`.
     ///
     /// This function returns the create block0 branch. Having it will
     /// avoid searching for it in the blockchain's `branches` and perform

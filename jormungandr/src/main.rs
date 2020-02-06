@@ -410,7 +410,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
-    pub storage: start_up::NodeStorage,
+    pub storage: blockchain::Storage,
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
     pub services: Services,
