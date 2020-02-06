@@ -143,6 +143,14 @@ impl ExplorerDB {
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
     pub fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
+        use tokio_compat::runtime;
+
+        let mut rt = runtime::Builder::new()
+            .name_prefix("explorer-bootstrap-worker-")
+            .core_threads(1)
+            .build()
+            .unwrap();
+
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -181,9 +189,7 @@ impl ExplorerDB {
         };
 
         let multiverse = Multiverse::<State>::new();
-        multiverse
-            .insert(block0.chain_length(), block0.id(), initial_state)
-            .wait()
+        rt.block_on(multiverse.insert(block0.chain_length(), block0.id(), initial_state))
             .expect("The multiverse to be empty");
 
         let block0_id = block0.id().clone();
@@ -198,29 +204,30 @@ impl ExplorerDB {
             blockchain: blockchain.clone(),
         };
 
-        blockchain
-            .storage()
-            .get_tag(MAIN_BRANCH_TAG.to_owned())
-            .map_err(|err| err.into())
-            .and_then(move |head_option| match head_option {
-                None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
-                    "Couldn't read the HEAD tag from storage".to_owned(),
-                )))),
-                Some(head) => Either::B(
-                    blockchain
-                        .storage()
-                        .stream_from_to(block0_id, head)
-                        .map_err(|err| Error::from(err)),
-                ),
-            })
-            .and_then(move |stream| {
-                stream
-                    .map_err(|err| Error::from(err))
-                    .fold(bootstraped_db, |mut db, block| {
-                        db.apply_block(block).and_then(|_gc_root| Ok(db))
-                    })
-            })
-            .wait()
+        rt.block_on(
+            blockchain
+                .storage()
+                .get_tag(MAIN_BRANCH_TAG.to_owned())
+                .map_err(|err| err.into())
+                .and_then(move |head_option| match head_option {
+                    None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
+                        "Couldn't read the HEAD tag from storage".to_owned(),
+                    )))),
+                    Some(head) => Either::B(
+                        blockchain
+                            .storage()
+                            .stream_from_to(block0_id, head)
+                            .map_err(|err| Error::from(err)),
+                    ),
+                })
+                .and_then(move |stream| {
+                    stream
+                        .map_err(|err| Error::from(err))
+                        .fold(bootstraped_db, |mut db, block| {
+                            db.apply_block(block).and_then(|_gc_root| Ok(db))
+                        })
+                }),
+        )
     }
 
     /// Try to add a new block to the indexes, this can fail if the parent of the block is
