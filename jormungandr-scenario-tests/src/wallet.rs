@@ -1,13 +1,12 @@
 use crate::scenario::Wallet as WalletTemplate;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
-    account,
     certificate::{PoolId, SignedCertificate, StakeDelegation},
     fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
     transaction::{
-        AccountBindingSignature, Balance, Input, InputOutputBuilder, Payload, PayloadSlice,
-        TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier, Witness,
+        AccountBindingSignature, Balance, Input, InputOutputBuilder, NoExtra, Payload,
+        PayloadSlice, TxBuilder, UnspecifiedAccountIdentifier,
     },
 };
 use jormungandr_lib::{
@@ -128,8 +127,9 @@ impl Wallet {
 
         match &self.inner {
             Inner::Account(account) => {
-                let sig =
-                    AccountBindingSignature::new_single(account.signing_key().as_ref(), &auth_data);
+                let sig = AccountBindingSignature::new_single(&auth_data, |d| {
+                    account.signing_key().as_ref().sign_slice(&d.0)
+                });
                 SignedCertificate::StakeDelegation(stake_delegation, sig)
             }
             _ => unimplemented!(),
@@ -161,8 +161,6 @@ impl Wallet {
         address: Address,
         value: Value,
     ) -> Result<Fragment> {
-        use chain_impl_mockchain::transaction::{InputOutputBuilder, NoExtra, Payload, TxBuilder};
-
         let mut iobuilder = InputOutputBuilder::empty();
         iobuilder.add_output(address.into(), value.into()).unwrap();
 
