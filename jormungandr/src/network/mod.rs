@@ -350,8 +350,7 @@ fn handle_propagation_msg(
     // active subscriptions map, connect to them and deliver
     // the item.
     send_to_peers.then(move |res| {
-        if let Err(mut unreached_nodes) = res {
-            unreached_nodes.truncate(state.config.max_client_connections);
+        if let Err(unreached_nodes) = res {
             debug!(
                 state.logger(),
                 "will try to connect to {} of the peers not immediately reachable for propagation",
@@ -417,8 +416,7 @@ fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = ()
     topology
         .view(poldercast::Selection::Any)
         .and_then(move |view| {
-            let mut peers = view.peers;
-            peers.truncate(state.config.max_client_connections);
+            let peers = view.peers;
             debug!(logger, "sending gossip to {} peers", peers.len());
             stream::iter_ok(peers).for_each(move |node| {
                 let peer_id = node.id();
