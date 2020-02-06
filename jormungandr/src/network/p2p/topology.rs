@@ -15,6 +15,8 @@ use slog::Logger;
 use tokio::prelude::future::{self, Future};
 use tokio::sync::lock::{Lock, LockGuard};
 
+const DEFAULT_MAX_NODES: usize = 10000;
+
 pub struct View {
     pub self_node: NodeProfile,
     pub peers: Vec<Node>,
@@ -23,6 +25,7 @@ pub struct View {
 /// object holding the P2pTopology of the Node
 #[derive(Clone)]
 pub struct P2pTopology {
+    max_nodes: usize,
     lock: Lock<Topology>,
     node_id: Id,
     logger: Logger,
@@ -30,6 +33,7 @@ pub struct P2pTopology {
 
 /// Builder object used to initialize the `P2pTopology`
 struct Builder {
+    max_nodes: usize,
     topology: Topology,
     logger: Logger,
 }
@@ -38,9 +42,15 @@ impl Builder {
     /// Create a new topology for the given node profile
     fn new(node: poldercast::NodeProfile, logger: Logger) -> Self {
         Builder {
+            max_nodes: DEFAULT_MAX_NODES,
             topology: Topology::new(node),
             logger,
         }
+    }
+
+    fn set_max_nodes(mut self, max_nodes: usize) -> Self {
+        self.max_nodes = max_nodes;
+        self
     }
 
     fn set_policy(mut self, policy: PolicyConfig) -> Self {
@@ -73,6 +83,7 @@ impl Builder {
     fn build(self) -> P2pTopology {
         let node_id = self.topology.profile().id().clone();
         P2pTopology {
+            max_nodes: self.max_nodes,
             lock: Lock::new(self.topology),
             node_id: node_id.into(),
             logger: self.logger,
@@ -81,11 +92,13 @@ impl Builder {
 }
 
 impl P2pTopology {
+    // TODO: this should be private to the module with the builder exposed externally
     pub fn new(config: &Configuration, logger: Logger) -> Self {
         Builder::new(config.profile.clone(), logger)
             .set_poldercast_modules()
             .set_custom_modules(&config)
             .set_policy(config.policy.clone())
+            .set_max_nodes(DEFAULT_MAX_NODES)
             .build()
     }
 
@@ -126,8 +139,11 @@ impl P2pTopology {
         from: Id,
         gossips: Gossips,
     ) -> impl Future<Item = (), Error = E> {
-        self.write()
-            .map(move |mut topology| topology.accept_gossips(from.into(), gossips.into()))
+        self.write().map(move |mut topology| {
+            if topology.nodes().node_count().all_count < DEFAULT_MAX_NODES {
+                topology.accept_gossips(from.into(), gossips.into())
+            }
+        })
     }
 
     pub fn exchange_gossips<E>(
