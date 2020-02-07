@@ -1,0 +1,97 @@
+on:
+  push:
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+
+name: Release
+
+jobs:
+  initial_release:
+    name: Create base release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  release_assets:
+    name: Release assets
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          # Linux
+          - {os: ubuntu-latest, target: arm-unknown-linux-gnueabi, disable_tests: 1}
+          - {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf, disable_tests: 1}
+          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, disable_tests: 1}
+          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, disable_tests: 1}
+          - {os: ubuntu-latest, target: x86_64-unknown-linux-musl, disable_tests: 0}
+          - {os: ubuntu-latest, target: aarch64-linux-android, disable_tests: 0}
+          # Macos
+          - {os: macos-latest, target: x86_64-unknown-linux-gnu, disable_tests: 0}
+          - {os: macos-latest, target: aarch64-unknown-linux-gnu, disable_tests: 1}
+          - {os: macos-latest, target: x86_64-apple-darwin, disable_tests: 0}
+          # Windows
+          - {os: windows-latest, target: x86_64-pc-windows-gnu, disable_tests: 0}
+          - {os: windows-latest, target: x86_64-pc-windows-msvc, disable_tests: 0}
+        toolchain: [stable]
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.config.target }}
+          override: true
+          default: true
+
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Build jormungandr
+        uses: actions-rs/cargo@v1
+        env:
+          DISABLE_TESTS: ${{ matrix.config.disable_tests }}
+        with:
+          command: rustc
+          args: --release -p jormungandr --bin jormungandr -- -C lto
+
+      - name: Build jcli
+        uses: actions-rs/cargo@v1
+        env:
+          DISABLE_TESTS: ${{ matrix.config.disable_tests }}
+        with:
+          command: rustc
+          args: --release -p jcli --bin jcli -- -C lto
+
+      - name: Get tag version
+        id: get_version
+        run: echo ::set-output name=VERSION::``${GITHUB_REF#refs/tags/}``
+
+      - name: Pack binaries if unix
+        if: matrix.config.os != 'windows-latest'
+        run: tar -czvf release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz ./target/release/jormungandr ./target/release/jcli
+
+      - name: Pack binaries if windows
+        if: matrix.config.os == 'windows-latest'
+        run: compress-archive ./target/release/jormungandr.exe, ./target/release/jcli.exe release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.zip
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.*
+          asset_name: release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}
+          tag: ${{ github.ref }}
+          file_glob: true
+          overwrite: true
