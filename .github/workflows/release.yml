@@ -82,18 +82,18 @@ jobs:
 
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
-        run: tar -czvf release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz ./target/release/jormungandr ./target/release/jcli
+        run: tar -czvf jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz ./target/release/jormungandr ./target/release/jcli
 
       - name: Pack binaries if windows
         if: matrix.config.os == 'windows-latest'
-        run: compress-archive ./target/release/jormungandr.exe, ./target/release/jcli.exe release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.zip
+        run: compress-archive ./target/release/jormungandr.exe, ./target/release/jcli.exe jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.zip
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.*
-          asset_name: release_test-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}
+          file: jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.*
+          asset_name: jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}
           tag: ${{ github.ref }}
           file_glob: true
           overwrite: true
