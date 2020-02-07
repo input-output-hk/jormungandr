@@ -3,7 +3,7 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{Blockchain, Branch, ErrorKind as BlockchainError, Tip},
+    blockchain::{Blockchain, ErrorKind as BlockchainError, Tip},
     network,
     settings::start::Settings,
 };
@@ -87,34 +87,28 @@ pub fn load_blockchain(
     block_cache_ttl: Duration,
     logger: &Logger,
 ) -> Result<(Blockchain, Tip), Error> {
-    use tokio::prelude::*;
+    use tokio_compat::prelude::*;
 
     let blockchain = Blockchain::new(block0.header.hash(), storage, block_cache_ttl);
 
-    info!(logger, "Loading from storage");
-    let main_branch: Branch = match blockchain.load_from_block0(block0.clone()).wait() {
-        Err(error) => match error.kind() {
-            BlockchainError::Block0AlreadyInStorage => {
-                blockchain.load_from_storage(block0, logger).wait()
-            }
-            _ => Err(error),
-        },
-        Ok(branch) => Ok(branch),
-    }?;
-
-    let tip = Tip::new(main_branch);
-    let _: Result<(), ()> = tip
-        .get_ref()
-        .and_then(move |tip_ref| {
-            info!(
-                logger,
-                "Loaded from storage tip is : {}",
-                tip_ref.header().description()
-            );
-            future::ok(())
-        })
-        .map_err(|_: std::convert::Infallible| unreachable!())
-        .wait();
-
-    Ok((blockchain, tip))
+    let mut rt = tokio02::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let main_branch = match blockchain.load_from_block0(block0.clone()).await {
+            Err(error) => match error.kind() {
+                BlockchainError::Block0AlreadyInStorage => {
+                    blockchain.load_from_storage(block0, logger).await
+                }
+                _ => Err(error),
+            },
+            Ok(branch) => Ok(branch),
+        }?;
+        let tip = Tip::new(main_branch);
+        let tip_ref = tip.get_ref_no_err().compat().await.unwrap();
+        info!(
+            logger,
+            "Loaded from storage tip is : {}",
+            tip_ref.header().description()
+        );
+        Ok((blockchain, tip))
+    })
 }

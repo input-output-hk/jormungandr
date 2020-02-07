@@ -12,6 +12,10 @@ impl Tip {
         Tip { branch }
     }
 
+    pub fn get_ref_no_err(&self) -> impl Future<Item = Arc<Ref>, Error = ()> {
+        self.branch.get_ref()
+    }
+
     pub fn get_ref<E>(&self) -> impl Future<Item = Arc<Ref>, Error = E> {
         self.branch.get_ref()
     }
