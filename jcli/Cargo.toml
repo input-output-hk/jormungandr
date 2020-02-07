@@ -33,7 +33,7 @@ reqwest = "0.9.11"
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.5.6"
 openapiv3 = "0.3.0"
-valico = "3.1.0"
+valico = "3.2.0"
 ed25519-bip32 = "0.3"
 thiserror = "1.0"
 
