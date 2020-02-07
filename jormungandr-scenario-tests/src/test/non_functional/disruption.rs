@@ -5,7 +5,6 @@ use crate::{
     Context,
 };
 use rand_chacha::ChaChaRng;
-use std::time::Duration;
 
 pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
@@ -98,9 +97,10 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &leader3,
     )?;
 
-    std::thread::sleep(Duration::from_secs(60 * 5));
-
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::nodes_restart(5),
+        vec![&leader1, &leader2, &leader3, &leader4, &leader5],
+    )?;
 
     leader5.shutdown()?;
     leader4.shutdown()?;

@@ -1,3 +1,7 @@
+mod wait;
+
+pub use wait::SyncWaitParams;
+
 use crate::{
     node::NodeController,
     scenario::repository::{Measurement, MeasurementThresholds},
@@ -5,48 +9,13 @@ use crate::{
     test::{ErrorKind, Result},
     wallet::Wallet,
 };
-use jormungandr_lib::interfaces::FragmentStatus;
+use jormungandr_lib::{interfaces::FragmentStatus, time::Duration as LibsDuration};
 use std::{
     fmt, thread,
     time::{Duration, SystemTime},
 };
 
-#[derive(Clone, Debug)]
-pub struct SyncWaitParams {
-    pub no_of_nodes: u64,
-    pub longest_path_length: u64,
-}
-
-impl SyncWaitParams {
-    pub fn two_nodes() -> Self {
-        SyncWaitParams {
-            no_of_nodes: 2,
-            longest_path_length: 2,
-        }
-    }
-
-    pub fn no_of_nodes(&self) -> u64 {
-        self.no_of_nodes
-    }
-
-    pub fn longest_path_length(&self) -> u64 {
-        self.longest_path_length
-    }
-
-    fn calculate_wait_time(&self) -> u64 {
-        (self.no_of_nodes + self.longest_path_length * 2) * 2
-    }
-
-    pub fn wait_time(&self) -> Duration {
-        Duration::from_secs(self.calculate_wait_time())
-    }
-
-    pub fn timeout(&self) -> Duration {
-        Duration::from_secs(self.calculate_wait_time() * 2)
-    }
-}
-
-pub fn wait_for_nodes_sync(sync_wait_params: SyncWaitParams) {
+pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
     let wait_time = sync_wait_params.wait_time();
     std::thread::sleep(wait_time);
 }
@@ -114,11 +83,13 @@ pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Resu
     Ok(())
 }
 
-pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
+pub fn assert_are_in_sync(sync_wait: SyncWaitParams, nodes: Vec<&NodeController>) -> Result<()> {
     if nodes.len() < 2 {
         return Ok(());
     }
 
+    wait_for_nodes_sync(&sync_wait);
+    let duration: LibsDuration = sync_wait.wait_time().into();
     let first_node = nodes.iter().next().unwrap();
 
     let expected_block_hashes = first_node.all_blocks_hashes()?;
@@ -129,7 +100,8 @@ pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
         assert_equals(
             &expected_block_hashes,
             &all_block_hashes,
-            &format!("nodes are out of sync (different block hashes). Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+            &format!("nodes are out of sync (different block hashes) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                duration,
                 first_node.alias(),
                 first_node.log_content(),
                 node.alias(),
@@ -138,7 +110,8 @@ pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
         assert_equals(
             &block_height,
             &node.stats()?.last_block_height,
-            &format!("nodes are out of sync (different block height). Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+            &format!("nodes are out of sync (different block height) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                duration,
                 first_node.alias(),
                 first_node.log_content(),
                 node.alias(),

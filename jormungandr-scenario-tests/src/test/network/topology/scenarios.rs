@@ -71,11 +71,10 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &leader1,
     )?;
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 4,
-        longest_path_length: 2,
-    });
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(4, 2),
+        vec![&leader1, &leader2, &leader3, &leader4],
+    )?;
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -140,11 +139,10 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 5,
-        longest_path_length: 3,
-    });
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(5, 3),
+        vec![&leader1, &leader2, &leader3, &leader4, &leader5],
+    )?;
 
     leader5.shutdown()?;
     leader4.shutdown()?;
@@ -206,11 +204,10 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 4,
-        longest_path_length: 3,
-    });
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(4, 3),
+        vec![&leader1, &leader2, &leader3, &leader4],
+    )?;
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -275,11 +272,10 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 5,
-        longest_path_length: 3,
-    });
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(5, 3),
+        vec![&leader1, &leader2, &leader3, &leader4, &leader5],
+    )?;
 
     leader5.shutdown()?;
     leader4.shutdown()?;
@@ -339,11 +335,10 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &leader1,
     )?;
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 4,
-        longest_path_length: 4,
-    });
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(4, 4),
+        vec![&leader1, &leader2, &leader3, &leader4],
+    )?;
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -416,11 +411,10 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
         &leader1,
     )?;
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 4,
-        longest_path_length: 4,
-    });
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(4, 4),
+        vec![&leader1, &leader2, &leader3, &leader4],
+    )?;
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -493,13 +487,12 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 7,
-        longest_path_length: 5,
-    });
-    utils::assert_are_in_sync(vec![
-        &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7,
-    ])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(7, 5),
+        vec![
+            &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7,
+        ],
+    )?;
 
     leader7.shutdown()?;
     leader6.shutdown()?;
@@ -633,13 +626,12 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         wallet7.confirm_transaction();
     }
 
-    utils::wait_for_nodes_sync(SyncWaitParams {
-        no_of_nodes: 9,
-        longest_path_length: 3,
-    });
-    utils::assert_are_in_sync(vec![
-        &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
-    ])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::network_size(9, 3),
+        vec![
+            &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
+        ],
+    )?;
 
     leader7.shutdown()?;
     leader6.shutdown()?;

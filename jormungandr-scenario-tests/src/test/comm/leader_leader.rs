@@ -62,8 +62,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         wallet2.confirm_transaction();
     }
 
-    utils::wait_for_nodes_sync(SyncWaitParams::two_nodes());
-    utils::assert_are_in_sync(vec![&leader_1, &leader_2])?;
+    utils::assert_are_in_sync(SyncWaitParams::two_nodes(), vec![&leader_1, &leader_2])?;
 
     leader_1.shutdown().unwrap();
     leader_2.shutdown().unwrap();
