@@ -214,6 +214,7 @@ impl TokioServiceInfo {
 
     // Run the closure with the specified period on the executor
     // and execute the resulting closure.
+    #[deprecated(note = "convert me to run_periodic_std")]
     pub fn run_periodic<F, U>(&self, name: &'static str, period: Duration, mut f: F)
     where
         F: FnMut() -> U,
