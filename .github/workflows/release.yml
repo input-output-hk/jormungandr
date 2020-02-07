@@ -59,8 +59,6 @@ jobs:
 
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
-        env:
-          DISABLE_TESTS: ${{ matrix.config.disable_tests }}
         with:
           command: rustc
           args: --release -p jormungandr --bin jormungandr -- -C lto
