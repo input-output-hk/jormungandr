@@ -3,7 +3,7 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{Blockchain, ErrorKind as BlockchainError, Tip},
+    blockchain::{Blockchain, ErrorKind as BlockchainError, Storage, Tip},
     network,
     settings::start::Settings,
 };

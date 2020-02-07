@@ -605,13 +605,13 @@ impl Blockchain {
     /// * other errors while interacting with the storage (IO errors)
     ///
     pub async fn load_from_block0(&self, block0: Block) -> Result<Branch> {
+        use chain_core::property::Block;
         use tokio_compat::prelude::*;
 
-        let self1 = self.clone();
-        let storage_store = self.storage.clone();
-        let storage_store_2 = self.storage.clone();
+        let block0_id = block0.id();
 
-        self.storage
+        let already_exist = self
+            .storage
             .block_exists(block0_id.clone())
             .compat()
             .await
@@ -623,7 +623,7 @@ impl Blockchain {
 
         let block0_branch = self.apply_block0(&block0).await?;
 
-        let mut storage = self.storage.clone();
+        let storage = self.storage.clone();
 
         storage
             .put_block(block0)

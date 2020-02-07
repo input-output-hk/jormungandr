@@ -13,7 +13,7 @@ use futures03::{
     stream::{self, Stream},
 };
 use std::{convert::identity, pin::Pin, sync::Arc};
-use tokio02::{sync::Semaphore, task::spawn_blocking};
+use tokio02::{sync::Mutex, task::spawn_blocking};
 use tokio_compat::runtime;
 
 pub use chain_storage::error::Error as StorageError;
@@ -93,7 +93,7 @@ pub struct Storage03 {
     // sequence. Otherwise they can be performed out of the expected order (for
     // example, by different tokio executors) which eventually leads to a panic
     // because the block data would be inconsistent at the time of a write.
-    write_lock: Arc<Semaphore>,
+    write_lock: Arc<Mutex<()>>,
 }
 
 // Compatibility layer for using new storage with old futures API.
@@ -124,7 +124,7 @@ impl Storage03 {
         rt.block_on_std(async move {
             let manager = ConnectionManager::new(storage);
             let pool = Pool::builder().build(manager).await.unwrap();
-            let write_lock = Arc::new(Semaphore::new(1));
+            let write_lock = Arc::new(Mutex::new(()));
 
             Storage03 { pool, write_lock }
         })
@@ -143,7 +143,7 @@ impl Storage03 {
     }
 
     pub async fn put_tag(&self, tag: String, header_hash: HeaderHash) -> Result<(), StorageError> {
-        let _ = self.write_lock.acquire().await;
+        let _ = self.write_lock.lock().await;
         self.run(move |connection| connection.put_tag(&tag, &header_hash))
             .await
     }
@@ -181,7 +181,7 @@ impl Storage03 {
     }
 
     pub async fn put_block(&self, block: Block) -> Result<(), StorageError> {
-        let _ = self.write_lock.acquire().await;
+        let _ = self.write_lock.lock().await;
         self.run(move |connection| match connection.put_block(&block) {
             Err(StorageError::BlockNotFound) => unreachable!(),
             Err(e) => Err(e),
