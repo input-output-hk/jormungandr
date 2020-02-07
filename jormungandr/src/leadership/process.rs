@@ -654,7 +654,6 @@ async fn prepare_block(
             epoch_parameters.as_ref().clone(),
             selection_algorithm,
         )
-        .compat()
         .map_ok(|selection_algorithm| selection_algorithm.finalize())
         .map_err(|()| LeadershipError::FragmentSelectionFailed)
         .await

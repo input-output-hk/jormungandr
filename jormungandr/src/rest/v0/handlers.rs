@@ -73,7 +73,6 @@ pub async fn get_message_logs(context: Data<Context>) -> Result<impl Responder, 
         .await?
         .logs
         .logs()
-        .compat()
         .await
         .map_err(|_| ErrorInternalServerError("Failed to get logs"))
         .map(Json)
