@@ -77,7 +77,7 @@ jobs:
 
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
-        run: tar -czvf jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz ./target/release/jormungandr ./target/release/jcli
+        run: tar -C ./target/release -czvf jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz jormungandr jcli
 
       - name: Pack binaries if windows
         if: matrix.config.os == 'windows-latest'
