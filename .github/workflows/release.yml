@@ -74,6 +74,7 @@ jobs:
       - name: Get tag version
         id: get_version
         run: echo ::set-output name=VERSION::``${GITHUB_REF#refs/tags/}``
+        shell: bash
 
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
