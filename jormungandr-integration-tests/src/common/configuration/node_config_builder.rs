@@ -3,9 +3,12 @@
 use super::file_utils;
 use std::path::PathBuf;
 
-use jormungandr_lib::interfaces::{
-    Explorer, Log, LogEntry, LogOutput, Mempool, NodeConfig, P2p, Rest, TopicsOfInterest,
-    TrustedPeer,
+use jormungandr_lib::{
+    interfaces::{
+        Explorer, Log, LogEntry, LogOutput, Mempool, NodeConfig, P2p, Policy, Rest,
+        TopicsOfInterest, TrustedPeer,
+    },
+    time::Duration,
 };
 
 #[derive(Debug, Clone)]
@@ -66,6 +69,9 @@ impl NodeConfigBuilder {
                     blocks: String::from("high"),
                 }),
                 allow_private_addresses: false,
+                policy: Some(Policy {
+                    quarantine_duration: Duration::new(1, 0),
+                }),
             },
             mempool: Some(Mempool::default()),
             explorer: Explorer { enabled: false },
