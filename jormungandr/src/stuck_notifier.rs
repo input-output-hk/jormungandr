@@ -24,24 +24,31 @@ pub fn check_last_block_time(
         .map_err(move |e| error!(err_logger, "timer error: {}", e))
         .and_then(move |_| blockchain_tip.get_ref())
         .for_each(move |tip| {
+            let era = tip.epoch_leadership_schedule().era();
+
             let tip_date = tip.block_date();
-            let slot = tip
-                .epoch_leadership_schedule()
-                .era()
+            let tip_slot = era
                 .from_era_to_slot(EpochPosition {
                     epoch: Epoch(tip_date.epoch),
                     slot: EpochSlotOffset(tip_date.slot_id),
                 });
-            let tip_time = tip.time_frame().slot_to_systemtime(slot).ok_or_else(|| {
+            let tip_time = tip.time_frame().slot_to_systemtime(tip_slot).ok_or_else(|| {
                 error!(logger, "cannot convert the block tip date to system time");
             })?;
-            match SystemTime::now().duration_since(tip_time) {
+
+            let now = SystemTime::now();
+            let system_current_slot = tip.time_frame().slot_at(&now);
+            let system_current_blockdate = system_current_slot.and_then(|scs| era.from_slot_to_era(scs))
+                .map(|ep| format!("{}", ep)).unwrap_or("date-computation-error".to_string());
+
+            let header = tip.header();
+            match now.duration_since(tip_time) {
                 Ok(period_since_last_block) => {
                     if period_since_last_block > check_period {
                         warn!(
                             logger,
-                            "blockchain is not moving up, the last block was {} seconds ago",
-                            period_since_last_block.as_secs()
+                            "blockchain is not moving up, system-date={}, the last tip {} was {} seconds ago",
+                            system_current_blockdate, header.description(), period_since_last_block.as_secs()
                         );
                     }
                 }
