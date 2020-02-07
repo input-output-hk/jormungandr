@@ -3,24 +3,25 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::Block,
-    blockchain::{Blockchain, ErrorKind as BlockchainError, Tip},
+    blockchain::{Blockchain, ErrorKind as BlockchainError, Storage, Tip},
     network,
     settings::start::Settings,
 };
-use chain_storage::store::BlockStore;
-use chain_storage_sqlite_old::SQLiteBlockStore;
+use chain_storage_sqlite_old::{SQLiteBlockStore, SQLiteBlockStoreConnection};
 use slog::Logger;
 use std::time::Duration;
+use tokio_compat::runtime;
 
-pub type NodeStorage = SQLiteBlockStore<Block>;
+pub type NodeStorage = SQLiteBlockStore;
+pub type NodeStorageConnection = SQLiteBlockStoreConnection<Block>;
 
 /// prepare the block storage from the given settings
 ///
-pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<NodeStorage, Error> {
-    match &setting.storage {
+pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, Error> {
+    let raw_block_store = match &setting.storage {
         None => {
             info!(logger, "storing blockchain in memory");
-            Ok(SQLiteBlockStore::memory())
+            SQLiteBlockStore::memory()
         }
         Some(dir) => {
             std::fs::create_dir_all(dir).map_err(|err| Error::IO {
@@ -30,9 +31,11 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<NodeStorag
             let mut sqlite = dir.clone();
             sqlite.push("blocks.sqlite");
             info!(logger, "storing blockchain in '{:?}'", sqlite);
-            Ok(SQLiteBlockStore::file(sqlite))
+            SQLiteBlockStore::file(sqlite)
         }
-    }
+    };
+
+    Ok(Storage::new(raw_block_store))
 }
 
 /// loading the block 0 is not as trivial as it seems,
@@ -44,7 +47,7 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<NodeStorag
 ///     2. check the network nodes we know about
 pub fn prepare_block_0(
     settings: &Settings,
-    storage: &NodeStorage,
+    storage: &Storage,
     logger: &Logger,
 ) -> Result<Block, Error> {
     use crate::settings::Block0Info;
@@ -63,13 +66,19 @@ pub fn prepare_block_0(
             })
         }
         Block0Info::Hash(block0_id) => {
-            if storage.block_exists(&block0_id)? {
+            let mut rt = runtime::Builder::new()
+                .name_prefix("prepare-block0-worker-")
+                .core_threads(1)
+                .build()
+                .unwrap();
+
+            if rt.block_on(storage.block_exists(*block0_id))? {
                 debug!(
                     logger,
                     "retrieving block0 from storage with hash {}", block0_id
                 );
-                let (block0, _block0_info) = storage.get_block(block0_id)?;
-                Ok(block0)
+                let block0 = rt.block_on(storage.get(*block0_id))?;
+                Ok(block0.unwrap())
             } else {
                 debug!(
                     logger,
@@ -83,7 +92,7 @@ pub fn prepare_block_0(
 
 pub fn load_blockchain(
     block0: Block,
-    storage: NodeStorage,
+    storage: Storage,
     block_cache_ttl: Duration,
     logger: &Logger,
 ) -> Result<(Blockchain, Tip), Error> {

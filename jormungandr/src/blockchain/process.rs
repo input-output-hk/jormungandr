@@ -444,7 +444,7 @@ pub fn process_new_ref(
     use tokio::prelude::future::Either::*;
 
     let candidate_hash = candidate.hash();
-    let mut storage = blockchain.storage().clone();
+    let storage = blockchain.storage().clone();
 
     tip.clone()
         .get_ref()

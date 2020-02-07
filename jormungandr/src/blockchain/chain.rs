@@ -56,7 +56,6 @@ use crate::{
         Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
     },
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
-    start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_storage::error::Error as StorageError;
@@ -259,12 +258,12 @@ impl AppliedBlock {
 }
 
 impl Blockchain {
-    pub fn new(block0: HeaderHash, storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
+    pub fn new(block0: HeaderHash, storage: Storage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
             ledgers: Multiverse::new(),
-            storage: Storage::new(storage),
+            storage,
             block0,
         }
     }
@@ -517,7 +516,7 @@ impl Blockchain {
         post_checked_header: PostCheckedHeader,
         block: Block,
     ) -> impl Future<Item = AppliedBlock, Error = Error> {
-        let mut storage = self.storage.clone();
+        let storage = self.storage.clone();
         self.apply_block(post_checked_header, &block)
             .and_then(move |block_ref| {
                 storage.put_block(block).then(|res| match res {
@@ -591,7 +590,7 @@ impl Blockchain {
     }
 
     /// function to do the initial application of the block0 in the `Blockchain` and its
-    /// storage. We assume `Block0` is not already in the `NodeStorage`.
+    /// storage. We assume `Block0` is not already in the `Storage`.
     ///
     /// This function returns the create block0 branch. Having it will
     /// avoid searching for it in the blockchain's `branches` and perform
@@ -606,9 +605,11 @@ impl Blockchain {
     /// * other errors while interacting with the storage (IO errors)
     ///
     pub async fn load_from_block0(&self, block0: Block) -> Result<Branch> {
+        use chain_core::property::Block;
         use tokio_compat::prelude::*;
 
-        let block0_id = block0.header.hash();
+        let block0_id = block0.id();
+
         let already_exist = self
             .storage
             .block_exists(block0_id.clone())
@@ -622,7 +623,7 @@ impl Blockchain {
 
         let block0_branch = self.apply_block0(&block0).await?;
 
-        let mut storage = self.storage.clone();
+        let storage = self.storage.clone();
 
         storage
             .put_block(block0)
