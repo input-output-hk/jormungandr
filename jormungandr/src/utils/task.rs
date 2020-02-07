@@ -11,9 +11,11 @@ use crate::utils::async_msg::{self, MessageBox};
 use slog::Logger;
 use tokio::prelude::{stream, Future, IntoFuture, Stream};
 use tokio::timer::Interval;
+use tokio_compat::prelude::*;
 use tokio_compat::runtime::{self, Runtime, TaskExecutor};
 
 use std::fmt::Debug;
+use std::future::Future as StdFuture;
 use std::sync::mpsc::{self, Receiver, RecvError, Sender};
 use std::time::{Duration, Instant};
 
@@ -184,6 +186,7 @@ impl TokioServiceInfo {
     }
 
     /// spawn a future within the service's tokio executor
+    #[deprecated(note = "convert me to spawn_std")]
     pub fn spawn<F>(&self, name: &'static str, future: F)
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
@@ -197,6 +200,16 @@ impl TokioServiceInfo {
             }
             res
         }));
+    }
+
+    /// spawn a std::future within the service's tokio executor
+    pub fn spawn_std<F>(&self, name: &'static str, future: F)
+    where
+        F: StdFuture<Output = ()> + Send + 'static,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(future)
     }
 
     // Run the closure with the specified period on the executor
@@ -236,7 +249,39 @@ impl TokioServiceInfo {
                 })
             })
             .map(|_| {});
-        self.spawn(name, task);
+        self.spawn_std(name, async { task.compat().await.unwrap_or(()) });
+    }
+
+    // Run the closure with the specified period on the executor
+    // and execute the resulting closure.
+    pub fn run_periodic_std<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
+    where
+        F: FnMut() -> U,
+        F: Send + 'static,
+        E: Debug,
+        U: StdFuture<Output = Result<(), E>> + Send + 'static,
+    {
+        let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
+        self.spawn_std(name, async move {
+            let mut interval = tokio02::time::interval(period);
+            loop {
+                let t_now = Instant::now();
+                interval.tick().await;
+                let t_last = Instant::now();
+                let elapsed = t_now.duration_since(t_last);
+                if elapsed > period * 2 {
+                    warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
+                }
+                match f().await {
+                    Ok(()) => {
+                        trace!(logger, "periodic {} finished successfully", name; "triggered_at" => ?t_now);
+                    },
+                    Err(e) => {
+                        error!(logger, "periodic task failed"; "error" => ?e, "triggered_at" => ?t_now);
+                    },
+                };
+            }
+        });
     }
 }
 
