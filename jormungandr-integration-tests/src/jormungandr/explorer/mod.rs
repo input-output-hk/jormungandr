@@ -21,8 +21,8 @@ pub fn explorer_test() {
 
     let transaction =
         JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-            .assert_add_account(&faucet.address, &1_000.into())
-            .assert_add_output(&receiver.address, &1_000.into())
+            .assert_add_account(&faucet.address().to_string(), &1_000.into())
+            .assert_add_output(&receiver.address().to_string(), &1_000.into())
             .assert_finalize()
             .seal_with_witness_for_address(&faucet)
             .assert_to_message();

@@ -87,11 +87,11 @@ pub fn test_genesis_with_many_initial_funds_is_built_successfully() {
     let initial_funds = Initial::Fund(vec![
         InitialUTxO {
             value: 100.into(),
-            address: address_1.address.parse().unwrap(),
+            address: address_1.address(),
         },
         InitialUTxO {
             value: 100.into(),
-            address: address_2.address.parse().unwrap(),
+            address: address_2.address(),
         },
     ]);
     config.block0_configuration.initial.push(initial_funds);

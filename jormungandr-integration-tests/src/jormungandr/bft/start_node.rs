@@ -1,6 +1,6 @@
 use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 
-use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, TrustedPeer};
+use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput};
 
 #[test]
 pub fn test_jormungandr_leader_node_starts_successfully() {

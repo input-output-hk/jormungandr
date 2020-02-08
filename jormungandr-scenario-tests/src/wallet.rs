@@ -1,17 +1,18 @@
-mod account;
-mod utxo;
-
 use crate::scenario::Wallet as WalletTemplate;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
-    certificate::{PoolId, SignedCertificate},
-    fee::LinearFee,
+    certificate::{PoolId, SignedCertificate, StakeDelegation},
+    fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
-    transaction::UnspecifiedAccountIdentifier,
+    transaction::{
+        AccountBindingSignature, Balance, Input, InputOutputBuilder, NoExtra, Payload,
+        PayloadSlice, TxBuilder, UnspecifiedAccountIdentifier,
+    },
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Value},
+    wallet::{account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner},
 };
 use rand_core::{CryptoRng, RngCore};
 use std::path::Path;
@@ -50,12 +51,6 @@ error_chain! {
     }
 }
 
-#[derive(Debug, Clone)]
-enum Inner {
-    Account(account::Wallet),
-    UTxO(utxo::Wallet),
-}
-
 /// wallet to utilise when testing jormungandr
 ///
 /// This can be used for a faucet
@@ -74,7 +69,7 @@ impl Wallet {
 
         match &self.inner {
             Inner::Account(account) => account.save_to(file),
-            Inner::UTxO(_utxo) => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 
@@ -83,7 +78,7 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         Wallet {
-            inner: Inner::Account(account::Wallet::generate(rng)),
+            inner: Inner::Account(AccountWallet::generate(rng)),
             template,
         }
     }
@@ -93,7 +88,7 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         Wallet {
-            inner: Inner::UTxO(utxo::Wallet::generate(rng)),
+            inner: Inner::UTxO(UtxOWallet::generate(rng)),
             template,
         }
     }
@@ -101,21 +96,43 @@ impl Wallet {
     pub fn address(&self, discrimination: Discrimination) -> Address {
         match &self.inner {
             Inner::Account(account) => account.address(discrimination),
-            Inner::UTxO(_utxo) => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
         match &self.inner {
             Inner::Account(account) => Some(account.stake_key()),
-            Inner::UTxO(_utxo) => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
         match &self.inner {
-            Inner::Account(account) => account.delegation_cert_for_block0(pool_id),
-            Inner::UTxO(_utxo) => unimplemented!(),
+            Inner::Account(_) => self.delegation_cert_account_for_block0(pool_id),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn delegation_cert_account_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
+        let stake_delegation = StakeDelegation {
+            account_id: self.stake_key().unwrap(), // 2
+            delegation: chain_impl_mockchain::account::DelegationType::Full(pool_id), // 1
+        };
+        let txb = TxBuilder::new()
+            .set_payload(&stake_delegation)
+            .set_ios(&[], &[])
+            .set_witnesses(&[]);
+        let auth_data = txb.get_auth_data();
+
+        match &self.inner {
+            Inner::Account(account) => {
+                let sig = AccountBindingSignature::new_single(&auth_data, |d| {
+                    account.signing_key().as_ref().sign_slice(&d.0)
+                });
+                SignedCertificate::StakeDelegation(stake_delegation, sig)
+            }
+            _ => unimplemented!(),
         }
     }
 
@@ -124,9 +141,13 @@ impl Wallet {
     }
 
     pub fn confirm_transaction(&mut self) {
+        self.inner.confirm_transaction()
+    }
+
+    pub fn identifier(&mut self) -> chain_impl_mockchain::account::Identifier {
         match &mut self.inner {
-            Inner::Account(account) => account.increment_counter(),
-            Inner::UTxO(_utxo) => unimplemented!(),
+            Inner::Account(account) => account.identifier().to_inner().into(),
+            _ => unimplemented!(),
         }
     }
 
@@ -140,19 +161,11 @@ impl Wallet {
         address: Address,
         value: Value,
     ) -> Result<Fragment> {
-        use chain_impl_mockchain::transaction::{InputOutputBuilder, NoExtra, Payload, TxBuilder};
-
         let mut iobuilder = InputOutputBuilder::empty();
         iobuilder.add_output(address.into(), value.into()).unwrap();
 
         let payload_data = NoExtra.payload_data();
-
-        match &mut self.inner {
-            Inner::Account(account) => account
-                .add_input(payload_data.borrow(), &mut iobuilder, fees)
-                .chain_err(|| "Cannot get inputs from the account")?,
-            Inner::UTxO(_utxo) => unimplemented!(),
-        };
+        self.add_input(payload_data.borrow(), &mut iobuilder, fees);
 
         //let (_, tx) = txbuilder
         //    .seal_with_output_policy(fees, output_policy)
@@ -167,14 +180,39 @@ impl Wallet {
         let sign_data = txbuilder.get_auth_data_for_witness().hash();
 
         let witness = match &mut self.inner {
-            Inner::Account(account) => account
-                .mk_witness(block0_hash, &sign_data)
-                .chain_err(|| "Cannot create witness from account")?,
-            Inner::UTxO(_utxo) => unimplemented!(),
+            Inner::Account(account) => account.mk_witness(block0_hash, &sign_data),
+            _ => unimplemented!(),
         };
 
         let witnesses = vec![witness];
         let tx = txbuilder.set_witnesses(&witnesses).set_payload_auth(&());
         Ok(Fragment::Transaction(tx))
+    }
+
+    pub fn add_input<'a, Extra: Payload>(
+        &mut self,
+        payload: PayloadSlice<'a, Extra>,
+        iobuilder: &mut InputOutputBuilder,
+        fees: &LinearFee,
+    ) -> Result<()>
+    where
+        LinearFee: FeeAlgorithm,
+    {
+        let balance = iobuilder
+            .get_balance_with_placeholders(payload, fees, 1, 0)
+            .chain_err(|| ErrorKind::CannotComputeBalance)?;
+        let value = match balance {
+            Balance::Negative(value) => value,
+            Balance::Zero => bail!(ErrorKind::TransactionAlreadyBalanced),
+            Balance::Positive(value) => {
+                bail!(ErrorKind::TransactionAlreadyExtraValue(value.into()))
+            }
+        };
+
+        let input = Input::from_account_single(self.identifier(), value);
+
+        iobuilder.add_input(&input).unwrap();
+
+        Ok(())
     }
 }

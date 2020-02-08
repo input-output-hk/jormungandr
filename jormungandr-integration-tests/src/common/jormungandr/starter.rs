@@ -123,7 +123,7 @@ pub struct Starter {
     verification_mode: StartupVerificationMode,
     explorer_enabled: bool,
     on_fail: OnFail,
-    config: JormungandrConfig,
+    config: Option<JormungandrConfig>,
 }
 
 impl Starter {
@@ -135,7 +135,7 @@ impl Starter {
             verification_mode: StartupVerificationMode::Rest,
             explorer_enabled: false,
             on_fail: OnFail::RetryUnlimitedOnPortOccupied,
-            config: ConfigurationBuilder::new().build(),
+            config: None,
         }
     }
 
@@ -170,21 +170,30 @@ impl Starter {
     }
 
     pub fn config(&mut self, config: JormungandrConfig) -> &mut Self {
-        self.config = config;
+        self.config = Some(config);
         self
     }
 
+    fn build_configuration(&mut self) -> JormungandrConfig {
+        if self.config.is_none() {
+            self.config = Some(ConfigurationBuilder::new().build());
+        }
+        self.config.as_ref().unwrap().clone()
+    }
+
     pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
+        let mut config = self.build_configuration();
+
         let mut retry_counter = 1;
         loop {
-            let mut command = self.get_command(&self.config);
-            println!("Starting node with configuration : {:?}", &self.config);
+            let mut command = self.get_command(&config);
+            println!("Starting node with configuration : {:?}", &config);
 
             let process = command
                 .spawn()
                 .expect("failed to execute 'start jormungandr node'");
 
-            match (self.verify_is_up(process), self.on_fail) {
+            match (self.verify_is_up(process, &config), self.on_fail) {
                 (Ok(jormungandr_process), _) => return Ok(jormungandr_process),
 
                 (
@@ -194,7 +203,7 @@ impl Starter {
                     println!(
                         "Port already in use error detected. Retrying with different port... "
                     );
-                    self.config.refresh_node_dynamic_params();
+                    config.refresh_node_dynamic_params();
                 }
                 (Err(err), OnFail::Panic) => {
                     panic!(format!(
@@ -217,35 +226,36 @@ impl Starter {
         }
     }
 
-    pub fn start_fail(&self, expected_msg: &str) {
-        let command = self.get_command(&self.config);
+    pub fn start_fail(&mut self, expected_msg: &str) {
+        let config = self.build_configuration();
+        let command = self.get_command(&config);
         process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
     }
 
-    fn if_succeed(&self) -> bool {
+    fn if_succeed(&self, config: &JormungandrConfig) -> bool {
         match self.verification_mode {
             StartupVerificationMode::Rest => {
-                RestStartupVerification::new(self.config.clone()).if_succeed()
+                RestStartupVerification::new(config.clone()).if_succeed()
             }
             StartupVerificationMode::Log => {
-                LogStartupVerification::new(self.config.clone()).if_succeed()
+                LogStartupVerification::new(config.clone()).if_succeed()
             }
         }
     }
 
-    fn if_stopped(&self) -> bool {
+    fn if_stopped(&self, config: &JormungandrConfig) -> bool {
         match self.verification_mode {
             StartupVerificationMode::Rest => {
-                RestStartupVerification::new(self.config.clone()).if_stopped()
+                RestStartupVerification::new(config.clone()).if_stopped()
             }
             StartupVerificationMode::Log => {
-                LogStartupVerification::new(self.config.clone()).if_stopped()
+                LogStartupVerification::new(config.clone()).if_stopped()
             }
         }
     }
 
-    fn custom_errors_found(&self) -> Result<(), StartupError> {
-        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
+    fn custom_errors_found(&self, config: &JormungandrConfig) -> Result<(), StartupError> {
+        let logger = JormungandrLogger::new(config.log_file_path.clone());
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         match logger
             .raw_log_contains_any_of(&port_occupied_msgs)
@@ -256,29 +266,30 @@ impl Starter {
         }
     }
 
-    fn verify_is_up(&self, process: Child) -> Result<JormungandrProcess, StartupError> {
+    fn verify_is_up(
+        &self,
+        process: Child,
+        config: &JormungandrConfig,
+    ) -> Result<JormungandrProcess, StartupError> {
         let start = Instant::now();
-        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
+        let logger = JormungandrLogger::new(config.log_file_path.clone());
         loop {
             if start.elapsed() > self.timeout {
                 return Err(StartupError::Timeout {
                     timeout: self.timeout.as_secs(),
-                    log_content: file_utils::read_file(&self.config.log_file_path),
+                    log_content: file_utils::read_file(&config.log_file_path),
                 });
             }
-            if self.if_succeed() {
+            if self.if_succeed(config) {
                 println!("jormungandr is up");
-                return Ok(JormungandrProcess::from_config(
-                    process,
-                    self.config.clone(),
-                ));
+                return Ok(JormungandrProcess::from_config(process, config.clone()));
             }
-            self.custom_errors_found()?;
-            if self.if_stopped() {
+            self.custom_errors_found(config)?;
+            if self.if_stopped(config) {
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
-                    log_content: file_utils::read_file(&self.config.log_file_path),
+                    log_content: file_utils::read_file(&config.log_file_path),
                 });
             }
             process_utils::sleep(self.sleep);

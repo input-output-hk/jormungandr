@@ -19,7 +19,7 @@ pub fn test_log_ttl() {
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             value: 1000000.into(),
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
         }])
         .with_mempool(Mempool {
             pool_max_entries: 10_000usize.into(),
@@ -33,8 +33,8 @@ pub fn test_log_ttl() {
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
     let transaction = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
-        .assert_add_account(&sender.address, &100.into())
-        .assert_add_output(&reciever.address, &100.into())
+        .assert_add_account(&sender.address().to_string(), &100.into())
+        .assert_add_output(&reciever.address().to_string(), &100.into())
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();

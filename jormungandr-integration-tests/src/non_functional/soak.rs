@@ -36,8 +36,8 @@ pub fn test_blocks_are_being_created_for_48_hours() {
     loop {
         let new_transaction =
             JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-                .assert_add_account(&sender.address, &1.into())
-                .assert_add_output(&receiver.address, &1.into())
+                .assert_add_account(&sender.address().to_string(), &1.into())
+                .assert_add_output(&receiver.address().to_string(), &1.into())
                 .assert_finalize()
                 .seal_with_witness_for_address(&sender)
                 .assert_to_message();

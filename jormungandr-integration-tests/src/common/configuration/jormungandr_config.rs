@@ -1,12 +1,14 @@
 #![allow(dead_code)]
 
 use crate::common::configuration::{Block0ConfigurationBuilder, NodeConfigBuilder};
-use crate::common::data::address::AddressDataProvider;
 use crate::common::file_utils;
 use chain_core::mempack;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::Fragment;
-use jormungandr_lib::interfaces::{Block0Configuration, NodeConfig, NodeSecret, UTxOInfo};
+use jormungandr_lib::{
+    interfaces::{Block0Configuration, NodeConfig, NodeSecret, UTxOInfo},
+    wallet::Wallet,
+};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -122,15 +124,20 @@ impl JormungandrConfig {
             .collect()
     }
 
-    pub fn block0_utxo_for_address<T: AddressDataProvider>(&self, address: &T) -> UTxOInfo {
-        let utxo_address = address.get_address();
-        self.block0_utxo()
+    pub fn block0_utxo_for_address(&self, wallet: &Wallet) -> UTxOInfo {
+        let utxo = self
+            .block0_utxo()
             .into_iter()
-            .find(|utxo| utxo.address().to_string() == utxo_address)
+            .find(|utxo| *utxo.address() == wallet.address())
             .expect(&format!(
-                "No UTxO found in block 0 for address '{}' of type '{}'",
-                utxo_address,
-                address.get_address_type()
-            ))
+                "No UTxO found in block 0 for address '{:?}'",
+                wallet
+            ));
+        println!(
+            "Utxo found for address {}: {:?}",
+            wallet.address().to_string(),
+            &utxo
+        );
+        utxo
     }
 }

@@ -14,7 +14,7 @@ pub fn two_nodes_communication() {
 
     let leader_config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
