@@ -9,13 +9,13 @@ use crate::log;
 use crate::utils::async_msg::{self, MessageBox};
 
 use slog::Logger;
-use tokio::prelude::{stream, Future, IntoFuture, Stream};
+use tokio::prelude::{stream, Future as Future01, IntoFuture as IntoFuture01, Stream};
 use tokio::timer::Interval;
 use tokio_compat::prelude::*;
 use tokio_compat::runtime::{self, Runtime, TaskExecutor};
 
 use std::fmt::Debug;
-use std::future::Future as StdFuture;
+use std::future::Future;
 use std::sync::mpsc::{self, Receiver, RecvError, Sender};
 use std::time::{Duration, Instant};
 
@@ -85,7 +85,7 @@ impl Services {
     pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
-        T: Future<Item = (), Error = ()> + Send + 'static,
+        T: Future01<Item = (), Error = ()> + Send + 'static,
     {
         let logger = self
             .logger
@@ -134,7 +134,7 @@ impl Services {
         F: FnMut(&TokioServiceInfo, Input<Msg>) -> T,
         F: Send + 'static,
         Msg: Send + 'static,
-        T: IntoFuture<Item = (), Error = ()> + Send + 'static,
+        T: IntoFuture01<Item = (), Error = ()> + Send + 'static,
         <T as futures::IntoFuture>::Future: Send,
     {
         let (msg_box, msg_queue) = async_msg::channel(MESSAGE_QUEUE_LEN);
@@ -186,10 +186,10 @@ impl TokioServiceInfo {
     }
 
     /// spawn a future within the service's tokio executor
-    #[deprecated(note = "convert me to spawn_std")]
+    #[deprecated(note = "convert me to spawn_std or spawn_failable_std")]
     pub fn spawn<F>(&self, name: &'static str, future: F)
     where
-        F: Future<Item = (), Error = ()> + Send + 'static,
+        F: Future01<Item = (), Error = ()> + Send + 'static,
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
@@ -205,11 +205,61 @@ impl TokioServiceInfo {
     /// spawn a std::future within the service's tokio executor
     pub fn spawn_std<F>(&self, name: &'static str, future: F)
     where
-        F: StdFuture<Output = ()> + Send + 'static,
+        F: Future<Output = ()> + Send + 'static,
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
         self.executor.spawn_std(future)
+    }
+
+    /// just like spawn_std but instead log an error on Result::Err
+    pub fn spawn_failable_std<F, E>(&self, name: &'static str, future: F)
+    where
+        F: Send + 'static,
+        E: Debug,
+        F: Future<Output = Result<(), E>>,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(async move {
+            match future.await {
+                Ok(()) => trace!(logger, "{} finished successfully", name),
+                Err(e) => error!(logger, "{} finished with error", name; "error" => ?e),
+            }
+        })
+    }
+
+    /// just like spawn_std but add a timeout
+    pub fn timeout_spawn_std<F>(&self, name: &'static str, timeout: Duration, future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(async move {
+            match tokio02::time::timeout(timeout, future).await {
+                Err(_) => error!(logger, "task {} timedout", name),
+                Ok(()) => {}
+            };
+        })
+    }
+
+    /// just like spawn_failable_std but add a timeout
+    pub fn timeout_spawn_failable_std<F, E>(&self, name: &'static str, timeout: Duration, future: F)
+    where
+        F: Send + 'static,
+        E: Debug,
+        F: Future<Output = Result<(), E>>,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(async move {
+            match tokio02::time::timeout(timeout, future).await {
+                Err(_) => error!(logger, "task {} timedout", name),
+                Ok(Err(e)) => error!(logger, "task {} finished with error", name; "error" => ?e),
+                Ok(Ok(())) => {}
+            };
+        })
     }
 
     // Run the closure with the specified period on the executor
@@ -219,7 +269,7 @@ impl TokioServiceInfo {
     where
         F: FnMut() -> U,
         F: Send + 'static,
-        U: IntoFuture<Item = ()>,
+        U: IntoFuture01<Item = ()>,
         U::Future: Send + 'static,
         U::Error: Debug,
     {
@@ -260,7 +310,7 @@ impl TokioServiceInfo {
         F: FnMut() -> U,
         F: Send + 'static,
         E: Debug,
-        U: StdFuture<Output = Result<(), E>> + Send + 'static,
+        U: Future<Output = Result<(), E>> + Send + 'static,
     {
         let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
         self.spawn_std(name, async move {
