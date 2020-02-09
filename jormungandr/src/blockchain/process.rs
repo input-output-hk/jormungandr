@@ -113,47 +113,21 @@ impl Process {
 
                 info!(logger, "receiving block from leadership service");
 
-                let process_new_block =
-                    process_leadership_block(logger.clone(), blockchain.clone(), block.clone());
-
-                let fragments = block.fragments().map(|f| f.id()).collect();
-
-                let update_mempool = process_new_block.and_then(move |new_block_ref| {
-                    debug!(logger2, "updating fragment's log");
-                    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
-                        .map_err(|_| "cannot remove fragments from pool".into())
-                        .map(|_| new_block_ref)
-                });
-
-                let process_new_ref = update_mempool.and_then(move |new_block_ref| {
-                    process_and_propagate_new_ref(
-                        logger3,
-                        blockchain,
-                        blockchain_tip,
-                        Arc::clone(&new_block_ref),
-                        network_msg_box,
-                    )
-                });
-
-                let notify_explorer = process_new_ref.and_then(move |()| {
-                    if let Some(msg_box) = explorer_msg_box {
-                        Either::A(
-                            msg_box
-                                .send(ExplorerMsg::NewBlock(block))
-                                .map_err(|_| "Cannot propagate block to explorer".into())
-                                .map(|_| ()),
-                        )
-                    } else {
-                        Either::B(future::ok(()))
-                    }
-                });
-
-                info.spawn(
+                info.timeout_spawn_failable_std(
                     "process leadership block",
-                    Timeout::new(notify_explorer, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP))
-                        .map_err(move |err: TimeoutError| {
-                            error!(logger, "cannot process leadership block" ; "reason" => ?err)
-                        })
+                    Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP),
+                    async {
+                        process_leadership_block(
+                            logger,
+                            blockchain,
+                            blockchain_tip,
+                            tx_msg_box,
+                            network_msg_box,
+                            explorer_msg_box,
+                            block,
+                        )
+                        .await
+                    },
                 )
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
@@ -422,60 +396,96 @@ pub fn process_new_ref(
         })
 }
 
-fn process_and_propagate_new_ref(
+async fn process_and_propagate_new_ref(
     logger: Logger,
     blockchain: Blockchain,
     tip: Tip,
     new_block_ref: Arc<Ref>,
     network_msg_box: MessageBox<NetworkMsg>,
-) -> impl Future<Item = (), Error = Error> {
+) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
 
     debug!(logger, "processing the new block and propagating"; "hash" => %header.hash());
 
-    let process_new_ref = process_new_ref(logger.clone(), blockchain, tip, new_block_ref);
+    process_new_ref(logger.clone(), blockchain, tip, new_block_ref)
+        .compat()
+        .await?;
 
-    process_new_ref.and_then(move |()| {
-        debug!(logger, "propagating block to the network"; "hash" => %header.hash());
-        network_msg_box
-            .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-            .map_err(|_| "Cannot propagate block to network".into())
-            .map(|_| ())
-    })
+    debug!(logger, "propagating block to the network"; "hash" => %header.hash());
+    network_msg_box
+        .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+        .map_err(|_| "Cannot propagate block to network".into())
+        .map(|_| ())
+        .compat()
+        .await
 }
 
-pub fn process_leadership_block(
+async fn process_leadership_block(
+    logger: Logger,
+    blockchain: Blockchain,
+    blockchain_tip: Tip,
+    mut tx_msg_box: MessageBox<TransactionMsg>,
+    network_msg_box: MessageBox<NetworkMsg>,
+    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    block: Block,
+) -> Result<(), Error> {
+    let logger2 = logger.clone();
+    let new_block_ref =
+        process_leadership_block_inner(logger.clone(), blockchain.clone(), block.clone()).await?;
+
+    let fragments = block.fragments().map(|f| f.id()).collect();
+
+    debug!(logger, "updating fragment's log");
+    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
+        .map_err(|_| "cannot remove fragments from pool".to_string())?;
+
+    process_and_propagate_new_ref(
+        logger,
+        blockchain,
+        blockchain_tip,
+        Arc::clone(&new_block_ref),
+        network_msg_box,
+    )
+    .await?;
+
+    if let Some(msg_box) = explorer_msg_box {
+        msg_box
+            .send(ExplorerMsg::NewBlock(block))
+            .map_err(|_| "Cannot propagate block to explorer".to_string())
+            .compat()
+            .await?;
+    }
+    Ok(())
+}
+
+async fn process_leadership_block_inner(
     logger: Logger,
     blockchain: Blockchain,
     block: Block,
-) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    let end_blockchain = blockchain.clone();
+) -> Result<Arc<Ref>, Error> {
     let header = block.header();
     let parent_hash = block.parent_id();
-    let logger1 = logger.clone();
-    let logger2 = logger.clone();
     // This is a trusted block from the leadership task,
     // so we can skip pre-validation.
+    let parent = blockchain.get_ref(parent_hash).compat().await?;
+
+    let post_checked = if let Some(parent_ref) = parent {
+        debug!(logger, "processing block from leader event");
+        blockchain
+            .post_check_header(header, parent_ref)
+            .compat()
+            .await?
+    } else {
+        error!(
+            logger,
+            "block from leader event does not have parent block in storage"
+        );
+        return Err(ErrorKind::MissingParentBlock(parent_hash).into());
+    };
+
+    debug!(logger, "apply and store block");
     blockchain
-        .get_ref(parent_hash)
-        .and_then(move |parent| {
-            if let Some(parent_ref) = parent {
-                debug!(logger1, "processing block from leader event");
-                Either::A(blockchain.post_check_header(header, parent_ref))
-            } else {
-                error!(
-                    logger1,
-                    "block from leader event does not have parent block in storage"
-                );
-                Either::B(future::err(
-                    ErrorKind::MissingParentBlock(parent_hash).into(),
-                ))
-            }
-        })
-        .and_then(move |post_checked| {
-            debug!(logger2, "apply and store block");
-            end_blockchain.apply_and_store_block(post_checked, block)
-        })
+        .apply_and_store_block(post_checked, block)
         .map_err(|err| Error::with_chain(err, "cannot process leadership block"))
         .map(move |applied| {
             let new_ref = applied
@@ -484,6 +494,8 @@ pub fn process_leadership_block(
             info!(logger, "block from leader event successfully stored");
             new_ref
         })
+        .compat()
+        .await
 }
 
 fn process_block_announcement(
@@ -607,7 +619,6 @@ async fn process_network_blocks(
                 Arc::clone(&new_block_ref),
                 network_msg_box,
             )
-            .compat()
             .await?;
             Ok(r)
         }
