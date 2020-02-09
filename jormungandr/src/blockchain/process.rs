@@ -25,7 +25,7 @@ use crate::{
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
 
-use futures::future::{Either, Loop};
+use futures::future::Either;
 use slog::Logger;
 use tokio::{
     prelude::*,
@@ -190,21 +190,17 @@ impl Process {
                 info.timeout_spawn_failable_std(
                     "process network blocks",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS),
-                    async move {
-                        process_network_blocks(
-                            blockchain,
-                            blockchain_tip,
-                            tx_msg_box,
-                            network_msg_box,
-                            explorer_msg_box,
-                            get_next_block_scheduler,
-                            handle,
-                            stats_counter,
-                            logger,
-                        )
-                        .compat()
-                        .await
-                    },
+                    process_network_blocks(
+                        blockchain,
+                        blockchain_tip,
+                        tx_msg_box,
+                        network_msg_box,
+                        explorer_msg_box,
+                        get_next_block_scheduler,
+                        handle,
+                        stats_counter,
+                        logger,
+                    ),
                 );
             }
             BlockMsg::ChainHeaders(handle) => {
@@ -548,7 +544,7 @@ fn process_block_announcement(
         .map_err(|err| Error::with_chain(err, "cannot process block announcement"))
 }
 
-fn process_network_blocks(
+async fn process_network_blocks(
     blockchain: Blockchain,
     blockchain_tip: Tip,
     tx_msg_box: MessageBox<TransactionMsg>,
@@ -558,7 +554,7 @@ fn process_network_blocks(
     handle: intercom::RequestStreamHandle<Block, ()>,
     stats_counter: StatsCounter,
     logger: Logger,
-) -> impl Future<Item = (), Error = chain::Error> {
+) -> Result<(), Error> {
     struct State<S> {
         stream: S,
         reply: ReplyHandle<()>,
@@ -566,7 +562,7 @@ fn process_network_blocks(
     }
     let (stream, reply) = handle.into_stream_and_reply();
     let stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
-    let state = State {
+    let mut state = State {
         stream,
         reply,
         candidate: None,
@@ -575,7 +571,7 @@ fn process_network_blocks(
     let blockchain_fold = blockchain.clone();
     let get_next_block_scheduler = get_next_block_scheduler.clone();
 
-    future::loop_fn(state, move |state| {
+    let maybe_updated: Option<Arc<Ref>> = loop {
         let blockchain = blockchain_fold.clone();
         let tx_msg_box = tx_msg_box.clone();
         let explorer_msg_box = explorer_msg_box.clone();
@@ -587,62 +583,66 @@ fn process_network_blocks(
             reply,
             candidate,
         } = state;
-        stream
-            .into_future()
-            .map_err(|(e, _)| e)
-            .and_then(move |(maybe_block, stream)| match maybe_block {
-                Some(block) => Either::A(
-                    process_network_block(
-                        blockchain,
-                        block,
-                        tx_msg_box,
-                        explorer_msg_box,
-                        get_next_block_scheduler,
-                        logger.clone(),
-                    )
-                    .then(move |res| match res {
-                        Ok(Some(candidate)) => {
-                            stats_counter.add_block_recv_cnt(1);
-                            Ok(Loop::Continue(State {
-                                stream,
-                                reply,
-                                candidate: Some(candidate),
-                            }))
+
+        let (maybe_block, stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
+        match maybe_block {
+            Some(block) => {
+                let res = process_network_block(
+                    blockchain,
+                    block,
+                    tx_msg_box,
+                    explorer_msg_box,
+                    get_next_block_scheduler,
+                    logger.clone(),
+                )
+                .compat()
+                .await;
+                match res {
+                    Ok(Some(candidate)) => {
+                        stats_counter.add_block_recv_cnt(1);
+                        state = State {
+                            stream,
+                            reply,
+                            candidate: Some(candidate),
                         }
-                        Ok(None) => {
-                            reply.reply_ok(());
-                            Ok(Loop::Break(candidate))
-                        }
-                        Err(e) => {
-                            info!(
-                                logger,
-                                "validation of an incoming block failed";
-                                "reason" => ?e,
-                            );
-                            reply.reply_error(network_block_error_into_reply(e));
-                            Ok(Loop::Break(candidate))
-                        }
-                    }),
-                ),
-                None => {
-                    reply.reply_ok(());
-                    Either::B(future::ok(Loop::Break(candidate)))
+                    }
+                    Ok(None) => {
+                        reply.reply_ok(());
+                        break candidate;
+                    }
+                    Err(e) => {
+                        info!(
+                            logger,
+                            "validation of an incoming block failed";
+                            "reason" => ?e,
+                        );
+                        reply.reply_error(network_block_error_into_reply(e));
+                        break candidate;
+                    }
                 }
-            })
-    })
-    .and_then(move |maybe_updated| match maybe_updated {
+            }
+            None => {
+                reply.reply_ok(());
+                break candidate;
+            }
+        }
+    };
+
+    match maybe_updated {
         Some(new_block_ref) => {
-            let future = process_and_propagate_new_ref(
+            let r = process_and_propagate_new_ref(
                 logger,
                 blockchain,
                 blockchain_tip,
                 Arc::clone(&new_block_ref),
                 network_msg_box,
-            );
-            Either::A(future)
+            )
+            .compat()
+            .await?;
+            Ok(r)
         }
-        None => Either::B(future::ok(())),
-    })
+        None => Ok(()),
+    }
 }
 
 fn process_network_block(
