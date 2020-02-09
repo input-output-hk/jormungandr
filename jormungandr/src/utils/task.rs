@@ -269,7 +269,7 @@ impl TokioServiceInfo {
                 let t_now = Instant::now();
                 interval.tick().await;
                 let t_last = Instant::now();
-                let elapsed = t_now.duration_since(t_last);
+                let elapsed = t_last.duration_since(t_now);
                 if elapsed > period * 2 {
                     warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
                 }
