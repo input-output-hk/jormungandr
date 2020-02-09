@@ -8,9 +8,7 @@ User guide documentation available [here](https://input-output-hk.github.io/jorm
 
 | CI | Status | Description |
 |---:|:------:|:------------|
-| Travis CI | [![Build Status](https://travis-ci.org/input-output-hk/jormungandr.svg?branch=master)](https://travis-ci.org/input-output-hk/jormungandr) | Master and release |
 | CircleCI | [![CircleCI](https://circleci.com/gh/input-output-hk/jormungandr/tree/master.svg?style=svg)](https://circleci.com/gh/input-output-hk/jormungandr/tree/master) | Master and PRs |
-| Appveyor | [![Build status](https://ci.appveyor.com/api/projects/status/1y5583gqc4xn8x3j/branch/master?svg=true)](https://ci.appveyor.com/project/NicolasDP/jormungandr/branch/master) | Master, release and PRs |
 
 ## Install from Binaries
 
