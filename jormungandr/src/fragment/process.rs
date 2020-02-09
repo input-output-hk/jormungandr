@@ -7,11 +7,8 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
+use futures03::{compat::*, stream::StreamExt};
 use std::time::Duration;
-use tokio::prelude::{
-    future::Either::{A, B},
-    Future, Stream,
-};
 
 pub struct Process {
     pool: Pool,
@@ -43,15 +40,16 @@ impl Process {
         &self.pool
     }
 
-    pub fn start(
+    pub async fn start(
         self,
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
         input: MessageQueue<TransactionMsg>,
-    ) -> impl Future<Item = (), Error = ()> {
+    ) -> Result<(), ()> {
         self.start_pool_garbage_collector(&service_info);
-        input.for_each(move |input| {
-            match input {
+        let mut input = input.compat();
+        while let Some(input_result) = input.next().await {
+            match input_result? {
                 TransactionMsg::SendTransaction(origin, txs) => {
                     // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
                     // those blocks. one valid tx in a given context, could be invalid in another. for example
@@ -65,26 +63,34 @@ impl Process {
                     // put them in another pool.
 
                     let stats_counter = stats_counter.clone();
-                    A(self
-                        .pool
+
+                    self.pool
                         .clone()
                         .insert_and_propagate_all(origin, txs, service_info.logger().clone())
-                        .map(move |count| stats_counter.add_tx_recv_cnt(count)))
+                        .await
+                        .map(move |count| stats_counter.add_tx_recv_cnt(count))?;
                 }
-                TransactionMsg::RemoveTransactions(fragment_ids, status) => B(self
-                    .pool
-                    .clone()
-                    .remove_added_to_block(fragment_ids, status)),
+                TransactionMsg::RemoveTransactions(fragment_ids, status) => {
+                    self.pool
+                        .clone()
+                        .remove_added_to_block(fragment_ids, status)
+                        .await?;
+                }
             }
-        })
+        }
+
+        Ok(())
     }
 
     fn start_pool_garbage_collector(&self, service_info: &TokioServiceInfo) {
-        let mut pool = self.pool().clone();
-        service_info.run_periodic(
+        let pool = self.pool.clone();
+        service_info.run_periodic_std(
             "pool garbage collection",
             self.garbage_collection_interval,
-            move || pool.poll_purge(),
+            move || {
+                let mut pool = pool.clone();
+                async move { pool.poll_purge().await }
+            },
         )
     }
 }

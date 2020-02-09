@@ -1,17 +1,19 @@
 #![cfg(feature = "sanity-non-functional")]
 use crate::common::{
-    data::address::Account,
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, JormungandrProcess},
     startup,
 };
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value};
+use jormungandr_lib::{
+    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value},
+    wallet::Wallet,
+};
 use std::iter;
 use std::time::SystemTime;
 
 #[test]
 pub fn test_100_transaction_is_processed_in_10_packs_to_many_accounts() {
-    let receivers: Vec<Account> = iter::from_fn(|| Some(startup::create_new_account_address()))
+    let receivers: Vec<Wallet> = iter::from_fn(|| Some(startup::create_new_account_address()))
         .take(10)
         .collect();
     send_100_transaction_in_10_packs_for_recievers(10, receivers)
@@ -20,16 +22,13 @@ pub fn test_100_transaction_is_processed_in_10_packs_to_many_accounts() {
 #[test]
 pub fn test_100_transaction_is_processed_in_10_packs_to_single_account() {
     let single_reciever = startup::create_new_account_address();
-    let receivers: Vec<Account> = iter::from_fn(|| Some(single_reciever.clone()))
+    let receivers: Vec<Wallet> = iter::from_fn(|| Some(single_reciever.clone()))
         .take(1)
         .collect();
     send_100_transaction_in_10_packs_for_recievers(10, receivers)
 }
 
-fn send_100_transaction_in_10_packs_for_recievers(
-    iterations_count: usize,
-    receivers: Vec<Account>,
-) {
+fn send_100_transaction_in_10_packs_for_recievers(iterations_count: usize, receivers: Vec<Wallet>) {
     let mut sender = startup::create_new_account_address();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -48,8 +47,8 @@ fn send_100_transaction_in_10_packs_for_recievers(
         .map(|receiver| {
             let message =
                 JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-                    .assert_add_account(&sender.address.clone(), &output_value.into())
-                    .assert_add_output(&receiver.address.clone(), &output_value.into())
+                    .assert_add_account(&sender.address().to_string(), &output_value.into())
+                    .assert_add_output(&receiver.address().to_string(), &output_value.into())
                     .assert_finalize()
                     .seal_with_witness_for_address(&sender)
                     .assert_to_message();
@@ -66,7 +65,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
 #[test]
 pub fn test_100_transaction_is_processed_simple() {
     let mut sender = startup::create_new_account_address();
-    let mut receiver = startup::create_new_account_address();
+    let receiver = startup::create_new_account_address();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -83,8 +82,8 @@ pub fn test_100_transaction_is_processed_simple() {
     for i in 0..100 {
         let transaction =
             JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-                .assert_add_account(&sender.address.clone(), &output_value.into())
-                .assert_add_output(&receiver.address.clone(), &output_value.into())
+                .assert_add_account(&sender.address().to_string(), &output_value.into())
+                .assert_add_output(&receiver.address().to_string(), &output_value.into())
                 .assert_finalize()
                 .seal_with_witness_for_address(&sender)
                 .assert_to_message();
@@ -93,7 +92,11 @@ pub fn test_100_transaction_is_processed_simple() {
 
         jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
 
-        assert_funds_transferred_to(&receiver.address, (i + 1).into(), &jormungandr);
+        assert_funds_transferred_to(
+            &receiver.address().to_string(),
+            (i + 1).into(),
+            &jormungandr,
+        );
         jormungandr.assert_no_errors_in_log();
     }
 
@@ -134,8 +137,8 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     loop {
         let transaction =
             JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-                .assert_add_account(&sender.address.clone(), &output_value.into())
-                .assert_add_output(&receiver.address.clone(), &output_value.into())
+                .assert_add_account(&sender.address().to_string(), &output_value.into())
+                .assert_add_output(&receiver.address().to_string(), &output_value.into())
                 .assert_finalize()
                 .seal_with_witness_for_address(&sender)
                 .assert_to_message();

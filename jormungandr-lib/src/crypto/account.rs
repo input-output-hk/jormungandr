@@ -231,6 +231,12 @@ impl From<account::Identifier> for Identifier {
     }
 }
 
+impl From<key::Identifier<account::AccountAlg>> for Identifier {
+    fn from(identifier: key::Identifier<account::AccountAlg>) -> Self {
+        Identifier(identifier)
+    }
+}
+
 /* ------------------- Serde ----------------------------------------------- */
 
 impl Serialize for SigningKey {

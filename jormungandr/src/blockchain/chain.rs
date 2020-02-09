@@ -56,7 +56,6 @@ use crate::{
         Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
     },
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
-    start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_storage::error::Error as StorageError;
@@ -259,12 +258,12 @@ impl AppliedBlock {
 }
 
 impl Blockchain {
-    pub fn new(block0: HeaderHash, storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
+    pub fn new(block0: HeaderHash, storage: Storage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
             ledgers: Multiverse::new(),
-            storage: Storage::new(storage),
+            storage,
             block0,
         }
     }
@@ -517,7 +516,7 @@ impl Blockchain {
         post_checked_header: PostCheckedHeader,
         block: Block,
     ) -> impl Future<Item = AppliedBlock, Error = Error> {
-        let mut storage = self.storage.clone();
+        let storage = self.storage.clone();
         self.apply_block(post_checked_header, &block)
             .and_then(move |block_ref| {
                 storage.put_block(block).then(|res| match res {
@@ -540,13 +539,12 @@ impl Blockchain {
     ///
     /// * the block0 does build an invalid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     ///
-    fn apply_block0(&self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
-        let block0_header = block0.header.clone();
-        let block0_id = block0_header.hash();
-        let block0_id_1 = block0_header.hash();
-        let block0_date = block0_header.block_date().clone();
+    async fn apply_block0(&self, block0: &Block) -> Result<Branch> {
+        use tokio_compat::prelude::*;
 
-        let self1 = self.clone();
+        let block0_id = block0.header.hash();
+        let block0_date = block0.header.block_date();
+
         let mut branches = self.branches.clone();
 
         let time_frame = {
@@ -554,61 +552,45 @@ impl Blockchain {
 
             let start_time = block0
                 .start_time()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError));
+                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
             let slot_duration = block0
                 .slot_duration()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError));
+                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
 
-            future::result(start_time.and_then(|start_time| {
-                slot_duration.map(|slot_duration| {
-                    TimeFrame::new(
-                        chain_time::Timeline::new(start_time),
-                        chain_time::SlotDuration::from_secs(slot_duration.as_secs() as u32),
-                    )
-                })
-            }))
+            TimeFrame::new(
+                chain_time::Timeline::new(start_time),
+                chain_time::SlotDuration::from_secs(slot_duration.as_secs() as u32),
+            )
         };
 
         // we lift the creation of the ledger in the future type
         // this allow chaining of the operation and lifting the error handling
         // in the same place
-        Ledger::new(block0_id_1, block0.contents.iter())
-            .map(future::ok)
-            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))
-            .unwrap_or_else(future::err)
-            .map(move |block0_ledger| {
-                let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
-                (block0_ledger, block0_leadership)
-            })
-            .and_then(move |(block0_ledger, block0_leadership)| {
-                time_frame.map(|time_frame| (block0_ledger, block0_leadership, time_frame))
-            })
-            .and_then(move |(block0_ledger, block0_leadership, time_frame)| {
-                let ledger_parameters = block0_leadership.ledger_parameters().clone();
+        let block0_ledger = Ledger::new(block0_id, block0.contents.iter())
+            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
+        let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
+        let ledger_parameters = block0_leadership.ledger_parameters().clone();
 
-                self1
-                    .create_and_store_reference(
-                        block0_id,
-                        block0_header,
-                        Arc::new(block0_ledger),
-                        Arc::new(time_frame),
-                        Arc::new(block0_leadership),
-                        Arc::new(ledger_parameters),
-                        None,
-                    )
-                    .map_err(|_: Infallible| unreachable!())
-            })
-            .map(Branch::new)
-            .and_then(move |branch| {
-                branches
-                    .add(branch.clone())
-                    .map(|()| branch)
-                    .map_err(|_: Infallible| unreachable!())
-            })
+        let b = self
+            .create_and_store_reference(
+                block0_id,
+                block0.header.clone(),
+                Arc::new(block0_ledger),
+                Arc::new(time_frame),
+                Arc::new(block0_leadership),
+                Arc::new(ledger_parameters),
+                None,
+            )
+            .compat()
+            .await
+            .unwrap();
+        let b = Branch::new(b);
+        branches.add(b.clone()).compat().await.unwrap();
+        Ok(b)
     }
 
     /// function to do the initial application of the block0 in the `Blockchain` and its
-    /// storage. We assume `Block0` is not already in the `NodeStorage`.
+    /// storage. We assume `Block0` is not already in the `Storage`.
     ///
     /// This function returns the create block0 branch. Having it will
     /// avoid searching for it in the blockchain's `branches` and perform
@@ -622,38 +604,38 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub fn load_from_block0(&self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
-        let block0_clone = block0.clone();
-        let block0_header = block0.header.clone();
-        let block0_id = block0_header.hash();
+    pub async fn load_from_block0(&self, block0: Block) -> Result<Branch> {
+        use chain_core::property::Block;
+        use tokio_compat::prelude::*;
 
-        let self1 = self.clone();
-        let mut storage_store = self.storage.clone();
-        let mut storage_store_2 = self.storage.clone();
+        let block0_id = block0.id();
 
-        self.storage
+        let already_exist = self
+            .storage
             .block_exists(block0_id.clone())
-            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
-            .and_then(|existence| {
-                if existence {
-                    future::err(ErrorKind::Block0AlreadyInStorage.into())
-                } else {
-                    future::ok(())
-                }
-            })
-            .and_then(move |()| self1.apply_block0(block0_clone))
-            .and_then(move |block0_branch| {
-                storage_store
-                    .put_block(block0)
-                    .map(|()| block0_branch)
-                    .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
-            })
-            .and_then(move |block0_branch| {
-                storage_store_2
-                    .put_tag(MAIN_BRANCH_TAG.to_owned(), block0_id)
-                    .map(|()| block0_branch)
-                    .map_err(|e| Error::with_chain(e, "Cannot put block0's hash in the HEAD tag"))
-            })
+            .compat()
+            .await
+            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
+
+        if already_exist {
+            return Err(ErrorKind::Block0AlreadyInStorage.into());
+        }
+
+        let block0_branch = self.apply_block0(&block0).await?;
+
+        let storage = self.storage.clone();
+
+        storage
+            .put_block(block0)
+            .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
+            .compat()
+            .await?;
+        storage
+            .put_tag(MAIN_BRANCH_TAG.to_owned(), block0_id)
+            .map_err(|e| Error::with_chain(e, "Cannot put block0's hash in the HEAD tag"))
+            .compat()
+            .await?;
+        Ok(block0_branch)
     }
 
     /// returns a future that will propagate the initial states and leadership
@@ -670,100 +652,105 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub fn load_from_storage(
-        &self,
-        block0: Block,
-        logger: &Logger,
-    ) -> impl Future<Item = Branch, Error = Error> {
-        let block0_header = block0.header.clone();
-        let block0_id = block0_header.hash();
-        let block0_id_2 = block0_id.clone();
-        let self1 = self.clone();
-        let self2 = self.clone();
-        let self3 = self.clone();
-        let self4 = self.clone();
+    pub async fn load_from_storage(&self, block0: Block, logger: &Logger) -> Result<Branch> {
+        use tokio_compat::prelude::*;
 
-        let logger = logger.clone();
+        let block0_id = block0.header.hash();
+        let already_exist = self
+            .storage
+            .block_exists(block0_id.clone())
+            .compat()
+            .await
+            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
+
+        if !already_exist {
+            return Err(ErrorKind::Block0NotAlreadyInStorage.into());
+        }
+
+        let opt = self
+            .storage
+            .get_tag(MAIN_BRANCH_TAG.to_owned())
+            .map_err(|e| Error::with_chain(e, "Cannot get hash of the HEAD tag"))
+            .compat()
+            .await?;
+
+        let head_hash = if let Some(id) = opt {
+            id
+        } else {
+            return Err(ErrorKind::NoTag(MAIN_BRANCH_TAG.to_owned()).into());
+        };
+
+        let block0_branch = self.apply_block0(&block0).await?;
 
         self.storage
-            .block_exists(block0_id.clone())
-            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
-            .and_then(|existence| {
-                if !existence {
-                    future::err(ErrorKind::Block0NotAlreadyInStorage.into())
-                } else {
-                    future::ok(())
-                }
-            })
-            .and_then(move |()| {
-                self1
-                    .storage
-                    .get_tag(MAIN_BRANCH_TAG.to_owned())
-                    .map_err(|e| Error::with_chain(e, "Cannot get hash of the HEAD tag"))
-                    .and_then(|opt| {
-                        if let Some(id) = opt {
-                            future::ok(id)
-                        } else {
-                            future::err(ErrorKind::NoTag(MAIN_BRANCH_TAG.to_owned()).into())
-                        }
+            .stream_from_to(block0_id, head_hash)
+            .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))
+            .and_then(move |block_stream| {
+                block_stream
+                    .map_err(|e| {
+                        Error::with_chain(e, "Error while iterating between block0 and HEAD")
                     })
-            })
-            .and_then(move |head_hash| {
-                self2
-                    .apply_block0(block0)
-                    .map(move |branch| (branch, head_hash))
-            })
-            .and_then(move |(branch, head_hash)| {
-                self3
-                    .storage
-                    .stream_from_to(block0_id_2, head_hash)
-                    .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))
-                    .and_then(move |block_stream| {
-                        block_stream
-                            .map_err(|e| {
-                                Error::with_chain(e, "Error while iterating between block0 and HEAD")
-                            })
-                            .fold((branch, 0u64, self4), move |(branch, processed, self4), block: Block| {
-                                let header = block.header.clone();
+                    .fold(
+                        (block0_branch, 0u64, self.clone()),
+                        move |(branch, processed, self2), block: Block| {
+                            let header = block.header.clone();
 
-                                const PROCESS_LOGGING_DISTANCE : u64 = 2500;
-                                if processed % PROCESS_LOGGING_DISTANCE == 0 {
-                                    info!(logger, "loading from storage, currently at {} ...", block.header.description());
-                                }
+                            const PROCESS_LOGGING_DISTANCE: u64 = 2500;
+                            if processed % PROCESS_LOGGING_DISTANCE == 0 {
+                                info!(
+                                    logger,
+                                    "loading from storage, currently at {} ...",
+                                    block.header.description()
+                                );
+                            }
 
-                                let self5 = self4.clone();
-                                let self6 = self4.clone();
-                                let returned = self4.clone();
+                            let self5 = self2.clone();
+                            let self6 = self2.clone();
+                            let returned = self2.clone();
 
-                                self4
-                                    .pre_check_header(header, true)
-                                    .and_then(move |pre_checked_header: PreCheckedHeader| {
-                                        match pre_checked_header {
-                                            PreCheckedHeader::HeaderWithCache {
-                                                header,
-                                                parent_ref,
-                                            } => future::Either::A(self5.post_check_header(header, parent_ref)),
-                                            PreCheckedHeader::AlreadyPresent { header, cached_reference: _cached_reference } => {
-                                                unreachable!("block already present, this should not happen. {:#?}", header)
-                                            },
-                                            PreCheckedHeader::MissingParent { header } =>
-                                                future::Either::B(future::err(ErrorKind::MissingParentBlock(header.block_parent_hash()).into())),
+                            self2
+                                .pre_check_header(header, true)
+                                .and_then(move |pre_checked_header: PreCheckedHeader| {
+                                    match pre_checked_header {
+                                        PreCheckedHeader::HeaderWithCache {
+                                            header,
+                                            parent_ref,
+                                        } => future::Either::A(
+                                            self5.post_check_header(header, parent_ref),
+                                        ),
+                                        PreCheckedHeader::AlreadyPresent {
+                                            header,
+                                            cached_reference: _cached_reference,
+                                        } => unreachable!(
+                                            "block already present, this should not happen. {:#?}",
+                                            header
+                                        ),
+                                        PreCheckedHeader::MissingParent { header } => {
+                                            future::Either::B(future::err(
+                                                ErrorKind::MissingParentBlock(
+                                                    header.block_parent_hash(),
+                                                )
+                                                .into(),
+                                            ))
                                         }
-                                    })
-                                    .and_then(move |post_checked_header: PostCheckedHeader| {
-                                        self6.apply_block(post_checked_header, &block)
-                                    })
-                                    .and_then(move |new_ref| {
-                                        branch
-                                            .clone()
-                                            .update_ref(new_ref)
-                                            .map(move |_old_ref| (branch, processed+1, returned))
-                                            .map_err(|_: Infallible| unreachable!())
-                                    })
-                            })
-                            .map(|(branch, _, _)| branch)
-                    })
+                                    }
+                                })
+                                .and_then(move |post_checked_header: PostCheckedHeader| {
+                                    self6.apply_block(post_checked_header, &block)
+                                })
+                                .and_then(move |new_ref| {
+                                    branch
+                                        .clone()
+                                        .update_ref(new_ref)
+                                        .map(move |_old_ref| (branch, processed + 1, returned))
+                                        .map_err(|_: Infallible| unreachable!())
+                                })
+                        },
+                    )
+                    .map(|(branch, _, _)| branch)
             })
+            .compat()
+            .await
     }
 
     pub fn get_checkpoints(

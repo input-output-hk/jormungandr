@@ -298,7 +298,7 @@ pub fn get_fragments() {
     let config = ConfigurationBuilder::new()
         .with_slot_duration(4)
         .with_funds(vec![InitialUTxO {
-            address: sender.address.parse().unwrap(),
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
@@ -306,8 +306,8 @@ pub fn get_fragments() {
     let server = Starter::new().config(config.clone()).start().unwrap();
 
     let transaction = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
-        .assert_add_account(&sender.address, &output_value.into())
-        .assert_add_output(&receiver.address, &output_value.into())
+        .assert_add_account(&sender.address().to_string(), &output_value.into())
+        .assert_add_output(&receiver.address().to_string(), &output_value.into())
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();

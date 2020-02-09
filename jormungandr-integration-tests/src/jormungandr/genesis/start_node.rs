@@ -21,8 +21,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     // stake key
     let stake_key = startup::create_new_key_pair::<Ed25519Extended>();
     //faucet
-    let faucet =
-        startup::create_new_delegation_address_for(&stake_key.identifier().to_bech32_str());
+    let faucet = startup::create_new_delegation_address_for(&stake_key.identifier());
     // leader
     let leader = startup::create_new_key_pair::<Ed25519>();
 
@@ -31,9 +30,9 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     let pool_kes = startup::create_new_key_pair::<SumEd25519_12>();
 
     // note we use the faucet as the owner to this pool
-    let owner_key = faucet.private_key;
-    let owner_pubkey = faucet.public_key;
-    let stake_key_pub = &faucet.delegation_key;
+    let owner_key = faucet.signing_key_as_str();
+    let owner_pubkey = faucet.identifier();
+    let stake_key_pub = &faucet.delegation_key();
 
     let owner_key_file = file_utils::create_file_in_temp("owner_key.sk", &owner_key);
     let stake_key_file =
@@ -47,7 +46,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         &owner_key_file,
         0,
         1,
-        &owner_pubkey,
+        &owner_pubkey.to_bech32_str(),
         None,
     );
     let stake_pool_signcert = file_utils::read_file(&stake_pool_signcert_file);
@@ -57,7 +56,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
     // WRONG
     let stake_delegation_signcert = jcli_certificate.assert_new_signed_stake_pool_delegation(
         &stake_pool_id,
-        &stake_key_pub,
+        &stake_key_pub.to_bech32_str(),
         &stake_key_file,
     );
 
@@ -67,7 +66,7 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         .with_consensus_leaders_ids(vec![leader.identifier().into()])
         .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
         .with_funds(vec![InitialUTxO {
-            address: faucet.address.parse().unwrap(),
+            address: faucet.address(),
             value: 100.into(),
         }])
         .with_initial_certs(vec![

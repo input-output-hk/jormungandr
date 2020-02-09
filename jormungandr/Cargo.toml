@@ -56,10 +56,12 @@ slog-term = "2.4.0"
 structopt = "^0.2"
 thiserror = "1.0"
 tokio      = "^0.1.16"
-tokio-compat = "0.1.4"
+tokio-compat = "^0.1.4"
 tokio02 = { package = "tokio", version = "0.2.11" }
 tokio-threadpool = "0.1"
 bech32 = "0.7"
+bb8 = "0.4"
+async-trait = "0.1"
 
 [build-dependencies]
 versionisator = "1.0.2"

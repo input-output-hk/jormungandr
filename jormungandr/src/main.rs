@@ -128,7 +128,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let logs = process.logs().clone();
 
         services.spawn_future("fragment", move |info| {
-            process.start(info, stats_counter, fragment_queue)
+            let fut = process.start(info, stats_counter, fragment_queue);
+            Box::pin(fut).compat()
         });
         (pool, logs)
     };
@@ -410,7 +411,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
-    pub storage: start_up::NodeStorage,
+    pub storage: blockchain::Storage,
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
     pub services: Services,
