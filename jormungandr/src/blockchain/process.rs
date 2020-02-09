@@ -99,7 +99,7 @@ impl Process {
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
         let explorer_msg_box = self.explorer_msgbox.clone();
-        let mut tx_msg_box = self.fragment_msgbox.clone();
+        let tx_msg_box = self.fragment_msgbox.clone();
         let stats_counter = self.stats_counter.clone();
 
         match input {
@@ -108,8 +108,6 @@ impl Process {
                     "hash" => block.header.hash().to_string(),
                     "parent" => block.header.parent_id().to_string(),
                     "date" => block.header.block_date().to_string()));
-                let logger2 = logger.clone();
-                let logger3 = logger.clone();
 
                 info!(logger, "receiving block from leadership service");
 
