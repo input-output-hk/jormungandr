@@ -1,0 +1,93 @@
+on:
+  push:
+    tags:
+      - 'v[0-9]+.*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+name: Release
+
+jobs:
+  initial_release:
+    name: Create base release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  release_assets:
+    name: Release assets
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          # Linux
+          - {os: ubuntu-latest, target: arm-unknown-linux-gnueabi}
+          - {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf}
+          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64}
+          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu}
+          - {os: ubuntu-latest, target: x86_64-unknown-linux-musl}
+          - {os: ubuntu-latest, target: aarch64-linux-android}
+          # Macos
+          - {os: macos-latest, target: x86_64-apple-darwin}
+          # Windows
+          - {os: windows-latest, target: x86_64-pc-windows-gnu}
+          - {os: windows-latest, target: x86_64-pc-windows-msvc}
+        toolchain: [stable]
+
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.config.target }}
+          override: true
+          default: true
+
+      - name: Checkout code
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+
+      - name: Build jormungandr
+        uses: actions-rs/cargo@v1
+        with:
+          command: rustc
+          args: --release -p jormungandr --bin jormungandr -- -C lto
+
+      - name: Build jcli
+        uses: actions-rs/cargo@v1
+        with:
+          command: rustc
+          args: --release -p jcli --bin jcli -- -C lto
+
+      - name: Get tag version
+        id: get_version
+        run: echo ::set-output name=VERSION::``${GITHUB_REF#refs/tags/}``
+        shell: bash
+
+      - name: Pack binaries if unix
+        if: matrix.config.os != 'windows-latest'
+        run: tar -C ./target/release -czvf jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz jormungandr jcli
+
+      - name: Pack binaries if windows
+        if: matrix.config.os == 'windows-latest'
+        run: compress-archive ./target/release/jormungandr.exe, ./target/release/jcli.exe jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.zip
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.*
+          asset_name: jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}
+          tag: ${{ github.ref }}
+          file_glob: true
+          overwrite: true
