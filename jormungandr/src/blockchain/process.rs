@@ -161,7 +161,7 @@ impl Process {
                     "process network blocks",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS),
                     process_network_blocks(
-                        blockchain,
+                        self.blockchain.clone(),
                         blockchain_tip,
                         tx_msg_box,
                         network_msg_box,
@@ -227,7 +227,7 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let logger = info.logger().clone();
 
-        info.run_periodic(
+        info.run_periodic_std(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
             move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
@@ -299,29 +299,91 @@ fn try_request_fragment_removal(
 /// this function will re-process the tip against the different branches
 /// this is because a branch may have become more interesting with time
 /// moving forward and branches may have been dismissed
-pub fn reprocess_tip(
-    logger: Logger,
-    blockchain: Blockchain,
-    tip: Tip,
-) -> impl Future<Item = (), Error = Error> {
-    let branches_future = blockchain.branches().branches();
+async fn reprocess_tip(logger: Logger, mut blockchain: Blockchain, tip: Tip) -> Result<(), Error> {
+    let branches: Vec<Arc<Ref>> = blockchain.branches().branches().compat().await.unwrap();
 
-    branches_future
-        .join(tip.get_ref())
-        .map(|(all, tip)| {
-            all.into_iter()
-                .filter(|r|
-                    // remove our own tip so we don't apply it against itself
-                    !Arc::ptr_eq(&r, &tip))
-                .collect::<Vec<_>>()
-        })
-        .and_then(move |others| {
-            stream::iter_ok(others)
-                .for_each(move |other| {
-                    process_new_ref(logger.clone(), blockchain.clone(), tip.clone(), other)
-                })
-                .into_future()
-        })
+    let tip_as_ref = tip.get_ref_std().await;
+
+    let others = branches
+        .iter()
+        .filter(|r| !Arc::ptr_eq(&r, &tip_as_ref))
+        .collect::<Vec<_>>();
+
+    for other in others {
+        process_new_ref_std(&logger, &mut blockchain, tip.clone(), Arc::clone(other)).await?
+    }
+
+    Ok(())
+}
+
+/// process a new candidate block on top of the blockchain, this function may:
+///
+/// * update the current tip if the candidate's parent is the current tip;
+/// * update a branch if the candidate parent is that branch's tip;
+/// * create a new branch if none of the above;
+///
+/// If the current tip is not the one being updated we will then trigger
+/// chain selection after updating that other branch as it may be possible that
+/// this branch just became more interesting for the current consensus algorithm.
+pub async fn process_new_ref_std(
+    logger: &Logger,
+    blockchain: &mut Blockchain,
+    mut tip: Tip,
+    candidate: Arc<Ref>,
+) -> Result<(), Error> {
+    let candidate_hash = candidate.hash();
+    let storage = blockchain.storage().clone();
+
+    let tip_ref = tip.get_ref_std().await;
+
+    let tip_updated = if tip_ref.hash() == candidate.block_parent_hash() {
+        info!(
+            logger,
+            "update current branch tip: {} -> {}",
+            tip_ref.header().description(),
+            candidate.header().description(),
+        );
+        tip.update_ref_std(candidate).await;
+        true
+    } else {
+        match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
+            ComparisonResult::PreferCurrent => {
+                info!(
+                    logger,
+                    "create new branch with tip {} | current-tip {}",
+                    candidate.header().description(),
+                    tip_ref.header().description(),
+                );
+                false
+            }
+            ComparisonResult::PreferCandidate => {
+                info!(
+                    logger,
+                    "switching branch from {} to {}",
+                    tip_ref.header().description(),
+                    candidate.header().description(),
+                );
+                let branch = blockchain
+                    .branches_mut()
+                    .apply_or_create(candidate)
+                    .compat()
+                    .await
+                    .unwrap();
+                tip.swap_std(branch).await;
+                true
+            }
+        }
+    };
+
+    if tip_updated {
+        storage
+            .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
+            .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
+            .compat()
+            .await
+    } else {
+        Ok(())
+    }
 }
 
 /// process a new candidate block on top of the blockchain, this function may:
@@ -395,21 +457,20 @@ pub fn process_new_ref(
 }
 
 async fn process_and_propagate_new_ref(
-    logger: Logger,
-    blockchain: Blockchain,
+    logger: &Logger,
+    blockchain: &mut Blockchain,
     tip: Tip,
     new_block_ref: Arc<Ref>,
     network_msg_box: MessageBox<NetworkMsg>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
+    let hash = header.hash();
 
-    debug!(logger, "processing the new block and propagating"; "hash" => %header.hash());
+    debug!(logger, "processing the new block and propagating"; "hash" => %hash);
 
-    process_new_ref(logger.clone(), blockchain, tip, new_block_ref)
-        .compat()
-        .await?;
+    process_new_ref_std(logger, blockchain, tip, new_block_ref).await?;
 
-    debug!(logger, "propagating block to the network"; "hash" => %header.hash());
+    debug!(logger, "propagating block to the network"; "hash" => %hash);
     network_msg_box
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
         .map_err(|_| "Cannot propagate block to network".into())
@@ -420,16 +481,15 @@ async fn process_and_propagate_new_ref(
 
 async fn process_leadership_block(
     logger: Logger,
-    blockchain: Blockchain,
+    mut blockchain: Blockchain,
     blockchain_tip: Tip,
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     block: Block,
 ) -> Result<(), Error> {
-    let logger2 = logger.clone();
     let new_block_ref =
-        process_leadership_block_inner(logger.clone(), blockchain.clone(), block.clone()).await?;
+        process_leadership_block_inner(&logger, &mut blockchain, block.clone()).await?;
 
     let fragments = block.fragments().map(|f| f.id()).collect();
 
@@ -438,8 +498,8 @@ async fn process_leadership_block(
         .map_err(|_| "cannot remove fragments from pool".to_string())?;
 
     process_and_propagate_new_ref(
-        logger,
-        blockchain,
+        &logger,
+        &mut blockchain,
         blockchain_tip,
         Arc::clone(&new_block_ref),
         network_msg_box,
@@ -457,8 +517,8 @@ async fn process_leadership_block(
 }
 
 async fn process_leadership_block_inner(
-    logger: Logger,
-    blockchain: Blockchain,
+    logger: &Logger,
+    blockchain: &mut Blockchain,
     block: Block,
 ) -> Result<Arc<Ref>, Error> {
     let header = block.header();
@@ -553,7 +613,7 @@ fn process_block_announcement(
 }
 
 async fn process_network_blocks(
-    blockchain: Blockchain,
+    mut blockchain: Blockchain,
     blockchain_tip: Tip,
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
@@ -572,7 +632,7 @@ async fn process_network_blocks(
         match maybe_block {
             Some(block) => {
                 let res = process_network_block(
-                    &blockchain,
+                    &mut blockchain,
                     block,
                     &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
@@ -611,8 +671,8 @@ async fn process_network_blocks(
     match maybe_updated {
         Some(new_block_ref) => {
             let r = process_and_propagate_new_ref(
-                logger,
-                blockchain,
+                &logger,
+                &mut blockchain,
                 blockchain_tip,
                 Arc::clone(&new_block_ref),
                 network_msg_box,
