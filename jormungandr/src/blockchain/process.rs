@@ -7,9 +7,7 @@ use super::{
 use crate::{
     blockcfg::{Block, FragmentId, Header},
     blockchain::Checkpoints,
-    intercom::{
-        self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, ReplyHandle, TransactionMsg,
-    },
+    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     log,
     network::p2p::Id as NodeId,
     stats_counter::StatsCounter,
@@ -547,64 +545,36 @@ fn process_block_announcement(
 async fn process_network_blocks(
     blockchain: Blockchain,
     blockchain_tip: Tip,
-    tx_msg_box: MessageBox<TransactionMsg>,
+    mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    get_next_block_scheduler: GetNextBlockScheduler,
+    mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
     stats_counter: StatsCounter,
     logger: Logger,
 ) -> Result<(), Error> {
-    struct State<S> {
-        stream: S,
-        reply: ReplyHandle<()>,
-        candidate: Option<Arc<Ref>>,
-    }
     let (stream, reply) = handle.into_stream_and_reply();
-    let stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
-    let mut state = State {
-        stream,
-        reply,
-        candidate: None,
-    };
-    let logger_fold = logger.clone();
-    let blockchain_fold = blockchain.clone();
-    let get_next_block_scheduler = get_next_block_scheduler.clone();
+    let mut stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
+    let mut candidate = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
-        let blockchain = blockchain_fold.clone();
-        let tx_msg_box = tx_msg_box.clone();
-        let explorer_msg_box = explorer_msg_box.clone();
-        let stats_counter = stats_counter.clone();
-        let logger = logger_fold.clone();
-        let get_next_block_scheduler = get_next_block_scheduler.clone();
-        let State {
-            stream,
-            reply,
-            candidate,
-        } = state;
-
-        let (maybe_block, stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
+        let (maybe_block, new_stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
         match maybe_block {
             Some(block) => {
                 let res = process_network_block(
-                    blockchain,
+                    &blockchain,
                     block,
-                    tx_msg_box,
-                    explorer_msg_box,
-                    get_next_block_scheduler,
-                    logger.clone(),
+                    &mut tx_msg_box,
+                    explorer_msg_box.as_mut(),
+                    &mut get_next_block_scheduler,
+                    &logger,
                 )
-                .compat()
                 .await;
                 match res {
-                    Ok(Some(candidate)) => {
+                    Ok(Some(r)) => {
                         stats_counter.add_block_recv_cnt(1);
-                        state = State {
-                            stream,
-                            reply,
-                            candidate: Some(candidate),
-                        }
+                        stream = new_stream;
+                        candidate = Some(r);
                     }
                     Ok(None) => {
                         reply.reply_ok(());
@@ -645,125 +615,116 @@ async fn process_network_blocks(
     }
 }
 
-fn process_network_block(
-    blockchain: Blockchain,
+async fn process_network_block(
+    blockchain: &Blockchain,
     block: Block,
-    tx_msg_box: MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    mut get_next_block_scheduler: GetNextBlockScheduler,
-    logger: Logger,
-) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
+    tx_msg_box: &mut MessageBox<TransactionMsg>,
+    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    get_next_block_scheduler: &mut GetNextBlockScheduler,
+    logger: &Logger,
+) -> Result<Option<Arc<Ref>>, chain::Error> {
     get_next_block_scheduler
         .declare_completed(block.id())
         .unwrap_or_else(
             |e| error!(logger, "get next block schedule completion failed"; "reason" => ?e),
         );
     let header = block.header();
-    blockchain
-        .pre_check_header(header, false)
-        .and_then(move |pre_checked| match pre_checked {
-            PreCheckedHeader::AlreadyPresent { header, .. } => {
-                debug!(
-                    logger,
-                    "block is already present";
-                    "hash" => %header.hash(),
-                    "parent" => %header.parent_id(),
-                    "date" => %header.block_date(),
-                );
-                Either::A(future::ok(None))
-            }
-            PreCheckedHeader::MissingParent { header, .. } => {
-                let parent_hash = header.parent_id();
-                debug!(
-                    logger,
-                    "block is missing a locally stored parent";
-                    "hash" => %header.hash(),
-                    "parent" => %parent_hash,
-                    "date" => %header.block_date(),
-                );
-                Either::A(future::err(
-                    ErrorKind::MissingParentBlock(parent_hash).into(),
-                ))
-            }
-            PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-                let post_check_and_apply = check_and_apply_block(
-                    blockchain,
-                    parent_ref,
-                    block,
-                    tx_msg_box,
-                    explorer_msg_box,
-                    logger,
-                );
-                Either::B(post_check_and_apply)
-            }
-        })
-}
-
-fn check_and_apply_block(
-    blockchain: Blockchain,
-    parent_ref: Arc<Ref>,
-    block: Block,
-    tx_msg_box: MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    logger: Logger,
-) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
-    let explorer_enabled = explorer_msg_box.is_some();
-    let blockchain1 = blockchain.clone();
-    let mut tx_msg_box = tx_msg_box.clone();
-    let mut explorer_msg_box = explorer_msg_box.clone();
-    let logger = logger.clone();
-    let header = block.header();
-    blockchain
-        .post_check_header(header, parent_ref)
-        .and_then(move |post_checked| {
-            let header = post_checked.header();
-            let block_hash = header.hash();
+    let pre_checked = blockchain.pre_check_header(header, false).compat().await?;
+    match pre_checked {
+        PreCheckedHeader::AlreadyPresent { header, .. } => {
             debug!(
                 logger,
-                "applying block to storage";
-                "hash" => %block_hash,
+                "block is already present";
+                "hash" => %header.hash(),
                 "parent" => %header.parent_id(),
                 "date" => %header.block_date(),
             );
-            let mut block_for_explorer = if explorer_enabled {
-                Some(block.clone())
-            } else {
-                None
-            };
-            let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
-            blockchain1
-                .apply_and_store_block(post_checked, block)
-                .and_then(move |applied_block| {
-                    if let AppliedBlock::New(block_ref) = applied_block {
-                        let header = block_ref.header();
-                        debug!(
-                            logger,
-                            "applied block to storage";
-                            "hash" => %block_hash,
-                            "parent" => %header.parent_id(),
-                            "date" => %header.block_date(),
-                        );
-                        try_request_fragment_removal(&mut tx_msg_box, fragment_ids, header).unwrap_or_else(|err| {
-                            error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
-                        });
-                        if let Some(msg_box) = explorer_msg_box.as_mut() {
-                            msg_box
-                                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
-                                .unwrap_or_else(|err| {
-                                    error!(logger, "cannot add block to explorer: {}", err)
-                                });
-                        }
-                        Ok(Some(block_ref))
-                    } else {
-                        debug!(
-                            logger,
-                            "block is already present in storage, not applied";
-                            "hash" => %block_hash,
-                        );
-                        Ok(None)
-                    }
-                })
-        })
+            Ok(None)
+        }
+        PreCheckedHeader::MissingParent { header, .. } => {
+            let parent_hash = header.parent_id();
+            debug!(
+                logger,
+                "block is missing a locally stored parent";
+                "hash" => %header.hash(),
+                "parent" => %parent_hash,
+                "date" => %header.block_date(),
+            );
+            Err(ErrorKind::MissingParentBlock(parent_hash).into())
+        }
+        PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
+            let r = check_and_apply_block(
+                blockchain,
+                parent_ref,
+                block,
+                tx_msg_box,
+                explorer_msg_box,
+                logger,
+            )
+            .await;
+            r
+        }
+    }
+}
+
+async fn check_and_apply_block(
+    blockchain: &Blockchain,
+    parent_ref: Arc<Ref>,
+    block: Block,
+    tx_msg_box: &mut MessageBox<TransactionMsg>,
+    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    logger: &Logger,
+) -> Result<Option<Arc<Ref>>, chain::Error> {
+    let explorer_enabled = explorer_msg_box.is_some();
+    let post_checked = blockchain
+        .post_check_header(block.header(), parent_ref)
+        .compat()
+        .await?;
+    let header = post_checked.header();
+    let block_hash = header.hash();
+    debug!(
+        logger,
+        "applying block to storage";
+        "hash" => %block_hash,
+        "parent" => %header.parent_id(),
+        "date" => %header.block_date(),
+    );
+    let mut block_for_explorer = if explorer_enabled {
+        Some(block.clone())
+    } else {
+        None
+    };
+    let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
+    let applied_block = blockchain
+        .apply_and_store_block(post_checked, block)
+        .compat()
+        .await?;
+    if let AppliedBlock::New(block_ref) = applied_block {
+        let header = block_ref.header();
+        debug!(
+            logger,
+            "applied block to storage";
+            "hash" => %block_hash,
+            "parent" => %header.parent_id(),
+            "date" => %header.block_date(),
+        );
+        try_request_fragment_removal(tx_msg_box, fragment_ids, header).unwrap_or_else(
+            |err| error!(logger, "cannot remove fragments from pool" ; "reason" => %err),
+        );
+        if let Some(msg_box) = explorer_msg_box {
+            msg_box
+                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
+                .unwrap_or_else(|err| error!(logger, "cannot add block to explorer: {}", err));
+        }
+        Ok(Some(block_ref))
+    } else {
+        debug!(
+            logger,
+            "block is already present in storage, not applied";
+            "hash" => %block_hash,
+        );
+        Ok(None)
+    }
 }
 
 fn network_block_error_into_reply(err: chain::Error) -> intercom::Error {
