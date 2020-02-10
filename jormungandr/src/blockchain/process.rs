@@ -25,10 +25,7 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::future::Either;
 use slog::Logger;
-use tokio::{
-    prelude::*,
-    timer::{timeout, Timeout},
-};
+use tokio::{prelude::*, timer::timeout};
 use tokio_compat::prelude::*;
 
 use std::{sync::Arc, time::Duration};
@@ -147,9 +144,11 @@ impl Process {
                     logger.clone(),
                 );
 
-                info.spawn("process block announcement", Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT)).map_err(move |err: TimeoutError| {
-                    error!(logger, "cannot process block announcement" ; "reason" => ?err)
-                }))
+                info.timeout_spawn_failable_std(
+                    "process block announcement",
+                    Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT),
+                    future.compat(),
+                )
             }
             BlockMsg::NetworkBlocks(handle) => {
                 info!(info.logger(), "receiving block stream from network");
@@ -217,7 +216,7 @@ impl Process {
                     .map_err(move |err: TimeoutError| {
                         error!(logger_err2, "cannot process network headers" ; "reason" => ?err)
                     });
-                info.spawn("process network headers", future);
+                info.spawn_failable_std("process network headers", future.compat());
             }
         }
     }
@@ -254,7 +253,7 @@ impl Process {
         let future = scheduler_future
             .map(|never| match never {})
             .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
-        info.spawn("pull headers scheduling", future);
+        info.spawn_failable_std("pull headers scheduling", future.compat());
         scheduler
     }
 
@@ -280,7 +279,7 @@ impl Process {
         let future = scheduler_future
             .map(|never| match never {})
             .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
-        info.spawn("get next block scheduling", future);
+        info.spawn_failable_std("get next block scheduling", future.compat());
         scheduler
     }
 }
