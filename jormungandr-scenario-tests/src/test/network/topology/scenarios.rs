@@ -342,7 +342,7 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4],
         SyncWaitParams::network_size(4, 4).into(),
-        "mesh_sync",
+        "point_to_point_sync",
     );
 
     leader4.shutdown()?;

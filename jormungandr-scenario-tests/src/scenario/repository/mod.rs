@@ -166,12 +166,12 @@ fn scenarios_repository() -> Vec<Scenario> {
     ));
 
     repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
-    repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
+    // repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
-    repository.push(Scenario::new(
+    /*   repository.push(Scenario::new(
         "mesh_disruption",
         mesh_disruption,
         vec![Tag::Short],
-    ));
+    ));*/
     repository
 }

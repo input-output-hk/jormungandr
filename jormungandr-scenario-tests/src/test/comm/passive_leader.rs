@@ -50,12 +50,16 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
         &passive,
     )?;
 
-    utils::assert_are_in_sync(SyncWaitParams::two_nodes(), vec![&passive, &leader])?;
+    let measurement = utils::measure_sync_time(
+        vec![&passive, &leader],
+        SyncWaitParams::two_nodes().into(),
+        "transaction_to_passive_sync",
+    );
 
     passive.shutdown()?;
     leader.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -126,16 +130,17 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &passive,
     )?;
 
-    utils::assert_are_in_sync(SyncWaitParams::nodes_restart(2), vec![&passive, &leader])?;
+    let measurement = utils::measure_sync_time(
+        vec![&passive, &leader],
+        SyncWaitParams::nodes_restart(2).into(),
+        "transaction_to_passive_sync",
+    );
 
     passive.shutdown()?;
     leader.shutdown()?;
 
-    println!("Passive: {}", passive.log_content());
-    println!("Leader: {}", leader.log_content());
-
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -181,11 +186,15 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
         &leader,
     )?;
 
-    utils::assert_are_in_sync(SyncWaitParams::two_nodes(), vec![&passive, &leader])?;
+    let measurement = utils::measure_sync_time(
+        vec![&passive, &leader],
+        SyncWaitParams::nodes_restart(2).into(),
+        "passive_node_is_updated_sync",
+    );
 
     passive.shutdown()?;
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
