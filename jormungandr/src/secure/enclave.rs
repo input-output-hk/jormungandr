@@ -4,13 +4,14 @@ use crate::blockcfg::{
 };
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use tokio02::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Enclave {
     leaders: Arc<RwLock<BTreeMap<LeaderId, Leader>>>,
+    added_cache: Arc<RwLock<HashMap<String, LeaderId>>>,
 }
 
 pub struct LeaderEvent {
@@ -27,6 +28,7 @@ impl Enclave {
     pub fn new() -> Self {
         Enclave {
             leaders: Arc::new(RwLock::new(BTreeMap::new())),
+            added_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -38,14 +40,32 @@ impl Enclave {
         e
     }
 
+    pub async fn get_leader_id_if_present(&self, leader: &Leader) -> Option<LeaderId> {
+        match &leader.bft_leader {
+            Some(l) => {
+                let cache = self.added_cache.read().await;
+                cache.get(&l.sig_key.to_public().to_string()).cloned()
+            }
+            None => None,
+        }
+    }
     pub async fn get_leaderids(&self) -> Vec<LeaderId> {
         let leaders = self.leaders.read().await;
-        leaders.keys().map(|v| v.clone()).collect()
+        leaders.keys().cloned().collect()
     }
 
     pub async fn add_leader(&self, leader: Leader) -> LeaderId {
+        match self.get_leader_id_if_present(&leader).await {
+            Some(id) => return id,
+            None => {}
+        }
         let mut leaders = self.leaders.write().await;
         let next_leader_id = get_maximum_id(&leaders).next();
+        let mut cache = self.added_cache.write().await;
+        leader
+            .bft_leader
+            .as_ref()
+            .map(|l| cache.insert(l.sig_key.to_public().to_string(), next_leader_id));
         // This panic case should never happens in practice, as this structure is
         // not supposed to be shared between thread.
         match leaders.insert(next_leader_id, leader) {
