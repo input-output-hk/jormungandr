@@ -27,7 +27,8 @@ impl Tip {
         let mut tip_branch = self.branch.clone();
         let tr = self.branch().get_ref_std().await;
         let br = branch.update_ref_std(tr).await;
-        tip_branch.update_ref_std(br);
+        let _: Arc<Ref> = tip_branch.update_ref_std(br).await;
+        ()
     }
 
     pub fn get_ref<E>(&self) -> impl Future01<Item = Arc<Ref>, Error = E> {
