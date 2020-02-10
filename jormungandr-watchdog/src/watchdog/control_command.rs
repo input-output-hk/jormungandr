@@ -3,38 +3,57 @@ use crate::{
     watchdog::WatchdogError,
     Service, ServiceIdentifier,
 };
-use std::{any::Any, future::Future};
+use std::{any::Any, fmt, future::Future};
 use tokio::{
     runtime::Handle,
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
 
+#[derive(Debug)]
 pub(crate) enum ControlCommand {
     Shutdown,
     Kill,
     Start {
         service_identifier: ServiceIdentifier,
-        reply: oneshot::Sender<Result<(), WatchdogError>>,
+        reply: Reply<Result<(), WatchdogError>>,
     },
     Stop {
         service_identifier: ServiceIdentifier,
-        reply: oneshot::Sender<Result<(), WatchdogError>>,
+        reply: Reply<Result<(), WatchdogError>>,
     },
     Intercom {
         service_identifier: ServiceIdentifier,
-        reply: oneshot::Sender<Result<Box<dyn Any + 'static + Send>, WatchdogError>>,
+        reply: Reply<Result<Box<dyn Any + 'static + Send>, WatchdogError>>,
     },
     Status {
         service_identifier: ServiceIdentifier,
-        reply: oneshot::Sender<Result<StatusReport, WatchdogError>>,
+        reply: Reply<Result<StatusReport, WatchdogError>>,
     },
 }
 
-#[derive(Clone)]
+#[derive(Debug)]
+pub(crate) struct Reply<T>(pub(crate) oneshot::Sender<T>);
+
+#[derive(Clone, Debug)]
 pub struct WatchdogQuery {
     sender: mpsc::Sender<ControlCommand>,
     handle: Handle,
+}
+
+impl<T> Reply<Result<T, WatchdogError>> {
+    pub(crate) fn reply(self, t: Result<T, WatchdogError>) {
+        if let Err(reply) = self.0.send(t) {
+            if let Err(err) = reply {
+                tracing::error!(
+                    "Cannot reply to the ControlHandler that the service failed to return status: {}",
+                    err
+                );
+            } else {
+                tracing::error!("Cannot reply to the ControlHandler the service's status");
+            }
+        }
+    }
 }
 
 impl WatchdogQuery {
@@ -63,7 +82,7 @@ impl WatchdogQuery {
         let (reply, receiver) = oneshot::channel();
         self.send(ControlCommand::Status {
             service_identifier: T::SERVICE_IDENTIFIER,
-            reply,
+            reply: Reply(reply),
         })
         .await;
 
@@ -133,7 +152,7 @@ impl ControlHandler {
 
         let command = ControlCommand::Start {
             service_identifier,
-            reply,
+            reply: Reply(reply),
         };
         self.send(command).await;
 
@@ -154,7 +173,7 @@ impl ControlHandler {
 
         let command = ControlCommand::Stop {
             service_identifier,
-            reply,
+            reply: Reply(reply),
         };
         self.send(command).await;
 
@@ -171,7 +190,7 @@ impl ControlHandler {
         let (reply, receiver) = oneshot::channel();
         self.send(ControlCommand::Status {
             service_identifier: T::SERVICE_IDENTIFIER,
-            reply,
+            reply: Reply(reply),
         })
         .await;
 
@@ -187,6 +206,27 @@ impl ControlHandler {
     async fn send(&mut self, cc: ControlCommand) {
         if self.sender.send(cc).await.is_err() {
             // ignore the case where the watchdog is already gone
+        }
+    }
+}
+
+impl fmt::Display for ControlCommand {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Shutdown => f.write_str("shutdown"),
+            Self::Kill => f.write_str("kill"),
+            Self::Start {
+                service_identifier, ..
+            } => write!(f, "start service '{}'", service_identifier),
+            Self::Stop {
+                service_identifier, ..
+            } => write!(f, "stop service '{}'", service_identifier),
+            Self::Status {
+                service_identifier, ..
+            } => write!(f, "get status of service '{}'", service_identifier),
+            Self::Intercom {
+                service_identifier, ..
+            } => write!(f, "get intercom with service '{}'", service_identifier),
         }
     }
 }

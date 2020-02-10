@@ -1,6 +1,6 @@
 use crate::{
     service::{Service, Stats},
-    watchdog::{ControlCommand, WatchdogError, WatchdogQuery},
+    watchdog::{ControlCommand, Reply, WatchdogError, WatchdogQuery},
 };
 use std::sync::{
     atomic::{AtomicU64, Ordering},
@@ -144,7 +144,7 @@ impl<T: Service> Intercom<T> {
 
         let command = ControlCommand::Intercom {
             service_identifier: T::SERVICE_IDENTIFIER,
-            reply,
+            reply: Reply(reply),
         };
         self.watchdog_query.send(command).await;
 

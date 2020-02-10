@@ -105,6 +105,14 @@ struct EchoServices {
 /// after receiving the shutdown command from the controller
 #[test]
 fn compat() {
+    use tracing_subscriber::{fmt, EnvFilter};
+
+    let subscriber = fmt::Subscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
+
     let app = App::new("compat");
     let watchdog = WatchdogBuilder::<EchoServices>::new(app).build_from_safe(DEFAULT_ARGS);
 
@@ -112,7 +120,7 @@ fn compat() {
     watchdog.spawn(async move {
         controller.start("echo").await.unwrap();
         controller.start("client").await.unwrap();
-        delay_for(Duration::from_millis(400)).await;
+        delay_for(Duration::from_millis(1_000)).await;
         controller.shutdown().await;
     });
 

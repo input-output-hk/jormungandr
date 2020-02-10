@@ -1,14 +1,14 @@
 mod control_command;
 mod monitor;
 
-pub(crate) use self::control_command::ControlCommand;
+pub(crate) use self::control_command::{ControlCommand, Reply};
 pub use self::{
     control_command::{ControlHandler, WatchdogQuery},
     monitor::WatchdogMonitor,
 };
 use crate::service::{ServiceError, ServiceIdentifier, StatusReport};
 use async_trait::async_trait;
-use std::any::Any;
+use std::{any::Any, fmt};
 use thiserror::Error;
 use tokio::{
     runtime::Runtime,
@@ -142,8 +142,11 @@ give the absolute path to the file.",
             .unwrap_or_else(|e| e.exit());
 
         // TODO: handle the case where there is no config file to read?
-        let file = std::fs::File::open(&config_path).unwrap();
-        let mut settings = serde_yaml::from_reader(file).unwrap();
+        let mut settings = if let Ok(file) = std::fs::File::open(&config_path) {
+            serde_yaml::from_reader(file).unwrap()
+        } else {
+            T::Settings::default()
+        };
 
         let (runtimes, services) = T::new(&mut settings, &args);
 
@@ -181,95 +184,50 @@ where
         watchdog_query: WatchdogQuery,
     ) {
         while let Some(command) = cc.recv().await {
+            let span = tracing::span!(tracing::Level::INFO, "command received", command = %command);
+
             match command {
                 ControlCommand::Shutdown | ControlCommand::Kill => {
                     // TODO: for now we assume shutdown and kill are the same
                     //       but on the long run it will need to send a Shutdown
                     //       signal to every services so they can save state and
                     //       release resources properly
+                    let _enter = span.enter();
+
                     break;
                 }
                 ControlCommand::Status {
                     service_identifier,
                     reply,
                 } => {
+                    let _enter = span.enter();
                     let status_report = self.services.status(service_identifier).await;
-                    if let Err(reply) = reply.send(status_report) {
-                        if let Err(err) = reply {
-                            dbg!(
-                                "Cannot reply to the ControlHandler that the service {} failed to return status: {}",
-                                service_identifier,
-                                err
-                            );
-                        } else {
-                            dbg!(
-                                "Cannot reply to the ControlHandler the service {} 's status",
-                                service_identifier
-                            );
-                        }
-                    }
+                    reply.reply(status_report);
                 }
                 ControlCommand::Start {
                     service_identifier,
                     reply,
                 } => {
-                    if let Err(reply) = reply.send(
+                    reply.reply(
                         self.services
                             .start(service_identifier, watchdog_query.clone()),
-                    ) {
-                        if let Err(err) = reply {
-                            dbg!(
-                                "Cannot reply to the ControlHandler that the service {} failed to start: {}",
-                                service_identifier,
-                                err
-                            );
-                        } else {
-                            dbg!(
-                                "Cannot reply to the ControlHandler that the service {} started successfully",
-                                service_identifier
-                            );
-                        }
-                    }
+                    );
                 }
                 ControlCommand::Stop {
                     service_identifier,
                     reply,
                 } => {
-                    if let Err(reply) = reply.send(self.services.stop(service_identifier)) {
-                        if let Err(err) = reply {
-                            dbg!(
-                                "Cannot reply to the ControlHandler that the service {} failed to stop: {}",
-                                service_identifier,
-                                err
-                            );
-                        } else {
-                            dbg!(
-                                "Cannot reply to the ControlHandler that the service {} stopped successfully",
-                                service_identifier
-                            );
-                        }
-                    }
+                    let _enter = span.enter();
+                    reply.reply(self.services.stop(service_identifier));
                 }
                 ControlCommand::Intercom {
                     service_identifier,
                     reply,
                 } => {
+                    let _enter = span.enter();
                     // TODO: surround the operation with a timeout and
                     //       result to success
-                    if let Err(reply) = reply.send(self.services.intercoms(service_identifier)) {
-                        if let Err(err) = reply {
-                            dbg!(
-                                "Cannot reply to the ControlHandler that the service {} failed to start: {}",
-                                service_identifier,
-                                err
-                            );
-                        } else {
-                            dbg!(
-                                "Cannot reply to the ControlHandler that the service {} started successfully",
-                                service_identifier
-                            );
-                        }
-                    }
+                    reply.reply(self.services.intercoms(service_identifier));
                 }
             }
         }
@@ -277,5 +235,11 @@ where
         if self.on_drop_send.send(()).is_err() {
             // ignore error for now
         }
+    }
+}
+
+impl<T: CoreServices> fmt::Debug for Watchdog<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Watchdog").finish()
     }
 }

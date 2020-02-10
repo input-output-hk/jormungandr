@@ -68,7 +68,7 @@ pub struct StatusReport {
     pub identifier: ServiceIdentifier,
     pub status: Status,
     pub intercom: IntercomStatus,
-    // add uptime
+    pub started: u64,
 }
 
 pub struct ServiceManager<T: Service> {
@@ -78,6 +78,7 @@ pub struct ServiceManager<T: Service> {
     state: StateSaver<T::State>,
     intercom_sender: IntercomSender<T::Intercom>,
     intercom_stats: IntercomStats,
+    started: u64,
 
     status: StatusReader,
     controller: Controller,
@@ -107,6 +108,7 @@ pub struct ServiceState<T: Service> {
     state: StateHandler<T::State>,
     intercom_receiver: IntercomReceiver<T::Intercom>,
     watchdog_query: WatchdogQuery,
+    status: StatusReader,
 }
 
 impl<T: Service> ServiceState<T> {
@@ -138,6 +140,13 @@ impl<T: Service> ServiceState<T> {
     /// [`SettingsReader`]: ./struct.SettingsReader.html
     pub fn settings(&self) -> &SettingsReader<T::Settings> {
         &self.settings
+    }
+
+    /// access the status reader of the service. If the status is updated
+    /// to be shutdown then the reader will receive the notification event
+    /// and will be able to prepare for shutdown gracefully
+    pub fn status_reader(&self) -> &StatusReader {
+        &self.status
     }
 
     /// access the [`StateHandler`] of the running service
@@ -202,6 +211,7 @@ impl<T: Service> ServiceManager<T> {
             status,
             controller,
             runtime: runtime.handle().clone(),
+            started: 0,
         };
 
         (runtime, sm)
@@ -216,6 +226,7 @@ impl<T: Service> ServiceManager<T> {
             identifier: self.identifier,
             status: self.status.status(),
             intercom: self.intercom_stats.status().await,
+            started: self.started,
         }
     }
 
@@ -247,12 +258,15 @@ impl<T: Service> ServiceManager<T> {
             std::mem::replace(&mut self.intercom_sender, intercom_sender);
             std::mem::replace(&mut self.intercom_stats, intercom_stats);
 
+            self.started += 1;
+
             Ok(ServiceRuntime {
                 service_state: ServiceState {
                     identifier: self.identifier,
                     handle: self.runtime.clone(),
                     settings: self.settings.reader(),
                     state: self.state.handler(),
+                    status: self.status.clone(),
                     intercom_receiver,
                     watchdog_query,
                 },
@@ -271,13 +285,20 @@ impl<T: Service> ServiceRuntime<T> {
             mut control,
         } = self;
 
+        let service_identifier: &'static str = service_state.identifier;
+
         status.update(Status::starting());
 
         let watchdog_query = service_state.watchdog_query.clone();
         let handle = service_state.handle.clone();
         let runner = T::prepare(service_state);
 
-        let (runner, abort_handle) = abortable(async move { runner.start().await });
+        let (runner, abort_handle) = abortable(async move {
+            let span = tracing::span!(tracing::Level::INFO, "service {}", service_identifier);
+            let _enter = span.enter();
+
+            runner.start().await
+        });
 
         let mut service_join_handle = handle.spawn(runner);
 
@@ -289,6 +310,9 @@ impl<T: Service> ServiceRuntime<T> {
         watchdog_query.spawn(async move {
             status.update(Status::started());
 
+            let span = tracing::span!(tracing::Level::DEBUG, "service control", service_identifier);
+            let _enter = span.enter();
+
             loop {
                 tokio::select! {
                     join_result = &mut service_join_handle => {
@@ -299,14 +323,13 @@ impl<T: Service> ServiceRuntime<T> {
                             //       can be applied (can we restart the service?)
                             //       or is it a fatal panic and we cannot recover?
 
-                            eprintln!(
-                                "{}'s main process failed with following error {:#?}",
-                                T::SERVICE_IDENTIFIER,
+                            tracing::error!(
+                                "main process failed with following error: {:#?}",
                                 join_error
                             );
-
                         } else {
-                            abort_handle.abort();
+                            // nothing to do her, the service already finished and
+                            // returned successfully
                         }
                         status.update(Status::shutdown());
                         break;
@@ -314,10 +337,15 @@ impl<T: Service> ServiceRuntime<T> {
                     control = &mut control => {
                         match control {
                             Some(Control::Shutdown) => {
+                                tracing::info!("shutting down...");
+
+                                // updating the status will notify the `StatusReader` in the `ServiceState`
+                                // if watched, the future will yield and the service will be able to prepare
+                                // for the service shutdown and exit gracefully.
                                 status.update(Status::shutting_down());
-                                // TODO: send the shutdown signal to the task
                             }
                             None | Some(Control::Kill) => {
+                                tracing::info!("Terminating...");
                                 status.update(Status::shutdown());
                                 abort_handle.abort();
                                 break;
