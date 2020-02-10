@@ -60,9 +60,16 @@ impl Into<MeasurementThresholds> for SyncWaitParams {
     fn into(self) -> MeasurementThresholds {
         match self {
             SyncWaitParams::WithDisruption {
-                no_of_nodes: _,
-                restart_coeff: _,
-            } => unimplemented!(),
+                no_of_nodes,
+                restart_coeff,
+            } => {
+                let green = no_of_nodes * restart_coeff;
+                let yellow = no_of_nodes * restart_coeff * 2;
+                let red = no_of_nodes * restart_coeff * 3;
+                let timeout = no_of_nodes * restart_coeff * 4;
+
+                MeasurementThresholds::new(green, yellow, red, timeout)
+            }
             SyncWaitParams::Standard {
                 no_of_nodes,
                 longest_path_length,
