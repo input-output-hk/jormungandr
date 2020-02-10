@@ -13,6 +13,7 @@ use crate::{
         comm::leader_leader::*,
         comm::passive_leader::*,
         features::leader_promotion::*,
+        network::real::real_network,
         network::topology::scenarios::*,
         non_functional::{disruption::*, soak::*},
         Result,
@@ -206,6 +207,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     ));
 
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
+    repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
     repository.push(Scenario::new(
         "mesh_disruption",
         mesh_disruption,
