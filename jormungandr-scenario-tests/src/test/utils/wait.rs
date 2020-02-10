@@ -38,7 +38,7 @@ impl SyncWaitParams {
             Self::Standard {
                 no_of_nodes,
                 longest_path_length,
-            } => (no_of_nodes + longest_path_length * 2) * 2,
+            } => (no_of_nodes * 2 + longest_path_length * 2) * 2,
             Self::WithDisruption {
                 no_of_nodes,
                 restart_coeff,

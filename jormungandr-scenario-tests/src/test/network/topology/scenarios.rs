@@ -71,10 +71,11 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(4, 2),
+    let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4],
-    )?;
+        SyncWaitParams::network_size(4, 2).into(),
+        "fully_connected_sync",
+    );
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -82,7 +83,7 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -139,10 +140,11 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(5, 3),
+    let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4, &leader5],
-    )?;
+        SyncWaitParams::network_size(5, 3).into(),
+        "star_sync",
+    );
 
     leader5.shutdown()?;
     leader4.shutdown()?;
@@ -151,7 +153,7 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -204,10 +206,11 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(4, 3),
+    let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4],
-    )?;
+        SyncWaitParams::network_size(4, 3).into(),
+        "ring_sync",
+    );
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -215,7 +218,7 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -272,17 +275,18 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(5, 3),
+    let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4, &leader5],
-    )?;
+        SyncWaitParams::network_size(5, 3).into(),
+        "mesh_sync",
+    );
 
     leader5.shutdown()?;
     leader4.shutdown()?;
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -335,10 +339,11 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(4, 4),
+    let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4],
-    )?;
+        SyncWaitParams::network_size(4, 4).into(),
+        "mesh_sync",
+    );
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -346,7 +351,7 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -411,10 +416,11 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(4, 4),
+    let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4],
-    )?;
+        SyncWaitParams::network_size(4, 4).into(),
+        "point_to_point_on_file_storage_sync",
+    );
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -422,7 +428,7 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -487,12 +493,13 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(7, 5),
+    let measurement = utils::measure_sync_time(
         vec![
             &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7,
         ],
-    )?;
+        SyncWaitParams::network_size(7, 5).into(),
+        "tree_sync",
+    );
 
     leader7.shutdown()?;
     leader6.shutdown()?;
@@ -503,7 +510,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }
 
 pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -626,12 +633,13 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         wallet7.confirm_transaction();
     }
 
-    utils::assert_are_in_sync(
-        SyncWaitParams::network_size(9, 3),
+    let measurement = utils::measure_sync_time(
         vec![
             &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
         ],
-    )?;
+        SyncWaitParams::network_size(9, 3).into(),
+        "relay_sync",
+    );
 
     leader7.shutdown()?;
     leader6.shutdown()?;
@@ -645,5 +653,5 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     relay2.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }

@@ -58,6 +58,9 @@ pub fn measure_sync_time(
             return Measurement::new(info.to_owned(), now.elapsed().unwrap(), sync_wait.clone());
         }
     }
+
+    // if we know it fails, this method is used only for reporting
+    assert_are_in_sync(SyncWaitParams::ZeroWait, nodes);
     Measurement::new(info.to_owned(), now.elapsed().unwrap(), sync_wait.clone())
 }
 
