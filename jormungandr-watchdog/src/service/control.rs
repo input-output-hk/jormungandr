@@ -50,7 +50,11 @@ impl Controller {
     pub async fn reset(&mut self) -> ControlReader {
         let mut reader = self.reader();
         self.send(Control::Kill);
-        reader.updated().await.unwrap();
+        if reader.updated().await.is_none() {
+            // `Controller` owns the sender and a send has just ben sent
+            // so it is impossible not to have an updated control
+            unsafe { std::hint::unreachable_unchecked() }
+        }
         reader
     }
 }
