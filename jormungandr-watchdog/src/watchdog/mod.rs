@@ -178,36 +178,48 @@ impl<T> Watchdog<T>
 where
     T: CoreServices,
 {
+    #[tracing::instrument(skip(self, cc, watchdog_query), target = "watchdog", level = "info")]
     async fn watchdog(
         mut self,
         mut cc: mpsc::Receiver<ControlCommand>,
         watchdog_query: WatchdogQuery,
     ) {
         while let Some(command) = cc.recv().await {
-            let span = tracing::span!(tracing::Level::INFO, "command received", command = %command);
-
             match command {
                 ControlCommand::Shutdown | ControlCommand::Kill => {
                     // TODO: for now we assume shutdown and kill are the same
                     //       but on the long run it will need to send a Shutdown
                     //       signal to every services so they can save state and
                     //       release resources properly
-                    let _enter = span.enter();
 
+                    tracing::warn!("stopping watchdog");
                     break;
                 }
                 ControlCommand::Status {
                     service_identifier,
                     reply,
                 } => {
-                    let _enter = span.enter();
                     let status_report = self.services.status(service_identifier).await;
+                    if let Ok(status_report) = &status_report {
+                        tracing::info!(
+                            %status_report.identifier,
+                            status_report.number_restart = status_report.started,
+                            %status_report.status,
+                            %status_report.intercom.number_sent,
+                            %status_report.intercom.number_received,
+                            %status_report.intercom.number_connections,
+                            %status_report.intercom.processing_speed_mean,
+                            %status_report.intercom.processing_speed_variance,
+                            %status_report.intercom.processing_speed_standard_derivation,
+                        );
+                    }
                     reply.reply(status_report);
                 }
                 ControlCommand::Start {
                     service_identifier,
                     reply,
                 } => {
+                    tracing::info!(%service_identifier, "start");
                     reply.reply(
                         self.services
                             .start(service_identifier, watchdog_query.clone()),
@@ -217,14 +229,14 @@ where
                     service_identifier,
                     reply,
                 } => {
-                    let _enter = span.enter();
+                    tracing::info!(%service_identifier, "stop");
                     reply.reply(self.services.stop(service_identifier));
                 }
                 ControlCommand::Intercom {
                     service_identifier,
                     reply,
                 } => {
-                    let _enter = span.enter();
+                    tracing::trace!(%service_identifier, "query intercom");
                     // TODO: surround the operation with a timeout and
                     //       result to success
                     reply.reply(self.services.intercoms(service_identifier));

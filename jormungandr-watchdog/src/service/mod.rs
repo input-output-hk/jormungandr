@@ -25,6 +25,7 @@ use tokio::{
     runtime::{Builder, Handle, Runtime},
     task::JoinHandle,
 };
+use tracing_futures::Instrument as _;
 
 pub type ServiceIdentifier = &'static str;
 
@@ -294,10 +295,10 @@ impl<T: Service> ServiceRuntime<T> {
         let runner = T::prepare(service_state);
 
         let (runner, abort_handle) = abortable(async move {
-            let span = tracing::span!(tracing::Level::INFO, "service {}", service_identifier);
+            let span = tracing::info_span!("service", service_identifier);
             let _enter = span.enter();
 
-            runner.start().await
+            runner.start().in_current_span().await
         });
 
         let mut service_join_handle = handle.spawn(runner);
@@ -310,7 +311,7 @@ impl<T: Service> ServiceRuntime<T> {
         watchdog_query.spawn(async move {
             status.update(Status::started());
 
-            let span = tracing::span!(tracing::Level::DEBUG, "service control", service_identifier);
+            let span = tracing::debug_span!("service control", service_identifier);
             let _enter = span.enter();
 
             loop {

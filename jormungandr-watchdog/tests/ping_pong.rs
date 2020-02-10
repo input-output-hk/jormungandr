@@ -92,6 +92,14 @@ struct PingPongServices {
 /// after receiving the shutdown command from the controller
 #[test]
 fn ping_pong() {
+    use tracing_subscriber::{fmt, EnvFilter};
+
+    let subscriber = fmt::Subscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
+
     let app = App::new("ping_pong");
     let watchdog = WatchdogBuilder::<PingPongServices>::new(app).build_from_safe(DEFAULT_ARGS);
 

@@ -11,6 +11,7 @@ use tokio::sync::{
     mpsc::{self, error::SendError},
     oneshot, Mutex,
 };
+use tracing_futures::Instrument as _;
 
 #[derive(Debug)]
 pub struct NoIntercom;
@@ -102,20 +103,34 @@ impl<T: Service> Intercom<T> {
     /// however, there is a 100ms delay before doing a retry. Only one retry
     /// will be perform.
     pub async fn send(&mut self, msg: T::Intercom) -> Result<(), WatchdogError> {
+        let span = tracing::span!(tracing::Level::DEBUG, "Intercom::send", msg = ?msg);
+        let _enter = span.enter();
+
         let mut retry_attempted = false;
         let mut retry = Err(msg);
 
         while let Err(msg) = retry {
-            retry = match &mut self.state {
-                IntercomState::Connected { connection } => {
-                    let r = connection.send(msg).await.map_err(|SendError(msg)| msg);
-                    connection.sent_counter.fetch_add(1, Ordering::SeqCst);
-                    r
-                }
-                _ => Err(msg),
-            };
+            retry =
+                match &mut self.state {
+                    IntercomState::Connected { connection } => {
+                        tracing::trace!("sending message");
+                        let r = connection.send(msg).in_current_span().await.map_err(
+                            |SendError(msg)| {
+                                tracing::trace!("failed to send message");
+                                msg
+                            },
+                        );
+                        connection.sent_counter.fetch_add(1, Ordering::SeqCst);
+                        r
+                    }
+                    _ => {
+                        tracing::debug!("service not connected");
+                        Err(msg)
+                    }
+                };
 
             if retry.is_err() && retry_attempted {
+                tracing::error!("cannot connect to service");
                 return Err(WatchdogError::CannotConnectToService {
                     service_identifier: T::SERVICE_IDENTIFIER,
                     retry_attempted,
@@ -124,8 +139,9 @@ impl<T: Service> Intercom<T> {
 
             if retry.is_err() {
                 retry_attempted = true;
+                tracing::debug!("retrying to connect to service in 100ms");
                 tokio::time::delay_for(std::time::Duration::from_millis(100)).await;
-                self.connect().await?;
+                self.connect().in_current_span().await?;
             }
         }
 
@@ -133,10 +149,16 @@ impl<T: Service> Intercom<T> {
     }
 
     fn disconnect(&mut self) {
+        let span = tracing::span!(tracing::Level::DEBUG, "Intercom::disconnect");
+        let _enter = span.enter();
+        tracing::trace!("disconnect from the service");
         self.state = IntercomState::Disconnected;
     }
 
     async fn connect(&mut self) -> Result<(), WatchdogError> {
+        let span = tracing::span!(tracing::Level::DEBUG, "Intercom::connect");
+        let _enter = span.enter();
+
         // make sure we are disconnected
         self.disconnect();
 
@@ -146,10 +168,12 @@ impl<T: Service> Intercom<T> {
             service_identifier: T::SERVICE_IDENTIFIER,
             reply: Reply(reply),
         };
+        tracing::trace!("querying connection to service from the watchdog");
         self.watchdog_query.send(command).await;
 
         match receiver.await {
             Ok(Ok(intercom_sender)) => {
+                tracing::trace!("watchdog replied with established connection");
                 let tid = intercom_sender.type_id();
                 match intercom_sender.downcast_ref::<IntercomSender<T::Intercom>>() {
                     Some(intercom_sender_ref) => {
@@ -165,7 +189,10 @@ impl<T: Service> Intercom<T> {
                     ),
                 }
             }
-            Ok(Err(err)) => Err(err),
+            Ok(Err(err)) => {
+                tracing::error!(error = %err, "cannot connect to the service");
+                Err(err)
+            }
             Err(err) => {
                 // we assume the server will always reply one way or another
                 unreachable!(
