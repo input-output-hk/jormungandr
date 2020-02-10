@@ -102,11 +102,8 @@ impl<T: Service> Intercom<T> {
     ///
     /// however, there is a 100ms delay before doing a retry. Only one retry
     /// will be perform.
+    #[tracing::instrument(skip(self), target = "intercom", level = "debug")]
     pub async fn send(&mut self, msg: T::Intercom) -> Result<(), WatchdogError> {
-        let identifer = T::SERVICE_IDENTIFIER;
-        let span = tracing::debug_span!("Intercom::send", msg = ?msg, service = %identifer);
-        let _enter = span.enter();
-
         let mut retry_attempted = false;
         let mut retry = Err(msg);
 
