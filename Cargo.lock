@@ -1676,7 +1676,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "jcli"
 version = "0.8.10-alpha1"
 dependencies = [
- "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-addr 0.1.0",
@@ -1817,7 +1817,7 @@ dependencies = [
 name = "jormungandr-lib"
 version = "0.8.10-alpha1"
 dependencies = [
- "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cardano-legacy-address 0.1.1",
  "chain-addr 0.1.0",
