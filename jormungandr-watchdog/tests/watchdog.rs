@@ -2,9 +2,12 @@
 //! services to add noises around.
 //!
 
+use clap::App;
 use jormungandr_watchdog::{CoreServices, WatchdogBuilder, WatchdogError};
 use std::{any::Any, time::Duration};
 use tokio::time::delay_for;
+
+const DEFAULT_ARGS: &[&str] = &[];
 
 #[derive(CoreServices)]
 struct NoServices;
@@ -13,7 +16,8 @@ struct NoServices;
 /// after receiving the shutdown command from the controller
 #[test]
 fn start_shutdown_watchdog() {
-    let watchdog = WatchdogBuilder::new().build::<NoServices>();
+    let app = App::new("testing");
+    let watchdog = WatchdogBuilder::<NoServices>::new(app).build_from_safe(DEFAULT_ARGS);
     let mut controller = watchdog.control();
 
     watchdog.spawn(async move {
@@ -28,7 +32,8 @@ fn start_shutdown_watchdog() {
 /// after receiving the kill command from the controller
 #[test]
 fn start_kill_watchdog() {
-    let watchdog = WatchdogBuilder::new().build::<NoServices>();
+    let app = App::new("testing");
+    let watchdog = WatchdogBuilder::<NoServices>::new(app).build_from_safe(DEFAULT_ARGS);
     let mut controller = watchdog.control();
 
     watchdog.spawn(async move {
@@ -43,7 +48,8 @@ fn start_kill_watchdog() {
 /// be appropriately reported back up to the monitor
 #[test]
 fn start_unknown_service() {
-    let watchdog = WatchdogBuilder::new().build::<NoServices>();
+    let app = App::new("testing");
+    let watchdog = WatchdogBuilder::<NoServices>::new(app).build_from_safe(DEFAULT_ARGS);
     let mut controller = watchdog.control();
 
     watchdog.spawn(async move {

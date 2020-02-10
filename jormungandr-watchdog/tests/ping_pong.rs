@@ -4,11 +4,14 @@
 //!
 
 use async_trait::async_trait;
+use clap::App;
 use jormungandr_watchdog::{
     service, CoreServices, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
 };
 use std::time::Duration;
 use tokio::time::delay_for;
+
+const DEFAULT_ARGS: &[&str] = &[];
 
 struct Ping {
     state: ServiceState<Self>,
@@ -89,7 +92,8 @@ struct PingPongServices {
 /// after receiving the shutdown command from the controller
 #[test]
 fn ping_pong() {
-    let watchdog = WatchdogBuilder::new().build::<PingPongServices>();
+    let app = App::new("ping_pong");
+    let watchdog = WatchdogBuilder::<PingPongServices>::new(app).build_from_safe(DEFAULT_ARGS);
 
     let mut controller = watchdog.control();
     watchdog.spawn(async move {

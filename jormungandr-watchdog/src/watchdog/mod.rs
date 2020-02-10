@@ -19,7 +19,13 @@ use tokio::{
 /// associated metadata
 #[async_trait]
 pub trait CoreServices: Send + Sync {
-    fn new() -> (Vec<Runtime>, Self);
+    type Settings: Default + Send + serde::ser::Serialize + serde::de::DeserializeOwned;
+
+    fn add_cli_args<'a, 'b>(app: clap::App<'a, 'b>) -> clap::App<'a, 'b>
+    where
+        'a: 'b;
+
+    fn new<'a>(settings: &mut Self::Settings, args: &clap::ArgMatches<'a>) -> (Vec<Runtime>, Self);
 
     fn stop(&mut self, service_identifier: ServiceIdentifier) -> Result<(), WatchdogError>;
     async fn status(
@@ -37,13 +43,20 @@ pub trait CoreServices: Send + Sync {
     ) -> Result<Box<dyn Any + Send + 'static>, WatchdogError>;
 }
 
-pub struct Watchdog<T> {
+pub struct Watchdog<T: CoreServices> {
     services: T,
+    settings: T::Settings,
     on_drop_send: oneshot::Sender<()>,
 }
 
-#[derive(Default)]
-pub struct WatchdogBuilder;
+pub struct WatchdogBuilder<'a, 'b, T>
+where
+    T: CoreServices,
+    'a: 'b,
+{
+    app: clap::App<'a, 'b>,
+    _marker: std::marker::PhantomData<T>,
+}
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum WatchdogError {
@@ -66,16 +79,73 @@ pub enum WatchdogError {
     },
 }
 
-impl WatchdogBuilder {
-    pub fn new() -> Self {
-        Self::default()
+const APP_ARG_CONFIG_FILE: &str = "WATCHDOG_SERVICES_CONFIG_FILE";
+
+impl<'a, 'b, T> WatchdogBuilder<'a, 'b, T>
+where
+    'a: 'b,
+    T: CoreServices,
+{
+    pub fn new(app: clap::App<'a, 'b>) -> Self {
+        let app = app.arg(
+            clap::Arg::with_name(APP_ARG_CONFIG_FILE)
+                .short("c")
+                .long("config")
+                .takes_value(true)
+                .value_name("FILE")
+                .help("Path to the application's configuration file")
+                .long_help(
+                    "Path to the application's configuration file. The default is to search for
+a configuration file in the current directory. However it is preferable to
+give the absolute path to the file.",
+                )
+                .global(true)
+                .env(crate_name!())
+                .default_value("config.yaml"),
+        );
+
+        Self {
+            app,
+            _marker: std::marker::PhantomData,
+        }
     }
 
-    pub fn build<T>(&self) -> WatchdogMonitor
+    pub fn build(self) -> WatchdogMonitor
     where
         T: CoreServices + 'static,
     {
-        let (runtimes, services) = T::new();
+        let app = T::add_cli_args(self.app);
+
+        let args = app.get_matches();
+
+        Self::build_(args)
+    }
+
+    pub fn build_from_safe<I, V>(self, itr: I) -> WatchdogMonitor
+    where
+        T: CoreServices + 'static,
+        I: IntoIterator<Item = V>,
+        V: Into<::std::ffi::OsString> + Clone,
+    {
+        let app = T::add_cli_args(self.app);
+
+        let args = app.get_matches_from_safe(itr).unwrap();
+
+        Self::build_(args)
+    }
+
+    fn build_(args: clap::ArgMatches<'a>) -> WatchdogMonitor
+    where
+        T: CoreServices + 'static,
+    {
+        let config_path = value_t!(args.value_of(APP_ARG_CONFIG_FILE), std::path::PathBuf)
+            .unwrap_or_else(|e| e.exit());
+
+        // TODO: handle the case where there is no config file to read?
+        let file = std::fs::File::open(&config_path).unwrap();
+        let mut settings = serde_yaml::from_reader(file).unwrap();
+
+        let (runtimes, services) = T::new(&mut settings, &args);
 
         let (sender, receiver) = mpsc::channel(10);
         let (on_drop_send, on_drop_receive) = oneshot::channel();
@@ -83,6 +153,7 @@ impl WatchdogBuilder {
         let watchdog = Watchdog {
             on_drop_send,
             services,
+            settings,
         };
 
         let rt = tokio::runtime::Builder::new()

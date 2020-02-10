@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -7,10 +8,19 @@ use tokio::{
     sync::watch::{self, Receiver, Sender},
 };
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NoSettings;
 
-pub trait Settings: Default + Clone {}
+pub trait Settings: Serialize + serde::de::DeserializeOwned + Default + Clone {
+    /// add configurations for the CLI settings
+    ///
+    /// It is valid to return `Vec::new()` (an empty vec) if there are
+    /// not CLI options to add to the program for this service's settings
+    fn add_cli_args<'a, 'b>() -> Vec<clap::Arg<'a, 'b>>;
+
+    /// matches the program's CLI and retrieve the
+    fn matches_cli_args<'a>(&mut self, matches: &clap::ArgMatches<'a>);
+}
 
 /// allow managing the settings of a running service
 ///
@@ -91,7 +101,14 @@ impl<T: Clone> Stream for SettingsReader<T> {
     }
 }
 
-impl Settings for NoSettings {}
+impl Settings for NoSettings {
+    fn add_cli_args<'a, 'b>() -> Vec<clap::Arg<'a, 'b>> {
+        Vec::new()
+    }
+
+    /// matches the program's CLI and retrieve the
+    fn matches_cli_args<'a>(&mut self, _matches: &clap::ArgMatches<'a>) {}
+}
 
 #[cfg(test)]
 mod tests {

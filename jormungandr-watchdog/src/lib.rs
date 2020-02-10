@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate clap;
+
 pub mod service;
 mod watchdog;
 

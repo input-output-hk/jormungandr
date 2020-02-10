@@ -41,6 +41,22 @@ pub trait Service: Send + Sized + 'static {
     async fn start(self);
 }
 
+pub trait ServiceManagerTrait {
+    const SERVICE_IDENTIFIER: ServiceIdentifier;
+
+    type State: State;
+    type Settings: Settings;
+    type Intercom: IntercomMsg;
+}
+
+impl<T: Service> ServiceManagerTrait for ServiceManager<T> {
+    const SERVICE_IDENTIFIER: ServiceIdentifier = T::SERVICE_IDENTIFIER;
+
+    type State = T::State;
+    type Settings = T::Settings;
+    type Intercom = T::Intercom;
+}
+
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
 pub enum ServiceError {
     #[error("Service cannot be started because status is: {status}")]
@@ -158,8 +174,10 @@ impl<T: Service> ServiceState<T> {
 }
 
 impl<T: Service> ServiceManager<T> {
-    pub fn new() -> (Runtime, Self) {
+    pub fn new<'a>(settings: &mut T::Settings, args: &clap::ArgMatches<'a>) -> (Runtime, Self) {
         let identifier = T::SERVICE_IDENTIFIER;
+
+        settings.matches_cli_args(args);
 
         let mut runtime = Builder::new()
             .enable_io()
@@ -169,8 +187,7 @@ impl<T: Service> ServiceManager<T> {
             .build()
             .unwrap();
 
-        let settings =
-            runtime.block_on(async { SettingsUpdater::new(T::Settings::default()).await });
+        let settings = runtime.block_on(async { SettingsUpdater::new(settings.clone()).await });
         let state = runtime.block_on(async { StateSaver::new(T::State::default()).await });
         let status = StatusReader::new(Status::shutdown());
         let controller = runtime.block_on(async { Controller::new().await });

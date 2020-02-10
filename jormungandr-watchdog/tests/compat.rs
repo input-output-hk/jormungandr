@@ -2,12 +2,15 @@
 //! context of async/await service provided here.
 
 use async_trait::async_trait;
+use clap::App;
 use jormungandr_watchdog::{
     service, CoreServices, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
 };
 use std::time::Duration;
 use tokio::time::delay_for;
 use tokio_compat::prelude::*;
+
+const DEFAULT_ARGS: &[&str] = &[];
 
 struct Echo {
     state: ServiceState<Self>,
@@ -102,7 +105,8 @@ struct EchoServices {
 /// after receiving the shutdown command from the controller
 #[test]
 fn compat() {
-    let watchdog = WatchdogBuilder::new().build::<EchoServices>();
+    let app = App::new("compat");
+    let watchdog = WatchdogBuilder::<EchoServices>::new(app).build_from_safe(DEFAULT_ARGS);
 
     let mut controller = watchdog.control();
     watchdog.spawn(async move {

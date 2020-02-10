@@ -12,13 +12,60 @@ pub fn derive_core_services(input: proc_macro::TokenStream) -> proc_macro::Token
     gen.into()
 }
 
+// TODO: the settings type should be derived from the CoreServices impl
+//       this to avoid issue with the competing names
+fn gen_settings_type(fields: &Punctuated<Field, Comma>) -> TokenStream {
+    let cases = fields.iter().map(|field| {
+        let field_name = field.ident.as_ref().unwrap();
+        let ty = &field.ty;
+
+        quote! {
+            #field_name: <#ty as ::jormungandr_watchdog::service::ServiceManagerTrait>::Settings
+        }
+    });
+
+    quote! {
+        #[derive(::std::default::Default, ::serde::Serialize, ::serde::Deserialize)]
+        struct CoreServicesSettings {
+            #( #cases ),*
+        }
+    }
+}
+
+fn gen_cli_args(fields: &Punctuated<Field, Comma>) -> TokenStream {
+    let cases = fields.iter().map(|field| {
+        let ty = &field.ty;
+
+        quote! {
+            app = app.args(&
+                <
+                    <
+                        #ty
+                        as ::jormungandr_watchdog::service::ServiceManagerTrait
+                    >::Settings
+                    as ::jormungandr_watchdog::service::Settings
+                >::add_cli_args()
+            );
+        }
+    });
+
+    quote! {
+        fn add_cli_args<'a, 'b>(mut app: ::clap::App<'a, 'b>) -> ::clap::App<'a, 'b>
+          where
+            'a: 'b {
+            #( #cases )*
+            app
+        }
+    }
+}
+
 fn gen_new(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let cases = fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
 
         quote! {
             #field_name: {
-                let (rt, sm) = ::jormungandr_watchdog::service::ServiceManager::new();
+                let (rt, sm) = ::jormungandr_watchdog::service::ServiceManager::new(&mut settings.#field_name, args);
                 runtimes.push(rt);
                 sm
             }
@@ -26,7 +73,7 @@ fn gen_new(fields: &Punctuated<Field, Comma>) -> TokenStream {
     });
 
     quote! {
-        fn new() -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
+        fn new<'a>(settings: &mut Self::Settings, args: &::clap::ArgMatches<'a>) -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
             let mut runtimes = ::std::vec::Vec::new();
 
             let entity = Self {
@@ -199,6 +246,8 @@ fn impl_core_services_for_struct(
     struct_name: &Ident,
     fields: &Punctuated<Field, Comma>,
 ) -> TokenStream {
+    let cli = gen_cli_args(fields);
+    let settings_type = gen_settings_type(fields);
     let new = gen_new(fields);
     let start = gen_start(fields);
     let stop = gen_stop(fields);
@@ -206,8 +255,13 @@ fn impl_core_services_for_struct(
     let intercom = gen_intercom(fields);
 
     quote! {
+        #settings_type
+
         #[async_trait::async_trait]
+        #[allow(clippy::unit_arg)]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
+            type Settings = CoreServicesSettings;
+            #cli
             #new
             #start
             #status
@@ -221,8 +275,17 @@ fn impl_core_services_for_struct(
 fn impl_core_services_for_struct_unit(struct_name: &Ident) -> TokenStream {
     quote! {
         #[async_trait::async_trait]
+        #[allow(clippy::unit_arg)]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
-            fn new() -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
+            type Settings = ();
+
+            fn add_cli_args<'a, 'b>(app: ::clap::App<'a, 'b>) -> ::clap::App<'a, 'b>
+            where
+                'a: 'b {
+                app
+            }
+
+            fn new<'a>(_: &mut Self::Settings, _: &::clap::ArgMatches<'a>) -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
                 (::std::vec::Vec::new(), Self)
             }
 
@@ -271,8 +334,17 @@ fn impl_core_services(input: &DeriveInput) -> TokenStream {
 
     set_dummy(quote! {
         #[async_trait::async_trait]
+        #[allow(clippy::unit_arg)]
         impl ::jormungandr_watchdog::CoreServices for #struct_name {
-            fn new() -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
+            type Settings = ();
+
+            fn add_cli_args<'a, 'b>(_app: ::clap::App<'a, 'b>) -> ::clap::App<'a, 'b>
+            where
+                'a: 'b {
+                unimplemented!()
+            }
+
+            fn new<'a>(_: &mut Self::Settings, args: &::clap::ArgMatches<'a>) -> (::std::vec::Vec<::tokio::runtime::Runtime>, Self) {
                 unimplemented!()
             }
             fn start(
