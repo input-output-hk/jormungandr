@@ -96,8 +96,6 @@ pub fn load_blockchain(
     block_cache_ttl: Duration,
     logger: &Logger,
 ) -> Result<(Blockchain, Tip), Error> {
-    use tokio_compat::prelude::*;
-
     let blockchain = Blockchain::new(block0.header.hash(), storage, block_cache_ttl);
 
     let mut rt = tokio02::runtime::Runtime::new().unwrap();
@@ -112,7 +110,7 @@ pub fn load_blockchain(
             Ok(branch) => Ok(branch),
         }?;
         let tip = Tip::new(main_branch);
-        let tip_ref = tip.get_ref_no_err().compat().await.unwrap();
+        let tip_ref = tip.get_ref_std().await;
         info!(
             logger,
             "Loaded from storage tip is : {}",

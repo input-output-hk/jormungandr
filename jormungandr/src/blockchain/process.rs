@@ -7,9 +7,7 @@ use super::{
 use crate::{
     blockcfg::{Block, FragmentId, Header},
     blockchain::Checkpoints,
-    intercom::{
-        self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, ReplyHandle, TransactionMsg,
-    },
+    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     log,
     network::p2p::Id as NodeId,
     stats_counter::StatsCounter,
@@ -25,12 +23,10 @@ use crate::{
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
 
-use futures::future::{Either, Loop};
+use futures::future::Either;
 use slog::Logger;
-use tokio::{
-    prelude::*,
-    timer::{timeout, Timeout},
-};
+use tokio::{prelude::*, timer::timeout};
+use tokio_compat::prelude::*;
 
 use std::{sync::Arc, time::Duration};
 
@@ -100,7 +96,7 @@ impl Process {
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
         let explorer_msg_box = self.explorer_msgbox.clone();
-        let mut tx_msg_box = self.fragment_msgbox.clone();
+        let tx_msg_box = self.fragment_msgbox.clone();
         let stats_counter = self.stats_counter.clone();
 
         match input {
@@ -109,52 +105,24 @@ impl Process {
                     "hash" => block.header.hash().to_string(),
                     "parent" => block.header.parent_id().to_string(),
                     "date" => block.header.block_date().to_string()));
-                let logger2 = logger.clone();
-                let logger3 = logger.clone();
 
                 info!(logger, "receiving block from leadership service");
 
-                let process_new_block =
-                    process_leadership_block(logger.clone(), blockchain.clone(), block.clone());
-
-                let fragments = block.fragments().map(|f| f.id()).collect();
-
-                let update_mempool = process_new_block.and_then(move |new_block_ref| {
-                    debug!(logger2, "updating fragment's log");
-                    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
-                        .map_err(|_| "cannot remove fragments from pool".into())
-                        .map(|_| new_block_ref)
-                });
-
-                let process_new_ref = update_mempool.and_then(move |new_block_ref| {
-                    process_and_propagate_new_ref(
-                        logger3,
-                        blockchain,
-                        blockchain_tip,
-                        Arc::clone(&new_block_ref),
-                        network_msg_box,
-                    )
-                });
-
-                let notify_explorer = process_new_ref.and_then(move |()| {
-                    if let Some(msg_box) = explorer_msg_box {
-                        Either::A(
-                            msg_box
-                                .send(ExplorerMsg::NewBlock(block))
-                                .map_err(|_| "Cannot propagate block to explorer".into())
-                                .map(|_| ()),
-                        )
-                    } else {
-                        Either::B(future::ok(()))
-                    }
-                });
-
-                info.spawn(
+                info.timeout_spawn_failable_std(
                     "process leadership block",
-                    Timeout::new(notify_explorer, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP))
-                        .map_err(move |err: TimeoutError| {
-                            error!(logger, "cannot process leadership block" ; "reason" => ?err)
-                        })
+                    Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP),
+                    async {
+                        process_leadership_block(
+                            logger,
+                            blockchain,
+                            blockchain_tip,
+                            tx_msg_box,
+                            network_msg_box,
+                            explorer_msg_box,
+                            block,
+                        )
+                        .await
+                    },
                 )
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
@@ -176,104 +144,33 @@ impl Process {
                     logger.clone(),
                 );
 
-                info.spawn("process block announcement", Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT)).map_err(move |err: TimeoutError| {
-                    error!(logger, "cannot process block announcement" ; "reason" => ?err)
-                }))
+                info.timeout_spawn_failable_std(
+                    "process block announcement",
+                    Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT),
+                    future.compat(),
+                )
             }
             BlockMsg::NetworkBlocks(handle) => {
-                struct State<S> {
-                    stream: S,
-                    reply: ReplyHandle<()>,
-                    candidate: Option<Arc<Ref>>,
-                }
-
                 info!(info.logger(), "receiving block stream from network");
 
                 let logger = info.logger().clone();
-                let logger_fold = logger.clone();
-                let logger_err = logger.clone();
-                let blockchain_fold = blockchain.clone();
-                let (stream, reply) = handle.into_stream_and_reply();
-                let stream =
-                    stream.map_err(|()| Error::from("Error while processing block input stream"));
-                let state = State {
-                    stream,
-                    reply,
-                    candidate: None,
-                };
                 let get_next_block_scheduler = get_next_block_scheduler.clone();
-                let future = future::loop_fn(state, move |state| {
-                    let blockchain = blockchain_fold.clone();
-                    let tx_msg_box = tx_msg_box.clone();
-                    let explorer_msg_box = explorer_msg_box.clone();
-                    let stats_counter = stats_counter.clone();
-                    let logger = logger_fold.clone();
-                    let get_next_block_scheduler = get_next_block_scheduler.clone();
-                    let State {
-                        stream,
-                        reply,
-                        candidate,
-                    } = state;
-                    stream.into_future().map_err(|(e, _)| e).and_then(
-                        move |(maybe_block, stream)| match maybe_block {
-                            Some(block) => Either::A(
-                                process_network_block(
-                                    blockchain,
-                                    block,
-                                    tx_msg_box,
-                                    explorer_msg_box,
-                                    get_next_block_scheduler,
-                                    logger.clone(),
-                                )
-                                .then(move |res| match res {
-                                    Ok(Some(candidate)) => {
-                                        stats_counter.add_block_recv_cnt(1);
-                                        Ok(Loop::Continue(State {
-                                            stream,
-                                            reply,
-                                            candidate: Some(candidate),
-                                        }))
-                                    }
-                                    Ok(None) => {
-                                        reply.reply_ok(());
-                                        Ok(Loop::Break(candidate))
-                                    }
-                                    Err(e) => {
-                                        info!(
-                                            logger,
-                                            "validation of an incoming block failed";
-                                            "reason" => ?e,
-                                        );
-                                        reply.reply_error(network_block_error_into_reply(e));
-                                        Ok(Loop::Break(candidate))
-                                    }
-                                }),
-                            ),
-                            None => {
-                                reply.reply_ok(());
-                                Either::B(future::ok(Loop::Break(candidate)))
-                            }
-                        },
-                    )
-                })
-                .and_then(move |maybe_updated| match maybe_updated {
-                    Some(new_block_ref) => {
-                        let future = process_and_propagate_new_ref(
-                            logger,
-                            blockchain,
-                            blockchain_tip,
-                            Arc::clone(&new_block_ref),
-                            network_msg_box,
-                        );
-                        Either::A(future)
-                    }
-                    None => Either::B(future::ok(())),
-                });
 
-                info.spawn(
-                    "process network blocks", Timeout::new(future, Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS)).map_err(move |err: TimeoutError| {
-                    error!(logger_err, "cannot process network blocks" ; "reason" => ?err)
-                }))
+                info.timeout_spawn_failable_std(
+                    "process network blocks",
+                    Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS),
+                    process_network_blocks(
+                        self.blockchain.clone(),
+                        blockchain_tip,
+                        tx_msg_box,
+                        network_msg_box,
+                        explorer_msg_box,
+                        get_next_block_scheduler,
+                        handle,
+                        stats_counter,
+                        logger,
+                    ),
+                );
             }
             BlockMsg::ChainHeaders(handle) => {
                 info!(info.logger(), "receiving header stream from network");
@@ -319,7 +216,7 @@ impl Process {
                     .map_err(move |err: TimeoutError| {
                         error!(logger_err2, "cannot process network headers" ; "reason" => ?err)
                     });
-                info.spawn("process network headers", future);
+                info.spawn_failable_std("process network headers", future.compat());
             }
         }
     }
@@ -329,7 +226,7 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let logger = info.logger().clone();
 
-        info.run_periodic(
+        info.run_periodic_std(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
             move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
@@ -356,7 +253,7 @@ impl Process {
         let future = scheduler_future
             .map(|never| match never {})
             .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
-        info.spawn("pull headers scheduling", future);
+        info.spawn_failable_std("pull headers scheduling", future.compat());
         scheduler
     }
 
@@ -382,7 +279,7 @@ impl Process {
         let future = scheduler_future
             .map(|never| match never {})
             .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
-        info.spawn("get next block scheduling", future);
+        info.spawn_failable_std("get next block scheduling", future.compat());
         scheduler
     }
 }
@@ -401,29 +298,91 @@ fn try_request_fragment_removal(
 /// this function will re-process the tip against the different branches
 /// this is because a branch may have become more interesting with time
 /// moving forward and branches may have been dismissed
-pub fn reprocess_tip(
-    logger: Logger,
-    blockchain: Blockchain,
-    tip: Tip,
-) -> impl Future<Item = (), Error = Error> {
-    let branches_future = blockchain.branches().branches();
+async fn reprocess_tip(logger: Logger, mut blockchain: Blockchain, tip: Tip) -> Result<(), Error> {
+    let branches: Vec<Arc<Ref>> = blockchain.branches().branches().compat().await.unwrap();
 
-    branches_future
-        .join(tip.get_ref())
-        .map(|(all, tip)| {
-            all.into_iter()
-                .filter(|r|
-                    // remove our own tip so we don't apply it against itself
-                    !Arc::ptr_eq(&r, &tip))
-                .collect::<Vec<_>>()
-        })
-        .and_then(move |others| {
-            stream::iter_ok(others)
-                .for_each(move |other| {
-                    process_new_ref(logger.clone(), blockchain.clone(), tip.clone(), other)
-                })
-                .into_future()
-        })
+    let tip_as_ref = tip.get_ref_std().await;
+
+    let others = branches
+        .iter()
+        .filter(|r| !Arc::ptr_eq(&r, &tip_as_ref))
+        .collect::<Vec<_>>();
+
+    for other in others {
+        process_new_ref_std(&logger, &mut blockchain, tip.clone(), Arc::clone(other)).await?
+    }
+
+    Ok(())
+}
+
+/// process a new candidate block on top of the blockchain, this function may:
+///
+/// * update the current tip if the candidate's parent is the current tip;
+/// * update a branch if the candidate parent is that branch's tip;
+/// * create a new branch if none of the above;
+///
+/// If the current tip is not the one being updated we will then trigger
+/// chain selection after updating that other branch as it may be possible that
+/// this branch just became more interesting for the current consensus algorithm.
+pub async fn process_new_ref_std(
+    logger: &Logger,
+    blockchain: &mut Blockchain,
+    mut tip: Tip,
+    candidate: Arc<Ref>,
+) -> Result<(), Error> {
+    let candidate_hash = candidate.hash();
+    let storage = blockchain.storage().clone();
+
+    let tip_ref = tip.get_ref_std().await;
+
+    let tip_updated = if tip_ref.hash() == candidate.block_parent_hash() {
+        info!(
+            logger,
+            "update current branch tip: {} -> {}",
+            tip_ref.header().description(),
+            candidate.header().description(),
+        );
+        tip.update_ref_std(candidate).await;
+        true
+    } else {
+        match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
+            ComparisonResult::PreferCurrent => {
+                info!(
+                    logger,
+                    "create new branch with tip {} | current-tip {}",
+                    candidate.header().description(),
+                    tip_ref.header().description(),
+                );
+                false
+            }
+            ComparisonResult::PreferCandidate => {
+                info!(
+                    logger,
+                    "switching branch from {} to {}",
+                    tip_ref.header().description(),
+                    candidate.header().description(),
+                );
+                let branch = blockchain
+                    .branches_mut()
+                    .apply_or_create(candidate)
+                    .compat()
+                    .await
+                    .unwrap();
+                tip.swap_std(branch).await;
+                true
+            }
+        }
+    };
+
+    if tip_updated {
+        storage
+            .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
+            .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
+            .compat()
+            .await
+    } else {
+        Ok(())
+    }
 }
 
 /// process a new candidate block on top of the blockchain, this function may:
@@ -496,60 +455,94 @@ pub fn process_new_ref(
         })
 }
 
-fn process_and_propagate_new_ref(
-    logger: Logger,
-    blockchain: Blockchain,
+async fn process_and_propagate_new_ref(
+    logger: &Logger,
+    blockchain: &mut Blockchain,
     tip: Tip,
     new_block_ref: Arc<Ref>,
     network_msg_box: MessageBox<NetworkMsg>,
-) -> impl Future<Item = (), Error = Error> {
+) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
+    let hash = header.hash();
 
-    debug!(logger, "processing the new block and propagating"; "hash" => %header.hash());
+    debug!(logger, "processing the new block and propagating"; "hash" => %hash);
 
-    let process_new_ref = process_new_ref(logger.clone(), blockchain, tip, new_block_ref);
+    process_new_ref_std(logger, blockchain, tip, new_block_ref).await?;
 
-    process_new_ref.and_then(move |()| {
-        debug!(logger, "propagating block to the network"; "hash" => %header.hash());
-        network_msg_box
-            .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-            .map_err(|_| "Cannot propagate block to network".into())
-            .map(|_| ())
-    })
+    debug!(logger, "propagating block to the network"; "hash" => %hash);
+    network_msg_box
+        .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+        .map_err(|_| "Cannot propagate block to network".into())
+        .map(|_| ())
+        .compat()
+        .await
 }
 
-pub fn process_leadership_block(
+async fn process_leadership_block(
     logger: Logger,
-    blockchain: Blockchain,
+    mut blockchain: Blockchain,
+    blockchain_tip: Tip,
+    mut tx_msg_box: MessageBox<TransactionMsg>,
+    network_msg_box: MessageBox<NetworkMsg>,
+    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     block: Block,
-) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    let end_blockchain = blockchain.clone();
+) -> Result<(), Error> {
+    let new_block_ref =
+        process_leadership_block_inner(&logger, &mut blockchain, block.clone()).await?;
+
+    let fragments = block.fragments().map(|f| f.id()).collect();
+
+    debug!(logger, "updating fragment's log");
+    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
+        .map_err(|_| "cannot remove fragments from pool".to_string())?;
+
+    process_and_propagate_new_ref(
+        &logger,
+        &mut blockchain,
+        blockchain_tip,
+        Arc::clone(&new_block_ref),
+        network_msg_box,
+    )
+    .await?;
+
+    if let Some(msg_box) = explorer_msg_box {
+        msg_box
+            .send(ExplorerMsg::NewBlock(block))
+            .map_err(|_| "Cannot propagate block to explorer".to_string())
+            .compat()
+            .await?;
+    }
+    Ok(())
+}
+
+async fn process_leadership_block_inner(
+    logger: &Logger,
+    blockchain: &mut Blockchain,
+    block: Block,
+) -> Result<Arc<Ref>, Error> {
     let header = block.header();
     let parent_hash = block.parent_id();
-    let logger1 = logger.clone();
-    let logger2 = logger.clone();
     // This is a trusted block from the leadership task,
     // so we can skip pre-validation.
+    let parent = blockchain.get_ref(parent_hash).compat().await?;
+
+    let post_checked = if let Some(parent_ref) = parent {
+        debug!(logger, "processing block from leader event");
+        blockchain
+            .post_check_header(header, parent_ref)
+            .compat()
+            .await?
+    } else {
+        error!(
+            logger,
+            "block from leader event does not have parent block in storage"
+        );
+        return Err(ErrorKind::MissingParentBlock(parent_hash).into());
+    };
+
+    debug!(logger, "apply and store block");
     blockchain
-        .get_ref(parent_hash)
-        .and_then(move |parent| {
-            if let Some(parent_ref) = parent {
-                debug!(logger1, "processing block from leader event");
-                Either::A(blockchain.post_check_header(header, parent_ref))
-            } else {
-                error!(
-                    logger1,
-                    "block from leader event does not have parent block in storage"
-                );
-                Either::B(future::err(
-                    ErrorKind::MissingParentBlock(parent_hash).into(),
-                ))
-            }
-        })
-        .and_then(move |post_checked| {
-            debug!(logger2, "apply and store block");
-            end_blockchain.apply_and_store_block(post_checked, block)
-        })
+        .apply_and_store_block(post_checked, block)
         .map_err(|err| Error::with_chain(err, "cannot process leadership block"))
         .map(move |applied| {
             let new_ref = applied
@@ -558,6 +551,8 @@ pub fn process_leadership_block(
             info!(logger, "block from leader event successfully stored");
             new_ref
         })
+        .compat()
+        .await
 }
 
 fn process_block_announcement(
@@ -616,125 +611,188 @@ fn process_block_announcement(
         .map_err(|err| Error::with_chain(err, "cannot process block announcement"))
 }
 
-fn process_network_block(
-    blockchain: Blockchain,
-    block: Block,
-    tx_msg_box: MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+async fn process_network_blocks(
+    mut blockchain: Blockchain,
+    blockchain_tip: Tip,
+    mut tx_msg_box: MessageBox<TransactionMsg>,
+    network_msg_box: MessageBox<NetworkMsg>,
+    mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
+    handle: intercom::RequestStreamHandle<Block, ()>,
+    stats_counter: StatsCounter,
     logger: Logger,
-) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
+) -> Result<(), Error> {
+    let (stream, reply) = handle.into_stream_and_reply();
+    let mut stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
+    let mut candidate = None;
+
+    let maybe_updated: Option<Arc<Ref>> = loop {
+        let (maybe_block, new_stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
+        match maybe_block {
+            Some(block) => {
+                let res = process_network_block(
+                    &mut blockchain,
+                    block,
+                    &mut tx_msg_box,
+                    explorer_msg_box.as_mut(),
+                    &mut get_next_block_scheduler,
+                    &logger,
+                )
+                .await;
+                match res {
+                    Ok(Some(r)) => {
+                        stats_counter.add_block_recv_cnt(1);
+                        stream = new_stream;
+                        candidate = Some(r);
+                    }
+                    Ok(None) => {
+                        reply.reply_ok(());
+                        break candidate;
+                    }
+                    Err(e) => {
+                        info!(
+                            logger,
+                            "validation of an incoming block failed";
+                            "reason" => ?e,
+                        );
+                        reply.reply_error(network_block_error_into_reply(e));
+                        break candidate;
+                    }
+                }
+            }
+            None => {
+                reply.reply_ok(());
+                break candidate;
+            }
+        }
+    };
+
+    match maybe_updated {
+        Some(new_block_ref) => {
+            let r = process_and_propagate_new_ref(
+                &logger,
+                &mut blockchain,
+                blockchain_tip,
+                Arc::clone(&new_block_ref),
+                network_msg_box,
+            )
+            .await?;
+            Ok(r)
+        }
+        None => Ok(()),
+    }
+}
+
+async fn process_network_block(
+    blockchain: &Blockchain,
+    block: Block,
+    tx_msg_box: &mut MessageBox<TransactionMsg>,
+    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    get_next_block_scheduler: &mut GetNextBlockScheduler,
+    logger: &Logger,
+) -> Result<Option<Arc<Ref>>, chain::Error> {
     get_next_block_scheduler
         .declare_completed(block.id())
         .unwrap_or_else(
             |e| error!(logger, "get next block schedule completion failed"; "reason" => ?e),
         );
     let header = block.header();
-    blockchain
-        .pre_check_header(header, false)
-        .and_then(move |pre_checked| match pre_checked {
-            PreCheckedHeader::AlreadyPresent { header, .. } => {
-                debug!(
-                    logger,
-                    "block is already present";
-                    "hash" => %header.hash(),
-                    "parent" => %header.parent_id(),
-                    "date" => %header.block_date(),
-                );
-                Either::A(future::ok(None))
-            }
-            PreCheckedHeader::MissingParent { header, .. } => {
-                let parent_hash = header.parent_id();
-                debug!(
-                    logger,
-                    "block is missing a locally stored parent";
-                    "hash" => %header.hash(),
-                    "parent" => %parent_hash,
-                    "date" => %header.block_date(),
-                );
-                Either::A(future::err(
-                    ErrorKind::MissingParentBlock(parent_hash).into(),
-                ))
-            }
-            PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-                let post_check_and_apply = check_and_apply_block(
-                    blockchain,
-                    parent_ref,
-                    block,
-                    tx_msg_box,
-                    explorer_msg_box,
-                    logger,
-                );
-                Either::B(post_check_and_apply)
-            }
-        })
-}
-
-fn check_and_apply_block(
-    blockchain: Blockchain,
-    parent_ref: Arc<Ref>,
-    block: Block,
-    tx_msg_box: MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    logger: Logger,
-) -> impl Future<Item = Option<Arc<Ref>>, Error = chain::Error> {
-    let explorer_enabled = explorer_msg_box.is_some();
-    let blockchain1 = blockchain.clone();
-    let mut tx_msg_box = tx_msg_box.clone();
-    let mut explorer_msg_box = explorer_msg_box.clone();
-    let logger = logger.clone();
-    let header = block.header();
-    blockchain
-        .post_check_header(header, parent_ref)
-        .and_then(move |post_checked| {
-            let header = post_checked.header();
-            let block_hash = header.hash();
+    let pre_checked = blockchain.pre_check_header(header, false).compat().await?;
+    match pre_checked {
+        PreCheckedHeader::AlreadyPresent { header, .. } => {
             debug!(
                 logger,
-                "applying block to storage";
-                "hash" => %block_hash,
+                "block is already present";
+                "hash" => %header.hash(),
                 "parent" => %header.parent_id(),
                 "date" => %header.block_date(),
             );
-            let mut block_for_explorer = if explorer_enabled {
-                Some(block.clone())
-            } else {
-                None
-            };
-            let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
-            blockchain1
-                .apply_and_store_block(post_checked, block)
-                .and_then(move |applied_block| {
-                    if let AppliedBlock::New(block_ref) = applied_block {
-                        let header = block_ref.header();
-                        debug!(
-                            logger,
-                            "applied block to storage";
-                            "hash" => %block_hash,
-                            "parent" => %header.parent_id(),
-                            "date" => %header.block_date(),
-                        );
-                        try_request_fragment_removal(&mut tx_msg_box, fragment_ids, header).unwrap_or_else(|err| {
-                            error!(logger, "cannot remove fragments from pool" ; "reason" => %err)
-                        });
-                        if let Some(msg_box) = explorer_msg_box.as_mut() {
-                            msg_box
-                                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
-                                .unwrap_or_else(|err| {
-                                    error!(logger, "cannot add block to explorer: {}", err)
-                                });
-                        }
-                        Ok(Some(block_ref))
-                    } else {
-                        debug!(
-                            logger,
-                            "block is already present in storage, not applied";
-                            "hash" => %block_hash,
-                        );
-                        Ok(None)
-                    }
-                })
-        })
+            Ok(None)
+        }
+        PreCheckedHeader::MissingParent { header, .. } => {
+            let parent_hash = header.parent_id();
+            debug!(
+                logger,
+                "block is missing a locally stored parent";
+                "hash" => %header.hash(),
+                "parent" => %parent_hash,
+                "date" => %header.block_date(),
+            );
+            Err(ErrorKind::MissingParentBlock(parent_hash).into())
+        }
+        PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
+            let r = check_and_apply_block(
+                blockchain,
+                parent_ref,
+                block,
+                tx_msg_box,
+                explorer_msg_box,
+                logger,
+            )
+            .await;
+            r
+        }
+    }
+}
+
+async fn check_and_apply_block(
+    blockchain: &Blockchain,
+    parent_ref: Arc<Ref>,
+    block: Block,
+    tx_msg_box: &mut MessageBox<TransactionMsg>,
+    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    logger: &Logger,
+) -> Result<Option<Arc<Ref>>, chain::Error> {
+    let explorer_enabled = explorer_msg_box.is_some();
+    let post_checked = blockchain
+        .post_check_header(block.header(), parent_ref)
+        .compat()
+        .await?;
+    let header = post_checked.header();
+    let block_hash = header.hash();
+    debug!(
+        logger,
+        "applying block to storage";
+        "hash" => %block_hash,
+        "parent" => %header.parent_id(),
+        "date" => %header.block_date(),
+    );
+    let mut block_for_explorer = if explorer_enabled {
+        Some(block.clone())
+    } else {
+        None
+    };
+    let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
+    let applied_block = blockchain
+        .apply_and_store_block(post_checked, block)
+        .compat()
+        .await?;
+    if let AppliedBlock::New(block_ref) = applied_block {
+        let header = block_ref.header();
+        debug!(
+            logger,
+            "applied block to storage";
+            "hash" => %block_hash,
+            "parent" => %header.parent_id(),
+            "date" => %header.block_date(),
+        );
+        try_request_fragment_removal(tx_msg_box, fragment_ids, header).unwrap_or_else(
+            |err| error!(logger, "cannot remove fragments from pool" ; "reason" => %err),
+        );
+        if let Some(msg_box) = explorer_msg_box {
+            msg_box
+                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
+                .unwrap_or_else(|err| error!(logger, "cannot add block to explorer: {}", err));
+        }
+        Ok(Some(block_ref))
+    } else {
+        debug!(
+            logger,
+            "block is already present in storage, not applied";
+            "hash" => %block_hash,
+        );
+        Ok(None)
+    }
 }
 
 fn network_block_error_into_reply(err: chain::Error) -> intercom::Error {
