@@ -62,11 +62,14 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         wallet2.confirm_transaction();
     }
 
-    utils::wait_for_nodes_sync(SyncWaitParams::two_nodes());
-    utils::assert_are_in_sync(vec![&leader_1, &leader_2])?;
+    let measurement = utils::measure_sync_time(
+        vec![&leader_1, &leader_2],
+        SyncWaitParams::two_nodes().into(),
+        "two_transaction_to_two_leaders_sync",
+    );
 
     leader_1.shutdown().unwrap();
     leader_2.shutdown().unwrap();
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
 }

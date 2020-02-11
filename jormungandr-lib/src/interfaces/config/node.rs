@@ -1,4 +1,7 @@
-use crate::interfaces::{Log, Mempool};
+use crate::{
+    interfaces::{Log, Mempool},
+    time::Duration,
+};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -24,12 +27,19 @@ pub struct P2p {
     pub allow_private_addresses: bool,
 
     pub topics_of_interest: Option<TopicsOfInterest>,
+
+    pub policy: Option<Policy>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TopicsOfInterest {
     pub messages: String,
     pub blocks: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Policy {
+    pub quarantine_duration: Duration,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

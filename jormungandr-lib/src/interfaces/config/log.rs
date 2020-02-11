@@ -31,9 +31,21 @@ impl Log {
     }
 
     pub fn file_logger_entry(&self) -> Option<LogEntry> {
-        self.0.iter().cloned().find(|x| match x.output {
+        self.0.iter().cloned().find(|x| Log::is_file_logger(x))
+    }
+
+    fn is_file_logger(log_entry: &LogEntry) -> bool {
+        match log_entry.output {
             LogOutput::File(_) => true,
             _ => false,
-        })
+        }
+    }
+
+    pub fn update_file_logger_location(&mut self, output: String) {
+        for logger in self.0.iter_mut() {
+            if Self::is_file_logger(&logger) {
+                logger.output = LogOutput::File(output.clone())
+            }
+        }
     }
 }

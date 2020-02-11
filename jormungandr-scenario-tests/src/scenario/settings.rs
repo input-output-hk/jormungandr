@@ -19,9 +19,10 @@ use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
         Bft, Block0Configuration, BlockchainConfiguration, Explorer, GenesisPraos, Initial,
-        InitialUTxO, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret, P2p, Rest,
+        InitialUTxO, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
         TopicsOfInterest,
     },
+    time::Duration,
 };
 use rand_core::{CryptoRng, RngCore};
 use std::{collections::HashMap, io::Write};
@@ -432,6 +433,7 @@ impl Prepare for P2p {
             allow_private_addresses: true,
             listen_address: context.generate_new_grpc_public_address(),
             topics_of_interest: Some(TopicsOfInterest::prepare(context)),
+            policy: Some(Policy::prepare(context)),
         }
     }
 }
@@ -444,6 +446,17 @@ impl Prepare for TopicsOfInterest {
         TopicsOfInterest {
             messages: "high".to_string(),
             blocks: "high".to_string(),
+        }
+    }
+}
+
+impl Prepare for Policy {
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore,
+    {
+        Policy {
+            quarantine_duration: Duration::new(1, 0),
         }
     }
 }

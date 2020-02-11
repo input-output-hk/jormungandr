@@ -141,9 +141,12 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         }
     }
 
-    utils::assert_are_in_sync(vec![
-        &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
-    ])?;
+    utils::assert_are_in_sync(
+        SyncWaitParams::ZeroWait,
+        vec![
+            &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
+        ],
+    )?;
 
     leader7.shutdown()?;
     leader6.shutdown()?;

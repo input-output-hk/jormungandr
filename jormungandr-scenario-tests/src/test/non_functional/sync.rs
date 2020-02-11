@@ -17,8 +17,6 @@ const LEADER_2: &str = "Leader2";
 pub fn two_transaction_to_two_leaders_block_sync(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
-    let sync_threshold = super::sync_threshold(SyncWaitParams::two_nodes());
-
     let scenario_settings = prepare_scenario! {
         "L2101-Leader_to_leader_communication",
         &mut context,
@@ -70,7 +68,7 @@ pub fn two_transaction_to_two_leaders_block_sync(
 
     let measurement = utils::measure_sync_time(
         vec![&leader_1, &leader_2],
-        sync_threshold,
+        SyncWaitParams::two_nodes().into(),
         "two_transaction_to_two_leaders_block_sync",
     );
 
@@ -130,13 +128,9 @@ pub fn point_to_point_block_sync(mut context: Context<ChaChaRng>) -> Result<Scen
         &leader1,
     )?;
 
-    let sync_threshold = super::sync_threshold(SyncWaitParams {
-        no_of_nodes: 4,
-        longest_path_length: 4,
-    });
     let measurement = utils::measure_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4],
-        sync_threshold,
+        SyncWaitParams::network_size(4, 4).into(),
         "point_to_point_block_sync",
     );
 
