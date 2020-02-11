@@ -172,3 +172,34 @@ impl Enclave {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chain_impl_mockchain::leadership::BftLeader;
+    use chain_crypto::{Ed25519, SecretKey};
+    use rand_core;
+    use tokio02::macros;
+
+
+    #[tokio02::test]
+    async fn enclave_duplicated_leaders() {
+        let mut enclave = Enclave::new();
+        let rng = rand_core::OsRng;
+        let leader1 = Leader {
+            bft_leader: Some(BftLeader{
+                sig_key: SecretKey::generate(rng),
+            }),
+            genesis_leader: None,
+        };
+        let leader2 = Leader {
+            bft_leader: Some(BftLeader{
+                sig_key: SecretKey::generate(rng),
+            }),
+            genesis_leader: None,
+        };
+        assert_eq!(enclave.add_leader(leader1).await, enclave.add_leader(leader2).await);
+        assert_eq!(enclave.leaders.read().await.len(), 1);
+        assert_eq!(enclave.added_cache.read().await.len(), 1);
+    }
+}
