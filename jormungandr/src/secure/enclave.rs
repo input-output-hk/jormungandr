@@ -176,24 +176,23 @@ impl Enclave {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chain_impl_mockchain::leadership::BftLeader;
     use chain_crypto::{Ed25519, SecretKey};
+    use chain_impl_mockchain::leadership::BftLeader;
     use rand_core;
     use tokio02 as tokio;
-
 
     #[tokio::test]
     async fn enclave_add_different_leaders() {
         let mut enclave = Enclave::new();
         let rng = rand_core::OsRng;
         let leader1 = Leader {
-            bft_leader: Some(BftLeader{
+            bft_leader: Some(BftLeader {
                 sig_key: SecretKey::generate(rng),
             }),
             genesis_leader: None,
         };
         let leader2 = Leader {
-            bft_leader: Some(BftLeader{
+            bft_leader: Some(BftLeader {
                 sig_key: SecretKey::generate(rng),
             }),
             genesis_leader: None,
@@ -212,19 +211,22 @@ mod tests {
         let mut enclave = Enclave::new();
         let secret_key = SecretKey::generate(rand_core::OsRng);
         let leader1 = Leader {
-            bft_leader: Some(BftLeader{
+            bft_leader: Some(BftLeader {
                 sig_key: secret_key.clone(),
             }),
             genesis_leader: None,
         };
         let leader2 = Leader {
-            bft_leader: Some(BftLeader{
+            bft_leader: Some(BftLeader {
                 sig_key: secret_key.clone(),
             }),
             genesis_leader: None,
         };
         // Both leaders are different instances of the same data, adding both of them should return the same id
-        assert_eq!(enclave.add_leader(leader1).await, enclave.add_leader(leader2).await);
+        assert_eq!(
+            enclave.add_leader(leader1).await,
+            enclave.add_leader(leader2).await
+        );
         // Just one it is really added
         assert_eq!(enclave.leaders.read().await.len(), 1);
         assert_eq!(enclave.added_cache.read().await.len(), 1);
