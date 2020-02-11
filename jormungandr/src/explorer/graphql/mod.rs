@@ -759,7 +759,7 @@ impl PoolUpdate {
     }
 
     pub fn start_validity(&self) -> TimeOffsetSeconds {
-        self.pool_update.start_validity.into()
+        self.pool_update.new_pool_reg.start_validity.into()
     }
 
     // TODO: Previous keys?
