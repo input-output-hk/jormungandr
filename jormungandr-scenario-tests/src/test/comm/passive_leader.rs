@@ -133,7 +133,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let measurement = utils::measure_sync_time(
         vec![&passive, &leader],
         SyncWaitParams::nodes_restart(2).into(),
-        "transaction_to_passive_sync",
+        "leader_restart",
     );
 
     passive.shutdown()?;
