@@ -12,6 +12,25 @@ Add the following in your `Cargo.toml` file:
 jormungandr-watchdog = "0.1"
 ```
 
+See `examples/stdin_echo.rs`
+
+## Development
+
+The project is still very much a work in progress. It is now starting to be
+usable and the APIs are likely to be changed often in order to improve usability
+and stability.
+
+Here is the list of missing items still being looked at:
+
+- [ ] have the logging support as a service
+    - [ ] configuration from the CLI and the config file
+    - [ ] add gelf support
+    - [ ] opentelemetry support
+- [ ] notify on setting changes for a given service
+- [ ] notify of a state update from a given service
+- [ ] allow a service to access the watchdog controller in order to provide
+      application control from a REST API for example
+
 ## License
 
 Licensed under either of
