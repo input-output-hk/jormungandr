@@ -21,7 +21,7 @@ serde_yaml = "0.8"
 bincode = "1.0.1"
 mime = "^0.3.7"
 structopt = "^0.2"
-bech32 = "0.6"
+bech32 = "0.7"
 bytes = "0.4"
 hex = "0.4.1"
 chain-core      = { path = "../chain-deps/chain-core" }

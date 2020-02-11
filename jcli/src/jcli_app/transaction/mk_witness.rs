@@ -1,6 +1,6 @@
 use crate::jcli_app::transaction::Error;
 use crate::jcli_app::utils::{io, key_parser::read_ed25519_secret_key_from_file};
-use bech32::{Bech32, ToBase32 as _};
+use bech32::{self, ToBase32 as _};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain::{
     account::SpendingCounter,
@@ -106,7 +106,7 @@ impl MkWitness {
             .map_err(Error::WitnessFileSerializationFailed)?;
 
         let base32 = bytes.to_base32();
-        let bech32 = Bech32::new("witness".to_owned(), base32)?;
+        let bech32 = bech32::encode("witness", &base32)?;
         writeln!(writer, "{}", bech32).map_err(|source| Error::WitnessFileWriteFailed {
             source,
             path: self.output.clone().unwrap_or_default(),

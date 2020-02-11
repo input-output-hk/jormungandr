@@ -21,27 +21,26 @@ pub struct TransactionWitness(Witness);
 
 impl TransactionWitness {
     pub fn to_bech32_str(&self) -> String {
-        use bech32::{Bech32, ToBase32 as _};
+        use bech32::ToBase32 as _;
         use chain_core::property::Serialize as _;
 
         let bytes = self.as_ref().serialize_as_vec().unwrap();
 
-        let bech32 = Bech32::new(HRP.to_owned(), bytes.to_base32()).unwrap();
-        bech32.to_string()
+        bech32::encode(&HRP, bytes.to_base32()).unwrap()
     }
 
     pub fn from_bech32_str(s: &str) -> Result<Self, TransactionWitnessFromStrError> {
-        use bech32::{Bech32, FromBase32};
+        use bech32::FromBase32;
         use chain_core::mempack::{ReadBuf, Readable as _};
 
-        let bech32: Bech32 = s.parse()?;
-        if bech32.hrp() != HRP {
+        let (hrp, data) = bech32::decode(s)?;
+        if hrp != HRP {
             return Err(TransactionWitnessFromStrError::InvalidHrp {
                 expected: HRP.to_owned(),
-                got: bech32.hrp().to_owned(),
+                got: hrp,
             });
         }
-        let bytes = Vec::<u8>::from_base32(bech32.data())?;
+        let bytes = Vec::<u8>::from_base32(&data)?;
 
         let mut reader = ReadBuf::from(&bytes);
         Ok(Witness::read(&mut reader).map(TransactionWitness)?)
@@ -100,10 +99,10 @@ impl Serialize for TransactionWitness {
             .map_err(|err| S::Error::custom(err))?;
 
         if serializer.is_human_readable() {
-            use bech32::{Bech32, ToBase32 as _};
-            let bech32 = Bech32::new(HRP.to_owned(), bytes.to_base32())
-                .map_err(|err| S::Error::custom(err))?;
-            serializer.serialize_str(&bech32.to_string())
+            use bech32::ToBase32 as _;
+            let bech32 =
+                bech32::encode(HRP, bytes.to_base32()).map_err(|err| S::Error::custom(err))?;
+            serializer.serialize_str(&bech32)
         } else {
             serializer.serialize_bytes(&bytes)
         }
@@ -128,16 +127,15 @@ impl<'de> Deserialize<'de> for TransactionWitness {
             where
                 E: de::Error,
             {
-                use bech32::{Bech32, FromBase32};
-                let bech32: Bech32 = s.parse().map_err(E::custom)?;
-                if bech32.hrp() != HRP {
+                use bech32::FromBase32;
+                let (hrp, data) = bech32::decode(s).map_err(E::custom)?;
+                if hrp != HRP {
                     return Err(E::custom(format!(
                         "Invalid prefix: expected '{}' but was '{}'",
-                        HRP,
-                        bech32.hrp()
+                        HRP, hrp
                     )));
                 }
-                let bytes = Vec::<u8>::from_base32(bech32.data())
+                let bytes = Vec::<u8>::from_base32(&data)
                     .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
                 self.visit_bytes(&bytes)
             }

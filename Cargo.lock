@@ -452,11 +452,6 @@ dependencies = [
 
 [[package]]
 name = "bech32"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "bech32"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
@@ -634,7 +629,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "chain-addr"
 version = "0.1.0"
 dependencies = [
- "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-core 0.1.0",
  "chain-crypto 0.1.0",
@@ -647,6 +642,7 @@ name = "chain-core"
 version = "0.1.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chain-ser 0.1.0",
  "quickcheck 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -654,7 +650,7 @@ dependencies = [
 name = "chain-crypto"
 version = "0.1.0"
 dependencies = [
- "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "cryptoxide 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -694,6 +690,10 @@ dependencies = [
  "thiserror 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "typed-bytes 0.1.0",
 ]
+
+[[package]]
+name = "chain-ser"
+version = "0.1.0"
 
 [[package]]
 name = "chain-storage"
@@ -1676,7 +1676,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "jcli"
 version = "0.8.10-alpha1"
 dependencies = [
- "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "chain-addr 0.1.0",
@@ -1817,7 +1817,7 @@ dependencies = [
 name = "jormungandr-lib"
 version = "0.8.10-alpha1"
 dependencies = [
- "bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cardano-legacy-address 0.1.1",
  "chain-addr 0.1.0",
@@ -4486,7 +4486,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "489d6c0ed21b11d038c31b6ceccca973e65d73ba3bd8ecb9a2babf5546164643"
 "checksum bawawa 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "f8a0b511f881feae65eb88a002da86c4346f2fc09135ac0934d420ef79cc7ee1"
 "checksum bb8 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "12be5a75061a84c94149b8120651576c138bbade70c6d6d3659cbe8af6a8cbd2"
-"checksum bech32 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "58946044516aa9dc922182e0d6e9d124a31aafe6b421614654eb27cf90cec09c"
 "checksum bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)" = "cdcf67bb7ba7797a081cd19009948ab533af7c355d5caf1d08c777582d351e9c"
 "checksum bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5753e2a71534719bf3f4e57006c3a4f0d2c672a4b676eec84161f763eca87dbf"
 "checksum bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"

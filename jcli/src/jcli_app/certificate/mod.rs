@@ -1,5 +1,5 @@
 use crate::jcli_app::utils::{io, key_parser};
-use jormungandr_lib::interfaces::{self, CertificateFromStrError};
+use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
 use std::ops::Deref;
@@ -38,6 +38,8 @@ pub enum Error {
     },
     #[error("Invalid certificate")]
     InvalidCertificate(#[from] CertificateFromStrError),
+    #[error("Invalid certificate bech32")]
+    InvalidCertificateBech32(#[from] CertificateFromBech32Error),
     #[error("invalid management_threshold value, expected between at least 1 and {max_expected} but got {got}")]
     ManagementThresholdInvalid { got: usize, max_expected: usize },
     #[error("No signing keys specified (use -k or --key to specify)")]
@@ -152,17 +154,13 @@ impl Certificate {
 }
 
 fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
-    use bech32::Bech32;
-
-    use std::str::FromStr as _;
-
     let cert_str = read_input(input)?.trim_end().to_owned();
-    let bech32 = Bech32::from_str(&cert_str)?;
+    let (hrp, _) = bech32::decode(&cert_str)?;
 
-    match bech32.hrp() {
+    match hrp.as_ref() {
         interfaces::SIGNED_CERTIFICATE_HRP => {
             use chain_impl_mockchain::certificate::{Certificate, SignedCertificate};
-            let signed_cert = interfaces::SignedCertificate::from_str(&cert_str)?;
+            let signed_cert = interfaces::SignedCertificate::from_bech32(&cert_str)?;
 
             let cert = match signed_cert.0 {
                 SignedCertificate::StakeDelegation(sd, _) => Certificate::StakeDelegation(sd),
@@ -177,7 +175,7 @@ fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certific
             Ok(interfaces::Certificate(cert))
         }
         interfaces::CERTIFICATE_HRP => {
-            interfaces::Certificate::from_str(&cert_str).map_err(Error::from)
+            interfaces::Certificate::from_bech32(&cert_str).map_err(Error::from)
         }
         _ => Err(Error::ExpectedSignedOrNotCertificate),
     }

@@ -9,7 +9,6 @@ use crate::common::{
     startup,
 };
 
-use chain_addr::Discrimination;
 use chain_crypto::{Curve25519_2HashDH, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
