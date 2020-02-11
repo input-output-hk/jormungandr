@@ -262,7 +262,7 @@ fn create_stake(stake: &StakeDistribution) -> serde_json::Value {
     let pools: Vec<(String, u64)> = stake
         .to_pools
         .iter()
-        .map(|(h, p)| (format!("{}", h), p.total.total_stake.into()))
+        .map(|(h, p)| (format!("{}", h), p.stake.total.into()))
         .collect();
     json!({
         "unassigned": unassigned,
@@ -421,12 +421,7 @@ pub async fn get_stake_pool(
         .delegation()
         .lookup(&pool_id)
         .ok_or_else(|| ErrorNotFound(format!("Stake pool '{}' not found", pool_id_hex)))?;
-    let total_stake: u64 = ledger
-        .get_stake_distribution()
-        .to_pools
-        .get(&pool_id)
-        .map(|pool| pool.total.total_stake.into())
-        .unwrap_or(0);
+    let total_stake: u64 = ledger.get_stake_distribution().get_total_stake().into();
     Ok(Json(json!(StakePoolStats {
         kes_public_key: pool
             .registration
