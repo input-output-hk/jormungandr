@@ -14,7 +14,7 @@ pub use self::host_addr::HostAddr;
 pub use self::open_api_verifier::OpenApiVerifier;
 pub use self::output_format::OutputFormat;
 pub use self::rest_api::{RestApiResponse, RestApiResponseBody, RestApiSender};
-use bech32::Bech32;
+use bech32;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -29,7 +29,7 @@ pub enum Utils {
 pub struct Bech32ConvertArgs {
     /// the bech32 you want to convert
     #[structopt(name = "FROM_BECH32")]
-    from_bech32: Bech32,
+    from_bech32: String,
 
     /// the new bech32 hrp you want to use
     #[structopt(name = "NEW_PREFIX")]
@@ -39,22 +39,22 @@ pub struct Bech32ConvertArgs {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("failed to convert bech32")]
-    Bech32ConversionFailure,
+    Bech32ConversionFailure(#[from] bech32::Error),
 }
 
 impl Utils {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Utils::Bech32Convert(convert_args) => {
-                convert_prefix(convert_args.from_bech32, convert_args.new_hrp)
+                convert_prefix(convert_args.from_bech32, convert_args.new_hrp).map_err(|e| e.into())
             }
         }
-        Ok(())
     }
 }
 
-fn convert_prefix(from_addr: Bech32, prefix: String) {
-    let d = from_addr.data().to_vec();
-    let n = Bech32::new(prefix, d).unwrap();
+fn convert_prefix(from_addr: String, prefix: String) -> Result<(), Error> {
+    let (_, d) = bech32::decode(&from_addr)?;
+    let n = bech32::encode(&prefix, d)?;
     println!("{}", n);
+    Ok(())
 }

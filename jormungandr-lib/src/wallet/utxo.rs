@@ -6,14 +6,10 @@ use crate::{
     interfaces::{Address, UTxOInfo},
 };
 use chain_addr::Discrimination;
-use chain_impl_mockchain::{
-    key::EitherEd25519SecretKey,
-    transaction::{TransactionSignDataHash, Witness},
-};
+use chain_impl_mockchain::transaction::{TransactionSignDataHash, Witness};
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519>;
-use std::fmt;
 
 /// wallet for an account
 #[derive(Debug, Clone)]
@@ -78,7 +74,7 @@ impl Wallet {
         &self,
         block0_hash: &Hash,
         signing_data: &TransactionSignDataHash,
-        i: usize,
+        _i: usize,
     ) -> Witness {
         Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, |d| {
             self.last_signing_key().as_ref().sign(d)

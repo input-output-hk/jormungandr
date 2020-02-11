@@ -156,7 +156,7 @@ pub struct JormungandrServerImpl {
 }
 
 impl JormungandrServerImpl {
-    fn init_logger(log_path: PathBuf) -> (slog::Logger) {
+    fn init_logger(log_path: PathBuf) -> slog::Logger {
         let file = OpenOptions::new()
             .create(true)
             .write(true)

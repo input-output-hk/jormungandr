@@ -150,20 +150,16 @@ impl SigningKey {
     pub fn from_bech32_str(s: &str) -> Result<Self, SigningKeyParseError> {
         use chain_crypto::bech32::Bech32 as _;
 
-        let bech32_encoded = bech32::Bech32::from_str(s)?;
+        let (hrp, _) = bech32::decode(s)?;
 
-        let key = match bech32_encoded.hrp() {
+        let key = match hrp.as_ref() {
             <Ed25519 as AsymmetricKey>::SECRET_BECH32_HRP => SigningKey(
                 EitherEd25519SecretKey::Normal(SecretKey::try_from_bech32_str(s)?),
             ),
             <Ed25519Extended as AsymmetricKey>::SECRET_BECH32_HRP => SigningKey(
                 EitherEd25519SecretKey::Extended(SecretKey::try_from_bech32_str(s)?),
             ),
-            hrp => {
-                return Err(SigningKeyParseError::UnexpectedHRP {
-                    hrp: hrp.to_owned(),
-                })
-            }
+            _ => return Err(SigningKeyParseError::UnexpectedHRP { hrp: hrp }),
         };
 
         Ok(key)

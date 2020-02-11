@@ -3,7 +3,6 @@ use crate::common::{
     jormungandr::{starter::Starter, ConfigurationBuilder},
     startup,
 };
-use chain_addr::Discrimination;
 use jormungandr_lib::interfaces::InitialUTxO;
 
 #[test]
