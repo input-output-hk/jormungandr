@@ -2,10 +2,7 @@ mod control_command;
 mod monitor;
 
 pub(crate) use self::control_command::{ControlCommand, Reply};
-pub use self::{
-    control_command::{ControlHandler, WatchdogQuery},
-    monitor::WatchdogMonitor,
-};
+pub use self::{control_command::WatchdogQuery, monitor::WatchdogMonitor};
 use crate::service::{ServiceError, ServiceIdentifier, StatusReport};
 use async_trait::async_trait;
 use std::{any::Any, fmt};
@@ -141,7 +138,6 @@ give the absolute path to the file.",
         let config_path = value_t!(args.value_of(APP_ARG_CONFIG_FILE), std::path::PathBuf)
             .unwrap_or_else(|e| e.exit());
 
-        // TODO: handle the case where there is no config file to read?
         let mut settings = if let Ok(file) = std::fs::File::open(&config_path) {
             serde_yaml::from_reader(file).unwrap()
         } else {

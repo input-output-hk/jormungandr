@@ -43,6 +43,10 @@ impl Service for StdinReader {
                     tracing::error!(%err);
                     break;
                 }
+                Ok(line) if line == "quit" => {
+                    self.state.watchdog_controller().clone().shutdown().await;
+                    break;
+                }
                 Ok(line) => {
                     tracing::debug!(%line, "read from stdin");
                     if let Err(err) = stdout.send(WriteMsg(line)).await {

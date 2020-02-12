@@ -127,6 +127,12 @@ impl<T: Service> ServiceState<T> {
         self.watchdog_query.intercom::<O>()
     }
 
+    /// access the `WatchdogQuery` allowing raw command access to all watchdog
+    /// commands.
+    pub fn watchdog_controller(&self) -> &WatchdogQuery {
+        &self.watchdog_query
+    }
+
     /// access the service's IntercomReceiver end
     ///
     /// this is the end that will receive intercom messages from other services

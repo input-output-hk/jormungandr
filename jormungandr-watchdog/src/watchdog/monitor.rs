@@ -1,4 +1,4 @@
-use crate::watchdog::{ControlCommand, ControlHandler};
+use crate::watchdog::{ControlCommand, WatchdogQuery};
 use std::future::Future;
 use tokio::{
     runtime,
@@ -28,8 +28,8 @@ impl WatchdogMonitor {
         }
     }
 
-    pub fn control(&self) -> ControlHandler {
-        ControlHandler::new(self.control_command.clone())
+    pub fn control(&self) -> WatchdogQuery {
+        WatchdogQuery::new(self.runtime.handle().clone(), self.control_command.clone())
     }
 
     pub fn spawn<F>(&self, future: F) -> JoinHandle<F::Output>
