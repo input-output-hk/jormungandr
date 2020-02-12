@@ -35,7 +35,7 @@ impl Service for Echo {
 
     type State = service::NoState;
     type Settings = service::NoSettings;
-    type Intercom = QueryLine;
+    type IntercomMsg = QueryLine;
 
     fn prepare(state: ServiceState<Self>) -> Self {
         let (sender, receiver) = legacy_tokio::sync::mpsc::channel(10);
@@ -71,7 +71,7 @@ impl Service for Client {
 
     type State = service::NoState;
     type Settings = service::NoSettings;
-    type Intercom = service::NoIntercom;
+    type IntercomMsg = service::NoIntercom;
 
     fn prepare(state: ServiceState<Self>) -> Self {
         Self { state }

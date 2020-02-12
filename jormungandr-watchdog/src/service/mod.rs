@@ -35,7 +35,7 @@ pub trait Service: Send + Sized + 'static {
 
     type State: State;
     type Settings: Settings;
-    type Intercom: IntercomMsg;
+    type IntercomMsg: IntercomMsg;
 
     fn prepare(service_state: ServiceState<Self>) -> Self;
 
@@ -47,7 +47,7 @@ pub trait ServiceManagerTrait {
 
     type State: State;
     type Settings: Settings;
-    type Intercom: IntercomMsg;
+    type IntercomMsg: IntercomMsg;
 }
 
 impl<T: Service> ServiceManagerTrait for ServiceManager<T> {
@@ -55,7 +55,7 @@ impl<T: Service> ServiceManagerTrait for ServiceManager<T> {
 
     type State = T::State;
     type Settings = T::Settings;
-    type Intercom = T::Intercom;
+    type IntercomMsg = T::IntercomMsg;
 }
 
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
@@ -77,7 +77,7 @@ pub struct ServiceManager<T: Service> {
 
     settings: SettingsUpdater<T::Settings>,
     state: StateSaver<T::State>,
-    intercom_sender: IntercomSender<T::Intercom>,
+    intercom_sender: IntercomSender<T::IntercomMsg>,
     intercom_stats: IntercomStats,
     started: u64,
 
@@ -107,7 +107,7 @@ pub struct ServiceState<T: Service> {
     handle: Handle,
     settings: SettingsReader<T::Settings>,
     state: StateHandler<T::State>,
-    intercom_receiver: IntercomReceiver<T::Intercom>,
+    intercom_receiver: IntercomReceiver<T::IntercomMsg>,
     watchdog_query: WatchdogQuery,
     status: StatusReader,
 }
@@ -136,7 +136,7 @@ impl<T: Service> ServiceState<T> {
     /// access the service's IntercomReceiver end
     ///
     /// this is the end that will receive intercom messages from other services
-    pub fn intercom_mut(&mut self) -> &mut IntercomReceiver<T::Intercom> {
+    pub fn intercom_mut(&mut self) -> &mut IntercomReceiver<T::IntercomMsg> {
         &mut self.intercom_receiver
     }
 
@@ -224,7 +224,7 @@ impl<T: Service> ServiceManager<T> {
         (runtime, sm)
     }
 
-    pub fn intercom(&self) -> IntercomSender<T::Intercom> {
+    pub fn intercom(&self) -> IntercomSender<T::IntercomMsg> {
         self.intercom_sender.clone()
     }
 
@@ -260,7 +260,7 @@ impl<T: Service> ServiceManager<T> {
             Err(ServiceError::CannotStart { status })
         } else {
             let (intercom_sender, intercom_receiver, intercom_stats) =
-                intercom::channel::<T::Intercom>();
+                intercom::channel::<T::IntercomMsg>();
 
             std::mem::replace(&mut self.intercom_sender, intercom_sender);
             std::mem::replace(&mut self.intercom_stats, intercom_stats);

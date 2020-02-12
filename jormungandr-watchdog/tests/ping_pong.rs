@@ -34,7 +34,7 @@ impl Service for Ping {
 
     type State = service::NoState;
     type Settings = service::NoSettings;
-    type Intercom = PingMsg;
+    type IntercomMsg = PingMsg;
 
     fn prepare(state: ServiceState<Self>) -> Self {
         Self { state }
@@ -60,7 +60,7 @@ impl Service for Pong {
 
     type State = service::NoState;
     type Settings = service::NoSettings;
-    type Intercom = PongMsg;
+    type IntercomMsg = PongMsg;
 
     fn prepare(state: ServiceState<Self>) -> Self {
         Self { state }

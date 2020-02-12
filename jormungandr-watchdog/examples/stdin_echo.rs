@@ -27,7 +27,7 @@ impl Service for StdinReader {
 
     type State = service::NoState;
     type Settings = service::NoSettings;
-    type Intercom = service::NoIntercom;
+    type IntercomMsg = service::NoIntercom;
 
     fn prepare(state: ServiceState<Self>) -> Self {
         Self { state }
@@ -65,7 +65,7 @@ impl Service for StdoutWriter {
 
     type State = service::NoState;
     type Settings = service::NoSettings;
-    type Intercom = WriteMsg;
+    type IntercomMsg = WriteMsg;
 
     fn prepare(state: ServiceState<Self>) -> Self {
         Self { state }

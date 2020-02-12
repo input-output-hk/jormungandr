@@ -19,7 +19,7 @@ pub struct NoIntercom;
 pub trait IntercomMsg: std::fmt::Debug + 'static {}
 
 pub struct Intercom<T: Service> {
-    state: IntercomState<T::Intercom>,
+    state: IntercomState<T::IntercomMsg>,
     watchdog_query: WatchdogQuery,
 }
 
@@ -103,7 +103,7 @@ impl<T: Service> Intercom<T> {
     /// however, there is a 100ms delay before doing a retry. Only one retry
     /// will be perform.
     #[tracing::instrument(skip(self), target = "intercom", level = "debug")]
-    pub async fn send(&mut self, msg: T::Intercom) -> Result<(), WatchdogError> {
+    pub async fn send(&mut self, msg: T::IntercomMsg) -> Result<(), WatchdogError> {
         let mut retry_attempted = false;
         let mut retry = Err(msg);
 
@@ -173,7 +173,7 @@ impl<T: Service> Intercom<T> {
             Ok(Ok(intercom_sender)) => {
                 tracing::trace!("watchdog replied with established connection");
                 let tid = intercom_sender.type_id();
-                match intercom_sender.downcast_ref::<IntercomSender<T::Intercom>>() {
+                match intercom_sender.downcast_ref::<IntercomSender<T::IntercomMsg>>() {
                     Some(intercom_sender_ref) => {
                         self.state = IntercomState::Connected {
                             connection: intercom_sender_ref.clone(),
@@ -182,7 +182,7 @@ impl<T: Service> Intercom<T> {
                     }
                     None => unreachable!(
                         "cannot downcast the intercom object to {}, {:?}",
-                        std::any::type_name::<T::Intercom>(),
+                        std::any::type_name::<T::IntercomMsg>(),
                         tid,
                     ),
                 }
