@@ -59,8 +59,8 @@ pub async fn get_account_state(
 ) -> Result<impl Responder, Error> {
     let account_id = parse_account_id(&account_id_hex)?;
     let chain_tip = chain_tip(&context).await?;
-    let state = chain_tip
-        .ledger()
+    let ledger = chain_tip.ledger();
+    let state = ledger
         .accounts()
         .get_state(&account_id)
         .map_err(ErrorNotFound)?;
@@ -395,15 +395,13 @@ pub async fn get_utxo(
     let (fragment_id_hex, output_index) = path_params.into_inner();
     let fragment_id = parse_fragment_id(&fragment_id_hex)?;
     let tip_reference = chain_tip(&context).await?;
-    let output = tip_reference
-        .ledger()
-        .utxo_out(fragment_id, output_index)
-        .ok_or_else(|| {
-            ErrorNotFound(format!(
-                "no UTxO found for address '{}' on index {}",
-                fragment_id_hex, output_index
-            ))
-        })?;
+    let ledger = tip_reference.ledger();
+    let output = ledger.utxo_out(fragment_id, output_index).ok_or_else(|| {
+        ErrorNotFound(format!(
+            "no UTxO found for address '{}' on index {}",
+            fragment_id_hex, output_index
+        ))
+    })?;
     Ok(Json(json!({
         "address": Address::from(output.address.clone()),
         "value": output.value.0,

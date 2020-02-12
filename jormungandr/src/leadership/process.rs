@@ -407,7 +407,7 @@ impl Module {
             (
                 self.tip_ref.hash(),
                 self.tip_ref.chain_length().increase(),
-                Arc::clone(self.tip_ref.ledger()),
+                self.tip_ref.ledger(),
                 Arc::clone(self.tip_ref.epoch_ledger_parameters()),
             )
         } else {
