@@ -14,6 +14,12 @@ pub enum Control {
     Kill,
 }
 
+/// a controller can be used to send control command to a service.
+///
+/// it is intended that any update of the command will erase the previous
+/// command. So if the service didn't have time to process the previous command
+/// it will be missed.
+///
 pub struct Controller {
     sender: Sender<Control>,
     receiver: Receiver<Control>,
