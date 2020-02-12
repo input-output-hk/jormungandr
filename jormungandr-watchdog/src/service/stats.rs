@@ -1,3 +1,6 @@
+/// keep some stats based on [Welford's online algorithm]
+///
+/// [Welford's online algorithm]: https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
 pub struct Stats {
     count: u64,
     mean: f64,
