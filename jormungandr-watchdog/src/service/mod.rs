@@ -42,7 +42,7 @@ pub trait Service: Send + Sized + 'static {
     async fn start(self);
 }
 
-pub trait ServiceManagerTrait {
+pub trait ManageService {
     const SERVICE_IDENTIFIER: ServiceIdentifier;
 
     type State: State;
@@ -50,7 +50,7 @@ pub trait ServiceManagerTrait {
     type IntercomMsg: IntercomMsg;
 }
 
-impl<T: Service> ServiceManagerTrait for ServiceManager<T> {
+impl<T: Service> ManageService for ServiceManager<T> {
     const SERVICE_IDENTIFIER: ServiceIdentifier = T::SERVICE_IDENTIFIER;
 
     type State = T::State;

@@ -20,7 +20,7 @@ fn gen_settings_type(fields: &Punctuated<Field, Comma>) -> TokenStream {
         let ty = &field.ty;
 
         quote! {
-            #field_name: <#ty as ::jormungandr_watchdog::service::ServiceManagerTrait>::Settings
+            #field_name: <#ty as ::jormungandr_watchdog::service::ManageService>::Settings
         }
     });
 
@@ -41,7 +41,7 @@ fn gen_cli_args(fields: &Punctuated<Field, Comma>) -> TokenStream {
                 <
                     <
                         #ty
-                        as ::jormungandr_watchdog::service::ServiceManagerTrait
+                        as ::jormungandr_watchdog::service::ManageService
                     >::Settings
                     as ::jormungandr_watchdog::service::Settings
                 >::add_cli_args()
