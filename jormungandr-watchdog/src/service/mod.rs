@@ -341,7 +341,7 @@ impl<T: Service> ServiceRuntime<T> {
                         status.update(Status::shutdown());
                         break;
                     }
-                    control = &mut control => {
+                    control = control.updated() => {
                         match control {
                             Some(Control::Shutdown) => {
                                 tracing::info!("shutting down...");

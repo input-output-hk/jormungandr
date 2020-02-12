@@ -71,14 +71,6 @@ impl ControlReader {
     }
 }
 
-impl Future for ControlReader {
-    type Output = Option<Control>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        self.poll_next(cx)
-    }
-}
-
 impl Stream for ControlReader {
     type Item = Control;
 
