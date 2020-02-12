@@ -16,7 +16,7 @@ use crate::{
         comm::leader_leader::*,
         comm::passive_leader::*,
         network::topology::scenarios::*,
-        non_functional::{disruption::*, soak::*, sync::*},
+        non_functional::{disruption::*, soak::*},
     },
     Context,
 };
@@ -153,16 +153,6 @@ fn scenarios_repository() -> Vec<Scenario> {
         "point_to_point_on_file_storage",
         point_to_point_on_file_storage,
         vec![Tag::Short],
-    ));
-    repository.push(Scenario::new(
-        "two_transaction_to_two_leaders_block_sync",
-        two_transaction_to_two_leaders_block_sync,
-        vec![Tag::Perf],
-    ));
-    repository.push(Scenario::new(
-        "point_to_point_block_sync",
-        point_to_point_block_sync,
-        vec![Tag::Perf],
     ));
 
     repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
