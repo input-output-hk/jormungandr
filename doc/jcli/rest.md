@@ -52,10 +52,14 @@ lastBlockTime: "2020-01-30T22:37:46+00:00"
 lastBlockTx: 2
 # The time at which we received the last block, not necessarily the current tip block (optional)
 lastReceivedBlockTime: "2020-01-30T22:37:59+00:00"
+# 24 bytes encoded in hexadecimal Node ID
+nodeId: "ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d"
 # Number of nodes that are available for p2p discovery and events propagation
 peerAvailableCnt: 321
 # Number of nodes that have been quarantined by our node
 peerQuarantinedCnt: 123
+# Total number of nodes
+peerTotalCnt: 444
 # Number of nodes that are connected to ours but that are not publicly reachable
 peerUnreachableCnt: 0
 # State of the node

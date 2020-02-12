@@ -536,7 +536,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastReceivedBlockTime, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version, peerAvailableCnt, peerQuarantinedCnt, peerUnreachableCnt]
+                required: [blockRecvCnt, lastReceivedBlockTime, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version, peerAvailableCnt, peerQuarantinedCnt, peerUnreachableCnt, peerTotalCnt, nodeId]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
@@ -575,6 +575,9 @@ paths:
                     description: Number of transactions in last block
                     type: integer
                     minimum: 0
+                  nodeId:
+                    description: 24 bytes encoded in hexadecimal Node ID
+                    type: string
                   peerAvailableCnt:
                     description: Number of nodes that are available for p2p discovery and events propagation
                     type: integer
@@ -585,6 +588,10 @@ paths:
                     minimum: 0
                   peerUnreachableCnt:
                     description: Number of nodes that are connected to ours but that are not publicly reachable
+                    type: integer
+                    minimum: 0
+                  peerTotalCnt:
+                    description: Total number of nodes
                     type: integer
                     minimum: 0
                   state:
@@ -614,8 +621,10 @@ paths:
                   "lastBlockTime": "2020-01-30T23:08:22+00:00",
                   "lastBlockTx": 2,
                   "lastReceivedBlockTime": "2020-01-30T23:08:04+00:00",
+                  "nodeId": "ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d"
                   "peerAvailableCnt": 321,
                   "peerQuarantinedCnt": 123,
+                  "peerTotalCnt": 449
                   "peerUnreachableCnt": 5,
                   "state": "Running",
                   "txRecvCnt": 5440,
