@@ -29,7 +29,7 @@ chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
 chain-time    = { path = "../chain-deps/chain-time" }
-reqwest = "0.9.11"
+reqwest = "0.10.1"
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.5.6"
 openapiv3 = "0.3.0"
