@@ -16,7 +16,7 @@ use super::configuration;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
-use super::process_utils::{self, output_extensions::ProcessOutput, ProcessError, Wait};
+use super::process_utils::{self, output_extensions::ProcessOutput, Wait};
 use crate::common::{jormungandr::JormungandrProcess, startup};
 use chain_addr::Discrimination;
 use std::{collections::BTreeMap, path::PathBuf};
@@ -24,11 +24,16 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("transaction {transaction_id} is not in block")]
+    #[error("transaction {transaction_id} is not in block. message log: {message_log}. Jormungandr log: {log_content}")]
     TransactionNotInBlock {
-        #[source]
-        source: ProcessError,
+        message_log: String,
         transaction_id: Hash,
+        log_content: String,
+    },
+    #[error("at least one transaction is not in block. message log: {message_log}. Jormungandr log: {log_content}")]
+    TransactionsNotInBlock {
+        message_log: String,
+        log_content: String,
     },
 }
 
@@ -396,9 +401,13 @@ pub fn wait_until_transaction_processed(
             jormungandr.logger.get_log_content()
         ),
     )
-    .map_err(|err| Error::TransactionNotInBlock {
-        source: err,
+    .map_err(|_| Error::TransactionNotInBlock {
+        message_log: format!(
+            "{:?}",
+            assert_get_rest_message_log(&jormungandr.rest_address())
+        ),
         transaction_id: fragment_id.clone(),
+        log_content: jormungandr.logger.get_log_content(),
     })
 }
 
@@ -446,20 +455,22 @@ pub fn assert_transaction_log_shows_rejected(
     }
 }
 
-pub fn assert_all_transactions_in_block(
+pub fn send_transactions_and_wait_until_in_block(
     transactions_messages: &Vec<String>,
     jormungandr: &JormungandrProcess,
-) {
+) -> Result<(), Error> {
     for transactions_message in transactions_messages.iter() {
         assert_post_transaction(&transactions_message, &jormungandr.rest_address());
     }
-    wait_until_all_transactions_processed(&jormungandr.rest_address());
-    assert_all_transaction_log_shows_in_block(&jormungandr);
+    wait_until_all_transactions_processed(&jormungandr)?;
+    check_all_transaction_log_shows_in_block(&jormungandr)
 }
 
-pub fn wait_until_all_transactions_processed(host: &str) {
+pub fn wait_until_all_transactions_processed(
+    jormungandr: &JormungandrProcess,
+) -> Result<(), Error> {
     process_utils::run_process_until_response_matches(
-        jcli_commands::get_rest_message_log_command(&host),
+        jcli_commands::get_rest_message_log_command(&jormungandr.rest_address()),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
@@ -472,19 +483,29 @@ pub fn wait_until_all_transactions_processed(host: &str) {
         "Waiting for last transaction to be inBlock or rejected",
         "transaction is pending for too long",
     )
-    .expect("internal error while waiting until all transactions is processed");
+    .map_err(|_| Error::TransactionsNotInBlock {
+        message_log: format!(
+            "{:?}",
+            assert_get_rest_message_log(&jormungandr.rest_address())
+        ),
+        log_content: jormungandr.logger.get_log_content(),
+    })
 }
 
-pub fn assert_all_transaction_log_shows_in_block(jormungandr: &JormungandrProcess) {
+pub fn check_all_transaction_log_shows_in_block(
+    jormungandr: &JormungandrProcess,
+) -> Result<(), Error> {
     let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
-    for fragment in fragments {
-        assert!(
-            fragment.is_in_a_block(),
-            "Fragment should be in block, actual: {:?}. Logs: {:?}",
-            &fragment,
-            jormungandr.logger.get_log_content()
-        );
+    for fragment in fragments.iter() {
+        if !fragment.is_in_a_block() {
+            return Err(Error::TransactionNotInBlock {
+                message_log: format!("{:?}", fragments.clone()),
+                transaction_id: fragment.fragment_id().clone(),
+                log_content: jormungandr.logger.get_log_content(),
+            });
+        }
     }
+    Ok(())
 }
 
 pub fn assert_get_rest_message_log(host: &str) -> Vec<FragmentLog> {
