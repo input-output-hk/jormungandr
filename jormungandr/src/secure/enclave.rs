@@ -11,7 +11,7 @@ use tokio02::sync::RwLock;
 #[derive(Clone)]
 pub struct Enclave {
     leaders: Arc<RwLock<BTreeMap<LeaderId, Leader>>>,
-    added_cache: Arc<RwLock<HashMap<String, LeaderId>>>,
+    added_leaders_cache: Arc<RwLock<HashMap<String, LeaderId>>>,
 }
 
 pub struct LeaderEvent {
@@ -28,7 +28,7 @@ impl Enclave {
     pub fn new() -> Self {
         Enclave {
             leaders: Arc::new(RwLock::new(BTreeMap::new())),
-            added_cache: Arc::new(RwLock::new(HashMap::new())),
+            added_leaders_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -41,14 +41,57 @@ impl Enclave {
     }
 
     pub async fn get_leader_id_if_present(&self, leader: &Leader) -> Option<LeaderId> {
-        match &leader.bft_leader {
-            Some(l) => {
-                let cache = self.added_cache.read().await;
-                cache.get(&l.sig_key.to_public().to_string()).cloned()
-            }
-            None => None,
+        let cache = self.added_leaders_cache.read().await;
+        // match protocol leaders prioritizing genesis ones
+        match leader {
+            Leader {
+                bft_leader: None,
+                genesis_leader: None,
+            } => None,
+            Leader {
+                bft_leader: None,
+                genesis_leader: Some(l),
+            } => cache.get(&l.sig_key.to_public().to_string()).cloned(),
+            Leader {
+                bft_leader: Some(l),
+                genesis_leader: None,
+            } => cache.get(&l.sig_key.to_public().to_string()).cloned(),
+            Leader {
+                bft_leader: Some(_),
+                genesis_leader: Some(l),
+            } => cache.get(&l.sig_key.to_public().to_string()).cloned(),
         }
     }
+
+    pub async fn add_leader_to_cache(&self, leader: &Leader, id: LeaderId) {
+        let mut cache = self.added_leaders_cache.write().await;
+        // match protocol leaders prioritizing genesis ones
+        match leader {
+            Leader {
+                bft_leader: None,
+                genesis_leader: None,
+            } => (),
+            Leader {
+                bft_leader: None,
+                genesis_leader: Some(l),
+            } => {
+                cache.insert(l.sig_key.to_public().to_string(), id);
+            }
+            Leader {
+                bft_leader: Some(l),
+                genesis_leader: None,
+            } => {
+                cache.insert(l.sig_key.to_public().to_string(), id);
+            }
+            Leader {
+                bft_leader: Some(_),
+                genesis_leader: Some(l),
+            } => {
+                cache.insert(l.sig_key.to_public().to_string(), id);
+            }
+        }
+    }
+
     pub async fn get_leaderids(&self) -> Vec<LeaderId> {
         let leaders = self.leaders.read().await;
         leaders.keys().cloned().collect()
@@ -61,15 +104,9 @@ impl Enclave {
         }
         let mut leaders = self.leaders.write().await;
         let next_leader_id = get_maximum_id(&leaders).next();
-        let mut cache = self.added_cache.write().await;
 
         // Add the new leader to the cache
-        match leader.bft_leader.as_ref() {
-            Some(l) => {
-                cache.insert(l.sig_key.to_public().to_string(), next_leader_id);
-            }
-            None => (),
-        }
+        self.add_leader_to_cache(&leader, next_leader_id).await;
 
         match leaders.insert(next_leader_id, leader) {
             None => (),
@@ -208,7 +245,7 @@ mod tests {
         assert_eq!(enclave.add_leader(leader1).await, fst_id);
         assert_eq!(enclave.add_leader(leader2).await, snd_id);
         assert_eq!(enclave.leaders.read().await.len(), 2);
-        assert_eq!(enclave.added_cache.read().await.len(), 2);
+        assert_eq!(enclave.added_leaders_cache.read().await.len(), 2);
     }
 
     #[tokio::test]
@@ -234,6 +271,6 @@ mod tests {
         );
         // Just one it is really added
         assert_eq!(enclave.leaders.read().await.len(), 1);
-        assert_eq!(enclave.added_cache.read().await.len(), 1);
+        assert_eq!(enclave.added_leaders_cache.read().await.len(), 1);
     }
 }
