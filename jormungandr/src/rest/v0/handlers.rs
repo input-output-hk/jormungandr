@@ -419,7 +419,12 @@ pub async fn get_stake_pool(
         .delegation()
         .lookup(&pool_id)
         .ok_or_else(|| ErrorNotFound(format!("Stake pool '{}' not found", pool_id_hex)))?;
-    let total_stake: u64 = ledger.get_stake_distribution().get_total_stake().into();
+    let total_stake: u64 = ledger
+        .get_stake_distribution()
+        .to_pools
+        .get(&pool_id)
+        .map(|pool| pool.stake.total.into())
+        .unwrap_or(0);
     Ok(Json(json!(StakePoolStats {
         kes_public_key: pool
             .registration
