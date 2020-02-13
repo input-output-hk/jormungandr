@@ -65,8 +65,10 @@ impl Enclave {
 
         // Add the new leader to the cache
         match leader.bft_leader.as_ref() {
-            Some(l) => {cache.insert(l.sig_key.to_public().to_string(), next_leader_id);},
-            None => ()
+            Some(l) => {
+                cache.insert(l.sig_key.to_public().to_string(), next_leader_id);
+            }
+            None => (),
         }
 
         match leaders.insert(next_leader_id, leader) {
