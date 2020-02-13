@@ -81,10 +81,7 @@ impl JormungandrProcess {
     }
 
     pub fn as_trusted_peer(&self) -> TrustedPeer {
-        TrustedPeer {
-            address: self.config.node_config.p2p.listen_address.clone(),
-            id: self.config.node_config.p2p.public_id.clone(),
-        }
+        self.config.as_trusted_peer()
     }
 }
 

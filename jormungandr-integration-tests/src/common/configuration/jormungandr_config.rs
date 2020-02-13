@@ -6,7 +6,7 @@ use chain_core::mempack;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::{
-    interfaces::{Block0Configuration, NodeConfig, NodeSecret, UTxOInfo},
+    interfaces::{Block0Configuration, NodeConfig, NodeSecret, TrustedPeer, UTxOInfo},
     wallet::Wallet,
 };
 use std::path::PathBuf;
@@ -74,6 +74,10 @@ impl JormungandrConfig {
             Block0ConfigurationBuilder::new().build(),
             NodeConfigBuilder::new().build(),
         )
+    }
+
+    pub fn as_trusted_peer(&self) -> TrustedPeer {
+        self.node_config.p2p.make_trusted_peer_setting()
     }
 
     pub fn from(block0_configuration: Block0Configuration, node_config: NodeConfig) -> Self {
