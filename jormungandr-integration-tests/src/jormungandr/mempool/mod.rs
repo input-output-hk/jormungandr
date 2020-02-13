@@ -81,7 +81,5 @@ pub fn garbage_collection_interval() {
         jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
         sender.confirm_transaction();
     }
-
-    assert!(jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_address()).is_empty());
     jormungandr.assert_no_errors_in_log();
 }
