@@ -572,6 +572,7 @@ pub fn bootstrap(
     for address in trusted_peers_shuffled(&config) {
         let logger = logger.new(o!("peer_addr" => address.to_string()));
         let peer = Peer::new(address, Protocol::Grpc);
+        let _ = bootstrap::peers_from_trusted_peers(&peer, logger.clone());
         let res = bootstrap::bootstrap_from_peer(
             peer,
             blockchain.clone(),

@@ -2,6 +2,7 @@ use crate::blockcfg::{Block, Fragment, FragmentId, Header, HeaderHash};
 use crate::blockchain::Checkpoints;
 use crate::network::p2p::comm::PeerInfo;
 use crate::network::p2p::Id as NodeId;
+use crate::network::p2p::PeersResponse;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
@@ -466,6 +467,7 @@ pub enum TransactionMsg {
 /// Fetching the block headers, the block, the tip
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
+    GetPeers(ReplyHandle<PeersResponse>),
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
     GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
@@ -479,6 +481,7 @@ impl Debug for ClientMsg {
                 .debug_tuple("GetBlockTip")
                 .field(&format_args!("_"))
                 .finish(),
+            ClientMsg::GetPeers(_) => f.debug_tuple("GetPeers").field(&format_args!("_")).finish(),
             ClientMsg::GetHeaders(ids, _) => f
                 .debug_tuple("GetHeaders")
                 .field(ids)

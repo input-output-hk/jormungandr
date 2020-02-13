@@ -12,7 +12,7 @@ use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream, RequestFuture, Req
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
 use network_core::error as core_error;
-use network_core::gossip::Gossip;
+use network_core::gossip::{Gossip, PeersResponse};
 use network_core::server::{BlockService, FragmentService, GossipService, Node, P2pService};
 use slog::Logger;
 
@@ -281,6 +281,7 @@ impl GossipService for NodeService {
     type Node = NodeData;
     type GossipSubscription = Subscription<GossipProcessor, OutboundSubscription<Gossip<NodeData>>>;
     type GossipSubscriptionFuture = subscription::ServeGossip<GossipProcessor>;
+    type PeersFuture = RequestFuture<ClientMsg, PeersResponse, core_error::Error>;
 
     fn gossip_subscription(&mut self, subscriber: Self::NodeId) -> Self::GossipSubscriptionFuture {
         let logger = self
@@ -297,6 +298,14 @@ impl GossipService for NodeService {
             sink,
             self.global_state.peers.lock_server_comms(subscriber),
             logger,
+        )
+    }
+
+    fn peers(&mut self) -> Self::PeersFuture {
+        intercom::unary_future(
+            self.channels.client_box.clone(),
+            self.logger().new(o!("request" => "Peers")),
+            ClientMsg::GetPeers,
         )
     }
 }
