@@ -246,7 +246,11 @@ pub(super) mod internal {
                     }
                     Poll::Ready(Some(Err(e))) => return Poll::Ready(Err(e)),
                     Poll::Ready(None) => return Poll::Ready(Ok(())),
-                    Poll::Pending => return Poll::Pending,
+
+                    // Here Pending means there are still items in the DelayQueue but
+                    // they are not expired. We don't want this function to wait for these
+                    // ones to expired. We only cared about removing the expired ones.
+                    Poll::Pending => return Poll::Ready(Ok(())),
                 }
             }
         }
