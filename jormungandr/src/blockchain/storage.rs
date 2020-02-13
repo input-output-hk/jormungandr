@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use bb8::{ManageConnection, Pool, RunError};
-use chain_storage::store::{for_path_to_nth_ancestor, BlockInfo, BlockStore};
+use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Sink as Sink01, Stream as Stream01};
 use futures03::{
     compat::*,
@@ -16,7 +16,7 @@ use std::{convert::identity, pin::Pin, sync::Arc};
 use tokio02::{sync::Mutex, task::spawn_blocking};
 use tokio_compat::runtime;
 
-pub use chain_storage::error::Error as StorageError;
+pub use chain_storage_sqlite_old::Error as StorageError;
 
 async fn run_blocking_storage<F, R>(f: F) -> Result<R, StorageError>
 where
@@ -108,8 +108,8 @@ pub struct Ancestor {
 }
 
 struct BlockIterState {
-    to_depth: u64,
-    cur_depth: u64,
+    to_length: u64,
+    cur_length: u64,
     pending_infos: Vec<BlockInfo<HeaderHash>>,
 }
 
@@ -245,7 +245,7 @@ impl Storage03 {
         let res = self
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
-                    let depth = depth.unwrap_or(to_info.depth - 1);
+                    let depth = depth.unwrap_or(to_info.chain_length - 1);
                     BlockIterState::new(to_info, depth)
                 })
             })
@@ -419,40 +419,40 @@ impl Storage {
 impl BlockIterState {
     fn new(to_info: BlockInfo<HeaderHash>, distance: u64) -> Self {
         BlockIterState {
-            to_depth: to_info.depth,
-            cur_depth: to_info.depth - distance,
+            to_length: to_info.chain_length,
+            cur_length: to_info.chain_length - distance,
             pending_infos: vec![to_info],
         }
     }
 
     fn has_next(&self) -> bool {
-        self.cur_depth < self.to_depth
+        self.cur_length < self.to_length
     }
 
     async fn get_next(&mut self, pool: Pool<ConnectionManager>) -> Result<Block, StorageError> {
         assert!(self.has_next());
 
-        self.cur_depth += 1;
+        self.cur_length += 1;
 
         let block_info = self.pending_infos.pop().unwrap();
 
-        let cur_depth = self.cur_depth;
+        let cur_depth = self.cur_length;
 
-        let (mut pending_infos, block) = run_blocking_with_connection(&pool, move |store| {
-            if block_info.depth == cur_depth {
+        let (mut pending_infos, block) = run_blocking_with_connection(&pool, move |mut store| {
+            if block_info.chain_length == cur_depth {
                 // We've seen this block on a previous ancestor traversal.
                 let (block, _block_info) = store.get_block(&block_info.block_hash)?;
                 Ok((Vec::new(), block))
             } else {
                 // We don't have this block yet, so search back from
                 // the furthest block that we do have.
-                assert!(cur_depth < block_info.depth);
-                let depth = block_info.depth;
+                assert!(cur_depth < block_info.chain_length);
+                let depth = block_info.chain_length;
                 let parent = block_info.parent_id();
                 let mut pending_infos = Vec::new();
                 pending_infos.push(block_info);
                 let block_info = for_path_to_nth_ancestor(
-                    &*store,
+                    &mut store,
                     &parent,
                     depth - cur_depth - 1,
                     |new_info| {

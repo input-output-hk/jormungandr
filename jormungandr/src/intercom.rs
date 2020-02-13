@@ -103,9 +103,9 @@ impl From<oneshot::Canceled> for Error {
     }
 }
 
-impl From<chain_storage::error::Error> for Error {
-    fn from(err: chain_storage::error::Error) -> Self {
-        use chain_storage::error::Error::*;
+impl From<chain_storage_sqlite_old::Error> for Error {
+    fn from(err: chain_storage_sqlite_old::Error) -> Self {
+        use chain_storage_sqlite_old::Error::*;
 
         let code = match err {
             BlockNotFound => core_error::Code::NotFound,

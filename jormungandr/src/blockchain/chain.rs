@@ -58,7 +58,7 @@ use crate::{
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
-use chain_storage::error::Error as StorageError;
+use chain_storage_sqlite_old::Error as StorageError;
 use chain_time::TimeFrame;
 use slog::Logger;
 use std::{convert::Infallible, sync::Arc, time::Duration};
