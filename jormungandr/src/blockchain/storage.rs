@@ -143,7 +143,7 @@ impl Storage03 {
     }
 
     pub async fn put_tag(&self, tag: String, header_hash: HeaderHash) -> Result<(), StorageError> {
-        let _ = self.write_lock.lock().await;
+        let _write_lock = self.write_lock.lock().await;
         self.run(move |connection| connection.put_tag(&tag, &header_hash))
             .await
     }
@@ -181,7 +181,7 @@ impl Storage03 {
     }
 
     pub async fn put_block(&self, block: Block) -> Result<(), StorageError> {
-        let _ = self.write_lock.lock().await;
+        let _write_lock = self.write_lock.lock().await;
         self.run(move |connection| match connection.put_block(&block) {
             Err(StorageError::BlockNotFound) => unreachable!(),
             Err(e) => Err(e),
