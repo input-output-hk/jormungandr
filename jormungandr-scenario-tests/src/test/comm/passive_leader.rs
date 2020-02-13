@@ -50,7 +50,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
         &passive,
     )?;
 
-    let measurement = utils::measure_sync_time(
+    utils::measure_and_log_sync_time(
         vec![&passive, &leader],
         SyncWaitParams::two_nodes().into(),
         "transaction_to_passive_sync",
@@ -59,7 +59,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     passive.shutdown()?;
     leader.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
+    Ok(ScenarioResult::passed())
 }
 
 pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -130,7 +130,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &passive,
     )?;
 
-    let measurement = utils::measure_sync_time(
+    utils::measure_and_log_sync_time(
         vec![&passive, &leader],
         SyncWaitParams::nodes_restart(2).into(),
         "leader_restart",
@@ -140,7 +140,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
+    Ok(ScenarioResult::passed())
 }
 
 pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -186,7 +186,7 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
         &leader,
     )?;
 
-    let measurement = utils::measure_sync_time(
+    utils::measure_and_log_sync_time(
         vec![&passive, &leader],
         SyncWaitParams::nodes_restart(2).into(),
         "passive_node_is_updated_sync",
@@ -196,5 +196,5 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
+    Ok(ScenarioResult::passed())
 }

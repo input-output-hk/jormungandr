@@ -1,4 +1,4 @@
-use crate::scenario::repository::MeasurementThresholds;
+use jormungandr_lib::testing::Thresholds;
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
@@ -56,32 +56,40 @@ impl SyncWaitParams {
     }
 }
 
-impl Into<MeasurementThresholds> for SyncWaitParams {
-    fn into(self) -> MeasurementThresholds {
+impl Into<Thresholds<Duration>> for SyncWaitParams {
+    fn into(self) -> Thresholds<Duration> {
         match self {
             SyncWaitParams::WithDisruption {
                 no_of_nodes,
                 restart_coeff,
             } => {
-                let green = no_of_nodes * restart_coeff;
-                let yellow = no_of_nodes * restart_coeff * 2;
-                let red = no_of_nodes * restart_coeff * 3;
-                let timeout = no_of_nodes * restart_coeff * 4;
+                let green = Duration::from_secs(no_of_nodes * restart_coeff);
+                let yellow = Duration::from_secs(no_of_nodes * restart_coeff * 2);
+                let red = Duration::from_secs(no_of_nodes * restart_coeff * 3);
+                let timeout = Duration::from_secs(no_of_nodes * restart_coeff * 4);
 
-                MeasurementThresholds::new(green, yellow, red, timeout)
+                Thresholds::<Duration>::new(green, yellow, red, timeout)
             }
             SyncWaitParams::Standard {
                 no_of_nodes,
                 longest_path_length,
             } => {
-                let green = no_of_nodes;
-                let yellow = no_of_nodes + longest_path_length;
-                let red = no_of_nodes + longest_path_length * 2;
-                let timeout = no_of_nodes * 2 + longest_path_length * 2;
+                let green = Duration::from_secs(no_of_nodes);
+                let yellow = Duration::from_secs(no_of_nodes + longest_path_length);
+                let red = Duration::from_secs(no_of_nodes + longest_path_length * 2);
+                let timeout = Duration::from_secs(no_of_nodes * 2 + longest_path_length * 2);
 
-                MeasurementThresholds::new(green, yellow, red, timeout)
+                Thresholds::<Duration>::new(green, yellow, red, timeout)
             }
-            SyncWaitParams::ZeroWait => MeasurementThresholds::new(0, 0, 0, 0),
+            SyncWaitParams::ZeroWait => {
+                let duration = Duration::from_secs(0);
+                Thresholds::<Duration>::new(
+                    duration.clone(),
+                    duration.clone(),
+                    duration.clone(),
+                    duration.clone(),
+                )
+            }
         }
     }
 }

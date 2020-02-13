@@ -62,7 +62,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         wallet2.confirm_transaction();
     }
 
-    let measurement = utils::measure_sync_time(
+    utils::measure_and_log_sync_time(
         vec![&leader_1, &leader_2],
         SyncWaitParams::two_nodes().into(),
         "two_transaction_to_two_leaders_sync",
@@ -71,5 +71,5 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     leader_1.shutdown().unwrap();
     leader_2.shutdown().unwrap();
     controller.finalize();
-    Ok(ScenarioResult::passed_with_measurements(vec![measurement]))
+    Ok(ScenarioResult::passed())
 }
