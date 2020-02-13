@@ -86,8 +86,10 @@ impl Pool {
     }
 
     pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
-        let mut pool = self.pool.lock().await;
-        future::poll_fn(move |cx| pool.poll_purge(cx)).await?;
+        {
+            let mut pool = self.pool.lock().await;
+            future::poll_fn(move |cx| pool.poll_purge(cx)).await?;
+        }
         self.logs.poll_purge().await
     }
 
