@@ -9,7 +9,10 @@ use crate::{
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
-use jormungandr_lib::{interfaces::TrustedPeer, wallet::Wallet};
+use jormungandr_lib::{
+    interfaces::{Mempool, TrustedPeer},
+    wallet::Wallet,
+};
 use std::env;
 use std::time::Duration;
 
@@ -67,11 +70,20 @@ impl TestnetConfig {
     }
 
     pub fn make_config(&self) -> JormungandrConfig {
+        let day_interval = 86_400;
+
         ConfigurationBuilder::new()
             .with_block_hash(self.block0_hash.to_string())
             .with_trusted_peers(self.trusted_peers.clone())
             .with_public_address(format!("/ip4/{}/tcp/{}", self.public_ip, self.public_port))
             .with_listen_address(format!("/ip4/0.0.0.0/tcp/{}", self.listen_port))
+            .with_mempool(Mempool {
+                pool_max_entries: 10_000usize.into(),
+                fragment_ttl: Duration::from_secs(day_interval).into(),
+                log_max_entries: 100_000usize.into(),
+                log_ttl: Duration::from_secs(day_interval).into(),
+                garbage_collection_interval: Duration::from_secs(day_interval).into(),
+            })
             .build()
     }
 
@@ -110,7 +122,7 @@ pub fn e2e_stake_pool() {
         create_actor_account(&testnet_config.actor_account_private_key, &jormungandr);
 
     let long_wait = WaitBuilder::new()
-        .tries(200)
+        .tries(400)
         .sleep_between_tries(120)
         .build();
 
