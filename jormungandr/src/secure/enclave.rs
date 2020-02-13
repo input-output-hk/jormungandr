@@ -62,14 +62,17 @@ impl Enclave {
         let mut leaders = self.leaders.write().await;
         let next_leader_id = get_maximum_id(&leaders).next();
         let mut cache = self.added_cache.write().await;
-        leader
-            .bft_leader
-            .as_ref()
-            .map(|l| cache.insert(l.sig_key.to_public().to_string(), next_leader_id));
-        // This panic case should never happens in practice, as this structure is
-        // not supposed to be shared between thread.
+
+        // Add the new leader to the cache
+        match leader.bft_leader.as_ref() {
+            Some(l) => {cache.insert(l.sig_key.to_public().to_string(), next_leader_id);},
+            None => ()
+        }
+
         match leaders.insert(next_leader_id, leader) {
             None => (),
+            // This panic case should never happens in practice, as this structure is
+            // not supposed to be shared between thread.
             Some(_) => panic!("enclave leader failed : duplicated value race"),
         };
         next_leader_id
