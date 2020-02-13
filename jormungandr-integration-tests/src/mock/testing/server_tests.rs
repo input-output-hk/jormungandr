@@ -151,7 +151,7 @@ pub fn handshake_ok() {
     );
 
     server.shutdown();
-    server.logger.print_error_or_warn_lines();
+    server.logger.print_raw_log();
     assert!(!server
         .logger
         .get_log_entries()
