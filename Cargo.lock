@@ -1672,7 +1672,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "jcli"
-version = "0.8.10-alpha1"
+version = "0.8.10"
 dependencies = [
  "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1686,7 +1686,7 @@ dependencies = [
  "ed25519-bip32 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gtmpl 0.5.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "jormungandr-lib 0.8.10-alpha1",
+ "jormungandr-lib 0.8.10",
  "maplit 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "mime 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1706,7 +1706,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr"
-version = "0.8.10-alpha1"
+version = "0.8.10"
 dependencies = [
  "actix-cors 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-rt 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1732,7 +1732,7 @@ dependencies = [
  "humantime 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "imhamt 0.1.0",
- "jormungandr-lib 0.8.10-alpha1",
+ "jormungandr-lib 0.8.10",
  "juniper 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.66 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1766,7 +1766,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-integration-tests"
-version = "0.8.10-alpha1"
+version = "0.8.10"
 dependencies = [
  "assert_cmd 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "assert_fs 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1786,9 +1786,9 @@ dependencies = [
  "galvanic-test 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpc 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "jcli 0.8.10-alpha1",
- "jormungandr 0.8.10-alpha1",
- "jormungandr-lib 0.8.10-alpha1",
+ "jcli 0.8.10",
+ "jormungandr 0.8.10",
+ "jormungandr-lib 0.8.10",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "poldercast 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1813,7 +1813,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-lib"
-version = "0.8.10-alpha1"
+version = "0.8.10"
 dependencies = [
  "bech32 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1838,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-scenario-tests"
-version = "0.8.10-alpha1"
+version = "0.8.10"
 dependencies = [
  "bawawa 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1851,8 +1851,8 @@ dependencies = [
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "indicatif 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "jormungandr-integration-tests 0.8.10-alpha1",
- "jormungandr-lib 0.8.10-alpha1",
+ "jormungandr-integration-tests 0.8.10",
+ "jormungandr-lib 0.8.10",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mktemp 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "poldercast 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",

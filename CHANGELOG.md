@@ -1,5 +1,88 @@
 # Change Log
 
+## [v0.8.10](https://github.com/input-output-hk/jormungandr/tree/v0.8.10) (2020-02-13)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.9...v0.8.10)
+
+**Breaking changes:**
+
+- integrate pool-upgrade from chain-libs [\#1766](https://github.com/input-output-hk/jormungandr/pull/1766)
+
+**Implemented enhancements:**
+
+- Don't hold the fragment pool lock for too long [\#1779](https://github.com/input-output-hk/jormungandr/pull/1779)
+- Add \(somewhat hardcoded peers queries [\#1778](https://github.com/input-output-hk/jormungandr/pull/1778)
+- Integrate lock-free Multiverse in mockchain [\#1749](https://github.com/input-output-hk/jormungandr/pull/1749)
+- improve logging of the stuck notifier [\#1743](https://github.com/input-output-hk/jormungandr/pull/1743)
+- Separate limit for client connections [\#1696](https://github.com/input-output-hk/jormungandr/pull/1696)
+- Asynchronous storage query execution and connection pool [\#1655](https://github.com/input-output-hk/jormungandr/pull/1655)
+
+**Fixed bugs:**
+
+- rest - /api/v0/stake\_pool/{pool\_id} - total\_stake wrong value [\#1772](https://github.com/input-output-hk/jormungandr/issues/1772)
+- Don't block in the logs and the pools [\#1780](https://github.com/input-output-hk/jormungandr/pull/1780)
+- report the stake for the selected pool instead of the whole system stake [\#1776](https://github.com/input-output-hk/jormungandr/pull/1776)
+
+**Security fixes:**
+
+- Update ledger ed25519 signing to the new signing closure [\#1703](https://github.com/input-output-hk/jormungandr/pull/1703)
+
+**Closed issues:**
+
+- test jormungandr::mempool::test\_log\_ttl is failing randomly [\#1774](https://github.com/input-output-hk/jormungandr/issues/1774)
+- Leader Logs Missing Blocks that were previously there - node doesn't create them either [\#1771](https://github.com/input-output-hk/jormungandr/issues/1771)
+- Consider using libp2p [\#1769](https://github.com/input-output-hk/jormungandr/issues/1769)
+- `jcli rest v0 stake-pool get` and `jcli rest v0 stake get` are returning different stake delegation per pool [\#1747](https://github.com/input-output-hk/jormungandr/issues/1747)
+- Inconsistent reward dump [\#1722](https://github.com/input-output-hk/jormungandr/issues/1722)
+- IOHK node rejecting bootstrap pull request . Not able to bootstrap from trusted peer of IOHK [\#1692](https://github.com/input-output-hk/jormungandr/issues/1692)
+- Jormungandr 0.8.7 node does not create blocks on Windows [\#1659](https://github.com/input-output-hk/jormungandr/issues/1659)
+
+**Merged pull requests:**
+
+- fix sqlite failute in block validation [\#1784](https://github.com/input-output-hk/jormungandr/pull/1784)
+- use the View instead of the All [\#1782](https://github.com/input-output-hk/jormungandr/pull/1782)
+- \[Tests\] remove duplicated tests after functional test conversion [\#1768](https://github.com/input-output-hk/jormungandr/pull/1768)
+- upgrade bech32 to 0.7 [\#1764](https://github.com/input-output-hk/jormungandr/pull/1764)
+- \[Tests\] Converted self node perf test from assertion to measurement based [\#1763](https://github.com/input-output-hk/jormungandr/pull/1763)
+- Bump async-trait from 0.1.22 to 0.1.24 [\#1759](https://github.com/input-output-hk/jormungandr/pull/1759)
+- Bump serde\_json from 1.0.46 to 1.0.47 [\#1757](https://github.com/input-output-hk/jormungandr/pull/1757)
+- Bump hex from 0.4.0 to 0.4.1 [\#1756](https://github.com/input-output-hk/jormungandr/pull/1756)
+- Input process async [\#1754](https://github.com/input-output-hk/jormungandr/pull/1754)
+- \[Test\] Quarantine update in private network tests [\#1753](https://github.com/input-output-hk/jormungandr/pull/1753)
+- update chain-deps with merged sqlite connections [\#1752](https://github.com/input-output-hk/jormungandr/pull/1752)
+- fragment: convert to std::future [\#1750](https://github.com/input-output-hk/jormungandr/pull/1750)
+- Release pipeline for GitHub actions [\#1748](https://github.com/input-output-hk/jormungandr/pull/1748)
+- Bump valico from 3.1.0 to 3.2.0 [\#1746](https://github.com/input-output-hk/jormungandr/pull/1746)
+- convert storage bootstrap to std::futures [\#1745](https://github.com/input-output-hk/jormungandr/pull/1745)
+- Add std::future compliant version of spawn and run\_periodic [\#1744](https://github.com/input-output-hk/jormungandr/pull/1744)
+- chain-deps updates [\#1742](https://github.com/input-output-hk/jormungandr/pull/1742)
+- node stats update [\#1740](https://github.com/input-output-hk/jormungandr/pull/1740)
+- Do not truncate the list of peers for propagation [\#1738](https://github.com/input-output-hk/jormungandr/pull/1738)
+- \[Tests\] updated node stats with total\_peer\_cnt  and node\_id fields [\#1733](https://github.com/input-output-hk/jormungandr/pull/1733)
+- Lock down the AppVeyor build image [\#1732](https://github.com/input-output-hk/jormungandr/pull/1732)
+- \[Tests\] Move remove address duplication in  integration tests [\#1731](https://github.com/input-output-hk/jormungandr/pull/1731)
+- Bump nix from 0.15.0 to 0.17.0 [\#1730](https://github.com/input-output-hk/jormungandr/pull/1730)
+- Bump base64 from 0.10.1 to 0.11.0 [\#1727](https://github.com/input-output-hk/jormungandr/pull/1727)
+- Bump humantime from 1.3.0 to 2.0.0 [\#1726](https://github.com/input-output-hk/jormungandr/pull/1726)
+- Bump tokio-threadpool from 0.1.17 to 0.1.18 [\#1723](https://github.com/input-output-hk/jormungandr/pull/1723)
+- Bump console from 0.7.7 to 0.9.2 [\#1721](https://github.com/input-output-hk/jormungandr/pull/1721)
+- Added node ID to stats output [\#1720](https://github.com/input-output-hk/jormungandr/pull/1720)
+- IPv6 dafault to IPv4 methods in gossip is\_global  [\#1717](https://github.com/input-output-hk/jormungandr/pull/1717)
+- use tokio-compat runtime instead of tokio 0.1 [\#1715](https://github.com/input-output-hk/jormungandr/pull/1715)
+- Bump hex from 0.3.2 to 0.4.0 [\#1712](https://github.com/input-output-hk/jormungandr/pull/1712)
+- Bump indicatif from 0.11.0 to 0.14.0 [\#1711](https://github.com/input-output-hk/jormungandr/pull/1711)
+- Bump thiserror from 1.0.9 to 1.0.10 [\#1710](https://github.com/input-output-hk/jormungandr/pull/1710)
+- Bump slog-async from 2.3.0 to 2.4.0 [\#1707](https://github.com/input-output-hk/jormungandr/pull/1707)
+- Bump serde\_json from 1.0.45 to 1.0.46 [\#1706](https://github.com/input-output-hk/jormungandr/pull/1706)
+- Bump juniper from 0.13.1 to 0.14.2 [\#1705](https://github.com/input-output-hk/jormungandr/pull/1705)
+- Bump assert\_cmd from 0.11.1 to 0.12.0 [\#1704](https://github.com/input-output-hk/jormungandr/pull/1704)
+- Convert leadership module to tokio 0.2 and futures 0.3 [\#1700](https://github.com/input-output-hk/jormungandr/pull/1700)
+- Refactor REST API to remove sync locking and make it more isolated [\#1698](https://github.com/input-output-hk/jormungandr/pull/1698)
+- Update poldercast library and use performant node count [\#1691](https://github.com/input-output-hk/jormungandr/pull/1691)
+- Docs - update with latest changes [\#1684](https://github.com/input-output-hk/jormungandr/pull/1684)
+- \[Tests\] Private network tests - listen/public address split [\#1683](https://github.com/input-output-hk/jormungandr/pull/1683)
+- \[Tests\] another timeout extend for testnet [\#1668](https://github.com/input-output-hk/jormungandr/pull/1668)
+
 ## [v0.8.9](https://github.com/input-output-hk/jormungandr/tree/v0.8.9) (2020-01-30)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.8...v0.8.9)
