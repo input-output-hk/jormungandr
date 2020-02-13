@@ -1,25 +1,25 @@
-mod measurement;
 mod result;
 mod scenario;
 mod suite_result;
 mod tag;
 
-pub use measurement::*;
 pub use result::ScenarioResult;
 pub use scenario::Scenario;
 pub use suite_result::ScenarioSuiteResult;
 pub use tag::{parse_tag_from_str, Tag};
 
 use crate::{
-    test::Result,
     test::{
         comm::leader_leader::*,
         comm::passive_leader::*,
         network::topology::scenarios::*,
         non_functional::{disruption::*, soak::*},
+        Result,
     },
     Context,
 };
+
+use jormungandr_lib::testing::Measurement;
 use rand_chacha::ChaChaRng;
 type ScenarioMethod = fn(Context<ChaChaRng>) -> Result<ScenarioResult>;
 

@@ -88,10 +88,6 @@ fn main() {
     introduction(&context);
     let scenarios_repo = ScenariosRepository::new(command_args.scenario, command_args.tag);
     let scenario_suite_result = scenarios_repo.run(&mut context);
-
-    if scenario_suite_result.any_measurements() {
-        scenario_suite_result.print_measurements_results();
-    }
     println!("{}", scenario_suite_result.result_string());
 
     if command_args.set_exit_code == true {
