@@ -166,6 +166,21 @@ impl P2pTopology {
         })
     }
 
+    pub fn list_available_limit<E>(
+        &self,
+        n: usize,
+    ) -> impl Future<Item = Vec<poldercast::Node>, Error = E> {
+        self.read().map(move |topology| {
+            topology
+                .nodes()
+                .all_available_nodes()
+                .into_iter()
+                .take(n)
+                .cloned()
+                .collect()
+        })
+    }
+
     pub fn list_available<E>(&self) -> impl Future<Item = Vec<poldercast::Node>, Error = E> {
         self.read().map(|topology| {
             topology

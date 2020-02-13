@@ -1,6 +1,7 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::{Storage, Tip};
 use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
+use crate::network::p2p::{P2pTopology, Peer, PeersResponse};
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_core::property::HasHeader;
 
@@ -11,6 +12,7 @@ use tokio::timer::Timeout;
 use std::time::Duration;
 
 const PROCESS_TIMEOUT_GET_BLOCK_TIP: u64 = 5;
+const PROCESS_TIMEOUT_GET_PEERS: u64 = 10;
 const PROCESS_TIMEOUT_GET_HEADERS: u64 = 5 * 60;
 const PROCESS_TIMEOUT_GET_HEADERS_RANGE: u64 = 5 * 60;
 const PROCESS_TIMEOUT_GET_BLOCKS: u64 = 10 * 60;
@@ -19,6 +21,7 @@ const PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP: u64 = 60 * 60;
 pub struct TaskData {
     pub storage: Storage,
     pub blockchain_tip: Tip,
+    pub topology: P2pTopology,
 }
 
 pub fn handle_input(
@@ -42,6 +45,23 @@ pub fn handle_input(
                         error!(
                             logger,
                             "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
+        }
+        ClientMsg::GetPeers(handle) => {
+            let fut = handle.async_reply(get_peers(&task_data.topology));
+            let logger = info.logger().new(o!("request" => "GetPeers"));
+
+            info.spawn(
+                "get peers",
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_PEERS)).map_err(
+                    move |e| {
+                        error!(
+                            logger,
+                            "request timed out of failed unexpectdly";
                             "error" => ?e,
                         );
                     },
@@ -120,6 +140,20 @@ fn get_block_tip(blockchain_tip: &Tip) -> impl Future<Item = Header, Error = Err
     blockchain_tip
         .get_ref()
         .and_then(|tip| Ok(tip.header().clone()))
+}
+
+fn get_peers(topology: &P2pTopology) -> impl Future<Item = PeersResponse, Error = Error> {
+    // TODO: hardcoded for now but should come from some limit + client query
+    topology.list_available_limit(192).and_then(|nodes| {
+        let mut peers = Vec::new();
+        for n in nodes.iter() {
+            match n.address().and_then(|x| x.to_socketaddr()) {
+                None => {}
+                Some(addr) => peers.push(Peer { addr }),
+            }
+        }
+        future::ok(PeersResponse { peers })
+    })
 }
 
 fn handle_get_headers_range(

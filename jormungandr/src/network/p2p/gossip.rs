@@ -5,6 +5,8 @@ use network_core::gossip::{self, Node as _};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 
+pub use gossip::{Peer, PeersResponse};
+
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Gossip(poldercast::NodeProfile);
 

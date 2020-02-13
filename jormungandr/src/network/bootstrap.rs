@@ -3,7 +3,7 @@ use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
-use network_core::client::{BlockService, Client as _};
+use network_core::client::{BlockService, Client as _, GossipService};
 use network_core::error::Error as NetworkError;
 use network_grpc::client::Connection;
 use slog::Logger;
@@ -24,6 +24,8 @@ pub enum Error {
     Connect { source: grpc::ConnectError },
     #[error("connection broken")]
     ClientNotReady { source: NetworkError },
+    #[error("peers not available broken")]
+    PeersNotAvailable { source: NetworkError },
     #[error("bootstrap pull request failed")]
     PullRequestFailed { source: NetworkError },
     #[error("bootstrap pull stream failed")]
@@ -42,6 +44,38 @@ pub enum Error {
     ApplyBlockFailed { source: BlockchainError },
     #[error("failed to select the new tip")]
     ChainSelectionFailed { source: BlockchainError },
+}
+
+pub fn peers_from_trusted_peers(peer: &Peer, logger: Logger) -> Result<(), Error> {
+    info!(
+        logger,
+        "getting peers from bootstrap peer {}", peer.connection
+    );
+
+    let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
+    let bootstrap = grpc::connect(peer.address(), None, runtime.executor())
+        .map_err(|e| Error::Connect { source: e })
+        .and_then(|client: Connection<BlockConfig>| {
+            client
+                .ready()
+                .map_err(|e| Error::ClientNotReady { source: e })
+        })
+        .and_then(move |mut client| {
+            client
+                .peers()
+                .map_err(|e| Error::PeersNotAvailable { source: e })
+                .and_then(move |peers| {
+                    info!(
+                        logger,
+                        "peer {} : peers known : {}",
+                        peer.connection,
+                        peers.peers.len()
+                    );
+                    future::ok(())
+                })
+        });
+
+    runtime.block_on(bootstrap)
 }
 
 pub fn bootstrap_from_peer(
