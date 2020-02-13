@@ -1,5 +1,6 @@
-use crate::scenario::repository::{Measurement, ScenarioResult};
-
+use crate::scenario::repository::ScenarioResult;
+use jormungandr_lib::testing::Measurement;
+use std::time::Duration;
 #[derive(Clone, Debug)]
 pub struct ScenarioSuiteResult {
     results: Vec<ScenarioResult>,
@@ -9,21 +10,6 @@ impl ScenarioSuiteResult {
     pub fn new() -> Self {
         ScenarioSuiteResult {
             results: Vec::new(),
-        }
-    }
-
-    pub fn any_measurements(&self) -> bool {
-        self.results.iter().any(|x| !x.measurements().is_empty())
-    }
-
-    pub fn print_measurements_results(&self) {
-        let mut measurements: Vec<Measurement> = Vec::new();
-        for scenario_result in self.results.iter() {
-            measurements.extend(scenario_result.measurements.iter().cloned());
-        }
-
-        for measurement in measurements {
-            println!("{}", measurement);
         }
     }
 
