@@ -1,6 +1,5 @@
 pub mod disruption;
 pub mod soak;
-pub mod sync;
 
 use crate::{scenario::repository::MeasurementThresholds, test::utils::SyncWaitParams};
 
