@@ -28,27 +28,28 @@ jobs:
     name: Release assets
     runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-gnu}
-          - {os: ubuntu-latest, target: arm-unknown-linux-gnueabi}
-          - {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf}
-          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64}
-          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu}
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-musl}
-          - {os: ubuntu-latest, target: aarch64-linux-android}
+          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, cross: false}
+          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, cross: true}
+          # mips and powerpc are not compitble with ring v0.16.10, so they are disabled for now
+#          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
+#          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
+          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, cross: true}
           # Macos
-          - {os: macos-latest, target: x86_64-apple-darwin}
+          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, cross: false}
           # Windows
-          - {os: windows-latest, target: x86_64-pc-windows-gnu}
-          - {os: windows-latest, target: x86_64-pc-windows-msvc}
-        toolchain: [stable]
-
+          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, cross: false}
+          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, cross: false}
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: ${{ matrix.config.toolchain }}
           target: ${{ matrix.config.target }}
           override: true
           default: true
@@ -61,14 +62,16 @@ jobs:
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         with:
+          use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release -p jormungandr --bin jormungandr -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         with:
+          use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release -p jcli --bin jcli -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto
 
       - name: Get tag version
         id: get_version
@@ -77,11 +80,11 @@ jobs:
 
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
-        run: tar -C ./target/release -czvf jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz jormungandr jcli
+        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.tar.gz jormungandr jcli
 
       - name: Pack binaries if windows
         if: matrix.config.os == 'windows-latest'
-        run: compress-archive ./target/release/jormungandr.exe, ./target/release/jcli.exe jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.zip
+        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.target }}.zip
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v1-release
