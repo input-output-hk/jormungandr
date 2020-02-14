@@ -7,12 +7,12 @@ use bb8::{ManageConnection, Pool, RunError};
 use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Sink as Sink01, Stream as Stream01};
 use futures03::{
-    compat::*,
+    compat::{Compat, Sink01CompatExt},
     prelude::*,
     sink::{Sink, SinkExt},
     stream::{self, Stream},
 };
-use std::{convert::identity, pin::Pin, sync::Arc};
+use std::{convert::identity, sync::Arc};
 use tokio02::{sync::Mutex, task::spawn_blocking};
 use tokio_compat::runtime;
 
@@ -234,14 +234,12 @@ impl Storage03 {
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        sink: Pin<Box<S>>,
+        sink: &mut S,
     ) -> Result<(), S::Error>
     where
-        S: Sink<Result<Block, E>>,
+        S: Sink<Result<Block, E>> + Unpin,
         E: From<StorageError>,
     {
-        let mut sink = sink;
-
         let res = self
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
@@ -403,9 +401,7 @@ impl Storage {
     {
         let inner = self.inner.clone();
         Compat::new(Box::pin(async move {
-            inner
-                .send_branch(to, depth, Box::pin(sink.sink_compat()))
-                .await
+            inner.send_branch(to, depth, &mut sink.sink_compat()).await
         }))
     }
 
