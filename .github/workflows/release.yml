@@ -63,12 +63,14 @@ jobs:
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         with:
+          use-cross: true
           command: rustc
           args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         with:
+          use-cross: true
           command: rustc
           args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto
 
