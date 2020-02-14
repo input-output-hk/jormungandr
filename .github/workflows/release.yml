@@ -36,8 +36,9 @@ jobs:
           - {os: ubuntu-latest, target: aarch64-unknown-linux-gnu, cross: true}
           - {os: ubuntu-latest, target: arm-unknown-linux-gnueabi, cross: true}
           - {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf, cross: true}
-          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
-          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
+          # mips and powerpc are not compitble with ring v0.16.10, so they are disabled for now
+#          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
+#          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
           - {os: ubuntu-latest, target: x86_64-unknown-linux-musl, cross: true}
           - {os: ubuntu-latest, target: aarch64-linux-android, cross: true}
           # Macos
