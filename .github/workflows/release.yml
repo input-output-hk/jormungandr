@@ -44,14 +44,17 @@ jobs:
           # Macos
           - {os: macos-latest, target: x86_64-apple-darwin, cross: false}
           # Windows
-          - {os: windows-latest, target: x86_64-pc-windows-gnu, cross: false}
-          - {os: windows-latest, target: x86_64-pc-windows-msvc, cross: false}
+          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, cross: false}
+          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, cross: false}
         toolchain: [stable]
 
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          - toolchain: ${{ matrix.toolchain }}
+            if: matrix.config.os != 'windows-latest'
+          - toolchain: ${{ matrix.config.toolchain }}
+            if: matrix.config.os == 'windows-latest'
           target: ${{ matrix.config.target }}
           override: true
           default: true
