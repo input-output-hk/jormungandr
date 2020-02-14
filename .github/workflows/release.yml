@@ -32,19 +32,19 @@ jobs:
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-gnu}
-          - {os: ubuntu-latest, target: aarch64-unknown-linux-gnu}
-          - {os: ubuntu-latest, target: arm-unknown-linux-gnueabi}
-          - {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf}
-          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64}
-          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu}
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-musl}
-          - {os: ubuntu-latest, target: aarch64-linux-android}
+          - {os: ubuntu-latest, target: x86_64-unknown-linux-gnu, cross: false}
+          - {os: ubuntu-latest, target: aarch64-unknown-linux-gnu, cross: true}
+          - {os: ubuntu-latest, target: arm-unknown-linux-gnueabi, cross: true}
+          - {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf, cross: true}
+          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
+          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
+          - {os: ubuntu-latest, target: x86_64-unknown-linux-musl, cross: true}
+          - {os: ubuntu-latest, target: aarch64-linux-android, cross: true}
           # Macos
-          - {os: macos-latest, target: x86_64-apple-darwin}
+          - {os: macos-latest, target: x86_64-apple-darwin, cross: false}
           # Windows
-          - {os: windows-latest, target: x86_64-pc-windows-gnu}
-          - {os: windows-latest, target: x86_64-pc-windows-msvc}
+          - {os: windows-latest, target: x86_64-pc-windows-gnu, cross: false}
+          - {os: windows-latest, target: x86_64-pc-windows-msvc, cross: false}
         toolchain: [stable]
 
     steps:
@@ -63,7 +63,7 @@ jobs:
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         with:
-          use-cross: true
+          use-cross: ${{ matrix.config.cross }}
           command: rustc
           args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C lto
 
