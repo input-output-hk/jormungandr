@@ -569,28 +569,37 @@ pub fn bootstrap(
         bootstrapped = true;
     }
 
-    for address in trusted_peers_shuffled(&config) {
+    'bootstrap: for address in trusted_peers_shuffled(&config) {
         let logger = logger.new(o!("peer_addr" => address.to_string()));
         let peer = Peer::new(address, Protocol::Grpc);
-        let _ = bootstrap::peers_from_trusted_peers(&peer, logger.clone());
-        let res = bootstrap::bootstrap_from_peer(
-            peer,
-            blockchain.clone(),
-            branch.clone(),
-            logger.clone(),
-        );
+        let peers = bootstrap::peers_from_trusted_peer(&peer, logger.clone()).unwrap_or_else(|e| {
+            warn!(
+                logger,
+                "failed to retrieve the list of bootstrap peers from trusted peer";
+                "reason" => %e,
+            );
+            vec![peer]
+        });
+        for peer in peers {
+            let res = bootstrap::bootstrap_from_peer(
+                peer,
+                blockchain.clone(),
+                branch.clone(),
+                logger.clone(),
+            );
 
-        match res {
-            Err(bootstrap::Error::Connect { source: e }) => {
-                warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
-            }
-            Err(e) => {
-                warn!(logger, "initial bootstrap failed"; "error" => ?e);
-            }
-            Ok(()) => {
-                info!(logger, "initial bootstrap completed");
-                bootstrapped = true;
-                break;
+            match res {
+                Err(bootstrap::Error::Connect { source: e }) => {
+                    warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
+                }
+                Err(e) => {
+                    warn!(logger, "initial bootstrap failed"; "error" => ?e);
+                }
+                Ok(()) => {
+                    info!(logger, "initial bootstrap completed");
+                    bootstrapped = true;
+                    break 'bootstrap;
+                }
             }
         }
     }
