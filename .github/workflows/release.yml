@@ -69,7 +69,7 @@ jobs:
       - name: Build jcli
         uses: actions-rs/cargo@v1
         with:
-          use-cross: true
+          use-cross: ${{ matrix.config.cross }}
           command: rustc
           args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto
 
