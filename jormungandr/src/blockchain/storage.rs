@@ -255,13 +255,12 @@ impl Storage03 {
                     let item = iter.get_next(self.pool.clone()).await.map_err(Into::into);
                     sink.send(item).await?;
                 }
-                sink.close().await?;
             }
             Err(e) => {
-                sink.send_all(&mut stream::once(Box::pin(async { Ok(Err(e.into())) })))
-                    .await?;
+                sink.send(Err(e.into())).await?;
             }
         }
+        sink.close().await?;
 
         Ok(())
     }
