@@ -62,13 +62,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: rustc
-          args: --release -p jormungandr --bin jormungandr -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         with:
           command: rustc
-          args: --release -p jcli --bin jcli -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto
 
       - name: Get tag version
         id: get_version
