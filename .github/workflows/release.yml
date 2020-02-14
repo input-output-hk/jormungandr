@@ -32,29 +32,24 @@ jobs:
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-gnu, cross: false}
-          - {os: ubuntu-latest, target: aarch64-unknown-linux-gnu, cross: true}
-          - {os: ubuntu-latest, target: arm-unknown-linux-gnueabi, cross: true}
-          - {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, cross: false}
+          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, cross: true}
           # mips and powerpc are not compitble with ring v0.16.10, so they are disabled for now
 #          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
 #          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-musl, cross: true}
-          - {os: ubuntu-latest, target: aarch64-linux-android, cross: true}
+          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, cross: true}
+          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, cross: true}
           # Macos
-          - {os: macos-latest, target: x86_64-apple-darwin, cross: false}
+          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, cross: false}
           # Windows
           - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, cross: false}
           - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, cross: false}
-        toolchain: [stable]
-
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          - toolchain: ${{ matrix.toolchain }}
-            if: matrix.config.os != 'windows-latest'
-          - toolchain: ${{ matrix.config.toolchain }}
-            if: matrix.config.os == 'windows-latest'
+          toolchain: ${{ matrix.config.toolchain }}
           target: ${{ matrix.config.target }}
           override: true
           default: true
