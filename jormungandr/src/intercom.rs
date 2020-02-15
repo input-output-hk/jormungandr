@@ -7,9 +7,12 @@ use crate::network::p2p::comm::PeerInfo;
 use crate::network::p2p::Id as NodeId;
 use crate::network::p2p::PeersResponse;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
-use chain_impl_mockchain::fragment::Contents;
-use futures::prelude::*;
-use futures::sync::{mpsc, oneshot};
+use chain_impl_mockchain::fragment::Contents as FragmentContents;
+use futures::sync::mpsc as mpsc01;
+use futures::{Future as Future01, Poll as Poll01, Sink as Sink01, StartSend, Stream as Stream01};
+use futures03::channel::{mpsc, oneshot};
+use futures03::compat::{Compat, CompatSink};
+use futures03::prelude::*;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use network_core::error as core_error;
 use slog::Logger;
@@ -17,6 +20,8 @@ use std::{
     error,
     fmt::{self, Debug, Display},
     marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
 };
 
 /// The error values passed via intercom messages.
@@ -166,9 +171,9 @@ impl<T> ReplyHandle<T> {
         self.reply(Err(error))
     }
 
-    pub fn async_reply<Fut>(self, future: Fut) -> impl Future<Item = (), Error = ()>
+    pub fn async_reply<Fut>(self, future: Fut) -> impl Future01<Item = (), Error = ()>
     where
-        Fut: Future<Item = T, Error = Error>,
+        Fut: Future01<Item = T, Error = Error>,
     {
         future.then(move |res| {
             self.reply(res);
@@ -177,27 +182,29 @@ impl<T> ReplyHandle<T> {
     }
 }
 
-pub struct ReplyFuture<T, E> {
+pub struct ReplyFuture03<T, E> {
     receiver: oneshot::Receiver<Result<T, Error>>,
     logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Future for ReplyFuture<T, E>
+impl<T, E> Unpin for ReplyFuture03<T, E> {}
+
+pub type ReplyFuture<T, E> = Compat<ReplyFuture03<T, E>>;
+
+impl<T, E> Future for ReplyFuture03<T, E>
 where
     E: From<Error>,
 {
-    type Item = T;
-    type Error = E;
+    type Output = Result<T, E>;
 
-    fn poll(&mut self) -> Poll<T, E> {
-        match self.receiver.poll() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(Ok(item))) => {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, E>> {
+        Pin::new(&mut self.receiver).poll(cx).map(|res| match res {
+            Ok(Ok(item)) => {
                 debug!(self.logger, "request processed");
-                Ok(Async::Ready(item))
+                Ok(item)
             }
-            Ok(Async::Ready(Err(e))) => {
+            Ok(Err(e)) => {
                 info!(self.logger, "error processing request"; "reason" => %e);
                 Err(e.into())
             }
@@ -205,18 +212,26 @@ where
                 warn!(self.logger, "response canceled by the processing task");
                 Err(Error::from(oneshot::Canceled).into())
             }
-        }
+        })
     }
 }
 
-fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) {
+fn unary_reply03<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) {
     let (sender, receiver) = oneshot::channel();
-    let future = ReplyFuture {
+    let future = ReplyFuture03 {
         receiver,
         logger,
         _phantom_error: PhantomData,
     };
     (ReplyHandle { sender }, future)
+}
+
+fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>)
+where
+    E: From<Error>,
+{
+    let (handle, future) = unary_reply03(logger);
+    (handle, future.compat())
 }
 
 pub fn unary_future<T, R, E, F>(
@@ -226,6 +241,7 @@ pub fn unary_future<T, R, E, F>(
 ) -> RequestFuture<T, R, E>
 where
     F: FnOnce(ReplyHandle<R>) -> T,
+    E: From<Error>,
 {
     let (reply_handle, reply_future) = unary_reply(logger.clone());
     let msg = make_msg(reply_handle);
@@ -255,14 +271,14 @@ mod request_future {
     }
 }
 
-impl<T, R, E> Future for RequestFuture<T, R, E>
+impl<T, R, E> Future01 for RequestFuture<T, R, E>
 where
     E: From<Error>,
 {
     type Item = R;
     type Error = E;
 
-    fn poll(&mut self) -> Poll<R, E> {
+    fn poll(&mut self) -> Poll01<R, E> {
         use self::request_future::State;
 
         loop {
@@ -289,82 +305,136 @@ impl fmt::Display for ReplySendError {
 impl error::Error for ReplySendError {}
 
 #[derive(Debug)]
-pub struct ReplyStreamHandle<T> {
+pub struct ReplyStreamHandle03<T> {
     sender: mpsc::Sender<Result<T, Error>>,
 }
 
-impl<T> ReplyStreamHandle<T> {
-    pub fn async_reply<S>(self, stream: S) -> impl Future<Item = (), Error = ()>
-    where
-        S: Stream<Item = T, Error = Error>,
-    {
-        self.sender.send_all(stream.then(Ok)).then(|_| Ok(()))
+impl<T> Sink<Result<T, Error>> for ReplyStreamHandle03<T> {
+    type Error = ReplySendError;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.sender)
+            .poll_ready(cx)
+            .map_err(|_| ReplySendError)
     }
 
-    pub fn async_error(self, err: Error) -> impl Future<Item = (), Error = ()> {
-        self.sender.send(Err(err)).then(|_| Ok(()))
+    fn start_send(mut self: Pin<&mut Self>, item: Result<T, Error>) -> Result<(), Self::Error> {
+        Pin::new(&mut self.sender)
+            .start_send(item)
+            .map_err(|_| ReplySendError)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.sender)
+            .poll_flush(cx)
+            .map_err(|_| ReplySendError)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.sender)
+            .poll_close(cx)
+            .map_err(|_| ReplySendError)
     }
 }
 
-impl<T> Sink for ReplyStreamHandle<T> {
+pub struct ReplyStreamHandle<T>(CompatSink<ReplyStreamHandle03<T>, Result<T, Error>>);
+
+impl<T> ReplyStreamHandle<T> {
+    pub fn async_reply<S>(self, stream: S) -> impl Future01<Item = (), Error = ()>
+    where
+        S: Stream01<Item = T, Error = Error>,
+    {
+        self.0
+            .into_inner()
+            .sender
+            .compat()
+            .send_all(stream.then(Ok))
+            .then(|_| Ok(()))
+    }
+
+    pub fn async_error(self, err: Error) -> impl Future01<Item = (), Error = ()> {
+        self.0
+            .into_inner()
+            .sender
+            .compat()
+            .send(Err(err))
+            .then(|_| Ok(()))
+    }
+}
+
+impl<T> Sink01 for ReplyStreamHandle<T> {
     type SinkItem = Result<T, Error>;
     type SinkError = ReplySendError;
 
     fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, ReplySendError> {
-        self.sender.start_send(item).map_err(|_| ReplySendError)
+        self.0.start_send(item).map_err(|_| ReplySendError)
     }
 
-    fn poll_complete(&mut self) -> Poll<(), ReplySendError> {
-        self.sender.poll_complete().map_err(|_| ReplySendError)
+    fn poll_complete(&mut self) -> Poll01<(), ReplySendError> {
+        self.0.poll_complete().map_err(|_| ReplySendError)
     }
 
-    fn close(&mut self) -> Poll<(), ReplySendError> {
-        self.sender.close().map_err(|_| ReplySendError)
+    fn close(&mut self) -> Poll01<(), ReplySendError> {
+        self.0.close().map_err(|_| ReplySendError)
     }
 }
 
-pub struct ReplyStream<T, E> {
+pub struct ReplyStream03<T, E> {
     receiver: mpsc::Receiver<Result<T, Error>>,
     logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Stream for ReplyStream<T, E>
+impl<T, E> Unpin for ReplyStream03<T, E> {}
+
+pub type ReplyStream<T, E> = Compat<ReplyStream03<T, E>>;
+
+impl<T, E> Stream for ReplyStream03<T, E>
 where
     E: From<Error>,
 {
-    type Item = T;
-    type Error = E;
+    type Item = Result<T, E>;
 
-    fn poll(&mut self) -> Poll<Option<T>, E> {
-        match self.receiver.poll() {
-            Err(()) => panic!("receiver returned an error"),
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
-            Ok(Async::Ready(Some(Ok(item)))) => Ok(Async::Ready(Some(item))),
-            Ok(Async::Ready(Some(Err(e)))) => {
-                info!(
-                    self.logger,
-                    "error while streaming response";
-                    "error" => ?e,
-                );
-                return Err(e.into());
-            }
-        }
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.receiver)
+            .poll_next(cx)
+            .map(|maybe_res| match maybe_res {
+                None => None,
+                Some(Ok(item)) => Some(Ok(item)),
+                Some(Err(e)) => {
+                    info!(
+                        self.logger,
+                        "error while streaming response";
+                        "error" => ?e,
+                    );
+                    Some(Err(e.into()))
+                }
+            })
     }
+}
+
+pub fn stream_reply03<T, E>(
+    buffer: usize,
+    logger: Logger,
+) -> (ReplyStreamHandle03<T>, ReplyStream03<T, E>) {
+    let (sender, receiver) = mpsc::channel(buffer);
+    let stream = ReplyStream03 {
+        receiver,
+        logger,
+        _phantom_error: PhantomData,
+    };
+    (ReplyStreamHandle03 { sender }, stream)
 }
 
 pub fn stream_reply<T, E>(
     buffer: usize,
     logger: Logger,
-) -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
-    let (sender, receiver) = mpsc::channel(buffer);
-    let stream = ReplyStream {
-        receiver,
-        logger,
-        _phantom_error: PhantomData,
-    };
-    (ReplyStreamHandle { sender }, stream)
+) -> (ReplyStreamHandle<T>, ReplyStream<T, E>)
+where
+    E: From<Error>,
+{
+    let (handle, stream) = stream_reply03(buffer, logger);
+    (ReplyStreamHandle(handle.compat()), stream.compat())
 }
 
 #[derive(Debug)]
@@ -403,13 +473,13 @@ impl<T, R, E> RequestSink<T, R, E>
 where
     E: From<Error>,
 {
-    fn map_send_error(&self, _e: mpsc::SendError<T>, msg: &'static str) -> E {
+    fn map_send_error(&self, _e: mpsc01::SendError<T>, msg: &'static str) -> E {
         debug!(self.logger, "{}", msg);
         Error::aborted("request stream processing ended before all items were sent").into()
     }
 }
 
-impl<T, R, E> Sink for RequestSink<T, R, E>
+impl<T, R, E> Sink01 for RequestSink<T, R, E>
 where
     E: From<Error>,
 {
@@ -425,7 +495,7 @@ where
         })
     }
 
-    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
+    fn poll_complete(&mut self) -> Poll01<(), Self::SinkError> {
         self.sender.poll_complete().map_err(|e| {
             self.map_send_error(
                 e,
@@ -434,7 +504,7 @@ where
         })
     }
 
-    fn close(&mut self) -> Poll<(), Self::SinkError> {
+    fn close(&mut self) -> Poll01<(), Self::SinkError> {
         self.sender.close().map_err(|e| {
             self.map_send_error(
                 e,
@@ -448,7 +518,10 @@ where
 pub fn stream_request<T, R, E>(
     buffer: usize,
     logger: Logger,
-) -> (RequestStreamHandle<T, R>, RequestSink<T, R, E>) {
+) -> (RequestStreamHandle<T, R>, RequestSink<T, R, E>)
+where
+    E: From<Error>,
+{
     let (sender, receiver) = async_msg::channel(buffer);
     let (reply, reply_future) = unary_reply(logger.clone());
     let handle = RequestStreamHandle { receiver, reply };
@@ -471,7 +544,7 @@ pub enum TransactionMsg {
         block_date: BlockDate,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
-        reply_handle: ReplyHandle<Contents>,
+        reply_handle: ReplyHandle<FragmentContents>,
     },
     RunGarbageCollector,
 }
