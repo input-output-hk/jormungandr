@@ -4,6 +4,7 @@ use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
 use crate::network::p2p::{P2pTopology, Peer, PeersResponse};
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_core::property::HasHeader;
+use network_core::gossip::Node as _;
 
 use futures::future::Either;
 use tokio::prelude::*;
@@ -143,13 +144,17 @@ fn get_block_tip(blockchain_tip: &Tip) -> impl Future<Item = Header, Error = Err
 }
 
 fn get_peers(topology: &P2pTopology) -> impl Future<Item = PeersResponse, Error = Error> {
-    // TODO: hardcoded for now but should come from some limit + client query
-    topology.list_available_limit(192).and_then(|nodes| {
+    topology.view(poldercast::Selection::Any).and_then(|view| {
         let mut peers = Vec::new();
-        for n in nodes.iter() {
-            match n.address().and_then(|x| x.to_socketaddr()) {
-                None => {}
-                Some(addr) => peers.push(Peer { addr }),
+        for n in view.peers.into_iter() {
+            if let Some(addr) = n.address() {
+                peers.push(Peer { addr });
+            }
+        }
+        if peers.len() == 0 {
+            // No peers yet, put self as the peer to bootstrap from
+            if let Some(addr) = view.self_node.address().and_then(|x| x.to_socketaddr()) {
+                peers.push(Peer { addr });
             }
         }
         future::ok(PeersResponse { peers })
