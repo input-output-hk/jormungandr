@@ -570,17 +570,19 @@ pub fn bootstrap(
     }
 
     'bootstrap: for address in trusted_peers_shuffled(&config) {
-        let logger = logger.new(o!("peer_addr" => address.to_string()));
         let peer = Peer::new(address, Protocol::Grpc);
-        let peers = bootstrap::peers_from_trusted_peer(&peer, logger.clone()).unwrap_or_else(|e| {
-            warn!(
-                logger,
-                "failed to retrieve the list of bootstrap peers from trusted peer";
-                "reason" => %e,
-            );
-            vec![peer]
-        });
+        let tp_logger = logger.new(o!("peer_addr" => address.to_string()));
+        let peers =
+            bootstrap::peers_from_trusted_peer(&peer, tp_logger.clone()).unwrap_or_else(|e| {
+                warn!(
+                    tp_logger,
+                    "failed to retrieve the list of bootstrap peers from trusted peer";
+                    "reason" => %e,
+                );
+                vec![peer]
+            });
         for peer in peers {
+            let logger = logger.new(o!("peer_addr" => peer.connection.to_string()));
             let res = bootstrap::bootstrap_from_peer(
                 peer,
                 blockchain.clone(),
