@@ -221,6 +221,34 @@ impl Storage03 {
         .await
     }
 
+    pub async fn get_blocks_by_chain_length(
+        &self,
+        chain_length: u64,
+    ) -> Result<Vec<Block>, StorageError> {
+        self.run(
+            move |connection| match connection.get_blocks_by_chain_length(chain_length) {
+                Err(StorageError::BlockNotFound) => Ok(Vec::new()),
+                Ok(r) => Ok(r.into_iter().map(|(block, _)| block).collect()),
+                Err(e) => Err(e),
+            },
+        )
+        .await
+    }
+
+    pub async fn get_block_infos_by_chain_length(
+        &self,
+        chain_length: u64,
+    ) -> Result<Vec<BlockInfo<HeaderHash>>, StorageError> {
+        self.run(
+            move |connection| match connection.get_block_infos_by_chain_length(chain_length) {
+                Err(StorageError::BlockNotFound) => Ok(Vec::new()),
+                Ok(r) => Ok(r),
+                Err(e) => Err(e),
+            },
+        )
+        .await
+    }
+
     pub async fn put_block(&self, block: Block) -> Result<(), StorageError> {
         let _write_lock = self.write_lock.lock().await;
         self.run(move |connection| match connection.put_block(&block) {
