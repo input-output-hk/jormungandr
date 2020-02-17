@@ -239,6 +239,7 @@ mod tests {
     use chain_impl_mockchain::certificate::PoolId;
     use chain_impl_mockchain::fragment::Fragment::PoolRegistration;
     use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
+    use chain_impl_mockchain::testing;
     use rand_core;
     use tokio02 as tokio;
 
@@ -246,23 +247,28 @@ mod tests {
     async fn enclave_add_different_bft_leaders() {
         let mut enclave = Enclave::new();
         let rng = rand_core::OsRng;
+
         let leader1 = Leader {
             bft_leader: Some(BftLeader {
                 sig_key: SecretKey::generate(rng),
             }),
             genesis_leader: None,
         };
+
         let leader2 = Leader {
             bft_leader: Some(BftLeader {
                 sig_key: SecretKey::generate(rng),
             }),
             genesis_leader: None,
         };
+
         let init_leader_id = LeaderId::new();
         let fst_id = init_leader_id.next();
         let snd_id = fst_id.next();
+
         assert_eq!(enclave.add_leader(leader1).await, fst_id);
         assert_eq!(enclave.add_leader(leader2).await, snd_id);
+
         let leaders_data = &enclave.leaders_data.read().await;
         assert_eq!(leaders_data.leaders.len(), 2);
         assert_eq!(leaders_data.added_leaders_cache.len(), 2);
@@ -272,77 +278,105 @@ mod tests {
     async fn enclave_add_duplicated_bft_leaders() {
         let mut enclave = Enclave::new();
         let secret_key = SecretKey::generate(rand_core::OsRng);
+
         let leader1 = Leader {
             bft_leader: Some(BftLeader {
                 sig_key: secret_key.clone(),
             }),
             genesis_leader: None,
         };
+
         let leader2 = Leader {
             bft_leader: Some(BftLeader {
                 sig_key: secret_key.clone(),
             }),
             genesis_leader: None,
         };
+
         // Both leaders are different instances of the same data, adding both of them should return the same id
         assert_eq!(
             enclave.add_leader(leader1).await,
             enclave.add_leader(leader2).await
         );
+
         // Just one it is really added
         let leaders_data = &enclave.leaders_data.read().await;
         assert_eq!(leaders_data.leaders.len(), 1);
         assert_eq!(leaders_data.added_leaders_cache.len(), 1);
     }
 
-    //    #[tokio::test]
-    //    async fn enclave_add_different_genesis_leaders() {
-    //        let mut enclave = Enclave::new();
-    //        let rng = rand_core::OsRng;
-    //        let leader1 = Leader {
-    //            bft_leader: None,
-    //            genesis_leader: Some( GenesisLeader {
-    //                sig_key: SecretKey::generate(rng),
-    //                vrf_key: SecretKey::generate(rng),
-    //                node_id: PoolId::,
-    //            }),
-    //        };
-    //        let leader2 = Leader {
-    //            bft_leader: None,
-    //            genesis_leader: None,
-    //        };
-    //        let init_leader_id = LeaderId::new();
-    //        let fst_id = init_leader_id.next();
-    //        let snd_id = fst_id.next();
-    //        assert_eq!(enclave.add_leader(leader1).await, fst_id);
-    //        assert_eq!(enclave.add_leader(leader2).await, snd_id);
-    //        assert_eq!(enclave.leaders.read().await.len(), 2);
-    //        assert_eq!(enclave.added_leaders_cache.read().await.len(), 2);
-    //    }
-    //
-    //    #[tokio::test]
-    //    async fn enclave_add_duplicated_genesis_leaders() {
-    //        let mut enclave = Enclave::new();
-    //        let secret_key = SecretKey::generate(rand_core::OsRng);
-    //        let leader1 = Leader {
-    //            bft_leader: Some(BftLeader {
-    //                sig_key: secret_key.clone(),
-    //            }),
-    //            genesis_leader: None,
-    //        };
-    //        let leader2 = Leader {
-    //            bft_leader: Some(BftLeader {
-    //                sig_key: secret_key.clone(),
-    //            }),
-    //            genesis_leader: None,
-    //        };
-    //        // Both leaders are different instances of the same data, adding both of them should return the same id
-    //        assert_eq!(
-    //            enclave.add_leader(leader1).await,
-    //            enclave.add_leader(leader2).await
-    //        );
-    //        // Just one it is really added
-    //        assert_eq!(enclave.leaders.read().await.len(), 1);
-    //        assert_eq!(enclave.added_leaders_cache.read().await.len(), 1);
-    //    }
+    #[tokio::test]
+    async fn enclave_add_different_genesis_leaders() {
+        let mut enclave = Enclave::new();
+        let rng = rand_core::OsRng;
+
+        let leader1 = Leader {
+            bft_leader: None,
+            genesis_leader: Some(GenesisLeader {
+                sig_key: SecretKey::generate(rng),
+                vrf_key: SecretKey::generate(rng),
+                node_id: testing::TestGen::stake_pool().id(),
+            }),
+        };
+
+        let leader2 = Leader {
+            bft_leader: None,
+            genesis_leader: Some(GenesisLeader {
+                sig_key: SecretKey::generate(rng),
+                vrf_key: SecretKey::generate(rng),
+                node_id: testing::TestGen::stake_pool().id(),
+            }),
+        };
+
+        let init_leader_id = LeaderId::new();
+        let fst_id = init_leader_id.next();
+        let snd_id = fst_id.next();
+
+        assert_eq!(enclave.add_leader(leader1).await, fst_id);
+        assert_eq!(enclave.add_leader(leader2).await, snd_id);
+
+        let leaders_data = &enclave.leaders_data.read().await;
+        assert_eq!(leaders_data.leaders.len(), 2);
+        assert_eq!(leaders_data.added_leaders_cache.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn enclave_add_duplicated_genesis_leaders() {
+        let mut enclave = Enclave::new();
+
+        let rng = rand_core::OsRng;
+        let sig_key_1 = SecretKey::generate(rng);
+        let sig_key_2 = SecretKey::generate(rng);
+        let id = testing::TestGen::stake_pool().id();
+
+        let leader1 = Leader {
+            bft_leader: None,
+            genesis_leader: Some(GenesisLeader {
+                sig_key: sig_key_1.clone(),
+                vrf_key: sig_key_2.clone(),
+                node_id: id.clone(),
+            }),
+        };
+
+        let leader2 = Leader {
+            bft_leader: None,
+            genesis_leader: Some(GenesisLeader {
+                sig_key: sig_key_1,
+                vrf_key: sig_key_2,
+                node_id: id,
+            }),
+        };
+
+        // Both leaders are different instances of the same data, adding both of them should return the same id
+        assert_eq!(
+            enclave.add_leader(leader1).await,
+            enclave.add_leader(leader2).await
+        );
+
+        let leaders_data = &enclave.leaders_data.read().await;
+
+        // Just one it is really added
+        assert_eq!(leaders_data.leaders.len(), 1);
+        assert_eq!(leaders_data.added_leaders_cache.len(), 1);
+    }
 }
