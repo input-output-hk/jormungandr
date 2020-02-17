@@ -134,7 +134,7 @@ impl From<chain_storage_sqlite_old::Error> for Error {
 
 impl From<Error> for core_error::Error {
     fn from(err: Error) -> Self {
-        core_error::Error::new(err.code(), err)
+        core_error::Error::new(err.code(), err.cause)
     }
 }
 
