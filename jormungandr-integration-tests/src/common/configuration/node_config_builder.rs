@@ -43,13 +43,7 @@ impl NodeConfigBuilder {
         .parse()
         .unwrap();
 
-        let grpc_listen_address: poldercast::Address = format!(
-            "/ip4/{}/tcp/{}",
-            DEFAULT_HOST,
-            listen_address_port.to_string()
-        )
-        .parse()
-        .unwrap();
+        let grpc_listen_address = grpc_public_address.clone();
 
         NodeConfigBuilder {
             storage: Some(storage_file),

@@ -52,12 +52,7 @@ impl JormungandrConfig {
         .parse()
         .unwrap();
 
-        self.node_config.p2p.listen_address = format!(
-            "/ip4/127.0.0.1/tcp/{}",
-            super::get_available_port().to_string()
-        )
-        .parse()
-        .unwrap();
+        self.node_config.p2p.listen_address = self.node_config.p2p.public_address.clone();
     }
 
     pub fn get_p2p_listen_port(&self) -> u16 {
