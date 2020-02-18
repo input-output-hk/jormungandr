@@ -1,6 +1,5 @@
 use crate::scenario::repository::ScenarioResult;
-use jormungandr_lib::testing::Measurement;
-use std::time::Duration;
+
 #[derive(Clone, Debug)]
 pub struct ScenarioSuiteResult {
     results: Vec<ScenarioResult>,

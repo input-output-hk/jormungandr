@@ -10,13 +10,10 @@ use crate::{
 };
 use jormungandr_lib::{
     interfaces::FragmentStatus,
-    testing::{Measurement, Thresholds},
+    testing::{benchmark_speed, Speed, Thresholds},
     time::Duration as LibsDuration,
 };
-use std::{
-    fmt, thread,
-    time::{Duration, SystemTime},
-};
+use std::{fmt, thread, time::Duration};
 
 pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
     let wait_time = sync_wait_params.wait_time();
@@ -40,11 +37,14 @@ pub fn get_nodes_block_height_summary(nodes: Vec<&NodeController>) -> Vec<String
 
 pub fn measure_and_log_sync_time(
     nodes: Vec<&NodeController>,
-    sync_wait: Thresholds<Duration>,
+    sync_wait: Thresholds<Speed>,
     info: &str,
 ) {
-    let now = SystemTime::now();
-    while now.elapsed().unwrap() < sync_wait.max() {
+    let benchmark = benchmark_speed(info.to_owned())
+        .with_thresholds(sync_wait)
+        .start();
+
+    while !benchmark.timeout_exceeded() {
         let block_heights: Vec<u32> = nodes
             .iter()
             .map(|node| {
@@ -58,27 +58,14 @@ pub fn measure_and_log_sync_time(
             .collect();
         let max_block_height = block_heights.iter().max().unwrap();
         if !block_heights.iter().any(|x| *x != *max_block_height) {
-            log_measurement(Measurement::new(
-                info.to_owned(),
-                now.elapsed().unwrap(),
-                sync_wait.clone(),
-            ));
+            benchmark.stop().print();
             return;
         }
     }
 
     // we know it fails, this method is used only for reporting
     assert_are_in_sync(SyncWaitParams::ZeroWait, nodes);
-    log_measurement(Measurement::new(
-        info.to_owned(),
-        now.elapsed().unwrap(),
-        sync_wait.clone(),
-    ))
-}
-
-///temporary method for logging measurement which is currently printing content to console
-fn log_measurement(measurement: Measurement<Duration>) {
-    println!("{}", measurement);
+    benchmark.stop().print();
 }
 
 pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str) -> Result<()> {

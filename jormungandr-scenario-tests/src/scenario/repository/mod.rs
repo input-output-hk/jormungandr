@@ -19,7 +19,6 @@ use crate::{
     Context,
 };
 
-use jormungandr_lib::testing::Measurement;
 use rand_chacha::ChaChaRng;
 type ScenarioMethod = fn(Context<ChaChaRng>) -> Result<ScenarioResult>;
 
