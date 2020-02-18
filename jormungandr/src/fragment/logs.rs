@@ -1,77 +1,59 @@
 use crate::fragment::FragmentId;
 use futures03::future;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
-use std::sync::Arc;
-use tokio02::{
-    sync::{Mutex, MutexGuard},
-    time::{self, Duration},
-};
+use tokio02::time::{self, Duration};
 
-#[derive(Clone)]
-pub struct Logs(Arc<Mutex<internal::Logs>>);
+pub struct Logs(internal::Logs);
 
 impl Logs {
     pub fn new(max_entries: usize, ttl: Duration) -> Self {
-        Logs(Arc::new(Mutex::new(internal::Logs::new(max_entries, ttl))))
+        Logs(internal::Logs::new(max_entries, ttl))
     }
 
     /// Returns true if fragment was registered
-    pub async fn insert(&mut self, log: FragmentLog) -> bool {
-        self.run_on_inner(move |inner| inner.insert(log)).await
+    pub fn insert(&mut self, log: FragmentLog) -> bool {
+        self.0.insert(log)
     }
 
     /// Returns number of registered fragments
-    pub async fn insert_all(&mut self, logs: impl IntoIterator<Item = FragmentLog>) -> usize {
-        self.run_on_inner(move |inner| inner.insert_all(logs)).await
+    pub fn insert_all(&mut self, logs: impl IntoIterator<Item = FragmentLog>) -> usize {
+        self.0.insert_all(logs)
     }
 
-    pub async fn exists(&self, fragment_id: FragmentId) -> bool {
-        self.run_on_inner(move |inner| inner.exists(&fragment_id.into()))
-            .await
+    pub fn exists(&self, fragment_id: FragmentId) -> bool {
+        self.0.exists(&fragment_id.into())
     }
 
-    pub async fn exist_all(&self, fragment_ids: impl IntoIterator<Item = FragmentId>) -> Vec<bool> {
+    pub fn exist_all(&self, fragment_ids: impl IntoIterator<Item = FragmentId>) -> Vec<bool> {
         let hashes = fragment_ids.into_iter().map(Into::into);
-        self.run_on_inner(move |inner| inner.exist_all(hashes))
-            .await
+        self.0.exist_all(hashes)
     }
 
-    pub async fn modify(&mut self, fragment_id: FragmentId, status: FragmentStatus) {
-        self.run_on_inner(move |inner| inner.modify(&fragment_id.into(), status))
-            .await;
+    pub fn modify(&mut self, fragment_id: FragmentId, status: FragmentStatus) {
+        self.0.modify(&fragment_id.into(), status);
     }
 
-    pub async fn modify_all(
+    pub fn modify_all(
         &mut self,
         fragment_ids: impl IntoIterator<Item = FragmentId>,
         status: FragmentStatus,
     ) {
-        self.run_on_inner(move |inner| {
-            for fragment_id in fragment_ids {
-                let id = fragment_id.into();
-                inner.modify(&id, status.clone())
-            }
-        })
-        .await;
+        for fragment_id in fragment_ids {
+            let id = fragment_id.into();
+            self.0.modify(&id, status.clone())
+        }
     }
 
     pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
-        let mut inner = self.inner().await;
-        future::poll_fn(move |cx| inner.poll_purge(cx)).await
+        future::poll_fn(|cx| self.0.poll_purge(cx)).await
     }
 
-    pub async fn logs(&self) -> Vec<FragmentLog> {
-        self.run_on_inner(move |inner| inner.logs().cloned().collect())
-            .await
+    pub fn logs(&self) -> Vec<FragmentLog> {
+        self.0.logs().cloned().collect()
     }
 
-    async fn run_on_inner<O>(&self, run: impl FnOnce(&mut internal::Logs) -> O) -> O {
-        let mut inner = self.inner().await;
-        run(&mut *inner)
-    }
-
-    pub(super) async fn inner(&self) -> MutexGuard<'_, internal::Logs> {
-        self.0.lock().await
+    pub(super) fn inner(&mut self) -> &mut internal::Logs {
+        &mut self.0
     }
 }
 

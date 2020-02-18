@@ -473,6 +473,7 @@ pub enum TransactionMsg {
         selection_alg: FragmentSelectionAlgorithmParams,
         reply_handle: ReplyHandle<Contents>,
     },
+    RunGarbageCollector,
 }
 
 /// Client messages, mainly requests from connected peers to our node.
