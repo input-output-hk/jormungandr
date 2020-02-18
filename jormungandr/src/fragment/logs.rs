@@ -16,53 +16,43 @@ impl Logs {
     }
 
     /// Returns true if fragment was registered
-    pub async fn insert(&mut self, log: FragmentLog) -> Result<bool, ()> {
+    pub async fn insert(&mut self, log: FragmentLog) -> bool {
         self.run_on_inner(move |inner| inner.insert(log)).await
     }
 
     /// Returns number of registered fragments
-    pub async fn insert_all(
-        &mut self,
-        logs: impl IntoIterator<Item = FragmentLog>,
-    ) -> Result<usize, ()> {
+    pub async fn insert_all(&mut self, logs: impl IntoIterator<Item = FragmentLog>) -> usize {
         self.run_on_inner(move |inner| inner.insert_all(logs)).await
     }
 
-    pub async fn exists(&self, fragment_id: FragmentId) -> Result<bool, ()> {
+    pub async fn exists(&self, fragment_id: FragmentId) -> bool {
         self.run_on_inner(move |inner| inner.exists(&fragment_id.into()))
             .await
     }
 
-    pub async fn exist_all(
-        &self,
-        fragment_ids: impl IntoIterator<Item = FragmentId>,
-    ) -> Result<Vec<bool>, ()> {
+    pub async fn exist_all(&self, fragment_ids: impl IntoIterator<Item = FragmentId>) -> Vec<bool> {
         let hashes = fragment_ids.into_iter().map(Into::into);
         self.run_on_inner(move |inner| inner.exist_all(hashes))
             .await
     }
 
-    pub async fn modify(
-        &mut self,
-        fragment_id: FragmentId,
-        status: FragmentStatus,
-    ) -> Result<(), ()> {
+    pub async fn modify(&mut self, fragment_id: FragmentId, status: FragmentStatus) {
         self.run_on_inner(move |inner| inner.modify(&fragment_id.into(), status))
-            .await
+            .await;
     }
 
     pub async fn modify_all(
         &mut self,
         fragment_ids: impl IntoIterator<Item = FragmentId>,
         status: FragmentStatus,
-    ) -> Result<(), ()> {
+    ) {
         self.run_on_inner(move |inner| {
             for fragment_id in fragment_ids {
                 let id = fragment_id.into();
                 inner.modify(&id, status.clone())
             }
         })
-        .await
+        .await;
     }
 
     pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
@@ -70,14 +60,14 @@ impl Logs {
         future::poll_fn(move |cx| inner.poll_purge(cx)).await
     }
 
-    pub async fn logs(&self) -> Result<Vec<FragmentLog>, ()> {
+    pub async fn logs(&self) -> Vec<FragmentLog> {
         self.run_on_inner(move |inner| inner.logs().cloned().collect())
             .await
     }
 
-    async fn run_on_inner<O>(&self, run: impl FnOnce(&mut internal::Logs) -> O) -> Result<O, ()> {
+    async fn run_on_inner<O>(&self, run: impl FnOnce(&mut internal::Logs) -> O) -> O {
         let mut inner = self.inner().await;
-        Ok(run(&mut *inner))
+        run(&mut *inner)
     }
 
     pub(super) async fn inner(&self) -> MutexGuard<'_, internal::Logs> {

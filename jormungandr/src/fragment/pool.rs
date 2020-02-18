@@ -51,7 +51,7 @@ impl Pool {
         let mut logs = self.logs.clone();
         let mut network_msg_box = self.network_msg_box.clone().sink_compat();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
-        let fragments_exist_in_logs = self.logs.exist_all(fragment_ids).await?;
+        let fragments_exist_in_logs = self.logs.exist_all(fragment_ids).await;
         let mut pool = self.pool.lock().await;
         let new_fragments = fragments
             .into_iter()
@@ -71,7 +71,7 @@ impl Pool {
                 .await
                 .map_err(|e| error!(logger, "cannot propagate fragment to network: {}", e))?;
         }
-        logs.insert_all(fragment_logs).await?;
+        logs.insert_all(fragment_logs).await;
         Ok(count)
     }
 
@@ -79,10 +79,10 @@ impl Pool {
         &mut self,
         fragment_ids: Vec<FragmentId>,
         status: FragmentStatus,
-    ) -> Result<(), ()> {
+    ) {
         let mut pool = self.pool.lock().await;
         pool.remove_all(fragment_ids.iter().cloned());
-        self.logs.modify_all(fragment_ids, status).await
+        self.logs.modify_all(fragment_ids, status).await;
     }
 
     pub async fn poll_purge(&mut self) -> Result<(), time::Error> {

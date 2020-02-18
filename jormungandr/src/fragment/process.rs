@@ -12,7 +12,6 @@ use std::time::Duration;
 
 pub struct Process {
     pool: Pool,
-    logs: Logs,
     garbage_collection_interval: Duration,
 }
 
@@ -27,15 +26,11 @@ impl Process {
     ) -> Self {
         let logs = Logs::new(logs_max_entries, logs_ttl);
         Process {
-            pool: Pool::new(pool_max_entries, pool_ttl, logs.clone(), network_msg_box),
-            logs,
+            pool: Pool::new(pool_max_entries, pool_ttl, logs, network_msg_box),
             garbage_collection_interval,
         }
     }
 
-    pub fn logs(&self) -> &Logs {
-        &self.logs
-    }
     pub fn pool(&self) -> &Pool {
         &self.pool
     }
@@ -74,7 +69,11 @@ impl Process {
                     self.pool
                         .clone()
                         .remove_added_to_block(fragment_ids, status)
-                        .await?;
+                        .await;
+                }
+                TransactionMsg::GetLogs(reply_handle) => {
+                    let logs = self.pool.logs().logs().await;
+                    reply_handle.reply_ok(logs);
                 }
             }
         }

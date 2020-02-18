@@ -109,7 +109,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let stats_counter = StatsCounter::default();
 
-    let (fragment_pool, pool_logs) = {
+    let fragment_pool = {
         let stats_counter = stats_counter.clone();
         let process = fragment::Process::new(
             bootstrapped_node.settings.mempool.pool_max_entries.into(),
@@ -125,13 +125,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         );
 
         let pool = process.pool().clone();
-        let logs = process.logs().clone();
 
         services.spawn_future("fragment", move |info| {
             let fut = process.start(info, stats_counter, fragment_queue);
             Box::pin(fut).compat()
         });
-        (pool, logs)
+        pool
     };
 
     let explorer = {
@@ -260,7 +259,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             blockchain_tip: blockchain_tip.clone(),
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
-            logs: pool_logs,
             leadership_logs,
             enclave,
             p2p: topology,

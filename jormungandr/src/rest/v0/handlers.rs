@@ -68,14 +68,15 @@ pub async fn get_account_state(
 }
 
 pub async fn get_message_logs(context: Data<Context>) -> Result<impl Responder, Error> {
-    context
-        .try_full()
-        .await?
-        .logs
-        .logs()
-        .await
-        .map_err(|_| ErrorInternalServerError("Failed to get logs"))
-        .map(Json)
+    let logs = intercom::unary_future(
+        context.try_full().await?.transaction_task.clone(),
+        context.logger().await?,
+        |handle| TransactionMsg::GetLogs(handle),
+    )
+    .compat()
+    .await
+    .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
+    Ok(Json(logs))
 }
 
 pub async fn post_message(context: Data<Context>, message: Bytes) -> Result<impl Responder, Error> {
