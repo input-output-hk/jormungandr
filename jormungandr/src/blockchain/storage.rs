@@ -7,12 +7,8 @@ use async_trait::async_trait;
 use bb8::{ManageConnection, Pool, RunError};
 use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Stream as Stream01};
-use futures03::{
-    compat::Compat,
-    prelude::*,
-    sink::SinkExt,
-    stream::{self, Stream},
-};
+use futures03::{compat::Compat, future::FusedFuture, prelude::*};
+use pin_utils::unsafe_pinned;
 use slog::Logger;
 use tokio02::{sync::Mutex, task::spawn_blocking};
 use tokio_compat::runtime;
@@ -21,7 +17,7 @@ use std::convert::identity;
 use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::task::Poll;
+use std::task::{Context, Poll};
 
 const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
 
@@ -282,27 +278,11 @@ impl Storage03 {
             })
             .await?;
 
-        let (rh, mut rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
+        let (rh, rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
 
-        let pump = run_block_iter(self.pool.clone(), iter, rh).fuse();
-        let mut pump = Box::pin(pump);
-        let stream = stream::poll_fn(move |cx| {
-            loop {
-                match pump.as_mut().poll(cx) {
-                    Poll::Pending => {
-                        return Pin::new(&mut rs).poll_next(cx);
-                    }
-                    Poll::Ready(Ok(())) => {
-                        // The block iterator pump has finished,
-                        // but we need to exhaust the stream.
-                        // Continue looping, the fuzed pump will return Pending
-                        // from now on.
-                        continue;
-                    }
-                    Poll::Ready(Err(e)) => panic!("unexpected channel error: {:?}", e),
-                }
-            }
-        });
+        let pump = run_block_iter(self.pool.clone(), iter, rh)
+            .unwrap_or_else(|e| panic!("unexpected channel error: {:?}", e));
+        let stream = PumpedStream { pump, stream: rs };
         Ok(stream)
     }
 
@@ -494,7 +474,7 @@ impl Storage {
         let fut = async move {
             inner
                 .stream_from_to(from, to)
-                .map_ok(|stream| stream.compat())
+                .map_ok(|stream| Box::pin(stream).compat())
                 .await
         };
         Box::pin(fut).compat()
@@ -541,6 +521,43 @@ impl Storage {
         Compat::new(Box::pin(async move {
             inner.find_closest_ancestor(checkpoints, descendant).await
         }))
+    }
+}
+
+struct PumpedStream<P, S> {
+    pump: P,
+    stream: S,
+}
+
+impl<P: Unpin, S: Unpin> Unpin for PumpedStream<P, S> {}
+
+impl<P, S> PumpedStream<P, S> {
+    unsafe_pinned!(pump: P);
+    unsafe_pinned!(stream: S);
+}
+
+impl<P, S> Stream for PumpedStream<P, S>
+where
+    P: Future<Output = ()> + FusedFuture,
+    S: Stream,
+{
+    type Item = S::Item;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<S::Item>> {
+        loop {
+            match self.as_mut().pump().poll(cx) {
+                Poll::Pending => {
+                    return self.stream().poll_next(cx);
+                }
+                Poll::Ready(()) => {
+                    // The block iterator pump has finished,
+                    // but we need to exhaust the stream.
+                    // Continue looping, the fuzed pump will return Pending
+                    // from now on.
+                    continue;
+                }
+            }
+        }
     }
 }
 
