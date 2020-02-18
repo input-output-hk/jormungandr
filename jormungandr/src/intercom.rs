@@ -343,6 +343,8 @@ pub struct ReplyStreamHandle03<T> {
     sender: mpsc::Sender<Result<T, Error>>,
 }
 
+impl<T> Unpin for ReplyStreamHandle03<T> {}
+
 impl<T> Clone for ReplyStreamHandle03<T> {
     fn clone(&self) -> Self {
         ReplyStreamHandle03 {
