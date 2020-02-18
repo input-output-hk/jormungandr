@@ -4,7 +4,7 @@ pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::{Block, HeaderId},
     blockchain::{Blockchain, ErrorKind as BlockchainError, Storage, Tip},
-    network,
+    log, network,
     settings::start::Settings,
 };
 use chain_storage_sqlite_old::{BlockStore, BlockStoreConnection};
@@ -35,7 +35,10 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, E
         }
     };
 
-    Ok(Storage::new(raw_block_store))
+    Ok(Storage::new(
+        raw_block_store,
+        logger.new(o!(log::KEY_SUB_TASK => "storage")),
+    ))
 }
 
 /// Try to fetch the block0_id from the HTTP base URL (services) in the array

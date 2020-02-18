@@ -304,9 +304,61 @@ impl fmt::Display for ReplySendError {
 
 impl error::Error for ReplySendError {}
 
+pub struct ReplyTrySendError<T>(mpsc::TrySendError<Result<T, Error>>);
+
+impl<T> ReplyTrySendError<T> {
+    pub fn is_full(&self) -> bool {
+        self.0.is_full()
+    }
+
+    pub fn into_inner(self) -> Result<T, Error> {
+        self.0.into_inner()
+    }
+
+    pub fn into_send_error(self) -> ReplySendError {
+        ReplySendError
+    }
+}
+
+impl<T> fmt::Debug for ReplyTrySendError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("ReplyTrySendError").field(&self.0).finish()
+    }
+}
+
+impl<T> fmt::Display for ReplyTrySendError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "failed to send reply")
+    }
+}
+
+impl<T: 'static> error::Error for ReplyTrySendError<T> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
 #[derive(Debug)]
 pub struct ReplyStreamHandle03<T> {
     sender: mpsc::Sender<Result<T, Error>>,
+}
+
+impl<T> Clone for ReplyStreamHandle03<T> {
+    fn clone(&self) -> Self {
+        ReplyStreamHandle03 {
+            sender: self.sender.clone(),
+        }
+    }
+}
+
+impl<T> ReplyStreamHandle03<T> {
+    pub fn try_send_item(&mut self, item: Result<T, Error>) -> Result<(), ReplyTrySendError<T>> {
+        self.sender.try_send(item).map_err(ReplyTrySendError)
+    }
+
+    pub fn poll_ready(&mut self, cx: &mut Context) -> Poll<Result<(), ReplySendError>> {
+        self.sender.poll_ready(cx).map_err(|_| ReplySendError)
+    }
 }
 
 impl<T> Sink<Result<T, Error>> for ReplyStreamHandle03<T> {
@@ -359,6 +411,10 @@ impl<T> ReplyStreamHandle<T> {
             .compat()
             .send(Err(err))
             .then(|_| Ok(()))
+    }
+
+    pub fn into_03(self) -> ReplyStreamHandle03<T> {
+        self.0.into_inner()
     }
 }
 

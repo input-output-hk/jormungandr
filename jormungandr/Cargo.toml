@@ -30,7 +30,7 @@ cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 error-chain = "0.12"
 futures    = "0.1"
-futures03 = { package = "futures", version = "0.3.1", features = ["compat"] }
+futures03 = { package = "futures", version = "0.3.4", features = ["compat"] }
 http = "0.1.16"
 humantime = "2.0"
 hyper = "0.12"
