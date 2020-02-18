@@ -19,6 +19,7 @@ use tokio_compat::runtime;
 
 use std::convert::identity;
 use std::error::Error;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 
@@ -281,16 +282,15 @@ impl Storage03 {
             })
             .await?;
 
-        let (rh, rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
+        let (rh, mut rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
 
         let pump = run_block_iter(self.pool.clone(), iter, rh).fuse();
         let mut pump = Box::pin(pump);
-        let mut rs = Box::pin(rs);
         let stream = stream::poll_fn(move |cx| {
             loop {
                 match pump.as_mut().poll(cx) {
                     Poll::Pending => {
-                        return rs.as_mut().poll_next(cx);
+                        return Pin::new(&mut rs).poll_next(cx);
                     }
                     Poll::Ready(Ok(())) => {
                         // The block iterator pump has finished,
