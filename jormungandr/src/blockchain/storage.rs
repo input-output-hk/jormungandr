@@ -545,16 +545,19 @@ where
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<S::Item>> {
         loop {
-            match self.as_mut().pump().poll(cx) {
-                Poll::Pending => {
-                    return self.stream().poll_next(cx);
-                }
-                Poll::Ready(()) => {
-                    // The block iterator pump has finished,
-                    // but we need to exhaust the stream.
-                    // Continue looping, the fuzed pump will return Pending
-                    // from now on.
-                    continue;
+            if self.pump.is_terminated() {
+                return self.stream().poll_next(cx);
+            } else {
+                match self.as_mut().pump().poll(cx) {
+                    Poll::Pending => {
+                        return self.stream().poll_next(cx);
+                    }
+                    Poll::Ready(()) => {
+                        // The block iterator pump has finished,
+                        // but we need to exhaust the stream.
+                        // Continue looping, the is_terminated branch
+                        // should be taken from now on.
+                    }
                 }
             }
         }
