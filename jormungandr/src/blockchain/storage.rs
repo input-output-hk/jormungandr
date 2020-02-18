@@ -311,6 +311,11 @@ impl Storage03 {
 }
 
 impl Storage {
+    /// get back to the future
+    pub fn back_to_the_future(&self) -> &Storage03 {
+        &self.inner
+    }
+
     pub fn new(storage: NodeStorage) -> Self {
         Self {
             inner: Storage03::new(storage),

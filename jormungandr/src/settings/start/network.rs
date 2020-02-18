@@ -81,6 +81,8 @@ pub struct Configuration {
     pub topology_force_reset_interval: Option<Duration>,
 
     pub max_bootstrap_attempts: Option<usize>,
+
+    pub http_fetch_block0_service: Vec<String>,
 }
 
 #[derive(Clone)]

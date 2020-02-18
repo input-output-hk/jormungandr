@@ -22,6 +22,8 @@ p2p:
     messages: low
     blocks: normal
   allow_private_addresses: false
+http_fetch_block0_service:
+  - https://url/jormungandr-block0/raw/master/data
 ```
 
 ## advanced

@@ -11,6 +11,7 @@ use network_core::error as core_error;
 use network_grpc::client::Connect;
 use slog::Logger;
 use thiserror::Error;
+use tokio_compat::prelude::*;
 use tokio_compat::runtime::{Runtime, TaskExecutor};
 
 use std::io;
@@ -88,5 +89,5 @@ pub fn fetch_block(
             None => Err(FetchBlockError::NoBlocks),
             Some(block) => Ok(block),
         });
-    runtime.block_on(fetch)
+    runtime.block_on_std(fetch.compat())
 }

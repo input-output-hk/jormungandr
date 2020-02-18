@@ -34,6 +34,11 @@ pub enum Error {
         source: io::Error,
         reason: ErrorKind,
     },
+    #[error("Block 0 mismatch. expecting hash: {expected} but got : {got}")]
+    Block0Mismatch {
+        expected: blockcfg::HeaderId,
+        got: blockcfg::HeaderId,
+    },
     #[error("Storage error")]
     StorageError(#[from] StorageError),
     #[error("Error while loading the legacy blockchain state")]
@@ -67,6 +72,7 @@ impl Error {
             Error::StorageError { .. } => 5,
             Error::Blockchain { .. } => 6,
             Error::Block0 { .. } => 7,
+            Error::Block0Mismatch { .. } => 7,
             Error::Block0InFuture => 7,
             Error::NodeSecrets { .. } => 8,
             Error::FetchBlock0 { .. } => 9,

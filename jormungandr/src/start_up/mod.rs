@@ -2,7 +2,7 @@ mod error;
 
 pub use self::error::{Error, ErrorKind};
 use crate::{
-    blockcfg::Block,
+    blockcfg::{Block, HeaderId},
     blockchain::{Blockchain, ErrorKind as BlockchainError, Storage, Tip},
     network,
     settings::start::Settings,
@@ -38,6 +38,67 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, E
     Ok(Storage::new(raw_block_store))
 }
 
+/// Try to fetch the block0_id from the HTTP base URL (services) in the array
+///
+/// The HTTP url is expecting to be of the form: URL/<hash-id>.block0
+async fn fetch_block0_http(
+    logger: &Logger,
+    base_services: &[String],
+    block0_id: &HeaderId,
+) -> Option<Block> {
+    use chain_core::property::Deserialize as _;
+
+    if base_services.len() == 0 {
+        return None;
+    }
+
+    async fn fetch_one(block0_id: &HeaderId, url: &str) -> Result<Block, String> {
+        let response = reqwest::get(url)
+            .await
+            .map_err(|e| format!("cannot get {}", e))?;
+        if response.status() != reqwest::StatusCode::OK {
+            return Err(format!("fetch failed status code: {}", response.status()));
+        }
+
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|e| format!("cannot get data {}", e))?;
+        let block = Block::deserialize(bytes.as_ref())
+            .map_err(|err| format!("parse error on data {}", err))?;
+        let got = block.header.id();
+        if &got != block0_id {
+            return Err(format!("invalid block expecting {} got {}", block0_id, got));
+        }
+        return Ok(block);
+    }
+
+    for base_url in base_services {
+        // trying to fetch from service base url
+        let url = format!("{}/{}.block0", base_url, block0_id.to_string());
+        match fetch_one(block0_id, &url).await {
+            Err(e) => {
+                debug!(
+                    logger,
+                    "HTTP fetch : fail to get from {} : error {}", base_url, e
+                );
+            }
+            Ok(block) => {
+                info!(logger, "block0 {} fetched by HTTP from {}", block0_id, url);
+                return Some(block);
+            }
+        }
+    }
+
+    info!(
+        logger,
+        "block0 {} fetch by HTTP unsuccesful after trying {} services",
+        block0_id,
+        base_services.len()
+    );
+    None
+}
+
 /// loading the block 0 is not as trivial as it seems,
 /// there are different cases that we may encounter:
 ///
@@ -51,19 +112,35 @@ pub fn prepare_block_0(
     logger: &Logger,
 ) -> Result<Block, Error> {
     use crate::settings::Block0Info;
+    use chain_core::property::Deserialize as _;
     match &settings.block_0 {
-        Block0Info::Path(path) => {
-            use chain_core::property::Deserialize as _;
+        Block0Info::Path(path, opt_block0_id) => {
             debug!(logger, "parsing block0 from file path `{:?}'", path);
             let f = std::fs::File::open(path).map_err(|err| Error::IO {
                 source: err,
                 reason: ErrorKind::Block0,
             })?;
             let reader = std::io::BufReader::new(f);
-            Block::deserialize(reader).map_err(|err| Error::ParseError {
+            let block = Block::deserialize(reader).map_err(|err| Error::ParseError {
                 source: err,
                 reason: ErrorKind::Block0,
-            })
+            })?;
+
+            // check if the block0 match, the optional expected hash value
+            match opt_block0_id {
+                None => {}
+                Some(expected_hash) => {
+                    let got = block.header.id();
+                    if &got != expected_hash {
+                        return Err(Error::Block0Mismatch {
+                            got: got,
+                            expected: expected_hash.clone(),
+                        });
+                    }
+                }
+            };
+
+            Ok(block)
         }
         Block0Info::Hash(block0_id) => {
             let mut rt = runtime::Builder::new()
@@ -72,19 +149,37 @@ pub fn prepare_block_0(
                 .build()
                 .unwrap();
 
-            if rt.block_on(storage.block_exists(*block0_id))? {
-                debug!(
-                    logger,
-                    "retrieving block0 from storage with hash {}", block0_id
-                );
-                let block0 = rt.block_on(storage.get(*block0_id))?;
-                Ok(block0.unwrap())
-            } else {
-                debug!(
-                    logger,
-                    "retrieving block0 from network with hash {}", block0_id
-                );
-                network::fetch_block(&settings.network, *block0_id, logger).map_err(|e| e.into())
+            let storage = storage.back_to_the_future();
+            let storage_or_http_block0 = rt.block_on_std(async {
+                if let Some(block0) = storage.get(*block0_id).await.unwrap() {
+                    debug!(
+                        logger,
+                        "retrieved block0 from storage with hash {}", block0_id
+                    );
+                    // TODO verify block0 retrieved is the expected value
+                    Some(block0)
+                } else {
+                    debug!(
+                        logger,
+                        "retrieving block0 from network with hash {}", block0_id
+                    );
+
+                    fetch_block0_http(
+                        logger,
+                        &settings.network.http_fetch_block0_service,
+                        block0_id,
+                    )
+                    .await
+                }
+            });
+            // fetch from network:: is moved here since it start a runtime, and
+            // runtime cannot be started by a runtime.
+            match storage_or_http_block0 {
+                Some(block0) => Ok(block0),
+                None => {
+                    let block0 = network::fetch_block(&settings.network, *block0_id, logger)?;
+                    Ok(block0)
+                }
             }
         }
     }
