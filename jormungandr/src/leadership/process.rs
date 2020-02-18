@@ -4,8 +4,7 @@ use crate::{
         Ledger, LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, Ref, Tip},
-    fragment,
-    intercom::BlockMsg,
+    intercom::{unary_future, BlockMsg, Error as IntercomError, TransactionMsg},
     leadership::{
         enclave::{Enclave, EnclaveError, LeaderEvent},
         LeadershipLogHandle, Logs,
@@ -46,7 +45,7 @@ pub enum LeadershipError {
     },
 
     #[error("fragment selection failed")]
-    FragmentSelectionFailed,
+    FragmentSelectionFailed(#[from] IntercomError),
 
     #[error("Cannot send the leadership block to the blockchain module")]
     CannotSendLeadershipBlock,
@@ -71,7 +70,7 @@ pub struct Module {
     logs: Logs,
     tip_ref: Arc<Ref>,
     tip: Tip,
-    pool: fragment::Pool,
+    pool: MessageBox<TransactionMsg>,
     enclave: Enclave,
     block_message: MessageBox<BlockMsg>,
 }
@@ -82,7 +81,7 @@ impl Module {
         logs: Logs,
         garbage_collection_interval: Duration,
         tip: Tip,
-        pool: fragment::Pool,
+        pool: MessageBox<TransactionMsg>,
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
     ) -> Result<Self, LeadershipError> {
@@ -434,7 +433,8 @@ impl Module {
             return Ok(());
         };
 
-        let contents = prepare_block(pool, event.date, ledger, ledger_parameters).await?;
+        let contents =
+            prepare_block(pool, event.date, ledger, ledger_parameters, logger.clone()).await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -639,24 +639,25 @@ impl Schedule {
 }
 
 async fn prepare_block(
-    mut fragment_pool: fragment::Pool,
+    fragment_pool: MessageBox<TransactionMsg>,
     block_date: BlockDate,
     ledger: Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
+    logger: Logger,
 ) -> Result<Contents, LeadershipError> {
-    use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};
+    use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
-    let selection_algorithm = OldestFirst::new();
-    fragment_pool
-        .select(
-            ledger.as_ref().clone(),
+    unary_future(fragment_pool, logger, |reply_handle| {
+        TransactionMsg::SelectTransactions {
+            ledger: ledger.as_ref().clone(),
             block_date,
-            epoch_parameters.as_ref().clone(),
-            selection_algorithm,
-        )
-        .map_ok(|selection_algorithm| selection_algorithm.finalize())
-        .map_err(|()| LeadershipError::FragmentSelectionFailed)
-        .await
+            ledger_params: epoch_parameters.as_ref().clone(),
+            selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
+            reply_handle,
+        }
+    })
+    .compat()
+    .await
 }
 
 fn too_late(now: SystemTime, event_end: SystemTime) -> bool {

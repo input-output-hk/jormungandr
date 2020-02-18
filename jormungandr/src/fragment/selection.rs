@@ -27,6 +27,11 @@ pub trait FragmentSelectionAlgorithm {
     fn finalize(self) -> Contents;
 }
 
+#[derive(Debug)]
+pub enum FragmentSelectionAlgorithmParams {
+    OldestFirst,
+}
+
 pub struct OldestFirst {
     builder: ContentsBuilder,
     current_total_size: u32,

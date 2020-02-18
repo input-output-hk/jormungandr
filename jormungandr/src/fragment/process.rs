@@ -31,10 +31,6 @@ impl Process {
         }
     }
 
-    pub fn pool(&self) -> &Pool {
-        &self.pool
-    }
-
     pub async fn start(
         self,
         service_info: TokioServiceInfo,
@@ -74,6 +70,20 @@ impl Process {
                 TransactionMsg::GetLogs(reply_handle) => {
                     let logs = self.pool.logs().logs().await;
                     reply_handle.reply_ok(logs);
+                }
+                TransactionMsg::SelectTransactions {
+                    ledger,
+                    block_date,
+                    ledger_params,
+                    selection_alg,
+                    reply_handle,
+                } => {
+                    let contents = self
+                        .pool
+                        .clone()
+                        .select(ledger, block_date, ledger_params, selection_alg)
+                        .await;
+                    reply_handle.reply_ok(contents);
                 }
             }
         }

@@ -1,11 +1,14 @@
 use crate::{
     blockcfg::{BlockDate, Ledger, LedgerParameters},
-    fragment::{selection::FragmentSelectionAlgorithm, Fragment, FragmentId, Logs},
+    fragment::{
+        selection::{FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, OldestFirst},
+        Fragment, FragmentId, Logs,
+    },
     intercom::{NetworkMsg, PropagateMsg},
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::transaction::Transaction;
+use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures03::{compat::*, future, sink::SinkExt};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
@@ -93,21 +96,23 @@ impl Pool {
         self.logs.poll_purge().await
     }
 
-    pub async fn select<SelectAlg>(
+    pub async fn select(
         &mut self,
         ledger: Ledger,
         block_date: BlockDate,
         ledger_params: LedgerParameters,
-        mut selection_alg: SelectAlg,
-    ) -> Result<SelectAlg, ()>
-    where
-        SelectAlg: FragmentSelectionAlgorithm,
-    {
+        selection_alg: FragmentSelectionAlgorithmParams,
+    ) -> Contents {
         // FIXME deadlock hazard, nested pool lock and logs lock
         let mut pool = self.pool.lock().await;
         let mut logs = self.logs().inner().await;
-        selection_alg.select(&ledger, &ledger_params, block_date, &mut logs, &mut pool);
-        Ok(selection_alg)
+        match selection_alg {
+            FragmentSelectionAlgorithmParams::OldestFirst => {
+                let mut selection_alg = OldestFirst::new();
+                selection_alg.select(&ledger, &ledger_params, block_date, &mut logs, &mut pool);
+                selection_alg.finalize()
+            }
+        }
     }
 }
 
