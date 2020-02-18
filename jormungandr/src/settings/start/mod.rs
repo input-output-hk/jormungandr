@@ -27,8 +27,6 @@ pub enum Error {
     Rest(#[from] RestError),
     #[error("Cannot start the node without the information to retrieve the genesis block")]
     ExpectedBlock0Info,
-    #[error("Use only `--genesis-block-hash' or `--genesis-block'")]
-    TooMuchBlock0Info,
     #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]
     ListenAddressNotValid,
 }
@@ -158,8 +156,8 @@ impl RawSettings {
             &command_arguments.block_0_hash,
         ) {
             (None, None) => return Err(Error::ExpectedBlock0Info),
-            (Some(_path), Some(_hash)) => return Err(Error::TooMuchBlock0Info),
-            (Some(path), None) => Block0Info::Path(path.clone()),
+            (Some(path), Some(hash)) => Block0Info::Path(path.clone(), Some(hash.clone())),
+            (Some(path), None) => Block0Info::Path(path.clone(), None),
             (None, Some(hash)) => Block0Info::Hash(hash.clone()),
         };
 
@@ -199,10 +197,10 @@ fn generate_network(
     config: &Option<Config>,
     logger: &Logger,
 ) -> Result<network::Configuration, Error> {
-    let mut p2p = if let Some(cfg) = config {
-        cfg.p2p.clone()
+    let (mut p2p, http_fetch_block0_service) = if let Some(cfg) = config {
+        (cfg.p2p.clone(), cfg.http_fetch_block0_service.clone())
     } else {
-        config::P2pConfig::default()
+        (config::P2pConfig::default(), Vec::new())
     };
 
     if p2p.trusted_peers.is_some() {
@@ -270,6 +268,7 @@ fn generate_network(
             .unwrap_or(std::time::Duration::from_secs(10)),
         topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
         max_bootstrap_attempts: p2p.max_bootstrap_attempts,
+        http_fetch_block0_service,
     };
 
     if network.max_client_connections > network.max_connections {

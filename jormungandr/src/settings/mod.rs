@@ -19,6 +19,6 @@ lazy_static! {
 
 #[derive(Clone, Debug)]
 pub enum Block0Info {
-    Path(PathBuf),
+    Path(PathBuf, Option<HeaderHash>),
     Hash(HeaderHash),
 }

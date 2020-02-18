@@ -29,6 +29,9 @@ pub struct Config {
     #[serde(default)]
     pub p2p: P2pConfig,
 
+    #[serde(default)]
+    pub http_fetch_block0_service: Vec<String>,
+
     pub explorer: Option<Explorer>,
 
     /// the time interval with no blockchain updates after which alerts are thrown
