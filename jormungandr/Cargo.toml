@@ -41,6 +41,7 @@ network-core    = { path = "../chain-deps/network-core" }
 network-grpc    = { path = "../chain-deps/network-grpc" }
 pin-utils = "0.1.0-alpha.4"
 poldercast = "0.11.3"
+r2d2 = "0.8"
 rand = "0.7"
 rustls = "^0.16.0 "
 serde = "1.0"
@@ -61,7 +62,6 @@ tokio-compat = "^0.1.4"
 tokio02 = { package = "tokio", version = "0.2.11" }
 tokio-threadpool = "0.1"
 bech32 = "0.7"
-bb8 = "0.4"
 async-trait = "0.1"
 reqwest = "0.10"
 

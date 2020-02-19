@@ -3,15 +3,13 @@ use crate::{
     intercom::{self, ReplySendError, ReplyStreamHandle, ReplyStreamHandle03},
     start_up::{NodeStorage, NodeStorageConnection},
 };
-use async_trait::async_trait;
-use bb8::{ManageConnection, Pool, RunError};
 use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Stream as Stream01};
 use futures03::{compat::Compat, future::FusedFuture, prelude::*};
 use pin_utils::unsafe_pinned;
+use r2d2::{ManageConnection, Pool};
 use slog::Logger;
 use tokio02::{sync::Mutex, task::spawn_blocking};
-use tokio_compat::runtime;
 
 use std::convert::identity;
 use std::error::Error;
@@ -23,36 +21,21 @@ const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
 
 pub use chain_storage_sqlite_old::Error as StorageError;
 
-async fn run_blocking_storage<F, R>(f: F) -> Result<R, StorageError>
-where
-    F: FnOnce() -> Result<R, StorageError> + Send + 'static,
-    R: Send + 'static,
-{
-    spawn_blocking(f)
-        .unwrap_or_else(|e| Err(StorageError::BackendError(Box::new(e))))
-        .await
-}
-
-async fn run_blocking_with_connection<F, T, E>(pool: &Pool<ConnectionManager>, f: F) -> Result<T, E>
+async fn run_blocking_with_connection<F, T, E>(pool: Pool<ConnectionManager>, f: F) -> Result<T, E>
 where
     F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
     F: Send + 'static,
     T: Send + 'static,
     E: Error + From<StorageError> + Send + 'static,
 {
-    pool.run(|mut connection| async move {
-        spawn_blocking(move || match f(&mut connection) {
-            Ok(r) => Ok((r, connection)),
-            Err(r) => Err((r, connection)),
-        })
-        .await
-        .unwrap()
+    spawn_blocking(move || {
+        let mut connection = pool
+            .get()
+            .map_err(|e| StorageError::BackendError(e.into()))?;
+        f(&mut connection)
     })
     .await
-    .map_err(|e| match e {
-        RunError::User(e) => e,
-        RunError::TimedOut => StorageError::BackendError(e.to_string().into()).into(),
-    })
+    .unwrap()
 }
 
 async fn run_block_iter<T, F>(
@@ -67,7 +50,7 @@ where
 {
     loop {
         let mut sink1 = sink.clone();
-        match run_blocking_with_connection(&pool, move |connection| {
+        match run_blocking_with_connection(pool.clone(), move |connection| {
             iter.fill_sink(connection, &mut sink1)
                 .map_err(StreamingError::Sending)
         })
@@ -100,22 +83,20 @@ impl ConnectionManager {
     }
 }
 
-#[async_trait]
 impl ManageConnection for ConnectionManager {
     type Connection = NodeStorageConnection;
     type Error = StorageError;
 
-    async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        let inner = self.inner.clone();
-        run_blocking_storage(move || inner.connect()).await
+    fn connect(&self) -> Result<Self::Connection, Self::Error> {
+        self.inner.connect()
     }
 
-    async fn is_valid(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
-        run_blocking_storage(move || conn.ping().and(Ok(conn))).await
+    fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
+        conn.ping()
     }
 
-    fn has_broken(&self, conn: &mut Self::Connection) -> bool {
-        conn.ping().is_ok()
+    fn has_broken(&self, _conn: &mut Self::Connection) -> bool {
+        false
     }
 }
 
@@ -175,23 +156,15 @@ enum StreamingError {
 
 impl Storage03 {
     pub fn new(storage: NodeStorage, logger: Logger) -> Self {
-        let mut rt = runtime::Builder::new()
-            .name_prefix("new-storage-worker-")
-            .core_threads(1)
-            .build()
-            .unwrap();
+        let manager = ConnectionManager::new(storage);
+        let pool = Pool::builder().build(manager).unwrap();
+        let write_lock = Arc::new(Mutex::new(()));
 
-        rt.block_on_std(async move {
-            let manager = ConnectionManager::new(storage);
-            let pool = Pool::builder().build(manager).await.unwrap();
-            let write_lock = Arc::new(Mutex::new(()));
-
-            Storage03 {
-                pool,
-                write_lock,
-                logger,
-            }
-        })
+        Storage03 {
+            pool,
+            write_lock,
+            logger,
+        }
     }
 
     async fn run<F, T, E>(&self, f: F) -> Result<T, E>
@@ -201,7 +174,7 @@ impl Storage03 {
         T: Send + 'static,
         E: Error + From<StorageError> + Send + 'static,
     {
-        run_blocking_with_connection(&self.pool, f).await
+        run_blocking_with_connection(self.pool.clone(), f).await
     }
 
     pub async fn get_tag(&self, tag: String) -> Result<Option<HeaderHash>, StorageError> {
