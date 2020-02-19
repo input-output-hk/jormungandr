@@ -409,6 +409,9 @@ async fn process_leadership_block(
     try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
         .map_err(|_| "cannot remove fragments from pool".to_string())?;
 
+    // Add block to
+    stats_counter.set_tip_block(Some(block.clone()));
+
     process_and_propagate_new_ref(
         &logger,
         &mut blockchain,
@@ -537,7 +540,7 @@ async fn process_network_blocks(
             Some(block) => {
                 let res = process_network_block(
                     &mut blockchain,
-                    block,
+                    block.clone(),
                     &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
                     &mut get_next_block_scheduler,
@@ -547,6 +550,7 @@ async fn process_network_blocks(
                 match res {
                     Ok(Some(r)) => {
                         stats_counter.add_block_recv_cnt(1);
+                        stats_counter.set_tip_block(Some(block.clone()));
                         stream = new_stream;
                         candidate = Some(r);
                     }
