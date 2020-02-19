@@ -11,7 +11,7 @@ use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value},
     testing::{
         benchmark_efficiency, benchmark_endurance, EfficiencyBenchmarkDef,
-        EfficiencyBenchmarkFinish,
+        EfficiencyBenchmarkFinish, Endurance, Thresholds,
     },
     wallet::Wallet,
 };
@@ -218,7 +218,12 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
         if let Err(err) =
             super::send_transaction_and_ensure_block_was_produced(&vec![transaction], &jormungandr)
         {
-            benchmark.exception(err.to_string()).print();
+            // temporary threshold for the time issue with transaction stuck is resolved
+            let temporary_threshold =
+                Thresholds::<Endurance>::new_endurance(Duration::from_secs(400));
+            benchmark
+                .exception(err.to_string())
+                .print_with_thresholds(temporary_threshold);
             return;
         }
 

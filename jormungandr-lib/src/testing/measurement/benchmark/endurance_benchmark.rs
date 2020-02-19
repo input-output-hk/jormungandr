@@ -73,6 +73,7 @@ impl EnduranceBenchmarkRun {
     }
 }
 
+#[derive(Clone)]
 pub struct EnduranceBenchmarkFinish {
     definition: EnduranceBenchmarkDef,
     endurance: Endurance,
@@ -81,6 +82,12 @@ pub struct EnduranceBenchmarkFinish {
 impl EnduranceBenchmarkFinish {
     pub fn print(&self) {
         println!("{}", &self);
+    }
+
+    pub fn print_with_thresholds(&self, thresholds: Thresholds<Endurance>) {
+        let mut benchmark_finish = self.clone();
+        benchmark_finish.definition.thresholds = Some(thresholds);
+        benchmark_finish.print()
     }
 }
 
