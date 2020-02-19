@@ -562,34 +562,30 @@ pub fn bootstrap(
         unimplemented!()
     }
 
-    let mut bootstrapped = false;
+    if config.skip_bootstrap {
+        return Ok(true);
+    }
 
     if config.trusted_peers.is_empty() {
-        warn!(logger, "No trusted peers joinable to bootstrap the network");
-        bootstrapped = true;
+        error!(
+            logger,
+            "trusted-peers cannot be empty. to avoid bootstrap use 'skip_bootstrap: true'"
+        );
+        panic!("use non empty trusted-peers or set skip_bootstrap");
     }
+
+    let mut bootstrapped = false;
 
     'bootstrap: for address in trusted_peers_shuffled(&config) {
         let peer = Peer::new(address, Protocol::Grpc);
         let tp_logger = logger.new(o!("peer_addr" => address.to_string()));
-        let peers =
-            bootstrap::peers_from_trusted_peer(&peer, tp_logger.clone()).unwrap_or_else(|e| {
-                warn!(
-                    tp_logger,
-                    "failed to retrieve the list of bootstrap peers from trusted peer";
-                    "reason" => %e,
-                );
-                vec![peer]
-            });
-        for peer in peers {
-            let logger = logger.new(o!("peer_addr" => peer.connection.to_string()));
+        if config.bootstrap_from_trusted_peers {
             let res = bootstrap::bootstrap_from_peer(
                 peer,
                 blockchain.clone(),
                 branch.clone(),
                 logger.clone(),
             );
-
             match res {
                 Err(bootstrap::Error::Connect { source: e }) => {
                     warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
@@ -601,6 +597,39 @@ pub fn bootstrap(
                     info!(logger, "initial bootstrap completed");
                     bootstrapped = true;
                     break 'bootstrap;
+                }
+            }
+        } else {
+            let peers = bootstrap::peers_from_trusted_peer(&peer, tp_logger.clone())
+                .unwrap_or_else(|e| {
+                    warn!(
+                        tp_logger,
+                        "failed to retrieve the list of bootstrap peers from trusted peer";
+                        "reason" => %e,
+                    );
+                    vec![peer]
+                });
+            for peer in peers {
+                let logger = logger.new(o!("peer_addr" => peer.connection.to_string()));
+                let res = bootstrap::bootstrap_from_peer(
+                    peer,
+                    blockchain.clone(),
+                    branch.clone(),
+                    logger.clone(),
+                );
+
+                match res {
+                    Err(bootstrap::Error::Connect { source: e }) => {
+                        warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
+                    }
+                    Err(e) => {
+                        warn!(logger, "initial bootstrap failed"; "error" => ?e);
+                    }
+                    Ok(()) => {
+                        info!(logger, "initial bootstrap completed");
+                        bootstrapped = true;
+                        break 'bootstrap;
+                    }
                 }
             }
         }

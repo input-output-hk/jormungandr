@@ -197,11 +197,17 @@ fn generate_network(
     config: &Option<Config>,
     logger: &Logger,
 ) -> Result<network::Configuration, Error> {
-    let (mut p2p, http_fetch_block0_service) = if let Some(cfg) = config {
-        (cfg.p2p.clone(), cfg.http_fetch_block0_service.clone())
-    } else {
-        (config::P2pConfig::default(), Vec::new())
-    };
+    let (mut p2p, http_fetch_block0_service, skip_bootstrap, bootstrap_from_trusted_peers) =
+        if let Some(cfg) = config {
+            (
+                cfg.p2p.clone(),
+                cfg.http_fetch_block0_service.clone(),
+                cfg.skip_bootstrap.unwrap_or(false),
+                cfg.bootstrap_from_trusted_peers.unwrap_or(false),
+            )
+        } else {
+            (config::P2pConfig::default(), Vec::new(), false, false)
+        };
 
     if p2p.trusted_peers.is_some() {
         p2p.trusted_peers
@@ -269,6 +275,8 @@ fn generate_network(
         topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
         max_bootstrap_attempts: p2p.max_bootstrap_attempts,
         http_fetch_block0_service,
+        bootstrap_from_trusted_peers,
+        skip_bootstrap,
     };
 
     if network.max_client_connections > network.max_connections {

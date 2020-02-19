@@ -37,6 +37,9 @@ pub struct Config {
     /// the time interval with no blockchain updates after which alerts are thrown
     #[serde(default)]
     pub no_blockchain_updates_warning_interval: Option<Duration>,
+
+    pub bootstrap_from_trusted_peers: Option<bool>,
+    pub skip_bootstrap: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
