@@ -1,7 +1,7 @@
 use super::{grpc, BlockConfig};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
-use crate::settings::start::network::Peer;
+use crate::settings::start::network::{Peer, Protocol};
 use chain_core::property::HasHeader;
 use network_core::client::{BlockService, Client as _, GossipService};
 use network_core::error::Error as NetworkError;
@@ -46,7 +46,7 @@ pub enum Error {
     ChainSelectionFailed { source: BlockchainError },
 }
 
-pub fn peers_from_trusted_peers(peer: &Peer, logger: Logger) -> Result<(), Error> {
+pub fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>, Error> {
     info!(
         logger,
         "getting peers from bootstrap peer {}", peer.connection
@@ -71,7 +71,12 @@ pub fn peers_from_trusted_peers(peer: &Peer, logger: Logger) -> Result<(), Error
                         peer.connection,
                         peers.peers.len()
                     );
-                    future::ok(())
+                    let peers = peers
+                        .peers
+                        .iter()
+                        .map(|peer| Peer::new(peer.addr, Protocol::Grpc))
+                        .collect();
+                    future::ok(peers)
                 })
         });
 

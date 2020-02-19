@@ -131,6 +131,7 @@ pub fn wrong_genesis_hash() {
 }
 
 // L1002 Handshake compatible
+#[ignore]
 #[test]
 pub fn handshake_ok() {
     let mock_port = configuration::get_available_port();

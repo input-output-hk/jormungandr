@@ -82,6 +82,12 @@ pub struct Configuration {
 
     pub max_bootstrap_attempts: Option<usize>,
 
+    /// Whether to limit bootstrap to trusted peers (which increase their load / reduce their connectivities)
+    pub bootstrap_from_trusted_peers: bool,
+
+    /// Whether to skip bootstrap, not recommended in normal settings. useful to true for self-node
+    pub skip_bootstrap: bool,
+
     pub http_fetch_block0_service: Vec<String>,
 }
 

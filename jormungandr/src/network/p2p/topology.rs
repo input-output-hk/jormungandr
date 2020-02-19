@@ -166,22 +166,6 @@ impl P2pTopology {
         })
     }
 
-    pub fn list_available_limit<E>(
-        &self,
-        n: usize,
-    ) -> impl Future<Item = Vec<poldercast::NodeInfo>, Error = E> {
-        // we need write access because we need to be able to update
-        // the used marker in poldercast when querying the view
-        // otherwise the operation is just a Read anyway
-        self.write().map(move |mut topology| {
-            topology
-                .view(None, poldercast::Selection::Any)
-                .into_iter()
-                .take(n)
-                .collect()
-        })
-    }
-
     pub fn list_available<E>(&self) -> impl Future<Item = Vec<poldercast::Node>, Error = E> {
         self.read().map(|topology| {
             topology
