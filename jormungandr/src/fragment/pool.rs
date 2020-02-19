@@ -1,21 +1,23 @@
 use crate::{
     blockcfg::{BlockDate, Ledger, LedgerParameters},
-    fragment::{selection::FragmentSelectionAlgorithm, Fragment, FragmentId, Logs},
+    fragment::{
+        selection::{FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, OldestFirst},
+        Fragment, FragmentId, Logs,
+    },
     intercom::{NetworkMsg, PropagateMsg},
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::transaction::Transaction;
+use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures03::{compat::*, future, sink::SinkExt};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
-use std::{sync::Arc, time::Duration};
-use tokio02::{sync::Mutex, time};
+use std::time::Duration;
+use tokio02::time;
 
-#[derive(Clone)]
 pub struct Pool {
     logs: Logs,
-    pool: Arc<Mutex<internal::Pool>>,
+    pool: internal::Pool,
     network_msg_box: MessageBox<NetworkMsg>,
 }
 
@@ -28,13 +30,13 @@ impl Pool {
     ) -> Self {
         Pool {
             logs,
-            pool: Arc::new(Mutex::new(internal::Pool::new(max_entries, ttl))),
+            pool: internal::Pool::new(max_entries, ttl),
             network_msg_box,
         }
     }
 
-    pub fn logs(&self) -> &Logs {
-        &self.logs
+    pub fn logs(&mut self) -> &mut Logs {
+        &mut self.logs
     }
 
     /// Returns number of registered fragments
@@ -48,17 +50,15 @@ impl Pool {
         if fragments.is_empty() {
             return Ok(0);
         }
-        let mut logs = self.logs.clone();
         let mut network_msg_box = self.network_msg_box.clone().sink_compat();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
-        let fragments_exist_in_logs = self.logs.exist_all(fragment_ids).await?;
-        let mut pool = self.pool.lock().await;
+        let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
         let new_fragments = fragments
             .into_iter()
             .zip(fragments_exist_in_logs)
             .filter(|(_, exists_in_logs)| !exists_in_logs)
             .map(|(fragment, _)| fragment);
-        let new_fragments = pool.insert_all(new_fragments);
+        let new_fragments = self.pool.insert_all(new_fragments);
         let count = new_fragments.len();
         let fragment_logs = new_fragments
             .iter()
@@ -71,43 +71,35 @@ impl Pool {
                 .await
                 .map_err(|e| error!(logger, "cannot propagate fragment to network: {}", e))?;
         }
-        logs.insert_all(fragment_logs).await?;
+        self.logs.insert_all(fragment_logs);
         Ok(count)
     }
 
-    pub async fn remove_added_to_block(
-        &mut self,
-        fragment_ids: Vec<FragmentId>,
-        status: FragmentStatus,
-    ) -> Result<(), ()> {
-        let mut pool = self.pool.lock().await;
-        pool.remove_all(fragment_ids.iter().cloned());
-        self.logs.modify_all(fragment_ids, status).await
+    pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
+        self.pool.remove_all(fragment_ids.iter().cloned());
+        self.logs.modify_all(fragment_ids, status);
     }
 
     pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
-        {
-            let mut pool = self.pool.lock().await;
-            future::poll_fn(move |cx| pool.poll_purge(cx)).await?;
-        }
+        future::poll_fn(|cx| self.pool.poll_purge(cx)).await?;
         self.logs.poll_purge().await
     }
 
-    pub async fn select<SelectAlg>(
+    pub fn select(
         &mut self,
         ledger: Ledger,
         block_date: BlockDate,
         ledger_params: LedgerParameters,
-        mut selection_alg: SelectAlg,
-    ) -> Result<SelectAlg, ()>
-    where
-        SelectAlg: FragmentSelectionAlgorithm,
-    {
-        // FIXME deadlock hazard, nested pool lock and logs lock
-        let mut pool = self.pool.lock().await;
-        let mut logs = self.logs().inner().await;
-        selection_alg.select(&ledger, &ledger_params, block_date, &mut logs, &mut pool);
-        Ok(selection_alg)
+        selection_alg: FragmentSelectionAlgorithmParams,
+    ) -> Contents {
+        let Pool { logs, pool, .. } = self;
+        match selection_alg {
+            FragmentSelectionAlgorithmParams::OldestFirst => {
+                let mut selection_alg = OldestFirst::new();
+                selection_alg.select(&ledger, &ledger_params, block_date, logs, pool);
+                selection_alg.finalize()
+            }
+        }
     }
 }
 

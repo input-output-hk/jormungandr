@@ -14,7 +14,6 @@ use slog::Logger;
 use std::sync::Arc;
 
 use crate::blockchain::{Blockchain, Tip};
-use crate::fragment::Logs;
 use crate::leadership::Logs as LeadershipLogs;
 use crate::network::p2p::P2pTopology;
 use crate::secure::enclave::Enclave;
@@ -98,7 +97,6 @@ pub struct FullContext {
     pub blockchain_tip: Tip,
     pub network_task: MessageBox<NetworkMsg>,
     pub transaction_task: MessageBox<TransactionMsg>,
-    pub logs: Logs,
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
     pub p2p: P2pTopology,

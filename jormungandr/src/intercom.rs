@@ -1,12 +1,16 @@
-use crate::blockcfg::{Block, Fragment, FragmentId, Header, HeaderHash};
+use crate::blockcfg::{
+    Block, BlockDate, Fragment, FragmentId, Header, HeaderHash, Ledger, LedgerParameters,
+};
 use crate::blockchain::Checkpoints;
+use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 use crate::network::p2p::comm::PeerInfo;
 use crate::network::p2p::Id as NodeId;
 use crate::network::p2p::PeersResponse;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
+use chain_impl_mockchain::fragment::Contents;
 use futures::prelude::*;
 use futures::sync::{mpsc, oneshot};
-use jormungandr_lib::interfaces::{FragmentOrigin, FragmentStatus};
+use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use network_core::error as core_error;
 use slog::Logger;
 use std::{
@@ -461,6 +465,15 @@ pub fn stream_request<T, R, E>(
 pub enum TransactionMsg {
     SendTransaction(FragmentOrigin, Vec<Fragment>),
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
+    GetLogs(ReplyHandle<Vec<FragmentLog>>),
+    SelectTransactions {
+        ledger: Ledger,
+        block_date: BlockDate,
+        ledger_params: LedgerParameters,
+        selection_alg: FragmentSelectionAlgorithmParams,
+        reply_handle: ReplyHandle<Contents>,
+    },
+    RunGarbageCollector,
 }
 
 /// Client messages, mainly requests from connected peers to our node.

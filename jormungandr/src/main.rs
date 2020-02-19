@@ -109,7 +109,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let stats_counter = StatsCounter::default();
 
-    let (fragment_pool, pool_logs) = {
+    {
         let stats_counter = stats_counter.clone();
         let process = fragment::Process::new(
             bootstrapped_node.settings.mempool.pool_max_entries.into(),
@@ -124,14 +124,10 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             network_msgbox.clone(),
         );
 
-        let pool = process.pool().clone();
-        let logs = process.logs().clone();
-
         services.spawn_future("fragment", move |info| {
             let fut = process.start(info, stats_counter, fragment_queue);
             Box::pin(fut).compat()
         });
-        (pool, logs)
     };
 
     let explorer = {
@@ -231,10 +227,10 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     {
         let leadership_logs = leadership_logs.clone();
-        let fragment_pool = fragment_pool.clone();
         let block_msgbox = block_msgbox.clone();
         let blockchain_tip = blockchain_tip.clone();
         let enclave = leadership::Enclave::new(enclave.clone());
+        let fragment_msgbox = fragment_msgbox.clone();
 
         services.spawn_future("leadership", move |info| {
             let fut = leadership::Module::new(
@@ -242,7 +238,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 leadership_logs,
                 leadership_garbage_collection_interval,
                 blockchain_tip,
-                fragment_pool,
+                fragment_msgbox,
                 enclave,
                 block_msgbox,
             )
@@ -260,7 +256,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             blockchain_tip: blockchain_tip.clone(),
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
-            logs: pool_logs,
             leadership_logs,
             enclave,
             p2p: topology,
