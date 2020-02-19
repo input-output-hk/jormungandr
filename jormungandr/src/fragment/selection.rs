@@ -1,4 +1,4 @@
-use super::logs::internal::Logs;
+use super::logs::Logs;
 use super::pool::internal::Pool;
 use crate::{
     blockcfg::{BlockDate, Contents, ContentsBuilder, Ledger, LedgerParameters},
@@ -80,7 +80,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                         } else {
                             error.to_string()
                         };
-                        logs.modify(&id.into(), FragmentStatus::Rejected { reason: error })
+                        logs.modify(id, FragmentStatus::Rejected { reason: error })
                     }
                 }
 

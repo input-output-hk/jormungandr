@@ -81,7 +81,7 @@ impl Process {
                     pool.remove_added_to_block(fragment_ids, status);
                 }
                 TransactionMsg::GetLogs(reply_handle) => {
-                    let logs = pool.logs().logs();
+                    let logs = pool.logs().logs().cloned().collect();
                     reply_handle.reply_ok(logs);
                 }
                 TransactionMsg::SelectTransactions {

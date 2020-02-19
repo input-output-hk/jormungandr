@@ -75,11 +75,7 @@ impl Pool {
         Ok(count)
     }
 
-    pub fn remove_added_to_block(
-        &mut self,
-        fragment_ids: Vec<FragmentId>,
-        status: FragmentStatus,
-    ) {
+    pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
         self.pool.remove_all(fragment_ids.iter().cloned());
         self.logs.modify_all(fragment_ids, status);
     }
@@ -97,7 +93,6 @@ impl Pool {
         selection_alg: FragmentSelectionAlgorithmParams,
     ) -> Contents {
         let Pool { logs, pool, .. } = self;
-        let logs = logs.inner();
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
