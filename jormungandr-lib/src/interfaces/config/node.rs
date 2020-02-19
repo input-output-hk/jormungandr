@@ -62,6 +62,8 @@ pub struct NodeConfig {
     pub log: Option<Log>,
     pub explorer: Explorer,
     pub mempool: Option<Mempool>,
+    pub bootstrap_from_trusted_peers: Option<bool>,
+    pub skip_bootstrap: Option<bool>,
 }
 
 impl P2p {
