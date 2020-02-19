@@ -50,15 +50,15 @@ impl TestnetConfig {
             actor_account_private_key_var_name
         ));
 
-        let public_ip_var_name = format!("{}_PUBLIC_IP", prefix);
+        let public_ip_var_name = "PUBLIC_IP";
         let public_ip = env::var(public_ip_var_name.clone())
             .expect(&format!("{} env is not set", public_ip_var_name));
 
-        let public_port_var_name = format!("{}_PUBLIC_PORT", prefix);
+        let public_port_var_name = "PUBLIC_PORT";
         let public_port = env::var(public_port_var_name.clone())
             .expect(&format!("{} env is not set", public_port_var_name));
 
-        let listen_port_var_name = format!("{}_LISTEN_PORT", prefix);
+        let listen_port_var_name = "LISTEN_PORT";
         let listen_port = env::var(listen_port_var_name.clone())
             .expect(&format!("{} env is not set", listen_port_var_name));
 
