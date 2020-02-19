@@ -58,15 +58,17 @@ impl SyncWaitParams {
 
 impl Into<Thresholds<Speed>> for SyncWaitParams {
     fn into(self) -> Thresholds<Speed> {
+        let grace_coeff = 2;
+
         match self {
             SyncWaitParams::WithDisruption {
                 no_of_nodes,
                 restart_coeff,
             } => {
-                let green = Duration::from_secs(no_of_nodes * restart_coeff);
-                let yellow = Duration::from_secs(no_of_nodes * restart_coeff * 2);
-                let red = Duration::from_secs(no_of_nodes * restart_coeff * 3);
-                let timeout = Duration::from_secs(no_of_nodes * restart_coeff * 4);
+                let green = Duration::from_secs(no_of_nodes * restart_coeff) * grace_coeff;
+                let yellow = Duration::from_secs(no_of_nodes * restart_coeff * 2) * grace_coeff;
+                let red = Duration::from_secs(no_of_nodes * restart_coeff * 3) * grace_coeff;
+                let timeout = Duration::from_secs(no_of_nodes * restart_coeff * 4) * grace_coeff;
 
                 Thresholds::<Speed>::new(green.into(), yellow.into(), red.into(), timeout.into())
             }
@@ -74,10 +76,11 @@ impl Into<Thresholds<Speed>> for SyncWaitParams {
                 no_of_nodes,
                 longest_path_length,
             } => {
-                let green = Duration::from_secs(no_of_nodes);
-                let yellow = Duration::from_secs(no_of_nodes + longest_path_length);
-                let red = Duration::from_secs(no_of_nodes + longest_path_length * 2);
-                let timeout = Duration::from_secs(no_of_nodes * 2 + longest_path_length * 2);
+                let green = Duration::from_secs(no_of_nodes) * grace_coeff;
+                let yellow = Duration::from_secs(no_of_nodes + longest_path_length) * grace_coeff;
+                let red = Duration::from_secs(no_of_nodes + longest_path_length * 2) * grace_coeff;
+                let timeout =
+                    Duration::from_secs(no_of_nodes * 2 + longest_path_length * 2) * grace_coeff;
 
                 Thresholds::<Speed>::new(green.into(), yellow.into(), red.into(), timeout.into())
             }
