@@ -118,6 +118,7 @@ impl Process {
                             network_msg_box,
                             explorer_msg_box,
                             block,
+                            stats_counter,
                         )
                         .await
                     },
@@ -368,11 +369,15 @@ async fn process_and_propagate_new_ref(
     tip: Tip,
     new_block_ref: Arc<Ref>,
     network_msg_box: MessageBox<NetworkMsg>,
+    stats_counter: StatsCounter,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
 
     debug!(logger, "processing the new block and propagating"; "hash" => %hash);
+
+    let block = blockchain.storage().get(hash).await?;
+    stats_counter.set_tip_block(block);
 
     process_new_ref(logger, blockchain, tip, new_block_ref).await?;
 
@@ -393,6 +398,7 @@ async fn process_leadership_block(
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     block: Block,
+    stats_counter: StatsCounter,
 ) -> Result<(), Error> {
     let new_block_ref =
         process_leadership_block_inner(&logger, &mut blockchain, block.clone()).await?;
@@ -409,6 +415,7 @@ async fn process_leadership_block(
         blockchain_tip,
         Arc::clone(&new_block_ref),
         network_msg_box,
+        stats_counter,
     )
     .await?;
 
@@ -573,6 +580,7 @@ async fn process_network_blocks(
                 blockchain_tip,
                 Arc::clone(&new_block_ref),
                 network_msg_box,
+                stats_counter,
             )
             .await?;
             Ok(r)

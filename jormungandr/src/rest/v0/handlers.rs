@@ -121,13 +121,8 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
-    context
-        .blockchain
-        .storage()
-        .get(tip.hash())
-        .compat()
-        .await
-        .map_err(ErrorInternalServerError)?
+    let header_block = context.stats_counter.get_tip_block();
+    header_block
         .ok_or(ErrorInternalServerError("Could not find block for tip"))?
         .contents
         .iter()
@@ -136,7 +131,7 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
                 Ok((t.total_input()?, t.total_output()?))
             }
 
-            let (total_input, total_output) = match fragment {
+            let (total_input, total_output) = match &fragment {
                 Fragment::Transaction(tx) => totals(tx),
                 Fragment::OwnerStakeDelegation(tx) => totals(tx),
                 Fragment::StakeDelegation(tx) => totals(tx),
