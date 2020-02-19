@@ -571,7 +571,7 @@ pub fn bootstrap(
             logger,
             "trusted-peers cannot be empty. to avoid bootstrap use 'skip_bootstrap: true'"
         );
-        panic!("use non empty trusted-peers or set skip_bootstrap");
+        //panic!("use non empty trusted-peers or set skip_bootstrap");
     }
 
     let mut bootstrapped = false;
