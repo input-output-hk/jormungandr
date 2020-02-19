@@ -29,9 +29,8 @@ where
     R: Send + 'static,
 {
     spawn_blocking(f)
+        .unwrap_or_else(|e| Err(StorageError::BackendError(Box::new(e))))
         .await
-        .map_err(|e| StorageError::BackendError(Box::new(e)))
-        .and_then(identity)
 }
 
 async fn run_blocking_with_connection<F, T, E>(pool: &Pool<ConnectionManager>, f: F) -> Result<T, E>
