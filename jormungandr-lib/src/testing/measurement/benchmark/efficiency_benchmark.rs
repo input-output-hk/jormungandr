@@ -60,9 +60,9 @@ impl EfficiencyBenchmarkRun {
         self.increment_by(1u32.into())
     }
 
-    pub fn increment_by(&mut self, stop: u32) -> &mut Self {
-        let stop_counter: Counter = Counter::from(stop);
-        self.current_marker = stop_counter + self.start_marker;
+    pub fn increment_by(&mut self, increment: u32) -> &mut Self {
+        let counter: u32 = self.current_marker.into();
+        self.current_marker = (counter + increment).into();
         self
     }
 

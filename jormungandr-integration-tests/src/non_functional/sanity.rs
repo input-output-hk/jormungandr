@@ -116,7 +116,7 @@ pub fn test_100_transaction_is_processed_simple() {
 
     let output_value = 1 as u64;
     let mut benchmark = benchmark_efficiency("test_100_transaction_is_processed_simple")
-        .target(100)
+        .target(transaction_max_count)
         .start();
 
     for i in 0..transaction_max_count {
@@ -129,7 +129,7 @@ pub fn test_100_transaction_is_processed_simple() {
                 .assert_to_message();
 
         sender.confirm_transaction();
-        println!("Sending transaction no. {}", i);
+        println!("Sending transaction no. {}", i + 1);
 
         if let Err(error) =
             check_transaction_was_processed(transaction.to_owned(), &receiver, i, &jormungandr)
