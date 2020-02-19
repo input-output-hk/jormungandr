@@ -1,5 +1,31 @@
 # Change Log
 
+## [v0.8.11](https://github.com/input-output-hk/jormungandr/tree/v0.8.11) (2020-02-20)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.10-2...v0.8.11)
+
+**Implemented enhancements:**
+
+- Improve fetch of block0 using easy HTTP services [\#1799](https://github.com/input-output-hk/jormungandr/pull/1799)
+- Use peers retrieved during bootstrap [\#1794](https://github.com/input-output-hk/jormungandr/pull/1794)
+
+**Closed issues:**
+
+- 0.8.10 Bootstrap elapsed time X2 [\#1795](https://github.com/input-output-hk/jormungandr/issues/1795)
+- jormungandr-v0.8.10-2-x86\_64-unknown-linux-gnu.tar.gz -  error while loading shared libraries: libssl.so.1.1 [\#1791](https://github.com/input-output-hk/jormungandr/issues/1791)
+- aarch64-unknown-linux-gnu is missing in 0.8.10 release [\#1786](https://github.com/input-output-hk/jormungandr/issues/1786)
+- v0.8.10 jormungandr-v0.8.10-x86\_64-unknown-linux-musl.tar.gz not working [\#1785](https://github.com/input-output-hk/jormungandr/issues/1785)
+
+**Merged pull requests:**
+
+- Bump chain-deps from `10993cc` to `6fa2921` [\#1807](https://github.com/input-output-hk/jormungandr/pull/1807)
+- Bump hex from 0.4.1 to 0.4.2 [\#1806](https://github.com/input-output-hk/jormungandr/pull/1806)
+- Lockless fragment process [\#1804](https://github.com/input-output-hk/jormungandr/pull/1804)
+- Bump chain-deps from `076c586` to `10993cc` [\#1801](https://github.com/input-output-hk/jormungandr/pull/1801)
+- poldercast update to 0.11.3 [\#1800](https://github.com/input-output-hk/jormungandr/pull/1800)
+- Bump thiserror from 1.0.10 to 1.0.11 [\#1798](https://github.com/input-output-hk/jormungandr/pull/1798)
+- Bump serde\_json from 1.0.47 to 1.0.48 [\#1773](https://github.com/input-output-hk/jormungandr/pull/1773)
+
 ## [v0.8.10](https://github.com/input-output-hk/jormungandr/tree/v0.8.10) (2020-02-13)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.9...v0.8.10)
