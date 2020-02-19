@@ -131,9 +131,12 @@ pub fn test_100_transaction_is_processed_simple() {
         sender.confirm_transaction();
         println!("Sending transaction no. {}", i + 1);
 
-        if let Err(error) =
-            check_transaction_was_processed(transaction.to_owned(), &receiver, i, &jormungandr)
-        {
+        if let Err(error) = check_transaction_was_processed(
+            transaction.to_owned(),
+            &receiver,
+            i.into(),
+            &jormungandr,
+        ) {
             benchmark.exception(error.to_string()).print();
             return;
         }
