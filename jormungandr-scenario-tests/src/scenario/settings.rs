@@ -267,6 +267,8 @@ impl Settings {
                 trusted_peers.push(trusted_peer.config.p2p.make_trusted_peer_setting());
             }
 
+            node.config.skip_bootstrap = Some(trusted_peers.is_empty());
+            node.config.bootstrap_from_trusted_peers = Some(!trusted_peers.is_empty());
             node.config.p2p.trusted_peers = trusted_peers;
         }
     }
@@ -388,6 +390,8 @@ impl Prepare for NodeConfig {
             log: Some(Log::prepare(context)),
             mempool: Some(Mempool::prepare(context)),
             explorer: Explorer::prepare(context),
+            bootstrap_from_trusted_peers: None,
+            skip_bootstrap: None,
         }
     }
 }

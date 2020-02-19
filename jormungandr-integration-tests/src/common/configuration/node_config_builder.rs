@@ -116,6 +116,8 @@ impl NodeConfigBuilder {
             p2p: self.p2p.clone(),
             mempool: self.mempool.clone(),
             explorer: self.explorer.clone(),
+            bootstrap_from_trusted_peers: Some(!self.p2p.trusted_peers.is_empty()),
+            skip_bootstrap: Some(self.p2p.trusted_peers.is_empty()),
         }
     }
 }
