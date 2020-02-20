@@ -365,78 +365,6 @@ pub async fn process_new_ref_owned(
     process_new_ref(&logger, &mut blockchain, tip, candidate).await
 }
 
-/*
-/// process a new candidate block on top of the blockchain, this function may:
-///
-/// * update the current tip if the candidate's parent is the current tip;
-/// * update a branch if the candidate parent is that branch's tip;
-/// * create a new branch if none of the above;
-///
-/// If the current tip is not the one being updated we will then trigger
-/// chain selection after updating that other branch as it may be possible that
-/// this branch just became more interesting for the current consensus algorithm.
-pub fn process_new_ref(
-    logger: Logger,
-    mut blockchain: Blockchain,
-    mut tip: Tip,
-    candidate: Arc<Ref>,
-) -> impl Future<Item = (), Error = Error> {
-    use tokio::prelude::future::Either::*;
-
-    let candidate_hash = candidate.hash();
-    let storage = blockchain.storage().clone();
-
-    tip.clone()
-        .get_ref()
-        .and_then(move |tip_ref| {
-            if tip_ref.hash() == candidate.block_parent_hash() {
-                info!(
-                    logger,
-                    "update current branch tip: {} -> {}",
-                    tip_ref.header().description(),
-                    candidate.header().description(),
-                );
-                A(A(tip.update_ref(candidate).map(|_| true)))
-            } else {
-                match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
-                    ComparisonResult::PreferCurrent => {
-                        info!(
-                            logger,
-                            "create new branch with tip {} | current-tip {}",
-                            candidate.header().description(),
-                            tip_ref.header().description(),
-                        );
-                        A(B(future::ok(false)))
-                    }
-                    ComparisonResult::PreferCandidate => {
-                        info!(
-                            logger,
-                            "switching branch from {} to {}",
-                            tip_ref.header().description(),
-                            candidate.header().description(),
-                        );
-                        B(blockchain
-                            .branches_mut()
-                            .apply_or_create(candidate)
-                            .and_then(move |branch| tip.swap(branch))
-                            .map(|()| true))
-                    }
-                }
-            }
-        })
-        .map_err(|_: std::convert::Infallible| unreachable!())
-        .and_then(move |tip_updated| {
-            if tip_updated {
-                A(storage
-                    .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip")))
-            } else {
-                B(future::ok(()))
-            }
-        })
-}
-*/
-
 async fn process_and_propagate_new_ref(
     logger: &Logger,
     blockchain: &mut Blockchain,
@@ -744,7 +672,6 @@ async fn check_and_apply_block(
     let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
     let applied_block = blockchain
         .apply_and_store_block(post_checked, block)
-        //.compat()
         .await?;
     if let AppliedBlock::New(block_ref) = applied_block {
         let header = block_ref.header();

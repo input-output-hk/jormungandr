@@ -235,7 +235,7 @@ async fn handle_block(
                 .apply_and_store_block(post_checked, block)
                 .await
                 .map_err(|e| Error::ApplyBlockFailed { source: e })?;
-            Ok(applied.cached_ref()) //.map(|applied| applied.cached_ref())
+            Ok(applied.cached_ref())
         }
     }
 }
