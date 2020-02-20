@@ -17,7 +17,7 @@ struct StatsCounterImpl {
     block_recv_cnt: AtomicUsize,
     start_time: Instant,
     slot_start_time: AtomicU64,
-    tip_block: RwLock<Option<Block>>,
+    tip_block: RwLock<Arc<Option<Block>>>,
 }
 
 impl Default for StatsCounterImpl {
@@ -27,7 +27,7 @@ impl Default for StatsCounterImpl {
             block_recv_cnt: AtomicUsize::default(),
             start_time: Instant::now(),
             slot_start_time: AtomicU64::new(SLOT_START_TIME_UNDEFINED),
-            tip_block: RwLock::new(None),
+            tip_block: RwLock::new(Arc::new(None)),
         }
     }
 }
@@ -74,10 +74,10 @@ impl StatsCounter {
     }
 
     pub fn set_tip_block(&self, block: Option<Block>) {
-        *self.stats.tip_block.write().unwrap() = block;
+        *self.stats.tip_block.write().unwrap() = Arc::new(block);
     }
 
-    pub fn get_tip_block(&self) -> Option<Block> {
+    pub fn get_tip_block(&self) -> Arc<Option<Block>> {
         self.stats.tip_block.read().unwrap().clone()
     }
 }
