@@ -180,7 +180,7 @@ fn process_new_ref_old(
     tip: Tip,
     candidate: Arc<Ref>,
 ) -> impl Future<Item = (), Error = blockchain::Error> {
-    use futures_util::compat::Compat;
+    use futures03::compat::Compat;
     Compat::new(Box::pin(blockchain::process_new_ref_owned(
         logger, blockchain, tip, candidate,
     )))
@@ -191,7 +191,7 @@ fn handle_block_old(
     block: Block,
     logger: Logger,
 ) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    use futures_util::compat::Compat;
+    use futures03::compat::Compat;
     Compat::new(Box::pin(handle_block(blockchain, block, logger)))
 }
 
