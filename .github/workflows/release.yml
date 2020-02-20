@@ -32,24 +32,51 @@ jobs:
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, cross: true}
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: false
+            rustflags: -C lto
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: true
+            rustflags: -C lto
+          - target: arm-unknown-linux-gnueabi
+            os: ubuntu-latest
+            cross: true
+            rustflags: -C lto
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            cross: true
+            rustflags: -C lto
           # mips and powerpc are not compitble with ring v0.16.10, so they are disabled for now
-#          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
-#          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, cross: true}
-          # Macos
-          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, cross: false}
+          #- {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
+          #- {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            cross: true
+            rustflags: -C lto
+          - target: aarch64-linux-android
+            os: ubuntu-latest
+            cross: true
+            rustflags: -C lto
+          # MacOS
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            cross: false
+            rustflags: -C lto
           # Windows
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, cross: false}
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            cross: false
+            rustflags: -C lto -C target-feature=+crt-static
+          - target: x86_64-pc-windows-gnu
+            os: windows-latest
+            cross: false
+            rustflags: -C lto
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.config.toolchain }}
+          toolchain: stable
           target: ${{ matrix.config.target }}
           override: true
           default: true
@@ -64,14 +91,14 @@ jobs:
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- ${{ matrix.config.rustflags }}
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C lto
+          args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- ${{ matrix.config.rustflags }}
 
       - name: Get tag version
         id: get_version
