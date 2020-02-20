@@ -147,7 +147,7 @@ where
                 }
                 Err(e) => {
                     let fut = if let Some(parent_tip) = parent_tip {
-                        Either::A(blockchain::process_new_ref(
+                        Either::A(process_new_ref_old(
                             logger.clone(),
                             blockchain.clone(),
                             branch.clone(),
@@ -164,7 +164,7 @@ where
         .and_then(move |maybe_new_tip| {
             if let Some(new_tip) = maybe_new_tip {
                 Either::A(
-                    blockchain::process_new_ref(logger2, blockchain2, branch2, new_tip.clone())
+                    process_new_ref_old(logger2, blockchain2, branch2, new_tip.clone())
                         .map_err(|e| Error::ChainSelectionFailed { source: e }),
                 )
             } else {
@@ -172,6 +172,18 @@ where
                 Either::B(future::ok(()))
             }
         })
+}
+
+fn process_new_ref_old(
+    logger: Logger,
+    blockchain: Blockchain,
+    tip: Tip,
+    candidate: Arc<Ref>,
+) -> impl Future<Item = (), Error = blockchain::Error> {
+    use futures_util::compat::Compat;
+    Compat::new(Box::pin(blockchain::process_new_ref_owned(
+        logger, blockchain, tip, candidate,
+    )))
 }
 
 fn handle_block_old(

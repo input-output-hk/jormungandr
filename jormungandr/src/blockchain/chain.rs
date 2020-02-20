@@ -287,7 +287,7 @@ impl Blockchain {
     }
 
     /// create and store a reference of this leader to the new
-    fn create_and_store_reference(
+    async fn create_and_store_reference(
         &self,
         header_hash: HeaderHash,
         header: Header,
@@ -296,28 +296,32 @@ impl Blockchain {
         leadership: Arc<Leadership>,
         ledger_parameters: Arc<LedgerParameters>,
         previous_epoch_state: Option<Arc<Ref>>,
-    ) -> impl Future01<Item = Arc<Ref>, Error = Infallible> {
+    ) -> Arc<Ref> {
         let chain_length = header.chain_length();
 
         let multiverse = self.ledgers.clone();
         let ref_cache = self.ref_cache.clone();
 
-        multiverse
+        let ledger_ref = multiverse
             .insert(chain_length, header_hash, ledger)
-            .and_then(move |ledger_ref| {
-                let reference = Ref::new(
-                    ledger_ref,
-                    time_frame,
-                    leadership,
-                    ledger_parameters,
-                    header,
-                    previous_epoch_state,
-                );
-                let reference = Arc::new(reference);
-                ref_cache
-                    .insert(header_hash, Arc::clone(&reference))
-                    .map(|()| reference)
-            })
+            .compat()
+            .await
+            .unwrap();
+        let reference = Ref::new(
+            ledger_ref,
+            time_frame,
+            leadership,
+            ledger_parameters,
+            header,
+            previous_epoch_state,
+        );
+        let reference = Arc::new(reference);
+        ref_cache
+            .insert(header_hash, Arc::clone(&reference))
+            .compat()
+            .await
+            .unwrap();
+        reference
     }
 
     /// get `Ref` of the given header hash
@@ -469,11 +473,11 @@ impl Blockchain {
         }
     }
 
-    fn apply_block(
+    async fn apply_block(
         &self,
         post_checked_header: PostCheckedHeader,
         block: &Block,
-    ) -> impl Future01<Item = Arc<Ref>, Error = Error> {
+    ) -> Result<Arc<Ref>> {
         let header = post_checked_header.header;
         let block_id = header.hash();
         let epoch_leadership_schedule = post_checked_header.epoch_leadership_schedule;
@@ -486,26 +490,20 @@ impl Blockchain {
 
         let metadata = header.to_content_eval_context();
 
-        let self1 = self.clone();
-
-        future01::result(
-            ledger
-                .apply_block(&epoch_ledger_parameters, &block.contents, &metadata)
-                .chain_err(|| ErrorKind::CannotApplyBlock),
-        )
-        .and_then(move |new_ledger| {
-            self1
-                .create_and_store_reference(
-                    block_id,
-                    header,
-                    new_ledger,
-                    time_frame,
-                    epoch_leadership_schedule,
-                    epoch_ledger_parameters,
-                    previous_epoch_state,
-                )
-                .map_err(|_: Infallible| unreachable!())
-        })
+        let new_ledger = ledger
+            .apply_block(&epoch_ledger_parameters, &block.contents, &metadata)
+            .chain_err(|| ErrorKind::CannotApplyBlock)?;
+        Ok(self
+            .create_and_store_reference(
+                block_id,
+                header,
+                new_ledger,
+                time_frame,
+                epoch_leadership_schedule,
+                epoch_ledger_parameters,
+                previous_epoch_state,
+            )
+            .await)
     }
 
     /// Apply the block on the blockchain from a post checked header
@@ -517,20 +515,14 @@ impl Blockchain {
         post_checked_header: PostCheckedHeader,
         block: Block,
     ) -> Result<AppliedBlock> {
-        //) -> impl Future01<Item = AppliedBlock, Error = Error> {
-        let storage = self.storage.clone();
-        let r = self
-            .apply_block(post_checked_header, &block)
-            .and_then(move |block_ref| {
-                storage.put_block(block).then(|res| match res {
-                    Ok(()) => Ok(AppliedBlock::New(block_ref)),
-                    Err(StorageError::BlockAlreadyPresent) => Ok(AppliedBlock::Existing(block_ref)),
-                    Err(e) => Err(e.into()),
-                })
-            })
-            .compat()
-            .await?;
-        Ok(r)
+        let storage = self.storage.back_to_the_future().clone();
+        let block_ref = self.apply_block(post_checked_header, &block).await?;
+        let res = storage.put_block(block).await;
+        match res {
+            Ok(()) => Ok(AppliedBlock::New(block_ref)),
+            Err(StorageError::BlockAlreadyPresent) => Ok(AppliedBlock::Existing(block_ref)),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Apply the given block0 in the blockchain (updating the RefCache and the other objects)
@@ -587,9 +579,7 @@ impl Blockchain {
                 Arc::new(ledger_parameters),
                 None,
             )
-            .compat()
-            .await
-            .unwrap();
+            .await;
         let b = Branch::new(b);
         branches.add(b.clone()).compat().await.unwrap();
         Ok(b)
@@ -740,10 +730,7 @@ impl Blockchain {
                         }
                     };
 
-                    let new_ref = self
-                        .apply_block(post_checked_header, &block)
-                        .compat()
-                        .await?;
+                    let new_ref = self.apply_block(post_checked_header, &block).await?;
 
                     count += 1;
                     let _: Arc<Ref> = branch.update_ref_std(new_ref).await;

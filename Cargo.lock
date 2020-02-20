@@ -1979,6 +1979,7 @@ dependencies = [
  "error-chain",
  "futures 0.1.29",
  "futures 0.3.4",
+ "futures-util",
  "http 0.1.21",
  "humantime",
  "hyper 0.12.35",
