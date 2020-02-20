@@ -176,38 +176,38 @@ async fn land_header_chain(
     stream: HeaderStream,
     logger: Logger,
 ) -> Result<Option<ChainAdvance>, Error> {
-    chain_landing::State::start(stream.map_err(|()| unreachable!()), blockchain)
-        .and_then(move |state| state.skip_present_blocks())
-        .and_then(move |maybe_new| match maybe_new {
-            Some((header, stream)) => {
-                // We have got a header that may not be in storage yet,
-                // but its parent is.
-                // Find an existing root or create a new one.
-                let root_hash = header.hash();
-                let root_parent_hash = header.block_parent_hash();
-                debug!(
-                    logger,
-                    "landed the header chain";
-                    "hash" => %root_hash,
-                    "parent" => %root_parent_hash,
-                );
-                let new_hashes = vec![root_hash];
-                let landing = ChainAdvance {
-                    stream: stream.into_inner(),
-                    parent_header: header,
-                    header: None,
-                    new_hashes,
-                    logger,
-                };
-                future::ok(Some(landing))
-            }
-            None => {
-                debug!(logger, "all blocks already present for the header chain");
-                future::ok(None)
-            }
-        })
+    let state = chain_landing::State::start(stream.map_err(|()| unreachable!()), blockchain)
         .compat()
-        .await
+        .await?;
+    let maybe_new = state.skip_present_blocks().compat().await?;
+    match maybe_new {
+        Some((header, stream)) => {
+            // We have got a header that may not be in storage yet,
+            // but its parent is.
+            // Find an existing root or create a new one.
+            let root_hash = header.hash();
+            let root_parent_hash = header.block_parent_hash();
+            debug!(
+                logger,
+                "landed the header chain";
+                "hash" => %root_hash,
+                "parent" => %root_parent_hash,
+            );
+            let new_hashes = vec![root_hash];
+            let landing = ChainAdvance {
+                stream: stream.into_inner(),
+                parent_header: header,
+                header: None,
+                new_hashes,
+                logger,
+            };
+            Ok(Some(landing))
+        }
+        None => {
+            debug!(logger, "all blocks already present for the header chain");
+            Ok(None)
+        }
+    }
 }
 
 /// Consumes headers from the stream, filtering out those that are already
