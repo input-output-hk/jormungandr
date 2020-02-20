@@ -25,9 +25,15 @@ impl Process {
         garbage_collection_interval: Duration,
         network_msg_box: MessageBox<NetworkMsg>,
     ) -> Self {
-        let logs = Logs::new(logs_max_entries, logs_ttl);
+        let logs = Logs::new(logs_max_entries, logs_ttl, garbage_collection_interval);
         Process {
-            pool: Pool::new(pool_max_entries, pool_ttl, logs, network_msg_box),
+            pool: Pool::new(
+                pool_max_entries,
+                pool_ttl,
+                garbage_collection_interval,
+                logs,
+                network_msg_box,
+            ),
             garbage_collection_interval,
         }
     }

@@ -24,12 +24,13 @@ impl Pool {
     pub fn new(
         max_entries: usize,
         ttl: Duration,
+        gc_interval: Duration,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
     ) -> Self {
         Pool {
             logs,
-            pool: internal::Pool::new(max_entries, ttl),
+            pool: internal::Pool::new(max_entries, ttl, gc_interval),
             network_msg_box,
         }
     }
@@ -144,12 +145,12 @@ pub(super) mod internal {
     }
 
     impl Pool {
-        pub fn new(max_entries: usize, ttl: Duration) -> Self {
+        pub fn new(max_entries: usize, ttl: Duration, gc_interval: Duration) -> Self {
             Pool {
                 max_entries,
                 entries: HashMap::new(),
                 entries_by_time: VecDeque::new(),
-                expirations: Expirations::new(),
+                expirations: Expirations::new(gc_interval),
                 ttl,
             }
         }

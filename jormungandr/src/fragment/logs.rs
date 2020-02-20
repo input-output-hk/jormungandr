@@ -17,11 +17,11 @@ pub struct Logs {
 }
 
 impl Logs {
-    pub fn new(max_entries: usize, ttl: Duration) -> Self {
+    pub fn new(max_entries: usize, ttl: Duration, gc_interval: Duration) -> Self {
         Logs {
             max_entries,
             entries: HashMap::new(),
-            expirations: Expirations::new(),
+            expirations: Expirations::new(gc_interval),
             ttl,
         }
     }
