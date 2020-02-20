@@ -43,7 +43,7 @@ where
 }
 
 async fn pump_block_sink<T, F>(
-    iter: BlockIterState<T, F>,
+    iter: Box<BlockIterState<T, F>>,
     pool: &Pool<ConnectionManager>,
     sink: &mut ReplyStreamHandle03<T>,
 ) -> Result<BlockIteration<T, F>, ReplySendError>
@@ -136,7 +136,7 @@ struct BlockIterState<T, F> {
 }
 
 enum BlockIteration<T, F> {
-    Continue(BlockIterState<T, F>),
+    Continue(Box<BlockIterState<T, F>>),
     Break,
 }
 
@@ -244,7 +244,7 @@ impl Storage03 {
         let iter = self
             .run(move |connection| match connection.is_ancestor(&from, &to) {
                 Ok(Some(distance)) => match connection.get_block_info(&to) {
-                    Ok(to_info) => Ok(BlockIterState::new(to_info, distance, identity)),
+                    Ok(to_info) => Ok(Box::new(BlockIterState::new(to_info, distance, identity))),
                     Err(e) => Err(e),
                 },
                 Ok(None) => Err(StorageError::CannotIterate),
@@ -255,7 +255,7 @@ impl Storage03 {
         let (rh, rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
 
         struct PumpState<F> {
-            iter: BlockIterState<Block, F>,
+            iter: Box<BlockIterState<Block, F>>,
             pool: Pool<ConnectionManager>,
             handle: ReplyStreamHandle03<Block>,
         }
@@ -320,7 +320,7 @@ impl Storage03 {
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
                     let depth = depth.unwrap_or(to_info.chain_length - 1);
-                    BlockIterState::new(to_info, depth, transform)
+                    Box::new(BlockIterState::new(to_info, depth, transform))
                 })
             })
             .await;
@@ -609,7 +609,7 @@ where
     // If a storage error is encountered, it is also sent to the channel,
     // after which iteration terminates.
     fn fill_sink(
-        mut self,
+        mut self: Box<Self>,
         store: &mut NodeStorageConnection,
         sink: &mut ReplyStreamHandle03<T>,
     ) -> Result<BlockIteration<T, F>, ReplySendError> {
