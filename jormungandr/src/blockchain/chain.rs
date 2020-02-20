@@ -62,7 +62,9 @@ use chain_storage_sqlite_old::Error as StorageError;
 use chain_time::TimeFrame;
 use slog::Logger;
 use std::{convert::Infallible, sync::Arc, time::Duration};
-use tokio::prelude::{future as future01, future::Either as Either01, Future as Future01, Stream};
+use tokio::prelude::{future as future01, future::Either as Either01, Future as Future01};
+use tokio02::stream::StreamExt;
+use tokio_compat::prelude::*;
 
 // derive
 use thiserror::Error;
@@ -681,75 +683,70 @@ impl Blockchain {
 
         let block0_branch = self.apply_block0(&block0).await?;
 
-        self.storage
+        let mut block_stream = self
+            .storage
+            .back_to_the_future()
             .stream_from_to(block0_id, head_hash)
-            .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))
-            .and_then(move |block_stream| {
-                block_stream
-                    .map_err(|e| {
-                        Error::with_chain(e, "Error while iterating between block0 and HEAD")
-                    })
-                    .fold(
-                        (block0_branch, 0u64, self.clone()),
-                        move |(branch, processed, self2), block: Block| {
-                            let header = block.header.clone();
-
-                            const PROCESS_LOGGING_DISTANCE: u64 = 2500;
-                            if processed % PROCESS_LOGGING_DISTANCE == 0 {
-                                info!(
-                                    logger,
-                                    "loading from storage, currently at {} ...",
-                                    block.header.description()
-                                );
-                            }
-
-                            let self5 = self2.clone();
-                            let self6 = self2.clone();
-                            let returned = self2.clone();
-
-                            self2
-                                .pre_check_header(header, true)
-                                .and_then(move |pre_checked_header: PreCheckedHeader| {
-                                    match pre_checked_header {
-                                        PreCheckedHeader::HeaderWithCache {
-                                            header,
-                                            parent_ref,
-                                        } => {
-                                            Either01::A(self5.post_check_header(header, parent_ref))
-                                        }
-                                        PreCheckedHeader::AlreadyPresent {
-                                            header,
-                                            cached_reference: _cached_reference,
-                                        } => unreachable!(
-                                            "block already present, this should not happen. {:#?}",
-                                            header
-                                        ),
-                                        PreCheckedHeader::MissingParent { header } => {
-                                            Either01::B(future01::err(
-                                                ErrorKind::MissingParentBlock(
-                                                    header.block_parent_hash(),
-                                                )
-                                                .into(),
-                                            ))
-                                        }
-                                    }
-                                })
-                                .and_then(move |post_checked_header: PostCheckedHeader| {
-                                    self6.apply_block(post_checked_header, &block)
-                                })
-                                .and_then(move |new_ref| {
-                                    branch
-                                        .clone()
-                                        .update_ref(new_ref)
-                                        .map(move |_old_ref| (branch, processed + 1, returned))
-                                        .map_err(|_: Infallible| unreachable!())
-                                })
-                        },
-                    )
-                    .map(|(branch, _, _)| branch)
-            })
-            .compat()
             .await
+            .map(Box::pin)
+            .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))?;
+
+        let mut branch = block0_branch;
+        let mut count = 0u64;
+
+        while let Some(r) = block_stream.next().await {
+            match r {
+                Err(e) => {
+                    return Err(Error::with_chain(
+                        e,
+                        "Error while iterating between block0 and HEAD",
+                    ))
+                }
+                Ok(block) => {
+                    let header = block.header.clone();
+
+                    const PROCESS_LOGGING_DISTANCE: u64 = 2500;
+                    if count % PROCESS_LOGGING_DISTANCE == 0 {
+                        info!(
+                            logger,
+                            "loading from storage, currently at {} ...",
+                            header.description()
+                        );
+                    }
+
+                    let pre_checked_header: PreCheckedHeader =
+                        self.pre_check_header(header, true).compat().await?;
+
+                    let post_checked_header: PostCheckedHeader = match pre_checked_header {
+                        PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+                            self.post_check_header(header, parent_ref).compat().await?
+                        }
+                        PreCheckedHeader::AlreadyPresent {
+                            header,
+                            cached_reference: _cached_reference,
+                        } => unreachable!(
+                            "block already present, this should not happen. {:#?}",
+                            header
+                        ),
+                        PreCheckedHeader::MissingParent { header } => {
+                            return Err(
+                                ErrorKind::MissingParentBlock(header.block_parent_hash()).into()
+                            )
+                        }
+                    };
+
+                    let new_ref = self
+                        .apply_block(post_checked_header, &block)
+                        .compat()
+                        .await?;
+
+                    count += 1;
+                    let _: Arc<Ref> = branch.update_ref_std(new_ref).await;
+                    ()
+                }
+            }
+        }
+        Ok(branch)
     }
 
     pub fn get_checkpoints(
