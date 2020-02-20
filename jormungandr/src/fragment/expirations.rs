@@ -8,7 +8,7 @@ use std::{
 /// periodically polled for expired entries.
 pub struct Expirations<T> {
     slab: Slab<ExpirationEntry<T>>,
-    sorted: BTreeMap<Instant, HashSet<usize>>,
+    sorted: BTreeMap<Instant, HashSet<Key>>,
 }
 
 struct ExpirationEntry<T> {
@@ -16,7 +16,7 @@ struct ExpirationEntry<T> {
     data: T,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Key(usize);
 
 impl<T> Expirations<T> {
@@ -30,7 +30,7 @@ impl<T> Expirations<T> {
     pub fn insert(&mut self, data: T, expires_in: Duration) -> Key {
         let expires_at = Instant::now() + expires_in;
         let entry = ExpirationEntry { expires_at, data };
-        let key = self.slab.insert(entry);
+        let key = Key(self.slab.insert(entry));
         match self.sorted.get_mut(&expires_at) {
             Some(chunk) => {
                 chunk.insert(key);
@@ -41,7 +41,7 @@ impl<T> Expirations<T> {
                 self.sorted.insert(expires_at, hs);
             }
         }
-        Key(key)
+        key
     }
 
     pub fn remove(&mut self, key: Key) -> T {
@@ -53,17 +53,14 @@ impl<T> Expirations<T> {
     pub fn reschedule(&mut self, key: Key, expires_in: Duration) {
         let expires_at = Instant::now() + expires_in;
         let mut entry = self.slab.get_mut(key.0).unwrap();
-        self.sorted
-            .get_mut(&entry.expires_at)
-            .unwrap()
-            .remove(&key.0);
+        self.sorted.get_mut(&entry.expires_at).unwrap().remove(&key);
         match self.sorted.get_mut(&expires_at) {
             Some(chunk) => {
-                chunk.insert(key.0);
+                chunk.insert(key);
             }
             None => {
                 let mut hs = HashSet::new();
-                hs.insert(key.0);
+                hs.insert(key);
                 self.sorted.insert(expires_at, hs);
             }
         }
@@ -77,7 +74,7 @@ impl<T> Expirations<T> {
             .sorted
             .range((Unbounded, Included(&now)))
             .map(|(expires_at, entry)| (expires_at.clone(), entry.clone()))
-            .collect::<Vec<(Instant, HashSet<usize>)>>();
+            .collect::<Vec<(Instant, HashSet<Key>)>>();
 
         for (expires_at, _) in to_remove.iter() {
             self.sorted.remove(expires_at);
@@ -87,7 +84,7 @@ impl<T> Expirations<T> {
             .into_iter()
             .map(|(_, slab_keys)| slab_keys.into_iter())
             .flatten()
-            .map(|key| self.slab.remove(key).data)
+            .map(|key| self.slab.remove(key.0).data)
             .collect()
     }
 }
