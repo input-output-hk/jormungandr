@@ -2001,6 +2001,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_yaml",
+ "slab 0.4.2",
  "slog",
  "slog-async",
  "slog-gelf",

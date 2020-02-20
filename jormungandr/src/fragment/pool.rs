@@ -80,9 +80,10 @@ impl Pool {
         self.logs.modify_all(fragment_ids, status);
     }
 
-    pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
+    pub async fn purge(&mut self) -> Result<(), time::Error> {
         future::poll_fn(|cx| self.pool.poll_purge(cx)).await?;
-        self.logs.poll_purge().await
+        self.logs.purge();
+        Ok(())
     }
 
     pub fn select(

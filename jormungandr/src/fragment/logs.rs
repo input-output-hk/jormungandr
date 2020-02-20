@@ -1,24 +1,18 @@
+use super::expirations::{Expirations, Key};
 use crate::fragment::FragmentId;
-use futures03::{
-    future::poll_fn,
-    stream::Stream,
-    task::{Context, Poll},
-};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus},
 };
 use std::{
     collections::hash_map::{Entry, HashMap},
-    pin::Pin,
     time::Duration,
 };
-use tokio02::time::{self, delay_queue, DelayQueue, Instant};
 
 pub struct Logs {
     max_entries: usize,
-    entries: HashMap<Hash, (FragmentLog, delay_queue::Key)>,
-    expirations: Pin<Box<DelayQueue<Hash>>>,
+    entries: HashMap<Hash, (FragmentLog, Key)>,
+    expirations: Expirations<Hash>,
     ttl: Duration,
 }
 
@@ -27,7 +21,7 @@ impl Logs {
         Logs {
             max_entries,
             entries: HashMap::new(),
-            expirations: Box::pin(DelayQueue::new()),
+            expirations: Expirations::new(),
             ttl,
         }
     }
@@ -80,8 +74,7 @@ impl Logs {
             Entry::Occupied(mut entry) => {
                 entry.get_mut().0.modify(status);
 
-                self.expirations
-                    .reset_at(&entry.get().1, Instant::now() + self.ttl);
+                self.expirations.reschedule(entry.get().1, self.ttl);
             }
             Entry::Vacant(entry) => {
                 // while a log modification, if the log was not already present in the
@@ -110,24 +103,9 @@ impl Logs {
         }
     }
 
-    pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
-        poll_fn(|cx| self.poll_purge_internal(cx)).await
-    }
-
-    fn poll_purge_internal(&mut self, cx: &mut Context) -> Poll<Result<(), time::Error>> {
-        loop {
-            match self.expirations.as_mut().poll_next(cx) {
-                Poll::Ready(Some(Ok(entry))) => {
-                    self.entries.remove(entry.get_ref());
-                }
-                Poll::Ready(Some(Err(e))) => return Poll::Ready(Err(e)),
-                Poll::Ready(None) => return Poll::Ready(Ok(())),
-
-                // Here Pending means there are still items in the DelayQueue but
-                // they are not expired. We don't want this function to wait for these
-                // ones to expired. We only cared about removing the expired ones.
-                Poll::Pending => return Poll::Ready(Ok(())),
-            }
+    pub fn purge(&mut self) {
+        for idx in self.expirations.pop_expired() {
+            self.entries.remove(&idx);
         }
     }
 
