@@ -95,7 +95,7 @@ impl Process {
                     reply_handle.reply_ok(contents);
                 }
                 TransactionMsg::RunGarbageCollector => {
-                    let _ = pool.purge().await;
+                    pool.purge();
                 }
             }
         }

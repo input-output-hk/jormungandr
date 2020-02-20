@@ -9,11 +9,10 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
-use futures03::{compat::*, future, sink::SinkExt};
+use futures03::{compat::*, sink::SinkExt};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 use std::time::Duration;
-use tokio02::time;
 
 pub struct Pool {
     logs: Logs,
@@ -80,10 +79,9 @@ impl Pool {
         self.logs.modify_all(fragment_ids, status);
     }
 
-    pub async fn purge(&mut self) -> Result<(), time::Error> {
-        future::poll_fn(|cx| self.pool.poll_purge(cx)).await?;
+    pub fn purge(&mut self) {
+        self.pool.purge();
         self.logs.purge();
-        Ok(())
     }
 
     pub fn select(
@@ -128,23 +126,20 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 
 pub(super) mod internal {
     use super::*;
-    use crate::fragment::PoolEntry;
-    use futures03::{
-        stream::Stream,
-        task::{Context, Poll},
+    use crate::fragment::{
+        expirations::{Expirations, Key},
+        PoolEntry,
     };
     use std::{
         collections::{hash_map::Entry, HashMap, VecDeque},
-        pin::Pin,
         sync::Arc,
     };
-    use tokio02::time::{delay_queue, DelayQueue};
 
     pub struct Pool {
         max_entries: usize,
-        entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
+        entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, Key)>,
         entries_by_time: VecDeque<FragmentId>,
-        expirations: Pin<Box<DelayQueue<FragmentId>>>,
+        expirations: Expirations<FragmentId>,
         ttl: Duration,
     }
 
@@ -154,7 +149,7 @@ pub(super) mod internal {
                 max_entries,
                 entries: HashMap::new(),
                 entries_by_time: VecDeque::new(),
-                expirations: Box::pin(DelayQueue::new()),
+                expirations: Expirations::new(),
                 ttl,
             }
         }
@@ -201,7 +196,7 @@ pub(super) mod internal {
                     .map(|position| {
                         self.entries_by_time.remove(position);
                     });
-                self.expirations.remove(&cache_key);
+                self.expirations.remove(cache_key);
                 Some(fragment)
             } else {
                 None
@@ -221,30 +216,19 @@ pub(super) mod internal {
                 .entries
                 .remove(&fragment_id)
                 .expect("Pool lost fragment ID consistency");
-            self.expirations.remove(&cache_key);
+            self.expirations.remove(cache_key);
             Some(fragment)
         }
 
-        pub fn poll_purge(&mut self, cx: &mut Context) -> Poll<Result<(), time::Error>> {
-            loop {
-                match self.expirations.as_mut().poll_next(cx) {
-                    Poll::Ready(Some(Ok(entry))) => {
-                        self.entries.remove(entry.get_ref());
-                        self.entries_by_time
-                            .iter()
-                            .position(|id| id == entry.get_ref())
-                            .map(|position| {
-                                self.entries_by_time.remove(position);
-                            });
-                    }
-                    Poll::Ready(Some(Err(e))) => return Poll::Ready(Err(e)),
-                    Poll::Ready(None) => return Poll::Ready(Ok(())),
-
-                    // Here Pending means there are still items in the DelayQueue but
-                    // they are not expired. We don't want this function to wait for these
-                    // ones to expired. We only cared about removing the expired ones.
-                    Poll::Pending => return Poll::Ready(Ok(())),
-                }
+        pub fn purge(&mut self) {
+            for entry in self.expirations.pop_expired() {
+                self.entries.remove(&entry);
+                self.entries_by_time
+                    .iter()
+                    .position(|id| id == &entry)
+                    .map(|position| {
+                        self.entries_by_time.remove(position);
+                    });
             }
         }
     }
