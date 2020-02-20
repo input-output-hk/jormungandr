@@ -11,9 +11,14 @@ use std::{
 
 pub struct Logs {
     max_entries: usize,
-    entries: HashMap<Hash, (FragmentLog, Key)>,
+    entries: HashMap<Hash, LogEntry>,
     expirations: Expirations<Hash>,
     ttl: Duration,
+}
+
+struct LogEntry {
+    log: FragmentLog,
+    expiration_key: Key,
 }
 
 impl Logs {
@@ -48,8 +53,11 @@ impl Logs {
                 Entry::Occupied(_) => return false,
                 Entry::Vacant(entry) => entry,
             };
-            let delay = self.expirations.insert(fragment_id, self.ttl);
-            entry.insert((log, delay));
+            let expiration_key = self.expirations.insert(fragment_id, self.ttl);
+            entry.insert(LogEntry {
+                log,
+                expiration_key,
+            });
             true
         }
     }
@@ -72,9 +80,10 @@ impl Logs {
         let fragment_id: Hash = fragment_id.into();
         match self.entries.entry(fragment_id.clone()) {
             Entry::Occupied(mut entry) => {
-                entry.get_mut().0.modify(status);
+                entry.get_mut().log.modify(status);
 
-                self.expirations.reschedule(entry.get().1, self.ttl);
+                self.expirations
+                    .reschedule(entry.get().expiration_key, self.ttl);
             }
             Entry::Vacant(entry) => {
                 // while a log modification, if the log was not already present in the
@@ -83,11 +92,14 @@ impl Logs {
                 // be stored.
 
                 if self.max_entries < len {
-                    let delay = self.expirations.insert(fragment_id, self.ttl);
-                    entry.insert((
-                        FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network),
-                        delay,
-                    ));
+                    let expiration_key = self.expirations.insert(fragment_id, self.ttl);
+                    entry.insert(LogEntry {
+                        log: FragmentLog::new(
+                            fragment_id.clone().into_hash(),
+                            FragmentOrigin::Network,
+                        ),
+                        expiration_key,
+                    });
                 }
             }
         }
@@ -110,6 +122,6 @@ impl Logs {
     }
 
     pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a FragmentLog> {
-        self.entries.values().map(|(v, _)| v)
+        self.entries.values().map(|entry| &entry.log)
     }
 }

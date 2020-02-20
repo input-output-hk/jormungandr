@@ -127,21 +127,20 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 
 pub(super) mod internal {
     use super::*;
-    use crate::fragment::{
-        expirations::{Expirations, Key},
-        PoolEntry,
-    };
-    use std::{
-        collections::{hash_map::Entry, HashMap, VecDeque},
-        sync::Arc,
-    };
+    use crate::fragment::expirations::{Expirations, Key};
+    use std::collections::{hash_map::Entry, HashMap, VecDeque};
 
     pub struct Pool {
         max_entries: usize,
-        entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, Key)>,
+        entries: HashMap<FragmentId, PoolEntryInternal>,
         entries_by_time: VecDeque<FragmentId>,
         expirations: Expirations<FragmentId>,
         ttl: Duration,
+    }
+
+    struct PoolEntryInternal {
+        fragment: Fragment,
+        expiration_key: Key,
     }
 
     impl Pool {
@@ -165,9 +164,11 @@ pub(super) mod internal {
                     Entry::Occupied(_) => return None,
                     Entry::Vacant(vacant) => vacant,
                 };
-                let pool_entry = Arc::new(PoolEntry::new(&fragment));
-                let delay = self.expirations.insert(fragment_id, self.ttl);
-                entry.insert((pool_entry, fragment.clone(), delay));
+                let expiration_key = self.expirations.insert(fragment_id, self.ttl);
+                entry.insert(PoolEntryInternal {
+                    fragment: fragment.clone(),
+                    expiration_key,
+                });
                 self.entries_by_time.push_back(fragment_id);
                 Some(fragment)
             }
@@ -190,14 +191,18 @@ pub(super) mod internal {
         }
 
         pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
-            if let Some((_, fragment, cache_key)) = self.entries.remove(fragment_id) {
+            if let Some(PoolEntryInternal {
+                fragment,
+                expiration_key,
+            }) = self.entries.remove(fragment_id)
+            {
                 self.entries_by_time
                     .iter()
                     .position(|id| id == fragment_id)
                     .map(|position| {
                         self.entries_by_time.remove(position);
                     });
-                self.expirations.remove(cache_key);
+                self.expirations.remove(expiration_key);
                 Some(fragment)
             } else {
                 None
@@ -213,11 +218,14 @@ pub(super) mod internal {
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
             let fragment_id = self.entries_by_time.pop_front()?;
-            let (_, fragment, cache_key) = self
+            let PoolEntryInternal {
+                fragment,
+                expiration_key,
+            } = self
                 .entries
                 .remove(&fragment_id)
                 .expect("Pool lost fragment ID consistency");
-            self.expirations.remove(cache_key);
+            self.expirations.remove(expiration_key);
             Some(fragment)
         }
 
