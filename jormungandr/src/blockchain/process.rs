@@ -25,12 +25,11 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::future::Either;
 use slog::Logger;
-use tokio::{prelude::*, timer::timeout};
+use tokio::prelude::*;
 use tokio_compat::prelude::*;
 
 use std::{sync::Arc, time::Duration};
 
-type TimeoutError = timeout::Error<Error>;
 type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
 type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
 
@@ -175,48 +174,20 @@ impl Process {
             BlockMsg::ChainHeaders(handle) => {
                 info!(info.logger(), "receiving header stream from network");
 
-                let (stream, reply) = handle.into_stream_and_reply();
                 let logger = info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull"));
-                let logger_err1 = logger.clone();
-                let logger_err2 = logger.clone();
-                let schedule_logger = logger.clone();
-                let mut pull_headers_scheduler = pull_headers_scheduler.clone();
+                let pull_headers_scheduler = pull_headers_scheduler.clone();
 
-                let future = candidate::advance_branch(blockchain, stream, logger)
-                    .inspect(move |(header_ids, _)|
-                        header_ids.iter()
-                        .try_for_each(|header_id| pull_headers_scheduler.declare_completed(*header_id))
-                        .unwrap_or_else(|e| error!(schedule_logger, "get blocks schedule completion failed"; "reason" => ?e)))
-                    .then(move |resp| match resp {
-                        Err(e) => {
-                            info!(
-                                logger_err1,
-                                "error processing an incoming header stream";
-                                "reason" => %e,
-                            );
-                            reply.reply_error(chain_header_error_into_reply(e));
-                            Either::A(future::ok(()))
-                        }
-                        Ok((hashes, maybe_remainder)) => {
-                            if hashes.is_empty() {
-                                Either::A(future::ok(()))
-                            } else {
-                                Either::B(
-                                    network_msg_box
-                                        .send(NetworkMsg::GetBlocks(hashes))
-                                        .map_err(|_| "cannot request blocks from network".into())
-                                        .map(|_| reply.reply_ok(())),
-                                )
-                                // TODO: if the stream is not ended, resume processing
-                                // after more blocks arrive
-                            }
-                        }
-                    })
-                    .timeout(Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS))
-                    .map_err(move |err: TimeoutError| {
-                        error!(logger_err2, "cannot process network headers" ; "reason" => ?err)
-                    });
-                info.spawn_failable_std("process network headers", future.compat());
+                info.timeout_spawn_std(
+                    "process network headers",
+                    Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS),
+                    process_chain_headers(
+                        logger,
+                        blockchain,
+                        handle,
+                        pull_headers_scheduler,
+                        network_msg_box,
+                    ),
+                );
             }
         }
     }
@@ -393,6 +364,78 @@ pub async fn process_new_ref_owned(
 ) -> Result<(), Error> {
     process_new_ref(&logger, &mut blockchain, tip, candidate).await
 }
+
+/*
+/// process a new candidate block on top of the blockchain, this function may:
+///
+/// * update the current tip if the candidate's parent is the current tip;
+/// * update a branch if the candidate parent is that branch's tip;
+/// * create a new branch if none of the above;
+///
+/// If the current tip is not the one being updated we will then trigger
+/// chain selection after updating that other branch as it may be possible that
+/// this branch just became more interesting for the current consensus algorithm.
+pub fn process_new_ref(
+    logger: Logger,
+    mut blockchain: Blockchain,
+    mut tip: Tip,
+    candidate: Arc<Ref>,
+) -> impl Future<Item = (), Error = Error> {
+    use tokio::prelude::future::Either::*;
+
+    let candidate_hash = candidate.hash();
+    let storage = blockchain.storage().clone();
+
+    tip.clone()
+        .get_ref()
+        .and_then(move |tip_ref| {
+            if tip_ref.hash() == candidate.block_parent_hash() {
+                info!(
+                    logger,
+                    "update current branch tip: {} -> {}",
+                    tip_ref.header().description(),
+                    candidate.header().description(),
+                );
+                A(A(tip.update_ref(candidate).map(|_| true)))
+            } else {
+                match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
+                    ComparisonResult::PreferCurrent => {
+                        info!(
+                            logger,
+                            "create new branch with tip {} | current-tip {}",
+                            candidate.header().description(),
+                            tip_ref.header().description(),
+                        );
+                        A(B(future::ok(false)))
+                    }
+                    ComparisonResult::PreferCandidate => {
+                        info!(
+                            logger,
+                            "switching branch from {} to {}",
+                            tip_ref.header().description(),
+                            candidate.header().description(),
+                        );
+                        B(blockchain
+                            .branches_mut()
+                            .apply_or_create(candidate)
+                            .and_then(move |branch| tip.swap(branch))
+                            .map(|()| true))
+                    }
+                }
+            }
+        })
+        .map_err(|_: std::convert::Infallible| unreachable!())
+        .and_then(move |tip_updated| {
+            if tip_updated {
+                A(storage
+                    .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
+                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip")))
+            } else {
+                B(future::ok(()))
+            }
+        })
+}
+*/
 
 async fn process_and_propagate_new_ref(
     logger: &Logger,
@@ -728,6 +771,50 @@ async fn check_and_apply_block(
             "hash" => %block_hash,
         );
         Ok(None)
+    }
+}
+
+async fn process_chain_headers(
+    logger: Logger,
+    blockchain: Blockchain,
+    handle: intercom::RequestStreamHandle<Header, ()>,
+    mut pull_headers_scheduler: PullHeadersScheduler,
+    network_msg_box: MessageBox<NetworkMsg>,
+) {
+    let (stream, reply) = handle.into_stream_and_reply();
+    match candidate::advance_branch(blockchain, stream, logger.clone()).await {
+        Err(e) => {
+            info!(
+                logger,
+                "error processing an incoming header stream";
+                "reason" => %e,
+            );
+            reply.reply_error(chain_header_error_into_reply(e));
+        }
+        Ok((header_ids, maybe_remainder)) => {
+            header_ids
+                .iter()
+                .try_for_each(|header_id| pull_headers_scheduler.declare_completed(*header_id))
+                .unwrap_or_else(
+                    |e| error!(logger, "get blocks schedule completion failed"; "reason" => ?e),
+                );
+
+            if header_ids.is_empty() {
+                ()
+            } else {
+                network_msg_box
+                    .send(NetworkMsg::GetBlocks(header_ids))
+                    .map_err(|_| error!(logger, "cannot request blocks from network"))
+                    .map(|_| ())
+                    .compat()
+                    .await
+                    .unwrap();
+
+                reply.reply_ok(())
+                // TODO: if the stream is not ended, resume processing
+                // after more blocks arrive
+            }
+        }
     }
 }
 
