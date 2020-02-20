@@ -8,6 +8,7 @@ use crate::utils::async_msg::MessageQueue;
 use futures::future::{self, Either, Loop};
 use futures::prelude::*;
 use slog::Logger;
+use tokio_compat::prelude::*;
 
 // derive
 use thiserror::Error;
@@ -170,41 +171,43 @@ impl ChainAdvance {
     }
 }
 
-fn land_header_chain(
+async fn land_header_chain(
     blockchain: Blockchain,
     stream: HeaderStream,
     logger: Logger,
-) -> impl Future<Item = Option<ChainAdvance>, Error = Error> {
-    chain_landing::State::start(stream.map_err(|()| unreachable!()), blockchain)
-        .and_then(move |state| state.skip_present_blocks())
-        .and_then(move |maybe_new| match maybe_new {
-            Some((header, stream)) => {
-                // We have got a header that may not be in storage yet,
-                // but its parent is.
-                // Find an existing root or create a new one.
-                let root_hash = header.hash();
-                let root_parent_hash = header.block_parent_hash();
-                debug!(
-                    logger,
-                    "landed the header chain";
-                    "hash" => %root_hash,
-                    "parent" => %root_parent_hash,
-                );
-                let new_hashes = vec![root_hash];
-                let landing = ChainAdvance {
-                    stream: stream.into_inner(),
-                    parent_header: header,
-                    header: None,
-                    new_hashes,
-                    logger,
-                };
-                future::ok(Some(landing))
-            }
-            None => {
-                debug!(logger, "all blocks already present for the header chain");
-                future::ok(None)
-            }
-        })
+) -> Result<Option<ChainAdvance>, Error> {
+    let state = chain_landing::State::start(stream.map_err(|()| unreachable!()), blockchain)
+        .compat()
+        .await?;
+    let maybe_new = state.skip_present_blocks().compat().await?;
+    match maybe_new {
+        Some((header, stream)) => {
+            // We have got a header that may not be in storage yet,
+            // but its parent is.
+            // Find an existing root or create a new one.
+            let root_hash = header.hash();
+            let root_parent_hash = header.block_parent_hash();
+            debug!(
+                logger,
+                "landed the header chain";
+                "hash" => %root_hash,
+                "parent" => %root_parent_hash,
+            );
+            let new_hashes = vec![root_hash];
+            let landing = ChainAdvance {
+                stream: stream.into_inner(),
+                parent_header: header,
+                header: None,
+                new_hashes,
+                logger,
+            };
+            Ok(Some(landing))
+        }
+        None => {
+            debug!(logger, "all blocks already present for the header chain");
+            Ok(None)
+        }
+    }
 }
 
 /// Consumes headers from the stream, filtering out those that are already
@@ -214,26 +217,26 @@ fn land_header_chain(
 /// and the stream if the process terminated early due to reaching
 /// a limit on the number of blocks or (TODO: implement) needing
 /// block data to validate more blocks with newer leadership information.
-pub fn advance_branch(
+pub async fn advance_branch(
     blockchain: Blockchain,
     header_stream: HeaderStream,
     logger: Logger,
-) -> impl Future<Item = (Vec<HeaderHash>, Option<HeaderStream>), Error = Error> {
-    land_header_chain(blockchain, header_stream, logger).and_then(move |mut advance| {
-        if advance.is_some() {
-            let fut = future::poll_fn(move || {
-                use self::chain_advance::Outcome;
-                let done = try_ready!(advance.as_mut().unwrap().poll_done());
-                let advance = advance.take().unwrap();
-                let ret_stream = match done {
-                    Outcome::Complete => None,
-                    Outcome::Incomplete => Some(advance.stream),
-                };
-                Ok((advance.new_hashes, ret_stream).into())
-            });
-            Either::A(fut)
-        } else {
-            Either::B(future::ok((Vec::new(), None)))
-        }
-    })
+) -> Result<(Vec<HeaderHash>, Option<HeaderStream>), Error> {
+    let mut advance = land_header_chain(blockchain, header_stream, logger).await?;
+
+    if advance.is_some() {
+        let fut = future::poll_fn(move || {
+            use self::chain_advance::Outcome;
+            let done = try_ready!(advance.as_mut().unwrap().poll_done());
+            let advance = advance.take().unwrap();
+            let ret_stream = match done {
+                Outcome::Complete => None,
+                Outcome::Incomplete => Some(advance.stream),
+            };
+            Ok((advance.new_hashes, ret_stream).into())
+        });
+        fut.compat().await
+    } else {
+        Ok((Vec::new(), None))
+    }
 }
