@@ -174,12 +174,7 @@ fn handle_get_headers_range(
             Ok(maybe_ancestor) => {
                 let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
                 let fut = storage
-                    .send_branch(
-                        to,
-                        depth,
-                        handle
-                            .with(|res: Result<Block, Error>| Ok(res.map(|block| block.header()))),
-                    )
+                    .send_branch_with(to, depth, handle, |block| block.header())
                     .then(|_: Result<_, ReplySendError>| Ok(()));
                 Either::A(fut)
             }

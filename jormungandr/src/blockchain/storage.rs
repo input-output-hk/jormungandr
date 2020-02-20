@@ -1,55 +1,73 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
+    intercom::{self, ReplySendError, ReplyStreamHandle, ReplyStreamHandle03},
     start_up::{NodeStorage, NodeStorageConnection},
 };
-use async_trait::async_trait;
-use bb8::{ManageConnection, Pool, RunError};
 use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
-use futures::{Future as Future01, Sink as Sink01, Stream as Stream01};
-use futures03::{
-    compat::*,
-    prelude::*,
-    sink::{Sink, SinkExt},
-    stream::{self, Stream},
-};
-use std::{convert::identity, pin::Pin, sync::Arc};
+use futures::{Future as Future01, Stream as Stream01};
+use futures03::{compat::Compat, future::FusedFuture, prelude::*};
+use pin_utils::unsafe_pinned;
+use r2d2::{ManageConnection, Pool};
+use slog::Logger;
 use tokio02::{sync::Mutex, task::spawn_blocking};
-use tokio_compat::runtime;
+
+use std::convert::identity;
+use std::error::Error;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+
+const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
 
 pub use chain_storage_sqlite_old::Error as StorageError;
 
-async fn run_blocking_storage<F, R>(f: F) -> Result<R, StorageError>
+async fn run_blocking_with_connection<F, T, E>(pool: Pool<ConnectionManager>, f: F) -> Result<T, E>
 where
-    F: FnOnce() -> Result<R, StorageError> + Send + 'static,
-    R: Send + 'static,
+    F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
+    F: Send + 'static,
+    T: Send + 'static,
+    E: Error + From<StorageError> + Send + 'static,
 {
-    spawn_blocking(f)
-        .await
-        .map_err(|e| StorageError::BackendError(Box::new(e)))
-        .and_then(identity)
-}
-
-async fn run_blocking_with_connection<F, R>(
-    pool: &Pool<ConnectionManager>,
-    f: F,
-) -> Result<R, StorageError>
-where
-    F: FnOnce(&mut NodeStorageConnection) -> Result<R, StorageError> + Send + 'static,
-    R: Send + 'static,
-{
-    pool.run(|mut connection| async move {
-        spawn_blocking(move || match f(&mut connection) {
-            Ok(r) => Ok((r, connection)),
-            Err(r) => Err((r, connection)),
-        })
-        .await
-        .unwrap()
+    spawn_blocking(move || {
+        let mut connection = pool
+            .get()
+            .map_err(|e| StorageError::BackendError(e.into()))?;
+        f(&mut connection)
     })
     .await
-    .map_err(|e| match e {
-        RunError::User(e) => e,
-        e => StorageError::BackendError(Box::new(e)),
-    })
+    .unwrap()
+}
+
+async fn run_block_iter<T, F>(
+    pool: Pool<ConnectionManager>,
+    mut iter: BlockIterState<T, F>,
+    mut sink: ReplyStreamHandle03<T>,
+) -> Result<(), ReplySendError>
+where
+    F: FnMut(Block) -> T,
+    F: Send + 'static,
+    T: Send + 'static,
+{
+    loop {
+        let mut sink1 = sink.clone();
+        match run_blocking_with_connection(pool.clone(), move |connection| {
+            iter.fill_sink(connection, &mut sink1)
+                .map_err(StreamingError::Sending)
+        })
+        .await
+        {
+            Ok(BlockIteration::Continue(new_iter_state)) => {
+                iter = new_iter_state;
+                future::poll_fn(|cx| sink.poll_ready(cx)).await?;
+            }
+            Ok(BlockIteration::Break) => break,
+            Err(StreamingError::Storage(e)) => {
+                return sink.send(Err(e.into())).await;
+            }
+            Err(StreamingError::Sending(e)) => return Err(e),
+        }
+    }
+    sink.close().await
 }
 
 #[derive(Clone)]
@@ -65,22 +83,20 @@ impl ConnectionManager {
     }
 }
 
-#[async_trait]
 impl ManageConnection for ConnectionManager {
     type Connection = NodeStorageConnection;
     type Error = StorageError;
 
-    async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        let inner = self.inner.clone();
-        run_blocking_storage(move || inner.connect()).await
+    fn connect(&self) -> Result<Self::Connection, Self::Error> {
+        self.inner.connect()
     }
 
-    async fn is_valid(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
-        run_blocking_storage(move || conn.ping().and(Ok(conn))).await
+    fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
+        conn.ping()
     }
 
-    fn has_broken(&self, conn: &mut Self::Connection) -> bool {
-        conn.ping().is_ok()
+    fn has_broken(&self, _conn: &mut Self::Connection) -> bool {
+        false
     }
 }
 
@@ -94,6 +110,8 @@ pub struct Storage03 {
     // example, by different tokio executors) which eventually leads to a panic
     // because the block data would be inconsistent at the time of a write.
     write_lock: Arc<Mutex<()>>,
+
+    logger: Logger,
 }
 
 // Compatibility layer for using new storage with old futures API.
@@ -107,35 +125,56 @@ pub struct Ancestor {
     pub distance: u64,
 }
 
-struct BlockIterState {
+struct BlockIterState<T, F> {
     to_length: u64,
     cur_length: u64,
+    transform: F,
     pending_infos: Vec<BlockInfo<HeaderHash>>,
+    pending_item: Option<Result<T, intercom::Error>>,
+}
+
+enum BlockIteration<T, F> {
+    Continue(BlockIterState<T, F>),
+    Break,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum StreamingError {
+    #[error("error accessing storage")]
+    Storage(
+        #[from]
+        #[source]
+        StorageError,
+    ),
+    #[error("failed to send block")]
+    Sending(
+        #[from]
+        #[source]
+        ReplySendError,
+    ),
 }
 
 impl Storage03 {
-    pub fn new(storage: NodeStorage) -> Self {
-        let mut rt = runtime::Builder::new()
-            .name_prefix("new-storage-worker-")
-            .core_threads(1)
-            .build()
-            .unwrap();
+    pub fn new(storage: NodeStorage, logger: Logger) -> Self {
+        let manager = ConnectionManager::new(storage);
+        let pool = Pool::builder().build(manager).unwrap();
+        let write_lock = Arc::new(Mutex::new(()));
 
-        rt.block_on_std(async move {
-            let manager = ConnectionManager::new(storage);
-            let pool = Pool::builder().build(manager).await.unwrap();
-            let write_lock = Arc::new(Mutex::new(()));
-
-            Storage03 { pool, write_lock }
-        })
+        Storage03 {
+            pool,
+            write_lock,
+            logger,
+        }
     }
 
-    async fn run<F, R>(&self, f: F) -> Result<R, StorageError>
+    async fn run<F, T, E>(&self, f: F) -> Result<T, E>
     where
-        F: FnOnce(&mut NodeStorageConnection) -> Result<R, StorageError> + Send + 'static,
-        R: Send + 'static,
+        F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
+        F: Send + 'static,
+        T: Send + 'static,
+        E: Error + From<StorageError> + Send + 'static,
     {
-        run_blocking_with_connection(&self.pool, f).await
+        run_blocking_with_connection(self.pool.clone(), f).await
     }
 
     pub async fn get_tag(&self, tag: String) -> Result<Option<HeaderHash>, StorageError> {
@@ -199,11 +238,11 @@ impl Storage03 {
         &self,
         from: HeaderHash,
         to: HeaderHash,
-    ) -> Result<impl Stream<Item = Result<Block, StorageError>>, StorageError> {
-        let init_state = self
+    ) -> Result<impl Stream<Item = Result<Block, intercom::Error>>, StorageError> {
+        let iter = self
             .run(move |connection| match connection.is_ancestor(&from, &to) {
                 Ok(Some(distance)) => match connection.get_block_info(&to) {
-                    Ok(to_info) => Ok(BlockIterState::new(to_info, distance)),
+                    Ok(to_info) => Ok(BlockIterState::new(to_info, distance, identity)),
                     Err(e) => Err(e),
                 },
                 Ok(None) => Err(StorageError::CannotIterate),
@@ -211,57 +250,80 @@ impl Storage03 {
             })
             .await?;
 
-        let pool = self.pool.clone();
+        let (rh, rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
 
-        Ok(stream::unfold(
-            (init_state, pool),
-            |(mut state, pool)| async move {
-                if !state.has_next() {
-                    return None;
-                }
-                let res = state.get_next(pool.clone()).await;
-                Some((res, (state, pool)))
-            },
-        ))
+        let pump = run_block_iter(self.pool.clone(), iter, rh)
+            .unwrap_or_else(|e| panic!("unexpected channel error: {:?}", e));
+        let stream = PumpedStream { pump, stream: rs };
+        Ok(stream)
     }
 
     /// Stream a branch ending at `to` and starting from the ancestor
     /// at `depth` or at the first ancestor since genesis block
     /// if `depth` is given as `None`.
     ///
-    /// This function uses buffering in the sink to reduce lock contention.
-    pub async fn send_branch<S, E>(
+    /// This function uses buffering in the in-memory channel to reduce
+    /// synchronization overhead.
+    pub async fn send_branch(
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        sink: Pin<Box<S>>,
-    ) -> Result<(), S::Error>
-    where
-        S: Sink<Result<Block, E>>,
-        E: From<StorageError>,
-    {
-        let mut sink = sink;
-
+        mut sink: ReplyStreamHandle03<Block>,
+    ) -> Result<(), ReplySendError> {
         let res = self
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
                     let depth = depth.unwrap_or(to_info.chain_length - 1);
-                    BlockIterState::new(to_info, depth)
+                    BlockIterState::new(to_info, depth, identity)
                 })
             })
             .await;
 
         match res {
-            Ok(mut iter) => {
-                while iter.has_next() {
-                    let item = iter.get_next(self.pool.clone()).await.map_err(Into::into);
-                    sink.send(item).await?;
-                }
-                sink.close().await?;
+            Ok(iter) => {
+                let pool = self.pool.clone();
+                run_block_iter(pool, iter, sink).await?;
             }
             Err(e) => {
-                sink.send_all(&mut stream::once(Box::pin(async { Ok(Err(e.into())) })))
-                    .await?;
+                sink.send(Err(e.into())).await?;
+                sink.close().await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Like `send_branch`, but with a transformation function applied
+    /// to the block content before sending to the in-memory channel.
+    pub async fn send_branch_with<T, F>(
+        &self,
+        to: HeaderHash,
+        depth: Option<u64>,
+        mut sink: ReplyStreamHandle03<T>,
+        transform: F,
+    ) -> Result<(), ReplySendError>
+    where
+        F: FnMut(Block) -> T,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        let res = self
+            .run(move |connection| {
+                connection.get_block_info(&to).map(|to_info| {
+                    let depth = depth.unwrap_or(to_info.chain_length - 1);
+                    BlockIterState::new(to_info, depth, transform)
+                })
+            })
+            .await;
+
+        match res {
+            Ok(iter) => {
+                let pool = self.pool.clone();
+                run_block_iter(pool, iter, sink).await?;
+            }
+            Err(e) => {
+                sink.send(Err(e.into())).await?;
+                sink.close().await?;
             }
         }
 
@@ -316,9 +378,9 @@ impl Storage {
         &self.inner
     }
 
-    pub fn new(storage: NodeStorage) -> Self {
+    pub fn new(storage: NodeStorage, logger: Logger) -> Self {
         Self {
-            inner: Storage03::new(storage),
+            inner: Storage03::new(storage, logger),
         }
     }
 
@@ -378,35 +440,48 @@ impl Storage {
         &self,
         from: HeaderHash,
         to: HeaderHash,
-    ) -> impl Future01<Item = impl Stream01<Item = Block, Error = StorageError>, Error = StorageError>
+    ) -> impl Future01<Item = impl Stream01<Item = Block, Error = intercom::Error>, Error = StorageError>
     {
         let inner = self.inner.clone();
         let fut = async move {
             inner
                 .stream_from_to(from, to)
-                .map_ok(|stream| Compat::new(Box::pin(stream)))
+                .map_ok(|stream| Box::pin(stream).compat())
                 .await
         };
-        let res = Compat::new(Box::pin(fut));
-        res
+        Box::pin(fut).compat()
     }
 
-    pub fn send_branch<S, E>(
+    pub fn send_branch(
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        sink: S,
-    ) -> impl Future01<Item = (), Error = S::SinkError>
+        sink: ReplyStreamHandle<Block>,
+    ) -> impl Future01<Item = (), Error = ReplySendError> {
+        let inner = self.inner.clone();
+        let fut = async move { inner.send_branch(to, depth, sink.into_03()).await };
+        Box::pin(fut).compat()
+    }
+
+    pub fn send_branch_with<T, F>(
+        &self,
+        to: HeaderHash,
+        depth: Option<u64>,
+        sink: ReplyStreamHandle<T>,
+        transform: F,
+    ) -> impl Future01<Item = (), Error = ReplySendError>
     where
-        S: Sink01<SinkItem = Result<Block, E>>,
-        E: From<StorageError>,
+        F: FnMut(Block) -> T,
+        F: Send + 'static,
+        T: Send + 'static,
     {
         let inner = self.inner.clone();
-        Compat::new(Box::pin(async move {
+        let fut = async move {
             inner
-                .send_branch(to, depth, Box::pin(sink.sink_compat()))
+                .send_branch_with(to, depth, sink.into_03(), transform)
                 .await
-        }))
+        };
+        Box::pin(fut).compat()
     }
 
     pub fn find_closest_ancestor(
@@ -421,12 +496,57 @@ impl Storage {
     }
 }
 
-impl BlockIterState {
-    fn new(to_info: BlockInfo<HeaderHash>, distance: u64) -> Self {
+struct PumpedStream<P, S> {
+    pump: P,
+    stream: S,
+}
+
+impl<P: Unpin, S: Unpin> Unpin for PumpedStream<P, S> {}
+
+impl<P, S> PumpedStream<P, S> {
+    unsafe_pinned!(pump: P);
+    unsafe_pinned!(stream: S);
+}
+
+impl<P, S> Stream for PumpedStream<P, S>
+where
+    P: Future<Output = ()> + FusedFuture,
+    S: Stream,
+{
+    type Item = S::Item;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<S::Item>> {
+        loop {
+            if self.pump.is_terminated() {
+                return self.stream().poll_next(cx);
+            } else {
+                match self.as_mut().pump().poll(cx) {
+                    Poll::Pending => {
+                        return self.stream().poll_next(cx);
+                    }
+                    Poll::Ready(()) => {
+                        // The block iterator pump has finished,
+                        // but we need to exhaust the stream.
+                        // Continue looping, the is_terminated branch
+                        // should be taken from now on.
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<T, F> BlockIterState<T, F>
+where
+    F: FnMut(Block) -> T,
+{
+    fn new(to_info: BlockInfo<HeaderHash>, distance: u64, transform: F) -> Self {
         BlockIterState {
             to_length: to_info.chain_length,
             cur_length: to_info.chain_length - distance,
+            transform,
             pending_infos: vec![to_info],
+            pending_item: None,
         }
     }
 
@@ -434,45 +554,86 @@ impl BlockIterState {
         self.cur_length < self.to_length
     }
 
-    async fn get_next(&mut self, pool: Pool<ConnectionManager>) -> Result<Block, StorageError> {
-        assert!(self.has_next());
+    // Iterates the blocks accordingly to this iterator's properties
+    // and sends them to the intercom channel until
+    // the iteration is complete, the channel is full, or an error occurs.
+    // If a storage error is encountered, it is also sent to the channel,
+    // after which iteration terminates.
+    fn fill_sink(
+        mut self,
+        store: &mut NodeStorageConnection,
+        sink: &mut ReplyStreamHandle03<T>,
+    ) -> Result<BlockIteration<T, F>, ReplySendError> {
+        if let Some(item) = self.pending_item.take() {
+            let is_err = item.is_err();
+            if !self.try_send_item(item, sink)? {
+                return Ok(BlockIteration::Continue(self));
+            } else if is_err {
+                return Ok(BlockIteration::Break);
+            }
+        }
+        while self.has_next() {
+            match self.get_next_block(store) {
+                Ok(block) => {
+                    let content = (self.transform)(block);
+                    if !self.try_send_item(Ok(content), sink)? {
+                        return Ok(BlockIteration::Continue(self));
+                    }
+                }
+                Err(e) => {
+                    if self.try_send_item(Err(e.into()), sink)? {
+                        return Ok(BlockIteration::Break);
+                    } else {
+                        return Ok(BlockIteration::Continue(self));
+                    }
+                }
+            }
+        }
+        Ok(BlockIteration::Break)
+    }
 
+    fn get_next_block(&mut self, store: &mut NodeStorageConnection) -> Result<Block, StorageError> {
+        debug_assert!(self.has_next());
         self.cur_length += 1;
 
         let block_info = self.pending_infos.pop().unwrap();
+        let cur_length = self.cur_length;
 
-        let cur_depth = self.cur_length;
+        if block_info.chain_length == cur_length {
+            // We've seen this block on a previous ancestor traversal.
+            let (block, _block_info) = store.get_block(&block_info.block_hash)?;
+            Ok(block)
+        } else {
+            // We don't have this block yet, so search back from
+            // the furthest block that we do have.
+            assert!(cur_length < block_info.chain_length);
+            let length = block_info.chain_length;
+            let parent = block_info.parent_id();
+            let mut pending_infos = Vec::new();
+            pending_infos.push(block_info);
+            let block_info =
+                for_path_to_nth_ancestor(store, &parent, length - cur_length - 1, |new_info| {
+                    pending_infos.push(new_info.clone());
+                })?;
 
-        let (mut pending_infos, block) = run_blocking_with_connection(&pool, move |mut store| {
-            if block_info.chain_length == cur_depth {
-                // We've seen this block on a previous ancestor traversal.
-                let (block, _block_info) = store.get_block(&block_info.block_hash)?;
-                Ok((Vec::new(), block))
+            let (block, _block_info) = store.get_block(&block_info.block_hash)?;
+            self.pending_infos.append(&mut pending_infos);
+            Ok(block)
+        }
+    }
+
+    fn try_send_item(
+        &mut self,
+        item: Result<T, intercom::Error>,
+        sink: &mut ReplyStreamHandle03<T>,
+    ) -> Result<bool, ReplySendError> {
+        sink.try_send_item(item).map(|()| true).or_else(|e| {
+            if e.is_full() {
+                self.pending_item = Some(e.into_inner());
+                Ok(false)
             } else {
-                // We don't have this block yet, so search back from
-                // the furthest block that we do have.
-                assert!(cur_depth < block_info.chain_length);
-                let depth = block_info.chain_length;
-                let parent = block_info.parent_id();
-                let mut pending_infos = Vec::new();
-                pending_infos.push(block_info);
-                let block_info = for_path_to_nth_ancestor(
-                    &mut store,
-                    &parent,
-                    depth - cur_depth - 1,
-                    |new_info| {
-                        pending_infos.push(new_info.clone());
-                    },
-                )?;
-
-                let (block, _block_info) = store.get_block(&block_info.block_hash)?;
-                Ok((pending_infos, block))
+                Err(e.into_send_error())
             }
         })
-        .await?;
-
-        self.pending_infos.append(&mut pending_infos);
-
-        Ok(block)
     }
 }
