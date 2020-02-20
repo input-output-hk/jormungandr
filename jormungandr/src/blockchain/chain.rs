@@ -512,13 +512,15 @@ impl Blockchain {
     /// and add it to the storage. If the block is already present in
     /// the storage, the returned future resolves to None. Otherwise
     /// it returns the reference to the block.
-    pub fn apply_and_store_block(
+    pub async fn apply_and_store_block(
         &self,
         post_checked_header: PostCheckedHeader,
         block: Block,
-    ) -> impl Future01<Item = AppliedBlock, Error = Error> {
+    ) -> Result<AppliedBlock> {
+        //) -> impl Future01<Item = AppliedBlock, Error = Error> {
         let storage = self.storage.clone();
-        self.apply_block(post_checked_header, &block)
+        let r = self
+            .apply_block(post_checked_header, &block)
             .and_then(move |block_ref| {
                 storage.put_block(block).then(|res| match res {
                     Ok(()) => Ok(AppliedBlock::New(block_ref)),
@@ -526,6 +528,9 @@ impl Blockchain {
                     Err(e) => Err(e.into()),
                 })
             })
+            .compat()
+            .await?;
+        Ok(r)
     }
 
     /// Apply the given block0 in the blockchain (updating the RefCache and the other objects)

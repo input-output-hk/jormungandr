@@ -541,18 +541,15 @@ async fn process_leadership_block_inner(
     };
 
     debug!(logger, "apply and store block");
-    blockchain
+    let applied = blockchain
         .apply_and_store_block(post_checked, block)
-        .map_err(|err| Error::with_chain(err, "cannot process leadership block"))
-        .map(move |applied| {
-            let new_ref = applied
-                .new_ref()
-                .expect("block from leadership must be unique");
-            info!(logger, "block from leader event successfully stored");
-            new_ref
-        })
-        .compat()
         .await
+        .map_err(|err| Error::with_chain(err, "cannot process leadership block"))?;
+    let new_ref = applied
+        .new_ref()
+        .expect("block from leadership must be unique");
+    info!(logger, "block from leader event successfully stored");
+    Ok(new_ref)
 }
 
 fn process_block_announcement(
@@ -765,7 +762,7 @@ async fn check_and_apply_block(
     let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
     let applied_block = blockchain
         .apply_and_store_block(post_checked, block)
-        .compat()
+        //.compat()
         .await?;
     if let AppliedBlock::New(block_ref) = applied_block {
         let header = block_ref.header();

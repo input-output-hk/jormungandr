@@ -10,6 +10,7 @@ use slog::Logger;
 use thiserror::Error;
 use tokio::prelude::future::Either;
 use tokio::prelude::*;
+use tokio_compat::prelude::*;
 use tokio_compat::runtime::Runtime;
 
 use std::fmt::Debug;
@@ -141,7 +142,7 @@ where
             None,
             move |parent_tip: Option<Arc<Ref>>, block_or_err| match block_or_err {
                 Ok(block) => {
-                    let fut = handle_block(blockchain.clone(), block, logger.clone()).map(Some);
+                    let fut = handle_block_old(blockchain.clone(), block, logger.clone()).map(Some);
                     Either::A(fut)
                 }
                 Err(e) => {
@@ -173,44 +174,56 @@ where
         })
 }
 
-fn handle_block(
+fn handle_block_old(
     blockchain: Blockchain,
     block: Block,
     logger: Logger,
 ) -> impl Future<Item = Arc<Ref>, Error = Error> {
+    use futures_util::compat::Compat;
+    Compat::new(Box::pin(handle_block(blockchain, block, logger)))
+}
+
+async fn handle_block(
+    blockchain: Blockchain,
+    block: Block,
+    logger: Logger,
+) -> Result<Arc<Ref>, Error> {
     let header = block.header();
-    blockchain
+    let pre_checked = blockchain
         .pre_check_header(header, true)
-        .map_err(|e| Error::HeaderCheckFailed { source: e })
-        .and_then(move |pre_checked| match pre_checked {
-            PreCheckedHeader::AlreadyPresent {
-                cached_reference: Some(block_ref),
-                ..
-            } => Either::A(future::ok(block_ref)),
-            PreCheckedHeader::AlreadyPresent {
-                cached_reference: None,
-                header,
-            } => Either::A(future::err(Error::BlockNotOnBranch(header.hash()))),
-            PreCheckedHeader::MissingParent { header, .. } => {
-                Either::A(future::err(Error::BlockMissingParent(header.hash())))
-            }
-            PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                let future = blockchain
-                    .post_check_header(header, parent_ref)
-                    .map_err(|e| Error::HeaderCheckFailed { source: e })
-                    .and_then(move |post_checked| {
-                        debug!(
-                            logger,
-                            "validated block";
-                            "hash" => %post_checked.header().hash(),
-                            "block_date" => %post_checked.header().block_date(),
-                        );
-                        blockchain
-                            .apply_and_store_block(post_checked, block)
-                            .map(|applied| applied.cached_ref())
-                            .map_err(|e| Error::ApplyBlockFailed { source: e })
-                    });
-                Either::B(future)
-            }
-        })
+        .compat()
+        .await
+        .map_err(|e| Error::HeaderCheckFailed { source: e })?;
+    match pre_checked {
+        PreCheckedHeader::AlreadyPresent {
+            cached_reference: Some(block_ref),
+            ..
+        } => Ok(block_ref),
+        PreCheckedHeader::AlreadyPresent {
+            cached_reference: None,
+            header,
+        } => Err(Error::BlockNotOnBranch(header.hash())),
+        PreCheckedHeader::MissingParent { header, .. } => {
+            Err(Error::BlockMissingParent(header.hash()))
+        }
+        PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+            let post_checked = blockchain
+                .post_check_header(header, parent_ref)
+                .compat()
+                .await
+                .map_err(|e| Error::HeaderCheckFailed { source: e })?;
+
+            debug!(
+                logger,
+                "validated block";
+                "hash" => %post_checked.header().hash(),
+                "block_date" => %post_checked.header().block_date(),
+            );
+            let applied = blockchain
+                .apply_and_store_block(post_checked, block)
+                .await
+                .map_err(|e| Error::ApplyBlockFailed { source: e })?;
+            Ok(applied.cached_ref()) //.map(|applied| applied.cached_ref())
+        }
+    }
 }
