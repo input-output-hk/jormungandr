@@ -275,7 +275,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .no_blockchain_updates_warning_interval
             .clone();
 
-        services.spawn_future("stuck_notifier", move |info| {
+        services.spawn_future_std("stuck_notifier", move |info| {
             stuck_notifier::check_last_block_time(
                 info,
                 blockchain_tip,
