@@ -128,7 +128,7 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 pub(super) mod internal {
     use super::*;
     use crate::fragment::expirations::{Expirations, Key};
-    use std::collections::{hash_map::Entry, HashMap, VecDeque};
+    use std::collections::{hash_map::Entry, HashMap, HashSet, VecDeque};
 
     pub struct Pool {
         max_entries: usize,
@@ -190,30 +190,22 @@ pub(super) mod internal {
                 .collect()
         }
 
-        pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
-            if let Some(PoolEntryInternal {
-                fragment,
-                expiration_key,
-            }) = self.entries.remove(fragment_id)
-            {
-                self.entries_by_time
-                    .iter()
-                    .position(|id| id == fragment_id)
-                    .map(|position| {
-                        self.entries_by_time.remove(position);
-                    });
-                self.expirations.remove(expiration_key);
-                Some(fragment)
-            } else {
-                None
-            }
-        }
-
         pub fn remove_all(&mut self, fragment_ids: impl IntoIterator<Item = FragmentId>) {
-            // TODO fix terrible performance, entries_by_time are linear searched N times
-            for fragment_id in fragment_ids {
-                self.remove(&fragment_id);
+            let to_remove = fragment_ids.into_iter().collect::<HashSet<_>>();
+            for fragment_id in to_remove.iter() {
+                if let Some(PoolEntryInternal { expiration_key, .. }) =
+                    self.entries.remove(fragment_id)
+                {
+                    self.expirations.remove(expiration_key);
+                }
             }
+            let mut clean_entries_by_time = VecDeque::new();
+            for entry in self.entries_by_time.iter().cloned() {
+                if !to_remove.contains(&entry) {
+                    clean_entries_by_time.push_back(entry);
+                }
+            }
+            self.entries_by_time = clean_entries_by_time;
         }
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
@@ -230,15 +222,8 @@ pub(super) mod internal {
         }
 
         pub fn purge(&mut self) {
-            for entry in self.expirations.pop_expired() {
-                self.entries.remove(&entry);
-                self.entries_by_time
-                    .iter()
-                    .position(|id| id == &entry)
-                    .map(|position| {
-                        self.entries_by_time.remove(position);
-                    });
-            }
+            let expired = self.expirations.pop_expired();
+            self.remove_all(expired);
         }
     }
 }
