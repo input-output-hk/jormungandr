@@ -41,7 +41,7 @@ pub type ConnectError = network_grpc::client::ConnectError<io::Error>;
 
 pub fn connect(addr: SocketAddr, node_id: Option<Id>, executor: TaskExecutor) -> ConnectFuture {
     let uri = destination_uri(addr);
-    let mut connector = HttpConnector::new(2);
+    let mut connector = HttpConnector::new_with_executor(executor.clone(), None);
     connector.set_nodelay(true);
     let mut builder = Connect::with_executor(connector, executor);
     if let Some(id) = node_id {
