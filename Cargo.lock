@@ -2005,6 +2005,7 @@ dependencies = [
  "poldercast",
  "r2d2",
  "rand 0.7.3",
+ "rand_core 0.5.1",
  "reqwest 0.10.1",
  "rustls",
  "serde",
