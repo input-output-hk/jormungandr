@@ -42,7 +42,7 @@ pub const DEFAULT_MAX_CONNECTIONS: usize = 256;
 pub const DEFAULT_MAX_CLIENT_CONNECTIONS: usize = 8;
 
 /// The default timeout for connections
-const DEFAULT_TIMEOUT_MILLISECONDS: u64 = 10_000;
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 
 ///
 /// The network static configuration settings
@@ -109,10 +109,7 @@ impl From<super::config::TrustedPeer> for TrustedPeer {
 
 impl Peer {
     pub fn new(connection: SocketAddr) -> Self {
-        Peer::with_timeout(
-            connection,
-            Duration::from_millis(DEFAULT_TIMEOUT_MILLISECONDS),
-        )
+        Peer::with_timeout(connection, DEFAULT_TIMEOUT)
     }
 
     pub fn with_timeout(connection: SocketAddr, timeout: Duration) -> Self {
@@ -133,7 +130,7 @@ impl Listen {
         Listen {
             connection,
             protocol: Protocol::Grpc,
-            timeout: Duration::from_micros(DEFAULT_TIMEOUT_MILLISECONDS),
+            timeout: DEFAULT_TIMEOUT,
         }
     }
 
