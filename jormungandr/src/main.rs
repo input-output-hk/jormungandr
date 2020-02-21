@@ -113,7 +113,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             bootstrapped_node.settings.mempool.pool_max_entries.into(),
             bootstrapped_node.settings.mempool.fragment_ttl.into(),
             bootstrapped_node.settings.mempool.log_max_entries.into(),
-            bootstrapped_node.settings.mempool.log_ttl.into(),
             bootstrapped_node
                 .settings
                 .mempool

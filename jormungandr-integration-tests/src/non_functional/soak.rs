@@ -26,7 +26,6 @@ pub fn test_blocks_are_being_created_for_48_hours() {
                 pool_max_entries: 1_000_000usize.into(),
                 fragment_ttl: duration_48_hours.clone().into(),
                 log_max_entries: 1_000_000usize.into(),
-                log_ttl: duration_48_hours.clone().into(),
                 garbage_collection_interval: duration_48_hours.clone().into(),
             }),
     )
