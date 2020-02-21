@@ -9,11 +9,9 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
-use futures03::{compat::*, future, sink::SinkExt};
+use futures03::{compat::*, sink::SinkExt};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
-use std::time::Duration;
-use tokio02::time;
 
 pub struct Pool {
     logs: Logs,
@@ -22,15 +20,10 @@ pub struct Pool {
 }
 
 impl Pool {
-    pub fn new(
-        max_entries: usize,
-        ttl: Duration,
-        logs: Logs,
-        network_msg_box: MessageBox<NetworkMsg>,
-    ) -> Self {
+    pub fn new(max_entries: usize, logs: Logs, network_msg_box: MessageBox<NetworkMsg>) -> Self {
         Pool {
             logs,
-            pool: internal::Pool::new(max_entries, ttl),
+            pool: internal::Pool::new(max_entries),
             network_msg_box,
         }
     }
@@ -80,11 +73,6 @@ impl Pool {
         self.logs.modify_all(fragment_ids, status);
     }
 
-    pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
-        future::poll_fn(|cx| self.pool.poll_purge(cx)).await?;
-        self.logs.poll_purge().await
-    }
-
     pub fn select(
         &mut self,
         ledger: Ledger,
@@ -127,51 +115,26 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 
 pub(super) mod internal {
     use super::*;
-    use crate::fragment::PoolEntry;
-    use futures03::{
-        stream::Stream,
-        task::{Context, Poll},
-    };
-    use std::{
-        collections::{hash_map::Entry, HashMap, VecDeque},
-        pin::Pin,
-        sync::Arc,
-    };
-    use tokio02::time::{delay_queue, DelayQueue};
+    use lru::LruCache;
 
     pub struct Pool {
-        max_entries: usize,
-        entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
-        entries_by_time: VecDeque<FragmentId>,
-        expirations: Pin<Box<DelayQueue<FragmentId>>>,
-        ttl: Duration,
+        entries: LruCache<FragmentId, Fragment>,
     }
 
     impl Pool {
-        pub fn new(max_entries: usize, ttl: Duration) -> Self {
+        pub fn new(max_entries: usize) -> Self {
             Pool {
-                max_entries,
-                entries: HashMap::new(),
-                entries_by_time: VecDeque::new(),
-                expirations: Box::pin(DelayQueue::new()),
-                ttl,
+                entries: LruCache::new(max_entries),
             }
         }
 
         /// Returns clone of fragment if it was registered
         pub fn insert(&mut self, fragment: Fragment) -> Option<Fragment> {
-            if self.max_entries < self.entries.len() {
+            let fragment_id = fragment.id();
+            if self.entries.contains(&fragment_id) {
                 None
             } else {
-                let fragment_id = fragment.id();
-                let entry = match self.entries.entry(fragment_id) {
-                    Entry::Occupied(_) => return None,
-                    Entry::Vacant(vacant) => vacant,
-                };
-                let pool_entry = Arc::new(PoolEntry::new(&fragment));
-                let delay = self.expirations.insert(fragment_id, self.ttl);
-                entry.insert((pool_entry, fragment.clone(), delay));
-                self.entries_by_time.push_back(fragment_id);
+                self.entries.put(fragment_id, fragment.clone());
                 Some(fragment)
             }
         }
@@ -183,68 +146,18 @@ pub(super) mod internal {
         ) -> Vec<Fragment> {
             fragments
                 .into_iter()
-                .take(
-                    self.max_entries
-                        .checked_sub(self.entries.len())
-                        .unwrap_or(0),
-                )
                 .filter_map(|fragment| self.insert(fragment))
                 .collect()
         }
 
-        pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
-            if let Some((_, fragment, cache_key)) = self.entries.remove(fragment_id) {
-                self.entries_by_time
-                    .iter()
-                    .position(|id| id == fragment_id)
-                    .map(|position| {
-                        self.entries_by_time.remove(position);
-                    });
-                self.expirations.remove(&cache_key);
-                Some(fragment)
-            } else {
-                None
-            }
-        }
-
         pub fn remove_all(&mut self, fragment_ids: impl IntoIterator<Item = FragmentId>) {
-            // TODO fix terrible performance, entries_by_time are linear searched N times
             for fragment_id in fragment_ids {
-                self.remove(&fragment_id);
+                self.entries.pop(&fragment_id);
             }
         }
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
-            let fragment_id = self.entries_by_time.pop_front()?;
-            let (_, fragment, cache_key) = self
-                .entries
-                .remove(&fragment_id)
-                .expect("Pool lost fragment ID consistency");
-            self.expirations.remove(&cache_key);
-            Some(fragment)
-        }
-
-        pub fn poll_purge(&mut self, cx: &mut Context) -> Poll<Result<(), time::Error>> {
-            loop {
-                match self.expirations.as_mut().poll_next(cx) {
-                    Poll::Ready(Some(Ok(entry))) => {
-                        self.entries.remove(entry.get_ref());
-                        self.entries_by_time
-                            .iter()
-                            .position(|id| id == entry.get_ref())
-                            .map(|position| {
-                                self.entries_by_time.remove(position);
-                            });
-                    }
-                    Poll::Ready(Some(Err(e))) => return Poll::Ready(Err(e)),
-                    Poll::Ready(None) => return Poll::Ready(Ok(())),
-
-                    // Here Pending means there are still items in the DelayQueue but
-                    // they are not expired. We don't want this function to wait for these
-                    // ones to expired. We only cared about removing the expired ones.
-                    Poll::Pending => return Poll::Ready(Ok(())),
-                }
-            }
+            self.entries.pop_lru().map(|(_, value)| value)
         }
     }
 }

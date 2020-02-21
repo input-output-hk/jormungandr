@@ -8,18 +8,8 @@ as follow:
 ```yaml
 mempool:
     pool_max_entries: 10000
-    fragment_ttl: 30m
     log_max_entries: 100000
-    log_ttl: 1h
-    garbage_collection_interval: 15m
 ```
 
 * `pool_max_entries`: (optional, default is 10000). Set a maximum size of the mempool
-* `fragment_ttl` describes for how long the node shall keep a fragment (a _transaction_)
-  pending in the pool before being discarded;
 * `log_max_entries`: (optional, default is 100000). Set a maximum size of fragment logs
-* `log_ttl` describes for how long the node will keep logs of pending/accepted/rejected
-  fragments in the pool; This is link to the data you receives from the REST fragment
-  logs end point;
-* `garbage_collection_interval` describes the interval between 2 garbage collection
-  runs: i.e. when the node removes item (fragments or logs) that have timed out. 
