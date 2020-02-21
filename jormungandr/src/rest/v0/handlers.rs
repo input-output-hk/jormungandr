@@ -30,11 +30,11 @@ use std::sync::Arc;
 pub use crate::rest::{Context, FullContext};
 
 async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
-    chain_tip_from_full(&*context.try_full().await?).await
+    Ok(chain_tip_from_full(&*context.try_full().await?).await)
 }
 
-async fn chain_tip_from_full(context: &FullContext) -> Result<Arc<Ref>, Error> {
-    context.blockchain_tip.get_ref().compat().await
+async fn chain_tip_from_full(context: &FullContext) -> Arc<Ref> {
+    context.blockchain_tip.get_ref_std().await
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -117,7 +117,7 @@ pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder,
 }
 
 async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error> {
-    let tip = chain_tip_from_full(context).await?;
+    let tip = chain_tip_from_full(context).await;
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
@@ -207,7 +207,7 @@ pub async fn get_block_next_id(
 ) -> Result<impl Responder, Error> {
     let full_context = context.try_full().await?;
     let block_id = parse_block_hash(&block_id_hex)?;
-    let tip = chain_tip_from_full(&full_context).await?;
+    let tip = chain_tip_from_full(&full_context).await;
     full_context
         .blockchain
         .storage()
@@ -274,7 +274,7 @@ fn create_stake(stake: &StakeDistribution) -> serde_json::Value {
 
 pub async fn get_settings(context: Data<Context>) -> Result<impl Responder, Error> {
     let full_context = context.try_full().await?;
-    let blockchain_tip = chain_tip_from_full(&full_context).await?;
+    let blockchain_tip = chain_tip_from_full(&full_context).await;
     let ledger = blockchain_tip.ledger();
     let static_params = ledger.get_static_parameters();
     let consensus_version = ledger.consensus_version();

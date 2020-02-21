@@ -14,8 +14,7 @@ impl Tip {
     }
 
     pub async fn get_ref_std(&self) -> Arc<Ref> {
-        let r: Result<_, ()> = self.branch.get_ref().compat().await;
-        r.unwrap()
+        self.branch.get_ref_std().await
     }
 
     pub async fn update_ref_std(&mut self, new_ref: Arc<Ref>) -> Arc<Ref> {
