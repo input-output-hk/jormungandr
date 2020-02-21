@@ -13,14 +13,9 @@ pub struct Mempool {
     /// maximum number of entries in the mempool
     #[serde(default)]
     pub pool_max_entries: PoolMaxEntries,
-    /// time to live in the mempool before being discarded. If the value is not applied
-    /// in a block within this duration it will be discarded.
-    pub fragment_ttl: Duration,
     /// maximum number of entries in the fragment logs
     #[serde(default)]
     pub log_max_entries: LogMaxEntries,
-    /// interval between 2 garbage collection check of the mempool and the log cache.
-    pub garbage_collection_interval: Duration,
 }
 
 impl Default for PoolMaxEntries {
@@ -39,9 +34,7 @@ impl Default for Mempool {
     fn default() -> Self {
         Mempool {
             pool_max_entries: PoolMaxEntries::default(),
-            fragment_ttl: Duration::new(30 * 60, 0),
             log_max_entries: LogMaxEntries::default(),
-            garbage_collection_interval: Duration::new(3600 / 4, 0),
         }
     }
 }

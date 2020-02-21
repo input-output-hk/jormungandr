@@ -24,9 +24,7 @@ pub fn test_blocks_are_being_created_for_48_hours() {
             .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
-                fragment_ttl: duration_48_hours.clone().into(),
                 log_max_entries: 1_000_000usize.into(),
-                garbage_collection_interval: duration_48_hours.clone().into(),
             }),
     )
     .unwrap();

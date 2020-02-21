@@ -3,31 +3,26 @@ use crate::{
     intercom::{NetworkMsg, TransactionMsg},
     stats_counter::StatsCounter,
     utils::{
-        async_msg::{channel, MessageBox, MessageQueue},
+        async_msg::{MessageBox, MessageQueue},
         task::TokioServiceInfo,
     },
 };
-use futures03::{compat::*, sink::SinkExt};
-use std::time::Duration;
+use futures03::compat::*;
 use tokio02::stream::StreamExt;
 
 pub struct Process {
     pool: Pool,
-    garbage_collection_interval: Duration,
 }
 
 impl Process {
     pub fn new(
         pool_max_entries: usize,
-        pool_ttl: Duration,
         logs_max_entries: usize,
-        garbage_collection_interval: Duration,
         network_msg_box: MessageBox<NetworkMsg>,
     ) -> Self {
         let logs = Logs::new(logs_max_entries);
         Process {
-            pool: Pool::new(pool_max_entries, pool_ttl, logs, network_msg_box),
-            garbage_collection_interval,
+            pool: Pool::new(pool_max_entries, logs, network_msg_box),
         }
     }
 
@@ -37,24 +32,8 @@ impl Process {
         stats_counter: StatsCounter,
         input: MessageQueue<TransactionMsg>,
     ) -> Result<(), ()> {
-        let (gc_sender, gc_receiver) = channel(1);
-
-        service_info.run_periodic_std(
-            "pool garbage collection",
-            self.garbage_collection_interval,
-            move || {
-                let gc_sender = gc_sender.clone();
-                async move {
-                    gc_sender
-                        .sink_compat()
-                        .send(TransactionMsg::RunGarbageCollector)
-                        .await
-                }
-            },
-        );
-
-        let mut input = input.compat().merge(gc_receiver.compat());
         let mut pool = self.pool;
+        let mut input = input.compat();
 
         while let Some(input_result) = input.next().await {
             match input_result? {
@@ -92,9 +71,6 @@ impl Process {
                 } => {
                     let contents = pool.select(ledger, block_date, ledger_params, selection_alg);
                     reply_handle.reply_ok(contents);
-                }
-                TransactionMsg::RunGarbageCollector => {
-                    let _ = pool.poll_purge().await;
                 }
             }
         }
