@@ -1,0 +1,6 @@
+[book]
+authors = ["Nicolas Di Prima"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Jörmungandr Service Manager"
