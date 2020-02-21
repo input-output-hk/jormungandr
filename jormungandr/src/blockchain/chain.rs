@@ -260,10 +260,10 @@ impl AppliedBlock {
 }
 
 impl Blockchain {
-    pub fn new(block0: HeaderHash, storage: Storage) -> Self {
+    pub fn new(block0: HeaderHash, storage: Storage, cache_capacity: usize) -> Self {
         Blockchain {
             branches: Branches::new(),
-            ref_cache: RefCache::new(),
+            ref_cache: RefCache::new(cache_capacity),
             ledgers: Multiverse::new(),
             storage,
             block0,

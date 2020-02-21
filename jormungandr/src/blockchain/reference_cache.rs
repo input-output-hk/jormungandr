@@ -1,5 +1,6 @@
 use crate::{blockcfg::HeaderHash, blockchain::Ref};
-use std::{collections::HashMap, convert::Infallible, sync::Arc};
+use lru::LruCache;
+use std::{convert::Infallible, sync::Arc};
 use tokio::{prelude::*, sync::lock::Lock};
 
 /// object that store the [`Ref`] in a cache. Every time a [`Ref`]
@@ -13,20 +14,15 @@ use tokio::{prelude::*, sync::lock::Lock};
 /// [`purge`]: ./struct.Ref.html#method.purge
 #[derive(Clone)]
 pub struct RefCache {
-    inner: Lock<RefCacheData>,
-}
-
-/// cache of already loaded in-memory block `Ref`
-struct RefCacheData {
-    entries: HashMap<HeaderHash, Arc<Ref>>,
+    inner: Lock<LruCache<HeaderHash, Arc<Ref>>>,
 }
 
 impl RefCache {
     /// create a new `RefCache`.
     ///
-    pub fn new() -> Self {
+    pub fn new(cap: usize) -> Self {
         RefCache {
-            inner: Lock::new(RefCacheData::new()),
+            inner: Lock::new(LruCache::new(cap)),
         }
     }
 
@@ -43,8 +39,9 @@ impl RefCache {
         value: Arc<Ref>,
     ) -> impl Future<Item = (), Error = Infallible> {
         let mut inner = self.inner.clone();
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .map(move |mut guard| guard.insert(key, value))
+        future::poll_fn(move || Ok(inner.poll_lock())).map(move |mut guard| {
+            guard.put(key, value);
+        })
     }
 
     /// return a future to get a [`Ref`] from the cache
@@ -63,21 +60,5 @@ impl RefCache {
 
         future::poll_fn(move || Ok(inner.poll_lock()))
             .map(move |mut guard| guard.get(&key).map(Arc::clone))
-    }
-}
-
-impl RefCacheData {
-    fn new() -> Self {
-        RefCacheData {
-            entries: HashMap::new(),
-        }
-    }
-
-    fn insert(&mut self, key: HeaderHash, value: Arc<Ref>) {
-        self.entries.insert(key, value);
-    }
-
-    fn get(&mut self, key: &HeaderHash) -> Option<&Arc<Ref>> {
-        self.entries.get(key)
     }
 }

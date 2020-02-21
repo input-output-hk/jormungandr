@@ -9,7 +9,6 @@ use crate::{
 };
 use chain_storage_sqlite_old::{BlockStore, BlockStoreConnection};
 use slog::Logger;
-use std::time::Duration;
 use tokio_compat::runtime;
 
 pub type NodeStorage = BlockStore;
@@ -191,9 +190,10 @@ pub fn prepare_block_0(
 pub fn load_blockchain(
     block0: Block,
     storage: Storage,
+    cache_capacity: usize,
     logger: &Logger,
 ) -> Result<(Blockchain, Tip), Error> {
-    let blockchain = Blockchain::new(block0.header.hash(), storage);
+    let blockchain = Blockchain::new(block0.header.hash(), storage, cache_capacity);
 
     let mut rt = tokio02::runtime::Runtime::new().unwrap();
     rt.block_on(async {
