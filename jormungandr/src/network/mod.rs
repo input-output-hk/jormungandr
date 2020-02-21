@@ -65,6 +65,7 @@ use slog::Logger;
 use tokio::timer::Interval;
 use tokio_compat::runtime::TaskExecutor;
 
+use std::collections::BTreeMap;
 use std::convert::Infallible;
 use std::error;
 use std::fmt;
@@ -552,6 +553,84 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
     peers
 }
 
+#[derive(Clone)]
+pub struct BootstrapPeers(BTreeMap<String, Peer>);
+
+impl BootstrapPeers {
+    pub fn new() -> Self {
+        BootstrapPeers(BTreeMap::new())
+    }
+
+    pub fn add_peer(&mut self, peer: Peer) -> usize {
+        self.0
+            .insert(peer.address().to_string(), peer)
+            .map(|_| 0)
+            .unwrap_or(1)
+    }
+
+    pub fn add_peers(&mut self, peers: &[Peer]) -> usize {
+        let mut count = 0;
+        for p in peers {
+            count += self.add_peer(p.clone());
+        }
+        count
+    }
+
+    pub fn count(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn randomly(&self) -> Vec<&Peer> {
+        let mut peers = self.0.iter().map(|(_, peer)| peer).collect::<Vec<_>>();
+        let mut rng = rand::thread_rng();
+        peers.shuffle(&mut rng);
+        peers
+    }
+}
+
+/// Try to get sufficient peers to do a netboot from
+fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
+    let mut peers = BootstrapPeers::new();
+
+    // extract the trusted peers from the config
+    let trusted_peers = config
+        .trusted_peers
+        .iter()
+        .filter_map(|tp| {
+            tp.address
+                .to_socketaddr()
+                .map(|sa| Peer::new(sa.clone(), Protocol::Grpc))
+        })
+        .collect::<Vec<_>>();
+    if config.bootstrap_from_trusted_peers {
+        let _: usize = peers.add_peers(&trusted_peers);
+    } else {
+        let mut rng = rand::thread_rng();
+        let mut trusted_peers = trusted_peers;
+        trusted_peers.shuffle(&mut rng);
+        for tpeer in trusted_peers {
+            //let peer = Peer::new(peer, Protocol::Grpc);
+            let tp_logger = logger.new(o!("peer_addr" => tpeer.address().to_string()));
+            let received_peers = bootstrap::peers_from_trusted_peer(&tpeer, tp_logger.clone())
+                .unwrap_or_else(|e| {
+                    warn!(
+                        tp_logger,
+                        "failed to retrieve the list of bootstrap peers from trusted peer";
+                        "reason" => %e,
+                    );
+                    vec![tpeer]
+                });
+            let added = peers.add_peers(&received_peers);
+            info!(logger, "adding {} peers from peer", added);
+
+            if peers.count() > 32 {
+                break;
+            }
+        }
+    }
+    peers
+}
+
 pub fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
@@ -576,61 +655,27 @@ pub fn bootstrap(
 
     let mut bootstrapped = false;
 
-    'bootstrap: for address in trusted_peers_shuffled(&config) {
-        let peer = Peer::new(address, Protocol::Grpc);
-        let tp_logger = logger.new(o!("peer_addr" => address.to_string()));
-        if config.bootstrap_from_trusted_peers {
-            let res = bootstrap::bootstrap_from_peer(
-                peer,
-                blockchain.clone(),
-                branch.clone(),
-                logger.clone(),
-            );
-            match res {
-                Err(bootstrap::Error::Connect { source: e }) => {
-                    warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
-                }
-                Err(e) => {
-                    warn!(logger, "initial bootstrap failed"; "error" => ?e);
-                }
-                Ok(()) => {
-                    info!(logger, "initial bootstrap completed");
-                    bootstrapped = true;
-                    break 'bootstrap;
-                }
-            }
-        } else {
-            let peers = bootstrap::peers_from_trusted_peer(&peer, tp_logger.clone())
-                .unwrap_or_else(|e| {
-                    warn!(
-                        tp_logger,
-                        "failed to retrieve the list of bootstrap peers from trusted peer";
-                        "reason" => %e,
-                    );
-                    vec![peer]
-                });
-            for peer in peers {
-                let logger = logger.new(o!("peer_addr" => peer.connection.to_string()));
-                let res = bootstrap::bootstrap_from_peer(
-                    peer,
-                    blockchain.clone(),
-                    branch.clone(),
-                    logger.clone(),
-                );
+    let netboot_peers = netboot_peers(config, logger);
 
-                match res {
-                    Err(bootstrap::Error::Connect { source: e }) => {
-                        warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
-                    }
-                    Err(e) => {
-                        warn!(logger, "initial bootstrap failed"; "error" => ?e);
-                    }
-                    Ok(()) => {
-                        info!(logger, "initial bootstrap completed");
-                        bootstrapped = true;
-                        break 'bootstrap;
-                    }
-                }
+    for peer in netboot_peers.randomly() {
+        let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
+        let res = bootstrap::bootstrap_from_peer(
+            peer.clone(),
+            blockchain.clone(),
+            branch.clone(),
+            logger.clone(),
+        );
+        match res {
+            Err(bootstrap::Error::Connect { source: e }) => {
+                warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
+            }
+            Err(e) => {
+                warn!(logger, "initial bootstrap failed"; "error" => ?e);
+            }
+            Ok(()) => {
+                info!(logger, "initial bootstrap completed");
+                bootstrapped = true;
+                break;
             }
         }
     }

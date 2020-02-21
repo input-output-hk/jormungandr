@@ -6,7 +6,7 @@ pub use chain_impl_mockchain::{
     fragment::{ConfigParams, Contents, ContentsBuilder, Fragment, FragmentId},
     header::{
         BlockDate, BlockVersion, ChainLength, Epoch, Header, HeaderBft, HeaderBftBuilder,
-        HeaderBuilder, HeaderBuilderNew, HeaderContentEvalContext, HeaderGenesisPraos,
+        HeaderBuilder, HeaderBuilderNew, HeaderContentEvalContext, HeaderDesc, HeaderGenesisPraos,
         HeaderGenesisPraosBuilder, HeaderId, HeaderSetConsensusSignature, SlotId,
     },
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},

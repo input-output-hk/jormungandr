@@ -80,7 +80,7 @@ mod chain_landing {
                     stream,
                 } = state;
                 blockchain
-                    .pre_check_header(header, false)
+                    .pre_check_header_old(header, false)
                     .map_err(|e| e.into())
                     .and_then(move |pre_checked| match pre_checked {
                         PreCheckedHeader::AlreadyPresent { .. } => {
