@@ -4,7 +4,7 @@ use crate::blockcfg::{
 };
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio02::sync::RwLock;
 
