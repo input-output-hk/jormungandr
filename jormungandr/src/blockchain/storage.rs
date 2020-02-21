@@ -5,8 +5,8 @@ use crate::{
 };
 use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Stream as Stream01};
-use futures03::{compat::Compat, future::FusedFuture, prelude::*};
-use pin_utils::unsafe_pinned;
+use futures03::{compat::Compat, prelude::*, ready, stream::FusedStream};
+use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use r2d2::{ManageConnection, Pool};
 use slog::Logger;
 use tokio02::{sync::Mutex, task::spawn_blocking};
@@ -18,6 +18,10 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
+
+// How many stream items to leave unaccounted for in PumpedStream
+// before priming the pump again.
+const PUMP_PRESSURE_MARGIN: usize = 4;
 
 pub use chain_storage_sqlite_old::Error as StorageError;
 
@@ -38,36 +42,34 @@ where
     .unwrap()
 }
 
-async fn run_block_iter<T, F>(
-    pool: Pool<ConnectionManager>,
-    mut iter: BlockIterState<T, F>,
-    mut sink: ReplyStreamHandle03<T>,
-) -> Result<(), ReplySendError>
+async fn pump_block_sink<T, F>(
+    iter: Box<BlockIterState<T, F>>,
+    pool: &Pool<ConnectionManager>,
+    sink: &mut ReplyStreamHandle03<T>,
+) -> Result<BlockIteration<T, F>, ReplySendError>
 where
     F: FnMut(Block) -> T,
     F: Send + 'static,
     T: Send + 'static,
 {
-    loop {
-        let mut sink1 = sink.clone();
-        match run_blocking_with_connection(pool.clone(), move |connection| {
-            iter.fill_sink(connection, &mut sink1)
-                .map_err(StreamingError::Sending)
-        })
-        .await
-        {
-            Ok(BlockIteration::Continue(new_iter_state)) => {
-                iter = new_iter_state;
-                future::poll_fn(|cx| sink.poll_ready(cx)).await?;
-            }
-            Ok(BlockIteration::Break) => break,
-            Err(StreamingError::Storage(e)) => {
-                return sink.send(Err(e.into())).await;
-            }
-            Err(StreamingError::Sending(e)) => return Err(e),
+    let mut sink1 = sink.clone();
+    match run_blocking_with_connection(pool.clone(), move |connection| {
+        iter.fill_sink(connection, &mut sink1)
+            .map_err(StreamingError::Sending)
+    })
+    .await
+    {
+        Ok(BlockIteration::Continue(iter)) => {
+            future::poll_fn(|cx| sink.poll_ready(cx)).await?;
+            Ok(BlockIteration::Continue(iter))
         }
+        Ok(BlockIteration::Break) => Ok(BlockIteration::Break),
+        Err(StreamingError::Storage(e)) => {
+            sink.send(Err(e.into())).await?;
+            Ok(BlockIteration::Break)
+        }
+        Err(StreamingError::Sending(e)) => Err(e),
     }
-    sink.close().await
 }
 
 #[derive(Clone)]
@@ -134,7 +136,7 @@ struct BlockIterState<T, F> {
 }
 
 enum BlockIteration<T, F> {
-    Continue(BlockIterState<T, F>),
+    Continue(Box<BlockIterState<T, F>>),
     Break,
 }
 
@@ -242,7 +244,7 @@ impl Storage03 {
         let iter = self
             .run(move |connection| match connection.is_ancestor(&from, &to) {
                 Ok(Some(distance)) => match connection.get_block_info(&to) {
-                    Ok(to_info) => Ok(BlockIterState::new(to_info, distance, identity)),
+                    Ok(to_info) => Ok(Box::new(BlockIterState::new(to_info, distance, identity))),
                     Err(e) => Err(e),
                 },
                 Ok(None) => Err(StorageError::CannotIterate),
@@ -252,9 +254,36 @@ impl Storage03 {
 
         let (rh, rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
 
-        let pump = run_block_iter(self.pool.clone(), iter, rh)
-            .unwrap_or_else(|e| panic!("unexpected channel error: {:?}", e));
-        let stream = PumpedStream { pump, stream: rs };
+        struct PumpState<F> {
+            iter: Box<BlockIterState<Block, F>>,
+            pool: Pool<ConnectionManager>,
+            handle: ReplyStreamHandle03<Block>,
+        }
+        let state = PumpState {
+            iter,
+            pool: self.pool.clone(),
+            handle: rh,
+        };
+        let pump = stream::unfold(state, |mut state| async move {
+            match pump_block_sink(state.iter, &state.pool, &mut state.handle)
+                .await
+                .unwrap_or_else(|e| panic!("unexpected channel error: {:?}", e))
+            {
+                BlockIteration::Continue(iter) => {
+                    let state = PumpState { iter, ..state };
+                    Some(((), state))
+                }
+                BlockIteration::Break => {
+                    state
+                        .handle
+                        .close()
+                        .await
+                        .unwrap_or_else(|e| panic!("unexpected channel error: {:?}", e));
+                    None
+                }
+            }
+        });
+        let stream = PumpedStream::new(rs, pump);
         Ok(stream)
     }
 
@@ -268,29 +297,9 @@ impl Storage03 {
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        mut sink: ReplyStreamHandle03<Block>,
+        sink: ReplyStreamHandle03<Block>,
     ) -> Result<(), ReplySendError> {
-        let res = self
-            .run(move |connection| {
-                connection.get_block_info(&to).map(|to_info| {
-                    let depth = depth.unwrap_or(to_info.chain_length - 1);
-                    BlockIterState::new(to_info, depth, identity)
-                })
-            })
-            .await;
-
-        match res {
-            Ok(iter) => {
-                let pool = self.pool.clone();
-                run_block_iter(pool, iter, sink).await?;
-            }
-            Err(e) => {
-                sink.send(Err(e.into())).await?;
-                sink.close().await?;
-            }
-        }
-
-        Ok(())
+        self.send_branch_with(to, depth, sink, identity).await
     }
 
     /// Like `send_branch`, but with a transformation function applied
@@ -311,22 +320,25 @@ impl Storage03 {
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
                     let depth = depth.unwrap_or(to_info.chain_length - 1);
-                    BlockIterState::new(to_info, depth, transform)
+                    Box::new(BlockIterState::new(to_info, depth, transform))
                 })
             })
             .await;
 
         match res {
-            Ok(iter) => {
-                let pool = self.pool.clone();
-                run_block_iter(pool, iter, sink).await?;
+            Ok(mut iter) => {
+                while let BlockIteration::Continue(new_iter_state) =
+                    pump_block_sink(iter, &self.pool, &mut sink).await?
+                {
+                    iter = new_iter_state;
+                }
             }
             Err(e) => {
                 sink.send(Err(e.into())).await?;
-                sink.close().await?;
             }
         }
 
+        sink.close().await?;
         Ok(())
     }
 
@@ -496,39 +508,76 @@ impl Storage {
     }
 }
 
-struct PumpedStream<P, S> {
+struct PumpedStream<S, P> {
     pump: P,
     stream: S,
+    pressure: usize,
 }
 
-impl<P: Unpin, S: Unpin> Unpin for PumpedStream<P, S> {}
+impl<S: Unpin, P: Unpin> Unpin for PumpedStream<S, P> {}
 
-impl<P, S> PumpedStream<P, S> {
+impl<S, P> PumpedStream<S, P> {
     unsafe_pinned!(pump: P);
     unsafe_pinned!(stream: S);
+    unsafe_unpinned!(pressure: usize);
 }
 
-impl<P, S> Stream for PumpedStream<P, S>
+const PUMP_PRESSURE_FULL: usize = BLOCK_STREAM_BUFFER_SIZE - PUMP_PRESSURE_MARGIN;
+
+impl<S, P> PumpedStream<S, P>
 where
-    P: Future<Output = ()> + FusedFuture,
+    P: Stream<Item = ()>,
+{
+    fn new(stream: S, pump: P) -> Self {
+        PumpedStream {
+            pump,
+            stream,
+            pressure: PUMP_PRESSURE_FULL,
+        }
+    }
+}
+
+impl<S, P> PumpedStream<S, P>
+where
+    P: Stream<Item = ()> + FusedStream,
+{
+    fn poll_pump(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<()> {
+        if self.pump.is_terminated() {
+            return Poll::Pending;
+        }
+        ready!(self.as_mut().pump().poll_next(cx));
+        *self.as_mut().pressure() = PUMP_PRESSURE_FULL;
+        ().into()
+    }
+}
+
+impl<S, P> Stream for PumpedStream<S, P>
+where
     S: Stream,
+    P: Stream<Item = ()> + FusedStream,
 {
     type Item = S::Item;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<S::Item>> {
         loop {
-            if self.pump.is_terminated() {
-                return self.stream().poll_next(cx);
-            } else {
-                match self.as_mut().pump().poll(cx) {
+            // Avoid polling on the costly pump machinery while we can expect
+            // the stream to produce values.
+            if self.pressure == 0 {
+                match self.as_mut().poll_pump(cx) {
                     Poll::Pending => {
-                        return self.stream().poll_next(cx);
+                        return self.as_mut().stream().poll_next(cx);
                     }
-                    Poll::Ready(()) => {
-                        // The block iterator pump has finished,
-                        // but we need to exhaust the stream.
-                        // Continue looping, the is_terminated branch
-                        // should be taken from now on.
+                    Poll::Ready(()) => {}
+                }
+            } else {
+                match self.as_mut().stream().poll_next(cx) {
+                    Poll::Ready(Some(item)) => {
+                        *self.as_mut().pressure() -= 1;
+                        return Some(item).into();
+                    }
+                    Poll::Ready(None) => return None.into(),
+                    Poll::Pending => {
+                        ready!(self.as_mut().poll_pump(cx));
                     }
                 }
             }
@@ -560,7 +609,7 @@ where
     // If a storage error is encountered, it is also sent to the channel,
     // after which iteration terminates.
     fn fill_sink(
-        mut self,
+        mut self: Box<Self>,
         store: &mut NodeStorageConnection,
         sink: &mut ReplyStreamHandle03<T>,
     ) -> Result<BlockIteration<T, F>, ReplySendError> {
