@@ -337,11 +337,10 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let block0_explorer = block0.clone();
 
-    // TODO: we should get this value from the configuration
-    let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
+    let cache_capacity = 102_400;
 
     let (blockchain, blockchain_tip) =
-        start_up::load_blockchain(block0, storage, block_cache_ttl, &bootstrap_logger)?;
+        start_up::load_blockchain(block0, storage, cache_capacity, &bootstrap_logger)?;
 
     let mut bootstrap_attempt: usize = 0;
     loop {

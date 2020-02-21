@@ -1,10 +1,7 @@
 use crate::{blockcfg::HeaderHash, blockchain::Ref};
-use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Duration};
-use tokio::{
-    prelude::*,
-    sync::lock::Lock,
-    timer::{self, delay_queue, DelayQueue},
-};
+use lru::LruCache;
+use std::{convert::Infallible, sync::Arc};
+use tokio::{prelude::*, sync::lock::Lock};
 
 /// object that store the [`Ref`] in a cache. Every time a [`Ref`]
 /// is accessed its TTL will be reset. Once the TTL of [`Ref`] has
@@ -17,23 +14,15 @@ use tokio::{
 /// [`purge`]: ./struct.Ref.html#method.purge
 #[derive(Clone)]
 pub struct RefCache {
-    inner: Lock<RefCacheData>,
-}
-
-/// cache of already loaded in-memory block `Ref`
-struct RefCacheData {
-    entries: HashMap<HeaderHash, (Arc<Ref>, delay_queue::Key)>,
-    expirations: DelayQueue<HeaderHash>,
-
-    ttl: Duration,
+    inner: Lock<LruCache<HeaderHash, Arc<Ref>>>,
 }
 
 impl RefCache {
-    /// create a new `RefCache` with the given expiration `Duration`.
+    /// create a new `RefCache`.
     ///
-    pub fn new(ttl: Duration) -> Self {
+    pub fn new(cap: usize) -> Self {
         RefCache {
-            inner: Lock::new(RefCacheData::new(ttl)),
+            inner: Lock::new(LruCache::new(cap)),
         }
     }
 
@@ -50,8 +39,9 @@ impl RefCache {
         value: Arc<Ref>,
     ) -> impl Future<Item = (), Error = Infallible> {
         let mut inner = self.inner.clone();
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .map(move |mut guard| guard.insert(key, value))
+        future::poll_fn(move || Ok(inner.poll_lock())).map(move |mut guard| {
+            guard.put(key, value);
+        })
     }
 
     /// return a future to get a [`Ref`] from the cache
@@ -70,66 +60,5 @@ impl RefCache {
 
         future::poll_fn(move || Ok(inner.poll_lock()))
             .map(move |mut guard| guard.get(&key).map(Arc::clone))
-    }
-
-    /// return a future to remove a specific [`Ref`] from the cache.
-    ///
-    pub fn remove(&self, key: HeaderHash) -> impl Future<Item = (), Error = Infallible> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).map(move |mut guard| guard.remove(&key))
-    }
-
-    /// return a future that will remove every expired [`Ref`] from the cache
-    ///
-    pub fn purge(&self) -> impl Future<Item = (), Error = timer::Error> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .and_then(|mut guard| future::poll_fn(move || guard.poll_purge()))
-    }
-}
-
-impl RefCacheData {
-    fn new(ttl: Duration) -> Self {
-        RefCacheData {
-            entries: HashMap::new(),
-            expirations: DelayQueue::new(),
-            ttl,
-        }
-    }
-
-    fn insert(&mut self, key: HeaderHash, value: Arc<Ref>) {
-        let delay = self.expirations.insert(key.clone(), self.ttl);
-
-        self.entries.insert(key, (value, delay));
-    }
-
-    fn get(&mut self, key: &HeaderHash) -> Option<&Arc<Ref>> {
-        if let Some((v, k)) = self.entries.get(key) {
-            self.expirations.reset(k, self.ttl);
-
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    fn remove(&mut self, key: &HeaderHash) {
-        if let Some((_, cache_key)) = self.entries.remove(key) {
-            self.expirations.remove(&cache_key);
-        }
-    }
-
-    pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
-        loop {
-            match self.expirations.poll()? {
-                Async::NotReady => return Ok(Async::Ready(())),
-                Async::Ready(None) => return Ok(Async::Ready(())),
-                Async::Ready(Some(entry)) => {
-                    self.entries.remove(entry.get_ref());
-                }
-            }
-        }
     }
 }
