@@ -527,7 +527,7 @@ async fn process_network_blocks(
     let (stream, reply) = handle.into_stream_and_reply();
     let mut stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
     let mut candidate = None;
-    let mut latest_block : Option<Block> = None;
+    let mut latest_block: Option<Block> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
         let (maybe_block, new_stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
