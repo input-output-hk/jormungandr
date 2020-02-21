@@ -23,7 +23,6 @@ use crate::{
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
 
-use futures::future::Either;
 use slog::Logger;
 use tokio::prelude::*;
 use tokio_compat::prelude::*;
@@ -133,20 +132,18 @@ impl Process {
 
                 info!(logger, "received block announcement from network");
 
-                let future = process_block_announcement(
-                    blockchain.clone(),
-                    blockchain_tip.clone(),
-                    header,
-                    node_id,
-                    pull_headers_scheduler.clone(),
-                    get_next_block_scheduler.clone(),
-                    logger.clone(),
-                );
-
                 info.timeout_spawn_failable_std(
                     "process block announcement",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT),
-                    future.compat(),
+                    process_block_announcement(
+                        blockchain.clone(),
+                        blockchain_tip.clone(),
+                        header,
+                        node_id,
+                        pull_headers_scheduler.clone(),
+                        get_next_block_scheduler.clone(),
+                        logger.clone(),
+                    ),
                 )
             }
             BlockMsg::NetworkBlocks(handle) => {
@@ -438,10 +435,7 @@ async fn process_leadership_block_inner(
 
     let post_checked = if let Some(parent_ref) = parent {
         debug!(logger, "processing block from leader event");
-        blockchain
-            .post_check_header(header, parent_ref)
-            .compat()
-            .await?
+        blockchain.post_check_header(header, parent_ref).await?
     } else {
         error!(
             logger,
@@ -462,7 +456,7 @@ async fn process_leadership_block_inner(
     Ok(new_ref)
 }
 
-fn process_block_announcement(
+async fn process_block_announcement(
     blockchain: Blockchain,
     blockchain_tip: Tip,
     header: Header,
@@ -470,52 +464,49 @@ fn process_block_announcement(
     mut pull_headers_scheduler: PullHeadersScheduler,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,
-) -> impl Future<Item = (), Error = Error> {
-    blockchain
+) -> Result<(), Error> {
+    let pre_checked = blockchain
         .pre_check_header(header, false)
-        .and_then(move |pre_checked| match pre_checked {
-            PreCheckedHeader::AlreadyPresent { .. } => {
-                debug!(logger, "block is already present");
-                Either::A(future::ok(()))
-            }
-            PreCheckedHeader::MissingParent { header, .. } => {
-                debug!(logger, "block is missing a locally stored parent");
-                let to = header.hash();
-                Either::B(
-                    blockchain
-                        .get_checkpoints(blockchain_tip.branch())
-                        .map(move |from| {
-                            pull_headers_scheduler
-                                .schedule(to, node_id, from)
-                                .unwrap_or_else(move |err| {
-                                    error!(
-                                        logger,
-                                        "cannot schedule pulling headers"; "reason" => ?err
-                                    )
-                                });
-                        }),
-                )
-            }
-            PreCheckedHeader::HeaderWithCache {
-                header,
-                parent_ref: _,
-            } => {
-                debug!(
-                    logger,
-                    "Announced block has a locally stored parent, fetch it"
-                );
-                get_next_block_scheduler
-                    .schedule(header.id(), node_id, ())
-                    .unwrap_or_else(move |err| {
-                        error!(
-                            logger,
-                            "cannot schedule getting next block"; "reason" => ?err
-                        )
-                    });
-                Either::A(future::ok(()))
-            }
-        })
-        .map_err(|err| Error::with_chain(err, "cannot process block announcement"))
+        .await
+        .map_err(|err| Error::with_chain(err, "cannot process block announcement"))?;
+    match pre_checked {
+        PreCheckedHeader::AlreadyPresent { .. } => {
+            debug!(logger, "block is already present");
+            Ok(())
+        }
+        PreCheckedHeader::MissingParent { header, .. } => {
+            debug!(logger, "block is missing a locally stored parent");
+            let to = header.hash();
+            let from = blockchain.get_checkpoints(blockchain_tip.branch()).await;
+            pull_headers_scheduler
+                .schedule(to, node_id, from)
+                .unwrap_or_else(move |err| {
+                    error!(
+                        logger,
+                        "cannot schedule pulling headers"; "reason" => ?err
+                    )
+                });
+            Ok(())
+        }
+        PreCheckedHeader::HeaderWithCache {
+            header,
+            parent_ref: _,
+        } => {
+            debug!(
+                logger,
+                "Announced block has a locally stored parent, fetch it"
+            );
+            get_next_block_scheduler
+                .schedule(header.id(), node_id, ())
+                .unwrap_or_else(move |err| {
+                    error!(
+                        logger,
+                        "cannot schedule getting next block"; "reason" => ?err
+                    )
+                });
+            Ok(())
+        }
+    }
 }
 
 async fn process_network_blocks(
@@ -604,7 +595,7 @@ async fn process_network_block(
             |e| error!(logger, "get next block schedule completion failed"; "reason" => ?e),
         );
     let header = block.header();
-    let pre_checked = blockchain.pre_check_header(header, false).compat().await?;
+    let pre_checked = blockchain.pre_check_header(header, false).await?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent { header, .. } => {
             debug!(
@@ -653,7 +644,6 @@ async fn check_and_apply_block(
     let explorer_enabled = explorer_msg_box.is_some();
     let post_checked = blockchain
         .post_check_header(block.header(), parent_ref)
-        .compat()
         .await?;
     let header = post_checked.header();
     let block_hash = header.hash();

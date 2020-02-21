@@ -415,7 +415,20 @@ impl Blockchain {
     /// * the block's parent is missing: we need to download it and call again
     ///   this function.
     ///
-    pub fn pre_check_header(
+    pub async fn pre_check_header(&self, header: Header, force: bool) -> Result<PreCheckedHeader> {
+        let pre_check = self.load_header_parent(header, force).compat().await?;
+        match &pre_check {
+            PreCheckedHeader::HeaderWithCache {
+                ref header,
+                ref parent_ref,
+            } => pre_verify_link(header, parent_ref.header())
+                .map(|()| pre_check)
+                .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()),
+            _ => Ok(pre_check),
+        }
+    }
+
+    pub fn pre_check_header_old(
         &self,
         header: Header,
         force: bool,
@@ -425,14 +438,10 @@ impl Blockchain {
                 PreCheckedHeader::HeaderWithCache {
                     ref header,
                     ref parent_ref,
-                } => future01::result(
-                    pre_verify_link(header, parent_ref.header())
-                        .map(|()| pre_check)
-                        .map_err(|e| {
-                            ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()
-                        }),
-                ),
-                _ => future01::ok(pre_check),
+                } => pre_verify_link(header, parent_ref.header())
+                    .map(|()| pre_check)
+                    .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()),
+                _ => Ok(pre_check),
             })
     }
 
@@ -443,11 +452,11 @@ impl Blockchain {
     /// * the header,
     /// * the ledger state associated to the parent block
     /// * the leadership schedule associated to the header
-    pub fn post_check_header(
+    pub async fn post_check_header(
         &self,
         header: Header,
         parent: Arc<Ref>,
-    ) -> impl Future01<Item = PostCheckedHeader, Error = Error> {
+    ) -> Result<PostCheckedHeader> {
         let current_date = header.block_date();
 
         let (
@@ -459,7 +468,7 @@ impl Blockchain {
         ) = new_epoch_leadership_from(current_date.epoch, parent);
 
         match epoch_leadership_schedule.verify(&header) {
-            Verification::Success => future01::ok(PostCheckedHeader {
+            Verification::Success => Ok(PostCheckedHeader {
                 header,
                 epoch_leadership_schedule,
                 epoch_ledger_parameters,
@@ -468,7 +477,7 @@ impl Blockchain {
                 previous_epoch_state,
             }),
             Verification::Failure(error) => {
-                future01::err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()).into())
+                Err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()).into())
             }
         }
     }
@@ -710,11 +719,11 @@ impl Blockchain {
                     }
 
                     let pre_checked_header: PreCheckedHeader =
-                        self.pre_check_header(header, true).compat().await?;
+                        self.pre_check_header(header, true).await?;
 
                     let post_checked_header: PostCheckedHeader = match pre_checked_header {
                         PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                            self.post_check_header(header, parent_ref).compat().await?
+                            self.post_check_header(header, parent_ref).await?
                         }
                         PreCheckedHeader::AlreadyPresent {
                             header,
@@ -741,11 +750,15 @@ impl Blockchain {
         Ok(branch)
     }
 
-    pub fn get_checkpoints(
+    pub fn get_checkpoints_old(
         &self,
         branch: &Branch,
     ) -> impl Future01<Item = Checkpoints, Error = Error> {
         branch.get_ref().map(Checkpoints::new_from)
+    }
+
+    pub async fn get_checkpoints(&self, branch: &Branch) -> Checkpoints {
+        Checkpoints::new_from(branch.get_ref_std().await)
     }
 }
 

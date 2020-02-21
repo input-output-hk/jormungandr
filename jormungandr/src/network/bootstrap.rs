@@ -103,7 +103,7 @@ pub fn bootstrap_from_peer(
         })
         .join(
             blockchain
-                .get_checkpoints(tip.branch())
+                .get_checkpoints_old(tip.branch())
                 .map_err(|e| Error::GetCheckpointsFailed { source: e }),
         )
         .and_then(move |(mut client, checkpoints)| {
@@ -277,7 +277,6 @@ async fn handle_block(
     let header = block.header();
     let pre_checked = blockchain
         .pre_check_header(header, true)
-        .compat()
         .await
         .map_err(|e| Error::HeaderCheckFailed { source: e })?;
     match pre_checked {
@@ -295,7 +294,6 @@ async fn handle_block(
         PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
             let post_checked = blockchain
                 .post_check_header(header, parent_ref)
-                .compat()
                 .await
                 .map_err(|e| Error::HeaderCheckFailed { source: e })?;
 
