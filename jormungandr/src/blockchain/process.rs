@@ -372,7 +372,6 @@ async fn process_and_propagate_new_ref(
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
-
     debug!(logger, "processing the new block and propagating"; "hash" => %hash);
 
     process_new_ref(logger, blockchain, tip, new_block_ref).await?;
@@ -405,9 +404,6 @@ async fn process_leadership_block(
     try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
         .map_err(|_| "cannot remove fragments from pool".to_string())?;
 
-    // Track block as new new tip block
-    stats_counter.set_tip_block(Some(block.clone())).await;
-
     process_and_propagate_new_ref(
         &logger,
         &mut blockchain,
@@ -416,6 +412,9 @@ async fn process_leadership_block(
         network_msg_box,
     )
     .await?;
+
+    // Track block as new new tip block
+    stats_counter.set_tip_block(Some(block.clone())).await;
 
     if let Some(msg_box) = explorer_msg_box {
         msg_box
@@ -528,11 +527,13 @@ async fn process_network_blocks(
     let (stream, reply) = handle.into_stream_and_reply();
     let mut stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
     let mut candidate = None;
+    let mut latest_block : Option<Block> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
         let (maybe_block, new_stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
         match maybe_block {
             Some(block) => {
+                latest_block = Some(block.clone());
                 let res = process_network_block(
                     &mut blockchain,
                     block.clone(),
@@ -545,8 +546,6 @@ async fn process_network_blocks(
                 match res {
                     Ok(Some(r)) => {
                         stats_counter.add_block_recv_cnt(1);
-                        // Track block as new new tip block
-                        stats_counter.set_tip_block(Some(block.clone())).await;
                         stream = new_stream;
                         candidate = Some(r);
                     }
@@ -566,6 +565,7 @@ async fn process_network_blocks(
                 }
             }
             None => {
+                latest_block = None;
                 reply.reply_ok(());
                 break candidate;
             }
@@ -582,6 +582,8 @@ async fn process_network_blocks(
                 network_msg_box,
             )
             .await?;
+
+            stats_counter.set_tip_block(latest_block).await;
             Ok(r)
         }
         None => Ok(()),
