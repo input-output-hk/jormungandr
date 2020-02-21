@@ -28,13 +28,13 @@ pub fn connect(
     channels: Channels,
 ) -> (ConnectHandle, ConnectFuture<grpc::ConnectFuture>) {
     let (sender, receiver) = oneshot::channel();
-    let addr = state.connection;
+    let peer = state.peer();
     let node_id = state.global.topology.node_id();
     let builder = Some(ClientBuilder {
         channels,
         logger: state.logger,
     });
-    let cf = grpc::connect(addr, Some(node_id), state.global.executor.clone());
+    let cf = grpc::connect(&peer, Some(node_id), state.global.executor.clone());
     let handle = ConnectHandle { receiver };
     let future = ConnectFuture {
         sender: Some(sender),

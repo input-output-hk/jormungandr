@@ -218,6 +218,10 @@ impl ConnectionState {
         }
     }
 
+    fn peer(&self) -> Peer {
+        Peer::with_timeout(self.connection, self.timeout)
+    }
+
     fn logger(&self) -> &Logger {
         &self.logger
     }
@@ -469,7 +473,7 @@ fn connect_and_propagate(
         state.topology.node_id(),
         "topology tells the node to connect to itself"
     );
-    let peer = Peer::new(addr, Protocol::Grpc);
+    let peer = Peer::new(addr);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let conn_logger = conn_state
         .logger()
@@ -481,8 +485,10 @@ fn connect_and_propagate(
     let cf = state.peers.add_connecting(node_id, handle, options)
         .and_then(|()| connecting)
         .or_else(move |e| {
+            use crate::network::grpc::ConnectError::*;
+
             let benign = match e {
-                ConnectError::Connect(e) => {
+                ConnectError::Connect(Failed(e)) => {
                     if let Some(e) = e.connect_error() {
                         info!(conn_logger, "failed to connect to peer"; "reason" => %e);
                     } else if let Some(e) = e.http_error() {
@@ -492,12 +498,16 @@ fn connect_and_propagate(
                     }
                     false
                 }
+                ConnectError::Connect(TimedOut) => {
+                    info!(conn_logger, "connection to peer timed out");
+                    false
+                }
                 ConnectError::Canceled => {
                     debug!(conn_logger, "connection to peer has been canceled");
                     true
                 }
                 _ => {
-                    info!(conn_logger, "connection to peer failed"; "reason" => %e);
+                    info!(conn_logger, "connection to peer failed"; "error" => ?e);
                     false
                 }
             };
@@ -596,11 +606,7 @@ fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
     let trusted_peers = config
         .trusted_peers
         .iter()
-        .filter_map(|tp| {
-            tp.address
-                .to_socketaddr()
-                .map(|sa| Peer::new(sa.clone(), Protocol::Grpc))
-        })
+        .filter_map(|tp| tp.address.to_socketaddr().map(|sa| Peer::new(sa.clone())))
         .collect::<Vec<_>>();
     if config.bootstrap_from_trusted_peers {
         let _: usize = peers.add_peers(&trusted_peers);
@@ -660,7 +666,7 @@ pub fn bootstrap(
     for peer in netboot_peers.randomly() {
         let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
         let res = bootstrap::bootstrap_from_peer(
-            peer.clone(),
+            peer,
             blockchain.clone(),
             branch.clone(),
             logger.clone(),
@@ -706,8 +712,8 @@ pub fn fetch_block(
 
     for address in trusted_peers_shuffled(&config) {
         let logger = logger.new(o!("peer_address" => address.to_string()));
-        let peer = Peer::new(address, Protocol::Grpc);
-        match grpc::fetch_block(peer, hash, &logger) {
+        let peer = Peer::new(address);
+        match grpc::fetch_block(&peer, hash, &logger) {
             Err(grpc::FetchBlockError::Connect { source: e }) => {
                 warn!(logger, "unable to reach peer for block download"; "reason" => %e);
             }
