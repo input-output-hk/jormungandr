@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-extern crate custom_error;
 extern crate serde_yaml;
 
 pub mod output_extensions;
@@ -8,15 +7,17 @@ mod wait;
 
 pub use wait::{Wait, WaitBuilder};
 
-use self::custom_error::custom_error;
 use self::output_extensions::ProcessOutput;
 use std::{
     process::{Command, Output, Stdio},
     thread, time,
 };
+use thiserror::Error;
 
-custom_error! {pub ProcessError
-     ProcessExited{message: String} = "could not start process '{message}'",
+#[derive(Debug, Error)]
+pub enum ProcessError {
+    #[error("could not start process '{message}'")]
+    ProcessExited { message: String },
 }
 
 /// Runs command, wait for output and returns it output
@@ -97,7 +98,8 @@ pub fn run_process_until_exited_successfully(
         }
 
         println!(
-            "non-zero status with message(). waiting {} s and trying again ({} of {})",
+            "non-zero status with message(). {}. waiting {} s and trying again ({} of {})",
+            command_description,
             &timeout,
             &max_attempts - &attempts + 1,
             &max_attempts
@@ -125,7 +127,7 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
     error_description: &str,
 ) -> Result<(), ProcessError> {
     let sleep_between_attempt_duration = time::Duration::from_millis(&sleep_between_attempt * 1000);
-    let mut attempts = max_attempts.clone();
+    let mut attempts = 1;
 
     println!("Running command {:?} in loop", command);
 
@@ -142,34 +144,27 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
         println!("Standard Error: {}", output.err_as_lossy_string());
 
         if output.status.success() && is_output_ok(output) {
-            break;
+            println!("Success: {}", &command_description);
+            return Ok(());
         }
 
-        if attempts <= 0 {
-            break;
+        if attempts >= max_attempts {
+            return Err(ProcessError::ProcessExited {
+                message: format!(
+                    "{} (tried to connect {} times with {} s interval)",
+                    &error_description, &max_attempts, &sleep_between_attempt
+                ),
+            });
         }
 
         println!(
             "non-zero status with message(). waiting {} s and trying again ({} of {})",
-            &sleep_between_attempt,
-            &max_attempts - &attempts + 1,
-            &max_attempts
+            &sleep_between_attempt, &attempts, &max_attempts
         );
 
-        attempts = attempts - 1;
+        attempts = attempts + 1;
         thread::sleep(sleep_between_attempt_duration);
     }
-
-    if attempts <= 0 {
-        return Err(ProcessError::ProcessExited {
-            message: format!(
-                "{} (tried to connect {} times with {} s interval)",
-                &error_description, &max_attempts, &sleep_between_attempt
-            ),
-        });
-    }
-    println!("Success: {}", &command_description);
-    Ok(())
 }
 
 pub fn sleep(seconds: u64) {

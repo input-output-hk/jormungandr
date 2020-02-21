@@ -8,8 +8,7 @@ pub struct AddCertificate {
     #[structopt(flatten)]
     pub common: common::CommonTransaction,
 
-    /// the value
-    #[structopt(name = "VALUE", parse(try_from_str))]
+    /// bech32-encoded certificate
     pub certificate: Certificate,
 }
 

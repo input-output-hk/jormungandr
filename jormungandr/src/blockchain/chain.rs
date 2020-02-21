@@ -52,17 +52,19 @@ See Internal documentation for more details: doc/internal_design.md
 use super::{branch::Branches, reference_cache::RefCache};
 use crate::{
     blockcfg::{
-        Block, Block0Error, BlockDate, ChainLength, Epoch, Header, HeaderHash, Leadership, Ledger,
-        LedgerParameters,
+        Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderHash,
+        Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
     },
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
-    start_up::NodeStorage,
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
-use chain_storage::error::Error as StorageError;
+use chain_storage_sqlite_old::Error as StorageError;
 use chain_time::TimeFrame;
+use slog::Logger;
 use std::{convert::Infallible, sync::Arc, time::Duration};
-use tokio::prelude::*;
+use tokio::prelude::{future as future01, future::Either as Either01, Future as Future01};
+use tokio02::stream::StreamExt;
+use tokio_compat::prelude::*;
 
 // derive
 use thiserror::Error;
@@ -178,9 +180,11 @@ pub struct Blockchain {
 
     ref_cache: RefCache,
 
-    ledgers: Multiverse<Arc<Ledger>>,
+    ledgers: Multiverse<Ledger>,
 
     storage: Storage,
+
+    block0: HeaderHash,
 }
 
 pub enum PreCheckedHeader {
@@ -228,14 +232,46 @@ pub struct PostCheckedHeader {
     previous_epoch_state: Option<Arc<Ref>>,
 }
 
+impl PostCheckedHeader {
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
+}
+
+pub enum AppliedBlock {
+    New(Arc<Ref>),
+    Existing(Arc<Ref>),
+}
+
+impl AppliedBlock {
+    pub fn cached_ref(&self) -> Arc<Ref> {
+        match self {
+            AppliedBlock::New(r) => r.clone(),
+            AppliedBlock::Existing(r) => r.clone(),
+        }
+    }
+
+    pub fn new_ref(&self) -> Option<Arc<Ref>> {
+        match self {
+            AppliedBlock::New(r) => Some(r.clone()),
+            AppliedBlock::Existing(_) => None,
+        }
+    }
+}
+
 impl Blockchain {
-    pub fn new(storage: NodeStorage, ref_cache_ttl: Duration) -> Self {
+    pub fn new(block0: HeaderHash, storage: Storage, ref_cache_ttl: Duration) -> Self {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(ref_cache_ttl),
             ledgers: Multiverse::new(),
-            storage: Storage::new(storage),
+            storage,
+            block0,
         }
+    }
+
+    pub fn block0(&self) -> &HeaderHash {
+        &self.block0
     }
 
     pub fn storage(&self) -> &Storage {
@@ -251,38 +287,41 @@ impl Blockchain {
     }
 
     /// create and store a reference of this leader to the new
-    fn create_and_store_reference(
-        &mut self,
+    async fn create_and_store_reference(
+        &self,
         header_hash: HeaderHash,
         header: Header,
-        ledger: Arc<Ledger>,
+        ledger: Ledger,
         time_frame: Arc<TimeFrame>,
         leadership: Arc<Leadership>,
         ledger_parameters: Arc<LedgerParameters>,
         previous_epoch_state: Option<Arc<Ref>>,
-    ) -> impl Future<Item = Arc<Ref>, Error = Infallible> {
+    ) -> Arc<Ref> {
         let chain_length = header.chain_length();
 
         let multiverse = self.ledgers.clone();
         let ref_cache = self.ref_cache.clone();
 
-        multiverse
-            .insert(chain_length, header_hash, ledger.clone())
-            .and_then(move |ledger_gcroot| {
-                let reference = Ref::new(
-                    ledger_gcroot,
-                    ledger,
-                    time_frame,
-                    leadership,
-                    ledger_parameters,
-                    header,
-                    previous_epoch_state,
-                );
-                let reference = Arc::new(reference);
-                ref_cache
-                    .insert(header_hash, Arc::clone(&reference))
-                    .map(|()| reference)
-            })
+        let ledger_ref = multiverse
+            .insert(chain_length, header_hash, ledger)
+            .compat()
+            .await
+            .unwrap();
+        let reference = Ref::new(
+            ledger_ref,
+            time_frame,
+            leadership,
+            ledger_parameters,
+            header,
+            previous_epoch_state,
+        );
+        let reference = Arc::new(reference);
+        ref_cache
+            .insert(header_hash, Arc::clone(&reference))
+            .compat()
+            .await
+            .unwrap();
+        reference
     }
 
     /// get `Ref` of the given header hash
@@ -297,9 +336,9 @@ impl Blockchain {
     /// TODO: the case where the block is in storage but not yet in the cache
     ///       is not implemented
     pub fn get_ref(
-        &mut self,
+        &self,
         header_hash: HeaderHash,
-    ) -> impl Future<Item = Option<Arc<Ref>>, Error = Error> {
+    ) -> impl Future01<Item = Option<Arc<Ref>>, Error = Error> {
         let get_ref_cache_future = self.ref_cache.get(header_hash.clone());
         let block_exists_future = self.storage.block_exists(header_hash);
 
@@ -307,55 +346,57 @@ impl Blockchain {
             .map_err(|_: Infallible| unreachable!())
             .and_then(|maybe_ref| {
                 if maybe_ref.is_none() {
-                    future::Either::A(
+                    Either01::A(
                         block_exists_future
                             .map_err(|e| {
                                 Error::with_chain(e, "cannot check if the block is in the storage")
                             })
-                            .and_then(|block_exists| {
-                                if block_exists {
-                                    unimplemented!(
-                                        "method to load a Ref from the storage is not yet there"
-                                    )
+                            .and_then(|_block_exists| {
+                                if _block_exists {
+                                    // TODO: we have the block in the storage but it is missing
+                                    // from the state management. Force the node to fall through
+                                    // reloading the blocks from the storage to allow fast
+                                    // from storage reload
+                                    future01::ok(None)
                                 } else {
-                                    future::ok(None)
+                                    future01::ok(None)
                                 }
                             }),
                     )
                 } else {
-                    future::Either::B(future::ok(maybe_ref))
+                    Either01::B(future01::ok(maybe_ref))
                 }
             })
     }
 
     /// load the header's parent `Ref`.
     fn load_header_parent(
-        &mut self,
+        &self,
         header: Header,
         force: bool,
-    ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
+    ) -> impl Future01<Item = PreCheckedHeader, Error = Error> {
         let block_id = header.hash();
         let parent_block_id = header.block_parent_hash().clone();
 
         let get_self_ref = if force {
-            future::Either::B(future::ok(None))
+            Either01::B(future01::ok(None))
         } else {
-            future::Either::A(self.get_ref(block_id.clone()))
+            Either01::A(self.get_ref(block_id.clone()))
         };
         let get_parent_ref = self.get_ref(parent_block_id);
 
         get_self_ref.and_then(|maybe_self_ref| {
             if let Some(self_ref) = maybe_self_ref {
-                future::Either::A(future::ok(PreCheckedHeader::AlreadyPresent {
+                Either01::A(future01::ok(PreCheckedHeader::AlreadyPresent {
                     header,
                     cached_reference: Some(self_ref),
                 }))
             } else {
-                future::Either::B(get_parent_ref.and_then(|maybe_parent_ref| {
+                Either01::B(get_parent_ref.and_then(|maybe_parent_ref| {
                     if let Some(parent_ref) = maybe_parent_ref {
-                        future::ok(PreCheckedHeader::HeaderWithCache { header, parent_ref })
+                        future01::ok(PreCheckedHeader::HeaderWithCache { header, parent_ref })
                     } else {
-                        future::ok(PreCheckedHeader::MissingParent { header })
+                        future01::ok(PreCheckedHeader::MissingParent { header })
                     }
                 }))
             }
@@ -374,24 +415,33 @@ impl Blockchain {
     /// * the block's parent is missing: we need to download it and call again
     ///   this function.
     ///
-    pub fn pre_check_header(
-        &mut self,
+    pub async fn pre_check_header(&self, header: Header, force: bool) -> Result<PreCheckedHeader> {
+        let pre_check = self.load_header_parent(header, force).compat().await?;
+        match &pre_check {
+            PreCheckedHeader::HeaderWithCache {
+                ref header,
+                ref parent_ref,
+            } => pre_verify_link(header, parent_ref.header())
+                .map(|()| pre_check)
+                .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()),
+            _ => Ok(pre_check),
+        }
+    }
+
+    pub fn pre_check_header_old(
+        &self,
         header: Header,
         force: bool,
-    ) -> impl Future<Item = PreCheckedHeader, Error = Error> {
+    ) -> impl Future01<Item = PreCheckedHeader, Error = Error> {
         self.load_header_parent(header, force)
             .and_then(|pre_check| match &pre_check {
                 PreCheckedHeader::HeaderWithCache {
                     ref header,
                     ref parent_ref,
-                } => future::result(
-                    pre_verify_link(header, parent_ref.header())
-                        .map(|()| pre_check)
-                        .map_err(|e| {
-                            ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()
-                        }),
-                ),
-                _ => future::ok(pre_check),
+                } => pre_verify_link(header, parent_ref.header())
+                    .map(|()| pre_check)
+                    .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()),
+                _ => Ok(pre_check),
             })
     }
 
@@ -402,20 +452,23 @@ impl Blockchain {
     /// * the header,
     /// * the ledger state associated to the parent block
     /// * the leadership schedule associated to the header
-    pub fn post_check_header(
-        &mut self,
+    pub async fn post_check_header(
+        &self,
         header: Header,
         parent: Arc<Ref>,
-    ) -> impl Future<Item = PostCheckedHeader, Error = Error> {
-        let parent_ledger_state = parent.ledger().clone();
-
+    ) -> Result<PostCheckedHeader> {
         let current_date = header.block_date();
 
-        let (epoch_leadership_schedule, epoch_ledger_parameters, time_frame, previous_epoch_state) =
-            new_epoch_leadership_from(current_date.epoch, parent);
+        let (
+            parent_ledger_state,
+            epoch_leadership_schedule,
+            epoch_ledger_parameters,
+            time_frame,
+            previous_epoch_state,
+        ) = new_epoch_leadership_from(current_date.epoch, parent);
 
         match epoch_leadership_schedule.verify(&header) {
-            Verification::Success => future::ok(PostCheckedHeader {
+            Verification::Success => Ok(PostCheckedHeader {
                 header,
                 epoch_leadership_schedule,
                 epoch_ledger_parameters,
@@ -424,16 +477,16 @@ impl Blockchain {
                 previous_epoch_state,
             }),
             Verification::Failure(error) => {
-                future::err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()).into())
+                Err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()).into())
             }
         }
     }
 
-    fn apply_block(
-        &mut self,
+    async fn apply_block(
+        &self,
         post_checked_header: PostCheckedHeader,
         block: &Block,
-    ) -> impl Future<Item = Arc<Ref>, Error = Error> {
+    ) -> Result<Arc<Ref>> {
         let header = post_checked_header.header;
         let block_id = header.hash();
         let epoch_leadership_schedule = post_checked_header.epoch_leadership_schedule;
@@ -446,46 +499,39 @@ impl Blockchain {
 
         let metadata = header.to_content_eval_context();
 
-        let mut self1 = self.clone();
-
-        future::result(
-            ledger
-                .apply_block(&epoch_ledger_parameters, block.contents.iter(), &metadata)
-                .chain_err(|| ErrorKind::CannotApplyBlock),
-        )
-        .and_then(move |new_ledger| {
-            self1
-                .create_and_store_reference(
-                    block_id,
-                    header,
-                    Arc::new(new_ledger),
-                    time_frame,
-                    epoch_leadership_schedule,
-                    epoch_ledger_parameters,
-                    previous_epoch_state,
-                )
-                .map_err(|_: Infallible| unreachable!())
-        })
+        let new_ledger = ledger
+            .apply_block(&epoch_ledger_parameters, &block.contents, &metadata)
+            .chain_err(|| ErrorKind::CannotApplyBlock)?;
+        Ok(self
+            .create_and_store_reference(
+                block_id,
+                header,
+                new_ledger,
+                time_frame,
+                epoch_leadership_schedule,
+                epoch_ledger_parameters,
+                previous_epoch_state,
+            )
+            .await)
     }
 
     /// Apply the block on the blockchain from a post checked header
-    /// and add it to the storage.
-    pub fn apply_and_store_block(
-        &mut self,
+    /// and add it to the storage. If the block is already present in
+    /// the storage, the returned future resolves to None. Otherwise
+    /// it returns the reference to the block.
+    pub async fn apply_and_store_block(
+        &self,
         post_checked_header: PostCheckedHeader,
         block: Block,
-    ) -> impl Future<Item = Arc<Ref>, Error = Error> {
-        let mut storage = self.storage.clone();
-        self.apply_block(post_checked_header, &block)
-            .and_then(move |block_ref| {
-                storage
-                    .put_block(block)
-                    .or_else(|err| match err {
-                        StorageError::BlockAlreadyPresent => Ok(()),
-                        err => Err(err.into()),
-                    })
-                    .and_then(move |()| Ok(block_ref))
-            })
+    ) -> Result<AppliedBlock> {
+        let storage = self.storage.back_to_the_future().clone();
+        let block_ref = self.apply_block(post_checked_header, &block).await?;
+        let res = storage.put_block(block).await;
+        match res {
+            Ok(()) => Ok(AppliedBlock::New(block_ref)),
+            Err(StorageError::BlockAlreadyPresent) => Ok(AppliedBlock::Existing(block_ref)),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Apply the given block0 in the blockchain (updating the RefCache and the other objects)
@@ -500,13 +546,12 @@ impl Blockchain {
     ///
     /// * the block0 does build an invalid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     ///
-    fn apply_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
-        let block0_header = block0.header.clone();
-        let block0_id = block0_header.hash();
-        let block0_id_1 = block0_header.hash();
-        let block0_date = block0_header.block_date().clone();
+    async fn apply_block0(&self, block0: &Block) -> Result<Branch> {
+        use tokio_compat::prelude::*;
 
-        let mut self1 = self.clone();
+        let block0_id = block0.header.hash();
+        let block0_date = block0.header.block_date();
+
         let mut branches = self.branches.clone();
 
         let time_frame = {
@@ -514,61 +559,43 @@ impl Blockchain {
 
             let start_time = block0
                 .start_time()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError));
+                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
             let slot_duration = block0
                 .slot_duration()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError));
+                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
 
-            future::result(start_time.and_then(|start_time| {
-                slot_duration.map(|slot_duration| {
-                    TimeFrame::new(
-                        chain_time::Timeline::new(start_time),
-                        chain_time::SlotDuration::from_secs(slot_duration.as_secs() as u32),
-                    )
-                })
-            }))
+            TimeFrame::new(
+                chain_time::Timeline::new(start_time),
+                chain_time::SlotDuration::from_secs(slot_duration.as_secs() as u32),
+            )
         };
 
         // we lift the creation of the ledger in the future type
         // this allow chaining of the operation and lifting the error handling
         // in the same place
-        Ledger::new(block0_id_1, block0.contents.iter())
-            .map(future::ok)
-            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))
-            .unwrap_or_else(future::err)
-            .map(move |block0_ledger| {
-                let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
-                (block0_ledger, block0_leadership)
-            })
-            .and_then(move |(block0_ledger, block0_leadership)| {
-                time_frame.map(|time_frame| (block0_ledger, block0_leadership, time_frame))
-            })
-            .and_then(move |(block0_ledger, block0_leadership, time_frame)| {
-                let ledger_parameters = block0_leadership.ledger_parameters().clone();
+        let block0_ledger = Ledger::new(block0_id, block0.contents.iter())
+            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
+        let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
+        let ledger_parameters = block0_leadership.ledger_parameters().clone();
 
-                self1
-                    .create_and_store_reference(
-                        block0_id,
-                        block0_header,
-                        Arc::new(block0_ledger),
-                        Arc::new(time_frame),
-                        Arc::new(block0_leadership),
-                        Arc::new(ledger_parameters),
-                        None,
-                    )
-                    .map_err(|_: Infallible| unreachable!())
-            })
-            .map(Branch::new)
-            .and_then(move |branch| {
-                branches
-                    .add(branch.clone())
-                    .map(|()| branch)
-                    .map_err(|_: Infallible| unreachable!())
-            })
+        let b = self
+            .create_and_store_reference(
+                block0_id,
+                block0.header.clone(),
+                block0_ledger,
+                Arc::new(time_frame),
+                Arc::new(block0_leadership),
+                Arc::new(ledger_parameters),
+                None,
+            )
+            .await;
+        let b = Branch::new(b);
+        branches.add(b.clone()).compat().await.unwrap();
+        Ok(b)
     }
 
     /// function to do the initial application of the block0 in the `Blockchain` and its
-    /// storage. We assume `Block0` is not already in the `NodeStorage`.
+    /// storage. We assume `Block0` is not already in the `Storage`.
     ///
     /// This function returns the create block0 branch. Having it will
     /// avoid searching for it in the blockchain's `branches` and perform
@@ -582,38 +609,38 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub fn load_from_block0(&mut self, block0: Block) -> impl Future<Item = Branch, Error = Error> {
-        let block0_clone = block0.clone();
-        let block0_header = block0.header.clone();
-        let block0_id = block0_header.hash();
+    pub async fn load_from_block0(&self, block0: Block) -> Result<Branch> {
+        use chain_core::property::Block;
+        use tokio_compat::prelude::*;
 
-        let mut self1 = self.clone();
-        let mut storage_store = self.storage.clone();
-        let mut storage_store_2 = self.storage.clone();
+        let block0_id = block0.id();
 
-        self.storage
+        let already_exist = self
+            .storage
             .block_exists(block0_id.clone())
-            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
-            .and_then(|existence| {
-                if existence {
-                    future::err(ErrorKind::Block0AlreadyInStorage.into())
-                } else {
-                    future::ok(())
-                }
-            })
-            .and_then(move |()| self1.apply_block0(block0_clone))
-            .and_then(move |block0_branch| {
-                storage_store
-                    .put_block(block0)
-                    .map(|()| block0_branch)
-                    .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
-            })
-            .and_then(move |block0_branch| {
-                storage_store_2
-                    .put_tag(MAIN_BRANCH_TAG.to_owned(), block0_id)
-                    .map(|()| block0_branch)
-                    .map_err(|e| Error::with_chain(e, "Cannot put block0's hash in the HEAD tag"))
-            })
+            .compat()
+            .await
+            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
+
+        if already_exist {
+            return Err(ErrorKind::Block0AlreadyInStorage.into());
+        }
+
+        let block0_branch = self.apply_block0(&block0).await?;
+
+        let storage = self.storage.clone();
+
+        storage
+            .put_block(block0)
+            .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))
+            .compat()
+            .await?;
+        storage
+            .put_tag(MAIN_BRANCH_TAG.to_owned(), block0_id)
+            .map_err(|e| Error::with_chain(e, "Cannot put block0's hash in the HEAD tag"))
+            .compat()
+            .await?;
+        Ok(block0_branch)
     }
 
     /// returns a future that will propagate the initial states and leadership
@@ -630,106 +657,163 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub fn load_from_storage(
-        &mut self,
-        block0: Block,
-    ) -> impl Future<Item = Branch, Error = Error> {
-        let block0_header = block0.header.clone();
-        let block0_id = block0_header.hash();
-        let block0_id_2 = block0_id.clone();
-        let self1 = self.clone();
-        let mut self2 = self.clone();
-        let self3 = self.clone();
-        let self4 = self.clone();
+    pub async fn load_from_storage(&self, block0: Block, logger: &Logger) -> Result<Branch> {
+        use tokio_compat::prelude::*;
 
-        self.storage
+        let block0_id = block0.header.hash();
+        let already_exist = self
+            .storage
             .block_exists(block0_id.clone())
-            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))
-            .and_then(|existence| {
-                if !existence {
-                    future::err(ErrorKind::Block0NotAlreadyInStorage.into())
-                } else {
-                    future::ok(())
+            .compat()
+            .await
+            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
+
+        if !already_exist {
+            return Err(ErrorKind::Block0NotAlreadyInStorage.into());
+        }
+
+        let opt = self
+            .storage
+            .get_tag(MAIN_BRANCH_TAG.to_owned())
+            .map_err(|e| Error::with_chain(e, "Cannot get hash of the HEAD tag"))
+            .compat()
+            .await?;
+
+        let head_hash = if let Some(id) = opt {
+            id
+        } else {
+            return Err(ErrorKind::NoTag(MAIN_BRANCH_TAG.to_owned()).into());
+        };
+
+        let block0_branch = self.apply_block0(&block0).await?;
+
+        let mut block_stream = self
+            .storage
+            .back_to_the_future()
+            .stream_from_to(block0_id, head_hash)
+            .await
+            .map(Box::pin)
+            .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))?;
+
+        let mut branch = block0_branch;
+        let mut count = 0u64;
+
+        while let Some(r) = block_stream.next().await {
+            match r {
+                Err(e) => {
+                    return Err(Error::with_chain(
+                        e,
+                        "Error while iterating between block0 and HEAD",
+                    ))
                 }
-            })
-            .and_then(move |()| {
-                self1
-                    .storage
-                    .get_tag(MAIN_BRANCH_TAG.to_owned())
-                    .map_err(|e| Error::with_chain(e, "Cannot get hash of the HEAD tag"))
-                    .and_then(|opt| {
-                        if let Some(id) = opt {
-                            future::ok(id)
-                        } else {
-                            future::err(ErrorKind::NoTag(MAIN_BRANCH_TAG.to_owned()).into())
+                Ok(block) => {
+                    let header = block.header.clone();
+
+                    const PROCESS_LOGGING_DISTANCE: u64 = 2500;
+                    if count % PROCESS_LOGGING_DISTANCE == 0 {
+                        info!(
+                            logger,
+                            "loading from storage, currently at {} ...",
+                            header.description()
+                        );
+                    }
+
+                    let pre_checked_header: PreCheckedHeader =
+                        self.pre_check_header(header, true).await?;
+
+                    let post_checked_header: PostCheckedHeader = match pre_checked_header {
+                        PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+                            self.post_check_header(header, parent_ref).await?
                         }
-                    })
-            })
-            .and_then(move |head_hash| {
-                self2
-                    .apply_block0(block0)
-                    .map(move |branch| (branch, head_hash))
-            })
-            .and_then(move |(branch, head_hash)| {
-                self3
-                    .storage
-                    .stream_from_to(block0_id_2, head_hash)
-                    .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))
-                    .and_then(move |block_stream| {
-                        block_stream
-                            .map_err(|e| {
-                                Error::with_chain(e, "Error while iterating between block0 and HEAD")
-                            })
-                            .fold((branch, self4), move |(branch, mut self4), block: Block| {
-                                let header = block.header.clone();
+                        PreCheckedHeader::AlreadyPresent {
+                            header,
+                            cached_reference: _cached_reference,
+                        } => unreachable!(
+                            "block already present, this should not happen. {:#?}",
+                            header
+                        ),
+                        PreCheckedHeader::MissingParent { header } => {
+                            return Err(
+                                ErrorKind::MissingParentBlock(header.block_parent_hash()).into()
+                            )
+                        }
+                    };
 
-                                let mut self5 = self4.clone();
-                                let mut self6 = self4.clone();
-                                let returned = self4.clone();
+                    let new_ref = self.apply_block(post_checked_header, &block).await?;
 
-                                self4
-                                    .pre_check_header(header, true)
-                                    .and_then(move |pre_checked_header: PreCheckedHeader| {
-                                        match pre_checked_header {
-                                            PreCheckedHeader::HeaderWithCache {
-                                                header,
-                                                parent_ref,
-                                            } => future::Either::A(self5.post_check_header(header, parent_ref)),
-                                            PreCheckedHeader::AlreadyPresent { header, cached_reference: _cached_reference } => {
-                                                unreachable!("block already present, this should not happen. {:#?}", header)
-                                            },
-                                            PreCheckedHeader::MissingParent { header } =>
-                                                future::Either::B(future::err(ErrorKind::MissingParentBlock(header.block_parent_hash()).into())),
-                                        }
-                                    })
-                                    .and_then(move |post_checked_header: PostCheckedHeader| {
-                                        self6.apply_block(post_checked_header, &block)
-                                    })
-                                    .and_then(move |new_ref| {
-                                        branch
-                                            .clone()
-                                            .update_ref(new_ref)
-                                            .map(move |_old_ref| (branch, returned))
-                                            .map_err(|_: Infallible| unreachable!())
-                                    })
-                            })
-                            .map(|(branch, _)| branch)
-                    })
-            })
+                    count += 1;
+                    let _: Arc<Ref> = branch.update_ref_std(new_ref).await;
+                    ()
+                }
+            }
+        }
+        Ok(branch)
     }
 
-    pub fn get_checkpoints(
+    pub fn get_checkpoints_old(
         &self,
-        branch: Branch,
-    ) -> impl Future<Item = Checkpoints, Error = Error> {
+        branch: &Branch,
+    ) -> impl Future01<Item = Checkpoints, Error = Error> {
         branch.get_ref().map(Checkpoints::new_from)
     }
+
+    pub async fn get_checkpoints(&self, branch: &Branch) -> Checkpoints {
+        Checkpoints::new_from(branch.get_ref_std().await)
+    }
+}
+
+fn write_reward_info(
+    epoch: Epoch,
+    parent_hash: HeaderHash,
+    rewards_info: EpochRewardsInfo,
+) -> std::io::Result<()> {
+    use std::{
+        env::var,
+        fs::rename,
+        fs::File,
+        io::{BufWriter, Write},
+        path::PathBuf,
+    };
+
+    if let Ok(directory) = var("JORMUNGANDR_REWARD_DUMP_DIRECTORY") {
+        let directory = PathBuf::from(directory);
+
+        std::fs::create_dir_all(&directory)?;
+
+        let filepath = format!("reward-info-{}-{}", epoch, parent_hash);
+        let filepath = directory.join(filepath);
+        let filepath_tmp = format!("tmp.reward-info-{}-{}", epoch, parent_hash);
+        let filepath_tmp = directory.join(filepath_tmp);
+
+        {
+            let file = File::create(&filepath_tmp)?;
+            let mut buf = BufWriter::new(file);
+            write!(&mut buf, "type,identifier,received,distributed\r\n")?;
+            write!(&mut buf, "drawn,,,{}\r\n", rewards_info.drawn.0)?;
+            write!(&mut buf, "fees,,,{}\r\n", rewards_info.fees.0)?;
+            write!(&mut buf, "treasury,,{},\r\n", rewards_info.treasury.0)?;
+
+            for (pool_id, (taxed, distr)) in rewards_info.stake_pools.iter() {
+                write!(&mut buf, "pool,{},{},{}\r\n", pool_id, taxed.0, distr.0)?;
+            }
+
+            for (account_id, received) in rewards_info.accounts.iter() {
+                write!(&mut buf, "account,{},{},\r\n", account_id, received.0)?;
+            }
+
+            buf.flush()?;
+        }
+
+        rename(filepath_tmp, filepath)?;
+    }
+    Ok(())
 }
 
 pub fn new_epoch_leadership_from(
     epoch: Epoch,
     parent: Arc<Ref>,
 ) -> (
+    Arc<Ledger>,
     Arc<Leadership>,
     Arc<LedgerParameters>,
     Arc<TimeFrame>,
@@ -748,22 +832,50 @@ pub fn new_epoch_leadership_from(
         //       for the blockchain
         use chain_impl_mockchain::block::ConsensusVersion;
 
-        let epoch_state =
-            if parent_ledger_state.consensus_version() == ConsensusVersion::GenesisPraos {
-                // if there is no parent state available this might be because it is not
-                // available in memory or it is the epoch0 or epoch1
-                parent
-                    .last_ref_previous_epoch()
-                    .map(|r| r.ledger().clone())
-                    .unwrap_or(parent_ledger_state.clone())
+        // 1. distribute the rewards (if any) This will give us the transition state
+        let transition_state =
+            if let Some(distribution) = parent.epoch_leadership_schedule().stake_distribution() {
+                let store_rewards = std::env::var("JORMUNGANDR_REWARD_DUMP_DIRECTORY").is_ok();
+                let reward_info_dist = if store_rewards {
+                    RewardsInfoParameters::report_all()
+                } else {
+                    RewardsInfoParameters::default()
+                };
+
+                let (ledger, rewards_info) = parent_ledger_state
+                    .distribute_rewards(
+                        distribution,
+                        &parent.epoch_ledger_parameters(),
+                        reward_info_dist,
+                    )
+                    .expect("Distribution of rewards will not overflow");
+                if let Err(err) = write_reward_info(epoch, parent.hash(), rewards_info) {
+                    panic!("Error while storing the reward dump, err {}", err)
+                }
+                Arc::new(ledger)
             } else {
                 parent_ledger_state.clone()
             };
+
+        // 2. now that the rewards have been distributed, prepare the schedule
+        //    for the next leader
+        let epoch_state = if transition_state.consensus_version() == ConsensusVersion::GenesisPraos
+        {
+            // if there is no parent state available this might be because it is not
+            // available in memory or it is the epoch0 or epoch1
+            parent
+                .last_ref_previous_epoch()
+                .map(|r| r.ledger().clone())
+                .unwrap_or(parent_ledger_state.clone())
+        } else {
+            transition_state.clone()
+        };
 
         let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
         let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
         let previous_epoch_state = Some(parent);
         (
+            transition_state,
             leadership,
             ledger_parameters,
             parent_time_frame,
@@ -771,6 +883,7 @@ pub fn new_epoch_leadership_from(
         )
     } else {
         (
+            parent_ledger_state,
             parent_epoch_leadership_schedule,
             parent_epoch_ledger_parameters,
             parent_time_frame,

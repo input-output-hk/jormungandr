@@ -5,7 +5,8 @@ use crate::blockcfg::{
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio02::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Enclave {
@@ -29,21 +30,21 @@ impl Enclave {
         }
     }
 
-    pub fn from_vec(leaders: Vec<Leader>) -> Self {
+    pub async fn from_vec(leaders: Vec<Leader>) -> Self {
         let e = Self::new();
         for leader in leaders {
-            e.add_leader(leader);
+            e.add_leader(leader).await;
         }
         e
     }
 
-    pub fn get_leaderids(&self) -> Vec<LeaderId> {
-        let leaders = self.leaders.read().unwrap();
+    pub async fn get_leaderids(&self) -> Vec<LeaderId> {
+        let leaders = self.leaders.read().await;
         leaders.keys().map(|v| v.clone()).collect()
     }
 
-    pub fn add_leader(&self, leader: Leader) -> LeaderId {
-        let mut leaders = self.leaders.write().unwrap();
+    pub async fn add_leader(&self, leader: Leader) -> LeaderId {
+        let mut leaders = self.leaders.write().await;
         let next_leader_id = get_maximum_id(&leaders).next();
         // This panic case should never happens in practice, as this structure is
         // not supposed to be shared between thread.
@@ -54,19 +55,19 @@ impl Enclave {
         next_leader_id
     }
 
-    pub fn remove_leader(&self, leader_id: LeaderId) -> bool {
-        let mut leaders = self.leaders.write().unwrap();
+    pub async fn remove_leader(&self, leader_id: LeaderId) -> bool {
+        let mut leaders = self.leaders.write().await;
         leaders.remove(&leader_id).is_some()
     }
 
     // temporary method
-    pub fn leadership_evaluate1(
+    pub async fn leadership_evaluate1(
         &self,
         leadership: &Leadership,
         leader_id: &LeaderId,
         slot: SlotId,
     ) -> Option<LeaderEvent> {
-        let leaders = self.leaders.read().unwrap();
+        let leaders = self.leaders.read().await;
         if leaders.len() == 0 {
             return None;
         }
@@ -88,13 +89,13 @@ impl Enclave {
         })
     }
 
-    pub fn leadership_evaluate(
+    pub async fn leadership_evaluate(
         &self,
         leadership: &Leadership,
         slot_start: u32,
         nb_slots: u32,
     ) -> Vec<LeaderEvent> {
-        let leaders = self.leaders.read().unwrap();
+        let leaders = self.leaders.read().await;
         if leaders.len() == 0 {
             return vec![];
         }
@@ -119,12 +120,12 @@ impl Enclave {
         output
     }
 
-    pub fn create_header_genesis_praos(
+    pub async fn create_header_genesis_praos(
         &self,
         header_builder: HeaderGenesisPraosBuilder<HeaderSetConsensusSignature>,
         id: LeaderId,
     ) -> Option<HeaderGenesisPraos> {
-        let leaders = self.leaders.read().unwrap();
+        let leaders = self.leaders.read().await;
         let leader = leaders.get(&id)?;
         if let Some(genesis_leader) = &leader.genesis_leader {
             let data = header_builder.get_authenticated_data();
@@ -135,12 +136,12 @@ impl Enclave {
         }
     }
 
-    pub fn create_header_bft(
+    pub async fn create_header_bft(
         &self,
         header_builder: HeaderBftBuilder<HeaderSetConsensusSignature>,
         id: LeaderId,
     ) -> Option<HeaderBft> {
-        let leaders = self.leaders.read().unwrap();
+        let leaders = self.leaders.read().await;
         let leader = leaders.get(&id)?;
         if let Some(ref leader) = &leader.bft_leader {
             let data = header_builder.get_authenticated_data();

@@ -2,6 +2,7 @@ use serde::de::DeserializeOwned;
 use std::io::{stdin, stdout, BufRead, BufReader, Error, Write};
 use std::path::Path;
 use std::path::PathBuf;
+use thiserror::Error;
 
 /// open the given file path as a writable stream, or stdout if no path
 /// provided
@@ -50,9 +51,12 @@ pub fn read_line<P: AsRef<Path>>(path: &Option<P>) -> Result<String, Error> {
     Ok(line.trim_end().to_string())
 }
 
-custom_error! { pub ReadYamlError
-    Io { source: Error } = "could not read input",
-    Yaml { source: serde_yaml::Error } = "input contains malformed yaml",
+#[derive(Debug, Error)]
+pub enum ReadYamlError {
+    #[error("could not read input")]
+    Io(#[from] Error),
+    #[error("input contains malformed yaml")]
+    Yaml(#[from] serde_yaml::Error),
 }
 
 pub fn read_yaml<D: DeserializeOwned>(path: &Option<impl AsRef<Path>>) -> Result<D, ReadYamlError> {

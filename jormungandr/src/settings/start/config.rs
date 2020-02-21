@@ -29,11 +29,17 @@ pub struct Config {
     #[serde(default)]
     pub p2p: P2pConfig,
 
+    #[serde(default)]
+    pub http_fetch_block0_service: Vec<String>,
+
     pub explorer: Option<Explorer>,
 
     /// the time interval with no blockchain updates after which alerts are thrown
     #[serde(default)]
     pub no_blockchain_updates_warning_interval: Option<Duration>,
+
+    pub bootstrap_from_trusted_peers: Option<bool>,
+    pub skip_bootstrap: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -52,9 +58,19 @@ pub struct ConfigLogSettings(pub Vec<ConfigLogSettingsEntry>);
 #[serde(deny_unknown_fields)]
 pub struct Rest {
     pub listen: SocketAddr,
-    pub pkcs12: Option<PathBuf>,
+    /// Enables TLS and disables plain HTTP if provided
+    pub tls: Option<Tls>,
     /// Enables CORS if provided
     pub cors: Option<Cors>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Tls {
+    /// Path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
+    pub cert_file: String,
+    /// Path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
+    pub priv_key_file: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -95,6 +111,13 @@ pub struct P2pConfig {
     /// If not specified, an internal default limit is used.
     pub max_connections: Option<usize>,
 
+    /// Limit on the number of simultaneous client connections.
+    /// If not specified, an internal default limit is used.
+    pub max_client_connections: Option<usize>,
+
+    /// This setting is not used and is left for backward compatibility.
+    pub max_connections_threshold: Option<usize>,
+
     /// Whether to allow non-public IP addresses on the network.
     /// The default is to not allow advertising non-public IP addresses.
     #[serde(default)]
@@ -128,6 +151,17 @@ pub struct P2pConfig {
     ///
     #[serde(default)]
     pub topology_force_reset_interval: Option<Duration>,
+
+    /// The number of times to retry bootstrapping from trusted peers. The default
+    /// value of None will result in the bootstrap process retrying indefinitely. A
+    /// value of zero will skip bootstrap all together -- even if trusted peers are
+    /// defined. If the node fails to bootstrap from any of the trusted peers and the
+    /// number of bootstrap retry attempts is exceeded, then the node will continue to
+    /// run without completing the bootstrap process. This will allow the node to act
+    /// as the first node in the p2p network (i.e. genesis node), or immediately begin
+    /// gossip with the trusted peers if any are defined.
+    #[serde(default)]
+    pub max_bootstrap_attempts: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,11 +174,10 @@ pub struct TrustedPeer {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Leadership {
-    /// LeadershipLog time to live, it is for information purposes, we log all the Leadership
-    /// event logs in a cache. The log will be discarded at the end of the ttl.
-    pub log_ttl: Duration,
-    /// interval between 2 garbage collection check logs
-    pub garbage_collection_interval: Duration,
+    /// the number of entries allowed in the leadership logs, beyond this point
+    /// the least recently used log will be erased from the logs for a new one
+    /// to be inserted.
+    pub logs_capacity: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -186,11 +219,14 @@ impl Default for P2pConfig {
             trusted_peers: None,
             topics_of_interest: None,
             max_connections: None,
+            max_client_connections: None,
+            max_connections_threshold: None,
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
             topology_force_reset_interval: None,
+            max_bootstrap_attempts: None,
         }
     }
 }
@@ -198,8 +234,7 @@ impl Default for P2pConfig {
 impl Default for Leadership {
     fn default() -> Self {
         Leadership {
-            log_ttl: Duration::new(3600, 0),
-            garbage_collection_interval: Duration::new(3600 / 4, 0),
+            logs_capacity: 1_024,
         }
     }
 }

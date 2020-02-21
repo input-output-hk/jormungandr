@@ -1,11 +1,10 @@
 use crate::{
     blockcfg::{
-        Block, BlockVersion, Contents, HeaderBuilderNew, HeaderContentEvalContext, LeaderOutput,
-        Leadership, Ledger, LedgerParameters,
+        Block, BlockDate, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput, Leadership,
+        Ledger, LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, Ref, Tip},
-    fragment,
-    intercom::BlockMsg,
+    intercom::{unary_future, BlockMsg, Error as IntercomError, TransactionMsg},
     leadership::{
         enclave::{Enclave, EnclaveError, LeaderEvent},
         LeadershipLogHandle, Logs,
@@ -16,6 +15,7 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot,
 };
+use futures03::{compat::*, future::TryFutureExt, sink::SinkExt};
 use jormungandr_lib::{
     interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
@@ -27,20 +27,10 @@ use std::{
     time::{Duration, Instant},
 };
 use thiserror::Error;
-use tokio::{
-    prelude::{future::Either, *},
-    timer::{self, Delay, Interval, Timeout},
-};
+use tokio02::time::{delay_until, timeout_at, Instant as TokioInstant};
 
 #[derive(Error, Debug)]
 pub enum LeadershipError {
-    #[error("Error while awaiting for next leader event to process")]
-    AwaitError {
-        #[source]
-        #[from]
-        source: timer::Error,
-    },
-
     #[error("The blockchain Timeline hasn't started yet")]
     TooEarlyForTimeFrame {
         time: jormungandr_lib::time::SystemTime,
@@ -55,7 +45,7 @@ pub enum LeadershipError {
     },
 
     #[error("fragment selection failed")]
-    FragmentSelectionFailed,
+    FragmentSelectionFailed(#[from] IntercomError),
 
     #[error("Cannot send the leadership block to the blockchain module")]
     CannotSendLeadershipBlock,
@@ -80,39 +70,23 @@ pub struct Module {
     logs: Logs,
     tip_ref: Arc<Ref>,
     tip: Tip,
-    pool: fragment::Pool,
+    pool: MessageBox<TransactionMsg>,
     enclave: Enclave,
     block_message: MessageBox<BlockMsg>,
 }
 
 impl Module {
-    pub fn new(
+    pub async fn new(
         service_info: TokioServiceInfo,
         logs: Logs,
-        garbage_collection_interval: Duration,
         tip: Tip,
-        pool: fragment::Pool,
+        pool: MessageBox<TransactionMsg>,
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
-    ) -> impl Future<Item = Self, Error = LeadershipError> {
-        let mut logs_to_purge = logs.clone();
-        let garbage_collection_interval = garbage_collection_interval;
-        let logger = service_info
-            .logger()
-            .new(o!("sub task" => "garbage collection"));
-        let error_logger = logger.clone();
-        let purge_logs = Interval::new_interval(garbage_collection_interval)
-                .for_each(move |_instant| {
-                    debug!(logger, "garbage collect entries in the logs");
-                    logs_to_purge.poll_purge()
-                })
-                .map_err(move |error| {
-                    error!(error_logger, "Cannot run the garbage collection" ; "reason" => error.to_string());
-                });
+    ) -> Result<Self, LeadershipError> {
+        let tip_ref = tip.get_ref_std().await;
 
-        service_info.spawn(purge_logs);
-
-        tip.get_ref().map(move |tip_ref| Self {
+        Ok(Self {
             schedule: Schedule::default(),
             service_info,
             logs,
@@ -124,12 +98,15 @@ impl Module {
         })
     }
 
-    pub fn run(self) -> impl Future<Item = (), Error = LeadershipError> {
-        future::loop_fn(self, |module| module.step().map(future::Loop::Continue))
+    pub async fn run(self) -> Result<(), LeadershipError> {
+        let mut module = self;
+        loop {
+            module = module.step().await?;
+        }
     }
 
-    fn step(self) -> impl Future<Item = Self, Error = LeadershipError> {
-        self.action().and_then(|module| module.wait())
+    async fn step(self) -> Result<Self, LeadershipError> {
+        self.action().await?.wait().await
     }
 
     fn current_slot(&self) -> Result<Slot, LeadershipError> {
@@ -248,20 +225,12 @@ impl Module {
         }
     }
 
-    fn wait(mut self) -> impl Future<Item = Self, Error = LeadershipError> {
-        let deadline = future::result(self.wait_peek_deadline());
-
+    async fn wait(mut self) -> Result<Self, LeadershipError> {
+        let deadline = self.wait_peek_deadline()?;
+        delay_until(TokioInstant::from_std(deadline)).await;
         let tip = self.tip.clone();
-
-        deadline
-            .and_then(|deadline| {
-                Delay::new(deadline).map_err(|source| LeadershipError::AwaitError { source })
-            })
-            .and_then(move |()| tip.get_ref())
-            .map(|tip_ref| {
-                self.tip_ref = tip_ref;
-                self
-            })
+        self.tip_ref = tip.get_ref_std().await;
+        Ok(self)
     }
 
     fn wait_peek_deadline(&self) -> Result<Instant, LeadershipError> {
@@ -295,24 +264,22 @@ impl Module {
             }
         }
     }
-    fn action(mut self) -> impl Future<Item = Self, Error = LeadershipError> {
+    async fn action(mut self) -> Result<Self, LeadershipError> {
         match self.schedule.pop() {
-            None => Either::A(self.action_schedule()),
-            Some(entry) => Either::B(self.action_entry(entry)),
+            None => self.action_schedule().await,
+            Some(entry) => self.action_entry(entry).await,
         }
     }
 
-    fn action_entry(self, entry: Entry) -> impl Future<Item = Self, Error = LeadershipError> {
-        let wake_log = entry.log.clone();
+    async fn action_entry(self, entry: Entry) -> Result<Self, LeadershipError> {
         let end_log = entry.log.clone();
-
-        wake_log
-            .mark_wake()
-            .and_then(|()| self.action_run_entry(entry))
-            .and_then(move |module| end_log.mark_finished().map(|()| module))
+        entry.log.mark_wake().await;
+        let module = self.action_run_entry(entry).await?;
+        end_log.mark_finished().await;
+        Ok(module)
     }
 
-    fn action_run_entry(self, entry: Entry) -> impl Future<Item = Self, Error = LeadershipError> {
+    async fn action_run_entry(self, entry: Entry) -> Result<Self, LeadershipError> {
         let now = SystemTime::now();
         let event_start = self.event_slot_time(&entry.event);
         let event_end = self.event_following_slot_time(&entry.event);
@@ -331,46 +298,44 @@ impl Module {
                 "Eek... Too late, we missed an event schedule, system time might be off?"
             );
 
-            let tell_user_about_failure = entry.log.set_status(LeadershipLogStatus::Rejected {
-                reason: "Missed the deadline to compute the schedule".to_owned(),
-            });
+            entry
+                .log
+                .set_status(LeadershipLogStatus::Rejected {
+                    reason: "Missed the deadline to compute the schedule".to_owned(),
+                })
+                .await;
 
-            Either::B(tell_user_about_failure.map(|()| self))
+            Ok(self)
         } else {
-            let right_time = future::result(entry.instant(&self));
+            let right_time = entry.instant(&self)?;
 
-            Either::A(right_time.and_then(move |right_time| {
-                if let Some(right_time) = right_time {
-                    warn!(
-                        logger,
-                        "system woke a bit early for the event, delaying until right time."
-                    );
+            if let Some(right_time) = right_time {
+                warn!(
+                    logger,
+                    "system woke a bit early for the event, delaying until right time."
+                );
 
-                    // await the right_time before starting the action
-                    Either::A(
-                        Delay::new(right_time)
-                            .map_err(|source| LeadershipError::AwaitError { source })
-                            .and_then(move |()| {
-                                self.action_run_entry_in_bound(entry, logger, event_end)
-                            }),
-                    )
-                } else {
-                    // because we checked that the entry's slot was below the current
-                    // time, if we cannot compute the _right_time_ it means the time
-                    // is just starting now to be correct. So it's okay to start
-                    // running it now still
-                    Either::B(self.action_run_entry_in_bound(entry, logger, event_end))
-                }
-            }))
+                // await the right_time before starting the action
+                delay_until(TokioInstant::from_std(right_time)).await;
+                self.action_run_entry_in_bound(entry, logger, event_end)
+                    .await
+            } else {
+                // because we checked that the entry's slot was below the current
+                // time, if we cannot compute the _right_time_ it means the time
+                // is just starting now to be correct. So it's okay to start
+                // running it now still
+                self.action_run_entry_in_bound(entry, logger, event_end)
+                    .await
+            }
         }
     }
 
-    fn action_run_entry_in_bound(
+    async fn action_run_entry_in_bound(
         self,
         entry: Entry,
         logger: Logger,
         event_end: SystemTime,
-    ) -> impl Future<Item = Self, Error = LeadershipError> {
+    ) -> Result<Self, LeadershipError> {
         let event_logs = entry.log.clone();
         let now = SystemTime::now();
 
@@ -392,21 +357,32 @@ impl Module {
         info!(logger, "Leader event started");
 
         let timed_out_log = logger.clone();
-        Timeout::new_at(self.action_run_entry_build_block(entry, logger), deadline)
-            .or_else(move |timeout_error| {
+
+        let res = timeout_at(
+            TokioInstant::from_std(deadline),
+            self.action_run_entry_build_block(entry, logger),
+        )
+        .await;
+
+        match res {
+            Ok(future_res) => future_res,
+            Err(timeout_error) => {
                 error!(timed_out_log, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
-                event_logs.set_status(LeadershipLogStatus::Rejected {
-                    reason: "Failed to compute the schedule within time boundaries".to_owned()
-                })
-            })
-            .map(|_| self)
+                event_logs
+                    .set_status(LeadershipLogStatus::Rejected {
+                        reason: "Failed to compute the schedule within time boundaries".to_owned(),
+                    })
+                    .await;
+                Ok(())
+            }
+        }.map(|()| self)
     }
 
-    fn action_run_entry_build_block(
+    async fn action_run_entry_build_block(
         &self,
         entry: Entry,
         logger: Logger,
-    ) -> impl Future<Item = (), Error = LeadershipError> {
+    ) -> Result<(), LeadershipError> {
         let event = entry.event;
         let event_logs = entry.log;
 
@@ -420,7 +396,7 @@ impl Module {
             (
                 self.tip_ref.hash(),
                 self.tip_ref.chain_length().increase(),
-                Arc::clone(self.tip_ref.ledger()),
+                self.tip_ref.ledger(),
                 Arc::clone(self.tip_ref.epoch_ledger_parameters()),
             )
         } else {
@@ -438,115 +414,111 @@ impl Module {
                 "It appears the node is running a bit behind schedule, system time might be off?"
             );
 
-            let tell_user_about_failure = event_logs.set_status(
+            event_logs.set_status(
                     LeadershipLogStatus::Rejected {
                         reason: "Not computing this schedule because of invalid state against the network blockchain".to_owned()
                     }
-                );
+                ).await;
 
-            return Either::B(tell_user_about_failure);
+            return Ok(());
         };
 
-        let eval_context = HeaderContentEvalContext {
-            block_date: event.date,
-            chain_length,
-            nonce: None,
-        };
-
-        let preparation = prepare_block(pool, eval_context, &ledger, ledger_parameters);
+        let contents =
+            prepare_block(pool, event.date, ledger, ledger_parameters, logger.clone()).await?;
 
         let event_logs_error = event_logs.clone();
-        let signing = preparation.and_then(move |contents| {
+        let signing = {
             let ver = match event.output {
                 LeaderOutput::None => BlockVersion::Genesis,
                 LeaderOutput::Bft(_) => BlockVersion::Ed25519Signed,
                 LeaderOutput::GenesisPraos(..) => BlockVersion::KesVrfproof,
             };
+
             let hdr_builder = HeaderBuilderNew::new(ver, &contents)
                 .set_parent(&parent_id, chain_length)
                 .set_date(event.date);
+
             match event.output {
                 LeaderOutput::None => {
                     let header = hdr_builder
                         .to_unsigned_header()
                         .expect("Valid Header Builder")
                         .generalize();
-                    Either::A(future::ok(Some(Block { header, contents })))
+                    Ok(Some(Block { header, contents }))
                 }
                 LeaderOutput::Bft(leader_id) => {
                     let final_builder = hdr_builder
                         .to_bft_builder()
                         .expect("Valid Header Builder")
                         .set_consensus_data(&leader_id);
-                    Either::B(Either::A(
-                        enclave
-                            .query_header_bft_finalize(final_builder, event.id)
-                            .map(|h| {
-                                Some(Block {
-                                    header: h.generalize(),
-                                    contents,
-                                })
+                    enclave
+                        .query_header_bft_finalize(final_builder, event.id)
+                        .map_ok(|h| {
+                            Some(Block {
+                                header: h.generalize(),
+                                contents,
                             })
-                            .or_else(move |e| {
-                                event_logs_error
-                                    .set_status(LeadershipLogStatus::Rejected {
-                                        reason: format!("Cannot sign the block: {}", e),
-                                    })
-                                    .map(|()| None)
-                            }),
-                    ))
+                        })
+                        .or_else(|e| async move {
+                            event_logs_error
+                                .set_status(LeadershipLogStatus::Rejected {
+                                    reason: format!("Cannot sign the block: {}", e),
+                                })
+                                .await;
+                            Ok(None)
+                        })
+                        .await
                 }
                 LeaderOutput::GenesisPraos(node_id, vrfproof) => {
                     let final_builder = hdr_builder
                         .to_genesis_praos_builder()
                         .expect("Valid Header Builder")
                         .set_consensus_data(&node_id, &vrfproof.into());
-                    Either::B(Either::B(
-                        enclave
-                            .query_header_genesis_praos_finalize(final_builder, event.id)
-                            .map(|h| {
-                                Some(Block {
-                                    header: h.generalize(),
-                                    contents,
-                                })
+                    enclave
+                        .query_header_genesis_praos_finalize(final_builder, event.id)
+                        .map_ok(|h| {
+                            Some(Block {
+                                header: h.generalize(),
+                                contents,
                             })
-                            .or_else(move |e| {
-                                event_logs_error
-                                    .set_status(LeadershipLogStatus::Rejected {
-                                        reason: format!("Cannot sign the block: {}", e),
-                                    })
-                                    .map(|()| None)
-                            }),
-                    ))
+                        })
+                        .or_else(|e| async move {
+                            event_logs_error
+                                .set_status(LeadershipLogStatus::Rejected {
+                                    reason: format!("Cannot sign the block: {}", e),
+                                })
+                                .await;
+                            Ok(None)
+                        })
+                        .await
                 }
             }
-        });
+        };
 
-        let event_logs_success = event_logs.clone();
-        let send_block = signing.and_then(|block| {
-            if let Some(block) = block {
-                let id = block.header.hash();
-                let chain_length: u32 = block.header.chain_length().into();
-                Either::A(
+        match signing {
+            Ok(maybe_block) => {
+                if let Some(block) = maybe_block {
+                    let id = block.header.hash();
+                    let chain_length: u32 = block.header.chain_length().into();
                     sender
+                        .sink_compat()
                         .send(BlockMsg::LeadershipBlock(block))
                         .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
-                        .and_then(move |_| {
-                            event_logs_success.set_status(LeadershipLogStatus::Block {
-                                block: id.into(),
-                                chain_length,
-                            })
-                        }),
-                )
-            } else {
-                Either::B(future::ok(()))
+                        .await?;
+                    event_logs
+                        .set_status(LeadershipLogStatus::Block {
+                            block: id.into(),
+                            chain_length,
+                        })
+                        .await;
+                };
+                Ok(())
             }
-        });
-
-        Either::A(send_block)
+            Err(e) => Err(e),
+        }
     }
 
-    fn action_schedule(self) -> impl Future<Item = Self, Error = LeadershipError> {
+    async fn action_schedule(self) -> Result<Self, LeadershipError> {
         let current_slot_position = self.current_slot_position().unwrap();
 
         let epoch_tip = Epoch(self.tip_ref.block_date().epoch);
@@ -558,7 +530,7 @@ impl Module {
         ));
 
         if epoch_tip < current_slot_position.epoch {
-            let (leadership, _, _, _) =
+            let (_, leadership, _, _, _) =
                 new_epoch_leadership_from(current_slot_position.epoch.0, Arc::clone(&self.tip_ref));
 
             let slot_start = current_slot_position.slot.0 + 1;
@@ -570,7 +542,8 @@ impl Module {
                 "nb_slots" => nb_slots,
             );
 
-            Either::A(self.action_run_schedule(running_ref, slot_start, nb_slots))
+            self.action_run_schedule(running_ref, slot_start, nb_slots)
+                .await
         } else if epoch_tip == current_slot_position.epoch {
             // check for current epoch
             let slot_start = current_slot_position.slot.0 + 1;
@@ -587,7 +560,8 @@ impl Module {
                 "nb_slots" => nb_slots,
             );
 
-            Either::A(self.action_run_schedule(running_ref, slot_start, nb_slots))
+            self.action_run_schedule(running_ref, slot_start, nb_slots)
+                .await
         } else {
             // The only reason this would happen is if we had accepted a block
             // that is set in the future or our system local date time is off
@@ -596,46 +570,39 @@ impl Module {
                 logger,
                 "It seems the current epoch tip is way ahead of its time."
             );
-            Either::B(future::ok(self))
+            Ok(self)
         }
     }
 
-    fn action_run_schedule(
+    async fn action_run_schedule(
         self,
         leadership: Arc<Leadership>,
         slot_start: u32,
         nb_slots: u32,
-    ) -> impl Future<Item = Self, Error = LeadershipError> {
-        self.enclave
+    ) -> Result<Self, LeadershipError> {
+        let schedules = self
+            .enclave
             .query_schedules(leadership, slot_start, nb_slots)
             .map_err(|e| LeadershipError::CannotScheduleWithEnclave { source: e })
-            .and_then(move |schedules| {
-                stream::iter_ok::<_, LeadershipError>(schedules).fold(
-                    self,
-                    |mut module, schedule| {
-                        let epoch = Epoch(schedule.date.epoch);
-                        let slot = EpochSlotOffset(schedule.date.slot_id);
-                        let scheduled_at_time = module.slot_time(epoch, slot);
-                        let log = LeadershipLog::new(
-                            schedule.id,
-                            schedule.date.into(),
-                            scheduled_at_time,
-                        );
+            .await?;
 
-                        module
-                            .logs
-                            .insert(log)
-                            .map_err(|()| LeadershipError::CannotUpdateLogs)
-                            .map(move |log| {
-                                module.schedule.push(Entry {
-                                    event: schedule,
-                                    log,
-                                });
-                                module
-                            })
-                    },
-                )
-            })
+        let mut module = self;
+        for schedule in schedules.into_iter() {
+            let epoch = Epoch(schedule.date.epoch);
+            let slot = EpochSlotOffset(schedule.date.slot_id);
+            let scheduled_at_time = module.slot_time(epoch, slot);
+            let log = LeadershipLog::new(schedule.id, schedule.date.into(), scheduled_at_time);
+
+            match module.logs.insert(log).await {
+                Ok(log) => module.schedule.push(Entry {
+                    event: schedule,
+                    log,
+                }),
+                Err(()) => return Err(LeadershipError::CannotUpdateLogs),
+            }
+        }
+
+        Ok(module)
     }
 }
 
@@ -661,24 +628,26 @@ impl Schedule {
     }
 }
 
-fn prepare_block(
-    mut fragment_pool: fragment::Pool,
-    eval_context: HeaderContentEvalContext,
-    ledger: &Arc<Ledger>,
+async fn prepare_block(
+    fragment_pool: MessageBox<TransactionMsg>,
+    block_date: BlockDate,
+    ledger: Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
-) -> impl Future<Item = Contents, Error = LeadershipError> {
-    use crate::fragment::selection::{FragmentSelectionAlgorithm as _, OldestFirst};
+    logger: Logger,
+) -> Result<Contents, LeadershipError> {
+    use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
-    let selection_algorithm = OldestFirst::new(250 /* TODO!! */);
-    fragment_pool
-        .select(
-            ledger.as_ref().clone(),
-            eval_context,
-            epoch_parameters.as_ref().clone(),
-            selection_algorithm,
-        )
-        .map(|selection_algorithm| selection_algorithm.finalize())
-        .map_err(|()| LeadershipError::FragmentSelectionFailed)
+    unary_future(fragment_pool, logger, |reply_handle| {
+        TransactionMsg::SelectTransactions {
+            ledger: ledger.as_ref().clone(),
+            block_date,
+            ledger_params: epoch_parameters.as_ref().clone(),
+            selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
+            reply_handle,
+        }
+    })
+    .compat()
+    .await
 }
 
 fn too_late(now: SystemTime, event_end: SystemTime) -> bool {

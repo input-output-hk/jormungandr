@@ -35,11 +35,28 @@ paths:
                     description: Number of transactions performed with this account
                     type: integer
                     minimum: 0
+                  last_rewards:
+                    description: the last rewards
+                    type: object
+                    properties:
+                      epoch:
+                        description: the last epoch that distributed rewards to this account
+                        type: integer
+                        minimum: 0
+                      reward:
+                        description: the total amount of rewards received for the associated epoch
+                        type: integer
+                        minimum: 0
               example: |
                 {
                   "counter": 1,
                   "delegation": "c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356",
-                  "value": 990
+                  "value": 990,
+                  "last_rewards":
+                    {
+                      "epoch": 42,
+                      "reward": 2028
+                    }
                 }
         404:
           description: Account with given ID was not found
@@ -97,6 +114,30 @@ paths:
           description: Block ID malformed
         404:
           description: Block with given ID was not found in chain of the tip
+  /api/v0/diagnostic:
+    get:
+      description: Get system diagnostic information
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  open_files_limit:
+                    description: The allowed number of open file descriptors on UNIX platforms (RLIMIT_NOFILE)
+                    type: integer
+                  cpu_usage_limit:
+                    description: The amount of CPU time this process can consume (RLIMIT_CPU)
+                    type: integer
+              examples:
+                Unix:
+                  value: |
+                    {
+                      "open_files_limit": 256,
+                      "cpu_usage_limit": 9223372036854775807
+                    }
   /api/v0/fragment/logs:
     get:
       description: Gets logs from node message pool
@@ -295,7 +336,7 @@ paths:
                   type: object
                   required: [created_at_time, scheduled_at_time, scheduled_at_date, enclave_leader_id]
                   properties:
-                    lastBlockTime:
+                    created_at_time:
                       description: Timestamp of when this log entry was created
                       type: string
                       format: date-time
@@ -445,8 +486,12 @@ paths:
                 items:
                   description: Node stats
                   type: object
-                  required: [nodeId, establishedAt]
+                  required: [addr, nodeId, establishedAt]
                   properties:
+                    addr:
+                      description: Node address
+                      type: string
+                      nullable: true
                     nodeId:
                       description: Hex-encoded node ID
                       type: string
@@ -470,6 +515,7 @@ paths:
               example: |
                 [
                   {
+                    "addr": "3.124.55.91:3000",
                     "nodeId": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
                     "establishedAt": "2019-10-14T06:24:12.010231281+00:00",
                     "lastBlockReceived": "2019-10-14T07:54:32.014432772+00:00",
@@ -490,10 +536,18 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime]
+                required: [blockRecvCnt, lastReceivedBlockTime, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version, peerAvailableCnt, peerQuarantinedCnt, peerUnreachableCnt, peerTotalCnt, nodeId]
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
+                    type: integer
+                    minimum: 0
+                  lastReceivedBlockTime:
+                      description: The time at which we received the last block, not necessarily the current tip block
+                      type: string
+                      format: date-time
+                  lastBlockContentSize:
+                    description: Size in bytes of all transactions in last block
                     type: integer
                     minimum: 0
                   lastBlockDate:
@@ -514,11 +568,30 @@ paths:
                     type: integer
                     minimum: 0
                   lastBlockTime:
-                      description: When last block was created, not set if none was created yet
+                      description: The slot time of the block
                       type: string
                       format: date-time
                   lastBlockTx:
                     description: Number of transactions in last block
+                    type: integer
+                    minimum: 0
+                  nodeId:
+                    description: 24 bytes encoded in hexadecimal Node ID
+                    type: string
+                  peerAvailableCnt:
+                    description: Number of nodes that are available for p2p discovery and events propagation
+                    type: integer
+                    minimum: 0
+                  peerQuarantinedCnt:
+                    description: Number of nodes that have been quarantined
+                    type: integer
+                    minimum: 0
+                  peerUnreachableCnt:
+                    description: Number of nodes that are connected to ours but that are not publicly reachable
+                    type: integer
+                    minimum: 0
+                  peerTotalCnt:
+                    description: Total number of nodes
                     type: integer
                     minimum: 0
                   state:
@@ -533,19 +606,30 @@ paths:
                     description: Node uptime in seconds
                     type: integer
                     minimum: 0
+                  version:
+                    description: Node app version
+                    type: string
               example: |
                 {
                   "blockRecvCnt": 1102,
+                  "lastBlockContentSize": 484,
                   "lastBlockDate": "20.29",
                   "lastBlockFees": 534,
                   "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
                   "lastBlockHeight": 202901,
                   "lastBlockSum": 51604,
-                  "lastBlockTime": "2019-08-12T11:20:52.316544007+00:00",
+                  "lastBlockTime": "2020-01-30T23:08:22+00:00",
                   "lastBlockTx": 2,
+                  "lastReceivedBlockTime": "2020-01-30T23:08:04+00:00",
+                  "nodeId": "ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d"
+                  "peerAvailableCnt": 321,
+                  "peerQuarantinedCnt": 123,
+                  "peerTotalCnt": 449
+                  "peerUnreachableCnt": 5,
                   "state": "Running",
                   "txRecvCnt": 5440,
-                  "uptime": 20032
+                  "uptime": 20032,
+                  "version": "jormungandr 0.8.9-30d20d2e"
                 }
   /api/v0/settings:
     get:
@@ -557,7 +641,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, consensusVersion, fees, maxTxsPerBlock, slotDuration, slotsPerEpoch]
+                required: [block0Hash, block0Time, blockContentMaxSize, consensusVersion, epochStabilityDepth, fees, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -567,6 +651,10 @@ paths:
                     description: When block0 was created
                     type: string
                     format: date-time
+                  blockContentMaxSize:
+                    description: The block content's max size in bytes
+                    type: integer
+                    minimum: 1
                   consensusVersion:
                     description: Version of consensus, which is currently used
                     type: string
@@ -575,6 +663,10 @@ paths:
                     description: When current slot was opened, not set if none is currently open
                     type: string
                     format: date-time
+                  epochStabilityDepth:
+                    description: The depth, number of blocks, to which we consider the blockchain to be stable and prevent rollback beyond that depth
+                    type: integer
+                    minimum: 1
                   fees:
                     description: Linear fees configuration
                     type: object
@@ -584,6 +676,22 @@ paths:
                         description: Fee per certificate used in witness
                         type: integer
                         minimum: 0
+                      per_certificate_fees:
+                        description: Fee per certificate operations, all zero if this object absent
+                        type: object
+                        properties:
+                          certificate_pool_registration:
+                            description: Fee per pool registration, zero if absent
+                            type: integer
+                            minimum: 1
+                          certificate_stake_delegation:
+                            description: Fee per stake delegation, zero if absent
+                            type: integer
+                            minimum: 1
+                          certificate_owner_stake_delegation:
+                            description: Fee per pool owner stake delegation, zero if absent
+                            type: integer
+                            minimum: 1
                       coefficient:
                         description: Fee per every input and output of transaction
                         type: integer
@@ -592,10 +700,38 @@ paths:
                         description: Base fee per transaction
                         type: integer
                         minimum: 0
-                  maxTxsPerBlock:
-                    description: Maximum number of transactions in block
-                    type: integer
-                    minimum: 0
+                  rewardParams:
+                    description: Parameters for rewards calculation
+                    type: object
+                    required: [compoundingRatio, compoundingType, epochRate, epochStart, initialValue]
+                    properties:
+                      compoundingRatio:
+                        description: Speed at which reward is reduced. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      compoundingType:
+                        description: Reward reduction algorithm
+                        type: string
+                        enum: [Linear, Halvening]
+                      epochRate:
+                        description: Number of epochs between reward
+                        type: integer
+                        minimum: 1
+                      epochStart:
+                        description: Epoch when rewarding starts
+                        type: integer
+                        minimum: 0
+                      initialValue:
+                        description: Initial reward
+                        type: integer
+                        minimum: 0
                   slotDuration:
                     description: Slot duration in seconds
                     type: integer
@@ -604,20 +740,68 @@ paths:
                     description: Number of slots per epoch
                     type: integer
                     minimum: 0
+                  treasuryTax:
+                    description: Tax from reward that goes to pot
+                    type: object
+                    required: [fixed, ratio, max]
+                    properties:
+                      fixed:
+                        description: What get subtracted as fixed value
+                        type: integer
+                        minimum: 0
+                      ratio:
+                        description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      max:
+                        description: Limit of tax
+                        type: integer
+                        minimum: 1
+                        nullable: true
               example: |
                 {
                   "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
                   "block0Time": "2019-07-09T12:32:51+00:00",
+                  "blockContentMaxSize": 102400,
                   "consensusVersion": "bft",
                   "currSlotStartTime": "2019-07-18T22:01:17+00:00",
                   "fees": {
                     "certificate": 4,
+                    "per_certificate_fees": {
+                      "certificate_pool_registration": 5,
+                      "certificate_stake_delegation": 3,
+                      "certificate_owner_stake_delegation": 4,
+                    }
                     "coefficient": 1,
                     "constant": 2
                   },
-                  "maxTxsPerBlock": 100,
+                  "rewardParams": {
+                      "compoundingRatio": {
+                          "denominator": 1024,
+                          "numerator": 1
+                      },
+                      "compoundingType": "Linear",
+                      "epochRate": 100,
+                      "epochStart": 0,
+                      "initialValue": 10000
+                  },
                   "slotDuration": 10,
-                  "slotsPerEpoch": 60
+                  "slotsPerEpoch": 60,
+                  "treasuryTax": {
+                    "fixed": 5,
+                    "ratio": {
+                      "numerator": 1
+                      "denominator": 10000,
+                    }
+                    "max": 100,
+                  }
                 }
   /api/v0/shutdown:
     get:
@@ -641,6 +825,97 @@ paths:
                   type: string
                   pattern: '[0-9a-fA-F]+'
               example: [ "5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f" ]
+  /api/v0/stake_pool/{pool_id}:
+    get:
+      description: Gets stake pool details
+      parameters:
+        - name: pool_id
+          in: path
+          required: true
+          schema:
+            description: Hex-encoded pool ID
+            type: string
+            pattern: '[0-9a-fA-F]+'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: Stake pool details
+                type: object
+                required: [tax, total_stake, kesPublicKey, vrfPublicKey]
+                properties:
+                  tax:
+                    description: Pool reward
+                    type: object
+                    required: [fixed, ratio, max]
+                    properties:
+                      fixed:
+                        description: What get subtracted as fixed value
+                        type: integer
+                        minimum: 0
+                      ratio:
+                        description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+                        type: object
+                        required: [numerator, denominator]
+                        properties:
+                          numerator:
+                            type: integer
+                            minimum: 0
+                          denominator:
+                            type: integer
+                            minimum: 1
+                      max:
+                        description: Limit of tax
+                        type: integer
+                        minimum: 1
+                        nullable: true
+                  total_stake:
+                    description: Total stake pool value
+                    type: integer
+                    minimum: 0
+                  rewards:
+                    type: object
+                    description: the reward received by the stake pool during the associated epoch
+                    properties:
+                      epoch:
+                        description: the epoch the reward has been distributed to this stake pool for the last time
+                        type: integer
+                        minimum: 0
+                      value_taxed:
+                        description: the total value taxed for the stake pool
+                        type: integer
+                        minimum: 0
+                      value_for_stakers:
+                        description: the value remaining to distribute amongst the delegators to this stake pool
+                        type: integer
+                        minimum: 0
+                  kesPublicKey:
+                    description: Bech32-encoded stake pool KES key
+                    type: string
+                  vrfPublicKey:
+                    description: Bech32-encoded stake pool VRF key
+                    type: string
+              example: |
+                {
+                  "tax": {
+                    "fixed": 5,
+                    "ratio": {
+                      "numerator": 1
+                      "denominator": 10000,
+                    }
+                    "max": 100,
+                  },
+                  "rewards": {
+                    "epoch": 42,
+                    "value_taxed": 2901,
+                    "value_for_stakers": 2028
+                  },
+                  "total_stake": 2000000000000,
+                  "kesPublicKey": "kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r",
+                  "vrfPublicKey": "vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l"
+                }
   /api/v0/stake:
     get:
       description: Gets stake distribution
@@ -756,3 +1031,545 @@ paths:
                 }
         404:
           description: Fragment with given ID or its output with given index was not found in the UTxO
+  /api/v0/network/p2p/non_public:
+    get:
+      description: list all the nodes that are connected to ours but that are not publicly reachable
+      responses:
+        200:
+          description: array of nodes that are not publicly reachable
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node and its associated logged data and records
+                  type: object
+                  required: [profile]
+                  properties:
+                    profile:
+                      type: object
+                      required: [info, subscriptions]
+                      description: the node public profile
+                      properties:
+                        info:
+                          type: object
+                          required: [id]
+                          description: the node public info
+                          properties:
+                            address:
+                              type: string
+                              description: the multi-address of the node
+                            id:
+                              type: string
+                              description: the node public id
+                        subscriptions:
+                          type: array
+                          description: the subscriptions of this node
+                          items:
+                            description: a subscription
+                            type: object
+                            required: [interest, topic]
+                            properties:
+                              interest:
+                                type: string
+                                description: the level of interest on the associate subscription
+                                enum: [High, Normal, Low]
+                              topic:
+                                type: integer
+                                description: 0 for fragment topic and 1 for a block topic
+                                enum: [0, 1]
+                    records:
+                      type: object
+                      description: all the recorded error with this node
+                      required: [strikes]
+                      properties:
+                        strikes:
+                          description: the strikes recorded on this node
+                          type: array
+                          items:
+                            description: the type of strike recorded against a node
+                            type: object
+                            required: [reason, when]
+                            properties:
+                              reason:
+                                type: string
+                                description: a short message describing the cause of the strike
+                              when:
+                                description: when the strike was recorded
+                                type: object
+                                required: [seconds_since_epoch, nanos_since_epoch]
+                                properties:
+                                  seconds_since_epoch:
+                                    type: integer
+                                    description: seconds since unix epoch
+                                    minimum: 0
+                                  nanos_since_epoch:
+                                    type: integer
+                                    description: elapsed nanoseconds since unix epoch
+                                    minimum: 0
+
+                    logs:
+                      type: object
+                      description: the different logged events associated to this node
+                      required: [creation_time]
+                      properties:
+                        creation_time:
+                          description: when the node was known of our node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_gossip:
+                          description: the last time we gossiped with the node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_update:
+                          description: the last time we received an update of the node (via gossiping with another node)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        quarantined:
+                          description: the time at which the node was quarantined (if not there then the node is not quarantined)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_use_of:
+                          description: the last time this node has been part of a view for event propagation
+                          type: object
+                          properties:
+                            "0":
+                              description: the last time the node was selected for fragment propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+                            "1":
+                              description: the last time the node was selected for block propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+  /api/v0/network/p2p/available:
+    get:
+      description: list all the nodes that are available for p2p discovery and events propagation
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node and its associated logged data and records
+                  type: object
+                  required: [profile]
+                  properties:
+                    profile:
+                      type: object
+                      required: [info, subscriptions]
+                      description: the node public profile
+                      properties:
+                        info:
+                          type: object
+                          required: [id, address]
+                          description: the node public info
+                          properties:
+                            address:
+                              type: string
+                              description: the multi-address of the node
+                            id:
+                              type: string
+                              description: the node public id
+                        subscriptions:
+                          type: array
+                          description: the subscriptions of this node
+                          items:
+                            description: a subscription
+                            type: object
+                            required: [interest, topic]
+                            properties:
+                              interest:
+                                type: string
+                                description: the level of interest on the associate subscription
+                                enum: [High, Normal, Low]
+                              topic:
+                                type: integer
+                                description: 0 for fragment topic and 1 for a block topic
+                                enum: [0, 1]
+                    records:
+                      type: object
+                      description: all the recorded error with this node
+                      required: [strikes]
+                      properties:
+                        strikes:
+                          description: the strikes recorded on this node
+                          type: array
+                          items:
+                            description: the type of strike recorded against a node
+                            type: object
+                            required: [reason, when]
+                            properties:
+                              reason:
+                                type: string
+                                description: a short message describing the cause of the strike
+                              when:
+                                description: when the strike was recorded
+                                type: object
+                                required: [seconds_since_epoch, nanos_since_epoch]
+                                properties:
+                                  seconds_since_epoch:
+                                    type: integer
+                                    description: seconds since unix epoch
+                                    minimum: 0
+                                  nanos_since_epoch:
+                                    type: integer
+                                    description: elapsed nanoseconds since unix epoch
+                                    minimum: 0
+
+                    logs:
+                      type: object
+                      description: the different logged events associated to this node
+                      required: [creation_time]
+                      properties:
+                        creation_time:
+                          description: when the node was known of our node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_gossip:
+                          description: the last time we gossiped with the node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_update:
+                          description: the last time we received an update of the node (via gossiping with another node)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        quarantined:
+                          description: the time at which the node was quarantined (if not there then the node is not quarantined)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_use_of:
+                          description: the last time this node has been part of a view for event propagation
+                          type: object
+                          properties:
+                            "0":
+                              description: the last time the node was selected for fragment propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+                            "1":
+                              description: the last time the node was selected for block propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+  /api/v0/network/p2p/quarantined:
+    get:
+      description: list all the nodes that have been quarantined
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node and its associated logged data and records
+                  type: object
+                  required: [profile]
+                  properties:
+                    profile:
+                      type: object
+                      required: [info, subscriptions]
+                      description: the node public profile
+                      properties:
+                        info:
+                          type: object
+                          required: [id, address]
+                          description: the node public info
+                          properties:
+                            address:
+                              type: string
+                              description: the multi-address of the node
+                            id:
+                              type: string
+                              description: the node public id
+                        subscriptions:
+                          type: array
+                          description: the subscriptions of this node
+                          items:
+                            description: a subscription
+                            type: object
+                            required: [interest, topic]
+                            properties:
+                              interest:
+                                type: string
+                                description: the level of interest on the associate subscription
+                                enum: [High, Normal, Low]
+                              topic:
+                                type: integer
+                                description: 0 for fragment topic and 1 for a block topic
+                                enum: [0, 1]
+                    records:
+                      type: object
+                      description: all the recorded error with this node
+                      required: [strikes]
+                      properties:
+                        strikes:
+                          description: the strikes recorded on this node
+                          type: array
+                          items:
+                            description: the type of strike recorded against a node
+                            type: object
+                            required: [reason, when]
+                            properties:
+                              reason:
+                                type: string
+                                description: a short message describing the cause of the strike
+                              when:
+                                description: when the strike was recorded
+                                type: object
+                                required: [seconds_since_epoch, nanos_since_epoch]
+                                properties:
+                                  seconds_since_epoch:
+                                    type: integer
+                                    description: seconds since unix epoch
+                                    minimum: 0
+                                  nanos_since_epoch:
+                                    type: integer
+                                    description: elapsed nanoseconds since unix epoch
+                                    minimum: 0
+
+                    logs:
+                      type: object
+                      description: the different logged events associated to this node
+                      required: [creation_time, quarantined]
+                      properties:
+                        creation_time:
+                          description: when the node was known of our node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_gossip:
+                          description: the last time we gossiped with the node
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_update:
+                          description: the last time we received an update of the node (via gossiping with another node)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        quarantined:
+                          description: the time at which the node was quarantined (if not there then the node is not quarantined)
+                          type: object
+                          required: [seconds_since_epoch, nanos_since_epoch]
+                          properties:
+                            seconds_since_epoch:
+                              type: integer
+                              description: seconds since unix epoch
+                              minimum: 0
+                            nanos_since_epoch:
+                              type: integer
+                              description: elapsed nanoseconds since unix epoch
+                              minimum: 0
+                        last_use_of:
+                          description: the last time this node has been part of a view for event propagation
+                          type: object
+                          properties:
+                            "0":
+                              description: the last time the node was selected for fragment propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+                            "1":
+                              description: the last time the node was selected for block propagation
+                              type: object
+                              required: [seconds_since_epoch, nanos_since_epoch]
+                              properties:
+                                seconds_since_epoch:
+                                  type: integer
+                                  description: seconds since unix epoch
+                                  minimum: 0
+                                nanos_since_epoch:
+                                  type: integer
+                                  description: elapsed nanoseconds since unix epoch
+                                  minimum: 0
+  /api/v0/network/p2p/view:
+    get:
+      description: list all the nodes that are selected for gossiping/peer discovery
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node id and addresses
+                  type: object
+                  required: [id, address]
+                  properties:
+                    address:
+                      type: string
+                      description: the multi-address of the node
+                    id:
+                      type: string
+                      description: the node public id
+  /api/v0/network/p2p/view/{topic}:
+    get:
+      parameters:
+        - in: path
+          name: topic
+          required: true
+          description: the topic name
+          schema:
+            type: string
+            enum: [blocks, fragments]
+      description: list all the nodes that are selected for the given topic
+      responses:
+        200:
+          description: array of nodes info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: a node id and addresses
+                  type: object
+                  required: [id, address]
+                  properties:
+                    address:
+                      type: string
+                      description: the multi-address of the node
+                    id:
+                      type: string
+                      description: the node public id

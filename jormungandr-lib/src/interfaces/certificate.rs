@@ -1,9 +1,10 @@
-use bech32::{Bech32, FromBase32 as _, ToBase32 as _};
+use bech32::{self, FromBase32 as _, ToBase32 as _};
 use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_core::property;
 use chain_impl_mockchain::certificate;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
+use thiserror::Error;
 use typed_bytes::ByteBuilder;
 
 pub const SIGNED_CERTIFICATE_HRP: &str = "signedcert";
@@ -53,11 +54,11 @@ impl property::Serialize for Certificate {
         match &self.0 {
             certificate::Certificate::StakeDelegation(c) => {
                 writer.write_all(&[1])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
             }
             certificate::Certificate::OwnerStakeDelegation(c) => {
                 writer.write_all(&[2])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
             }
             certificate::Certificate::PoolRegistration(c) => {
                 writer.write_all(&[3])?;
@@ -114,12 +115,12 @@ impl property::Serialize for SignedCertificate {
         match &self.0 {
             certificate::SignedCertificate::StakeDelegation(c, a) => {
                 writer.write_all(&[1])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::OwnerStakeDelegation(c, ()) => {
                 writer.write_all(&[2])?;
-                c.serialize(&mut writer)?;
+                writer.write_all(c.serialize().as_slice())?;
             }
             certificate::SignedCertificate::PoolRegistration(c, a) => {
                 writer.write_all(&[3])?;
@@ -183,60 +184,69 @@ impl Readable for SignedCertificate {
     }
 }
 
-custom_error! {pub CertificateToBech32Error
-    Io { source: std::io::Error } = "Cannot serialize the Certificate",
-    Bech32 { source: bech32::Error } = "Cannot create new Bech32",
+#[derive(Debug, Error)]
+pub enum CertificateToBech32Error {
+    #[error("Cannot serialize the Certificate")]
+    Io(#[from] std::io::Error),
+    #[error("Cannot create new Bech32")]
+    Bech32(#[from] bech32::Error),
 }
 
-custom_error! {pub CertificateFromBech32Error
-    InvalidHRP { expected: String, actual: String } = "Invalid prefix, expected {expected} but read {actual}.",
-    InvalidBase32 { source: bech32::Error } = "invalid base32",
-    InvalidCertificate { source: chain_core::mempack::ReadError } = "Invalid certificate",
+#[derive(Debug, Error)]
+pub enum CertificateFromBech32Error {
+    #[error("Invalid prefix, expected {expected} but read {actual}")]
+    InvalidHRP { expected: String, actual: String },
+    #[error("invalid base32")]
+    InvalidBase32(#[from] bech32::Error),
+    #[error("Invalid certificate")]
+    InvalidCertificate(#[from] chain_core::mempack::ReadError),
 }
 
-custom_error! {pub CertificateFromStrError
-    InvalidCertificate { source: CertificateFromBech32Error } = "Invalid certificate",
-    InvalidBech32 { source: bech32::Error } = "expected certificate in bech32",
+#[derive(Debug, Error)]
+pub enum CertificateFromStrError {
+    #[error("Invalid certificate")]
+    InvalidCertificate(#[from] CertificateFromBech32Error),
+    #[error("expected certificate in bech32")]
+    InvalidBech32(#[from] bech32::Error),
 }
 
 impl Certificate {
-    pub fn to_bech32(&self) -> Result<Bech32, CertificateToBech32Error> {
+    pub fn to_bech32(&self) -> Result<String, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(Bech32::new(CERTIFICATE_HRP.to_string(), bytes.to_base32())?)
+        Ok(bech32::encode(CERTIFICATE_HRP, &bytes.to_base32())?)
     }
 
-    pub fn from_bech32(bech32: &Bech32) -> Result<Self, CertificateFromBech32Error> {
-        if bech32.hrp() != CERTIFICATE_HRP {
+    pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
+        let (hrp, data) = bech32::decode(bech32)?;
+        if hrp != CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHRP {
                 expected: CERTIFICATE_HRP.to_owned(),
-                actual: bech32.hrp().to_owned(),
+                actual: hrp,
             });
         }
-        let bytes: Vec<u8> = Vec::from_base32(bech32.data())?;
+        let bytes: Vec<u8> = Vec::from_base32(&data)?;
         let mut buf = ReadBuf::from(&bytes);
         Certificate::read(&mut buf).map_err(CertificateFromBech32Error::from)
     }
 }
 
 impl SignedCertificate {
-    pub fn to_bech32(&self) -> Result<Bech32, CertificateToBech32Error> {
+    pub fn to_bech32(&self) -> Result<String, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(Bech32::new(
-            SIGNED_CERTIFICATE_HRP.to_string(),
-            bytes.to_base32(),
-        )?)
+        Ok(bech32::encode(SIGNED_CERTIFICATE_HRP, &bytes.to_base32())?)
     }
 
-    pub fn from_bech32(bech32: &Bech32) -> Result<Self, CertificateFromBech32Error> {
-        if bech32.hrp() != SIGNED_CERTIFICATE_HRP {
+    pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
+        let (hrp, data) = bech32::decode(bech32)?;
+        if hrp != SIGNED_CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHRP {
                 expected: SIGNED_CERTIFICATE_HRP.to_owned(),
-                actual: bech32.hrp().to_owned(),
+                actual: hrp,
             });
         }
-        let bytes: Vec<u8> = Vec::from_base32(bech32.data())?;
+        let bytes: Vec<u8> = Vec::from_base32(&data)?;
         let mut buf = ReadBuf::from(&bytes);
         SignedCertificate::read(&mut buf).map_err(CertificateFromBech32Error::from)
     }
@@ -253,22 +263,13 @@ impl fmt::Display for Certificate {
 impl FromStr for Certificate {
     type Err = CertificateFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bech32 = Bech32::from_str(s)?;
-        Ok(Certificate::from_bech32(&bech32)?)
+        Ok(Certificate::from_bech32(&s)?)
     }
 }
 
 impl fmt::Display for SignedCertificate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_bech32().unwrap())
-    }
-}
-
-impl FromStr for SignedCertificate {
-    type Err = CertificateFromStrError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bech32 = Bech32::from_str(s)?;
-        Ok(SignedCertificate::from_bech32(&bech32)?)
     }
 }
 
@@ -321,9 +322,7 @@ impl<'de> Deserialize<'de> for Certificate {
         use serde::de::Error as _;
 
         let bech32_str = String::deserialize(deserializer)?;
-        let bech32: Bech32 = bech32_str.parse().map_err(D::Error::custom)?;
-
-        Certificate::from_bech32(&bech32).map_err(D::Error::custom)
+        Certificate::from_bech32(&bech32_str).map_err(D::Error::custom)
     }
 }
 
@@ -335,7 +334,6 @@ impl Serialize for SignedCertificate {
         use serde::ser::Error as _;
 
         let bech32 = self.to_bech32().map_err(S::Error::custom)?;
-
         bech32.to_string().serialize(serializer)
     }
 }
@@ -348,8 +346,6 @@ impl<'de> Deserialize<'de> for SignedCertificate {
         use serde::de::Error as _;
 
         let bech32_str = String::deserialize(deserializer)?;
-        let bech32: Bech32 = bech32_str.parse().map_err(D::Error::custom)?;
-
-        SignedCertificate::from_bech32(&bech32).map_err(D::Error::custom)
+        SignedCertificate::from_bech32(&bech32_str).map_err(D::Error::custom)
     }
 }

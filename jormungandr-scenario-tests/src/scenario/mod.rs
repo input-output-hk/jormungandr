@@ -1,6 +1,7 @@
 mod blockchain;
 mod context;
 mod controller;
+pub mod repository;
 pub mod settings;
 mod topology;
 mod wallet;
@@ -15,9 +16,12 @@ pub use self::{
 pub use chain_impl_mockchain::{
     block::{Block, ConsensusVersion},
     header::HeaderId,
+    milli::Milli,
     value::Value,
 };
-pub use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
+pub use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+};
 
 error_chain! {
     links {
@@ -78,6 +82,8 @@ macro_rules! prepare_scenario {
             $crate::scenario::ConsensusVersion::$blockchain_consensus,
             $crate::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).expect("valid number of slots per epoch"),
             $crate::scenario::SlotDuration::new($slot_duration).expect("valid slot duration in seconds"),
+            $crate::scenario::KESUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
+            $crate::scenario::ActiveSlotCoefficient::new($crate::scenario::Milli::from_millis(700)).expect("active slot coefficient in millis"),
         );
 
         $(

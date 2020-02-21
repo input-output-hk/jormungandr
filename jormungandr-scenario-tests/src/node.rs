@@ -6,8 +6,11 @@ use chain_impl_mockchain::{
     header::HeaderId,
 };
 use indicatif::ProgressBar;
-use jormungandr_integration_tests::mock::{client::JormungandrClient, read_into};
-use jormungandr_integration_tests::response_to_vec;
+use jormungandr_integration_tests::{
+    common::jormungandr::logger::JormungandrLogger,
+    mock::{client::JormungandrClient, read_into},
+    response_to_vec,
+};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus, Stats};
 use rand_core::RngCore;
 use std::{
@@ -53,19 +56,24 @@ error_chain! {
             description("the node is no longer running"),
         }
 
-        NodeFailedToBootstrap (alias: String, duration: Duration) {
+        NodeFailedToBootstrap (alias: String, duration: Duration, log: String) {
             description("cannot start node"),
-            display("node '{}' failed to start after {} s", alias, duration.as_secs()),
+            display("node '{}' failed to start after {} s. log: {}", alias, duration.as_secs(), log),
         }
 
-        FragmentNoInMemPoolLogs (fragment_id: FragmentId) {
+        NodeFailedToShutdown (alias: String, message: String, log: String) {
+            description("cannot shutdown node"),
+            display("node '{}' failed to shutdown. Message: {}. Log: {}", alias, message, log),
+        }
+
+        FragmentNoInMemPoolLogs (alias: String, fragment_id: FragmentId, log: String) {
             description("cannot find fragment in mempool logs"),
-            display("fragment '{}' not in the mempool of the node", fragment_id),
+            display("fragment '{}' not in the mempool of the node '{}'. logs: {}", fragment_id, alias, log),
         }
 
-        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration) {
+        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration, alias: String, log: String) {
             description("fragment is pending for too long"),
-            display("fragment '{}' is pending for tool long ({} s)", fragment_id, duration.as_secs()),
+            display("fragment '{}' is pending for too long ({} s). Node: {}, Logs: {}", fragment_id, duration.as_secs(), alias, log),
         }
     }
 }
@@ -102,6 +110,7 @@ pub enum Status {
 struct ProgressBarController {
     progress_bar: ProgressBar,
     prefix: String,
+    legacy_logging: bool,
 }
 
 /// send query to a running node
@@ -284,7 +293,7 @@ impl NodeController {
     }
 
     pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
-        let max_try = 20;
+        let max_try = 50;
         for _ in 0..max_try {
             let logs = self.fragment_logs()?;
 
@@ -313,7 +322,9 @@ impl NodeController {
                 }
             } else {
                 bail!(ErrorKind::FragmentNoInMemPoolLogs(
-                    check.fragment_id.clone()
+                    self.alias().to_string(),
+                    check.fragment_id.clone(),
+                    self.logger().get_log_content()
                 ))
             }
             std::thread::sleep(duration);
@@ -321,7 +332,9 @@ impl NodeController {
 
         bail!(ErrorKind::FragmentIsPendingForTooLong(
             check.fragment_id.clone(),
-            Duration::from_secs(duration.as_secs() * max_try)
+            Duration::from_secs(duration.as_secs() * max_try),
+            self.alias().to_string(),
+            self.logger().get_log_content()
         ))
     }
 
@@ -330,37 +343,84 @@ impl NodeController {
         let stats: Stats =
             serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
         self.progress_bar
-            .log_info(format!("node stats ({:?})", stats));
+            .log_info(format!("node stats ({:?})", &stats));
         Ok(stats)
     }
 
     pub fn wait_for_bootstrap(&self) -> Result<()> {
-        let max_try = 20;
-        let sleep = Duration::from_secs(1);
+        let max_try = 40;
+        let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
             let stats = self.stats();
-            if let Ok(stats) = stats {
-                if stats.uptime > 0 {
-                    return Ok(());
+            match stats {
+                Ok(stats) => {
+                    if let Some(uptime) = stats.uptime {
+                        if uptime > 0 {
+                            return Ok(());
+                        }
+                    }
                 }
-            }
+                Err(err) => self
+                    .progress_bar
+                    .log_info(format!("node stats failure({:?})", err)),
+            };
             std::thread::sleep(sleep);
         }
         bail!(ErrorKind::NodeFailedToBootstrap(
             self.alias().to_string(),
-            Duration::from_secs(sleep.as_secs() * max_try)
+            Duration::from_secs(sleep.as_secs() * max_try),
+            self.logger().get_log_content()
         ))
     }
 
-    pub fn shutdown(&self) -> Result<bool> {
+    pub fn wait_for_shutdown(&self) -> Result<()> {
+        let max_try = 2;
+        let sleep = Duration::from_secs(2);
+        for _ in 0..max_try {
+            if let Err(err) = self.stats() {
+                return Ok(());
+            };
+            std::thread::sleep(sleep);
+        }
+        bail!(ErrorKind::NodeFailedToShutdown(
+            self.alias().to_string(),
+            format!(
+                "node is still up after {} s from sending shutdown request",
+                sleep.as_secs()
+            ),
+            self.logger().get_log_content()
+        ))
+    }
+
+    pub fn shutdown(&self) -> Result<()> {
         let result = self.get("shutdown")?.text()?;
 
-        if result == "Success" {
+        if result == "" {
             self.progress_bar.log_info("shuting down");
-            Ok(true)
+            return self.wait_for_shutdown();
         } else {
-            Ok(false)
+            bail!(ErrorKind::NodeFailedToShutdown(
+                self.alias().to_string(),
+                result,
+                self.logger().get_log_content()
+            ))
         }
+    }
+
+    fn logger(&self) -> JormungandrLogger {
+        let log_file = self
+            .settings
+            .config
+            .log
+            .clone()
+            .unwrap()
+            .log_file()
+            .unwrap();
+        JormungandrLogger::new(log_file)
+    }
+
+    pub fn log_content(&self) -> String {
+        self.logger().get_log_content()
     }
 }
 
@@ -370,7 +430,7 @@ impl Node {
     }
 
     pub fn controller(&self) -> NodeController {
-        let p2p_address = format!("{}", self.node_settings.config().p2p.public_address);
+        let p2p_address = format!("{}", self.node_settings.config().p2p.listen_address);
 
         NodeController {
             alias: self.alias().clone(),
@@ -398,6 +458,7 @@ impl Node {
         let progress_bar = ProgressBarController::new(
             progress_bar,
             format!("{}@{}", alias, node_settings.config().rest.listen),
+            context.disable_progress_bar(),
         );
 
         let config_file = dir.join(NODE_CONFIG);
@@ -511,10 +572,11 @@ impl Node {
 use std::fmt::Display;
 
 impl ProgressBarController {
-    fn new(progress_bar: ProgressBar, prefix: String) -> Self {
+    fn new(progress_bar: ProgressBar, prefix: String, legacy_logging: bool) -> Self {
         ProgressBarController {
             progress_bar,
             prefix,
+            legacy_logging,
         }
     }
 
@@ -537,13 +599,20 @@ impl ProgressBarController {
         L: Display,
         M: Display,
     {
-        self.progress_bar.println(format!(
-            "[{}][{}{}]: {}",
-            lvl,
-            *style::icons::jormungandr,
-            style::binary.apply_to(&self.prefix),
-            msg,
-        ))
+        match self.legacy_logging {
+            true => {
+                println!("[{}][{}]: {}", lvl, &self.prefix, msg);
+            }
+            false => {
+                self.progress_bar.println(format!(
+                    "[{}][{}{}]: {}",
+                    lvl,
+                    *style::icons::jormungandr,
+                    style::binary.apply_to(&self.prefix),
+                    msg,
+                ));
+            }
+        }
     }
 }
 

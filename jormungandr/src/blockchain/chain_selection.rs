@@ -14,20 +14,28 @@ pub enum ComparisonResult {
 /// work to make a choice as to which of these two Ref is the right choice.
 ///
 pub fn compare_against(storage: &Storage, current: &Ref, candidate: &Ref) -> ComparisonResult {
-    let rollback_possible = check_rollback_up_to(
-        // missing max depth parameter from the protocol settings
-        storage, current, candidate,
-    );
+    let epoch_stability_depth = current.epoch_ledger_parameters().epoch_stability_depth;
 
-    if rollback_possible && current.chain_length() < candidate.chain_length() {
+    let rollback_possible =
+        check_rollback_up_to(epoch_stability_depth, storage, current, candidate);
+
+    let not_in_future = !is_in_future(candidate);
+
+    if rollback_possible && not_in_future && current.chain_length() < candidate.chain_length() {
         ComparisonResult::PreferCandidate
     } else {
         ComparisonResult::PreferCurrent
     }
 }
 
+/// returns `true` is the Ref is set in what appears to be in the future
+/// relative to this node.
+fn is_in_future(node: &Ref) -> bool {
+    node.elapsed().is_err()
+}
+
 fn check_rollback_up_to(
-    // TODO: missing max depth parameter
+    _epoch_stability_depth: u32,
     _: &Storage,
     _ref1: &Ref,
     _ref2: &Ref,

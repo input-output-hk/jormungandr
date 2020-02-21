@@ -1,7 +1,8 @@
 use crate::{
     interfaces::{
-        ActiveSlotCoefficient, BFTSlotsRatio, ConsensusLeaderId, KESUpdateSpeed, LinearFeeDef,
-        NumberOfSlotsPerEpoch, SlotDuration,
+        ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, EpochStabilityDepth,
+        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, PoolParticipationCapping,
+        RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -11,10 +12,10 @@ use chain_impl_mockchain::{
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     fragment::config::ConfigParams,
-    value,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use thiserror::Error;
 
 /// Initial blockchain configuration for block0
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,33 +87,45 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     pub consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
 
-    /// allow BFT and Genesis Praos to live together by allocating some
-    /// slots to the `consensus_leader_ids` (the BFT Leaders).
+    /// set the block content maximal size
+    #[serde(default)]
+    pub block_content_max_size: BlockContentMaxSize,
+
+    /// set the maximal depth from which a fork will no longer be considered valid
+    #[serde(default)]
+    pub epoch_stability_depth: EpochStabilityDepth,
+
+    /// Fees go to settings, the default being `rewards`.
     ///
-    /// default value is 0.22.
     #[serde(default)]
-    pub bft_slots_ratio: BFTSlotsRatio,
-
-    /// TODO: need some love
-    /// this value is left for compatibility only but should be removed or
-    /// replaced by something more meaningful: max block size (in bytes)
-    #[serde(default)]
-    pub max_number_of_transactions_per_block: Option<u32>,
-
-    /// TODO: need some love
-    /// this value is left for compatibility only be should be removed
-    /// or replaced by something more meaningful or merged with
-    /// `slots_per_epoch`.
-    #[serde(default)]
-    pub epoch_stability_depth: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fees_go_to: Option<FeesGoTo>,
 
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
     #[serde(default)]
-    pub treasury: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub treasury: Option<Value>,
+
+    /// set the treasure parameters, i.e. the first value the treasury will take from the
+    /// rewards pot and fees.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub treasury_parameters: Option<TaxType>,
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
     #[serde(default)]
-    pub rewards: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_reward_supply: Option<Value>,
+
+    /// The reward settings for the reward policy. No reward settings means no reward
+    /// distributed at all.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reward_parameters: Option<RewardParams>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "RewardConstraints::is_none")]
+    pub reward_constraints: RewardConstraints,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -123,15 +136,28 @@ impl From<BlockchainConfiguration> for ConfigParams {
 
 type StaticStr = &'static str;
 
-custom_error! {pub FromConfigParamsError
-    InitConfigParamMissing { name: StaticStr } = "initial message misses parameter {name}",
-    InitConfigParamDuplicate { name: StaticStr } = "initial message contains duplicate parameter {name}",
-    NumberOfSlotsPerEpoch { source: super::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError } = "Invalid number of slots per epoch",
-    SlotDuration { source: super::slots_duration::TryFromSlotDurationError } = "Invalid slot duration value",
-    ConsensusLeaderId { source: super::leader_id::TryFromConsensusLeaderIdError } = "Invalid consensus leader id",
-    ActiveSlotCoefficient { source: super::active_slot_coefficient::TryFromActiveSlotCoefficientError } = "Invalid active slot coefficient value",
-    BFTSlotsRatio { source: super::bft_slots_ratio::TryFromBFTSlotsRatioError } = "Invalid BFT Slot ratio",
-    KESUpdateSpeed { source: super::kes_update_speed::TryFromKESUpdateSpeedError } = "Invalid KES Update speed value",
+#[derive(Debug, Error)]
+pub enum FromConfigParamsError {
+    #[error("initial message misses parameter {name}")]
+    InitConfigParamMissing { name: StaticStr },
+    #[error("initial message contains duplicate parameter {name}")]
+    InitConfigParamDuplicate { name: StaticStr },
+    #[error("Invalid number of slots per epoch")]
+    NumberOfSlotsPerEpoch(
+        #[from] super::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError,
+    ),
+    #[error("Invalid slot duration value")]
+    SlotDuration(#[from] super::slots_duration::TryFromSlotDurationError),
+    #[error("Invalid consensus leader id")]
+    ConsensusLeaderId(#[from] super::leader_id::TryFromConsensusLeaderIdError),
+    #[error("Invalid active slot coefficient value")]
+    ActiveSlotCoefficient(
+        #[from] super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
+    ),
+    #[error("Invalid KES Update speed value")]
+    KESUpdateSpeed(#[from] super::kes_update_speed::TryFromKESUpdateSpeedError),
+    #[error("Invalid FeesGoTo setting")]
+    FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {
@@ -157,11 +183,14 @@ impl BlockchainConfiguration {
             slot_duration: SlotDuration::default(),
             kes_update_speed: KESUpdateSpeed::default(),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
-            bft_slots_ratio: BFTSlotsRatio::default(),
-            max_number_of_transactions_per_block: None,
-            epoch_stability_depth: None,
+            block_content_max_size: BlockContentMaxSize::default(),
+            epoch_stability_depth: EpochStabilityDepth::default(),
+            fees_go_to: None,
             treasury: None,
-            rewards: None,
+            treasury_parameters: None,
+            total_reward_supply: None,
+            reward_parameters: None,
+            reward_constraints: RewardConstraints::default(),
         }
     }
 
@@ -178,12 +207,16 @@ impl BlockchainConfiguration {
         let mut epoch_stability_depth = None;
         let mut consensus_leader_ids = vec![];
         let mut consensus_genesis_praos_active_slot_coeff = None;
-        let mut max_number_of_transactions_per_block = None;
-        let mut bft_slots_ratio = None;
+        let mut block_content_max_size = None;
         let mut linear_fees = None;
         let mut kes_update_speed = None;
         let mut treasury = None;
-        let mut rewards = None;
+        let mut treasury_parameters = None;
+        let mut total_reward_supply = None;
+        let mut reward_parameters = None;
+        let mut per_certificate_fees = None;
+        let mut fees_go_to = None;
+        let mut reward_constraints = RewardConstraints::default();
 
         for param in params.iter().cloned() {
             match param {
@@ -211,33 +244,59 @@ impl BlockchainConfiguration {
                         .replace(ActiveSlotCoefficient::try_from(cp)?)
                         .map(|_| "consensus_genesis_praos_active_slot_coeff")
                 }
-                cp @ ConfigParam::BftSlotsRatio(_) => bft_slots_ratio
-                    .replace(BFTSlotsRatio::try_from(cp)?)
-                    .map(|_| "bft_slots_ratio"),
                 ConfigParam::LinearFee(param) => linear_fees.replace(param).map(|_| "linear_fees"),
                 cp @ ConfigParam::KESUpdateSpeed(_) => kes_update_speed
                     .replace(KESUpdateSpeed::try_from(cp)?)
                     .map(|_| "kes_update_speed"),
+                cp @ ConfigParam::FeesInTreasury(_) => fees_go_to
+                    .replace(FeesGoTo::try_from(cp)?)
+                    .map(|_| "fees_go_to"),
 
                 ConfigParam::RemoveBftLeader(_) => {
                     panic!("block 0 attempts to remove a BFT leader")
                 }
                 ConfigParam::ProposalExpiration(_param) => unimplemented!(),
-                ConfigParam::MaxNumberOfTransactionsPerBlock(param) => {
-                    max_number_of_transactions_per_block
-                        .replace(param)
-                        .map(|_| "max_number_of_transactions_per_block")
-                }
+                ConfigParam::BlockContentMaxSize(param) => block_content_max_size
+                    .replace(param.into())
+                    .map(|_| "block_content_max_size"),
                 ConfigParam::EpochStabilityDepth(param) => epoch_stability_depth
-                    .replace(param)
+                    .replace(param.into())
                     .map(|_| "epoch_stability_depth"),
-                ConfigParam::TreasuryAdd(param) => treasury.replace(param.0).map(|_| "treasury"),
-                ConfigParam::TreasuryParams(_) => unimplemented!(),
-                ConfigParam::RewardPot(param) => rewards.replace(param.0).map(|_| "reward-pot"),
-                ConfigParam::RewardParams(_) => unimplemented!(),
+                ConfigParam::TreasuryAdd(param) => {
+                    treasury.replace(param.into()).map(|_| "treasury")
+                }
+                ConfigParam::TreasuryParams(param) => treasury_parameters
+                    .replace(param.into())
+                    .map(|_| "treasury_parameters"),
+                ConfigParam::RewardPot(param) => total_reward_supply
+                    .replace(param.into())
+                    .map(|_| "total_reward_supply"),
+                ConfigParam::RewardParams(param) => reward_parameters
+                    .replace(param.into())
+                    .map(|_| "reward_parameters"),
+                ConfigParam::RewardLimitNone => {
+                    panic!("ConfigParam::RewardLimitNone should not be in the block0")
+                }
+                ConfigParam::RewardLimitByAbsoluteStake(ratio) => reward_constraints
+                    .reward_drawing_limit_max
+                    .replace(ratio.into())
+                    .map(|_| "reward_constraints.reward_drawing_limit_max"),
+                ConfigParam::PoolRewardParticipationCapping((min, max)) => reward_constraints
+                    .pool_participation_capping
+                    .replace(PoolParticipationCapping { min, max })
+                    .map(|_| "reward_constraints.pool_participation_capping"),
+                ConfigParam::PerCertificateFees(param) => per_certificate_fees
+                    .replace(param)
+                    .map(|_| "per_certificate_fees"),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
+        }
+
+        if let Some(linear_fees) = &mut linear_fees {
+            if let Some(per_certificate_fees) = per_certificate_fees {
+                linear_fees.per_certificate_fees(per_certificate_fees);
+            }
         }
 
         Ok(BlockchainConfiguration {
@@ -250,14 +309,19 @@ impl BlockchainConfiguration {
                 .ok_or(param_missing_error(
                     "consensus_genesis_praos_active_slot_coeff",
                 ))?,
-            bft_slots_ratio: bft_slots_ratio.ok_or(param_missing_error("bft_slots_ratio"))?,
             linear_fees: linear_fees.ok_or(param_missing_error("linear_fees"))?,
             kes_update_speed: kes_update_speed.ok_or(param_missing_error("kes_update_speed"))?,
-            epoch_stability_depth,
+            epoch_stability_depth: epoch_stability_depth
+                .ok_or(param_missing_error("epoch_stability_depth"))?,
             consensus_leader_ids,
-            max_number_of_transactions_per_block,
+            block_content_max_size: block_content_max_size
+                .ok_or(param_missing_error("block_content_max_size"))?,
+            fees_go_to: fees_go_to,
             treasury,
-            rewards,
+            treasury_parameters,
+            total_reward_supply,
+            reward_parameters,
+            reward_constraints: reward_constraints,
         })
     }
 
@@ -272,11 +336,14 @@ impl BlockchainConfiguration {
             slot_duration,
             kes_update_speed,
             consensus_genesis_praos_active_slot_coeff,
-            bft_slots_ratio,
-            max_number_of_transactions_per_block,
+            block_content_max_size,
             epoch_stability_depth,
+            fees_go_to,
             treasury,
-            rewards,
+            treasury_parameters,
+            total_reward_supply,
+            reward_parameters,
+            reward_constraints,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -289,23 +356,52 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::from(slot_duration));
         params.push(ConfigParam::from(kes_update_speed));
         params.push(ConfigParam::from(consensus_genesis_praos_active_slot_coeff));
-        params.push(ConfigParam::from(bft_slots_ratio));
+        params.push(ConfigParam::BlockContentMaxSize(
+            block_content_max_size.into(),
+        ));
+        params.push(ConfigParam::EpochStabilityDepth(
+            epoch_stability_depth.into(),
+        ));
 
-        if let Some(max_number_of_transactions_per_block) = max_number_of_transactions_per_block {
-            params.push(ConfigParam::MaxNumberOfTransactionsPerBlock(
-                max_number_of_transactions_per_block,
+        if let Some(fees_go_to) = fees_go_to {
+            params.push(ConfigParam::from(fees_go_to));
+        }
+
+        if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(
+            &linear_fees.per_certificate_fees,
+        ) {
+            params.push(ConfigParam::PerCertificateFees(
+                linear_fees.per_certificate_fees,
             ));
         }
 
-        if let Some(epoch_stability_depth) = epoch_stability_depth {
-            params.push(ConfigParam::EpochStabilityDepth(epoch_stability_depth));
+        if let Some(treasury) = treasury {
+            params.push(ConfigParam::TreasuryAdd(treasury.into()));
         }
 
-        if let Some(treasury) = treasury {
-            params.push(ConfigParam::TreasuryAdd(value::Value(treasury)));
+        if let Some(treasury_parameters) = treasury_parameters {
+            params.push(ConfigParam::TreasuryParams(treasury_parameters.into()));
         }
-        if let Some(rewards) = rewards {
-            params.push(ConfigParam::RewardPot(value::Value(rewards)));
+
+        if let Some(total_reward_supply) = total_reward_supply {
+            params.push(ConfigParam::RewardPot(total_reward_supply.into()));
+        }
+
+        if let Some(reward_parameters) = reward_parameters {
+            params.push(ConfigParam::RewardParams(reward_parameters.into()));
+        }
+
+        if let Some(reward_drawing_limit_max) = reward_constraints.reward_drawing_limit_max {
+            params.push(ConfigParam::RewardLimitByAbsoluteStake(
+                reward_drawing_limit_max.into(),
+            ));
+        }
+
+        if let Some(pool_participation_capping) = reward_constraints.pool_participation_capping {
+            params.push(ConfigParam::PoolRewardParticipationCapping((
+                pool_participation_capping.min,
+                pool_participation_capping.max,
+            )));
         }
 
         consensus_leader_ids
@@ -335,10 +431,20 @@ enum ConsensusVersionDef {
 #[cfg(test)]
 mod test {
     use super::*;
+    use chain_impl_mockchain::fee::PerCertificateFee;
     use quickcheck::{Arbitrary, Gen};
+    use std::num::NonZeroU64;
 
     impl Arbitrary for BlockchainConfiguration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut linear_fees =
+                LinearFee::new(u64::arbitrary(g), u64::arbitrary(g), u64::arbitrary(g));
+            linear_fees.per_certificate_fees(PerCertificateFee::new(
+                NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
+            ));
+
             BlockchainConfiguration {
                 block0_date: SecondsSinceUnixEpoch::arbitrary(g),
                 discrimination: if bool::arbitrary(g) {
@@ -351,21 +457,20 @@ mod test {
                 } else {
                     ConsensusVersion::GenesisPraos
                 },
-                linear_fees: LinearFee::new(
-                    u64::arbitrary(g),
-                    u64::arbitrary(g),
-                    u64::arbitrary(g),
-                ),
+                linear_fees,
                 consensus_leader_ids: Arbitrary::arbitrary(g),
                 slots_per_epoch: NumberOfSlotsPerEpoch::arbitrary(g),
                 slot_duration: SlotDuration::arbitrary(g),
                 kes_update_speed: KESUpdateSpeed::arbitrary(g),
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::arbitrary(g),
-                bft_slots_ratio: BFTSlotsRatio::arbitrary(g),
-                max_number_of_transactions_per_block: Arbitrary::arbitrary(g),
+                block_content_max_size: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
+                fees_go_to: Arbitrary::arbitrary(g),
                 treasury: Arbitrary::arbitrary(g),
-                rewards: Arbitrary::arbitrary(g),
+                treasury_parameters: Arbitrary::arbitrary(g),
+                total_reward_supply: Arbitrary::arbitrary(g),
+                reward_parameters: Arbitrary::arbitrary(g),
+                reward_constraints: Arbitrary::arbitrary(g),
             }
         }
     }

@@ -1,6 +1,8 @@
 [workspace]
 members = [
   "jormungandr-lib",
+  "jormungandr-watchdog",
+  "jormungandr-watchdog-derive",
   "jormungandr",
   "jcli",
   "jormungandr-integration-tests",

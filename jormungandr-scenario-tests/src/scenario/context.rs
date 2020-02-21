@@ -39,6 +39,7 @@ pub struct Context<RNG: RngCore + Sized> {
 
     testing_directory: TestingDirectory,
     generate_documentation: bool,
+    disable_progress_bar: bool,
 }
 
 impl Seed {
@@ -60,6 +61,7 @@ impl Context<ChaChaRng> {
         jcli: bawawa::Command,
         testing_directory: Option<PathBuf>,
         generate_documentation: bool,
+        disable_progress_bar: bool,
     ) -> Self {
         let rng = ChaChaRng::from_seed(seed.0);
 
@@ -78,6 +80,7 @@ impl Context<ChaChaRng> {
             jcli,
             testing_directory,
             generate_documentation,
+            disable_progress_bar,
         }
     }
 
@@ -96,6 +99,7 @@ impl Context<ChaChaRng> {
             jcli: self.jcli().clone(),
             testing_directory: self.testing_directory.clone(),
             generate_documentation: self.generate_documentation.clone(),
+            disable_progress_bar: self.disable_progress_bar.clone(),
         }
     }
 
@@ -148,6 +152,10 @@ impl<RNG: RngCore> Context<RNG> {
     #[inline]
     pub fn seed(&self) -> &Seed {
         &self.seed
+    }
+
+    pub fn disable_progress_bar(&self) -> bool {
+        self.disable_progress_bar
     }
 }
 

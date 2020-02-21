@@ -3,12 +3,15 @@ use chain_crypto::{bech32::Bech32 as _, Ed25519, PublicKey};
 use chain_impl_mockchain::{config::ConfigParam, leadership::bft::LeaderId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{convert::TryFrom, fmt};
+use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConsensusLeaderId(pub LeaderId);
 
-custom_error! { pub TryFromConsensusLeaderIdError
-    Incompatible = "Incompatible Config param, expected Add BFT Leader",
+#[derive(Debug, Error)]
+pub enum TryFromConsensusLeaderIdError {
+    #[error("Incompatible Config param, expected Add BFT Leader")]
+    Incompatible,
 }
 
 impl TryFrom<ConfigParam> for ConsensusLeaderId {
@@ -30,6 +33,12 @@ impl From<ConsensusLeaderId> for ConfigParam {
 impl From<Identifier<Ed25519>> for ConsensusLeaderId {
     fn from(identifier: Identifier<Ed25519>) -> Self {
         ConsensusLeaderId(LeaderId::from(identifier.into_public_key()))
+    }
+}
+
+impl From<PublicKey<Ed25519>> for ConsensusLeaderId {
+    fn from(public_key: PublicKey<Ed25519>) -> Self {
+        ConsensusLeaderId(LeaderId::from(public_key))
     }
 }
 

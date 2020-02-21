@@ -1,5 +1,5 @@
 use crate::jcli_app::utils::io;
-use bech32::{u5, Bech32, FromBase32, ToBase32};
+use bech32::{self, u5, FromBase32, ToBase32};
 use chain_crypto::{
     bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519,
     Ed25519Bip32, Ed25519Extended, SecretKey, SigningAlgorithm, SumEd25519_12, Verification,
@@ -7,33 +7,64 @@ use chain_crypto::{
 };
 use ed25519_bip32::{DerivationError, DerivationScheme};
 use hex::FromHexError;
-use rand::{rngs::EntropyRng, SeedableRng};
+use rand::{rngs::OsRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
 };
 use structopt::{clap::arg_enum, StructOpt};
+use thiserror::Error;
 
-custom_error! { pub Error
-    Io { source: std::io::Error } = "I/O error",
-    Bech32 { source: bech32::Error } = "invalid Bech32",
-    Hex { source: FromHexError } = "invalid Hexadecimal",
-    SecretKey { source: chain_crypto::SecretKeyError } = "invalid secret key",
-    PublicKey { source: chain_crypto::PublicKeyError } = "invalid public key",
-    Signature { source: chain_crypto::SignatureError } = "invalid signature",
-    Rand { source: rand::Error } = "error while using random source",
-    InvalidSeed { seed_len: usize } = "invalid seed length, expected 32 bytes but received {seed_len}",
-    InvalidInput { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("invalid input file path '{}'", path.display()) }},
-    InvalidOutput { source: std::io::Error, path: PathBuf }
-        = @{{ let _ = source; format_args!("invalid output file path '{}'", path.display()) }},
-    UnknownBech32PrivKeyHrp { hrp: String } = "unrecognized private key bech32 HRP: '{hrp}'",
-    UnknownBech32PubKeyHrp { hrp: String } = "unrecognized public key bech32 HRP: '{hrp}'",
-    UnexpectedBech32SignHrp { actual_hrp: String, expected_hrp: String }
-        = "signature bech32 has invalid HRP: '{actual_hrp}', expected: '{expected_hrp}'",
-    SignatureVerification = "signature verification failed",
-    Derivation { source: DerivationError } = "failed to derive from BIP32 public key",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("I/O error")]
+    Io(#[from] std::io::Error),
+    #[error("invalid Bech32")]
+    Bech32(#[from] bech32::Error),
+    #[error("invalid Hexadecimal")]
+    Hex(#[from] FromHexError),
+    #[error("invalid secret key")]
+    SecretKey(#[from] chain_crypto::SecretKeyError),
+    #[error("invalid public key")]
+    PublicKey(#[from] chain_crypto::PublicKeyError),
+    #[error("invalid signature")]
+    Signature(#[from] chain_crypto::SignatureError),
+    #[error("error while using random source")]
+    Rand(#[from] rand::Error),
+    #[error("invalid seed length, expected 32 bytes but received {seed_len}")]
+    InvalidSeed { seed_len: usize },
+    #[error("invalid input file path '{path}'")]
+    InvalidInput {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("invalid output file path '{path}'")]
+    InvalidOutput {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("unrecognized private key bech32 HRP: '{hrp}'")]
+    UnknownBech32PrivKeyHrp { hrp: String },
+    #[error("unrecognized public key bech32 HRP: '{hrp}'")]
+    UnknownBech32PubKeyHrp { hrp: String },
+    #[error("signature bech32 has invalid HRP: '{actual_hrp}', expected: '{expected_hrp}'")]
+    UnexpectedBech32SignHrp {
+        actual_hrp: String,
+        expected_hrp: String,
+    },
+    #[error("signature verification failed")]
+    SignatureVerification,
+    #[error("failed to derive from BIP32 public key")]
+    Derivation(#[from] DerivationError),
+    #[error("ed25519bip32 key expected, signature bech32 has invalid HRP: '{actual_hrp}', expected: '{public_hrp}' or '{private_hrp}'")]
+    UnexpectedBip32Bech32Hrp {
+        actual_hrp: String,
+        public_hrp: String,
+        private_hrp: String,
+    },
 }
 
 #[derive(StructOpt, Debug)]
@@ -51,7 +82,7 @@ pub enum Key {
     Sign(Sign),
     /// verify signed data with public key
     Verify(Verify),
-    /// derive a child key
+    /// derive a child key from a ed25519bip32 parent key
     Derive(Derive),
 }
 
@@ -148,7 +179,7 @@ pub struct Verify {
 
 #[derive(StructOpt, Debug)]
 pub struct Derive {
-    /// the parent key to derive a child key from
+    /// the ed25519bip32 parent key to derive a child key from
     ///
     /// if no value passed, the parent key will be read from the
     /// standard input
@@ -220,17 +251,14 @@ impl Generate {
 
 impl ToPublic {
     fn exec(self) -> Result<(), Error> {
-        let bech32 = read_bech32(&self.input_key)?;
-        let data = bech32.data();
-        let pub_key_bech32 = match bech32.hrp() {
-            Ed25519::SECRET_BECH32_HRP => gen_pub_key::<Ed25519>(data),
-            Ed25519Bip32::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Bip32>(data),
-            Ed25519Extended::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Extended>(data),
-            SumEd25519_12::SECRET_BECH32_HRP => gen_pub_key::<SumEd25519_12>(data),
-            Curve25519_2HashDH::SECRET_BECH32_HRP => gen_pub_key::<Curve25519_2HashDH>(data),
-            other => Err(Error::UnknownBech32PrivKeyHrp {
-                hrp: other.to_string(),
-            }),
+        let (hrp, data) = read_bech32(&self.input_key)?;
+        let pub_key_bech32 = match hrp.as_ref() {
+            Ed25519::SECRET_BECH32_HRP => gen_pub_key::<Ed25519>(&data),
+            Ed25519Bip32::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Bip32>(&data),
+            Ed25519Extended::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Extended>(&data),
+            SumEd25519_12::SECRET_BECH32_HRP => gen_pub_key::<SumEd25519_12>(&data),
+            Curve25519_2HashDH::SECRET_BECH32_HRP => gen_pub_key::<Curve25519_2HashDH>(&data),
+            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp: hrp }),
         }?;
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", pub_key_bech32)?;
@@ -240,9 +268,9 @@ impl ToPublic {
 
 impl ToBytes {
     fn exec(self) -> Result<(), Error> {
-        let bech32 = read_bech32(&self.input_key)?;
+        let (hrp, data) = read_bech32(&self.input_key)?;
 
-        match bech32.hrp() {
+        match hrp.as_ref() {
             Ed25519::PUBLIC_BECH32_HRP
             | Ed25519Bip32::PUBLIC_BECH32_HRP
             | SumEd25519_12::PUBLIC_BECH32_HRP
@@ -252,11 +280,9 @@ impl ToBytes {
             | Ed25519Extended::SECRET_BECH32_HRP
             | SumEd25519_12::SECRET_BECH32_HRP
             | Curve25519_2HashDH::SECRET_BECH32_HRP => Ok(()),
-            other => Err(Error::UnknownBech32PrivKeyHrp {
-                hrp: other.to_string(),
-            }),
+            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp: hrp }),
         }?;
-        let bytes = Vec::<u8>::from_base32(bech32.data())?;
+        let bytes = Vec::<u8>::from_base32(&data)?;
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", hex::encode(&bytes))?;
         Ok(())
@@ -282,16 +308,14 @@ impl FromBytes {
 
 impl Sign {
     fn exec(self) -> Result<(), Error> {
-        let secret_bech32 = read_bech32(&self.secret_key)?;
-        let secret_bytes = Vec::<u8>::from_base32(secret_bech32.data())?;
-        match secret_bech32.hrp() {
+        let (hrp, data) = read_bech32(&self.secret_key)?;
+        let secret_bytes = Vec::<u8>::from_base32(&data)?;
+        match hrp.as_ref() {
             Ed25519::SECRET_BECH32_HRP => self.sign::<Ed25519>(&secret_bytes),
             Ed25519Bip32::SECRET_BECH32_HRP => self.sign::<Ed25519Bip32>(&secret_bytes),
             Ed25519Extended::SECRET_BECH32_HRP => self.sign::<Ed25519Extended>(&secret_bytes),
             SumEd25519_12::SECRET_BECH32_HRP => self.sign::<SumEd25519_12>(&secret_bytes),
-            other => Err(Error::UnknownBech32PrivKeyHrp {
-                hrp: other.to_string(),
-            }),
+            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp: hrp }),
         }
     }
 
@@ -311,15 +335,13 @@ impl Sign {
 
 impl Verify {
     fn exec(self) -> Result<(), Error> {
-        let public_bech32 = read_bech32(&self.public_key)?;
-        let public_bytes = Vec::<u8>::from_base32(public_bech32.data())?;
-        match public_bech32.hrp() {
+        let (hrp, data) = read_bech32(&self.public_key)?;
+        let public_bytes = Vec::<u8>::from_base32(&data)?;
+        match hrp.as_ref() {
             Ed25519::PUBLIC_BECH32_HRP => self.verify::<Ed25519>(&public_bytes),
             Ed25519Bip32::PUBLIC_BECH32_HRP => self.verify::<Ed25519Bip32>(&public_bytes),
             SumEd25519_12::PUBLIC_BECH32_HRP => self.verify::<SumEd25519_12>(&public_bytes),
-            other => Err(Error::UnknownBech32PubKeyHrp {
-                hrp: other.to_string(),
-            }),
+            _ => Err(Error::UnknownBech32PubKeyHrp { hrp: hrp }),
         }
     }
 
@@ -329,14 +351,14 @@ impl Verify {
         <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
     {
         let public = A::PubAlg::public_from_binary(&public_bytes)?;
-        let sign_bech32 = read_bech32(&self.signature)?;
-        if sign_bech32.hrp() != A::PubAlg::SIGNATURE_BECH32_HRP {
+        let (hrp, data) = read_bech32(&self.signature)?;
+        if hrp != A::PubAlg::SIGNATURE_BECH32_HRP {
             return Err(Error::UnexpectedBech32SignHrp {
-                actual_hrp: sign_bech32.hrp().to_string(),
+                actual_hrp: hrp,
                 expected_hrp: A::PubAlg::SIGNATURE_BECH32_HRP.to_string(),
             });
         }
-        let sign_bytes = Vec::<u8>::from_base32(sign_bech32.data())?;
+        let sign_bytes = Vec::<u8>::from_base32(&data)?;
         let sign = A::PubAlg::signature_from_bytes(&sign_bytes)?;
         let mut data = Vec::new();
         io::open_file_read(&self.data)?.read_to_end(&mut data)?;
@@ -351,30 +373,32 @@ impl Verify {
 
 impl Derive {
     fn exec(self) -> Result<(), Error> {
-        let key_bech32 = read_bech32(&self.parent_key)?;
-        let key_bytes = Vec::<u8>::from_base32(key_bech32.data())?;
+        let (phrp, pdata) = read_bech32(&self.parent_key)?;
+        let key_bytes = Vec::<u8>::from_base32(&pdata)?;
         let hrp;
         let child_key;
 
-        match key_bech32.hrp() {
+        match phrp.as_ref() {
             Ed25519Bip32::PUBLIC_BECH32_HRP => {
                 let key = Ed25519Bip32::public_from_binary(&key_bytes)?;
                 child_key = key.derive(DerivationScheme::V2, self.index)?.to_base32();
-                hrp = Ed25519Bip32::PUBLIC_BECH32_HRP.to_string();
+                hrp = Ed25519Bip32::PUBLIC_BECH32_HRP;
             }
             Ed25519Bip32::SECRET_BECH32_HRP => {
                 let key = Ed25519Bip32::secret_from_binary(&key_bytes)?;
                 child_key = key.derive(DerivationScheme::V2, self.index).to_base32();
-                hrp = Ed25519Bip32::SECRET_BECH32_HRP.to_string();
+                hrp = Ed25519Bip32::SECRET_BECH32_HRP;
             }
             other => {
-                return Err(Error::UnknownBech32PubKeyHrp {
-                    hrp: other.to_string(),
+                return Err(Error::UnexpectedBip32Bech32Hrp {
+                    actual_hrp: other.to_string(),
+                    public_hrp: Ed25519Bip32::PUBLIC_BECH32_HRP.to_string(),
+                    private_hrp: Ed25519Bip32::SECRET_BECH32_HRP.to_string(),
                 })
             }
         }
 
-        let child_key_bech32 = Bech32::new(hrp, child_key)?;
+        let child_key_bech32 = bech32::encode(&hrp, child_key)?;
         let mut output = self.child_key.open()?;
         writeln!(output, "{}", child_key_bech32)?;
         Ok(())
@@ -385,27 +409,30 @@ fn read_hex<P: AsRef<Path>>(path: &Option<P>) -> Result<Vec<u8>, Error> {
     hex::decode(io::read_line(path)?).map_err(Into::into)
 }
 
-fn read_bech32<'a>(path: impl Into<Option<&'a PathBuf>>) -> Result<Bech32, Error> {
-    io::read_line(&path.into())?.parse().map_err(Into::into)
+fn read_bech32<'a>(
+    path: impl Into<Option<&'a PathBuf>>,
+) -> Result<(String, Vec<bech32::u5>), Error> {
+    let line = io::read_line(&path.into())?;
+    bech32::decode(&line).map_err(Into::into)
 }
 
-fn gen_priv_key<K: AsymmetricKey>(seed: Option<Seed>) -> Result<Bech32, Error> {
+fn gen_priv_key<K: AsymmetricKey>(seed: Option<Seed>) -> Result<String, Error> {
     let rng = if let Some(seed) = seed {
         ChaChaRng::from_seed(seed.0)
     } else {
-        ChaChaRng::from_rng(EntropyRng::new())?
+        ChaChaRng::from_rng(OsRng)?
     };
     let secret = K::generate(rng);
-    let hrp = K::SECRET_BECH32_HRP.to_string();
-    Ok(Bech32::new(hrp, secret.to_base32())?)
+    let hrp = K::SECRET_BECH32_HRP;
+    Ok(bech32::encode(hrp, secret.to_base32())?)
 }
 
-fn gen_pub_key<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Result<Bech32, Error> {
+fn gen_pub_key<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Result<String, Error> {
     let priv_key_bytes = Vec::<u8>::from_base32(priv_key_bech32)?;
     let priv_key = K::secret_from_binary(&priv_key_bytes)?;
     let pub_key = K::compute_public(&priv_key);
-    let hrp = <K::PubAlg as AsymmetricPublicKey>::PUBLIC_BECH32_HRP.to_string();
-    Ok(Bech32::new(hrp, pub_key.to_base32())?)
+    let hrp = <K::PubAlg as AsymmetricPublicKey>::PUBLIC_BECH32_HRP;
+    Ok(bech32::encode(hrp, pub_key.to_base32())?)
 }
 
 fn bytes_to_priv_key<K: AsymmetricKey>(bytes: &[u8]) -> Result<String, Error> {

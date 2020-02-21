@@ -83,6 +83,10 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(transparent, remote = "value::Value")]
+pub struct ValueDef(u64);
+
 #[cfg(test)]
 mod test {
     use super::*;

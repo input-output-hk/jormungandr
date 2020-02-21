@@ -1,7 +1,9 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    test::utils,
-    test::Result,
+    test::{
+        utils::{self, SyncWaitParams},
+        Result,
+    },
     Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
@@ -37,9 +39,10 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     let leader_2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
+    controller.monitor_nodes();
+
     leader_2.wait_for_bootstrap()?;
     leader_1.wait_for_bootstrap()?;
-    controller.monitor_nodes();
 
     let mut wallet1 = controller.wallet("delegated2")?;
     let mut wallet2 = controller.wallet("delegated1")?;
@@ -59,10 +62,14 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         wallet2.confirm_transaction();
     }
 
-    utils::assert_are_in_sync(vec![&leader_1, &leader_2])?;
+    utils::measure_and_log_sync_time(
+        vec![&leader_1, &leader_2],
+        SyncWaitParams::two_nodes().into(),
+        "two_transaction_to_two_leaders_sync",
+    );
 
     leader_1.shutdown().unwrap();
     leader_2.shutdown().unwrap();
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }

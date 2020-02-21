@@ -1,11 +1,85 @@
+mod wait;
+
+pub use wait::SyncWaitParams;
+
 use crate::{
     node::NodeController,
     scenario::Controller,
     test::{ErrorKind, Result},
     wallet::Wallet,
 };
-use jormungandr_lib::interfaces::FragmentStatus;
-use std::{fmt, thread, time::Duration};
+use jormungandr_lib::{
+    interfaces::FragmentStatus,
+    testing::{Measurement, Thresholds},
+    time::Duration as LibsDuration,
+};
+use std::{
+    fmt, thread,
+    time::{Duration, SystemTime},
+};
+
+pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
+    let wait_time = sync_wait_params.wait_time();
+    std::thread::sleep(wait_time);
+}
+
+pub fn get_nodes_block_height_summary(nodes: Vec<&NodeController>) -> Vec<String> {
+    nodes
+        .iter()
+        .map({
+            |node| {
+                return format!(
+                    "node '{}' has block height: '{:?}'\n",
+                    node.alias(),
+                    node.stats().unwrap().last_block_height
+                );
+            }
+        })
+        .collect()
+}
+
+pub fn measure_and_log_sync_time(
+    nodes: Vec<&NodeController>,
+    sync_wait: Thresholds<Duration>,
+    info: &str,
+) {
+    let now = SystemTime::now();
+    while now.elapsed().unwrap() < sync_wait.max() {
+        let block_heights: Vec<u32> = nodes
+            .iter()
+            .map(|node| {
+                node.stats()
+                    .unwrap()
+                    .last_block_height
+                    .unwrap()
+                    .parse()
+                    .unwrap()
+            })
+            .collect();
+        let max_block_height = block_heights.iter().max().unwrap();
+        if !block_heights.iter().any(|x| *x != *max_block_height) {
+            log_measurement(Measurement::new(
+                info.to_owned(),
+                now.elapsed().unwrap(),
+                sync_wait.clone(),
+            ));
+            return;
+        }
+    }
+
+    // we know it fails, this method is used only for reporting
+    assert_are_in_sync(SyncWaitParams::ZeroWait, nodes);
+    log_measurement(Measurement::new(
+        info.to_owned(),
+        now.elapsed().unwrap(),
+        sync_wait.clone(),
+    ))
+}
+
+///temporary method for logging measurement which is currently printing content to console
+fn log_measurement(measurement: Measurement<Duration>) {
+    println!("{}", measurement);
+}
 
 pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str) -> Result<()> {
     if left != right {
@@ -20,19 +94,22 @@ pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str)
 pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Result<()> {
     if !status.is_in_a_block() {
         bail!(ErrorKind::AssertionFailed(format!(
-            "fragment status sent to node: {} is not in block :({:?})",
+            "fragment status sent to node: {} is not in block :({:?}). logs: {}",
             node.alias(),
-            status
+            status,
+            node.log_content()
         )))
     }
     Ok(())
 }
 
-pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
+pub fn assert_are_in_sync(sync_wait: SyncWaitParams, nodes: Vec<&NodeController>) -> Result<()> {
     if nodes.len() < 2 {
         return Ok(());
     }
 
+    wait_for_nodes_sync(&sync_wait);
+    let duration: LibsDuration = sync_wait.wait_time().into();
     let first_node = nodes.iter().next().unwrap();
 
     let expected_block_hashes = first_node.all_blocks_hashes()?;
@@ -43,12 +120,23 @@ pub fn assert_are_in_sync(nodes: Vec<&NodeController>) -> Result<()> {
         assert_equals(
             &expected_block_hashes,
             &all_block_hashes,
-            "nodes are out of sync (different bock hashes)",
+            &format!("nodes are out of sync (different block hashes) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                duration,
+                first_node.alias(),
+                first_node.log_content(),
+                node.alias(),
+                node.log_content()),
         )?;
         assert_equals(
             &block_height,
             &node.stats()?.last_block_height,
-            "nodes are out of sync (different bock height)",
+            &format!("nodes are out of sync (different block height) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                duration,
+                first_node.alias(),
+                first_node.log_content(),
+                node.alias(),
+                node.log_content()
+                ),
         )?;
     }
     Ok(())

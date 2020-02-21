@@ -1,7 +1,6 @@
-use crate::common::{
-    configuration::node_config_model::{Log, LogEntry, TrustedPeer},
-    jormungandr::{ConfigurationBuilder, Starter},
-};
+use crate::common::jormungandr::{ConfigurationBuilder, Starter};
+
+use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput};
 
 #[test]
 pub fn test_jormungandr_leader_node_starts_successfully() {
@@ -12,20 +11,23 @@ pub fn test_jormungandr_leader_node_starts_successfully() {
 #[test]
 pub fn test_jormungandr_passive_node_starts_successfully() {
     let leader_config = ConfigurationBuilder::new().build();
-    let _jormungandr_leader = Starter::new()
+    let jormungandr_leader = Starter::new()
         .config(leader_config.clone())
         .start()
         .unwrap();
 
     let passive_config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![TrustedPeer {
-            address: leader_config.node_config.p2p.public_address.clone(),
-            id: leader_config.node_config.p2p.public_id.clone(),
-        }])
+        .with_trusted_peers(vec![jormungandr_leader.as_trusted_peer()])
         .with_block_hash(leader_config.genesis_block_hash)
         .build();
 
-    let _jormungandr_passive = Starter::new().config(passive_config).start().unwrap();
+    let jormungandr_passive = Starter::new()
+        .config(passive_config)
+        .passive()
+        .start()
+        .unwrap();
+    jormungandr_passive.assert_no_errors_in_log();
+    jormungandr_leader.assert_no_errors_in_log();
 }
 
 #[test]
@@ -43,7 +45,7 @@ pub fn test_jormungandr_passive_node_without_trusted_peers_fails_to_start() {
 #[test]
 pub fn test_jormungandr_without_initial_funds_starts_sucessfully() {
     let mut config = ConfigurationBuilder::new().build();
-    config.genesis_yaml.initial.clear();
+    config.block0_configuration.initial.clear();
     let _jormungandr = Starter::new().config(config).start().unwrap();
 }
 
@@ -59,8 +61,9 @@ pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
 pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
     let config = ConfigurationBuilder::new()
         .with_log(Log(vec![LogEntry {
-            format: Some("xml".to_string()),
-            level: None,
+            format: "xml".to_string(),
+            level: "info".to_string(),
+            output: LogOutput::Stderr,
         }]))
         .build();
     Starter::new().config(config).start_fail(

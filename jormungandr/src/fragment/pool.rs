@@ -1,134 +1,105 @@
 use crate::{
-    blockcfg::{HeaderContentEvalContext, Ledger, LedgerParameters},
-    fragment::{selection::FragmentSelectionAlgorithm, Fragment, FragmentId, Logs},
+    blockcfg::{BlockDate, Ledger, LedgerParameters},
+    fragment::{
+        selection::{FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, OldestFirst},
+        Fragment, FragmentId, Logs,
+    },
     intercom::{NetworkMsg, PropagateMsg},
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::transaction::Transaction;
+use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
+use futures03::{compat::*, future, sink::SinkExt};
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 use std::time::Duration;
-use tokio::{
-    prelude::{
-        future::{
-            self,
-            Either::{A, B},
-        },
-        stream, Async, Future, Poll, Sink, Stream,
-    },
-    sync::lock::Lock,
-    timer,
-};
+use tokio02::time;
 
-#[derive(Clone)]
 pub struct Pool {
     logs: Logs,
-    pool: Lock<internal::Pool>,
+    pool: internal::Pool,
     network_msg_box: MessageBox<NetworkMsg>,
 }
 
 impl Pool {
-    pub fn new(ttl: Duration, logs: Logs, network_msg_box: MessageBox<NetworkMsg>) -> Self {
+    pub fn new(
+        max_entries: usize,
+        ttl: Duration,
+        logs: Logs,
+        network_msg_box: MessageBox<NetworkMsg>,
+    ) -> Self {
         Pool {
             logs,
-            pool: Lock::new(internal::Pool::new(ttl)),
+            pool: internal::Pool::new(max_entries, ttl),
             network_msg_box,
         }
     }
 
-    pub fn logs(&self) -> &Logs {
-        &self.logs
+    pub fn logs(&mut self) -> &mut Logs {
+        &mut self.logs
     }
 
     /// Returns number of registered fragments
-    pub fn insert_and_propagate_all(
+    pub async fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
         logger: Logger,
-    ) -> impl Future<Item = usize, Error = ()> {
+    ) -> Result<usize, ()> {
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
-            return A(future::ok(0));
+            return Ok(0);
         }
-        let mut pool_lock = self.pool.clone();
-        let mut logs = self.logs.clone();
-        let network_msg_box = self.network_msg_box.clone();
+        let mut network_msg_box = self.network_msg_box.clone().sink_compat();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
         let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
-        B(
-            fragments_exist_in_logs.and_then(move |fragments_exist_in_logs| {
-                future::poll_fn(move || Ok(pool_lock.poll_lock())).and_then(move |mut pool| {
-                    let new_fragments = fragments
-                        .into_iter()
-                        .zip(fragments_exist_in_logs)
-                        .filter(|(_, exists_in_logs)| !exists_in_logs)
-                        .map(|(fragment, _)| fragment);
-                    let new_fragments = pool.insert_all(new_fragments);
-                    let count = new_fragments.len();
-                    let fragment_logs = new_fragments
-                        .iter()
-                        .map(move |fragment| FragmentLog::new(fragment.id().into(), origin))
-                        .collect::<Vec<_>>();
-                    stream::iter_ok(new_fragments)
-                        .map(|fragment| NetworkMsg::Propagate(PropagateMsg::Fragment(fragment)))
-                        .fold(network_msg_box, |network_msg_box, fragment_msg| {
-                            network_msg_box.send(fragment_msg)
-                        })
-                        .map_err(move |err: <MessageBox<_> as Sink>::SinkError| {
-                            error!(logger, "cannot propagate fragment to network: {}", err)
-                        })
-                        .and_then(move |_| logs.insert_all(fragment_logs))
-                        .map(move |_| count)
-                })
-            }),
-        )
+        let new_fragments = fragments
+            .into_iter()
+            .zip(fragments_exist_in_logs)
+            .filter(|(_, exists_in_logs)| !exists_in_logs)
+            .map(|(fragment, _)| fragment);
+        let new_fragments = self.pool.insert_all(new_fragments);
+        let count = new_fragments.len();
+        let fragment_logs = new_fragments
+            .iter()
+            .map(move |fragment| FragmentLog::new(fragment.id().into(), origin))
+            .collect::<Vec<_>>();
+        for fragment in new_fragments.into_iter() {
+            let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
+            network_msg_box
+                .send(fragment_msg)
+                .await
+                .map_err(|e| error!(logger, "cannot propagate fragment to network: {}", e))?;
+        }
+        self.logs.insert_all(fragment_logs);
+        Ok(count)
     }
 
-    pub fn remove_added_to_block(
-        &mut self,
-        fragment_ids: Vec<FragmentId>,
-        status: FragmentStatus,
-    ) -> impl Future<Item = (), Error = ()> {
-        let mut pool_lock = self.pool.clone();
-        let mut logs = self.logs.clone();
-        future::poll_fn(move || Ok(pool_lock.poll_lock()))
-            .map(move |mut pool| {
-                pool.remove_all(fragment_ids.iter().cloned());
-                fragment_ids
-            })
-            .and_then(move |fragment_ids| logs.modify_all(fragment_ids, status))
+    pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
+        self.pool.remove_all(fragment_ids.iter().cloned());
+        self.logs.modify_all(fragment_ids, status);
     }
 
-    pub fn poll_purge(&mut self) -> impl Future<Item = (), Error = timer::Error> {
-        let mut lock = self.pool.clone();
-        let purge_logs = self.logs.poll_purge();
-        future::poll_fn(move || Ok(lock.poll_lock()))
-            .and_then(move |mut guard| future::poll_fn(move || guard.poll_purge()))
-            .and_then(move |()| purge_logs)
+    pub async fn poll_purge(&mut self) -> Result<(), time::Error> {
+        future::poll_fn(|cx| self.pool.poll_purge(cx)).await?;
+        self.logs.poll_purge().await
     }
 
-    pub fn select<SelectAlg>(
+    pub fn select(
         &mut self,
         ledger: Ledger,
-        metadata: HeaderContentEvalContext,
+        block_date: BlockDate,
         ledger_params: LedgerParameters,
-        mut selection_alg: SelectAlg,
-    ) -> impl Future<Item = SelectAlg, Error = ()>
-    where
-        SelectAlg: FragmentSelectionAlgorithm,
-    {
-        let mut lock = self.pool.clone();
-        let logs = self.logs().clone();
-
-        // FIXME deadlock hazard, nested pool lock and logs lock
-        future::poll_fn(move || Ok(lock.poll_lock()))
-            .and_then(move |pool| logs.inner().map(|logs| (pool, logs)))
-            .and_then(move |(mut pool, mut logs)| {
-                selection_alg.select(&ledger, &ledger_params, &metadata, &mut logs, &mut pool);
-                future::ok(selection_alg)
-            })
+        selection_alg: FragmentSelectionAlgorithmParams,
+    ) -> Contents {
+        let Pool { logs, pool, .. } = self;
+        match selection_alg {
+            FragmentSelectionAlgorithmParams::OldestFirst => {
+                let mut selection_alg = OldestFirst::new();
+                selection_alg.select(&ledger, &ledger_params, block_date, logs, pool);
+                selection_alg.finalize()
+            }
+        }
     }
 }
 
@@ -157,41 +128,52 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 pub(super) mod internal {
     use super::*;
     use crate::fragment::PoolEntry;
+    use futures03::{
+        stream::Stream,
+        task::{Context, Poll},
+    };
     use std::{
         collections::{hash_map::Entry, HashMap, VecDeque},
+        pin::Pin,
         sync::Arc,
     };
-    use tokio::timer::{delay_queue, DelayQueue};
+    use tokio02::time::{delay_queue, DelayQueue};
 
     pub struct Pool {
+        max_entries: usize,
         entries: HashMap<FragmentId, (Arc<PoolEntry>, Fragment, delay_queue::Key)>,
         entries_by_time: VecDeque<FragmentId>,
-        expirations: DelayQueue<FragmentId>,
+        expirations: Pin<Box<DelayQueue<FragmentId>>>,
         ttl: Duration,
     }
 
     impl Pool {
-        pub fn new(ttl: Duration) -> Self {
+        pub fn new(max_entries: usize, ttl: Duration) -> Self {
             Pool {
+                max_entries,
                 entries: HashMap::new(),
                 entries_by_time: VecDeque::new(),
-                expirations: DelayQueue::new(),
+                expirations: Box::pin(DelayQueue::new()),
                 ttl,
             }
         }
 
         /// Returns clone of fragment if it was registered
         pub fn insert(&mut self, fragment: Fragment) -> Option<Fragment> {
-            let fragment_id = fragment.id();
-            let entry = match self.entries.entry(fragment_id) {
-                Entry::Occupied(_) => return None,
-                Entry::Vacant(vacant) => vacant,
-            };
-            let pool_entry = Arc::new(PoolEntry::new(&fragment));
-            let delay = self.expirations.insert(fragment_id, self.ttl);
-            entry.insert((pool_entry, fragment.clone(), delay));
-            self.entries_by_time.push_back(fragment_id);
-            Some(fragment)
+            if self.max_entries < self.entries.len() {
+                None
+            } else {
+                let fragment_id = fragment.id();
+                let entry = match self.entries.entry(fragment_id) {
+                    Entry::Occupied(_) => return None,
+                    Entry::Vacant(vacant) => vacant,
+                };
+                let pool_entry = Arc::new(PoolEntry::new(&fragment));
+                let delay = self.expirations.insert(fragment_id, self.ttl);
+                entry.insert((pool_entry, fragment.clone(), delay));
+                self.entries_by_time.push_back(fragment_id);
+                Some(fragment)
+            }
         }
 
         /// Returns clones of registered fragments
@@ -201,6 +183,11 @@ pub(super) mod internal {
         ) -> Vec<Fragment> {
             fragments
                 .into_iter()
+                .take(
+                    self.max_entries
+                        .checked_sub(self.entries.len())
+                        .unwrap_or(0),
+                )
                 .filter_map(|fragment| self.insert(fragment))
                 .collect()
         }
@@ -237,12 +224,10 @@ pub(super) mod internal {
             Some(fragment)
         }
 
-        pub fn poll_purge(&mut self) -> Poll<(), timer::Error> {
+        pub fn poll_purge(&mut self, cx: &mut Context) -> Poll<Result<(), time::Error>> {
             loop {
-                match self.expirations.poll()? {
-                    Async::NotReady => return Ok(Async::Ready(())),
-                    Async::Ready(None) => return Ok(Async::Ready(())),
-                    Async::Ready(Some(entry)) => {
+                match self.expirations.as_mut().poll_next(cx) {
+                    Poll::Ready(Some(Ok(entry))) => {
                         self.entries.remove(entry.get_ref());
                         self.entries_by_time
                             .iter()
@@ -251,6 +236,13 @@ pub(super) mod internal {
                                 self.entries_by_time.remove(position);
                             });
                     }
+                    Poll::Ready(Some(Err(e))) => return Poll::Ready(Err(e)),
+                    Poll::Ready(None) => return Poll::Ready(Ok(())),
+
+                    // Here Pending means there are still items in the DelayQueue but
+                    // they are not expired. We don't want this function to wait for these
+                    // ones to expired. We only cared about removing the expired ones.
+                    Poll::Pending => return Poll::Ready(Ok(())),
                 }
             }
         }

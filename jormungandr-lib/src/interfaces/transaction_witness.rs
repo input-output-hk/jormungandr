@@ -1,11 +1,16 @@
 use chain_impl_mockchain::transaction::Witness;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
+use thiserror::Error;
 
-custom_error! {pub TransactionWitnessFromStrError
-    Bech32 { source: bech32::Error } = "Invalid bech32 encoding",
-    InvalidHrp { expected: String, got: String } = "Invalid prefix, expected '{expected}' but received '{got}'",
-    Invalid { source: chain_core::mempack::ReadError } = "Invalid encoding",
+#[derive(Debug, Error)]
+pub enum TransactionWitnessFromStrError {
+    #[error("Invalid bech32 encoding")]
+    Bech32(#[from] bech32::Error),
+    #[error("Invalid prefix, expected '{expected}' but received '{got}'")]
+    InvalidHrp { expected: String, got: String },
+    #[error("Invalid encoding")]
+    Invalid(#[from] chain_core::mempack::ReadError),
 }
 
 const HRP: &'static str = "witness";
@@ -16,27 +21,26 @@ pub struct TransactionWitness(Witness);
 
 impl TransactionWitness {
     pub fn to_bech32_str(&self) -> String {
-        use bech32::{Bech32, ToBase32 as _};
+        use bech32::ToBase32 as _;
         use chain_core::property::Serialize as _;
 
         let bytes = self.as_ref().serialize_as_vec().unwrap();
 
-        let bech32 = Bech32::new(HRP.to_owned(), bytes.to_base32()).unwrap();
-        bech32.to_string()
+        bech32::encode(&HRP, bytes.to_base32()).unwrap()
     }
 
     pub fn from_bech32_str(s: &str) -> Result<Self, TransactionWitnessFromStrError> {
-        use bech32::{Bech32, FromBase32};
+        use bech32::FromBase32;
         use chain_core::mempack::{ReadBuf, Readable as _};
 
-        let bech32: Bech32 = s.parse()?;
-        if bech32.hrp() != HRP {
+        let (hrp, data) = bech32::decode(s)?;
+        if hrp != HRP {
             return Err(TransactionWitnessFromStrError::InvalidHrp {
                 expected: HRP.to_owned(),
-                got: bech32.hrp().to_owned(),
+                got: hrp,
             });
         }
-        let bytes = Vec::<u8>::from_base32(bech32.data())?;
+        let bytes = Vec::<u8>::from_base32(&data)?;
 
         let mut reader = ReadBuf::from(&bytes);
         Ok(Witness::read(&mut reader).map(TransactionWitness)?)
@@ -95,10 +99,10 @@ impl Serialize for TransactionWitness {
             .map_err(|err| S::Error::custom(err))?;
 
         if serializer.is_human_readable() {
-            use bech32::{Bech32, ToBase32 as _};
-            let bech32 = Bech32::new(HRP.to_owned(), bytes.to_base32())
-                .map_err(|err| S::Error::custom(err))?;
-            serializer.serialize_str(&bech32.to_string())
+            use bech32::ToBase32 as _;
+            let bech32 =
+                bech32::encode(HRP, bytes.to_base32()).map_err(|err| S::Error::custom(err))?;
+            serializer.serialize_str(&bech32)
         } else {
             serializer.serialize_bytes(&bytes)
         }
@@ -123,16 +127,15 @@ impl<'de> Deserialize<'de> for TransactionWitness {
             where
                 E: de::Error,
             {
-                use bech32::{Bech32, FromBase32};
-                let bech32: Bech32 = s.parse().map_err(E::custom)?;
-                if bech32.hrp() != HRP {
+                use bech32::FromBase32;
+                let (hrp, data) = bech32::decode(s).map_err(E::custom)?;
+                if hrp != HRP {
                     return Err(E::custom(format!(
                         "Invalid prefix: expected '{}' but was '{}'",
-                        HRP,
-                        bech32.hrp()
+                        HRP, hrp
                     )));
                 }
-                let bytes = Vec::<u8>::from_base32(bech32.data())
+                let bytes = Vec::<u8>::from_base32(&data)
                     .map_err(|err| E::custom(format!("Invalid bech32: {}", err)))?;
                 self.visit_bytes(&bytes)
             }
@@ -170,8 +173,12 @@ mod test {
                     use crate::crypto::key::KeyPair;
                     use chain_crypto::Ed25519Bip32;
                     let kp: KeyPair<Ed25519Bip32> = KeyPair::arbitrary(g);
-                    Witness::OldUtxo(kp.identifier().as_ref().clone(), Arbitrary::arbitrary(g))
-                        .into()
+
+                    let pk = kp.identifier().into_public_key().inner();
+                    let cc = pk.chain_code();
+                    let pk_ed = chain_crypto::PublicKey::from_binary(&pk.public_key()).unwrap();
+
+                    Witness::OldUtxo(pk_ed, cc, Arbitrary::arbitrary(g)).into()
                 }
                 3 => unimplemented!(), // Multisig
                 _ => unreachable!(),

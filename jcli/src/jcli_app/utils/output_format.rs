@@ -2,6 +2,7 @@ use gtmpl::Value as GtmplValue;
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue};
 use std::fmt::{self, Display, Formatter};
 use structopt::StructOpt;
+use thiserror::Error;
 
 #[derive(StructOpt)]
 pub struct OutputFormat {
@@ -28,10 +29,14 @@ impl<'a> From<&'a str> for FormatVariant {
     }
 }
 
-custom_error! { pub Error
-    YamlFormattingFailed { source: serde_yaml::Error } = "failed to format output as YAML",
-    JsonFormattingFailed { source: serde_json::Error } = "failed to format output as JSON",
-    CustomFormattingFailed { source: GtmplError } = "failed to format output as custom format",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("failed to format output as YAML")]
+    YamlFormattingFailed(#[from] serde_yaml::Error),
+    #[error("failed to format output as JSON")]
+    JsonFormattingFailed(#[from] serde_json::Error),
+    #[error("failed to format output as custom format")]
+    CustomFormattingFailed(#[from] GtmplError),
 }
 
 #[derive(Debug)]

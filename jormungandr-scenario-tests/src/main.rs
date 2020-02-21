@@ -4,7 +4,7 @@ extern crate jormungandr_integration_tests;
 
 use jormungandr_scenario_tests::{
     node::{LeadershipMode, PersistenceMode},
-    prepare_command, style, Context, ScenariosRepository, Seed,
+    parse_tag_from_str, prepare_command, style, Context, ScenariosRepository, Seed, Tag,
 };
 use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
@@ -20,8 +20,20 @@ struct CommandArgs {
     #[structopt(long = "jcli", default_value = "jcli")]
     jcli: PathBuf,
 
+    /// scenario name
     #[structopt(long = "scenario", default_value = "*")]
     scenario: String,
+
+    /// in order to group scenarios (for example long_running, short running)
+    /// one can use tag parameter to run entire set of scenarios
+    /// by default all scenarios are run
+    #[structopt(
+        long = "tag",
+        default_value = "All",
+        parse(try_from_str = "parse_tag_from_str")
+    )]
+    tag: Tag,
+
     /// set a directory in which the tests will be run, allowing every details
     /// to be save persistently. By default it will create temporary directories
     /// and will delete the files and documents
@@ -35,6 +47,18 @@ struct CommandArgs {
     #[structopt(long = "document")]
     generate_documentation: bool,
 
+    /// in some circumstances progress bar can spoil test logs (e.g. on test build job)
+    /// if this parametrer value is true, then no progress bar is visible,
+    /// but simple log on console enabled
+    ///
+    /// no progress bar, only simple console output
+    #[structopt(long = "disable-progress-bar")]
+    disable_progress_bar: bool,
+
+    /// set exit code based on test result
+    #[structopt(long = "set-exit-code")]
+    set_exit_code: bool,
+
     /// to set if to reproduce an existing test
     #[structopt(long = "seed")]
     seed: Option<Seed>,
@@ -45,9 +69,10 @@ fn main() {
 
     let jormungandr = prepare_command(command_args.jormungandr);
     let jcli = prepare_command(command_args.jcli);
+    let disable_progress_bar = command_args.disable_progress_bar;
     let seed = command_args
         .seed
-        .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng::new().unwrap()));
+        .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
     let testing_directory = command_args.testing_directory;
     let generate_documentation = command_args.generate_documentation;
 
@@ -57,12 +82,20 @@ fn main() {
         jcli,
         testing_directory,
         generate_documentation,
+        disable_progress_bar,
     );
 
     introduction(&context);
-    let scenarios_repo = ScenariosRepository::new(command_args.scenario);
+    let scenarios_repo = ScenariosRepository::new(command_args.scenario, command_args.tag);
     let scenario_suite_result = scenarios_repo.run(&mut context);
-    println!("{}", scenario_suite_result.result_string())
+    println!("{}", scenario_suite_result.result_string());
+
+    if command_args.set_exit_code == true {
+        std::process::exit(match scenario_suite_result.is_failed() {
+            true => 1,
+            false => 0,
+        });
+    }
 }
 
 fn introduction<R: rand_core::RngCore>(context: &Context<R>) {

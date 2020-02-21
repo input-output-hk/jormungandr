@@ -1,5 +1,9 @@
-use super::logger::JormungandrLogger;
-use crate::common::{configuration::jormungandr_config::JormungandrConfig, jcli_wrapper};
+use super::{logger::JormungandrLogger, JormungandrError};
+use crate::common::{
+    configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
+};
+
+use jormungandr_lib::interfaces::TrustedPeer;
 use std::path::PathBuf;
 use std::process::Child;
 
@@ -51,12 +55,33 @@ impl JormungandrProcess {
         );
     }
 
+    pub fn check_no_errors_in_log(&self) -> Result<(), JormungandrError> {
+        let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
+
+        if error_lines.len() != 0 {
+            return Err(JormungandrError::ErrorInLogs {
+                logs: self.logger.get_log_content(),
+                log_location: self.logger.log_file_path.clone(),
+                error_lines: format!("{:?}", error_lines).to_owned(),
+            });
+        }
+        Ok(())
+    }
+
     pub fn rest_address(&self) -> String {
         self.config.get_node_address()
     }
 
     pub fn config(&self) -> JormungandrConfig {
         self.config.clone()
+    }
+
+    pub fn explorer(&self) -> Explorer {
+        Explorer::new(self.config.node_config.rest.listen.to_string())
+    }
+
+    pub fn as_trusted_peer(&self) -> TrustedPeer {
+        self.config.as_trusted_peer()
     }
 }
 

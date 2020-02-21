@@ -8,96 +8,105 @@ User guide documentation available [here](https://input-output-hk.github.io/jorm
 
 | CI | Status | Description |
 |---:|:------:|:------------|
-| Travis CI | [![Build Status](https://travis-ci.org/input-output-hk/jormungandr.svg?branch=master)](https://travis-ci.org/input-output-hk/jormungandr) | Master and release |
 | CircleCI | [![CircleCI](https://circleci.com/gh/input-output-hk/jormungandr/tree/master.svg?style=svg)](https://circleci.com/gh/input-output-hk/jormungandr/tree/master) | Master and PRs |
-| Appveyor | [![Build status](https://ci.appveyor.com/api/projects/status/1y5583gqc4xn8x3j/branch/master?svg=true)](https://ci.appveyor.com/project/NicolasDP/jormungandr/branch/master) | Master, release and PRs |
 
-## How to install from sources
+## Install from Binaries
 
-Currently the minimum supported version of the rust compiler is 1.35, however
-we recommend to use the most recent stable version of the rust compiler.
+Use the [Latest Binaries](https://github.com/input-output-hk/jormungandr/releases), available for many operating systems and architectures.
 
-1. [Install rustup](https://www.rust-lang.org/tools/install)
-2. Run `rustup install stable`
-3. Run `rustup default stable`
-4. Clone this repository: `git clone --recurse-submodules https://github.com/input-output-hk/jormungandr`
-5. Enter the repository directory: `cd jormungandr`
-6. Check latest release tag on https://github.com/input-output-hk/jormungandr/releases/latest
-7. checkout this tag ` git checkout tags/<latest release tag>`
-8. install **jormungandr**: `cargo install --path jormungandr`
-9. install **jcli**: `cargo install --path jcli`
+## Install from Source
 
-Note:
+### Prerequisites
 
-* On Windows, you'll need to add the `%USERPROFILE%\.cargo\bin` into the
-  environment variable `PATH`.
-* On Linux and macOS: add `${HOME}/.cargo/bin` into your `PATH`.
-* Make sure the C compiler toolchain is installed and, on Unix (e.g. macOS),
-  the compiler and linker executable `cc` is found in `PATH`.
-* On Linux with systemd: to enable logging to journald replace step 8
-  with `cargo install --path jormungandr --features systemd`.
-* The build requires the [Protocol Buffers][protobuf] compiler:
-  - On Linux environments without glibc such as Alpine, the protobuf compiler
-    `protoc` needs to be installed and found in `PATH` or otherwise
-    specified in the environment variable `PROTOC`.
-  - NixOS users should rely on [shell.nix](shell.nix) provided in this source
-    tree to pull the dependencies and set up the environment for the build.
-  - For distribution or container builds in general, it's a good practice to
-    install `protoc` from the official distribution package if available,
-    otherwise the version bundled with crate `prost-build` will be used.
+Get the [Rust Compiler](https://www.rust-lang.org/tools/install) (latest stable version is recommended, minimum required: 1.35+)
 
-[protobuf]: https://developers.google.com/protocol-buffers/
+
+```sh
+rustup install stable
+rustup default stable
+rustc --version # if this fails, try a new command window, or add the path (see below)
+```
+
+
+#### Path
+
+* Win: Add `%USERPROFILE%\.cargo\bin` to the  environment variable `PATH`.
+* Lin/Mac: Add `${HOME}/.cargo/bin` to your `PATH`.
+
+#### protobuf
+
+* The [Protocol Buffers][protobuf] version bundled with crate `prost-build` will be used.
+* For distribution or container builds in general, it's a good practice to install `protoc` from the official distribution package if available.
+
+### Commands
+
+Check `<latest release tag>` on https://github.com/input-output-hk/jormungandr/releases/latest
+
+```sh
+git clone --recurse-submodules https://github.com/input-output-hk/jormungandr
+cd jormungandr
+git checkout tags/<latest release tag> #replace this with something like v1.2.3
+git submodule update
+cargo install --path jormungandr # --features systemd # (on linux with systemd)
+cargo install --path jcli
+```
+
 
 This will install 2 tools:
 
 * `jormungandr`: the node part of the blockchain;
 * `jcli`: a command line helper tool to help you use and setup the node;
 
-## How to install from binaries
 
-Our binaries releases are available [here](https://github.com/input-output-hk/jormungandr/releases)
-for many operating systems and architecture, but in due time, jormungandr will
-be available through package managers.
-
-## How To Use
+## Configuration Basics
 
 A functional node needs 2 configurations:
 
-1. Its own system configuration: Where to store data, network configuration, logging.
-2. The blockchain genesis configuration which contains the initial trusted setup of the blockchain:
+1. Its own [node configuration](https://input-output-hk.github.io/jormungandr/configuration/introduction.html): Where to store data, network configuration, logging.
+2. The [blockchain genesis configuration](https://input-output-hk.github.io/jormungandr/advanced/introduction.html), which contains the initial trusted setup of the blockchain:
    coin configuration, consensus settings, initial state.
 
 In normal use, the blockchain genesis configuration is given to you or
 automatically fetched from the network.
 
-More documentation on the node configuration can be found [here](https://input-output-hk.github.io/jormungandr/configuration/introduction.html),
-and for the blockchain genesis configuration [here](https://input-output-hk.github.io/jormungandr/advanced/introduction.html)
 
-## Quick-Start for private mode
+## Quick-Start - Public Mode
+ 
+To start a new node from scratch on a given blockchain, you need to know the
+block0 hash of this blockchain for trust purpose and internet peers to connect
+to. The simplest way to start such a node is:
+
+    jormungandr --block0-hash <HASH> --trusted-peers <IPs>
+
+## Quick-Start - Cardano Shelly Testnet
+
+* [Official Cardano Shelly Testnet Documentation](https://testnet.iohkdev.io/cardano/shelley/).
+* For the **nightly testnet**, ask within the [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
+
+
+## Quick-Start - Private Mode
 
 Follow instructions on installation, then to start a private and minimal
 test setup:
 
-1. In terminal, create an empty directory somewhere and enter this directory
-2. `PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap <options>`
-3. execute the instruction to start printed at the end
+```sh
+mkdir mynode
+cd mynode
+PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap <options>
+```
 
-For a BFT setup, use the following recommended options:
+Use the following recommended bootstrap options:
 
-    bootstrap -b
-
-For a Genesis-praos setup, use the following recommended options:
-
-    bootstrap -g -s 2
-
-For help on the options:
-
-    bootstrap -h
-
+```sh
+bootstrap -b        # BFT setup
+bootstrap -g -s 2   # Genesis-praos setup
+bootstrap -h        # further help
+```
+ 
 The bootstrap script creates a simple setup with a faucet with 10 millions
 coins, a BFT leader, and a stake pool.
 
-The bootstrap script also create 2 shell scripts parametrized to this specific
+It also creates 2 shell scripts parametrized to this specific
 run of bootstrap:
 
 * `faucet-send-money`
@@ -105,24 +114,11 @@ run of bootstrap:
 
 Both scripts can be used to do simple limited operation through the jcli debugging tools.
 
-## Quick-Start in public mode
-With release of 0.6.0, public mode became available; there are currently two testnets operating at any given time:
-- beta testnet
-- nightly testnet
- 
-To start a new node from scratch on a given blockchain, you need to know the
-block0 hash of this blockchain for trust purpose and internet peers to connect
-to. The simplest way to start such a node is:
-
-    jormungandr --block0-hash <HASH> --trusted-peers <IPs>
-    
-In order to connect your node to a IOHK operated beta testnet, [follow the official documentation](https://testnet.iohkdev.io/cardano/shelley/). In order to connect to a nightly testnet, it's best to seek support in [Cardano Stake Pool WSorkgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
-
-# Documentation
+## Documentation
 
 Documentation is available in the markdown format [here](doc/SUMMARY.md)
 
-# License
+## License
 
 This project is licensed under either of the following licenses:
 

@@ -4,17 +4,25 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Stats {
-    pub tx_recv_cnt: u32,
-    pub block_recv_cnt: u32,
-    pub uptime: u32,
+    pub version: String,
+    pub node_id: Option<String>,
+    pub peer_total_cnt: Option<u32>,
+    pub peer_available_cnt: Option<u32>,
+    pub peer_quarantined_cnt: Option<u32>,
+    pub peer_unreachable_cnt: Option<u32>,
+    pub tx_recv_cnt: Option<u32>,
+    pub block_recv_cnt: Option<u32>,
+    pub uptime: Option<u32>,
     pub state: NodeState,
-    pub last_block_hash: String,
-    pub last_block_height: String,
-    pub last_block_date: String,
+    pub last_block_hash: Option<String>,
+    pub last_block_height: Option<String>,
+    pub last_block_date: Option<String>,
     pub last_block_time: Option<SystemTime>,
-    pub last_block_tx: u32,
-    pub last_block_sum: u32,
-    pub last_block_fees: u32,
+    pub last_received_block_time: Option<SystemTime>,
+    pub last_block_tx: Option<u32>,
+    pub last_block_sum: Option<u32>,
+    pub last_block_fees: Option<u32>,
+    pub last_block_content_size: Option<u32>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

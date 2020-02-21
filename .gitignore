@@ -1,3 +1,5 @@
 book
 /target
 /vendor
+.idea/
+.vscode/

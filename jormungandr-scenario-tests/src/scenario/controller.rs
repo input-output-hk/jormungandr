@@ -87,6 +87,11 @@ impl ControllerBuilder {
         }
         self.controller_progress.finish_and_clear();
         self.summary();
+
+        if context.disable_progress_bar() {
+            println!("nodes monitoring disabled due to legacy logging setting enabled");
+        }
+
         Controller::new(self.settings.unwrap(), context, working_directory)
     }
 
@@ -186,7 +191,21 @@ impl Controller {
         Ok(controller)
     }
 
+    pub fn restart_node(
+        &mut self,
+        node: NodeController,
+        leadership_mode: LeadershipMode,
+        persistence_mode: PersistenceMode,
+    ) -> Result<NodeController> {
+        node.shutdown()?;
+        self.spawn_node(node.alias(), leadership_mode, persistence_mode)
+    }
+
     pub fn monitor_nodes(&mut self) {
+        if self.context.disable_progress_bar() {
+            return;
+        }
+
         let pb = Arc::clone(&self.progress_bar);
         self.progress_bar_thread = Some(std::thread::spawn(move || {
             pb.join().unwrap();
@@ -194,7 +213,7 @@ impl Controller {
     }
 
     pub fn finalize(self) {
-        self.runtime.shutdown_on_idle().wait().unwrap(); //.shutdown_now().wait().unwrap();
+        self.runtime.shutdown_now().wait().unwrap();
         if let Some(thread) = self.progress_bar_thread {
             thread.join().unwrap()
         }

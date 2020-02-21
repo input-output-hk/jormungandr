@@ -13,50 +13,66 @@ pub mod p2p;
 mod service;
 mod subscription;
 
+use thiserror::Error;
+
 // Constants
 
 mod buffer_sizes {
-    // Size of buffer for processing of header push/pull streams.
-    pub const CHAIN_PULL: usize = 32;
+    pub mod inbound {
+        // Size of buffer for processing of header push/pull streams.
+        pub const HEADERS: usize = 32;
 
-    // The maximum number of blocks to buffer from an incoming stream
-    // (GetBlocks response or an UploadBlocks request)
-    // while waiting for the block task to become ready to process
-    // the next block.
-    pub const BLOCKS: usize = 2;
+        // The maximum number of blocks to buffer from an incoming stream
+        // (GetBlocks response or an UploadBlocks request)
+        // while waiting for the block task to become ready to process
+        // the next block.
+        pub const BLOCKS: usize = 8;
 
-    // The maximum number of fragments to buffer from an incoming subscription
-    // while waiting for the fragment task to become ready to process them.
-    pub const FRAGMENTS: usize = 128;
+        // The maximum number of fragments to buffer from an incoming subscription
+        // while waiting for the fragment task to become ready to process them.
+        pub const FRAGMENTS: usize = 128;
+    }
+    pub mod outbound {
+        // Size of buffer for outbound header streams.
+        pub const HEADERS: usize = 32;
+
+        // The maximum number of blocks to buffer for an outbound stream
+        // (GetBlocks response or an UploadBlocks request)
+        // before the client request task producing them gets preempted.
+        pub const BLOCKS: usize = 8;
+    }
 }
 
 use self::client::ConnectError;
-use self::p2p::{
-    comm::{PeerComms, Peers},
-    P2pTopology,
-};
+use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
+use crate::log;
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
-    task::{TaskMessageBox, TokioServiceInfo},
+    task::TokioServiceInfo,
 };
 use futures::future;
+use futures::future::Either::{A, B};
 use futures::prelude::*;
+use futures::stream;
 use network_core::gossip::{Gossip, Node};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
-use tokio::runtime::TaskExecutor;
 use tokio::timer::Interval;
+use tokio_compat::runtime::TaskExecutor;
 
+use std::collections::BTreeMap;
+use std::convert::Infallible;
 use std::error;
 use std::fmt;
 use std::io;
 use std::iter;
 use std::net::SocketAddr;
+use std::sync::atomic::{self, AtomicUsize};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -70,7 +86,11 @@ pub struct ListenError {
 
 impl fmt::Display for ListenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "failed to listen for connections on {}", self.sockaddr)
+        write!(
+            f,
+            "failed to listen for connections on {}: {}",
+            self.sockaddr, self.cause
+        )
     }
 }
 
@@ -86,7 +106,7 @@ pub enum BlockConfig {}
 
 /// all the different channels the network may need to talk to
 pub struct Channels {
-    pub client_box: TaskMessageBox<ClientMsg>,
+    pub client_box: MessageBox<ClientMsg>,
     pub transaction_box: MessageBox<TransactionMsg>,
     pub block_box: MessageBox<BlockMsg>,
 }
@@ -109,6 +129,7 @@ pub struct GlobalState {
     pub peers: Peers,
     pub executor: TaskExecutor,
     pub logger: Logger,
+    client_count: AtomicUsize,
 }
 
 type GlobalStateR = Arc<GlobalState>;
@@ -118,33 +139,10 @@ impl GlobalState {
     pub fn new(
         block0_hash: HeaderHash,
         config: Configuration,
+        topology: P2pTopology,
         executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
-        let mut topology = P2pTopology::new(config.profile.clone(), logger.clone());
-        topology.set_poldercast_modules();
-        topology.set_custom_modules(&config);
-        topology.set_policy(config.policy.clone());
-
-        // inject the trusted peers as initial gossips, this will make the node
-        // gossip with them at least at the beginning
-        topology.accept_gossips(
-            (*config.profile.id()).into(),
-            config
-                .trusted_peers
-                .clone()
-                .into_iter()
-                .map(|tp| {
-                    let mut builder = poldercast::NodeProfileBuilder::new();
-                    builder.id(tp.id.into());
-                    builder.address(tp.address.into());
-                    builder.build()
-                })
-                .map(p2p::Gossip::from)
-                .collect::<Vec<p2p::Gossip>>()
-                .into(),
-        );
-
         let peers = Peers::new(config.max_connections, logger.clone());
 
         GlobalState {
@@ -154,6 +152,7 @@ impl GlobalState {
             peers,
             executor,
             logger,
+            client_count: AtomicUsize::new(0),
         }
     }
 
@@ -166,6 +165,33 @@ impl GlobalState {
         F: Future<Item = (), Error = ()> + Send + 'static,
     {
         self.executor.spawn(f)
+    }
+
+    fn client_count(&self) -> usize {
+        self.client_count.load(atomic::Ordering::Relaxed)
+    }
+
+    fn inc_client_count(&self) {
+        self.client_count.fetch_add(1, atomic::Ordering::SeqCst);
+    }
+
+    fn dec_client_count(&self) {
+        let prev_count = self.client_count.fetch_sub(1, atomic::Ordering::SeqCst);
+        assert!(prev_count != 0);
+    }
+
+    // How many client connections to bump when a new one is about to be
+    // established
+    fn num_clients_to_bump(&self) -> usize {
+        let count = self
+            .client_count
+            .load(atomic::Ordering::Relaxed)
+            .saturating_add(1);
+        if count > self.config.max_client_connections {
+            count - self.config.max_client_connections
+        } else {
+            0
+        }
     }
 }
 
@@ -207,6 +233,7 @@ pub struct TaskParams {
 pub fn start(
     service_info: TokioServiceInfo,
     params: TaskParams,
+    topology: P2pTopology,
 ) -> impl Future<Item = (), Error = ()> {
     // TODO: the node needs to be saved/loaded
     //
@@ -216,6 +243,7 @@ pub fn start(
     let global_state = Arc::new(GlobalState::new(
         params.block0_hash,
         params.config,
+        topology,
         service_info.executor().clone(),
         service_info.logger().clone(),
     ));
@@ -243,39 +271,24 @@ pub fn start(
         Either::B(future::ok(()))
     };
 
-    let initial_nodes = global_state.topology.view();
-    let self_node = global_state.topology.node();
-    for node in initial_nodes {
-        connect_and_propagate_with(node, global_state.clone(), channels.clone(), |comms| {
-            let gossip = Gossip::from_nodes(iter::once(self_node.clone().into()));
-            comms.set_pending_gossip(gossip);
-        });
-    }
+    global_state.spawn(start_gossiping(global_state.clone(), channels.clone()));
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
     let gossip_err_logger = global_state.logger.clone();
-    let reset_err_logger = global_state.logger.clone();
     let tp2p = global_state.topology.clone();
 
     if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
-        global_state.spawn(
-            Interval::new_interval(interval)
-                .map_err(move |e| {
-                    error!(reset_err_logger, "interval timer error: {:?}", e);
-                })
-                .for_each(move |_| Ok(tp2p.force_reset_layers())),
-        );
+        service_info.run_periodic("force reset topology", interval, move || {
+            tp2p.force_reset_layers::<Infallible>()
+        });
     }
 
     let gossip = Interval::new_interval(global_state.config.gossip_interval.clone())
         .map_err(move |e| {
             error!(gossip_err_logger, "interval timer error: {:?}", e);
         })
-        .for_each(move |_| {
-            send_gossip(global_state.clone(), channels.clone());
-            Ok(())
-        });
+        .for_each(move |_| send_gossip(global_state.clone(), channels.clone()));
 
     listener.join3(handle_cmds, gossip).map(|_| ())
 }
@@ -286,78 +299,158 @@ fn handle_network_input(
     channels: Channels,
 ) -> impl Future<Item = (), Error = ()> {
     input.for_each(move |msg| match msg {
-        NetworkMsg::Propagate(msg) => {
-            handle_propagation_msg(msg, state.clone(), channels.clone());
-            Ok(())
-        }
-        NetworkMsg::GetBlocks(block_ids) => {
-            state.peers.fetch_blocks(block_ids);
-            Ok(())
-        }
+        NetworkMsg::Propagate(msg) => A(A(handle_propagation_msg(
+            msg,
+            state.clone(),
+            channels.clone(),
+        ))),
+        NetworkMsg::GetBlocks(block_ids) => A(B(state.peers.fetch_blocks(block_ids))),
         NetworkMsg::GetNextBlock(node_id, block_id) => {
-            state.peers.solicit_blocks(node_id, vec![block_id]);
-            Ok(())
+            B(A(state.peers.solicit_blocks(node_id, vec![block_id])))
         }
         NetworkMsg::PullHeaders { node_id, from, to } => {
-            state.peers.pull_headers(node_id, from.into(), to);
-            Ok(())
+            B(B(A(state.peers.pull_headers(node_id, from.into(), to))))
         }
-        NetworkMsg::PeerStats(reply) => {
-            let stats = state.peers.stats();
-            reply.reply_ok(stats);
-            Ok(())
+        NetworkMsg::PeerInfo(reply) => {
+            B(B(B(state.peers.infos().map(|infos| reply.reply_ok(infos)))))
         }
     })
 }
 
-fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
-    trace!(state.logger(), "to propagate: {:?}", &msg);
-    let nodes = state.topology.view();
-    let res = match msg {
-        PropagateMsg::Block(ref header) => state.peers.propagate_block(nodes, header.clone()),
+fn handle_propagation_msg(
+    msg: PropagateMsg,
+    state: GlobalStateR,
+    channels: Channels,
+) -> impl Future<Item = (), Error = ()> {
+    let prop_state = state.clone();
+    let send_to_peers = match msg {
+        PropagateMsg::Block(ref header) => {
+            debug!(state.logger(), "block to propagate"; "hash" => %header.hash());
+            let header = header.clone();
+            let future = state
+                .topology
+                .view(poldercast::Selection::Topic {
+                    topic: p2p::topic::BLOCKS,
+                })
+                .and_then(move |view| prop_state.peers.propagate_block(view.peers, header));
+            A(future)
+        }
         PropagateMsg::Fragment(ref fragment) => {
-            state.peers.propagate_fragment(nodes, fragment.clone())
+            debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
+            let fragment = fragment.clone();
+            let future = state
+                .topology
+                .view(poldercast::Selection::Topic {
+                    topic: p2p::topic::MESSAGES,
+                })
+                .and_then(move |view| prop_state.peers.propagate_fragment(view.peers, fragment));
+            B(future)
         }
     };
     // If any nodes selected for propagation are not in the
     // active subscriptions map, connect to them and deliver
     // the item.
-    if let Err(unreached_nodes) = res {
-        debug!(
-            state.logger(),
-            "{} of the peers selected for propagation have not been reached, will try to connect",
-            unreached_nodes.len(),
-        );
-        for node in unreached_nodes {
-            let msg = msg.clone();
-            connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| match msg {
-                PropagateMsg::Block(header) => comms.set_pending_block_announcement(header),
-                PropagateMsg::Fragment(fragment) => comms.set_pending_fragment(fragment),
-            });
+    send_to_peers.then(move |res| {
+        if let Err(unreached_nodes) = res {
+            debug!(
+                state.logger(),
+                "will try to connect to {} of the peers not immediately reachable for propagation",
+                unreached_nodes.len(),
+            );
+            for node in unreached_nodes {
+                let mut options = p2p::comm::ConnectOptions::default();
+                match &msg {
+                    PropagateMsg::Block(header) => {
+                        options.pending_block_announcement = Some(header.clone());
+                    }
+                    PropagateMsg::Fragment(fragment) => {
+                        options.pending_fragment = Some(fragment.clone());
+                    }
+                };
+                connect_and_propagate(node, state.clone(), channels.clone(), options);
+            }
         }
-    }
+        Ok(())
+    })
 }
 
-fn send_gossip(state: GlobalStateR, channels: Channels) {
-    for node in state.topology.view() {
-        let gossip = Gossip::from(state.topology.initiate_gossips(node.id()));
-        let res = state.peers.propagate_gossip_to(node.id(), gossip);
-        if let Err(gossip) = res {
-            connect_and_propagate_with(node, state.clone(), channels.clone(), |comms| {
-                comms.set_pending_gossip(gossip)
-            });
-        }
-    }
+fn start_gossiping(state: GlobalStateR, channels: Channels) -> impl Future<Item = (), Error = ()> {
+    let config = &state.config;
+    let topology = state.topology.clone();
+    let conn_state = state.clone();
+    // inject the trusted peers as initial gossips, this will make the node
+    // gossip with them at least at the beginning
+    topology
+        .accept_gossips(
+            (*config.profile.id()).into(),
+            config
+                .trusted_peers
+                .iter()
+                .map(|tp| {
+                    let mut builder = poldercast::NodeProfileBuilder::new();
+                    builder.id(tp.id.clone().into());
+                    builder.address(tp.address.clone().into());
+                    builder.build()
+                })
+                .map(p2p::Gossip::from)
+                .collect::<Vec<p2p::Gossip>>()
+                .into(),
+        )
+        .and_then(move |()| topology.view(poldercast::Selection::Any))
+        .and_then(move |view| {
+            for node in view.peers {
+                let self_node = view.self_node.clone();
+                let gossip = Gossip::from_nodes(iter::once(self_node.into()));
+                let options = p2p::comm::ConnectOptions {
+                    pending_gossip: Some(gossip),
+                    ..Default::default()
+                };
+                connect_and_propagate(node, conn_state.clone(), channels.clone(), options);
+            }
+            Ok(())
+        })
 }
 
-fn connect_and_propagate_with<F>(
+fn send_gossip(state: GlobalStateR, channels: Channels) -> impl Future<Item = (), Error = ()> {
+    let topology = state.topology.clone();
+    let logger = state.logger().new(o!(log::KEY_SUB_TASK => "send_gossip"));
+    topology
+        .view(poldercast::Selection::Any)
+        .and_then(move |view| {
+            let peers = view.peers;
+            debug!(logger, "sending gossip to {} peers", peers.len());
+            stream::iter_ok(peers).for_each(move |node| {
+                let peer_id = node.id();
+                let state_prop = state.clone();
+                let state_err = state.clone();
+                let channels_err = channels.clone();
+                topology
+                    .initiate_gossips(peer_id)
+                    .and_then(move |gossips| {
+                        state_prop
+                            .peers
+                            .propagate_gossip_to(peer_id, Gossip::from(gossips))
+                    })
+                    .then(move |res| {
+                        if let Err(gossip) = res {
+                            let options = p2p::comm::ConnectOptions {
+                                pending_gossip: Some(gossip),
+                                ..Default::default()
+                            };
+                            connect_and_propagate(node, state_err, channels_err, options);
+                        }
+                        Ok(())
+                    })
+            })
+        })
+}
+
+fn connect_and_propagate(
     node: p2p::Node,
     state: GlobalStateR,
     channels: Channels,
-    modify_comms: F,
-) where
-    F: FnOnce(&mut PeerComms),
-{
+    mut options: p2p::comm::ConnectOptions,
+) {
     let addr = match node.address() {
         Some(addr) => addr,
         None => {
@@ -369,10 +462,11 @@ fn connect_and_propagate_with<F>(
             return;
         }
     };
+    options.evict_clients = state.num_clients_to_bump();
     let node_id = node.id();
     assert_ne!(
         node_id,
-        (*state.topology.node().id()).into(),
+        state.topology.node_id(),
         "topology tells the node to connect to itself"
     );
     let peer = Peer::new(addr, Protocol::Grpc);
@@ -382,11 +476,11 @@ fn connect_and_propagate_with<F>(
         .new(o!("node_id" => node_id.to_string()));
     info!(conn_logger, "connecting to peer");
     let (handle, connecting) = client::connect(conn_state, channels.clone());
-    state.peers.connecting_with(node_id, handle, modify_comms);
     let spawn_state = state.clone();
     let conn_err_state = state.clone();
-    let cf = connecting
-        .map_err(move |e| {
+    let cf = state.peers.add_connecting(node_id, handle, options)
+        .and_then(|()| connecting)
+        .or_else(move |e| {
             let benign = match e {
                 ConnectError::Connect(e) => {
                     if let Some(e) = e.connect_error() {
@@ -408,8 +502,14 @@ fn connect_and_propagate_with<F>(
                 }
             };
             if !benign {
-                conn_err_state.peers.remove_peer(node_id);
-                conn_err_state.topology.report_node(node_id, StrikeReason::CannotConnect);
+                let future = conn_err_state
+                    .topology
+                    .report_node(node_id, StrikeReason::CannotConnect)
+                    .join(conn_err_state.peers.remove_peer(node_id))
+                    .and_then(|_| future::err(()));
+                A(future)
+            } else {
+                B(future::err(()))
             }
         })
         .and_then(move |client| {
@@ -419,24 +519,26 @@ fn connect_and_propagate_with<F>(
                     client.logger(),
                     "peer node ID differs from the expected {}", node_id
                 );
-                state.topology.report_node(node_id, StrikeReason::InvalidPublicId);
-                if connected_node_id == (*state.topology.node().id()).into() {
-                    warn!(
-                        client.logger(),
-                        "expected node {} but connected to self", node_id
-                    );
-                    state.peers.remove_peer(node_id);
-                    return Err(());
-                }
-                if let Some(comms) = state.peers.remove_peer(node_id) {
-                    state.peers.insert_peer(connected_node_id, comms);
-                } else {
-                    warn!(client.logger(), "peer no longer in map after connecting");
-                }
+                let report_and_fail = state
+                    .topology
+                    .report_node(node_id, StrikeReason::InvalidPublicId)
+                    .join(state.peers.remove_peer(node_id))
+                    .and_then(|_| future::err(()));
+                A(report_and_fail)
+            } else {
+                state.inc_client_count();
+                debug!(
+                    client.logger(),
+                    "connected to peer";
+                    "client_count" => state.client_count(),
+                );
+                let future = client.then(move |res| {
+                    state.dec_client_count();
+                    res
+                });
+                B(future)
             }
-            Ok(client)
-        })
-        .and_then(|client| client);
+        });
     spawn_state.spawn(cf);
 }
 
@@ -451,6 +553,84 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
     peers
 }
 
+#[derive(Clone)]
+pub struct BootstrapPeers(BTreeMap<String, Peer>);
+
+impl BootstrapPeers {
+    pub fn new() -> Self {
+        BootstrapPeers(BTreeMap::new())
+    }
+
+    pub fn add_peer(&mut self, peer: Peer) -> usize {
+        self.0
+            .insert(peer.address().to_string(), peer)
+            .map(|_| 0)
+            .unwrap_or(1)
+    }
+
+    pub fn add_peers(&mut self, peers: &[Peer]) -> usize {
+        let mut count = 0;
+        for p in peers {
+            count += self.add_peer(p.clone());
+        }
+        count
+    }
+
+    pub fn count(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn randomly(&self) -> Vec<&Peer> {
+        let mut peers = self.0.iter().map(|(_, peer)| peer).collect::<Vec<_>>();
+        let mut rng = rand::thread_rng();
+        peers.shuffle(&mut rng);
+        peers
+    }
+}
+
+/// Try to get sufficient peers to do a netboot from
+fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
+    let mut peers = BootstrapPeers::new();
+
+    // extract the trusted peers from the config
+    let trusted_peers = config
+        .trusted_peers
+        .iter()
+        .filter_map(|tp| {
+            tp.address
+                .to_socketaddr()
+                .map(|sa| Peer::new(sa.clone(), Protocol::Grpc))
+        })
+        .collect::<Vec<_>>();
+    if config.bootstrap_from_trusted_peers {
+        let _: usize = peers.add_peers(&trusted_peers);
+    } else {
+        let mut rng = rand::thread_rng();
+        let mut trusted_peers = trusted_peers;
+        trusted_peers.shuffle(&mut rng);
+        for tpeer in trusted_peers {
+            //let peer = Peer::new(peer, Protocol::Grpc);
+            let tp_logger = logger.new(o!("peer_addr" => tpeer.address().to_string()));
+            let received_peers = bootstrap::peers_from_trusted_peer(&tpeer, tp_logger.clone())
+                .unwrap_or_else(|e| {
+                    warn!(
+                        tp_logger,
+                        "failed to retrieve the list of bootstrap peers from trusted peer";
+                        "reason" => %e,
+                    );
+                    vec![tpeer]
+                });
+            let added = peers.add_peers(&received_peers);
+            info!(logger, "adding {} peers from peer", added);
+
+            if peers.count() > 32 {
+                break;
+            }
+        }
+    }
+    peers
+}
+
 pub fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
@@ -461,22 +641,30 @@ pub fn bootstrap(
         unimplemented!()
     }
 
+    if config.skip_bootstrap {
+        return Ok(true);
+    }
+
     if config.trusted_peers.is_empty() {
-        warn!(logger, "No trusted peers joinable to bootstrap the network");
+        error!(
+            logger,
+            "trusted-peers cannot be empty. to avoid bootstrap use 'skip_bootstrap: true'"
+        );
+        //panic!("use non empty trusted-peers or set skip_bootstrap");
     }
 
     let mut bootstrapped = false;
 
-    for address in trusted_peers_shuffled(&config) {
-        let logger = logger.new(o!("peer_addr" => address.to_string()));
-        let peer = Peer::new(address, Protocol::Grpc);
+    let netboot_peers = netboot_peers(config, logger);
+
+    for peer in netboot_peers.randomly() {
+        let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
         let res = bootstrap::bootstrap_from_peer(
-            peer,
+            peer.clone(),
             blockchain.clone(),
             branch.clone(),
             logger.clone(),
         );
-
         match res {
             Err(bootstrap::Error::Connect { source: e }) => {
                 warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
@@ -484,7 +672,7 @@ pub fn bootstrap(
             Err(e) => {
                 warn!(logger, "initial bootstrap failed"; "error" => ?e);
             }
-            Ok(_) => {
+            Ok(()) => {
                 info!(logger, "initial bootstrap completed");
                 bootstrapped = true;
                 break;
@@ -527,7 +715,7 @@ pub fn fetch_block(
                 warn!(logger, "failed to download block"; "error" => ?e);
             }
             Ok(b) => {
-                info!(logger, "initial bootstrap completed");
+                info!(logger, "genesis block fetched");
                 block = Some(b);
                 break;
             }
@@ -543,8 +731,10 @@ pub fn fetch_block(
     }
 }
 
-custom_error! {
-    pub FetchBlockError
-        NoTrustedPeers = "no trusted peers specified",
-        CouldNotDownloadBlock { block: HeaderHash } = "could not download block hash {block}",
+#[derive(Debug, Error)]
+pub enum FetchBlockError {
+    #[error("no trusted peers specified")]
+    NoTrustedPeers,
+    #[error("could not download block hash {block}")]
+    CouldNotDownloadBlock { block: HeaderHash },
 }

@@ -38,8 +38,7 @@ There are multiple _parts_ in the genesis file:
 | `slot_duration` | number | the number of seconds between the creation of 2 blocks |
 | `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
 | `consensus_leader_ids` | array | the list of the BFT leader at the beginning of the blockchain |
-| `max_number_of_transactions_per_block` | number | the maximum number of transactions allowed in a block |
-| `bft_slots_ratio` | number | placeholder, do not use |
+| `block_content_max_size` | number | the maximum size of the block content, in bytes. |
 | `linear_fees` | object | linear fee settings, set the fee for transaction and certificate publishing |
 | `consensus_genesis_praos_active_slot_coeff` | number | genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1] |
 | `kes_update_speed` | number | the speed to update the KES Key in seconds |

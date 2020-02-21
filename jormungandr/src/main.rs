@@ -2,70 +2,35 @@
 // monomorphized structured with long signatures. This value is enough for current project.
 #![type_length_limit = "10000000"]
 
-extern crate actix_net;
-extern crate actix_threadpool;
-extern crate actix_web;
-extern crate bech32;
-extern crate bincode;
-extern crate bytes;
-extern crate cardano_legacy_address;
-extern crate chain_addr;
-extern crate chain_core;
-extern crate chain_crypto;
-extern crate chain_impl_mockchain;
-extern crate chain_storage;
-extern crate chain_storage_sqlite;
-extern crate chain_time;
-extern crate imhamt;
-#[macro_use]
-extern crate custom_error;
 #[macro_use]
 extern crate error_chain;
 #[macro_use(try_ready)]
 extern crate futures;
-extern crate http;
-extern crate humantime;
-extern crate hyper;
-extern crate jormungandr_lib;
 #[macro_use]
 extern crate lazy_static;
-extern crate linked_hash_map;
-extern crate native_tls;
-extern crate network_core;
-extern crate network_grpc;
-extern crate poldercast;
-extern crate rand;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
-extern crate serde_yaml;
 #[macro_use]
 extern crate slog;
-extern crate juniper;
-extern crate slog_async;
 #[cfg(feature = "gelf")]
 extern crate slog_gelf;
 #[cfg(feature = "systemd")]
 extern crate slog_journald;
-extern crate slog_json;
 #[cfg(unix)]
 extern crate slog_syslog;
-extern crate slog_term;
-extern crate structopt;
-extern crate thiserror;
-extern crate tk_listen;
-extern crate tokio;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
-    blockchain::{Blockchain, CandidateForest},
+    blockchain::Blockchain,
+    diagnostic::Diagnostic,
+    network::p2p::P2pTopology,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
-use futures::Future;
+use futures03::{executor::block_on, future::TryFutureExt};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
@@ -73,8 +38,8 @@ use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
-pub mod blockchain_stuck_notifier;
 pub mod client;
+pub mod diagnostic;
 pub mod explorer;
 pub mod fragment;
 pub mod intercom;
@@ -87,6 +52,7 @@ pub mod settings;
 pub mod start_up;
 pub mod state;
 mod stats_counter;
+pub mod stuck_notifier;
 pub mod utils;
 
 use stats_counter::StatsCounter;
@@ -108,34 +74,45 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
     services: Services,
+    diagnostic: Diagnostic,
 }
 
+const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
+const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
     if let Some(context) = bootstrapped_node.rest_context.as_ref() {
-        context.set_node_state(NodeState::StartingWorkers)
+        block_on(context.set_node_state(NodeState::StartingWorkers));
     }
 
     let mut services = bootstrapped_node.services;
 
     // initialize the network propagation channel
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
+    let (block_msgbox, block_queue) = async_msg::channel(BLOCK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
     let leadership_logs =
-        leadership::Logs::new(bootstrapped_node.settings.leadership.log_ttl.into());
-    let leadership_garbage_collection_interval =
-        bootstrapped_node.settings.leadership.log_ttl.into();
+        leadership::Logs::new(bootstrapped_node.settings.leadership.logs_capacity);
+
+    let topology = P2pTopology::new(
+        &bootstrapped_node.settings.network,
+        bootstrapped_node
+            .logger
+            .new(o!(log::KEY_TASK => "poldercast")),
+    );
 
     let stats_counter = StatsCounter::default();
 
-    let (fragment_pool, pool_logs) = {
+    {
         let stats_counter = stats_counter.clone();
         let process = fragment::Process::new(
+            bootstrapped_node.settings.mempool.pool_max_entries.into(),
             bootstrapped_node.settings.mempool.fragment_ttl.into(),
+            bootstrapped_node.settings.mempool.log_max_entries.into(),
             bootstrapped_node.settings.mempool.log_ttl.into(),
             bootstrapped_node
                 .settings
@@ -145,13 +122,10 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             network_msgbox.clone(),
         );
 
-        let pool = process.pool().clone();
-        let logs = process.logs().clone();
-
         services.spawn_future("fragment", move |info| {
-            process.start(info, stats_counter, fragment_queue)
+            let fut = process.start(info, stats_counter, fragment_queue);
+            Box::pin(fut).compat()
         });
-        (pool, logs)
     };
 
     let explorer = {
@@ -175,43 +149,37 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         }
     };
 
-    let block_task = {
-        let mut blockchain = blockchain.clone();
-        let mut blockchain_tip = blockchain_tip.clone();
-        let mut network_msgbox = network_msgbox.clone();
-        let mut fragment_msgbox = fragment_msgbox.clone();
-        let mut explorer_msg_box = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
+    {
+        let blockchain = blockchain.clone();
+        let blockchain_tip = blockchain_tip.clone();
+        let network_msgbox = network_msgbox.clone();
+        let fragment_msgbox = fragment_msgbox.clone();
+        let explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         // TODO: we should get this value from the configuration
-        let block_cache_ttl: Duration = Duration::from_secs(3600);
+        let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
-        services.spawn_future_with_inputs("block", move |info, input| {
-            let candidate_repo = CandidateForest::new(
-                blockchain.clone(),
-                block_cache_ttl,
-                info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull")),
-            );
-            blockchain::handle_input(
-                info,
-                &mut blockchain,
-                &mut blockchain_tip,
-                &candidate_repo,
-                &stats_counter,
-                &mut network_msgbox,
-                &mut fragment_msgbox,
-                explorer_msg_box.as_mut(),
-                input,
-            )
-        })
-    };
+        services.spawn_future("block", move |info| {
+            let process = blockchain::Process {
+                blockchain,
+                blockchain_tip,
+                stats_counter,
+                network_msgbox,
+                fragment_msgbox,
+                explorer_msgbox,
+                garbage_collection_interval: block_cache_ttl,
+            };
+            process.start(info, block_queue)
+        });
+    }
 
     let client_task = {
         let mut task_data = client::TaskData {
             storage: blockchain.storage().clone(),
-            block0_hash: bootstrapped_node.block0_hash,
             blockchain_tip: blockchain_tip.clone(),
+            topology: topology.clone(),
         };
 
-        services.spawn_with_inputs("client-query", move |info, input| {
+        services.spawn_future_with_inputs("client-query", move |info, input| {
             client::handle_input(info, &mut task_data, input)
         })
     };
@@ -219,7 +187,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     {
         let client_msgbox = client_task.clone();
         let fragment_msgbox = fragment_msgbox.clone();
-        let block_msgbox = block_task.clone();
+        let block_msgbox = block_msgbox.clone();
         let block0_hash = bootstrapped_node.block0_hash;
         let config = bootstrapped_node.settings.network.clone();
         let channels = network::Channels {
@@ -227,6 +195,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             transaction_box: fragment_msgbox,
             block_box: block_msgbox,
         };
+        let topology = topology.clone();
 
         services.spawn_future("network", move |info| {
             let params = network::TaskParams {
@@ -235,9 +204,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 input: network_queue,
                 channels,
             };
-            network::start(info, params)
-                // FIXME: more graceful error reporting
-                .map_err(|e| panic!(e))
+            network::start(info, params, topology)
         });
     }
 
@@ -254,27 +221,28 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         })
         .collect();
     let leader_secrets = leader_secrets?;
-    let enclave = Enclave::from_vec(leader_secrets);
+    let enclave = block_on(Enclave::from_vec(leader_secrets));
 
     {
         let leadership_logs = leadership_logs.clone();
-        let fragment_pool = fragment_pool.clone();
-        let block_task = block_task.clone();
+        let block_msgbox = block_msgbox.clone();
         let blockchain_tip = blockchain_tip.clone();
         let enclave = leadership::Enclave::new(enclave.clone());
+        let fragment_msgbox = fragment_msgbox.clone();
 
         services.spawn_future("leadership", move |info| {
-            leadership::Module::new(
+            let fut = leadership::Module::new(
                 info,
                 leadership_logs,
-                leadership_garbage_collection_interval,
                 blockchain_tip,
-                fragment_pool,
+                fragment_msgbox,
                 enclave,
-                block_task,
+                block_msgbox,
             )
             .and_then(|module| module.run())
-            .map_err(|e| unimplemented!("error in leadership {}", e))
+            .map_err(|e| unimplemented!("error in leadership {}", e));
+
+            Box::pin(fut).compat()
         });
     }
 
@@ -285,13 +253,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             blockchain_tip: blockchain_tip.clone(),
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
-            logs: pool_logs,
             leadership_logs,
             enclave,
+            p2p: topology,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+            diagnostic: bootstrapped_node.diagnostic,
         };
-        rest_context.set_full(full_context);
-        rest_context.set_node_state(NodeState::Running);
+        block_on(async {
+            rest_context.set_full(full_context).await;
+            rest_context.set_node_state(NodeState::Running).await;
+        })
     };
 
     {
@@ -301,8 +272,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .no_blockchain_updates_warning_interval
             .clone();
 
-        services.spawn_future("blockchain_stuck_notifier", move |info| {
-            blockchain_stuck_notifier::check_last_block_time(
+        services.spawn_future_std("stuck_notifier", move |info| {
+            stuck_notifier::check_last_block_time(
                 info,
                 blockchain_tip,
                 no_blockchain_updates_warning_interval,
@@ -310,9 +281,27 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    services.wait_any_finished();
-    info!(bootstrapped_node.logger, "Shutting down node");
-    Ok(())
+    match services.wait_any_finished() {
+        Err(err) => {
+            crit!(
+                bootstrapped_node.logger,
+                "Service notifier failed to wait for services to shutdown" ;
+                "reason" => err.to_string()
+            );
+            Err(start_up::Error::ServiceTerminatedWithError)
+        }
+        Ok(true) => {
+            info!(bootstrapped_node.logger, "Shutting down node");
+            Ok(())
+        }
+        Ok(false) => {
+            crit!(
+                bootstrapped_node.logger,
+                "Service has terminated with an error"
+            );
+            Err(start_up::Error::ServiceTerminatedWithError)
+        }
+    }
 }
 
 /// # Bootstrap phase
@@ -335,10 +324,11 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         rest_context,
         services,
+        diagnostic,
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
-        context.set_node_state(NodeState::Bootstrapping)
+        block_on(context.set_node_state(NodeState::Bootstrapping))
     }
 
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
@@ -350,14 +340,44 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     // TODO: we should get this value from the configuration
     let block_cache_ttl: Duration = Duration::from_secs(5 * 24 * 3600);
 
-    let (blockchain, blockchain_tip) = start_up::load_blockchain(block0, storage, block_cache_ttl)?;
+    let (blockchain, blockchain_tip) =
+        start_up::load_blockchain(block0, storage, block_cache_ttl, &bootstrap_logger)?;
 
-    let bootstrapped = network::bootstrap(
-        &settings.network,
-        blockchain.clone(),
-        blockchain_tip.clone(),
-        &bootstrap_logger,
-    )?;
+    let mut bootstrap_attempt: usize = 0;
+    loop {
+        bootstrap_attempt += 1;
+
+        // If we have exceeded the maximum number of bootstrap attempts, then we break out of the
+        // bootstrap loop.
+        if let Some(max_bootstrap_attempt) = settings.network.max_bootstrap_attempts {
+            if bootstrap_attempt > max_bootstrap_attempt {
+                warn!(
+                    &bootstrap_logger,
+                    "maximum allowable bootstrap attempts exceeded, continuing..."
+                );
+                break; // maximum bootstrap attempts exceeded, exit loop
+            };
+        }
+
+        // Will return true if we successfully bootstrap or there are no trusted peers defined.
+        if network::bootstrap(
+            &settings.network,
+            blockchain.clone(),
+            blockchain_tip.clone(),
+            &bootstrap_logger,
+        )? {
+            break; // bootstrap succeeded, exit loop
+        }
+
+        info!(
+            &bootstrap_logger,
+            "bootstrap attempt #{} failed, trying again in {} seconds...",
+            bootstrap_attempt,
+            BOOTSTRAP_RETRY_WAIT.as_secs()
+        );
+        // Sleep for a little while before trying again.
+        std::thread::sleep(BOOTSTRAP_RETRY_WAIT);
+    }
 
     let explorer_db = if settings.explorer {
         Some(explorer::ExplorerDB::bootstrap(
@@ -368,13 +388,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         None
     };
 
-    if !bootstrapped {
-        // TODO, the node didn't manage to connect to any other nodes
-        // for the initial bootstrap, that may be an error however
-        // it is not necessarily an error, especially in the case the node is
-        // the first ever to wake
-    }
-
     Ok(BootstrappedNode {
         settings,
         block0_hash,
@@ -384,16 +397,18 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         services,
+        diagnostic,
     })
 }
 
 pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
-    pub storage: start_up::NodeStorage,
+    pub storage: blockchain::Storage,
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
     pub services: Services,
+    pub diagnostic: Diagnostic,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -412,32 +427,24 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let log_settings = raw_settings.log_settings();
     let logger = log_settings.to_logger()?;
 
-    // The log crate is used by some libraries, e.g. tower-grpc.
-    // Set up forwarding from log to slog, but only when trace log level is
-    // requested, because the logs are very verbose.
-    if log_settings
-        .0
-        .iter()
-        .any(|entry| entry.level >= slog::FilterLevel::Trace)
-    {
-        slog_scope::set_global_logger(logger.new(o!(log::KEY_SCOPE => "global"))).cancel_reset();
-        slog_stdlog::init().unwrap();
-    }
-
     let init_logger = logger.new(o!(log::KEY_TASK => "init"));
     info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
+
+    let diagnostic = Diagnostic::new()?;
+    debug!(init_logger, "system settings are: {}", diagnostic);
+
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let mut services = Services::new(logger.clone());
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
             let context = rest::Context::new();
+            let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_context = context.clone();
-            services.spawn("rest", move |info| {
-                server_context.set_logger(info.into_logger());
-                rest::run_rest_server(rest, explorer, server_context)
-                    .expect("REST server critical failure")
+            let server_handler = rest::start_rest_server(rest, explorer, &context)?;
+            services.spawn_future("rest", move |info| {
+                block_on(service_context.set_logger(info.into_logger()));
+                server_handler
             });
             Some(context)
         }
@@ -445,14 +452,14 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     };
 
     if let Some(context) = rest_context.as_ref() {
-        context.set_node_state(NodeState::PreparingStorage)
+        block_on(context.set_node_state(NodeState::PreparingStorage))
     }
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 
     if let Some(context) = rest_context.as_ref() {
-        context.set_node_state(NodeState::PreparingBlock0)
+        block_on(context.set_node_state(NodeState::PreparingBlock0))
     }
     let block0 = start_up::prepare_block_0(
         &settings,
@@ -467,6 +474,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         logger,
         rest_context,
         services,
+        diagnostic,
     })
 }
 

@@ -30,7 +30,7 @@ pub struct BlockCount(pub String);
 pub struct TransactionCount(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
-pub struct Serial(pub String);
+pub struct PoolCount(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
 pub struct PublicKey(pub String);
@@ -86,6 +86,12 @@ impl From<&value::Value> for Value {
     }
 }
 
+impl From<value::Value> for Value {
+    fn from(v: value::Value) -> Value {
+        (&v).into()
+    }
+}
+
 impl From<blockcfg::Epoch> for EpochNumber {
     fn from(e: blockcfg::Epoch) -> EpochNumber {
         EpochNumber(format!("{}", e))
@@ -111,12 +117,6 @@ impl From<u32> for BlockCount {
     }
 }
 
-impl From<u128> for Serial {
-    fn from(number: u128) -> Serial {
-        Serial(format!("{}", number))
-    }
-}
-
 impl From<&chain_crypto::PublicKey<chain_crypto::Ed25519>> for PublicKey {
     fn from(pk: &chain_crypto::PublicKey<chain_crypto::Ed25519>) -> PublicKey {
         PublicKey(pk.to_bech32_str())
@@ -132,6 +132,12 @@ impl From<chain_time::TimeOffsetSeconds> for TimeOffsetSeconds {
 impl From<u64> for TransactionCount {
     fn from(n: u64) -> TransactionCount {
         TransactionCount(format!("{}", n))
+    }
+}
+
+impl From<u64> for PoolCount {
+    fn from(n: u64) -> PoolCount {
+        PoolCount(format!("{}", n))
     }
 }
 

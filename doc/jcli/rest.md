@@ -18,7 +18,7 @@ Syntax is Go text template: https://golang.org/pkg/text/template/.
 
 Fetches node stats
 
-```
+```sh
 jcli rest v0 node stats get <options>
 ```
 
@@ -28,13 +28,14 @@ The options are
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
 
-
 YAML printed on success
 
 ```yaml
 ---
 # Number of blocks received by node
 blockRecvCnt: 1102
+# Size in bytes of all transactions in last block
+lastBlockContentSize: 484
 # The Epoch and slot Number of the block (optional)
 lastBlockDate: "20.29"
 # Sum of all fee values in all transactions in last block
@@ -45,23 +46,37 @@ lastBlockHash: b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0
 lastBlockHeight: 202901
 # Sum of all input values in all transactions in last block
 lastBlockSum: 51604
-# When last block was created, not set if none was created yet (optional)
-lastBlockTime: 2019-08-12T11:20:52.316544007+00:00
+# The time slot of the tip block
+lastBlockTime: "2020-01-30T22:37:46+00:00"
 # Number of transactions in last block
 lastBlockTx: 2
+# The time at which we received the last block, not necessarily the current tip block (optional)
+lastReceivedBlockTime: "2020-01-30T22:37:59+00:00"
+# 24 bytes encoded in hexadecimal Node ID
+nodeId: "ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d"
+# Number of nodes that are available for p2p discovery and events propagation
+peerAvailableCnt: 321
+# Number of nodes that have been quarantined by our node
+peerQuarantinedCnt: 123
+# Total number of nodes
+peerTotalCnt: 444
+# Number of nodes that are connected to ours but that are not publicly reachable
+peerUnreachableCnt: 0
 # State of the node
 state: Running
 # Number of transactions received by node
 txRecvCnt: 5440
 # Node uptime in seconds
 uptime: 20032
+# Node app version
+version: jormungandr 0.8.9-30d20d2e
 ```
 
 ## Get UTxO
 
 Fetches UTxO details
 
-```
+```sh
 jcli rest v0 utxo <fragment-id> <output-index> get <options>
 ```
 
@@ -73,7 +88,6 @@ The options are
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
-
 
 YAML printed on success
 
@@ -89,7 +103,7 @@ value: 10000
 
 Posts a signed, hex-encoded transaction
 
-```
+```sh
 jcli rest v0 message post <options>
 ```
 
@@ -100,10 +114,9 @@ The options are
 - -f --file <file_path> - File containing hex-encoded transaction.
 If not provided, transaction will be read from stdin.
 
-
 Fragment Id is printed on success (which can help finding transaction status using get message log command)
 
-```
+```sh
 50f21ac6bd3f57f231c4bf9c5fff7c45e2529c4dffed68f92410dbf7647541f1
 ```
 
@@ -112,7 +125,7 @@ Fragment Id is printed on success (which can help finding transaction status usi
 Get the node's logs on the message pool. This will provide information on pending transaction,
 rejected transaction and or when a transaction has been added in a block
 
-```
+```sh
 jcli rest v0 message logs <options>
 ```
 
@@ -166,7 +179,7 @@ status:                         # fragment was included in a block
 
 Retrieves a hex-encoded ID of the blockchain tip
 
-```
+```sh
 jcli rest v0 tip get <options>
 ```
 
@@ -179,7 +192,7 @@ The options are
 
 Retrieves a hex-encoded block with given ID
 
-```
+```sh
 jcli rest v0 block <block_id> get <options>
 ```
 
@@ -195,7 +208,7 @@ The options are
 Retrieves a list of hex-encoded IDs of descendants of block with given ID.
 Every list element is in separate line. The IDs are sorted from closest to farthest.
 
-```
+```sh
 jcli rest v0 block <block_id> next-id get <options>
 ```
 
@@ -211,13 +224,14 @@ The options are
 
 Get account state
 
-```
+```sh
 jcli rest v0 account get <account-id> <options>
 ```
 
 <account-id> - ID of an account, bech32-encoded
 
 The options are
+
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
@@ -231,10 +245,10 @@ delegation: c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356
 value: 990
 ```
 
-* `value` is the current balance of the account;
-* `counter` is the number of transactions performed using this account
+- `value` is the current balance of the account;
+- `counter` is the number of transactions performed using this account
   this is useful to know when signing new transactions;
-* `delegation` is the Stake Pool Identifier the account is delegating to.
+- `delegation` is the Stake Pool Identifier the account is delegating to.
   it is possible this value is not set if there is no delegation certificate
   sent associated to this account.
 
@@ -242,7 +256,7 @@ value: 990
 
 Fetches node settings
 
-```
+```sh
 jcli rest v0 settings get <options>
 ```
 
@@ -252,27 +266,47 @@ The options are
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
 
-
 YAML printed on success
 
 ```yaml
 ---
 block0Hash: 8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7  # block 0 hash of
 block0Time: "2019-07-09T12:32:51+00:00"         # block 0 creation time of
+blockContentMaxSize: 102400                     # the block content's max size in bytes
 consensusVersion: bft                           # currently used consensus
 currSlotStartTime: "2019-07-09T12:55:11+00:00"  # current slot start time
+epochStabilityDepth: 102400                     # the depth, number of blocks, to which we consider the blockchain to be stable and prevent rollback beyond that depth
 fees:                                           # transaction fee configuration
   certificate: 4                                # fee per certificate
   coefficient: 1                                # fee per every input and output
   constant: 2                                   # fee per transaction
-maxTxsPerBlock: 100                             # maximum number of transactions in block
+  per_certificate_fees:                         # fee per certificate operations, all zero if this object absent (optional)
+    certificate_pool_registration: 5            # fee per pool registration, zero if absent (optional)
+    certificate_stake_delegation: 15            # fee per stake delegation, zero if absent (optional)
+    certificate_owner_stake_delegation: 2       # fee per pool owner stake delegation, zero if absent (optional)
+rewardParams:                                   # parameters for rewards calculation
+  compoundingRatio:                             # speed at which reward is reduced. Expressed as numerator/denominator
+    denominator: 1024
+    numerator: 1
+  compoundingType: Linear                       # reward reduction algorithm. Possible values: "Linear" and "Halvening"
+  epochRate: 100                                # number of epochs between reward reductions
+  epochStart: 0                                 # epoch when rewarding starts
+  initialValue: 10000                           # initial reward
+slotDuration: 5                                 # slot duration in seconds
+slotsPerEpoch: 720                              # number of slots per epoch
+treasuryTax:                                    # tax from reward that goes to pot
+  fixed: 5                                      # what get subtracted as fixed value
+  ratio:                                        # ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+    numerator: 1
+    denominator: 10000
+  max: 100                                      # limit of tax (optional)
 ```
 
 ## Node shutdown
 
 Node shutdown
 
-```
+```sh
 jcli rest v0 shutdown get <options>
 ```
 
@@ -285,7 +319,7 @@ The options are
 
 Fetches list of leader IDs
 
-```
+```sh
 jcli rest v0 leaders get <options>
 ```
 
@@ -294,7 +328,6 @@ The options are
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
-
 
 YAML printed on success
 
@@ -308,7 +341,7 @@ YAML printed on success
 
 Register new leader and get its ID
 
-```
+```sh
 jcli rest v0 leaders post <options>
 ```
 
@@ -321,7 +354,7 @@ The options are
 
 On success created leader ID is printed
 
-```
+```sh
 3
 ```
 
@@ -329,7 +362,7 @@ On success created leader ID is printed
 
 Delete leader with given ID
 
-```
+```sh
 jcli rest v0 leaders delete <id> <options>
 ```
 
@@ -344,7 +377,7 @@ The options are
 
 Fetches leadership logs
 
-```
+```sh
 jcli rest v0 leaders logs get <options>
 ```
 
@@ -353,7 +386,6 @@ The options are
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
-
 
 YAML printed on success
 
@@ -398,7 +430,7 @@ status:
 
 Fetches list of stake pool IDs
 
-```
+```sh
 jcli rest v0 stake-pools get <options>
 ```
 
@@ -407,7 +439,6 @@ The options are
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
-
 
 YAML printed on success
 
@@ -421,7 +452,7 @@ YAML printed on success
 
 Fetches stake information
 
-```
+```sh
 jcli rest v0 stake get <options>
 ```
 
@@ -430,7 +461,6 @@ The options are
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
-
 
 YAML printed on success
 
@@ -451,7 +481,7 @@ stake:
 
 Fetches network stats
 
-```
+```sh
 jcli rest v0 network stats get <options>
 ```
 
@@ -461,13 +491,14 @@ The options are
 - --debug - see [conventions](#conventions)
 - --output-format <format> - see [conventions](#conventions)
 
-
 YAML printed on success
 
 ```yaml
 ---
+- # node address (optional)
+  addr: "3.124.55.91:3000"
   # hex-encoded node ID
-- nodeId: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+  nodeId: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
   # timestamp of when the connection was established
   establishedAt: "2019-10-14T06:24:12.010231281+00:00"
   # timestamp of last time block was received from node if ever (optional)
@@ -476,4 +507,37 @@ YAML printed on success
   lastFragmentReceived: "2019-10-14T00:45:58.419496150+00:00"
   # timestamp of last time gossip was received from node if ever (optional)
   lastGossipReceived: "2019-10-14T00:45:59.419496188+00:00"
+```
+
+## Get stake pool details
+
+Fetches stake pool details
+
+```sh
+jcli rest v0 stake-pool get <pool-id> <options>
+```
+
+<pool-id> - hex-encoded pool ID
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format <format> - see [conventions](#conventions)
+
+YAML printed on success
+
+```yaml
+---
+tax:                        # pool reward
+  fixed: 5                  # what get subtracted as fixed value
+  ratio:                    # ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
+    numerator: 1
+    denominator: 10000
+  max: 100                  # limit of tax (optional)
+total_stake: 2000000000000  # total stake pool value
+# bech32-encoded stake pool KES key
+kesPublicKey: kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r
+# bech32-encoded stake pool VRF key
+vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 ```

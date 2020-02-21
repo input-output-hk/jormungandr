@@ -6,6 +6,7 @@ use crate::time::Duration;
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr as _};
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct KESUpdateSpeed(pub(crate) u32);
@@ -42,9 +43,12 @@ impl KESUpdateSpeed {
     }
 }
 
-custom_error! { pub TryFromKESUpdateSpeedError
-    Incompatible = "Incompatible Config param, expected KES Update Speed",
-    Invalid { speed: u32 } = "Invalid KES Update speed {speed}",
+#[derive(Debug, Error)]
+pub enum TryFromKESUpdateSpeedError {
+    #[error("Incompatible Config param, expected KES Update Speed")]
+    Incompatible,
+    #[error("Invalid KES Update speed {speed}")]
+    Invalid { speed: u32 },
 }
 
 impl TryFrom<ConfigParam> for KESUpdateSpeed {

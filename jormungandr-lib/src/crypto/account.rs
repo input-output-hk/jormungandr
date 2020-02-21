@@ -45,6 +45,7 @@ use chain_impl_mockchain::{
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
+use thiserror::Error;
 
 /// Account identifier, used to identify an account. Cryptographically linked
 /// to the account [`SigningKey`].
@@ -59,10 +60,14 @@ pub struct Identifier(key::Identifier<account::AccountAlg>);
 #[derive(Clone)]
 pub struct SigningKey(EitherEd25519SecretKey);
 
-custom_error! {pub SigningKeyParseError
-    InvalidBech32Encoding { source: bech32::Error } = "Invalid bech32: {source}",
-    InvalidSecretKey { source: chain_crypto::bech32::Error } = "Invalid secret key: {source}",
-    UnexpectedHRP { hrp: String } = "Unexpected key '{hrp}'. Expected either ed25519 or ed25519extended",
+#[derive(Debug, Error)]
+pub enum SigningKeyParseError {
+    #[error("Invalid bech32: {0}")]
+    InvalidBech32Encoding(#[from] bech32::Error),
+    #[error("Invalid secret key: {0}")]
+    InvalidSecretKey(#[from] chain_crypto::bech32::Error),
+    #[error("Unexpected key '{hrp}'. Expected either ed25519 or ed25519extended")]
+    UnexpectedHRP { hrp: String },
 }
 
 impl Identifier {
@@ -145,20 +150,16 @@ impl SigningKey {
     pub fn from_bech32_str(s: &str) -> Result<Self, SigningKeyParseError> {
         use chain_crypto::bech32::Bech32 as _;
 
-        let bech32_encoded = bech32::Bech32::from_str(s)?;
+        let (hrp, _) = bech32::decode(s)?;
 
-        let key = match bech32_encoded.hrp() {
+        let key = match hrp.as_ref() {
             <Ed25519 as AsymmetricKey>::SECRET_BECH32_HRP => SigningKey(
                 EitherEd25519SecretKey::Normal(SecretKey::try_from_bech32_str(s)?),
             ),
             <Ed25519Extended as AsymmetricKey>::SECRET_BECH32_HRP => SigningKey(
                 EitherEd25519SecretKey::Extended(SecretKey::try_from_bech32_str(s)?),
             ),
-            hrp => {
-                return Err(SigningKeyParseError::UnexpectedHRP {
-                    hrp: hrp.to_owned(),
-                })
-            }
+            _ => return Err(SigningKeyParseError::UnexpectedHRP { hrp: hrp }),
         };
 
         Ok(key)
@@ -223,6 +224,12 @@ impl From<AccountPublicKey> for Identifier {
 impl From<account::Identifier> for Identifier {
     fn from(identifier: account::Identifier) -> Self {
         Identifier(key::Identifier::from(identifier.as_ref().clone()))
+    }
+}
+
+impl From<key::Identifier<account::AccountAlg>> for Identifier {
+    fn from(identifier: key::Identifier<account::AccountAlg>) -> Self {
+        Identifier(identifier)
     }
 }
 

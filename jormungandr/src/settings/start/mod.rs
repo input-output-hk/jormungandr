@@ -2,7 +2,7 @@ pub mod config;
 pub mod network;
 
 use self::config::{Config, Leadership};
-pub use self::config::{Cors, Rest};
+pub use self::config::{Cors, Rest, Tls};
 use self::network::Protocol;
 use crate::rest::Error as RestError;
 use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
@@ -10,19 +10,25 @@ use crate::settings::{command_arguments::*, Block0Info};
 use jormungandr_lib::interfaces::Mempool;
 use slog::{FilterLevel, Logger};
 use std::{fs::File, path::PathBuf};
+use thiserror::Error;
 
 const DEFAULT_FILTER_LEVEL: FilterLevel = FilterLevel::Info;
 const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Plain;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 
-custom_error! {pub Error
-   ConfigIo { source: std::io::Error } = "Cannot read the node configuration file: {source}",
-   Config { source: serde_yaml::Error } = "Error while parsing the node configuration file: {source}",
-   Rest { source: RestError } = "The Rest configuration is invalid: {source}",
-   ExpectedBlock0Info = "Cannot start the node without the information to retrieve the genesis block",
-   TooMuchBlock0Info = "Use only `--genesis-block-hash' or `--genesis-block'",
-   ListenAddressNotValid = "In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Cannot read the node configuration file: {0}")]
+    ConfigIo(#[from] std::io::Error),
+    #[error("Error while parsing the node configuration file: {0}")]
+    Config(#[from] serde_yaml::Error),
+    #[error("The Rest configuration is invalid: {0}")]
+    Rest(#[from] RestError),
+    #[error("Cannot start the node without the information to retrieve the genesis block")]
+    ExpectedBlock0Info,
+    #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]
+    ListenAddressNotValid,
 }
 
 /// Overall Settings for node
@@ -103,7 +109,7 @@ impl RawSettings {
             (Some(config_rest), None) => Some(config_rest.clone()),
             (None, Some(cmd_listen)) => Some(Rest {
                 listen: cmd_listen,
-                pkcs12: None,
+                tls: None,
                 cors: None,
             }),
             (None, None) => None,
@@ -122,7 +128,7 @@ impl RawSettings {
             config,
         } = self;
         let command_arguments = &command_line.start_arguments;
-        let network = generate_network(&command_arguments, &config)?;
+        let network = generate_network(&command_arguments, &config, &logger)?;
 
         let storage = match (
             command_arguments.storage.as_ref(),
@@ -150,8 +156,8 @@ impl RawSettings {
             &command_arguments.block_0_hash,
         ) {
             (None, None) => return Err(Error::ExpectedBlock0Info),
-            (Some(_path), Some(_hash)) => return Err(Error::TooMuchBlock0Info),
-            (Some(path), None) => Block0Info::Path(path.clone()),
+            (Some(path), Some(hash)) => Block0Info::Path(path.clone(), Some(hash.clone())),
+            (Some(path), None) => Block0Info::Path(path.clone(), None),
             (None, Some(hash)) => Block0Info::Hash(hash.clone()),
         };
 
@@ -189,12 +195,19 @@ impl RawSettings {
 fn generate_network(
     command_arguments: &StartArguments,
     config: &Option<Config>,
+    logger: &Logger,
 ) -> Result<network::Configuration, Error> {
-    let mut p2p = if let Some(cfg) = config {
-        cfg.p2p.clone()
-    } else {
-        config::P2pConfig::default()
-    };
+    let (mut p2p, http_fetch_block0_service, skip_bootstrap, bootstrap_from_trusted_peers) =
+        if let Some(cfg) = config {
+            (
+                cfg.p2p.clone(),
+                cfg.http_fetch_block0_service.clone(),
+                cfg.skip_bootstrap.unwrap_or(false),
+                cfg.bootstrap_from_trusted_peers.unwrap_or(false),
+            )
+        } else {
+            (config::P2pConfig::default(), Vec::new(), false, false)
+        };
 
     if p2p.trusted_peers.is_some() {
         p2p.trusted_peers
@@ -225,7 +238,7 @@ fn generate_network(
         profile.add_subscription(sub);
     }
 
-    let network = network::Configuration {
+    let mut network = network::Configuration {
         profile: profile.build(),
         listen_address: match &p2p.listen_address {
             None => None,
@@ -249,6 +262,9 @@ fn generate_network(
         max_connections: p2p
             .max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
+        max_client_connections: p2p
+            .max_client_connections
+            .unwrap_or(network::DEFAULT_MAX_CLIENT_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.allow_private_addresses,
         max_unreachable_nodes_to_connect_per_event: p2p.max_unreachable_nodes_to_connect_per_event,
@@ -257,7 +273,21 @@ fn generate_network(
             .map(|d| d.into())
             .unwrap_or(std::time::Duration::from_secs(10)),
         topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
+        max_bootstrap_attempts: p2p.max_bootstrap_attempts,
+        http_fetch_block0_service,
+        bootstrap_from_trusted_peers,
+        skip_bootstrap,
     };
+
+    if network.max_client_connections > network.max_connections {
+        warn!(
+            logger,
+            "p2p.max_client_connections is larger than p2p.max_connections, decreasing from {} to {}",
+            network.max_client_connections,
+            network.max_connections
+        );
+        network.max_client_connections = network.max_connections;
+    }
 
     Ok(network)
 }

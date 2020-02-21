@@ -104,7 +104,9 @@ pub(crate) fn stake_delegation_account_binding_sign(
         }
     }
 
-    let sig = AccountBindingSignature::new_single(&private_key, &builder.get_auth_data());
+    let sig = AccountBindingSignature::new_single(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(&d.0)
+    });
 
     Ok(SignedCertificate::StakeDelegation(delegation, sig))
 }
@@ -150,7 +152,7 @@ where
 
     let mut sigs = Vec::new();
     for (i, key) in keys.iter() {
-        let sig = SingleAccountBindingSignature::new(key, &auth_data);
+        let sig = SingleAccountBindingSignature::new(&auth_data, |d| key.sign_slice(&d.0));
         sigs.push((*i, sig))
     }
     let sig = PoolOwnersSigned { signatures: sigs };

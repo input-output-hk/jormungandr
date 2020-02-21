@@ -18,6 +18,6 @@ pub fn test_unbalanced_output_utxo_transaction_is_not_finalized() {
 
     JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH)
         .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, 0, &100.into())
-        .assert_add_output(&receiver.address, &150.into())
+        .assert_add_output(&receiver.address().to_string(), &150.into())
         .assert_finalize_fail("not enough input for making transaction");
 }

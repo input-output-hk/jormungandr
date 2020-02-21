@@ -1,26 +1,24 @@
 use crate::common::{
-    configuration::{
-        genesis_model::{Fund, GenesisYaml, Initial},
-        jormungandr_config::JormungandrConfig,
-    },
+    configuration::{jormungandr_config::JormungandrConfig, Block0ConfigurationBuilder},
     file_utils, jcli_wrapper, startup,
 };
 use chain_addr::Discrimination;
+use jormungandr_lib::interfaces::{Initial, InitialUTxO, LegacyUTxO};
 
 #[test]
 pub fn test_genesis_block_is_built_from_correct_yaml() {
-    startup::build_genesis_block(&GenesisYaml::new());
+    startup::build_genesis_block(&Block0ConfigurationBuilder::new().build());
 }
 
 #[test]
 pub fn test_genesis_with_empty_consenus_leaders_list_fails_to_build() {
     let mut config = JormungandrConfig::new();
     config
-        .genesis_yaml
+        .block0_configuration
         .blockchain_configuration
-        .consensus_leader_ids = Some(vec![]);
+        .consensus_leader_ids = vec![];
     jcli_wrapper::assert_genesis_encode_fails(
-        &config.genesis_yaml,
+        &config.block0_configuration,
         r"Missing consensus leader id list in the initial fragment",
     );
 }
@@ -28,9 +26,12 @@ pub fn test_genesis_with_empty_consenus_leaders_list_fails_to_build() {
 #[test]
 pub fn test_genesis_for_production_is_successfully_built() {
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial.clear();
-    config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
-    let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
+    config.block0_configuration.initial.clear();
+    config
+        .block0_configuration
+        .blockchain_configuration
+        .discrimination = Discrimination::Production;
+    let input_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
 }
@@ -42,29 +43,38 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
     let test_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
 
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial = vec![Initial::Fund(vec![Fund {
+    config.block0_configuration.initial = vec![Initial::Fund(vec![InitialUTxO {
         value: 100.into(),
-        address: test_address.clone(),
+        address: test_address.parse().unwrap(),
     }])];
-    config.genesis_yaml.blockchain_configuration.discrimination = Some("production".to_string());
-    jcli_wrapper::assert_genesis_encode_fails(&config.genesis_yaml, "Invalid discrimination");
+    config
+        .block0_configuration
+        .blockchain_configuration
+        .discrimination = Discrimination::Production;
+    jcli_wrapper::assert_genesis_encode_fails(
+        &config.block0_configuration,
+        "Invalid discrimination",
+    );
 }
 
 #[test]
 pub fn test_genesis_for_prod_with_wrong_discrimination_fail_to_build() {
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.blockchain_configuration.discrimination = Some("prod".to_string());
+    config
+        .block0_configuration
+        .blockchain_configuration
+        .discrimination = Discrimination::Production;
     jcli_wrapper::assert_genesis_encode_fails(
-        &config.genesis_yaml,
-        "blockchain_configuration.discrimination: unknown variant `prod`, expected `test` or `production`",
+        &config.block0_configuration,
+        "Invalid discrimination",
     );
 }
 
 #[test]
 pub fn test_genesis_without_initial_funds_is_built_successfully() {
     let mut config = JormungandrConfig::new();
-    config.genesis_yaml.initial.clear();
-    let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
+    config.block0_configuration.initial.clear();
+    let input_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
 }
@@ -75,17 +85,17 @@ pub fn test_genesis_with_many_initial_funds_is_built_successfully() {
     let address_1 = startup::create_new_account_address();
     let address_2 = startup::create_new_account_address();
     let initial_funds = Initial::Fund(vec![
-        Fund {
+        InitialUTxO {
             value: 100.into(),
-            address: address_1.address,
+            address: address_1.address(),
         },
-        Fund {
+        InitialUTxO {
             value: 100.into(),
-            address: address_2.address,
+            address: address_2.address(),
         },
     ]);
-    config.genesis_yaml.initial.push(initial_funds);
-    let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
+    config.block0_configuration.initial.push(initial_funds);
+    let input_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
 }
@@ -95,14 +105,14 @@ pub fn test_genesis_with_legacy_funds_is_built_successfully() {
     let mut config = JormungandrConfig::new();
     let legacy_funds = Initial::LegacyFund(
             vec![
-                Fund{
+                LegacyUTxO{
                     value: 100.into(),
-                    address: "DdzFFzCqrht5TM5GznWhJ3GTpKawtJuA295F8igwXQXyt2ih1TL1XKnZqRBQBoLpyYVKfNKgCXPBUYruUneC83KjGK6QNAoBSqRJovbG".to_string()
+                    address: "DdzFFzCqrht5TM5GznWhJ3GTpKawtJuA295F8igwXQXyt2ih1TL1XKnZqRBQBoLpyYVKfNKgCXPBUYruUneC83KjGK6QNAoBSqRJovbG".parse().unwrap()
                 },
             ]
         );
-    config.genesis_yaml.initial.push(legacy_funds);
-    let input_yaml_file_path = GenesisYaml::serialize(&config.genesis_yaml);
+    config.block0_configuration.initial.push(legacy_funds);
+    let input_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
 }

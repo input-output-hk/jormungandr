@@ -6,6 +6,7 @@ use jormungandr_lib::crypto::{
 };
 use serde::Deserialize;
 use std::path::Path;
+use thiserror::Error;
 
 pub mod enclave;
 
@@ -55,9 +56,12 @@ pub struct NodePublic {
     pub block_publickey: PublicKey<Ed25519>,
 }
 
-custom_error! {pub NodeSecretFromFileError
-    Io { source: std::io::Error } = "Cannot read node's secrets: {source}",
-    Format { source: serde_yaml::Error } = "Invalid Node secret file: {source}",
+#[derive(Debug, Error)]
+pub enum NodeSecretFromFileError {
+    #[error("Cannot read node's secrets: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Invalid Node secret file: {0}")]
+    Format(#[from] serde_yaml::Error),
 }
 
 impl NodeSecret {

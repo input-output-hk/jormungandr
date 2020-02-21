@@ -4,6 +4,7 @@ extern crate serde_derive;
 
 pub mod configuration;
 pub mod data;
+pub mod explorer;
 pub mod file_assert;
 pub mod file_utils;
 pub mod jcli_wrapper;

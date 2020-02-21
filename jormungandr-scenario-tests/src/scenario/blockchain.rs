@@ -1,5 +1,7 @@
 use crate::scenario::{ConsensusVersion, NodeAlias, Wallet, WalletAlias};
-use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -9,6 +11,8 @@ pub struct Blockchain {
     slot_duration: SlotDuration,
     leaders: Vec<NodeAlias>,
     wallets: HashMap<WalletAlias, Wallet>,
+    kes_update_speed: KESUpdateSpeed,
+    consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
 }
 
 impl Blockchain {
@@ -16,6 +20,8 @@ impl Blockchain {
         consensus: ConsensusVersion,
         slots_per_epoch: NumberOfSlotsPerEpoch,
         slot_duration: SlotDuration,
+        kes_update_speed: KESUpdateSpeed,
+        consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     ) -> Self {
         Blockchain {
             consensus,
@@ -23,6 +29,8 @@ impl Blockchain {
             wallets: HashMap::new(),
             slots_per_epoch,
             slot_duration,
+            kes_update_speed,
+            consensus_genesis_praos_active_slot_coeff,
         }
     }
 
@@ -44,6 +52,14 @@ impl Blockchain {
 
     pub fn slot_duration(&self) -> &SlotDuration {
         &self.slot_duration
+    }
+
+    pub fn kes_update_speed(&self) -> &KESUpdateSpeed {
+        &self.kes_update_speed
+    }
+
+    pub fn consensus_genesis_praos_active_slot_coeff(&self) -> &ActiveSlotCoefficient {
+        &self.consensus_genesis_praos_active_slot_coeff
     }
 
     pub fn leaders<'a>(&'a self) -> impl Iterator<Item = &'a NodeAlias> {

@@ -12,11 +12,14 @@ log:
   - output: stderr
     level:  info
     format: plain
+http_fetch_block0_service:
+  - https://url/jormungandr-block0/raw/master/data
 p2p:
   public_address: "/ip4/X.X.X.X/tcp/Y" # This should match your public IP address (X) and port number (Y)
   topics_of_interest:
     blocks: normal #Default is normal - high for stakepool
     messages: low   #Default is low - high for stakepool
+  allow_private_addresses: false
   trusted_peers:
   - address: "/ip4/13.230.137.72/tcp/3000"
     id: e4fda5a674f0838b64cacf6d22bbae38594d7903aba2226f
@@ -36,5 +39,16 @@ rest:
   listen: 127.0.0.1:3100
 storage: "./storage"
 ```
+
 Note:
   The node configuration uses the [YAML](https://en.wikipedia.org/wiki/YAML) format.
+
+## advanced
+
+this is not a recommended settings as it may take memory and may trigger some latency:
+
+If you want to record the reward distributions in a directory it is possible to set
+the environment variable: `JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD`.
+
+If an error occur while dumping the reward, the node will **panic** with an appropriate
+error message.

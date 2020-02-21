@@ -1,6 +1,7 @@
 use crate::blockchain::{Branch, Ref};
 use std::{convert::Infallible, sync::Arc};
-use tokio::prelude::*;
+use tokio::prelude::Future as Future01;
+use tokio_compat::prelude::*;
 
 #[derive(Clone)]
 pub struct Tip {
@@ -12,18 +13,35 @@ impl Tip {
         Tip { branch }
     }
 
-    pub fn get_ref<E>(&self) -> impl Future<Item = Arc<Ref>, Error = E> {
+    pub async fn get_ref_std(&self) -> Arc<Ref> {
+        self.branch.get_ref_std().await
+    }
+
+    pub async fn update_ref_std(&mut self, new_ref: Arc<Ref>) -> Arc<Ref> {
+        let r = self.branch.update_ref(new_ref).compat().await.unwrap();
+        r
+    }
+
+    pub async fn swap_std(&mut self, mut branch: Branch) {
+        let mut tip_branch = self.branch.clone();
+        let tr = self.branch().get_ref_std().await;
+        let br = branch.update_ref_std(tr).await;
+        let _: Arc<Ref> = tip_branch.update_ref_std(br).await;
+        ()
+    }
+
+    pub fn get_ref<E>(&self) -> impl Future01<Item = Arc<Ref>, Error = E> {
         self.branch.get_ref()
     }
 
     pub fn update_ref(
         &mut self,
         new_ref: Arc<Ref>,
-    ) -> impl Future<Item = Arc<Ref>, Error = Infallible> {
+    ) -> impl Future01<Item = Arc<Ref>, Error = Infallible> {
         self.branch.update_ref(new_ref)
     }
 
-    pub fn swap(&mut self, mut branch: Branch) -> impl Future<Item = (), Error = Infallible> {
+    pub fn swap(&mut self, mut branch: Branch) -> impl Future01<Item = (), Error = Infallible> {
         let mut tip_branch = self.branch.clone();
         self.branch()
             .get_ref()

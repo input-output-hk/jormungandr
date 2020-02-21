@@ -14,16 +14,12 @@ values/desired values:
 # The Blockchain Configuration defines the settings of the blockchain.
 blockchain_configuration:
   block0_consensus: genesis_praos
-  bft_slots_ratio: 0
   consensus_genesis_praos_active_slot_coeff: 0.1
   kes_update_speed: 43200 # 12hours
 ```
 
 `block0_consensus` set to `genesis_praos` means you want to start a blockchain with
 genesis praos as the consensus layer.
-
-`bft_slots_ratio` needs to be set to `0` (we don't support composite modes between
-BFT mode and Genesis mode -- yet).
 
 `consensus_genesis_praos_active_slot_coeff` determines minimum stake required to
 try becoming slot leader, must be in range 0 exclusive and 1 inclusive.

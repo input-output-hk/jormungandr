@@ -1,10 +1,11 @@
 use crate::common::{
-    configuration::{jormungandr_config::JormungandrConfig, node_config_model::TrustedPeer},
-    jormungandr::{JormungandrProcess,Starter,ConfigurationBuilder},
+    configuration::jormungandr_config::JormungandrConfig,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use crate::mock::client::JormungandrClient;
+use chain_impl_mockchain::block::ConsensusVersion;
+use jormungandr_lib::interfaces::TrustedPeer;
 use std::{thread, time::Duration};
-
 const LOCALHOST: &str = "127.0.0.1";
 
 pub struct Config {
@@ -34,12 +35,17 @@ pub fn bootstrap_node() -> (JormungandrProcess, JormungandrConfig) {
 
 pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
     let trusted_peer = TrustedPeer {
-        address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port),
-        id: "ed25519_pk1hdhe4mnus0uxaf25gxeryskvwtytlzeuvan8glp3n63ztvv0v78qczpm32".to_owned(),
+        address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port)
+            .parse()
+            .unwrap(),
+        id: "fe3332044877b2034c8632a08f08ee47f3fbea6c64165b3b"
+            .parse()
+            .unwrap(),
     };
 
     ConfigurationBuilder::new()
         .with_slot_duration(4)
+        .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .with_trusted_peers(vec![trusted_peer])
         .build()
 }

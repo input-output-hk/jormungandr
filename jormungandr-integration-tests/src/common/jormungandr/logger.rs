@@ -1,9 +1,6 @@
-extern crate custom_error;
 extern crate regex;
 extern crate serde;
 extern crate serde_json;
-
-use self::custom_error::custom_error;
 
 use self::serde::{Deserialize, Serialize};
 use crate::common::file_utils;
@@ -12,9 +9,12 @@ use chain_impl_mockchain::key::Hash;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+use thiserror::Error;
 
-custom_error! {pub LoggerError
-    LogFileDoesNotExists { log_file: String } = "{log_file}",
+#[derive(Debug, Error)]
+pub enum LoggerError {
+    #[error("{log_file}")]
+    LogFileDoesNotExists { log_file: String },
 }
 
 #[derive(Debug)]

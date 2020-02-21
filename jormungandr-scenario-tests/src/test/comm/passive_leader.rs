@@ -1,6 +1,6 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    test::utils,
+    test::utils::{self, SyncWaitParams},
     test::Result,
     Context, ScenarioResult,
 };
@@ -34,9 +34,9 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     controller.monitor_nodes();
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    leader.wait_for_bootstrap()?;
     let passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
-    leader.wait_for_bootstrap()?;
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -50,12 +50,16 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
         &passive,
     )?;
 
-    utils::assert_are_in_sync(vec![&passive, &leader])?;
+    utils::measure_and_log_sync_time(
+        vec![&passive, &leader],
+        SyncWaitParams::two_nodes().into(),
+        "transaction_to_passive_sync",
+    );
 
     passive.shutdown()?;
     leader.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -79,14 +83,19 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     };
 
     let mut controller = scenario_settings.build(context)?;
+    //monitor node disabled due to unsupported operation: restart node
+    //controller.monitor_nodes();
 
-    controller.monitor_nodes();
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
+
+    let passive = controller.spawn_node(
+        PASSIVE,
+        LeadershipMode::Passive,
+        PersistenceMode::Persistent,
+    )?;
+
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -111,7 +120,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     )?;
 
     let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
     utils::sending_transactions_to_node_sequentially(
         10,
@@ -121,13 +130,17 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &passive,
     )?;
 
-    utils::assert_are_in_sync(vec![&passive, &leader])?;
+    utils::measure_and_log_sync_time(
+        vec![&passive, &leader],
+        SyncWaitParams::nodes_restart(2).into(),
+        "leader_restart",
+    );
 
     passive.shutdown()?;
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -153,12 +166,13 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-
     leader.wait_for_bootstrap()?;
+
+    let passive =
+        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -172,11 +186,15 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
         &leader,
     )?;
 
-    utils::assert_are_in_sync(vec![&passive, &leader])?;
+    utils::measure_and_log_sync_time(
+        vec![&passive, &leader],
+        SyncWaitParams::nodes_restart(2).into(),
+        "passive_node_is_updated_sync",
+    );
 
     passive.shutdown()?;
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }

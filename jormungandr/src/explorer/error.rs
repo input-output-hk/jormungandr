@@ -1,8 +1,11 @@
-use chain_storage::error::Error as StorageError;
+use crate::intercom;
+use chain_storage_sqlite_old::Error as StorageError;
 
 error_chain! {
     foreign_links {
         StorageError(StorageError);
+        // FIXME: fold into StorageError with more generic work in intercom streaming
+        StreamingError(intercom::Error);
     }
     errors {
         BlockNotFound(hash: String) {

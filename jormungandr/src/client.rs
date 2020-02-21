@@ -1,178 +1,242 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::{Storage, Tip};
-use crate::intercom::{do_stream_reply, ClientMsg, Error, ReplyStreamHandle};
-use crate::utils::task::{Input, ThreadServiceInfo};
+use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
+use crate::network::p2p::{P2pTopology, Peer, PeersResponse};
+use crate::utils::task::{Input, TokioServiceInfo};
 use chain_core::property::HasHeader;
-use chain_storage::store;
+use network_core::gossip::Node as _;
 
 use futures::future::Either;
 use tokio::prelude::*;
+use tokio::timer::Timeout;
+
+use std::time::Duration;
+
+const PROCESS_TIMEOUT_GET_BLOCK_TIP: u64 = 5;
+const PROCESS_TIMEOUT_GET_PEERS: u64 = 10;
+const PROCESS_TIMEOUT_GET_HEADERS: u64 = 5 * 60;
+const PROCESS_TIMEOUT_GET_HEADERS_RANGE: u64 = 5 * 60;
+const PROCESS_TIMEOUT_GET_BLOCKS: u64 = 10 * 60;
+const PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP: u64 = 60 * 60;
 
 pub struct TaskData {
     pub storage: Storage,
-    pub block0_hash: HeaderHash,
     pub blockchain_tip: Tip,
+    pub topology: P2pTopology,
 }
 
-pub fn handle_input(_info: &ThreadServiceInfo, task_data: &mut TaskData, input: Input<ClientMsg>) {
+pub fn handle_input(
+    info: &TokioServiceInfo,
+    task_data: &mut TaskData,
+    input: Input<ClientMsg>,
+) -> Result<(), ()> {
     let cquery = match input {
-        Input::Shutdown => return,
+        Input::Shutdown => return Ok(()),
         Input::Input(msg) => msg,
     };
 
     match cquery {
-        ClientMsg::GetBlockTip(handler) => {
-            handler.reply(handle_get_block_tip(&task_data.blockchain_tip))
+        ClientMsg::GetBlockTip(handle) => {
+            let fut = handle.async_reply(get_block_tip(&task_data.blockchain_tip));
+            let logger = info.logger().new(o!("request" => "GetBlockTip"));
+            info.spawn(
+                "get block tip",
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCK_TIP)).map_err(
+                    move |e| {
+                        error!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
         }
-        ClientMsg::GetHeaders(ids, handler) => do_stream_reply(handler, |handler| {
-            handle_get_headers(&task_data.storage, ids, handler)
-        }),
-        ClientMsg::GetHeadersRange(checkpoints, to, handler) => {
-            do_stream_reply(handler, |handler| {
-                handle_get_headers_range(&task_data.storage, checkpoints, to, handler)
-            })
+        ClientMsg::GetPeers(handle) => {
+            let fut = handle.async_reply(get_peers(&task_data.topology));
+            let logger = info.logger().new(o!("request" => "GetPeers"));
+
+            info.spawn(
+                "get peers",
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_PEERS)).map_err(
+                    move |e| {
+                        error!(
+                            logger,
+                            "request timed out of failed unexpectdly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
         }
-        ClientMsg::GetBlocks(ids, handler) => do_stream_reply(handler, |handler| {
-            handle_get_blocks(&task_data.storage, ids, handler)
-        }),
-        ClientMsg::GetBlocksRange(from, to, handler) => do_stream_reply(handler, |handler| {
-            handle_get_blocks_range(&task_data.storage, from, to, handler)
-        }),
-        ClientMsg::PullBlocksToTip(from, handler) => do_stream_reply(handler, |handler| {
-            handle_pull_blocks_to_tip(&task_data.storage, &task_data.blockchain_tip, from, handler)
-        }),
+        ClientMsg::GetHeaders(ids, handle) => {
+            let fut = handle.async_reply(get_headers(task_data.storage.clone(), ids));
+            let logger = info.logger().new(o!("request" => "GetHeaders"));
+            info.spawn(
+                "GetHeaders",
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
+        }
+        ClientMsg::GetHeadersRange(checkpoints, to, handle) => {
+            let fut = handle_get_headers_range(task_data, checkpoints, to, handle);
+            let logger = info.logger().new(o!("request" => "GetHeadersRange"));
+            info.spawn(
+                "GetHeadersRange",
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS_RANGE)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
+        }
+        ClientMsg::GetBlocks(ids, handle) => {
+            let fut = handle.async_reply(get_blocks(task_data.storage.clone(), ids));
+            let logger = info.logger().new(o!("request" => "GetBlocks"));
+            info.spawn(
+                "get blocks",
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCKS)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
+        }
+        ClientMsg::PullBlocksToTip(from, handle) => {
+            let fut = handle_pull_blocks_to_tip(task_data, from, handle);
+            let logger = info.logger().new(o!("request" => "PullBlocksToTip"));
+            info.spawn(
+                "PullBlocksToTip",
+                Timeout::new(fut, Duration::from_secs(PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP)).map_err(
+                    move |e| {
+                        warn!(
+                            logger,
+                            "request timed out or failed unexpectedly";
+                            "error" => ?e,
+                        );
+                    },
+                ),
+            );
+        }
     }
+    Ok(())
 }
 
-fn handle_get_block_tip(blockchain_tip: &Tip) -> Result<Header, Error> {
-    let blockchain_tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
-
-    Ok(blockchain_tip.header().clone())
+fn get_block_tip(blockchain_tip: &Tip) -> impl Future<Item = Header, Error = Error> {
+    blockchain_tip
+        .get_ref()
+        .and_then(|tip| Ok(tip.header().clone()))
 }
 
-const MAX_HEADERS: u64 = 2000;
+fn get_peers(topology: &P2pTopology) -> impl Future<Item = PeersResponse, Error = Error> {
+    topology.view(poldercast::Selection::Any).and_then(|view| {
+        let mut peers = Vec::new();
+        for n in view.peers.into_iter() {
+            if let Some(addr) = n.address() {
+                peers.push(Peer { addr });
+            }
+        }
+        if peers.len() == 0 {
+            // No peers yet, put self as the peer to bootstrap from
+            if let Some(addr) = view.self_node.address().and_then(|x| x.to_socketaddr()) {
+                peers.push(Peer { addr });
+            }
+        }
+        future::ok(PeersResponse { peers })
+    })
+}
 
 fn handle_get_headers_range(
-    storage: &Storage,
+    task_data: &TaskData,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
-    reply: &mut ReplyStreamHandle<Header>,
-) -> Result<(), Error> {
-    let future = storage
+    handle: ReplyStreamHandle<Header>,
+) -> impl Future<Item = (), Error = ()> {
+    let storage = task_data.storage.clone();
+    storage
         .find_closest_ancestor(checkpoints, to)
-        .map_err(|e| e.into())
-        .and_then(move |maybe_ancestor| match maybe_ancestor {
-            Some(from) => Either::A(storage.stream_from_to(from, to).map_err(|e| e.into())),
-            None => Either::B(future::err(Error::not_found(
-                "none of the checkpoints found in the local storage \
-                 are ancestors of the requested end block",
-            ))),
+        .then(move |res| match res {
+            Ok(maybe_ancestor) => {
+                let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
+                let fut = storage
+                    .send_branch_with(to, depth, handle, |block| block.header())
+                    .then(|_: Result<_, ReplySendError>| Ok(()));
+                Either::A(fut)
+            }
+            Err(e) => Either::B(handle.async_error(e.into())),
         })
-        .and_then(move |stream| {
-            // Send headers up to the maximum
-            stream
-                .map_err(|e| e.into())
-                .take(MAX_HEADERS)
-                .for_each(move |block| {
-                    reply
-                        .send(block.header())
-                        .map_err(|_| Error::failed("failed to send reply"))?;
-                    Ok(())
-                })
-        });
-
-    future.wait()
 }
 
-fn handle_get_blocks_range(
-    storage: &Storage,
-    from: HeaderHash,
-    to: HeaderHash,
-    reply: &mut ReplyStreamHandle<Block>,
-) -> Result<(), Error> {
-    // FIXME: remove double locking
-    let storage = storage.get_inner().wait().unwrap();
-
-    // FIXME: include the from block
-
-    for x in store::iterate_range(&*storage, &from, &to)? {
-        let info = x?;
-        let (blk, _) = storage.get_block(&info.block_hash)?;
-        if let Err(_) = reply.send(blk) {
-            break;
-        }
-    }
-
-    Ok(())
+fn get_blocks(storage: Storage, ids: Vec<HeaderHash>) -> impl Stream<Item = Block, Error = Error> {
+    stream::iter_ok(ids).and_then(move |id| {
+        storage
+            .get(id)
+            .map_err(Into::into)
+            .and_then(move |maybe_block| match maybe_block {
+                Some(block) => Ok(block),
+                None => Err(Error::not_found(format!(
+                    "block {} is not known to this node",
+                    id
+                ))),
+            })
+    })
 }
 
-fn handle_get_blocks(
-    storage: &Storage,
+fn get_headers(
+    storage: Storage,
     ids: Vec<HeaderHash>,
-    reply: &mut ReplyStreamHandle<Block>,
-) -> Result<(), Error> {
-    for id in ids.into_iter() {
-        if let Some(blk) = storage.get(id).wait()? {
-            if let Err(_) = reply.send(blk) {
-                break;
-            }
-        } else {
-            // TODO: reply this hash was not found?
-        }
-    }
-
-    Ok(())
-}
-
-fn handle_get_headers(
-    storage: &Storage,
-    ids: Vec<HeaderHash>,
-    reply: &mut ReplyStreamHandle<Header>,
-) -> Result<(), Error> {
-    for id in ids.into_iter() {
-        if let Some(blk) = storage.get(id).wait()? {
-            if let Err(_) = reply.send(blk.header()) {
-                break;
-            }
-        } else {
-            // TODO: reply this hash was not found?
-        }
-    }
-
-    Ok(())
+) -> impl Stream<Item = Header, Error = Error> {
+    stream::iter_ok(ids).and_then(move |id| {
+        storage
+            .get(id)
+            .map_err(Into::into)
+            .and_then(move |maybe_block| match maybe_block {
+                Some(block) => Ok(block.header()),
+                None => Err(Error::not_found(format!(
+                    "block {} is not known to this node",
+                    id
+                ))),
+            })
+    })
 }
 
 fn handle_pull_blocks_to_tip(
-    storage: &Storage,
-    blockchain_tip: &Tip,
+    task_data: &TaskData,
     checkpoints: Vec<HeaderHash>,
-    reply: &mut ReplyStreamHandle<Block>,
-) -> Result<(), Error> {
-    let tip = blockchain_tip.get_ref::<Error>().wait().unwrap();
-    let tip_hash = tip.hash();
-
-    let future = storage
-        .find_closest_ancestor(checkpoints, tip_hash)
-        .map_err(|e| e.into())
-        .and_then(move |maybe_ancestor| match maybe_ancestor {
-            Some(from) => Either::A(storage.stream_from_to(from, tip_hash).map_err(|e| e.into())),
-            None => Either::B(future::err(Error::not_found(
-                "none of the checkpoints found in the local storage \
-                 are ancestors of the current tip",
-            ))),
-        })
-        .and_then(move |stream| {
-            // Send headers up to the maximum
-            stream
-                .map_err(|e| e.into())
-                .take(MAX_HEADERS)
-                .for_each(move |block| {
-                    reply
-                        .send(block)
-                        .map_err(|_| Error::failed("failed to send reply"))?;
-                    Ok(())
+    handle: ReplyStreamHandle<Block>,
+) -> impl Future<Item = (), Error = ()> {
+    let storage = task_data.storage.clone();
+    task_data
+        .blockchain_tip
+        .get_ref()
+        .and_then(move |tip| {
+            let tip_hash = tip.hash();
+            storage
+                .find_closest_ancestor(checkpoints, tip_hash)
+                .map(move |maybe_ancestor| {
+                    let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
+                    (storage, tip_hash, depth)
                 })
-        });
-
-    future.wait()
+        })
+        .then(move |res| match res {
+            Ok((storage, to, depth)) => {
+                Either::A(storage.send_branch(to, depth, handle).then(|_| Ok(())))
+            }
+            Err(e) => Either::B(handle.async_error(e.into())),
+        })
 }

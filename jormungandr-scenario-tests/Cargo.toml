@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr-scenario-tests"
-version = "0.7.1"
+version = "0.8.11"
 authors = [ "dev@iohk.io" ]
 edition = "2018"
 
@@ -21,17 +21,17 @@ chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain", features =
 chain-time           = { path = "../chain-deps/chain-time"}
 jormungandr-integration-tests = { path = "../jormungandr-integration-tests"}
 jormungandr-lib = { path = "../jormungandr-lib" }
-poldercast = "0.9"
-rand = "0.6"
-rand_core = "0.3"
-rand_chacha = "0.1"
+poldercast = "0.11.3"
+rand = "0.7"
+rand_core = "0.5"
+rand_chacha = "0.2"
 regex = "1.1"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 structopt = "0.2"
-hex = "0.3"
-console = "0.7"
-indicatif = "0.11"
+hex = "0.4"
+console = "0.9"
+indicatif = "0.14"
 lazy_static = "1"

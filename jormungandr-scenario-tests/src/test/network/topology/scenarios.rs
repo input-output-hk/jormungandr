@@ -1,7 +1,9 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
-    test::utils,
-    test::Result,
+    test::{
+        utils::{self, SyncWaitParams},
+        Result,
+    },
     Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
@@ -15,6 +17,7 @@ const LEADER_5: &str = "Leader5";
 const LEADER_6: &str = "Leader6";
 const LEADER_7: &str = "Leader7";
 
+const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";
 const RELAY_NODE_2: &str = "Relay2";
 
@@ -68,13 +71,19 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &leader1,
     )?;
 
+    utils::measure_and_log_sync_time(
+        vec![&leader1, &leader2, &leader3, &leader4],
+        SyncWaitParams::network_size(4, 2).into(),
+        "fully_connected_sync",
+    );
+
     leader4.shutdown()?;
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -131,7 +140,11 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5])?;
+    utils::measure_and_log_sync_time(
+        vec![&leader1, &leader2, &leader3, &leader4, &leader5],
+        SyncWaitParams::network_size(5, 3).into(),
+        "star_sync",
+    );
 
     leader5.shutdown()?;
     leader4.shutdown()?;
@@ -140,7 +153,7 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -193,7 +206,11 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
+    utils::measure_and_log_sync_time(
+        vec![&leader1, &leader2, &leader3, &leader4],
+        SyncWaitParams::network_size(4, 3).into(),
+        "ring_sync",
+    );
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -201,7 +218,7 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -258,14 +275,18 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4, &leader5])?;
+    utils::measure_and_log_sync_time(
+        vec![&leader1, &leader2, &leader3, &leader4, &leader5],
+        SyncWaitParams::network_size(5, 3).into(),
+        "mesh_sync",
+    );
 
     leader5.shutdown()?;
     leader4.shutdown()?;
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -318,7 +339,11 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(vec![&leader1, &leader2, &leader3, &leader4])?;
+    utils::measure_and_log_sync_time(
+        vec![&leader1, &leader2, &leader3, &leader4],
+        SyncWaitParams::network_size(4, 4).into(),
+        "point_to_point_sync",
+    );
 
     leader4.shutdown()?;
     leader3.shutdown()?;
@@ -326,7 +351,84 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
+}
+
+pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let scenario_settings = prepare_scenario! {
+        "T3005-Point-to-Point-file-storage",
+        &mut context,
+        topology [
+            LEADER_4,
+            LEADER_3 -> LEADER_4,
+            LEADER_2 -> LEADER_3,
+            LEADER_1 -> LEADER_2,
+        ]
+        blockchain {
+            consensus = GenesisPraos,
+            number_of_slots_per_epoch = 60,
+            slot_duration = 1,
+            leaders = [ LEADER_1 ],
+            initials = [
+                account "unassigned1" with   500_000_000,
+                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
+            ],
+        }
+    };
+
+    let mut controller = scenario_settings.build(context)?;
+
+    controller.monitor_nodes();
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+
+    leader4.wait_for_bootstrap()?;
+    leader3.wait_for_bootstrap()?;
+    leader2.wait_for_bootstrap()?;
+    leader1.wait_for_bootstrap()?;
+
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
+
+    utils::sending_transactions_to_node_sequentially(
+        40,
+        &mut controller,
+        &mut wallet1,
+        &mut wallet2,
+        &leader1,
+    )?;
+
+    utils::measure_and_log_sync_time(
+        vec![&leader1, &leader2, &leader3, &leader4],
+        SyncWaitParams::network_size(4, 4).into(),
+        "point_to_point_on_file_storage_sync",
+    );
+
+    leader4.shutdown()?;
+    leader3.shutdown()?;
+    leader2.shutdown()?;
+    leader1.shutdown()?;
+
+    controller.finalize();
+    Ok(ScenarioResult::passed())
 }
 
 pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -391,9 +493,13 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &leader1,
     )?;
 
-    utils::assert_are_in_sync(vec![
-        &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7,
-    ])?;
+    utils::measure_and_log_sync_time(
+        vec![
+            &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7,
+        ],
+        SyncWaitParams::network_size(7, 5).into(),
+        "tree_sync",
+    );
 
     leader7.shutdown()?;
     leader6.shutdown()?;
@@ -404,7 +510,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }
 
 pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -412,8 +518,9 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         "T3007-Relay",
         &mut context,
         topology [
-            RELAY_NODE_1 -> RELAY_NODE_2,
-            RELAY_NODE_2 -> RELAY_NODE_1,
+            CORE_NODE,
+            RELAY_NODE_1 -> CORE_NODE,
+            RELAY_NODE_2 -> CORE_NODE,
             LEADER_1 -> RELAY_NODE_1,
             LEADER_2 -> RELAY_NODE_1,
             LEADER_3 -> RELAY_NODE_1,
@@ -441,6 +548,26 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context.clone())?;
 
+    let core =
+        controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+
+    controller.monitor_nodes();
+    core.wait_for_bootstrap()?;
+
+    let relay1 = controller.spawn_node(
+        RELAY_NODE_1,
+        LeadershipMode::Passive,
+        PersistenceMode::InMemory,
+    )?;
+    let relay2 = controller.spawn_node(
+        RELAY_NODE_2,
+        LeadershipMode::Passive,
+        PersistenceMode::InMemory,
+    )?;
+
+    relay2.wait_for_bootstrap()?;
+    relay1.wait_for_bootstrap()?;
+
     let leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     let leader2 =
@@ -455,21 +582,7 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         controller.spawn_node(LEADER_6, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     let leader7 =
         controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let relay1 = controller.spawn_node(
-        RELAY_NODE_1,
-        LeadershipMode::Passive,
-        PersistenceMode::InMemory,
-    )?;
-    let relay2 = controller.spawn_node(
-        RELAY_NODE_2,
-        LeadershipMode::Passive,
-        PersistenceMode::InMemory,
-    )?;
 
-    controller.monitor_nodes();
-
-    relay2.wait_for_bootstrap()?;
-    relay1.wait_for_bootstrap()?;
     leader7.wait_for_bootstrap()?;
     leader6.wait_for_bootstrap()?;
     leader5.wait_for_bootstrap()?;
@@ -520,9 +633,13 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         wallet7.confirm_transaction();
     }
 
-    utils::assert_are_in_sync(vec![
-        &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
-    ])?;
+    utils::measure_and_log_sync_time(
+        vec![
+            &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
+        ],
+        SyncWaitParams::network_size(9, 3).into(),
+        "relay_sync",
+    );
 
     leader7.shutdown()?;
     leader6.shutdown()?;
@@ -536,5 +653,5 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     relay2.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::Passed)
+    Ok(ScenarioResult::passed())
 }

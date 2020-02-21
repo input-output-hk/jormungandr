@@ -2,7 +2,8 @@
 
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
-    AccountState, FragmentLog, FragmentStatus, SettingsDto, UTxOInfo, UTxOOutputInfo,
+    AccountState, Block0Configuration, FragmentLog, FragmentStatus, SettingsDto, StakePoolStats,
+    UTxOInfo, UTxOOutputInfo,
 };
 
 pub mod certificate;
@@ -12,14 +13,29 @@ pub mod jcli_transaction_wrapper;
 pub use jcli_transaction_wrapper::JCLITransactionWrapper;
 
 use super::configuration;
-use super::configuration::genesis_model::GenesisYaml;
 use super::file_assert;
 use super::file_utils;
 use super::process_assert;
 use super::process_utils::{self, output_extensions::ProcessOutput, Wait};
-use std::{collections::BTreeMap, path::PathBuf};
-
+use crate::common::{jormungandr::JormungandrProcess, startup};
 use chain_addr::Discrimination;
+use std::{collections::BTreeMap, path::PathBuf};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("transaction {transaction_id} is not in block. message log: {message_log}. Jormungandr log: {log_content}")]
+    TransactionNotInBlock {
+        message_log: String,
+        transaction_id: Hash,
+        log_content: String,
+    },
+    #[error("at least one transaction is not in block. message log: {message_log}. Jormungandr log: {log_content}")]
+    TransactionsNotInBlock {
+        message_log: String,
+        log_content: String,
+    },
+}
 
 pub fn assert_genesis_encode(
     genesis_yaml_file_path: &PathBuf,
@@ -32,8 +48,8 @@ pub fn assert_genesis_encode(
     file_assert::assert_file_exists_and_not_empty(path_to_output_block);
 }
 
-pub fn assert_genesis_encode_fails(genesis_yaml: &GenesisYaml, expected_msg: &str) {
-    let input_yaml_file_path = GenesisYaml::serialize(&genesis_yaml);
+pub fn assert_genesis_encode_fails(block0_configuration: &Block0Configuration, expected_msg: &str) {
+    let input_yaml_file_path = startup::serialize_block0_config(&block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
     process_assert::assert_process_failed_and_matches_message(
         jcli_commands::get_genesis_encode_command(&input_yaml_file_path, &path_to_output_block),
@@ -318,75 +334,113 @@ pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str)
     single_line
 }
 
-pub fn assert_transaction_in_block(transaction_message: &str, host: &str) -> Hash {
-    let fragment_id = assert_post_transaction(&transaction_message, &host);
+pub fn assert_transaction_in_block(
+    transaction_message: &str,
+    jormungandr: &JormungandrProcess,
+) -> Hash {
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
     let wait: Wait = Default::default();
-    wait_until_transaction_processed(fragment_id, &host, &wait);
-    assert_transaction_log_shows_in_block(fragment_id, &host);
+    wait_until_transaction_processed(fragment_id, jormungandr, &wait).unwrap();
+    assert_transaction_log_shows_in_block(fragment_id, jormungandr);
     fragment_id.clone()
 }
 
 pub fn assert_transaction_in_block_with_wait(
     transaction_message: &str,
-    host: &str,
+    jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> Hash {
-    let fragment_id = assert_post_transaction(&transaction_message, &host);
-    wait_until_transaction_processed(fragment_id, &host, wait);
-    assert_transaction_log_shows_in_block(fragment_id, &host);
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
+    wait_until_transaction_processed(fragment_id, jormungandr, wait).unwrap();
+    assert_transaction_log_shows_in_block(fragment_id, jormungandr);
     fragment_id.clone()
 }
 
-pub fn assert_transaction_rejected(transaction_message: &str, host: &str, expected_reason: &str) {
-    let fragment_id = assert_post_transaction(&transaction_message, &host);
+pub fn assert_transaction_rejected(
+    transaction_message: &str,
+    jormungandr: &JormungandrProcess,
+    expected_reason: &str,
+) {
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
     let wait: Wait = Default::default();
-    wait_until_transaction_processed(fragment_id, &host, &wait);
-    assert_transaction_log_shows_rejected(fragment_id, &host, &expected_reason);
+    wait_until_transaction_processed(fragment_id, jormungandr, &wait).unwrap();
+    assert_transaction_log_shows_rejected(fragment_id, jormungandr, &expected_reason);
 }
 
-pub fn wait_until_transaction_processed(fragment_id: Hash, host: &str, wait: &Wait) {
+pub fn wait_until_transaction_processed(
+    fragment_id: Hash,
+    jormungandr: &JormungandrProcess,
+    wait: &Wait,
+) -> Result<(), Error> {
     process_utils::run_process_until_response_matches(
-        jcli_commands::get_rest_message_log_command(&host),
+        jcli_commands::get_rest_message_log_command(&jormungandr.rest_address()),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
                 serde_yaml::from_str(&content).expect("Cannot parse fragment logs");
             match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
-                Some(x) => !x.is_pending(),
-                None => false,
+                Some(x) => {
+                    println!("Transaction found in mempool. {:?}", x);
+                    !x.is_pending()
+                }
+                None => {
+                    println!("Transaction with hash {} not found in mempool", fragment_id);
+                    false
+                }
             }
         },
         wait.sleep_duration().as_secs(),
         wait.attempts(),
-        "Waiting for last transaction to be inBlock or rejected",
-        "transaction is pending for too long",
+        &format!(
+            "Waiting for transaction: '{}' to be inBlock or rejected",
+            fragment_id
+        ),
+        &format!(
+            "transaction: '{}' is pending for too long, Logs: {:?}",
+            fragment_id,
+            jormungandr.logger.get_log_content()
+        ),
     )
-    .expect("internal error while waiting until last transaction is processed");
+    .map_err(|_| Error::TransactionNotInBlock {
+        message_log: format!(
+            "{:?}",
+            assert_get_rest_message_log(&jormungandr.rest_address())
+        ),
+        transaction_id: fragment_id.clone(),
+        log_content: jormungandr.logger.get_log_content(),
+    })
 }
 
-pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, host: &str) {
-    let fragments = assert_get_rest_message_log(&host);
+pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, jormungandr: &JormungandrProcess) {
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => assert!(
             x.is_in_a_block(),
-            "Fragment should be in block, actual: {:?}",
-            &x
+            "Fragment should be in block, actual: {:?}. Logs: {:?}",
+            &x,
+            jormungandr.logger.get_log_content()
         ),
         None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
+            "cannot find any fragment in rest message log, output: {:?}. Node log: {:?}",
+            &fragments,
+            jormungandr.logger.get_log_content()
         ),
     }
 }
 
-pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expected_msg: &str) {
-    let fragments = assert_get_rest_message_log(&host);
+pub fn assert_transaction_log_shows_rejected(
+    fragment_id: Hash,
+    jormungandr: &JormungandrProcess,
+    expected_msg: &str,
+) {
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => {
             assert!(
                 x.is_rejected(),
-                "Fragment should be rejected, actual: {:?}",
-                &x
+                "Fragment should be rejected, actual: {:?}. Logs: {:?}",
+                &x,
+                jormungandr.logger.get_log_content()
             );
             match x.status() {
                 FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
@@ -394,23 +448,29 @@ pub fn assert_transaction_log_shows_rejected(fragment_id: Hash, host: &str, expe
             }
         }
         None => panic!(
-            "cannot find any fragment in rest message log, output: {:?}",
-            &fragments
+            "cannot find any fragment in rest message log, output: {:?}. Logs: {:?}",
+            &fragments,
+            jormungandr.logger.get_log_content()
         ),
     }
 }
 
-pub fn assert_all_transactions_in_block(transactions_messages: &Vec<String>, host: &str) {
+pub fn send_transactions_and_wait_until_in_block(
+    transactions_messages: &Vec<String>,
+    jormungandr: &JormungandrProcess,
+) -> Result<(), Error> {
     for transactions_message in transactions_messages.iter() {
-        assert_post_transaction(&transactions_message, &host);
+        assert_post_transaction(&transactions_message, &jormungandr.rest_address());
     }
-    wait_until_all_transactions_processed(&host);
-    assert_all_transaction_log_shows_in_block(&host);
+    wait_until_all_transactions_processed(&jormungandr)?;
+    check_all_transaction_log_shows_in_block(&jormungandr)
 }
 
-pub fn wait_until_all_transactions_processed(host: &str) {
+pub fn wait_until_all_transactions_processed(
+    jormungandr: &JormungandrProcess,
+) -> Result<(), Error> {
     process_utils::run_process_until_response_matches(
-        jcli_commands::get_rest_message_log_command(&host),
+        jcli_commands::get_rest_message_log_command(&jormungandr.rest_address()),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
@@ -423,18 +483,29 @@ pub fn wait_until_all_transactions_processed(host: &str) {
         "Waiting for last transaction to be inBlock or rejected",
         "transaction is pending for too long",
     )
-    .expect("internal error while waiting until all transactions is processed");
+    .map_err(|_| Error::TransactionsNotInBlock {
+        message_log: format!(
+            "{:?}",
+            assert_get_rest_message_log(&jormungandr.rest_address())
+        ),
+        log_content: jormungandr.logger.get_log_content(),
+    })
 }
 
-pub fn assert_all_transaction_log_shows_in_block(host: &str) {
-    let fragments = assert_get_rest_message_log(&host);
-    for fragment in fragments {
-        assert!(
-            fragment.is_in_a_block(),
-            "Fragment should be in block, actual: {:?}",
-            &fragment
-        );
+pub fn check_all_transaction_log_shows_in_block(
+    jormungandr: &JormungandrProcess,
+) -> Result<(), Error> {
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
+    for fragment in fragments.iter() {
+        if !fragment.is_in_a_block() {
+            return Err(Error::TransactionNotInBlock {
+                message_log: format!("{:?}", fragments.clone()),
+                transaction_id: fragment.fragment_id().clone(),
+                log_content: jormungandr.logger.get_log_content(),
+            });
+        }
     }
+    Ok(())
 }
 
 pub fn assert_get_rest_message_log(host: &str) -> Vec<FragmentLog> {
@@ -462,5 +533,15 @@ pub fn assert_rest_get_stake_pools(host: &str) -> Vec<String> {
         process_utils::run_process_and_get_output(jcli_commands::get_stake_pools_command(&host));
     let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output);
-    serde_yaml::from_str(&content).expect("Failed to parse settings")
+    serde_yaml::from_str(&content).expect("Failed to parse stake poools collection")
+}
+
+pub fn assert_rest_get_stake_pool(stake_pool_id: &str, host: &str) -> StakePoolStats {
+    let output = process_utils::run_process_and_get_output(jcli_commands::get_stake_pool_command(
+        &stake_pool_id,
+        &host,
+    ));
+    let content = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+    serde_yaml::from_str(&content).expect("Failed to parse stak pool stats")
 }

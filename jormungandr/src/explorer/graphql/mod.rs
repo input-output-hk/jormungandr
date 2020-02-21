@@ -3,7 +3,7 @@ mod error;
 mod scalars;
 use self::connections::{
     BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
-    TransactionConnection, TransactionNodeFetchInfo,
+    PoolConnection, TransactionConnection, TransactionNodeFetchInfo,
 };
 use self::error::ErrorKind;
 use super::indexing::{
@@ -22,7 +22,7 @@ use std::str::FromStr;
 use tokio::prelude::*;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Serial, Slot,
+    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Slot,
     TimeOffsetSeconds, Value,
 };
 
@@ -46,10 +46,13 @@ impl Block {
     }
 
     fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
-        db.get_block(&self.hash).wait()?.ok_or(
-            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
-                .into(),
-        )
+        db.get_block(&self.hash)
+            .wait()
+            .unwrap_or_else(|e| match e {})
+            .ok_or(
+                ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
+                    .into(),
+            )
     }
 }
 
@@ -153,6 +156,35 @@ impl Block {
                 }
                 BlockProducer::None => None,
             })
+    }
+
+    pub fn total_input(&self, context: &Context) -> FieldResult<Value> {
+        self.get_explorer_block(&context.db)
+            .map(|block| Value(format!("{}", block.total_input)))
+    }
+
+    pub fn total_output(&self, context: &Context) -> FieldResult<Value> {
+        self.get_explorer_block(&context.db)
+            .map(|block| Value(format!("{}", block.total_output)))
+    }
+
+    pub fn treasury(&self, context: &Context) -> FieldResult<Option<Treasury>> {
+        let treasury = context
+            .db
+            .blockchain()
+            .get_ref(self.hash)
+            .wait()
+            .unwrap_or(None)
+            .map(|reference| {
+                let ledger = reference.ledger();
+                let treasury_tax = reference.epoch_ledger_parameters().treasury_tax.clone();
+                Treasury {
+                    rewards: ledger.remaining_rewards().into(),
+                    treasury: ledger.treasury_value().into(),
+                    treasury_tax: TaxType(treasury_tax),
+                }
+            });
+        Ok(treasury)
     }
 }
 
@@ -273,12 +305,17 @@ impl Transaction {
                 ))?,
         };
 
-        context.db.get_block(&block_id).wait()?.ok_or(
-            ErrorKind::InternalError(
-                "transaction is in explorer but couldn't find its block".to_owned(),
+        context
+            .db
+            .get_block(&block_id)
+            .wait()
+            .unwrap_or_else(|e| match e {})
+            .ok_or(
+                ErrorKind::InternalError(
+                    "transaction is in explorer but couldn't find its block".to_owned(),
+                )
+                .into(),
             )
-            .into(),
-        )
     }
 
     fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
@@ -434,7 +471,8 @@ impl Address {
         let transactions = context
             .db
             .get_transactions_by_address(&self.id)
-            .wait()?
+            .wait()
+            .unwrap_or_else(|e| match e {})
             .unwrap_or(PersistentSequence::<FragmentId>::new());
 
         let boundaries = if transactions.len() > 0 {
@@ -463,7 +501,7 @@ impl Address {
                     .filter_map(|i| {
                         transactions
                             .get(i)
-                            .map(|h| (TransactionNodeFetchInfo::Id((*h).clone()), i.into()))
+                            .map(|h| (TransactionNodeFetchInfo::Id(h.as_ref().clone()), i.into()))
                     })
                     .collect(),
             },
@@ -540,12 +578,6 @@ impl From<certificate::PoolRegistration> for PoolRegistration {
 impl PoolRegistration {
     pub fn pool(&self, context: &Context) -> Pool {
         Pool::from_valid_id(self.registration.to_id())
-    }
-
-    /// A random value, for user purpose similar to a UUID.
-    /// it may not be unique over a blockchain, so shouldn't be used a unique identifier
-    pub fn serial(&self) -> Serial {
-        self.registration.serial.into()
     }
 
     /// Beginning of validity for this pool, this is used
@@ -727,7 +759,7 @@ impl PoolUpdate {
     }
 
     pub fn start_validity(&self) -> TimeOffsetSeconds {
-        self.pool_update.start_validity.into()
+        self.pool_update.new_pool_reg.start_validity.into()
     }
 
     // TODO: Previous keys?
@@ -780,7 +812,8 @@ graphql_union!(Certificate: Context |&self| {
     }
 });
 
-struct Pool {
+#[derive(Clone)]
+pub struct Pool {
     id: certificate::PoolId,
     data: Option<StakePoolData>,
     blocks: Option<PersistentSequence<HeaderHash>>,
@@ -813,6 +846,14 @@ impl Pool {
             id,
             blocks: None,
             data: None,
+        }
+    }
+
+    fn new_with_data(id: certificate::PoolId, data: StakePoolData) -> Self {
+        Pool {
+            id,
+            blocks: None,
+            data: Some(data),
         }
     }
 }
@@ -850,6 +891,8 @@ impl Pool {
                 lower_bound: 0u32,
                 upper_bound: blocks
                     .len()
+                    .checked_sub(1)
+                    .unwrap()
                     .try_into()
                     .expect("Tried to paginate more than 2^32 blocks"),
             })
@@ -868,7 +911,7 @@ impl Pool {
         BlockConnection::new(bounds, pagination_arguments, |range| match range {
             PaginationInterval::Empty => vec![],
             PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                .filter_map(|i| blocks.get(i).map(|h| ((*h).clone(), i)))
+                .filter_map(|i| blocks.get(i).map(|h| (h.as_ref().clone(), i)))
                 .collect(),
         })
     }
@@ -899,18 +942,66 @@ impl Status {
     }
 
     pub fn latest_block(&self, context: &Context) -> FieldResult<Block> {
-        context
-            .db
-            .get_latest_block_hash()
-            .and_then(|hash| context.db.get_block(&hash))
-            .wait()?
-            .ok_or(ErrorKind::InternalError("tip is not in explorer".to_owned()).into())
-            .map(|b| Block::from(&b))
+        latest_block(context).map(|b| Block::from(&b))
     }
 
-    pub fn fee_settings(&self) -> FieldResult<FeeSettings> {
-        // TODO: Where can I get this?
-        Err(ErrorKind::Unimplemented.into())
+    pub fn fee_settings(&self, context: &Context) -> FeeSettings {
+        let chain_impl_mockchain::fee::LinearFee {
+            constant,
+            coefficient,
+            certificate,
+            per_certificate_fees,
+        } = context.db.blockchain_config.fees;
+
+        FeeSettings {
+            constant: Value(format!("{}", constant)),
+            coefficient: Value(format!("{}", coefficient)),
+            certificate: Value(format!("{}", certificate)),
+            certificate_pool_registration: Value(format!(
+                "{}",
+                per_certificate_fees
+                    .certificate_pool_registration
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
+            )),
+            certificate_stake_delegation: Value(format!(
+                "{}",
+                per_certificate_fees
+                    .certificate_stake_delegation
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
+            )),
+            certificate_owner_stake_delegation: Value(format!(
+                "{}",
+                per_certificate_fees
+                    .certificate_owner_stake_delegation
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
+            )),
+        }
+    }
+}
+
+struct Treasury {
+    rewards: Value,
+    treasury: Value,
+    treasury_tax: TaxType,
+}
+
+#[juniper::object(
+    Context = Context
+)]
+impl Treasury {
+    fn rewards(&self) -> &Value {
+        &self.rewards
+    }
+
+    fn treasury(&self) -> &Value {
+        &self.treasury
+    }
+
+    fn treasury_tax(&self) -> &TaxType {
+        &self.treasury_tax
     }
 }
 
@@ -919,6 +1010,9 @@ struct FeeSettings {
     constant: Value,
     coefficient: Value,
     certificate: Value,
+    certificate_pool_registration: Value,
+    certificate_stake_delegation: Value,
+    certificate_owner_stake_delegation: Value,
 }
 
 struct Epoch {
@@ -968,13 +1062,15 @@ impl Epoch {
             .db
             .get_block(&epoch_data.first_block)
             .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
-            .wait()?;
+            .wait()
+            .unwrap_or_else(|e| match e {});
 
         let epoch_upper_bound = context
             .db
             .get_block(&epoch_data.last_block)
             .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
-            .wait()?;
+            .wait()
+            .unwrap_or_else(|e| match e {});
 
         let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
             lower_bound: 0,
@@ -1070,7 +1166,8 @@ impl Query {
         Ok(context
             .db
             .find_block_by_chain_length(length.try_into()?)
-            .wait()?
+            .wait()
+            .unwrap_or_else(|e| match e {})
             .map(Block::from_valid_hash))
     }
 
@@ -1083,15 +1180,7 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
-        let longest_chain = context
-            .db
-            .get_latest_block_hash()
-            .and_then(|hash| context.db.get_block(&hash))
-            .wait()?
-            .ok_or(ErrorKind::InternalError(
-                "tip is not in explorer".to_owned(),
-            ))
-            .map(|block| block.chain_length)?;
+        let longest_chain = latest_block(context)?.chain_length;
 
         let block0 = 0u32;
 
@@ -1143,6 +1232,67 @@ impl Query {
         Pool::from_string_id(&id.0, &context.db)
     }
 
+    pub fn all_stake_pools(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<PoolConnection> {
+        let mut stake_pools = context.db.get_stake_pools().wait()?;
+
+        // Although it's probably not a big performance concern
+        // There are a few alternatives to not have to sort this
+        // - A separate data structure can be used to track InsertionOrder -> PoolId
+        // (or any other order)
+        // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea)
+        stake_pools.sort_unstable_by_key(|(id, data)| id.clone());
+
+        let boundaries = if stake_pools.len() > 0 {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: stake_pools
+                    .len()
+                    .checked_sub(1)
+                    .unwrap()
+                    .try_into()
+                    .expect("tried to paginate more than 2^32 elements"),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
+
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        PoolConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => {
+                let from = range.lower_bound.into();
+                let to = range.upper_bound.into();
+
+                (from..=to)
+                    .map(|i: u32| {
+                        let (pool_id, stake_pool_data) = &stake_pools[usize::try_from(i).unwrap()];
+                        (
+                            Pool::new_with_data(
+                                certificate::PoolId::clone(pool_id),
+                                StakePoolData::clone(stake_pool_data),
+                            ),
+                            i.try_into().unwrap(),
+                        )
+                    })
+                    .collect::<Vec<(Pool, u32)>>()
+            }
+        })
+    }
+
     pub fn status() -> FieldResult<Status> {
         Ok(Status {})
     }
@@ -1159,4 +1309,15 @@ pub type Schema = RootNode<'static, Query, EmptyMutation<Context>>;
 
 pub fn create_schema() -> Schema {
     Schema::new(Query {}, EmptyMutation::new())
+}
+
+fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
+    context
+        .db
+        .get_latest_block_hash()
+        .and_then(|hash| context.db.get_block(&hash))
+        .wait()
+        .unwrap_or_else(|e| match e {})
+        .ok_or_else(|| ErrorKind::InternalError("tip is not in explorer".to_owned()))
+        .map_err(Into::into)
 }

@@ -1,33 +1,30 @@
 use crate::common::{
-    configuration::{genesis_model::Fund, node_config_model::TrustedPeer},
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
 
+use jormungandr_lib::interfaces::InitialUTxO;
+
 #[test]
-#[ignore]
 pub fn two_nodes_communication() {
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
 
     let leader_config = ConfigurationBuilder::new()
-        .with_funds(vec![Fund {
-            address: sender.address.clone(),
+        .with_funds(vec![InitialUTxO {
+            address: sender.address(),
             value: 100.into(),
         }])
         .build();
 
-    let _leader_jormungandr = Starter::new()
+    let leader_jormungandr = Starter::new()
         .config(leader_config.clone())
         .start()
         .unwrap();
 
     let trusted_node_config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![TrustedPeer {
-            address: leader_config.node_config.p2p.public_address.clone(),
-            id: leader_config.node_config.p2p.public_id.clone(),
-        }])
+        .with_trusted_peers(vec![leader_jormungandr.as_trusted_peer()])
         .with_block_hash(leader_config.genesis_block_hash.clone())
         .build();
 

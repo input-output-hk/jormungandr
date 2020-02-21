@@ -5,6 +5,8 @@ use std::process::Command;
 
 use crate::common::configuration;
 
+use jormungandr_lib::interfaces::TaxType;
+
 #[derive(Debug)]
 pub struct CertificateCommands {}
 
@@ -31,11 +33,11 @@ impl CertificateCommands {
     pub fn get_stake_pool_registration_command(
         &self,
         kes_key: &str,
-        serial_id: &str,
         vrf_key: &str,
         start_validity: u32,
         management_threshold: u32,
         owner_pk: &str,
+        tax_type: Option<TaxType>,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command
@@ -46,14 +48,24 @@ impl CertificateCommands {
             .arg(&kes_key)
             .arg("--vrf-key")
             .arg(&vrf_key)
-            .arg("--serial")
-            .arg(&serial_id)
             .arg("--start-validity")
             .arg(&start_validity.to_string())
             .arg("--management-threshold")
             .arg(&management_threshold.to_string())
             .arg("--owner")
             .arg(&owner_pk);
+
+        if let Some(tax_type) = tax_type {
+            command
+                .arg("--tax-fixed")
+                .arg(tax_type.fixed.to_string())
+                .arg("--tax-ratio")
+                .arg(format!("{}", tax_type.ratio));
+
+            if let Some(max_limit) = tax_type.max_limit {
+                command.arg("--tax-limit").arg(max_limit.to_string());
+            }
+        }
         command
     }
 

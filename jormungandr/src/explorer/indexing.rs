@@ -12,11 +12,11 @@ use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration};
 use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
-use std::convert::TryInto;
+use std::{convert::TryInto, sync::Arc};
 
 use cardano_legacy_address::Addr as OldAddress;
 
-pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, V>;
+pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
 
 pub type Transactions = Hamt<FragmentId, HeaderHash>;
 pub type Blocks = Hamt<HeaderHash, ExplorerBlock>;
@@ -44,6 +44,8 @@ pub struct ExplorerBlock {
     pub chain_length: ChainLength,
     pub parent_hash: HeaderHash,
     pub producer: BlockProducer,
+    pub total_input: Value,
+    pub total_output: Value,
 }
 
 #[derive(Clone)]
@@ -115,9 +117,9 @@ impl ExplorerBlock {
         let id = block.id();
         let chain_length = block.chain_length();
 
-        let transactions = fragments
-            .enumerate()
-            .filter_map(|(offset, fragment)| {
+        let transactions: HashMap<FragmentId, ExplorerTransaction> = fragments.enumerate().fold(
+            HashMap::<FragmentId, ExplorerTransaction>::new(),
+            |mut current_block_txs, (offset, fragment)| {
                 let fragment_id = fragment.id();
                 let metx = match fragment {
                     Fragment::Transaction(tx) => {
@@ -130,6 +132,7 @@ impl ExplorerBlock {
                             prev_blocks,
                             None,
                             offset.try_into().unwrap(),
+                            &current_block_txs,
                         ))
                     }
                     Fragment::OwnerStakeDelegation(tx) => {
@@ -144,6 +147,7 @@ impl ExplorerBlock {
                                 tx.payload().into_payload(),
                             )),
                             offset.try_into().unwrap(),
+                            &current_block_txs,
                         ))
                     }
                     Fragment::StakeDelegation(tx) => {
@@ -156,6 +160,7 @@ impl ExplorerBlock {
                             prev_blocks,
                             Some(Certificate::StakeDelegation(tx.payload().into_payload())),
                             offset.try_into().unwrap(),
+                            &current_block_txs,
                         ))
                     }
                     Fragment::PoolRegistration(tx) => {
@@ -168,6 +173,7 @@ impl ExplorerBlock {
                             prev_blocks,
                             Some(Certificate::PoolRegistration(tx.payload().into_payload())),
                             offset.try_into().unwrap(),
+                            &current_block_txs,
                         ))
                     }
                     Fragment::PoolRetirement(tx) => {
@@ -180,6 +186,7 @@ impl ExplorerBlock {
                             prev_blocks,
                             Some(Certificate::PoolRetirement(tx.payload().into_payload())),
                             offset.try_into().unwrap(),
+                            &current_block_txs,
                         ))
                     }
                     Fragment::PoolUpdate(tx) => {
@@ -192,6 +199,7 @@ impl ExplorerBlock {
                             prev_blocks,
                             Some(Certificate::PoolUpdate(tx.payload().into_payload())),
                             offset.try_into().unwrap(),
+                            &current_block_txs,
                         ))
                     }
                     Fragment::OldUtxoDeclaration(decl) => {
@@ -213,9 +221,13 @@ impl ExplorerBlock {
                     }
                     _ => None,
                 };
-                metx.map(|etx| (fragment_id, etx))
-            })
-            .collect();
+
+                if let Some(etx) = metx {
+                    current_block_txs.insert(fragment_id, etx);
+                }
+                current_block_txs
+            },
+        );
 
         let producer = match block.header.proof() {
             Proof::GenesisPraos(_proof) => {
@@ -227,6 +239,20 @@ impl ExplorerBlock {
             Proof::None => BlockProducer::None,
         };
 
+        let total_input = Value::sum(
+            transactions
+                .values()
+                .flat_map(|tx| tx.inputs.iter().map(|i| i.value)),
+        )
+        .expect("Couldn't compute block's total input");
+
+        let total_output = Value::sum(
+            transactions
+                .values()
+                .flat_map(|tx| tx.outputs.iter().map(|o| o.value)),
+        )
+        .expect("Couldn't compute block's total output");
+
         ExplorerBlock {
             id,
             transactions,
@@ -234,6 +260,8 @@ impl ExplorerBlock {
             date: block.header.block_date(),
             parent_hash: block.parent_id(),
             producer,
+            total_input,
+            total_output,
         }
     }
 
@@ -260,6 +288,9 @@ impl ExplorerTransaction {
     /// the fragment id is the associated to the given AuthenticatedTransaction before 'unwrapping'
     /// The discrimination is needed to get addresses from account inputs.
     /// The transactions and blocks are used to resolve utxo inputs
+
+    // TODO: The signature of this got too long, using a builder may be a good idea
+    // It's called only from one place, though, so it is not that bothersome
     pub fn from<'a, T>(
         id: &FragmentId,
         tx: &TransactionSlice<'a, T>,
@@ -268,6 +299,7 @@ impl ExplorerTransaction {
         blocks: &Blocks,
         certificate: Option<Certificate>,
         offset_in_block: u32,
+        current_block: &HashMap<FragmentId, ExplorerTransaction>,
     ) -> ExplorerTransaction {
         let outputs = tx.outputs().iter();
         let inputs = tx.inputs().iter();
@@ -293,23 +325,33 @@ impl ExplorerTransaction {
                     let address = ExplorerAddress::New(Address(discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
-                (InputEnum::AccountInput(_id, _value), Witness::Multisig(_)) => {
-                    // TODO
-                    None
+                (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
+                    let kind = chain_addr::Kind::Multisig(
+                        id.to_multi_account()
+                            .as_ref()
+                            .try_into()
+                            .expect("multisig identifier size doesn't match address kind"),
+                    );
+                    let address = ExplorerAddress::New(Address(discrimination, kind));
+                    Some(ExplorerInput { address, value })
                 }
                 (InputEnum::UtxoInput(utxo_pointer), _witness) => {
                     let tx = utxo_pointer.transaction_id;
                     let index = utxo_pointer.output_index;
 
-                    let block_id = transactions
+                    let output = transactions
                         .lookup(&tx)
+                        .and_then(|block_id| {
+                            blocks
+                                .lookup(&block_id)
+                                .map(|block| &block.transactions[&tx].outputs[index as usize])
+                        })
+                        .or_else(|| {
+                            current_block
+                                .get(&tx)
+                                .map(|fragment| &fragment.outputs[index as usize])
+                        })
                         .expect("transaction not found for utxo input");
-
-                    let block = blocks
-                        .lookup(&block_id)
-                        .expect("transaction not found for utxo input");
-
-                    let output = &block.transactions[&tx].outputs[index as usize];
 
                     Some(ExplorerInput {
                         address: output.address.clone(),

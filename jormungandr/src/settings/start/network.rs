@@ -37,6 +37,10 @@ pub struct Listen {
 /// used unless the corresponding configuration option is specified.
 pub const DEFAULT_MAX_CONNECTIONS: usize = 256;
 
+/// The limit on the number of simultaneous P2P client connections
+/// used unless the corresponding configuration option is specified.
+pub const DEFAULT_MAX_CLIENT_CONNECTIONS: usize = 8;
+
 const DEFAULT_TIMEOUT_MICROSECONDS: u64 = 500_000;
 
 ///
@@ -59,6 +63,9 @@ pub struct Configuration {
     /// Maximum allowed number of peer connections.
     pub max_connections: usize,
 
+    /// Maximum allowed number of client connections.
+    pub max_client_connections: usize,
+
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,
 
@@ -72,6 +79,16 @@ pub struct Configuration {
     pub gossip_interval: Duration,
 
     pub topology_force_reset_interval: Option<Duration>,
+
+    pub max_bootstrap_attempts: Option<usize>,
+
+    /// Whether to limit bootstrap to trusted peers (which increase their load / reduce their connectivities)
+    pub bootstrap_from_trusted_peers: bool,
+
+    /// Whether to skip bootstrap, not recommended in normal settings. useful to true for self-node
+    pub skip_bootstrap: bool,
+
+    pub http_fetch_block0_service: Vec<String>,
 }
 
 #[derive(Clone)]

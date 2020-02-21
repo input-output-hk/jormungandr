@@ -1,21 +1,27 @@
 mod active_slot_coefficient;
-mod bft_slots_ratio;
+mod block_content_max_size;
 mod default_values;
+mod epoch_stability_depth;
+mod fees_go_to;
 mod initial_config;
 mod initial_fragment;
 mod kes_update_speed;
 mod leader_id;
 mod number_of_slots_per_epoch;
+mod reward_constraint;
 mod slots_duration;
 
 pub use self::active_slot_coefficient::ActiveSlotCoefficient;
-pub use self::bft_slots_ratio::BFTSlotsRatio;
+pub use self::block_content_max_size::BlockContentMaxSize;
 pub use self::default_values::*;
+pub use self::epoch_stability_depth::EpochStabilityDepth;
+pub use self::fees_go_to::FeesGoTo;
 pub use self::initial_config::BlockchainConfiguration;
 pub use self::initial_fragment::{Initial, InitialUTxO, LegacyUTxO};
 pub use self::kes_update_speed::KESUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
+pub use self::reward_constraint::{PoolParticipationCapping, RewardConstraints};
 pub use self::slots_duration::SlotDuration;
 use chain_impl_mockchain::{
     block::{self, Block},
@@ -24,6 +30,7 @@ use chain_impl_mockchain::{
 };
 use serde::{Deserialize, Serialize};
 use std::convert::{Infallible, TryFrom as _};
+use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -46,10 +53,14 @@ pub struct Block0Configuration {
     pub initial: Vec<Initial>,
 }
 
-custom_error! {pub Block0ConfigurationError
-    FirstBlock0MessageNotInit = "Invalid block, expecting the first block fragment to be an special Init fragment",
-    BlockchainConfiguration { source: initial_config::FromConfigParamsError } = "blockchain configuration is invalid",
-    InitialFragments { source: initial_fragment::Error } = "Invalid fragments"
+#[derive(Debug, Error)]
+pub enum Block0ConfigurationError {
+    #[error("Invalid block, expecting the first block fragment to be an special Init fragment")]
+    FirstBlock0MessageNotInit,
+    #[error("blockchain configuration is invalid")]
+    BlockchainConfiguration(#[from] initial_config::FromConfigParamsError),
+    #[error("Invalid fragments")]
+    InitialFragments(#[from] initial_fragment::Error),
 }
 
 impl Block0Configuration {
@@ -112,9 +123,10 @@ pub fn block0_configuration_documented_example() -> String {
         default_block0_date = crate::time::SecondsSinceUnixEpoch::default(),
         default_slots_per_epoch = NumberOfSlotsPerEpoch::default(),
         default_slot_duration = SlotDuration::default(),
-        default_bft_slots_ratio = BFTSlotsRatio::default(),
         default_consensus_genesis_praos_active_slot_coeff = ActiveSlotCoefficient::default(),
         default_kes_update_speed = KESUpdateSpeed::default(),
+        default_block_content_max_size = BlockContentMaxSize::default(),
+        default_epoch_stability_depth = EpochStabilityDepth::default(),
         leader_1 = leader_1_pk,
         leader_2 = leader_2_pk,
         initial_funds_address = initial_funds_address

@@ -29,7 +29,7 @@ pub fn connect(
 ) -> (ConnectHandle, ConnectFuture<grpc::ConnectFuture>) {
     let (sender, receiver) = oneshot::channel();
     let addr = state.connection;
-    let node_id = (*state.global.topology.node().id()).into();
+    let node_id = state.global.topology.node_id();
     let builder = Some(ClientBuilder {
         channels,
         logger: state.logger,

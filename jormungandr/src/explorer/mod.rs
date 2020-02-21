@@ -22,7 +22,8 @@ use crate::utils::task::{Input, TokioServiceInfo};
 use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
-use chain_impl_mockchain::multiverse::GCRoot;
+use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::multiverse;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::prelude::*;
@@ -35,7 +36,7 @@ pub struct Explorer {
 }
 
 struct Branch {
-    id: HeaderHash,
+    state_ref: multiverse::Ref<State>,
     length: ChainLength,
 }
 
@@ -53,6 +54,7 @@ pub struct ExplorerDB {
     /// multiverse, and the ChainLength is used in the updating process.
     longest_chain_tip: Tip,
     pub blockchain_config: BlockchainConfig,
+    blockchain: Blockchain,
 }
 
 #[derive(Clone)]
@@ -61,6 +63,7 @@ pub struct BlockchainConfig {
     /// inputs
     discrimination: Discrimination,
     consensus_version: ConsensusVersion,
+    fees: LinearFee,
 }
 
 /// Inmutable data structure used to represent the explorer's state at a given Block
@@ -68,6 +71,7 @@ pub struct BlockchainConfig {
 /// independent states but with memory sharing to minimize resource utilization
 #[derive(Clone)]
 struct State {
+    parent_ref: Option<multiverse::Ref<State>>,
     transactions: Transactions,
     blocks: Blocks,
     addresses: Addresses,
@@ -120,13 +124,16 @@ impl Explorer {
         let mut explorer_db = self.db.clone();
         let logger = info.logger().clone();
         match bquery {
-            ExplorerMsg::NewBlock(block) => info.spawn(explorer_db.apply_block(block).then(
-                move |result| match result {
-                    // XXX: There is no garbage collection now, so the GCRoot is not used
-                    Ok(_gc_root) => Ok(()),
-                    Err(err) => Err(error!(logger, "Explorer error: {}", err)),
-                },
-            )),
+            ExplorerMsg::NewBlock(block) => info.spawn(
+                "apply block",
+                explorer_db
+                    .apply_block(block)
+                    .then(move |result| match result {
+                        // XXX: There is no garbage collection now, so the GCRoot is not used
+                        Ok(_gc_root) => Ok(()),
+                        Err(err) => Err(error!(logger, "Explorer error: {}", err)),
+                    }),
+            ),
         }
         future::ok::<(), ()>(())
     }
@@ -137,6 +144,14 @@ impl ExplorerDB {
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
     pub fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
+        use tokio_compat::runtime;
+
+        let mut rt = runtime::Builder::new()
+            .name_prefix("explorer-bootstrap-worker-")
+            .core_threads(1)
+            .build()
+            .unwrap();
+
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -172,48 +187,49 @@ impl ExplorerDB {
             addresses,
             stake_pool_data,
             stake_pool_blocks,
+            parent_ref: None,
         };
 
         let multiverse = Multiverse::<State>::new();
-        multiverse
-            .insert(block0.chain_length(), block0.id(), initial_state)
-            .wait()
+        let block0_id = block0.id();
+        let initial_state_ref = rt
+            .block_on(multiverse.insert(block0.chain_length(), block0_id, initial_state))
             .expect("The multiverse to be empty");
-
-        let block0_id = block0.id().clone();
 
         let bootstraped_db = ExplorerDB {
             multiverse,
             longest_chain_tip: Tip::new(Branch {
-                id: block0.id(),
+                state_ref: initial_state_ref,
                 length: block0.header.chain_length(),
             }),
             blockchain_config,
+            blockchain: blockchain.clone(),
         };
 
-        blockchain
-            .storage()
-            .get_tag(MAIN_BRANCH_TAG.to_owned())
-            .map_err(|err| err.into())
-            .and_then(move |head_option| match head_option {
-                None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
-                    "Couldn't read the HEAD tag from storage".to_owned(),
-                )))),
-                Some(head) => Either::B(
-                    blockchain
-                        .storage()
-                        .stream_from_to(block0_id, head)
-                        .map_err(|err| Error::from(err)),
-                ),
-            })
-            .and_then(move |stream| {
-                stream
-                    .map_err(|err| Error::from(err))
-                    .fold(bootstraped_db, |mut db, block| {
-                        db.apply_block(block).and_then(|_gc_root| Ok(db))
-                    })
-            })
-            .wait()
+        rt.block_on(
+            blockchain
+                .storage()
+                .get_tag(MAIN_BRANCH_TAG.to_owned())
+                .map_err(|err| err.into())
+                .and_then(move |head_option| match head_option {
+                    None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
+                        "Couldn't read the HEAD tag from storage".to_owned(),
+                    )))),
+                    Some(head) => Either::B(
+                        blockchain
+                            .storage()
+                            .stream_from_to(block0_id, head)
+                            .map_err(|err| Error::from(err)),
+                    ),
+                })
+                .and_then(move |stream| {
+                    stream
+                        .map_err(|err| Error::from(err))
+                        .fold(bootstraped_db, |mut db, block| {
+                            db.apply_block(block).and_then(|_gc_root| Ok(db))
+                        })
+                }),
+        )
     }
 
     /// Try to add a new block to the indexes, this can fail if the parent of the block is
@@ -221,7 +237,10 @@ impl ExplorerDB {
     /// chain length is greater than the current.
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
-    pub fn apply_block(&mut self, block: Block) -> impl Future<Item = GCRoot, Error = Error> {
+    fn apply_block(
+        &mut self,
+        block: Block,
+    ) -> impl Future<Item = multiverse::Ref<State>, Error = Error> {
         let previous_block = block.header.block_parent_hash();
         let chain_length = block.header.chain_length();
         let block_id = block.header.hash();
@@ -230,11 +249,12 @@ impl ExplorerDB {
         let discrimination = self.blockchain_config.discrimination.clone();
 
         multiverse
-            .get(previous_block)
+            .get_ref(previous_block)
             .map_err(|_: Infallible| unreachable!())
             .and_then(move |maybe_previous_state| match maybe_previous_state {
-                Some(state) => {
+                Some(state_ref) => {
                     let State {
+                        parent_ref: _,
                         transactions,
                         blocks,
                         addresses,
@@ -242,12 +262,13 @@ impl ExplorerDB {
                         chain_lengths,
                         stake_pool_data,
                         stake_pool_blocks,
-                    } = state;
+                    } = state_ref.state().clone();
 
                     let explorer_block =
                         ExplorerBlock::resolve_from(&block, discrimination, &transactions, &blocks);
 
                     Ok((
+                        state_ref,
                         apply_block_to_transactions(transactions, &explorer_block)?,
                         apply_block_to_blocks(blocks, &explorer_block)?,
                         apply_block_to_addresses(addresses, &explorer_block)?,
@@ -266,7 +287,15 @@ impl ExplorerDB {
                 )))),
             })
             .and_then(
-                move |(transactions, blocks, addresses, epochs, chain_lengths, stake_pools)| {
+                move |(
+                    parent_ref,
+                    transactions,
+                    blocks,
+                    addresses,
+                    epochs,
+                    chain_lengths,
+                    stake_pools,
+                )| {
                     let chain_length = chain_length.clone();
                     let block_id = block_id.clone();
                     let (stake_pool_data, stake_pool_blocks) = stake_pools;
@@ -275,6 +304,7 @@ impl ExplorerDB {
                             chain_length,
                             block_id,
                             State {
+                                parent_ref: Some(parent_ref),
                                 transactions,
                                 blocks,
                                 addresses,
@@ -285,22 +315,22 @@ impl ExplorerDB {
                             },
                         )
                         .map_err(|_: Infallible| unreachable!())
-                        .map(move |gc_root| (gc_root, block_id, chain_length))
+                        .map(move |state_ref| (state_ref, chain_length))
                 },
             )
-            .and_then(move |(gc_root, block_id, chain_length)| {
+            .and_then(move |(state_ref, chain_length)| {
                 current_tip
                     .compare_and_replace(Branch {
-                        id: block_id,
+                        state_ref: state_ref.clone(),
                         length: chain_length,
                     })
                     .map_err(|_: Infallible| unreachable!())
-                    .map(|_| gc_root)
+                    .map(|_| state_ref)
             })
     }
 
     pub fn get_latest_block_hash(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
-        self.longest_chain_tip.blockid()
+        self.longest_chain_tip.get_block_id()
     }
 
     pub fn get_block(
@@ -308,7 +338,9 @@ impl ExplorerDB {
         block_id: &HeaderHash,
     ) -> impl Future<Item = Option<ExplorerBlock>, Error = Infallible> {
         let block_id = block_id.clone();
-        self.with_latest_state(move |state| state.blocks.lookup(&block_id).map(|b| (*b).clone()))
+        self.with_latest_state(move |state| {
+            state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
+        })
     }
 
     pub fn get_epoch(
@@ -316,7 +348,7 @@ impl ExplorerDB {
         epoch: Epoch,
     ) -> impl Future<Item = Option<EpochData>, Error = Infallible> {
         let epoch = epoch.clone();
-        self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| (*e).clone()))
+        self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| e.as_ref().clone()))
     }
 
     pub fn find_block_by_chain_length(
@@ -327,7 +359,7 @@ impl ExplorerDB {
             state
                 .chain_lengths
                 .lookup(&chain_length)
-                .map(|b| (*b).clone())
+                .map(|b| b.as_ref().clone())
         })
     }
 
@@ -340,7 +372,7 @@ impl ExplorerDB {
             state
                 .transactions
                 .lookup(&transaction_id)
-                .map(|id| id.clone())
+                .map(|id| id.as_ref().clone())
         })
     }
 
@@ -349,7 +381,12 @@ impl ExplorerDB {
         address: &ExplorerAddress,
     ) -> impl Future<Item = Option<PersistentSequence<FragmentId>>, Error = Infallible> {
         let address = address.clone();
-        self.with_latest_state(move |state| state.addresses.lookup(&address).map(|set| set.clone()))
+        self.with_latest_state(move |state| {
+            state
+                .addresses
+                .lookup(&address)
+                .map(|set| set.as_ref().clone())
+        })
     }
 
     // Get the hashes of all blocks in the range [from, to)
@@ -369,7 +406,7 @@ impl ExplorerDB {
                     state
                         .chain_lengths
                         .lookup(&i.into())
-                        .map(|b| ((*b).clone(), i.into()))
+                        .map(|b| (b.as_ref().clone(), i.into()))
                 })
                 .collect()
         })
@@ -381,7 +418,10 @@ impl ExplorerDB {
     ) -> impl Future<Item = Option<PersistentSequence<HeaderHash>>, Error = Infallible> {
         let pool = pool.clone();
         self.with_latest_state(move |state| {
-            state.stake_pool_blocks.lookup(&pool).map(|i| i.clone())
+            state
+                .stake_pool_blocks
+                .lookup(&pool)
+                .map(|i| i.as_ref().clone())
         })
     }
 
@@ -390,7 +430,24 @@ impl ExplorerDB {
         pool: &PoolId,
     ) -> impl Future<Item = Option<StakePoolData>, Error = Infallible> {
         let pool = pool.clone();
-        self.with_latest_state(move |state| state.stake_pool_data.lookup(&pool).map(|i| i.clone()))
+        self.with_latest_state(move |state| {
+            state
+                .stake_pool_data
+                .lookup(&pool)
+                .map(|i| i.as_ref().clone())
+        })
+    }
+
+    pub fn get_stake_pools(
+        &self,
+    ) -> impl Future<Item = Vec<(PoolId, Arc<StakePoolData>)>, Error = Infallible> {
+        self.with_latest_state(move |state| {
+            state
+                .stake_pool_data
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect()
+        })
     }
 
     /// run given function with the longest branch's state
@@ -406,6 +463,10 @@ impl ExplorerDB {
             })
         })
     }
+
+    fn blockchain(&self) -> &Blockchain {
+        &self.blockchain
+    }
 }
 
 fn get_lock<L>(lock: &Lock<L>) -> impl Future<Item = LockGuard<L>, Error = Infallible> {
@@ -414,16 +475,15 @@ fn get_lock<L>(lock: &Lock<L>) -> impl Future<Item = LockGuard<L>, Error = Infal
 }
 
 fn apply_block_to_transactions(
-    transactions: Transactions,
+    mut transactions: Transactions,
     block: &ExplorerBlock,
 ) -> Result<Transactions> {
     let block_id = block.id();
     let ids = block.transactions.values().map(|tx| tx.id());
 
-    let mut transactions = transactions;
     for id in ids {
         transactions = transactions
-            .insert(id, block_id)
+            .insert(id, Arc::new(block_id.clone()))
             .map_err(|_| ErrorKind::TransactionAlreadyExists(format!("{}", id)))?;
     }
 
@@ -433,39 +493,37 @@ fn apply_block_to_transactions(
 fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks> {
     let block_id = block.id();
     blocks
-        .insert(block_id, (*block).clone())
+        .insert(block_id, Arc::new(block.clone()))
         .map_err(|_| Error::from(ErrorKind::BlockAlreadyExists(format!("{}", block_id))))
 }
 
-fn apply_block_to_addresses(addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
-    let mut addresses = addresses;
+fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
     let transactions = block.transactions.values();
 
     for tx in transactions {
         let id = tx.id();
-        for output in tx.outputs() {
-            addresses = addresses.insert_or_update_simple(
-                output.address.clone(),
-                PersistentSequence::new().append(id.clone()),
-                |set| {
-                    let new_set = set.append(id.clone());
-                    Some(new_set)
-                },
-            )
-        }
 
-        for input in tx.inputs() {
+        // A Hashset is used for preventing duplicates when the address is both an
+        // input and an output in the given transaction
+
+        let included_addresses: std::collections::HashSet<ExplorerAddress> = tx
+            .outputs()
+            .iter()
+            .map(|output| output.address.clone())
+            .chain(tx.inputs().iter().map(|input| input.address.clone()))
+            .collect();
+
+        for address in included_addresses {
             addresses = addresses.insert_or_update_simple(
-                input.address.clone(),
-                PersistentSequence::new().append(id.clone()),
+                address,
+                Arc::new(PersistentSequence::new().append(id.clone())),
                 |set| {
                     let new_set = set.append(id.clone());
-                    Some(new_set)
+                    Some(Arc::new(new_set))
                 },
             )
         }
     }
-
     Ok(addresses)
 }
 
@@ -475,17 +533,17 @@ fn apply_block_to_epochs(epochs: Epochs, block: &ExplorerBlock) -> Epochs {
 
     epochs.insert_or_update_simple(
         epoch_id,
-        EpochData {
+        Arc::new(EpochData {
             first_block: block_id,
             last_block: block_id,
             total_blocks: 0,
-        },
+        }),
         |data| {
-            Some(EpochData {
+            Some(Arc::new(EpochData {
+                first_block: data.first_block,
                 last_block: block_id,
                 total_blocks: data.total_blocks + 1,
-                ..*data
-            })
+            }))
         },
     )
 }
@@ -497,7 +555,7 @@ fn apply_block_to_chain_lengths(
     let new_block_chain_length = block.chain_length();
     let new_block_hash = block.id();
     chain_lengths
-        .insert(new_block_chain_length, new_block_hash)
+        .insert(new_block_chain_length, Arc::new(new_block_hash))
         .map_err(|_| {
             // I think this shouldn't happen
             Error::from(ErrorKind::ChainLengthBlockAlreadyExists(u32::from(
@@ -515,8 +573,8 @@ fn apply_block_to_stake_pools(
         indexing::BlockProducer::StakePool(id) => blocks
             .update(
                 &id,
-                |array: &PersistentSequence<HeaderHash>| -> std::result::Result<_, Infallible> {
-                    Ok(Some(array.append(block.id())))
+                |array: &Arc<PersistentSequence<HeaderHash>>| -> std::result::Result<_, Infallible> {
+                    Ok(Some(Arc::new(array.append(block.id()))))
                 },
             )
             .expect("block to be created by registered stake pool"),
@@ -530,7 +588,7 @@ fn apply_block_to_stake_pools(
         if let Some(cert) = &tx.certificate {
             blocks = match cert {
                 Certificate::PoolRegistration(registration) => blocks
-                    .insert(registration.to_id(), PersistentSequence::new())
+                    .insert(registration.to_id(), Arc::new(PersistentSequence::new()))
                     .expect("pool was registered more than once"),
                 _ => blocks,
             };
@@ -538,9 +596,9 @@ fn apply_block_to_stake_pools(
                 Certificate::PoolRegistration(registration) => data
                     .insert(
                         registration.to_id(),
-                        StakePoolData {
+                        Arc::new(StakePoolData {
                             registration: registration.clone(),
-                        },
+                        }),
                     )
                     .expect("pool was registered more than once"),
                 _ => data,
@@ -571,9 +629,19 @@ impl BlockchainConfig {
             .next()
             .expect("consensus version to be present");
 
+        let fees = params
+            .iter()
+            .filter_map(|param| match param {
+                ConfigParam::LinearFee(fee) => Some(fee.clone()),
+                _ => None,
+            })
+            .next()
+            .expect("fee is not in config params");
+
         BlockchainConfig {
             discrimination,
             consensus_version,
+            fees,
         }
     }
 }
@@ -588,7 +656,7 @@ impl Tip {
             // Probably a different thing is needed for the == case
             if other.length > (*current).length {
                 *current = Branch {
-                    id: other.id,
+                    state_ref: other.state_ref,
                     length: other.length,
                 };
             }
@@ -596,7 +664,7 @@ impl Tip {
         })
     }
 
-    fn blockid(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
-        get_lock(&self.0).map(|guard| (*guard).id)
+    fn get_block_id(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
+        get_lock(&self.0).map(|guard| *guard.state_ref.id())
     }
 }

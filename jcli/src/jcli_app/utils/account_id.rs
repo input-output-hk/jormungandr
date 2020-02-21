@@ -1,7 +1,8 @@
-use bech32::{Bech32, FromBase32};
+use bech32::{self, FromBase32};
 use chain_addr::{Address, Kind};
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::account;
+use thiserror::Error;
 
 #[derive(Debug)]
 pub struct AccountId {
@@ -17,9 +18,8 @@ impl AccountId {
     // accept either an address with the account kind
     // or a ed25519 publickey
     pub fn try_from_str(src: &str) -> Result<Self, Error> {
-        use std::str::FromStr;
-        if let Ok(b) = Bech32::from_str(src) {
-            let dat = Vec::from_base32(b.data()).unwrap();
+        if let Ok((_, data)) = bech32::decode(src) {
+            let dat = Vec::from_base32(&data).unwrap();
             if let Ok(addr) = Address::from_bytes(&dat) {
                 match addr.kind() {
                     Kind::Account(pk) => Ok(Self {
@@ -54,7 +54,10 @@ impl AccountId {
     }
 }
 
-custom_error! { pub Error
-    NotRecognized { addr: String } = "account parameter '{addr}' isn't a valid address or publickey",
-    AddressNotAccount { addr: String, kind: String } = "account parameter '{addr}' isn't an account address, found: '{kind}'",
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("account parameter '{addr}' isn't a valid address or publickey")]
+    NotRecognized { addr: String },
+    #[error("account parameter '{addr}' isn't an account address, found: '{kind}'")]
+    AddressNotAccount { addr: String, kind: String },
 }

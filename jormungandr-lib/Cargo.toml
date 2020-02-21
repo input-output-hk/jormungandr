@@ -1,28 +1,29 @@
 [package]
 name = "jormungandr-lib"
-version = "0.7.1"
+version = "0.8.11"
 authors = ["dev@iohk.io"]
 edition = "2018"
 
 [dependencies]
-bech32 = "0.6"
+bech32 = "0.7"
 serde = { version = "1.0", features = ["derive"] }
-custom_error = "1.7"
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
 cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 typed-bytes = { path = "../chain-deps/typed-bytes" }
-rand_core = "0.3"
-rand_chacha = "0.1"
+rand_core = "0.5"
+rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
-humantime = "1.2"
+humantime = "2.0"
+thiserror = "1.0"
+poldercast = "0.11.3"
 
 [dev-dependencies]
-rand = "0.6"
-quickcheck = "0.8"
+rand = "0.7"
+quickcheck = "0.9"
 chain-crypto    = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
-ed25519-bip32 = "0.1"
+ed25519-bip32 = "0.3"
 serde_yaml = "0.8"
 bincode = "1.1"

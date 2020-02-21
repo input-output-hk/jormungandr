@@ -1,6 +1,7 @@
 use crate::blockchain::Ref;
 use std::{convert::Infallible, sync::Arc};
 use tokio::{prelude::*, sync::lock::Lock};
+use tokio_compat::prelude::*;
 
 #[derive(Clone)]
 pub struct Branches {
@@ -54,6 +55,11 @@ impl Branches {
             })
     }
 
+    pub fn branches(&self) -> impl Future<Item = Vec<Arc<Ref>>, Error = ()> {
+        let mut branches = self.clone();
+        future::poll_fn(move || Ok(branches.inner.poll_lock())).and_then(|guard| guard.branches())
+    }
+
     fn apply(
         &mut self,
         candidate: Arc<Ref>,
@@ -88,6 +94,10 @@ impl BranchesData {
         .map_err(|(e, _)| e)
         .map(|(v, _)| v)
     }
+
+    pub fn branches<E>(&self) -> impl Future<Item = Vec<Arc<Ref>>, Error = E> {
+        stream::futures_unordered(self.branches.iter().map(|b| b.get_ref())).collect()
+    }
 }
 
 impl Branch {
@@ -95,6 +105,24 @@ impl Branch {
         Branch {
             inner: Lock::new(BranchData::new(reference)),
         }
+    }
+
+    pub async fn get_ref_std(&self) -> Arc<Ref> {
+        let mut branch = self.inner.clone();
+        let r: Result<_, ()> = future::poll_fn(move || Ok(branch.poll_lock()))
+            .map(|guard| guard.reference().clone())
+            .compat()
+            .await;
+        r.unwrap()
+    }
+
+    pub async fn update_ref_std(&mut self, new_ref: Arc<Ref>) -> Arc<Ref> {
+        let mut branch = self.inner.clone();
+        let r: Result<_, ()> = future::poll_fn(move || Ok(branch.poll_lock()))
+            .map(move |mut guard| guard.update(new_ref))
+            .compat()
+            .await;
+        r.unwrap()
     }
 
     pub fn get_ref<E>(&self) -> impl Future<Item = Arc<Ref>, Error = E> {

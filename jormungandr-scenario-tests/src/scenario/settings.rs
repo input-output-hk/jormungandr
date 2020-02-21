@@ -5,24 +5,33 @@ use crate::{
     },
     style, NodeAlias, Wallet, WalletAlias, WalletType,
 };
-use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
+use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
     block::ConsensusVersion,
     certificate::{PoolPermissions, PoolSignature},
     fee::LinearFee,
-    key::EitherEd25519SecretKey,
     rewards::TaxType,
     transaction::{SingleAccountBindingSignature, TxBuilder},
 };
 use chain_time::DurationSeconds;
+use jormungandr_integration_tests::common::file_utils;
 use jormungandr_lib::{
-    crypto::{hash::Hash, key::SigningKey},
-    interfaces::{Block0Configuration, BlockchainConfiguration, Initial, InitialUTxO},
+    crypto::key::SigningKey,
+    interfaces::{
+        Bft, Block0Configuration, BlockchainConfiguration, Explorer, GenesisPraos, Initial,
+        InitialUTxO, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
+        TopicsOfInterest,
+    },
+    time::Duration,
 };
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::{collections::HashMap, io::Write, net::SocketAddr};
+use std::{collections::HashMap, io::Write};
+
+trait Prepare: Clone + Send + 'static {
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore + CryptoRng;
+}
 
 #[derive(Debug)]
 pub struct Settings {
@@ -48,63 +57,6 @@ pub struct NodeSetting {
     pub config: NodeConfig,
 
     node_topology: NodeTemplate,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct NodeConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storage: Option<PathBuf>,
-
-    pub rest: Rest,
-
-    pub p2p: P2pConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Rest {
-    pub listen: SocketAddr,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct P2pConfig {
-    /// The public address to which other peers may connect to
-    pub public_address: poldercast::Address,
-
-    pub public_id: poldercast::Id,
-
-    /// the rendezvous points for the peer to connect to in order to initiate
-    /// the p2p discovery from.
-    pub trusted_peers: Vec<TrustedPeer>,
-
-    allow_private_addresses: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrustedPeer {
-    address: poldercast::Address,
-    id: poldercast::Id,
-}
-
-/// Node Secret(s)
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct NodeSecret {
-    bft: Option<Bft>,
-    genesis: Option<GenesisPraos>,
-}
-
-/// hold the node's bft secret setting
-#[derive(Debug, Clone, Deserialize, Serialize)]
-struct Bft {
-    signing_key: SigningKey<Ed25519>,
-}
-
-/// the genesis praos setting
-///
-#[derive(Debug, Clone, Deserialize, Serialize)]
-struct GenesisPraos {
-    node_id: Hash,
-    sig_key: SigningKey<SumEd25519_12>,
-    vrf_key: SigningKey<Curve25519_2HashDH>,
 }
 
 impl Settings {
@@ -228,10 +180,9 @@ impl Settings {
                             .set_ios(&[], &[])
                             .set_witnesses(&[]);
                         let auth_data = txb.get_auth_data();
-                        let sig0 = SingleAccountBindingSignature::new(
-                            &EitherEd25519SecretKey::Normal(owner),
-                            &auth_data,
-                        );
+                        let sig0 = SingleAccountBindingSignature::new(&auth_data, |d| {
+                            owner.sign_slice(&d.0)
+                        });
                         let owner_signed = PoolOwnersSigned {
                             signatures: vec![(0, sig0)],
                         };
@@ -299,11 +250,10 @@ impl Settings {
         };
         blockchain_configuration.slots_per_epoch = *blockchain.slots_per_epoch();
         blockchain_configuration.slot_duration = *blockchain.slot_duration();
-
         // TODO blockchain_configuration.linear_fees = ;
-        // TODO blockchain_configuration.kes_update_speed = ;
-        // TODO blockchain_configuration.consensus_genesis_praos_active_slot_coeff = ;
-        // TODO blockchain_configuration.bft_slots_ratio = ;
+        blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
+        blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
+            *blockchain.consensus_genesis_praos_active_slot_coeff();
     }
 
     fn populate_trusted_peers(&mut self) {
@@ -317,6 +267,8 @@ impl Settings {
                 trusted_peers.push(trusted_peer.config.p2p.make_trusted_peer_setting());
             }
 
+            node.config.skip_bootstrap = Some(trusted_peers.is_empty());
+            node.config.bootstrap_from_trusted_peers = Some(!trusted_peers.is_empty());
             node.config.p2p.trusted_peers = trusted_peers;
         }
     }
@@ -368,7 +320,11 @@ impl Settings {
 }
 
 impl NodeSetting {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: NodeTemplate) -> Self
+    pub fn prepare<RNG>(
+        alias: NodeAlias,
+        context: &mut Context<RNG>,
+        template: NodeTemplate,
+    ) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
@@ -410,8 +366,8 @@ impl NodeSetting {
     }
 }
 
-impl NodeSecret {
-    pub fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+impl Prepare for NodeSecret {
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
@@ -422,21 +378,26 @@ impl NodeSecret {
     }
 }
 
-impl NodeConfig {
-    pub fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+impl Prepare for NodeConfig {
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
         NodeConfig {
             rest: Rest::prepare(context),
-            p2p: P2pConfig::prepare(context),
+            p2p: P2p::prepare(context),
             storage: None,
+            log: Some(Log::prepare(context)),
+            mempool: Some(Mempool::prepare(context)),
+            explorer: Explorer::prepare(context),
+            bootstrap_from_trusted_peers: None,
+            skip_bootstrap: None,
         }
     }
 }
 
-impl Rest {
-    pub fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+impl Prepare for Rest {
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
     where
         RNG: RngCore,
     {
@@ -446,23 +407,89 @@ impl Rest {
     }
 }
 
-impl P2pConfig {
-    pub fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+impl Prepare for Mempool {
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore,
+    {
+        Mempool::default()
+    }
+}
+
+impl Prepare for Explorer {
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore,
+    {
+        Explorer { enabled: false }
+    }
+}
+
+impl Prepare for P2p {
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
-        P2pConfig {
+        P2p {
             public_address: context.generate_new_grpc_public_address(),
             public_id: poldercast::Id::generate(context.rng_mut()),
             trusted_peers: Vec::new(),
             allow_private_addresses: true,
+            listen_address: context.generate_new_grpc_public_address(),
+            topics_of_interest: Some(TopicsOfInterest::prepare(context)),
+            policy: Some(Policy::prepare(context)),
         }
     }
+}
 
-    fn make_trusted_peer_setting(&self) -> TrustedPeer {
-        TrustedPeer {
-            address: self.public_address.clone(),
-            id: self.public_id.clone(),
+impl Prepare for TopicsOfInterest {
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore,
+    {
+        TopicsOfInterest {
+            messages: "high".to_string(),
+            blocks: "high".to_string(),
         }
+    }
+}
+
+impl Prepare for Policy {
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore,
+    {
+        Policy {
+            quarantine_duration: Duration::new(1, 0),
+        }
+    }
+}
+
+impl Prepare for Log {
+    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let format = "plain";
+        let level = "info";
+
+        let loggers = vec![
+            LogEntry {
+                format: format.to_string(),
+                level: level.to_string(),
+                output: LogOutput::Stderr,
+            },
+            LogEntry {
+                format: format.to_string(),
+                level: level.to_string(),
+                output: LogOutput::File(
+                    file_utils::get_path_in_temp("node.log")
+                        .into_os_string()
+                        .into_string()
+                        .unwrap(),
+                ),
+            },
+        ];
+        Log(loggers)
     }
 }

@@ -26,14 +26,13 @@ mod chunk_sizes {
 
 pub use self::{
     branch::Branch,
-    candidate::CandidateForest,
     chain::{
         new_epoch_leadership_from, Blockchain, Error, ErrorKind, PreCheckedHeader, MAIN_BRANCH_TAG,
     },
     chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,
-    process::{handle_input, process_new_ref},
+    process::{process_new_ref_owned, Process},
     reference::Ref,
     storage::Storage,
     tip::Tip,

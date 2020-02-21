@@ -5,17 +5,19 @@
 //! modules utilized in jormungandr.
 //!
 
+use crate::log;
 use crate::utils::async_msg::{self, MessageBox};
+
 use slog::Logger;
-use std::{
-    any::Any,
-    panic::{catch_unwind, AssertUnwindSafe},
-    sync::mpsc::{self, Receiver, Sender},
-    thread,
-    time::{Duration, Instant},
-};
-use tokio::prelude::{stream, Future, IntoFuture, Stream};
-use tokio::runtime::{self, Runtime, TaskExecutor};
+use tokio::prelude::{stream, Future as Future01, IntoFuture as IntoFuture01, Stream};
+use tokio::timer::Interval;
+use tokio_compat::prelude::*;
+use tokio_compat::runtime::{self, Runtime, TaskExecutor};
+
+use std::fmt::Debug;
+use std::future::Future;
+use std::sync::mpsc::{self, Receiver, RecvError, Sender};
+use std::time::{Duration, Instant};
 
 // Limit on the length of a task message queue
 const MESSAGE_QUEUE_LEN: usize = 1000;
@@ -25,6 +27,7 @@ pub struct Services {
     logger: Logger,
     services: Vec<Service>,
     finish_listener: ServiceFinishListener,
+    runtime: Runtime,
 }
 
 /// wrap up a service
@@ -41,19 +44,6 @@ pub struct Service {
     /// this will allow us to monitor if a service has been restarted
     /// without having to follow the log history of the service.
     up_time: Instant,
-
-    /// the tokio Runtime running the service in
-    #[allow(dead_code)]
-    runtime: Option<Runtime>,
-}
-
-/// the current thread service information
-///
-/// retrieve the name, the up time, the logger
-pub struct ThreadServiceInfo {
-    name: &'static str,
-    up_time: Instant,
-    logger: Logger,
 }
 
 /// the current future service information
@@ -87,99 +77,24 @@ impl Services {
             logger: logger,
             services: Vec::new(),
             finish_listener: ServiceFinishListener::new(),
+            runtime: runtime::Builder::new().build().unwrap(),
         }
     }
 
-    /// spawn a service in a thread. the service will run as long as the
-    /// given function does not return. As soon as the function return
-    /// the service stop
-    ///
-    pub fn spawn<F>(&mut self, name: &'static str, f: F)
-    where
-        F: FnOnce(ThreadServiceInfo) -> (),
-        F: Send + 'static,
-    {
-        let now = Instant::now();
-        let logger = self
-            .logger
-            .new(o!(crate::log::KEY_TASK => name))
-            .into_erased();
-        let thread_service_info = ThreadServiceInfo {
-            name: name,
-            up_time: now,
-            logger: logger.clone(),
-        };
-        let finish_notifier = self.finish_listener.notifier();
-        thread::Builder::new()
-            .name(name.to_owned())
-            // .stack_size(2 * 1024 * 1024)
-            .spawn(move || {
-                info!(logger, "starting task");
-                // This AssertUnwindSafe is safe, because after `catch_unwind`
-                // its content is never used in this thread
-                if let Err(error) = catch_unwind(AssertUnwindSafe(|| f(thread_service_info))) {
-                    log_service_panic(&logger, &*error);
-                }
-                finish_notifier.notify();
-            })
-            .unwrap_or_else(|err| panic!("Cannot spawn thread: {}", err));
-
-        let task = Service::new_handler(name, now);
-        self.services.push(task);
-    }
-
-    /// spawn a service that will be launched for every given inputs
-    ///
-    /// the service will stop once there is no more input to read: the function
-    /// will be called one last time with `Input::Shutdown` and then will return
-    ///
-    pub fn spawn_with_inputs<F, Msg>(&mut self, name: &'static str, mut f: F) -> TaskMessageBox<Msg>
-    where
-        F: FnMut(&ThreadServiceInfo, Input<Msg>) -> (),
-        F: Send + 'static,
-        Msg: Send + 'static,
-    {
-        let (tx, rx) = mpsc::channel::<Msg>();
-
-        self.spawn(name, move |info| loop {
-            match rx.recv() {
-                Ok(msg) => f(&info, Input::Input(msg)),
-                Err(err) => {
-                    warn!(
-                        info.logger,
-                        "Shutting down service {} (up since {}): {}",
-                        name,
-                        humantime::format_duration(info.up_time()),
-                        err
-                    );
-                    f(&info, Input::Shutdown);
-                    break;
-                }
-            }
-        });
-
-        TaskMessageBox(tx)
-    }
-
     /// Spawn the given Future in a new dedicated runtime
-    pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
+    pub fn spawn_future_std<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
-        T: Future<Item = (), Error = ()> + Send + 'static,
+        F: Send + 'static,
+        T: Future<Output = ()> + Send + 'static,
     {
-        let mut runtime = runtime::Builder::new()
-            .keep_alive(None)
-            .name_prefix(name)
-            .build()
-            .unwrap();
-
-        let executor = runtime.executor();
-
-        let now = Instant::now();
         let logger = self
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
+
+        let executor = self.runtime.executor();
+        let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
@@ -188,16 +103,60 @@ impl Services {
         };
 
         let finish_notifier = self.finish_listener.notifier();
-        // This AssertUnwindSafe is safe, because after `catch_unwind`
-        // its content is never used in executor thread
-        let future = AssertUnwindSafe(f(future_service_info))
-            .catch_unwind()
-            .map_err(move |error| log_service_panic(&logger, &*error))
-            .then(|_| Ok(finish_notifier.notify()));
+        self.runtime.spawn_std(async move {
+            f(future_service_info).await;
+            info!(logger, "service finished");
+            // send the finish notifier if the service finished with an error.
+            // this will allow to finish the node with an error code instead
+            // of an success error code
+            let _ = finish_notifier.sender.send(true);
+            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
+            std::mem::drop(finish_notifier);
+        });
 
-        runtime.spawn(future);
+        let task = Service::new(name, now);
+        self.services.push(task);
+    }
 
-        let task = Service::new_runtime(name, runtime, now);
+    /// Spawn the given Future in a new dedicated runtime
+    pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
+    where
+        F: FnOnce(TokioServiceInfo) -> T,
+        T: Future01<Item = (), Error = ()> + Send + 'static,
+    {
+        let logger = self
+            .logger
+            .new(o!(crate::log::KEY_TASK => name))
+            .into_erased();
+
+        let executor = self.runtime.executor();
+        let now = Instant::now();
+        let future_service_info = TokioServiceInfo {
+            name,
+            up_time: now,
+            logger: logger.clone(),
+            executor,
+        };
+
+        let finish_notifier = self.finish_listener.notifier();
+        let future = f(future_service_info).then(move |res| {
+            let outcome = match res {
+                Ok(_) => "successfully",
+                Err(_) => "with error",
+            };
+            info!(logger, "service finished {}", outcome);
+            // send the finish notifier if the service finished with an error.
+            // this will allow to finish the node with an error code instead
+            // of an success error code
+            let _ = finish_notifier.sender.send(res.is_ok());
+            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
+            std::mem::drop(finish_notifier);
+            Ok(())
+        });
+
+        self.runtime.spawn(future);
+
+        let task = Service::new(name, now);
         self.services.push(task);
     }
 
@@ -212,7 +171,7 @@ impl Services {
         F: FnMut(&TokioServiceInfo, Input<Msg>) -> T,
         F: Send + 'static,
         Msg: Send + 'static,
-        T: IntoFuture<Item = (), Error = ()> + Send + 'static,
+        T: IntoFuture01<Item = (), Error = ()> + Send + 'static,
         <T as futures::IntoFuture>::Future: Send,
     {
         let (msg_box, msg_queue) = async_msg::channel(MESSAGE_QUEUE_LEN);
@@ -226,34 +185,8 @@ impl Services {
     }
 
     /// select on all the started services. this function will block until first services returns
-    pub fn wait_any_finished(&self) {
-        self.finish_listener.wait_any_finished();
-    }
-}
-
-impl ThreadServiceInfo {
-    /// get the time this service has been running since
-    #[inline]
-    pub fn up_time(&self) -> Duration {
-        Instant::now().duration_since(self.up_time)
-    }
-
-    /// get the name of this Service
-    #[inline]
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    /// access the service's logger
-    #[inline]
-    pub fn logger(&self) -> &Logger {
-        &self.logger
-    }
-
-    /// extract the service's logger
-    #[inline]
-    pub fn into_logger(self) -> Logger {
-        self.logger
+    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
+        self.finish_listener.wait_any_finished()
     }
 }
 
@@ -290,11 +223,153 @@ impl TokioServiceInfo {
     }
 
     /// spawn a future within the service's tokio executor
-    pub fn spawn<F>(&self, future: F)
+    #[deprecated(note = "convert me to spawn_std or spawn_failable_std")]
+    pub fn spawn<F>(&self, name: &'static str, future: F)
     where
-        F: Future<Item = (), Error = ()> + Send + 'static,
+        F: Future01<Item = (), Error = ()> + Send + 'static,
     {
-        self.executor.spawn(future)
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn(future.then(move |res| {
+            match res {
+                Ok(()) => trace!(logger, "{} finished successfully", name),
+                Err(()) => trace!(logger, "{} finished with error", name),
+            }
+            res
+        }));
+    }
+
+    /// spawn a std::future within the service's tokio executor
+    pub fn spawn_std<F>(&self, name: &'static str, future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(future)
+    }
+
+    /// just like spawn_std but instead log an error on Result::Err
+    pub fn spawn_failable_std<F, E>(&self, name: &'static str, future: F)
+    where
+        F: Send + 'static,
+        E: Debug,
+        F: Future<Output = Result<(), E>>,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(async move {
+            match future.await {
+                Ok(()) => trace!(logger, "{} finished successfully", name),
+                Err(e) => error!(logger, "{} finished with error", name; "error" => ?e),
+            }
+        })
+    }
+
+    /// just like spawn_std but add a timeout
+    pub fn timeout_spawn_std<F>(&self, name: &'static str, timeout: Duration, future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(async move {
+            match tokio02::time::timeout(timeout, future).await {
+                Err(_) => error!(logger, "task {} timedout", name),
+                Ok(()) => {}
+            };
+        })
+    }
+
+    /// just like spawn_failable_std but add a timeout
+    pub fn timeout_spawn_failable_std<F, E>(&self, name: &'static str, timeout: Duration, future: F)
+    where
+        F: Send + 'static,
+        E: Debug,
+        F: Future<Output = Result<(), E>>,
+    {
+        let logger = self.logger.clone();
+        trace!(logger, "spawning {}", name);
+        self.executor.spawn_std(async move {
+            match tokio02::time::timeout(timeout, future).await {
+                Err(_) => error!(logger, "task {} timedout", name),
+                Ok(Err(e)) => error!(logger, "task {} finished with error", name; "error" => ?e),
+                Ok(Ok(())) => {}
+            };
+        })
+    }
+
+    // Run the closure with the specified period on the executor
+    // and execute the resulting closure.
+    #[deprecated(note = "convert me to run_periodic_std")]
+    pub fn run_periodic<F, U>(&self, name: &'static str, period: Duration, mut f: F)
+    where
+        F: FnMut() -> U,
+        F: Send + 'static,
+        U: IntoFuture01<Item = ()>,
+        U::Future: Send + 'static,
+        U::Error: Debug,
+    {
+        let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
+        let error_logger = logger.clone();
+        let task = Interval::new_interval(period)
+            .map_err(move |e| {
+                error!(error_logger, "cannot run periodic task"; "reason" => %e);
+            })
+            .fold(Instant::now(), move |t_last, t_now| {
+                let logger = logger.clone();
+                let elapsed = t_now.duration_since(t_last);
+                if elapsed > period * 2 {
+                    warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
+                }
+                trace!(logger, "periodic {} started", name; "triggered_at" => ?t_now);
+                f().into_future().then(move |res| {
+                    match res {
+                        Ok(()) => {
+                            trace!(logger, "periodic {} finished successfully", name; "triggered_at" => ?t_now);
+                            Ok(t_now)
+                        }
+                        Err(e) => {
+                            error!(logger, "periodic task failed"; "error" => ?e, "triggered_at" => ?t_now);
+                            Err(())
+                        }
+                    }
+                })
+            })
+            .map(|_| {});
+        self.spawn_std(name, async { task.compat().await.unwrap_or(()) });
+    }
+
+    // Run the closure with the specified period on the executor
+    // and execute the resulting closure.
+    pub fn run_periodic_std<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
+    where
+        F: FnMut() -> U,
+        F: Send + 'static,
+        E: Debug,
+        U: Future<Output = Result<(), E>> + Send + 'static,
+    {
+        let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
+        self.spawn_std(name, async move {
+            let mut interval = tokio02::time::interval(period);
+            loop {
+                let t_now = Instant::now();
+                interval.tick().await;
+                let t_last = Instant::now();
+                let elapsed = t_last.duration_since(t_now);
+                if elapsed > period * 2 {
+                    warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
+                }
+                match f().await {
+                    Ok(()) => {
+                        trace!(logger, "periodic {} finished successfully", name; "triggered_at" => ?t_now);
+                    },
+                    Err(e) => {
+                        error!(logger, "periodic task failed"; "error" => ?e, "triggered_at" => ?t_now);
+                    },
+                };
+            }
+        });
     }
 }
 
@@ -312,21 +387,8 @@ impl Service {
     }
 
     #[inline]
-    fn new_handler(name: &'static str, now: Instant) -> Self {
-        Service {
-            name,
-            up_time: now,
-            runtime: None,
-        }
-    }
-
-    #[inline]
-    fn new_runtime(name: &'static str, runtime: Runtime, now: Instant) -> Self {
-        Service {
-            name,
-            up_time: now,
-            runtime: Some(runtime),
-        }
+    fn new(name: &'static str, now: Instant) -> Self {
+        Service { name, up_time: now }
     }
 }
 
@@ -343,12 +405,13 @@ impl<Msg> TaskMessageBox<Msg> {
 }
 
 struct ServiceFinishListener {
-    sender: Sender<()>,
-    receiver: Receiver<()>,
+    sender: Sender<bool>,
+    receiver: Receiver<bool>,
 }
 
+/// Sends notification when dropped
 struct ServiceFinishNotifier {
-    sender: Sender<()>,
+    sender: Sender<bool>,
 }
 
 impl ServiceFinishListener {
@@ -363,29 +426,13 @@ impl ServiceFinishListener {
         }
     }
 
-    pub fn wait_any_finished(&self) {
-        let _ = self.receiver.recv();
-    }
-
-    #[allow(dead_code)]
-    pub fn wait_all_finished(self) {
-        std::mem::drop(self.sender);
-        while let Ok(_) = self.receiver.recv() {
-            continue;
-        }
+    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
+        self.receiver.recv()
     }
 }
 
-impl ServiceFinishNotifier {
-    pub fn notify(self) {
-        let _ = self.sender.send(());
+impl Drop for ServiceFinishNotifier {
+    fn drop(&mut self) {
+        let _ = self.sender.send(true);
     }
-}
-
-fn log_service_panic(logger: &Logger, error: &dyn Any) {
-    let reason_logger = error
-        .downcast_ref::<&str>()
-        .map(|reason| logger.new(o!("reason" => *reason)));
-    let panic_logger = reason_logger.as_ref().unwrap_or(logger);
-    crit!(panic_logger, "Task panicked");
 }

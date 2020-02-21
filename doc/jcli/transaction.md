@@ -189,14 +189,32 @@ status: finalizing
 
 ### Make witness
 
-For signing the transaction, you need the private key associated with the input address (the one that's in the utxos) and the hash of the genesis block of the network you are connected to.
+For signing the transaction, you need:
+
+- the hash of the genesis block of the network you are connected to.
+- the private key associated with the input address (the one that's in the utxos).
+- the hash of the transaction, that can be retrieved in two ways:
+  1. `sign_data_hash` value from `jcli transaction info --staging tx`  or
+  2. `jcli transaction data-for-witness --staging tx`
 
 The genesis' hash is needed for ensuring that the transaction cannot be re-used in another blockchain and for security concerns on offline transaction signing, as we are signing the transaction for the specific blockchain started by this block0 hash.
+
+First we need to get the hash of the transaction we are going to sign.
+
+```sh
+jcli transaction data-for-witness --staging tx
+```
+
+You should see something like this (the value may be different since it depends on the input/output data)
+
+```sh
+0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273
+```
 
 The following command takes the private key in the *key.prv* file and creates a witness in a file named *witness* in the current directory.
 
 ```sh
-jcli transaction make-witness --genesis-block-hash abcdef987654321... --type utxo txid witness key.prv
+jcli transaction make-witness --genesis-block-hash abcdef987654321... --type utxo 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273 witness key.prv
 ```
 
 ---
@@ -208,7 +226,7 @@ When using an account as input, the command takes `account` as the type and an a
 e.g.
 
 ```sh
-jcli transaction make-witness --genesis-block-hash abcdef987654321... --type account --account-spending-counter 0 witness key.prv
+jcli transaction make-witness --genesis-block-hash abcdef987654321... --type account --account-spending-counter 0 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273 witness key.prv
 ```
 
 ### Add witness
@@ -231,6 +249,12 @@ Send it using the rest api
 
 ```sh
 jcli rest v0 message post -f txmsg --host http://127.0.0.1:8443/api
+```
+
+You should get some data back referring to the TransactionID (also known as FragmentID)
+
+```sh
+d6ef0b2148a51ed64531efc17978a527fd2d2584da1e344a35ad12bf5460a7e2
 ```
 
 ## Checking if the transaction was accepted

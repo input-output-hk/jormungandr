@@ -1,7 +1,7 @@
-use super::logs::internal::Logs;
+use super::logs::Logs;
 use super::pool::internal::Pool;
 use crate::{
-    blockcfg::{Contents, ContentsBuilder, HeaderContentEvalContext, Ledger, LedgerParameters},
+    blockcfg::{BlockDate, Contents, ContentsBuilder, Ledger, LedgerParameters},
     fragment::FragmentId,
 };
 use chain_core::property::Fragment as _;
@@ -19,7 +19,7 @@ pub trait FragmentSelectionAlgorithm {
         &mut self,
         ledger: &Ledger,
         ledger_params: &LedgerParameters,
-        metadata: &HeaderContentEvalContext,
+        block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
     );
@@ -27,16 +27,21 @@ pub trait FragmentSelectionAlgorithm {
     fn finalize(self) -> Contents;
 }
 
+#[derive(Debug)]
+pub enum FragmentSelectionAlgorithmParams {
+    OldestFirst,
+}
+
 pub struct OldestFirst {
     builder: ContentsBuilder,
-    max_per_block: usize,
+    current_total_size: u32,
 }
 
 impl OldestFirst {
-    pub fn new(max_per_block: usize) -> Self {
+    pub fn new() -> Self {
         OldestFirst {
             builder: ContentsBuilder::new(),
-            max_per_block,
+            current_total_size: 0,
         }
     }
 }
@@ -50,33 +55,40 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         &mut self,
         ledger: &Ledger,
         ledger_params: &LedgerParameters,
-        metadata: &HeaderContentEvalContext,
+        block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
     ) {
-        let mut total = 0usize;
         let mut ledger_simulation = ledger.clone();
 
         while let Some(fragment) = pool.remove_oldest() {
             let id = fragment.id();
-            match ledger_simulation.apply_fragment(ledger_params, &fragment, metadata) {
-                Ok(ledger_new) => {
-                    self.builder.push(fragment);
-                    total += 1;
-                    ledger_simulation = ledger_new;
+            let fragment_raw = fragment.to_raw(); // TODO: replace everything to FragmentRaw in the node
+            let fragment_size = fragment_raw.size_bytes_plus_size() as u32;
+            let total_size = self.current_total_size + fragment_size;
+
+            if total_size <= ledger_params.block_content_max_size {
+                match ledger_simulation.apply_fragment(ledger_params, &fragment, block_date) {
+                    Ok(ledger_new) => {
+                        self.builder.push(fragment);
+                        ledger_simulation = ledger_new;
+                    }
+                    Err(error) => {
+                        use std::error::Error as _;
+                        let error = if let Some(source) = error.source() {
+                            format!("{}: {}", error, source)
+                        } else {
+                            error.to_string()
+                        };
+                        logs.modify(id, FragmentStatus::Rejected { reason: error })
+                    }
                 }
-                Err(error) => {
-                    use std::error::Error as _;
-                    let error = if let Some(source) = error.source() {
-                        format!("{}: {}", error, source)
-                    } else {
-                        error.to_string()
-                    };
-                    logs.modify(&id.into(), FragmentStatus::Rejected { reason: error })
+
+                self.current_total_size = total_size;
+
+                if total_size == ledger_params.block_content_max_size {
+                    break;
                 }
-            }
-            if total >= self.max_per_block {
-                break;
             }
         }
     }
