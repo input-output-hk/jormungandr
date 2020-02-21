@@ -1997,6 +1997,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "linked-hash-map",
+ "lru",
  "network-core",
  "network-grpc",
  "nix 0.17.0",
