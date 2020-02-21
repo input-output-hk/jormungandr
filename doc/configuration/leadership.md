@@ -3,11 +3,9 @@ as follow:
 
 ```yaml
 leadership:
-    log_ttl: 1h
-    garbage_collection_interval: 15m
+    logs_capacity: 1024
 ```
 
-* `log_ttl` describes for how long the node will keep logs of leader events.
-  This is link to the data you receives from the REST leadership logs end point;
-* `garbage_collection_interval` describes the interval between 2 garbage collection
-  runs: i.e. when the node removes item logs that have timed out
+* `logs_capacity`: the maximum number of logs to keep in memory. Once the capacity
+  is reached, older logs will be removed in order to leave more space for new ones
+  [default: 1024]

@@ -79,24 +79,14 @@ impl Module {
     pub async fn new(
         service_info: TokioServiceInfo,
         logs: Logs,
-        garbage_collection_interval: Duration,
         tip: Tip,
         pool: MessageBox<TransactionMsg>,
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
     ) -> Result<Self, LeadershipError> {
-        let logs_to_purge = logs.clone();
+        let tip_ref = tip.get_ref_std().await;
 
-        service_info.run_periodic(
-            "garbage collection",
-            garbage_collection_interval,
-            move || {
-                let mut logs_to_purge_local = logs_to_purge.clone();
-                Box::pin(async move { logs_to_purge_local.poll_purge().await }).compat()
-            },
-        );
-
-        tip.get_ref().compat().await.map(move |tip_ref| Self {
+        Ok(Self {
             schedule: Schedule::default(),
             service_info,
             logs,

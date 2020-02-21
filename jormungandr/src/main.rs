@@ -96,9 +96,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
     let leadership_logs =
-        leadership::Logs::new(bootstrapped_node.settings.leadership.log_ttl.into());
-    let leadership_garbage_collection_interval =
-        bootstrapped_node.settings.leadership.log_ttl.into();
+        leadership::Logs::new(bootstrapped_node.settings.leadership.logs_capacity);
 
     let topology = P2pTopology::new(
         &bootstrapped_node.settings.network,
@@ -236,7 +234,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             let fut = leadership::Module::new(
                 info,
                 leadership_logs,
-                leadership_garbage_collection_interval,
                 blockchain_tip,
                 fragment_msgbox,
                 enclave,

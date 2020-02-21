@@ -174,11 +174,10 @@ pub struct TrustedPeer {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Leadership {
-    /// LeadershipLog time to live, it is for information purposes, we log all the Leadership
-    /// event logs in a cache. The log will be discarded at the end of the ttl.
-    pub log_ttl: Duration,
-    /// interval between 2 garbage collection check logs
-    pub garbage_collection_interval: Duration,
+    /// the number of entries allowed in the leadership logs, beyond this point
+    /// the least recently used log will be erased from the logs for a new one
+    /// to be inserted.
+    pub logs_capacity: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -235,8 +234,7 @@ impl Default for P2pConfig {
 impl Default for Leadership {
     fn default() -> Self {
         Leadership {
-            log_ttl: Duration::new(3600, 0),
-            garbage_collection_interval: Duration::new(3600 / 4, 0),
+            logs_capacity: 1_024,
         }
     }
 }
