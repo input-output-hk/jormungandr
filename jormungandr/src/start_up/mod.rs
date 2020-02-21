@@ -191,10 +191,9 @@ pub fn prepare_block_0(
 pub fn load_blockchain(
     block0: Block,
     storage: Storage,
-    block_cache_ttl: Duration,
     logger: &Logger,
 ) -> Result<(Blockchain, Tip), Error> {
-    let blockchain = Blockchain::new(block0.header.hash(), storage, block_cache_ttl);
+    let blockchain = Blockchain::new(block0.header.hash(), storage);
 
     let mut rt = tokio02::runtime::Runtime::new().unwrap();
     rt.block_on(async {

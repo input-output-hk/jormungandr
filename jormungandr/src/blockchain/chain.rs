@@ -61,7 +61,7 @@ use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_storage_sqlite_old::Error as StorageError;
 use chain_time::TimeFrame;
 use slog::Logger;
-use std::{convert::Infallible, sync::Arc, time::Duration};
+use std::{convert::Infallible, sync::Arc};
 use tokio::prelude::{future as future01, future::Either as Either01, Future as Future01};
 use tokio02::stream::StreamExt;
 use tokio_compat::prelude::*;
@@ -260,10 +260,10 @@ impl AppliedBlock {
 }
 
 impl Blockchain {
-    pub fn new(block0: HeaderHash, storage: Storage, ref_cache_ttl: Duration) -> Self {
+    pub fn new(block0: HeaderHash, storage: Storage) -> Self {
         Blockchain {
             branches: Branches::new(),
-            ref_cache: RefCache::new(ref_cache_ttl),
+            ref_cache: RefCache::new(),
             ledgers: Multiverse::new(),
             storage,
             block0,
