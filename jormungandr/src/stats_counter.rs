@@ -1,7 +1,8 @@
 use chain_impl_mockchain::block::Block;
 use jormungandr_lib::time::SecondsSinceUnixEpoch;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio02::sync::RwLock;
 use std::time::Instant;
 
 const SLOT_START_TIME_UNDEFINED: u64 = u64::max_value();
@@ -73,11 +74,11 @@ impl StatsCounter {
         .map(SecondsSinceUnixEpoch::from_secs)
     }
 
-    pub fn set_tip_block(&self, block: Option<Block>) {
-        *self.stats.tip_block.write().unwrap() = Arc::new(block);
+    pub async fn set_tip_block(&self, block: Option<Block>) {
+        *self.stats.tip_block.write().await = Arc::new(block);
     }
 
-    pub fn get_tip_block(&self) -> Arc<Option<Block>> {
-        self.stats.tip_block.read().unwrap().clone()
+    pub async fn get_tip_block(&self) -> Arc<Option<Block>> {
+        self.stats.tip_block.read().await.clone()
     }
 }

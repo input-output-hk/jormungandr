@@ -406,7 +406,7 @@ async fn process_leadership_block(
         .map_err(|_| "cannot remove fragments from pool".to_string())?;
 
     // Track block as new new tip block
-    stats_counter.set_tip_block(Some(block.clone()));
+    stats_counter.set_tip_block(Some(block.clone())).await;
 
     process_and_propagate_new_ref(
         &logger,
@@ -546,7 +546,7 @@ async fn process_network_blocks(
                     Ok(Some(r)) => {
                         stats_counter.add_block_recv_cnt(1);
                         // Track block as new new tip block
-                        stats_counter.set_tip_block(Some(block.clone()));
+                        stats_counter.set_tip_block(Some(block.clone())).await;
                         stream = new_stream;
                         candidate = Some(r);
                     }

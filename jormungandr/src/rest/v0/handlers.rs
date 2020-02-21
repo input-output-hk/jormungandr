@@ -121,7 +121,7 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
-    let header_block = context.stats_counter.get_tip_block();
+    let header_block = context.stats_counter.get_tip_block().await;
     header_block
         .as_ref()
         .as_ref()
