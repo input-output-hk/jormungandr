@@ -115,20 +115,16 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 
 pub(super) mod internal {
     use super::*;
-    use crate::fragment::PoolEntry;
     use lru::LruCache;
-    use std::{collections::VecDeque, sync::Arc};
 
     pub struct Pool {
-        entries: LruCache<FragmentId, (Arc<PoolEntry>, Fragment)>,
-        entries_by_time: VecDeque<FragmentId>,
+        entries: LruCache<FragmentId, Fragment>,
     }
 
     impl Pool {
         pub fn new(max_entries: usize) -> Self {
             Pool {
                 entries: LruCache::new(max_entries),
-                entries_by_time: VecDeque::new(),
             }
         }
 
@@ -138,10 +134,7 @@ pub(super) mod internal {
             if self.entries.contains(&fragment_id) {
                 None
             } else {
-                let pool_entry = Arc::new(PoolEntry::new(&fragment));
-                self.entries
-                    .put(fragment_id, (pool_entry, fragment.clone()));
-                self.entries_by_time.push_back(fragment_id);
+                self.entries.put(fragment_id, fragment.clone());
                 Some(fragment)
             }
         }
@@ -157,34 +150,14 @@ pub(super) mod internal {
                 .collect()
         }
 
-        pub fn remove(&mut self, fragment_id: &FragmentId) -> Option<Fragment> {
-            if let Some((_, fragment)) = self.entries.pop(fragment_id) {
-                self.entries_by_time
-                    .iter()
-                    .position(|id| id == fragment_id)
-                    .map(|position| {
-                        self.entries_by_time.remove(position);
-                    });
-                Some(fragment)
-            } else {
-                None
-            }
-        }
-
         pub fn remove_all(&mut self, fragment_ids: impl IntoIterator<Item = FragmentId>) {
-            // TODO fix terrible performance, entries_by_time are linear searched N times
             for fragment_id in fragment_ids {
-                self.remove(&fragment_id);
+                self.entries.pop(&fragment_id);
             }
         }
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
-            let fragment_id = self.entries_by_time.pop_front()?;
-            let (_, fragment) = self
-                .entries
-                .pop(&fragment_id)
-                .expect("Pool lost fragment ID consistency");
-            Some(fragment)
+            self.entries.pop_lru().map(|(_, value)| value)
         }
     }
 }
