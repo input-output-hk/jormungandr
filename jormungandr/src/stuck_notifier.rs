@@ -12,7 +12,6 @@ pub async fn check_last_block_time(
     check_interval: Duration,
 ) {
     let logger = service_info.logger().clone();
-    let err_logger = logger.clone();
 
     // those are different values, because check_interval can be big
     // (30 minutes) and the notification may remain unseen
