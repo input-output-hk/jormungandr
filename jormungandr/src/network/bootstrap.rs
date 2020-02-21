@@ -1,5 +1,5 @@
 use super::{grpc, BlockConfig};
-use crate::blockcfg::{Block, HeaderHash};
+use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::{Peer, Protocol};
 use chain_core::property::HasHeader;
@@ -25,7 +25,7 @@ pub enum Error {
     Connect { source: grpc::ConnectError },
     #[error("connection broken")]
     ClientNotReady { source: NetworkError },
-    #[error("peers not available broken")]
+    #[error("peers not available {source}")]
     PeersNotAvailable { source: NetworkError },
     #[error("bootstrap pull request failed")]
     PullRequestFailed { source: NetworkError },
@@ -90,7 +90,7 @@ pub fn bootstrap_from_peer(
     tip: Tip,
     logger: Logger,
 ) -> Result<(), Error> {
-    info!(logger, "connecting to bootstrap peer {}", peer.connection);
+    debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
     let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
 
@@ -107,7 +107,7 @@ pub fn bootstrap_from_peer(
                 .map_err(|e| Error::GetCheckpointsFailed { source: e }),
         )
         .and_then(move |(mut client, checkpoints)| {
-            debug!(
+            info!(
                 logger,
                 "pulling blocks starting from checkpoints: {:?}", checkpoints
             );
@@ -118,6 +118,71 @@ pub fn bootstrap_from_peer(
         });
 
     runtime.block_on(bootstrap)
+}
+
+struct BootstrapInfo {
+    last_reported: std::time::SystemTime,
+    last_bytes_received: u64,
+    bytes_received: u64,
+    block_received: u64,
+    last_block_description: Option<HeaderDesc>,
+}
+
+impl BootstrapInfo {
+    pub fn new() -> Self {
+        let now = std::time::SystemTime::now();
+        let lbd: Option<HeaderDesc> = None;
+        BootstrapInfo {
+            last_reported: now,
+            last_bytes_received: 0,
+            bytes_received: 0,
+            block_received: 0,
+            last_block_description: lbd,
+        }
+    }
+
+    pub fn append_block(&mut self, b: &Block) {
+        use chain_core::property::Serialize;
+        self.bytes_received += b.serialize_as_vec().unwrap().len() as u64; // TODO sad serialization back
+        self.block_received += 1;
+        self.last_block_description = Some(b.header.description());
+    }
+
+    pub fn report(&mut self, logger: &Logger) {
+        fn print_sz(n: f64) -> String {
+            if n > 1_000_000.0 {
+                format!("{:.2}mb", n / (1024 * 1024) as f64)
+            } else if n > 1_000.0 {
+                format!("{:.2}kb", n / 1024 as f64)
+            } else {
+                format!("{:.2}b", n)
+            }
+        }
+        let current = std::time::SystemTime::now();
+        let time_diff = current.duration_since(self.last_reported);
+        let bytes_diff = self.bytes_received - self.last_bytes_received;
+
+        let bytes = print_sz(bytes_diff as f64);
+        let kbs = time_diff
+            .map(|td| {
+                let v = (bytes_diff as f64) / td.as_secs_f64();
+                print_sz(v)
+            })
+            .unwrap_or("N/A".to_string());
+
+        self.last_reported = current;
+        self.last_bytes_received = self.bytes_received;
+        info!(
+            logger,
+            "receiving from network bytes={} {}/s, blockchain {}",
+            bytes,
+            kbs,
+            self.last_block_description
+                .as_ref()
+                .map(|lbd| lbd.to_string())
+                .expect("append_block should always be called before report")
+        )
+    }
 }
 
 fn bootstrap_from_stream<S>(
@@ -139,29 +204,38 @@ where
         .skip_while(move |block| Ok(block.header.hash() == block0))
         .then(|res| Ok(res))
         .fold(
-            None,
-            move |parent_tip: Option<Arc<Ref>>, block_or_err| match block_or_err {
-                Ok(block) => {
-                    let fut = handle_block_old(blockchain.clone(), block, logger.clone()).map(Some);
-                    Either::A(fut)
-                }
-                Err(e) => {
-                    let fut = if let Some(parent_tip) = parent_tip {
-                        Either::A(process_new_ref_old(
-                            logger.clone(),
-                            blockchain.clone(),
-                            branch.clone(),
-                            parent_tip.clone(),
-                        ))
-                    } else {
-                        Either::B(future::ok(()))
+            (BootstrapInfo::new(), None),
+            move |(mut bi, parent_tip): (BootstrapInfo, Option<Arc<Ref>>), block_or_err| {
+                match block_or_err {
+                    Ok(block) => {
+                        const PROCESS_LOGGING_DISTANCE: u64 = 2500;
+                        bi.append_block(&block);
+                        if bi.block_received % PROCESS_LOGGING_DISTANCE == 0 {
+                            bi.report(&logger)
+                        }
+
+                        let fut = handle_block_old(blockchain.clone(), block, logger.clone())
+                            .map(move |aref| (bi, Some(aref)));
+                        Either::A(fut)
                     }
-                    .then(|_| Err(Error::PullStreamFailed { source: e }));
-                    Either::B(fut)
+                    Err(e) => {
+                        let fut = if let Some(parent_tip) = parent_tip {
+                            Either::A(process_new_ref_old(
+                                logger.clone(),
+                                blockchain.clone(),
+                                branch.clone(),
+                                parent_tip.clone(),
+                            ))
+                        } else {
+                            Either::B(future::ok(()))
+                        }
+                        .then(|_| Err(Error::PullStreamFailed { source: e }));
+                        Either::B(fut)
+                    }
                 }
             },
         )
-        .and_then(move |maybe_new_tip| {
+        .and_then(move |(_, maybe_new_tip)| {
             if let Some(new_tip) = maybe_new_tip {
                 Either::A(
                     process_new_ref_old(logger2, blockchain2, branch2, new_tip.clone())
