@@ -16,8 +16,6 @@ struct EnclaveLeadersWithCache {
 #[derive(Clone)]
 pub struct Enclave {
     leaders_data: Arc<RwLock<EnclaveLeadersWithCache>>,
-    //    leaders: Arc<RwLock<BTreeMap<LeaderId, Leader>>>,
-    //    added_leaders_cache: Arc<RwLock<HashMap<String, LeaderId>>>,
 }
 
 pub struct LeaderEvent {
