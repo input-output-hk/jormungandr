@@ -4,14 +4,16 @@ use crate::{
     common::{
         configuration::jormungandr_config::JormungandrConfig,
         jcli_wrapper,
-        jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
+        jormungandr::{
+            storage_loading_benchmark_from_log, ConfigurationBuilder, JormungandrProcess, Starter,
+            StartupVerificationMode,
+        },
         process_utils::WaitBuilder,
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
 use jormungandr_lib::{interfaces::TrustedPeer, wallet::Wallet};
-use std::env;
-use std::time::Duration;
+use std::{env, time::Duration};
 
 #[derive(Clone, Debug)]
 pub struct TestnetConfig {
@@ -128,11 +130,44 @@ fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> 
 #[test]
 pub fn itn_bootstrap() {
     let testnet_config = TestnetConfig::new_itn();
+    let jormungandr_config = testnet_config.make_config();
 
-    let _jormungandr = Starter::new()
-        .config(testnet_config.make_config())
+    // start from itn trusted peers
+    let jormungandr_from_trusted_peers = Starter::new()
+        .config(jormungandr_config.clone())
         .timeout(Duration::from_secs(4000))
         .benchmark("passive_node_itn_bootstrap")
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+    jormungandr_from_trusted_peers.shutdown();
+
+    // start from storage
+    let jormungandr_from_storage = Starter::new()
+        .config(jormungandr_config.clone())
+        .timeout(Duration::from_secs(4000))
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    storage_loading_benchmark_from_log(
+        &jormungandr_from_storage.logger,
+        "passive_node_itn_loading_from_storage",
+        Duration::from_secs(400),
+    )
+    .print();
+
+    let config = ConfigurationBuilder::new()
+        .with_block_hash(testnet_config.block0_hash())
+        .with_trusted_peers(vec![jormungandr_from_storage.as_trusted_peer()])
+        .build();
+
+    let jormungandr_from_local_trusted_peer = Starter::new()
+        .config(config)
+        .timeout(Duration::from_secs(4000))
+        .benchmark("passive_node_from_trusted_peer_itn_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
