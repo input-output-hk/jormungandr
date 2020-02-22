@@ -12,6 +12,10 @@ use std::{
     process::{Child, Command},
     time::{Duration, Instant},
 };
+use std::{
+    process::{Output, Stdio},
+    thread, time,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -72,6 +76,8 @@ impl StartupVerification for RestStartupVerification {
 
     fn if_succeed(&self) -> bool {
         let output = jcli_commands::get_rest_stats_command(&self.config.get_node_address())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .unwrap()
             .wait_with_output()
