@@ -80,6 +80,13 @@ impl SpeedBenchmarkFinish {
     pub fn print(&self) {
         println!("{}", &self);
     }
+
+    pub fn new(definition: SpeedBenchmarkDef, speed: Speed) -> Self {
+        Self {
+            definition: definition,
+            speed: speed,
+        }
+    }
 }
 
 impl fmt::Display for SpeedBenchmarkFinish {

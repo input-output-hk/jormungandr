@@ -56,7 +56,7 @@ impl EnduranceBenchmarkRun {
         let stop_marker = Timestamp::from(SystemTime::now());
         EnduranceBenchmarkFinish {
             definition: self.definition.clone(),
-            endurance: Endurance::new(&stop_marker, &self.start_marker),
+            endurance: Endurance::new(&self.start_marker, &stop_marker),
         }
     }
 
