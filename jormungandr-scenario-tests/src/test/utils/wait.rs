@@ -1,4 +1,4 @@
-use jormungandr_lib::testing::Thresholds;
+use jormungandr_lib::testing::{Speed, Thresholds};
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
@@ -56,38 +56,41 @@ impl SyncWaitParams {
     }
 }
 
-impl Into<Thresholds<Duration>> for SyncWaitParams {
-    fn into(self) -> Thresholds<Duration> {
+impl Into<Thresholds<Speed>> for SyncWaitParams {
+    fn into(self) -> Thresholds<Speed> {
+        let grace_coeff = 2;
+
         match self {
             SyncWaitParams::WithDisruption {
                 no_of_nodes,
                 restart_coeff,
             } => {
-                let green = Duration::from_secs(no_of_nodes * restart_coeff);
-                let yellow = Duration::from_secs(no_of_nodes * restart_coeff * 2);
-                let red = Duration::from_secs(no_of_nodes * restart_coeff * 3);
-                let timeout = Duration::from_secs(no_of_nodes * restart_coeff * 4);
+                let green = Duration::from_secs(no_of_nodes * restart_coeff) * grace_coeff;
+                let yellow = Duration::from_secs(no_of_nodes * restart_coeff * 2) * grace_coeff;
+                let red = Duration::from_secs(no_of_nodes * restart_coeff * 3) * grace_coeff;
+                let timeout = Duration::from_secs(no_of_nodes * restart_coeff * 4) * grace_coeff;
 
-                Thresholds::<Duration>::new(green, yellow, red, timeout)
+                Thresholds::<Speed>::new(green.into(), yellow.into(), red.into(), timeout.into())
             }
             SyncWaitParams::Standard {
                 no_of_nodes,
                 longest_path_length,
             } => {
-                let green = Duration::from_secs(no_of_nodes);
-                let yellow = Duration::from_secs(no_of_nodes + longest_path_length);
-                let red = Duration::from_secs(no_of_nodes + longest_path_length * 2);
-                let timeout = Duration::from_secs(no_of_nodes * 2 + longest_path_length * 2);
+                let green = Duration::from_secs(no_of_nodes) * grace_coeff;
+                let yellow = Duration::from_secs(no_of_nodes + longest_path_length) * grace_coeff;
+                let red = Duration::from_secs(no_of_nodes + longest_path_length * 2) * grace_coeff;
+                let timeout =
+                    Duration::from_secs(no_of_nodes * 2 + longest_path_length * 2) * grace_coeff;
 
-                Thresholds::<Duration>::new(green, yellow, red, timeout)
+                Thresholds::<Speed>::new(green.into(), yellow.into(), red.into(), timeout.into())
             }
             SyncWaitParams::ZeroWait => {
                 let duration = Duration::from_secs(0);
-                Thresholds::<Duration>::new(
-                    duration.clone(),
-                    duration.clone(),
-                    duration.clone(),
-                    duration.clone(),
+                Thresholds::<Speed>::new(
+                    duration.clone().into(),
+                    duration.clone().into(),
+                    duration.clone().into(),
+                    duration.clone().into(),
                 )
             }
         }

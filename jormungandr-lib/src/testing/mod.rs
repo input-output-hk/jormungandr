@@ -2,6 +2,8 @@
 mod measurement;
 
 pub use measurement::{
-    thresholds_for_transaction_counter, thresholds_for_transaction_duration,
-    thresholds_for_transaction_endurance, Measurement, Status, Thresholds,
+    benchmark_efficiency, benchmark_endurance, benchmark_speed, EfficiencyBenchmarkDef,
+    EfficiencyBenchmarkFinish, EfficiencyBenchmarkRun, Endurance, EnduranceBenchmarkDef,
+    EnduranceBenchmarkFinish, EnduranceBenchmarkRun, Speed, SpeedBenchmarkDef, SpeedBenchmarkRun,
+    Thresholds,
 };

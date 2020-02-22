@@ -24,13 +24,45 @@ pub struct TestnetConfig {
 }
 
 impl TestnetConfig {
-    pub fn new() -> Self {
-        let actor_account_private_key = env::var("ACCOUNT_SK").expect("ACCOUNT_SK env is not set");
-        let block0_hash = env::var("BLOCK0_HASH").expect("BLOCK0_HASH env is not set");
-        let public_ip = env::var("PUBLIC_IP").expect("PUBLIC_IP env is not set");
-        let public_port = env::var("PUBLIC_PORT").expect("PUBLIC_PORT env is not set");
-        let listen_port = env::var("LISTEN_PORT").expect("LISTEN_PORT env is not set");
-        let trusted_peers = Self::initialize_trusted_peers();
+    pub fn new_itn() -> Self {
+        Self::new("ITN")
+    }
+
+    pub fn new_qa() -> Self {
+        Self::new("QA")
+    }
+
+    pub fn new_nightly() -> Self {
+        Self::new("NIGHTLY")
+    }
+
+    pub fn new(prefix: &str) -> Self {
+        let actor_account_private_key_var_name = format!("{}_ACCOUNT_SK", prefix);
+        let actor_account_private_key = env::var(actor_account_private_key_var_name.clone())
+            .expect(&format!(
+                "{} env is not set",
+                actor_account_private_key_var_name
+            ));
+
+        let block_hash_var_name = format!("{}_BLOCK0_HASH", prefix);
+        let block0_hash = env::var(block_hash_var_name.clone()).expect(&format!(
+            "{} env is not set",
+            actor_account_private_key_var_name
+        ));
+
+        let public_ip_var_name = "PUBLIC_IP";
+        let public_ip = env::var(public_ip_var_name.clone())
+            .expect(&format!("{} env is not set", public_ip_var_name));
+
+        let public_port_var_name = "PUBLIC_PORT";
+        let public_port = env::var(public_port_var_name.clone())
+            .expect(&format!("{} env is not set", public_port_var_name));
+
+        let listen_port_var_name = "LISTEN_PORT";
+        let listen_port = env::var(listen_port_var_name.clone())
+            .expect(&format!("{} env is not set", listen_port_var_name));
+
+        let trusted_peers = Self::initialize_trusted_peers(prefix);
 
         TestnetConfig {
             actor_account_private_key,
@@ -42,11 +74,11 @@ impl TestnetConfig {
         }
     }
 
-    fn initialize_trusted_peers() -> Vec<TrustedPeer> {
+    fn initialize_trusted_peers(prefix: &str) -> Vec<TrustedPeer> {
         let mut trusted_peers = Vec::new();
         for i in 1..10 {
-            let trusted_peer_address = env::var(format!("TRUSTED_PEER_{}_ADDRESS", i));
-            let trusted_peer_id = env::var(format!("TRUSTED_PEER_{}_ID", i));
+            let trusted_peer_address = env::var(format!("{}_TRUSTED_PEER_{}_ADDRESS", prefix, i));
+            let trusted_peer_id = env::var(format!("{}_TRUSTED_PEER_{}_ID", prefix, i));
 
             if trusted_peer_address.is_err() || trusted_peer_id.is_err() {
                 break;
@@ -94,8 +126,51 @@ fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> 
 }
 
 #[test]
+pub fn itn_bootstrap() {
+    let testnet_config = TestnetConfig::new_itn();
+
+    let _jormungandr = Starter::new()
+        .config(testnet_config.make_config())
+        .timeout(Duration::from_secs(4000))
+        .benchmark("passive_node_itn_bootstrap")
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+}
+
+#[test]
+pub fn nightly_bootstrap() {
+    let testnet_config = TestnetConfig::new_nightly();
+
+    let _jormungandr = Starter::new()
+        .config(testnet_config.make_config())
+        .timeout(Duration::from_secs(4000))
+        .benchmark("passive_node_nightly_bootstrap")
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+}
+
+#[test]
+pub fn qa_bootstrap() {
+    let testnet_config = TestnetConfig::new_qa();
+
+    let _jormungandr = Starter::new()
+        .config(testnet_config.make_config())
+        .timeout(Duration::from_secs(4000))
+        .benchmark("passive_node_qa_bootstrap")
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+}
+
+#[test]
+#[ignore]
 pub fn e2e_stake_pool() {
-    let testnet_config = TestnetConfig::new();
+    let testnet_config = TestnetConfig::new_qa();
     let block0_hash = testnet_config.block0_hash();
 
     let jormungandr = Starter::new()

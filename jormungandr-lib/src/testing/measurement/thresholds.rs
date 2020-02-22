@@ -1,9 +1,9 @@
-use super::Status;
-use std::{
-    cmp::{Ordering, PartialEq, PartialOrd},
-    fmt,
-    time::Duration,
+use super::{
+    attribute::{Efficiency, Endurance, Speed},
+    Status,
 };
+
+use std::{cmp::PartialOrd, fmt, time::Duration};
 
 #[derive(Clone, Debug)]
 pub struct Thresholds<T> {
@@ -12,6 +12,17 @@ pub struct Thresholds<T> {
 }
 
 impl<T: PartialOrd + Clone> Thresholds<T> {
+    pub fn new(green: T, yellow: T, red: T, max: T) -> Self {
+        Self {
+            inner_thresholds: vec![
+                (Status::Green, green),
+                (Status::Yellow, yellow),
+                (Status::Red, red),
+            ],
+            max: max,
+        }
+    }
+
     pub fn thresholds(&self) -> &Vec<(Status, T)> {
         &self.inner_thresholds
     }
@@ -48,158 +59,53 @@ impl<T: PartialOrd + Clone> Thresholds<T> {
     }
 }
 
-impl Thresholds<Duration> {
-    pub fn new(green: Duration, yellow: Duration, red: Duration, max: Duration) -> Self {
-        Self {
-            inner_thresholds: vec![
-                (Status::Green, green),
-                (Status::Yellow, yellow),
-                (Status::Red, red),
-            ],
-            max: max,
-        }
-    }
-
-    pub fn status(&self, actual: Duration) -> Status {
-        let green = self.green_threshold();
-        let yellow = self.yellow_threshold();
-
-        if actual <= green {
-            return Status::Green;
-        }
-        if actual <= yellow {
-            return Status::Yellow;
-        }
-        Status::Red
-    }
-}
-
-impl fmt::Display for Thresholds<Duration> {
+impl<T: fmt::Display + Clone + fmt::Debug + std::cmp::PartialOrd> fmt::Display for Thresholds<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Green: {} s. Yellow: {} s. Red: {} s. Abort after: {} s",
-            self.green_threshold().as_secs(),
-            self.yellow_threshold().as_secs(),
-            self.red_threshold().as_secs(),
-            self.max().as_secs()
-        )
-    }
-}
-
-impl Thresholds<u64> {
-    pub fn new(green: u64, yellow: u64, red: u64, max: u64) -> Self {
-        Self {
-            inner_thresholds: vec![
-                (Status::Green, green),
-                (Status::Yellow, yellow),
-                (Status::Red, red),
-            ],
-            max: max,
-        }
-    }
-
-    pub fn status(&self, actual: u64) -> Status {
-        let green = self.green_threshold();
-        let yellow = self.yellow_threshold();
-
-        if actual >= green {
-            return Status::Green;
-        }
-        if actual >= yellow {
-            return Status::Yellow;
-        }
-        Status::Red
-    }
-}
-
-impl fmt::Display for Thresholds<u64> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Max: {}. Green: {}. Yellow: {}. Red: {}.",
-            self.max(),
+            "Green: {} Yellow: {} Red: {} Max: {}",
             self.green_threshold(),
             self.yellow_threshold(),
             self.red_threshold(),
+            self.max()
         )
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Endurance(Duration);
-
-impl From<Duration> for Endurance {
-    fn from(duration: Duration) -> Self {
-        Endurance(duration)
-    }
-}
-
-impl Into<Duration> for Endurance {
-    fn into(self) -> Duration {
-        self.0
-    }
-}
-
-impl PartialOrd for Endurance {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.0.cmp(&other.0))
-    }
-}
-
-impl PartialEq for Endurance {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl fmt::Display for Endurance {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.as_secs())
-    }
-}
-
-impl Endurance {
-    pub fn as_secs(&self) -> u64 {
-        self.0.as_secs()
     }
 }
 
 impl Thresholds<Endurance> {
-    pub fn new(green: Endurance, yellow: Endurance, red: Endurance, max: Endurance) -> Self {
-        Self {
-            inner_thresholds: vec![
-                (Status::Green, green),
-                (Status::Yellow, yellow),
-                (Status::Red, red),
-            ],
-            max: max,
-        }
-    }
-
-    pub fn status(&self, actual: Endurance) -> Status {
-        let green = self.green_threshold();
-        let yellow = self.yellow_threshold();
-
-        if actual >= green {
-            return Status::Green;
-        }
-        if actual >= yellow {
-            return Status::Yellow;
-        }
-        Status::Red
+    pub fn new_endurance(duration: Duration) -> Thresholds<Endurance> {
+        let green = Duration::from_secs(duration.as_secs() / 2);
+        let yellow = Duration::from_secs(duration.as_secs() / 3);
+        let red = Duration::from_secs(duration.as_secs() / 4);
+        Thresholds::<Endurance>::new(
+            green.into(),
+            yellow.into(),
+            red.into(),
+            Duration::from_secs(duration.as_secs()).into(),
+        )
     }
 }
 
-impl fmt::Display for Thresholds<Endurance> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Green: {} s. Yellow: {} s. Red: {} s. Max endurance: {} s",
-            self.green_threshold().as_secs(),
-            self.yellow_threshold().as_secs(),
-            self.red_threshold().as_secs(),
-            self.max().as_secs()
+impl Thresholds<Speed> {
+    pub fn new_speed(duration: Duration) -> Thresholds<Speed> {
+        let green = Duration::from_secs(duration.as_secs() / 2);
+        let yellow = Duration::from_secs(duration.as_secs() / 3);
+        let red = Duration::from_secs(duration.as_secs() / 4);
+        Thresholds::<Speed>::new(
+            green.into(),
+            yellow.into(),
+            red.into(),
+            Duration::from_secs(duration.as_secs()).into(),
         )
+    }
+}
+
+impl Thresholds<Efficiency> {
+    pub fn new_efficiency(target: u32) -> Thresholds<Efficiency> {
+        let green = Efficiency::new(target / 2, target);
+        let yellow = Efficiency::new(target / 3, target);
+        let red = Efficiency::new(target / 4, target);
+        let max = Efficiency::new(target, target);
+        Thresholds::<Efficiency>::new(green, yellow, red, max)
     }
 }

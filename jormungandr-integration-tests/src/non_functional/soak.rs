@@ -6,7 +6,10 @@ use crate::common::{
     startup,
 };
 
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool};
+use jormungandr_lib::{
+    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool},
+    testing::{benchmark_efficiency, benchmark_endurance},
+};
 use std::time::{Duration, SystemTime};
 
 #[test]
@@ -29,7 +32,9 @@ pub fn test_blocks_are_being_created_for_48_hours() {
     )
     .unwrap();
 
-    let now = SystemTime::now();
+    let mut benchmark = endurance_benchmark("test_blocks_are_being_created_for_48_hours")
+        .target(duration_48_hours.clone())
+        .start();
     loop {
         let new_transaction =
             JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
@@ -45,17 +50,20 @@ pub fn test_blocks_are_being_created_for_48_hours() {
         if let Err(err) =
             jcli_wrapper::wait_until_transaction_processed(fragment_id.clone(), &jormungandr, &wait)
         {
-            panic!(format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
+            message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
                 err,
                 fragment_id,
                 jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_address()),
                 jormungandr.logger.get_log_content()
-            ));
+            );
+            benchmark.exception(message.clone()).print();
+            panic!(message.clone());
         }
         sender.confirm_transaction();
 
-        if now.elapsed().unwrap() > duration_48_hours.clone() {
-            break;
+        if benchmark.max_endurance_reached() {
+            benchmark.stop().print();
+            return;
         }
 
         std::mem::swap(&mut sender, &mut receiver);

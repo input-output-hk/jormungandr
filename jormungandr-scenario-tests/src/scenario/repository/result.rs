@@ -1,8 +1,5 @@
-use crate::{
-    scenario::repository::{Measurement, ScenarioStatus},
-    test::Result,
-};
-use std::{any::Any, fmt, time::Duration};
+use crate::{scenario::repository::ScenarioStatus, test::Result};
+use std::{any::Any, fmt};
 
 #[derive(Clone, Debug)]
 pub struct ScenarioResult {

@@ -10,12 +10,12 @@ use super::NodeStuckError;
 use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value},
     testing::{
-        thresholds_for_transaction_counter, thresholds_for_transaction_endurance, Measurement,
+        benchmark_efficiency, benchmark_endurance, EfficiencyBenchmarkDef,
+        EfficiencyBenchmarkFinish, Endurance, Thresholds,
     },
     wallet::Wallet,
 };
-use std::iter;
-use std::time::{Duration, SystemTime};
+use std::{iter, time::Duration};
 
 #[test]
 pub fn test_100_transaction_is_processed_in_10_packs_to_many_accounts() {
@@ -41,20 +41,21 @@ pub fn test_100_transaction_is_processed_in_10_packs_to_single_account() {
 }
 
 fn send_and_measure_100_transaction_in_10_packs_for_recievers(receivers: Vec<Wallet>, info: &str) {
-    let pack_size = 2;
-    let thresholds = thresholds_for_transaction_counter((pack_size * receivers.len()) as u64);
-    let sucessfully_tx_sent_counter =
-        send_100_transaction_in_10_packs_for_recievers(pack_size, receivers) as u64;
-    println!(
-        "{}",
-        Measurement::new(info.to_owned(), sucessfully_tx_sent_counter, thresholds)
-    )
+    let pack_size = 10;
+    let target = (pack_size * receivers.len()) as u32;
+    let efficiency_benchmark_result = send_100_transaction_in_10_packs_for_recievers(
+        pack_size,
+        receivers,
+        benchmark_efficiency(info.to_owned()).target(target),
+    );
+    efficiency_benchmark_result.print();
 }
 
 fn send_100_transaction_in_10_packs_for_recievers(
     iterations_count: usize,
     receivers: Vec<Wallet>,
-) -> usize {
+    efficiency_benchmark_def: &mut EfficiencyBenchmarkDef,
+) -> EfficiencyBenchmarkFinish {
     let mut sender = startup::create_new_account_address();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -67,6 +68,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
     .unwrap();
 
     let output_value = 1 as u64;
+    let mut efficiency_benchmark_run = efficiency_benchmark_def.start();
     for i in 0..iterations_count {
         let transation_messages: Vec<String> = receivers
             .iter()
@@ -88,19 +90,17 @@ fn send_100_transaction_in_10_packs_for_recievers(
             &transation_messages,
             &jormungandr,
         ) {
-            println!("Test finished prematurely, due to: {}", err.to_string());
-            return i * receivers.len();
+            return efficiency_benchmark_run.exception(err.to_string());
         }
+
+        efficiency_benchmark_run.increment_by(receivers.len() as u32);
     }
-    iterations_count * receivers.len()
+    efficiency_benchmark_run.stop()
 }
 
 #[test]
 pub fn test_100_transaction_is_processed_simple() {
     let transaction_max_count = 100;
-    let measurement_name = "test_100_transaction_is_processed_simple";
-    let thresholds = thresholds_for_transaction_counter(transaction_max_count as u64);
-
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
@@ -115,6 +115,9 @@ pub fn test_100_transaction_is_processed_simple() {
     .unwrap();
 
     let output_value = 1 as u64;
+    let mut benchmark = benchmark_efficiency("test_100_transaction_is_processed_simple")
+        .target(transaction_max_count)
+        .start();
 
     for i in 0..transaction_max_count {
         let transaction =
@@ -126,27 +129,21 @@ pub fn test_100_transaction_is_processed_simple() {
                 .assert_to_message();
 
         sender.confirm_transaction();
-        println!("Sending transaction no. {}", i);
+        println!("Sending transaction no. {}", i + 1);
 
-        if let Err(error) =
-            check_transaction_was_processed(transaction.to_owned(), &receiver, i, &jormungandr)
-        {
-            println!("Test finished prematurely, due to: {}", error.to_string());
-            println!(
-                "{}",
-                Measurement::new(measurement_name.to_owned(), i, thresholds)
-            );
+        if let Err(error) = check_transaction_was_processed(
+            transaction.to_owned(),
+            &receiver,
+            i.into(),
+            &jormungandr,
+        ) {
+            benchmark.exception(error.to_string()).print();
             return;
         }
+
+        benchmark.increment();
     }
-    println!(
-        "{}",
-        Measurement::new(
-            measurement_name.to_owned(),
-            transaction_max_count,
-            thresholds
-        )
-    );
+    benchmark.stop().print();
     jcli_wrapper::check_all_transaction_log_shows_in_block(&jormungandr);
 }
 
@@ -189,10 +186,6 @@ fn check_funds_transferred_to(
 
 #[test]
 pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
-    let measurement_name = "test_blocks_are_created_for_more_than_15_minutes";
-    let test_endurance = 900; // 900 s = 15 minutes
-    let thresholds = thresholds_for_transaction_endurance(test_endurance);
-
     let mut sender = startup::create_new_account_address();
     let mut receiver = startup::create_new_account_address();
 
@@ -207,8 +200,10 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     )
     .unwrap();
 
-    let now = SystemTime::now();
     let output_value = 1 as u64;
+    let benchmark = benchmark_endurance("test_blocks_are_created_for_more_than_15_minutes")
+        .target(Duration::from_secs(900))
+        .start();
 
     loop {
         let transaction =
@@ -223,29 +218,20 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
         if let Err(err) =
             super::send_transaction_and_ensure_block_was_produced(&vec![transaction], &jormungandr)
         {
-            println!("Test finished prematurely, due to: {}", err.to_string());
-            println!(
-                "{}",
-                Measurement::new(
-                    measurement_name.to_owned(),
-                    now.elapsed().unwrap().into(),
-                    thresholds
-                )
-            );
+            // temporary threshold for the time issue with transaction stuck is resolved
+            let temporary_threshold =
+                Thresholds::<Endurance>::new_endurance(Duration::from_secs(400));
+            benchmark
+                .exception(err.to_string())
+                .print_with_thresholds(temporary_threshold);
             return;
         }
 
-        if now.elapsed().unwrap().as_secs() > test_endurance {
-            break;
+        if benchmark.max_endurance_reached() {
+            benchmark.stop().print();
+            return;
         }
+
         std::mem::swap(&mut sender, &mut receiver);
     }
-    println!(
-        "{}",
-        Measurement::new(
-            measurement_name.to_owned(),
-            Duration::from_secs(test_endurance).into(),
-            thresholds
-        )
-    );
 }

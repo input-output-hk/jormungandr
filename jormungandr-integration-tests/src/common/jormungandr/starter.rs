@@ -7,6 +7,7 @@ use crate::common::{
     process_assert,
     process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
+use jormungandr_lib::testing::{SpeedBenchmarkDef, SpeedBenchmarkRun};
 use std::{
     process::{Child, Command},
     time::{Duration, Instant},
@@ -124,6 +125,7 @@ pub struct Starter {
     explorer_enabled: bool,
     on_fail: OnFail,
     config: Option<JormungandrConfig>,
+    benchmark: Option<SpeedBenchmarkDef>,
 }
 
 impl Starter {
@@ -136,6 +138,7 @@ impl Starter {
             explorer_enabled: false,
             on_fail: OnFail::RetryUnlimitedOnPortOccupied,
             config: None,
+            benchmark: None,
         }
     }
 
@@ -146,6 +149,11 @@ impl Starter {
 
     pub fn passive(&mut self) -> &mut Self {
         self.role = Role::Passive;
+        self
+    }
+
+    pub fn benchmark(&mut self, name: &str) -> &mut Self {
+        self.benchmark = Some(SpeedBenchmarkDef::new(name.to_owned()));
         self
     }
 
@@ -181,9 +189,22 @@ impl Starter {
         self.config.as_ref().unwrap().clone()
     }
 
+    pub fn start_benchmark_run(&self) -> Option<SpeedBenchmarkRun> {
+        match &self.benchmark {
+            Some(benchmark_def) => Some(benchmark_def.clone().target(self.timeout).start()),
+            None => None,
+        }
+    }
+
+    pub fn finish_benchmark(&self, benchmark_run: Option<SpeedBenchmarkRun>) {
+        if let Some(benchmark_run) = benchmark_run {
+            benchmark_run.stop().print();
+        }
+    }
+
     pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
         let mut config = self.build_configuration();
-
+        let benchmark = self.start_benchmark_run();
         let mut retry_counter = 1;
         loop {
             let mut command = self.get_command(&config);
@@ -194,7 +215,10 @@ impl Starter {
                 .expect("failed to execute 'start jormungandr node'");
 
             match (self.verify_is_up(process, &config), self.on_fail) {
-                (Ok(jormungandr_process), _) => return Ok(jormungandr_process),
+                (Ok(jormungandr_process), _) => {
+                    self.finish_benchmark(benchmark);
+                    return Ok(jormungandr_process);
+                }
 
                 (
                     Err(StartupError::PortAlreadyInUse { .. }),
