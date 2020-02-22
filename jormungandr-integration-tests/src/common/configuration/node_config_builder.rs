@@ -108,6 +108,11 @@ impl NodeConfigBuilder {
         self
     }
 
+    pub fn with_storage(&mut self, path: PathBuf) -> &mut Self {
+        self.storage = Some(path);
+        self
+    }
+
     pub fn build(&self) -> NodeConfig {
         NodeConfig {
             storage: self.storage.clone(),
