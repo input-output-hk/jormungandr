@@ -71,9 +71,11 @@ impl StartupVerification for RestStartupVerification {
     }
 
     fn if_succeed(&self) -> bool {
-        let output = process_utils::run_process_and_get_output(
-            jcli_commands::get_rest_stats_command(&self.config.get_node_address()),
-        );
+        let output = jcli_commands::get_rest_stats_command(&self.config.get_node_address())
+            .spawn()
+            .unwrap()
+            .wait_with_output()
+            .expect("failed to execute get_rest_stats command");
 
         let content_result = output.try_as_single_node_yaml();
         if content_result.is_err() {
@@ -209,6 +211,7 @@ impl Starter {
         loop {
             let mut command = self.get_command(&config);
             println!("Starting node with configuration : {:?}", &config);
+            println!("Bootstrapping...");
 
             let process = command
                 .spawn()
