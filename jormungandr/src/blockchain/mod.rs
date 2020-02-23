@@ -34,6 +34,6 @@ pub use self::{
     multiverse::Multiverse,
     process::{process_new_ref_owned, Process},
     reference::Ref,
-    storage::Storage,
+    storage::{Storage, StorageSyncQueryExecutor},
     tip::Tip,
 };

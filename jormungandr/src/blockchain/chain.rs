@@ -524,7 +524,7 @@ impl Blockchain {
         post_checked_header: PostCheckedHeader,
         block: Block,
     ) -> Result<AppliedBlock> {
-        let storage = self.storage.back_to_the_future().clone();
+        let mut storage = self.storage.back_to_the_future().clone();
         let block_ref = self.apply_block(post_checked_header, &block).await?;
         let res = storage.put_block(block).await;
         match res {
@@ -628,7 +628,7 @@ impl Blockchain {
 
         let block0_branch = self.apply_block0(&block0).await?;
 
-        let storage = self.storage.clone();
+        let mut storage = self.storage.clone();
 
         storage
             .put_block(block0)

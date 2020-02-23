@@ -446,7 +446,11 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     if let Some(context) = rest_context.as_ref() {
         block_on(context.set_node_state(NodeState::PreparingStorage))
     }
-    let storage = start_up::prepare_storage(&settings, &init_logger)?;
+
+    let (storage, storage_query_executor) = start_up::prepare_storage(&settings, &init_logger)?;
+    services.spawn_future_std("storage sync queries", |_info| async move {
+        storage_query_executor.start().await;
+    });
 
     // TODO: load network module here too (if needed)
 

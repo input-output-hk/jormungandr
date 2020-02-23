@@ -3,7 +3,9 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::{Block, HeaderId},
-    blockchain::{Blockchain, ErrorKind as BlockchainError, Storage, Tip},
+    blockchain::{
+        Blockchain, ErrorKind as BlockchainError, Storage, StorageSyncQueryExecutor, Tip,
+    },
     log, network,
     settings::start::Settings,
 };
@@ -16,7 +18,10 @@ pub type NodeStorageConnection = BlockStoreConnection<Block>;
 
 /// prepare the block storage from the given settings
 ///
-pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, Error> {
+pub fn prepare_storage(
+    setting: &Settings,
+    logger: &Logger,
+) -> Result<(Storage, StorageSyncQueryExecutor), Error> {
     let raw_block_store = match &setting.storage {
         None => {
             info!(logger, "storing blockchain in memory");

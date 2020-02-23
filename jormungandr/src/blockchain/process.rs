@@ -299,7 +299,7 @@ pub async fn process_new_ref(
     candidate: Arc<Ref>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
-    let storage = blockchain.storage().clone();
+    let mut storage = blockchain.storage().clone();
 
     let tip_ref = tip.get_ref_std().await;
 

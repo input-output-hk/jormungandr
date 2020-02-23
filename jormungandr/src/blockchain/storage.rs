@@ -5,11 +5,17 @@ use crate::{
 };
 use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Stream as Stream01};
-use futures03::{compat::Compat, prelude::*, ready, stream::FusedStream};
+use futures03::{
+    channel::{mpsc, oneshot},
+    compat::Compat,
+    prelude::*,
+    ready,
+    stream::FusedStream,
+};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use r2d2::{ManageConnection, Pool};
 use slog::Logger;
-use tokio02::{sync::Mutex, task::spawn_blocking};
+use tokio02::task::spawn_blocking;
 
 use std::convert::identity;
 use std::error::Error;
@@ -22,6 +28,8 @@ const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
 // How many stream items to leave unaccounted for in PumpedStream
 // before priming the pump again.
 const PUMP_PRESSURE_MARGIN: usize = 4;
+
+const SYNC_QUERIES_CHANNEL_BOUND: usize = 32;
 
 pub use chain_storage_sqlite_old::Error as StorageError;
 
@@ -105,14 +113,7 @@ impl ManageConnection for ConnectionManager {
 #[derive(Clone)]
 pub struct Storage03 {
     pool: Pool<ConnectionManager>,
-
-    // All write operations must be performed only via this lock. The lock helps
-    // us to ensure that all of the write operations are performed in the right
-    // sequence. Otherwise they can be performed out of the expected order (for
-    // example, by different tokio executors) which eventually leads to a panic
-    // because the block data would be inconsistent at the time of a write.
-    write_lock: Arc<Mutex<()>>,
-
+    sync_queries_sender: mpsc::Sender<Query>,
     logger: Logger,
 }
 
@@ -156,17 +157,83 @@ enum StreamingError {
     ),
 }
 
+enum Query {
+    PutBlock(Block, oneshot::Sender<Result<(), StorageError>>),
+    PutTag(
+        String,
+        HeaderHash,
+        oneshot::Sender<Result<(), StorageError>>,
+    ),
+}
+
+pub struct StorageSyncQueryExecutor {
+    queries: mpsc::Receiver<Query>,
+    pool: Pool<ConnectionManager>,
+}
+
+impl StorageSyncQueryExecutor {
+    pub async fn start(self) {
+        let StorageSyncQueryExecutor { mut queries, pool } = self;
+
+        let mut queries = stream::poll_fn(move |cx| {
+            let mut queries_vec = Vec::new();
+            loop {
+                let queries_queue = Pin::new(&mut queries);
+                match queries_queue.poll_next(cx) {
+                    Poll::Ready(Some(query)) => queries_vec.push(query),
+                    Poll::Ready(None) => return Poll::Ready(None),
+                    Poll::Pending => {
+                        if queries_vec.is_empty() {
+                            return Poll::Pending;
+                        }
+                        return Poll::Ready(Some(queries_vec));
+                    }
+                }
+            }
+        });
+
+        while let Some(queries_chunk) = queries.next().await {
+            let _ = run_blocking_with_connection(pool.clone(), move |connection| {
+                for query in queries_chunk {
+                    match query {
+                        Query::PutBlock(block, callback) => {
+                            let _ = callback.send(match connection.put_block(&block) {
+                                Err(StorageError::BlockNotFound) => unreachable!(),
+                                Err(e) => Err(e),
+                                Ok(()) => Ok(()),
+                            });
+                        }
+                        Query::PutTag(tag, header_hash, callback) => {
+                            let _ = callback.send(connection.put_tag(&tag, &header_hash));
+                        }
+                    }
+                }
+                Ok::<_, StorageError>(())
+            })
+            .await;
+        }
+    }
+}
+
 impl Storage03 {
-    pub fn new(storage: NodeStorage, logger: Logger) -> Self {
+    pub fn new(storage: NodeStorage, logger: Logger) -> (Self, StorageSyncQueryExecutor) {
         let manager = ConnectionManager::new(storage);
         let pool = Pool::builder().build(manager).unwrap();
-        let write_lock = Arc::new(Mutex::new(()));
+        let (sync_queries_sender, sync_queries_receiver) =
+            mpsc::channel(SYNC_QUERIES_CHANNEL_BOUND);
 
-        Storage03 {
+        let sync_query_executor = StorageSyncQueryExecutor {
+            queries: sync_queries_receiver,
+            pool: pool.clone(),
+        };
+
+        let storage = Storage03 {
             pool,
-            write_lock,
+            sync_queries_sender,
             logger,
-        }
+        };
+
+        (storage, sync_query_executor)
     }
 
     async fn run<F, T, E>(&self, f: F) -> Result<T, E>
@@ -183,10 +250,17 @@ impl Storage03 {
         self.run(move |connection| connection.get_tag(&tag)).await
     }
 
-    pub async fn put_tag(&self, tag: String, header_hash: HeaderHash) -> Result<(), StorageError> {
-        let _write_lock = self.write_lock.lock().await;
-        self.run(move |connection| connection.put_tag(&tag, &header_hash))
+    pub async fn put_tag(
+        &mut self,
+        tag: String,
+        header_hash: HeaderHash,
+    ) -> Result<(), StorageError> {
+        let (tx, rx) = oneshot::channel();
+        self.sync_queries_sender
+            .send(Query::PutTag(tag, header_hash, tx))
             .await
+            .unwrap();
+        rx.await.unwrap()
     }
 
     pub async fn get(&self, header_hash: HeaderHash) -> Result<Option<Block>, StorageError> {
@@ -221,14 +295,13 @@ impl Storage03 {
         .await
     }
 
-    pub async fn put_block(&self, block: Block) -> Result<(), StorageError> {
-        let _write_lock = self.write_lock.lock().await;
-        self.run(move |connection| match connection.put_block(&block) {
-            Err(StorageError::BlockNotFound) => unreachable!(),
-            Err(e) => Err(e),
-            Ok(()) => Ok(()),
-        })
-        .await
+    pub async fn put_block(&mut self, block: Block) -> Result<(), StorageError> {
+        let (tx, rx) = oneshot::channel();
+        self.sync_queries_sender
+            .send(Query::PutBlock(block, tx))
+            .await
+            .unwrap();
+        rx.await.unwrap()
     }
 
     /// Return values:
@@ -390,10 +463,15 @@ impl Storage {
         &self.inner
     }
 
-    pub fn new(storage: NodeStorage, logger: Logger) -> Self {
-        Self {
-            inner: Storage03::new(storage, logger),
-        }
+    pub fn new(storage: NodeStorage, logger: Logger) -> (Self, StorageSyncQueryExecutor) {
+        let (storage_wrapper, sync_query_executor) = Storage03::new(storage, logger);
+
+        (
+            Self {
+                inner: storage_wrapper,
+            },
+            sync_query_executor,
+        )
     }
 
     pub fn get_tag(
@@ -405,11 +483,11 @@ impl Storage {
     }
 
     pub fn put_tag(
-        &self,
+        &mut self,
         tag: String,
         header_hash: HeaderHash,
     ) -> impl Future01<Item = (), Error = StorageError> {
-        let inner = self.inner.clone();
+        let mut inner = self.inner.clone();
         Compat::new(Box::pin(
             async move { inner.put_tag(tag, header_hash).await },
         ))
@@ -443,8 +521,8 @@ impl Storage {
         ))
     }
 
-    pub fn put_block(&self, block: Block) -> impl Future01<Item = (), Error = StorageError> {
-        let inner = self.inner.clone();
+    pub fn put_block(&mut self, block: Block) -> impl Future01<Item = (), Error = StorageError> {
+        let mut inner = self.inner.clone();
         Compat::new(Box::pin(async move { inner.put_block(block).await }))
     }
 
