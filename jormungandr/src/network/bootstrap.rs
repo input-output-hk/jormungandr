@@ -1,7 +1,7 @@
 use super::{grpc, BlockConfig};
 use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
-use crate::settings::start::network::{Peer, Protocol};
+use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
 use network_core::client::{BlockService, Client as _, GossipService};
 use network_core::error::Error as NetworkError;
@@ -10,7 +10,6 @@ use slog::Logger;
 use thiserror::Error;
 use tokio::prelude::future::Either;
 use tokio::prelude::*;
-use tokio_compat::prelude::*;
 use tokio_compat::runtime::Runtime;
 
 use std::fmt::Debug;
@@ -54,7 +53,7 @@ pub fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>,
     );
 
     let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
-    let bootstrap = grpc::connect(peer.address(), None, runtime.executor())
+    let bootstrap = grpc::connect(&peer, None, runtime.executor())
         .map_err(|e| Error::Connect { source: e })
         .and_then(|client: Connection<BlockConfig>| {
             client
@@ -75,7 +74,7 @@ pub fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>,
                     let peers = peers
                         .peers
                         .iter()
-                        .map(|peer| Peer::new(peer.addr, Protocol::Grpc))
+                        .map(|peer| Peer::new(peer.addr))
                         .collect();
                     future::ok(peers)
                 })
@@ -85,7 +84,7 @@ pub fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>,
 }
 
 pub fn bootstrap_from_peer(
-    peer: Peer,
+    peer: &Peer,
     blockchain: Blockchain,
     tip: Tip,
     logger: Logger,
@@ -94,7 +93,7 @@ pub fn bootstrap_from_peer(
 
     let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
 
-    let bootstrap = grpc::connect(peer.address(), None, runtime.executor())
+    let bootstrap = grpc::connect(&peer, None, runtime.executor())
         .map_err(|e| Error::Connect { source: e })
         .and_then(|client: Connection<BlockConfig>| {
             client

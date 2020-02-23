@@ -1,7 +1,7 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
     network::{p2p::Id, BlockConfig},
-    settings::start::network::Peer,
+    settings::start::network::{Peer, Protocol},
 };
 use futures::prelude::*;
 use http::{HttpTryFrom, Uri};
@@ -11,6 +11,7 @@ use network_core::error as core_error;
 use network_grpc::client::Connect;
 use slog::Logger;
 use thiserror::Error;
+use tokio::timer::{self, Timeout};
 use tokio_compat::prelude::*;
 use tokio_compat::runtime::{Runtime, TaskExecutor};
 
@@ -35,19 +36,54 @@ pub enum FetchBlockError {
 }
 
 pub type Connection = network_grpc::client::Connection<BlockConfig>;
-pub type ConnectFuture =
-    network_grpc::client::ConnectFuture<BlockConfig, HttpConnector, TaskExecutor>;
-pub type ConnectError = network_grpc::client::ConnectError<io::Error>;
 
-pub fn connect(addr: SocketAddr, node_id: Option<Id>, executor: TaskExecutor) -> ConnectFuture {
-    let uri = destination_uri(addr);
-    let mut connector = HttpConnector::new(2);
+#[derive(Debug, thiserror::Error)]
+pub enum ConnectError {
+    #[error("{0}")]
+    Failed(#[source] network_grpc::client::ConnectError<io::Error>),
+    #[error("connection timed out")]
+    TimedOut,
+    #[error("timer error occurred during connection")]
+    Timer(#[source] timer::Error),
+}
+
+pub struct ConnectFuture {
+    inner: Timeout<network_grpc::client::ConnectFuture<BlockConfig, HttpConnector, TaskExecutor>>,
+}
+
+impl Future for ConnectFuture {
+    type Item = Connection;
+    type Error = ConnectError;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        self.inner.poll().map_err(|e| {
+            if e.is_inner() {
+                return ConnectError::Failed(e.into_inner().unwrap());
+            }
+            if e.is_elapsed() {
+                return ConnectError::TimedOut;
+            }
+            if e.is_timer() {
+                return ConnectError::Timer(e.into_timer().unwrap());
+            }
+            unreachable!("unexpected timeout error: {:?}", e);
+        })
+    }
+}
+
+pub fn connect(peer: &Peer, node_id: Option<Id>, executor: TaskExecutor) -> ConnectFuture {
+    assert!(peer.protocol == Protocol::Grpc);
+    let uri = destination_uri(peer.connection);
+    let mut connector = HttpConnector::new_with_executor(executor.clone(), None);
     connector.set_nodelay(true);
     let mut builder = Connect::with_executor(connector, executor);
     if let Some(id) = node_id {
         builder.node_id(id);
     }
-    builder.connect(Destination::try_from_uri(uri).unwrap())
+    let connect = builder.connect(Destination::try_from_uri(uri).unwrap());
+    ConnectFuture {
+        inner: Timeout::new(connect, peer.timeout),
+    }
 }
 
 fn destination_uri(addr: SocketAddr) -> Uri {
@@ -62,13 +98,13 @@ fn destination_uri(addr: SocketAddr) -> Uri {
 // Fetches a block from a network peer in a one-off, blocking call.
 // This function is used during node bootstrap to fetch the genesis block.
 pub fn fetch_block(
-    peer: Peer,
+    peer: &Peer,
     hash: HeaderHash,
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     info!(logger, "fetching block {}", hash);
     let mut runtime = Runtime::new().map_err(|e| FetchBlockError::RuntimeInit { source: e })?;
-    let fetch = connect(peer.address(), None, runtime.executor())
+    let fetch = connect(peer, None, runtime.executor())
         .map_err(|err| FetchBlockError::Connect { source: err })
         .and_then(move |client: Connection| {
             client
