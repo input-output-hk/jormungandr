@@ -166,7 +166,7 @@ pub fn itn_bootstrap() {
         .with_trusted_peers(vec![jormungandr_from_storage.as_trusted_peer()])
         .build();
 
-    let jormungandr_from_local_trusted_peer = Starter::new()
+    let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
         .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_from_trusted_peer_itn_bootstrap")
@@ -179,7 +179,7 @@ pub fn itn_bootstrap() {
 #[test]
 pub fn nightly_bootstrap() {
     let testnet_config = TestnetConfig::new_nightly();
-    let jormungandr_config = testnet_config.make_config();
+    let mut jormungandr_config = testnet_config.make_config();
 
     let _jormungandr = Starter::new()
         .config(jormungandr_config.clone())
@@ -213,7 +213,7 @@ pub fn nightly_bootstrap() {
         .with_trusted_peers(vec![jormungandr_from_storage.as_trusted_peer()])
         .build();
 
-    let jormungandr_from_local_trusted_peer = Starter::new()
+    let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
         .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_from_trusted_peer_nightly_bootstrap")
@@ -226,7 +226,7 @@ pub fn nightly_bootstrap() {
 #[test]
 pub fn qa_bootstrap() {
     let testnet_config = TestnetConfig::new_qa();
-    let jormungandr_config = testnet_config.make_config();
+    let mut jormungandr_config = testnet_config.make_config();
 
     let _jormungandr = Starter::new()
         .config(testnet_config.make_config())
@@ -260,7 +260,7 @@ pub fn qa_bootstrap() {
         .with_trusted_peers(vec![jormungandr_from_storage.as_trusted_peer()])
         .build();
 
-    let jormungandr_from_local_trusted_peer = Starter::new()
+    let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
         .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_from_trusted_peer_qa_bootstrap")
