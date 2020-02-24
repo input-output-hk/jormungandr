@@ -52,6 +52,6 @@ pub fn test_from_bytes_for_unknown_key() {
     jcli_wrapper::assert_key_from_bytes_fails(
         &byte_key_file,
         "ed25519Exten",
-        "Invalid value for '--type <key_type>'",
+        "Invalid value for '--type <key-type>':",
     );
 }

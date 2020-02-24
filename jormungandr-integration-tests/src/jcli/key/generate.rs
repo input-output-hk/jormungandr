@@ -41,7 +41,7 @@ pub fn test_sumed25519_12_key_generation() {
 pub fn test_unknown_key_type_generation() {
     process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_key_generate_command("unknown"),
-        "Invalid value for '--type <key_type>'",
+        "Invalid value for '--type <key-type>':",
     );
 }
 
