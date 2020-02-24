@@ -1,5 +1,6 @@
 use std::{
     fmt,
+    str::FromStr,
     time::{Duration, SystemTime},
 };
 
@@ -30,6 +31,14 @@ impl From<SystemTime> for Timestamp {
 impl Into<SystemTime> for Timestamp {
     fn into(self) -> SystemTime {
         self.0
+    }
+}
+impl FromStr for Timestamp {
+    type Err = chrono::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let system_time: crate::time::SystemTime = s.parse().unwrap();
+        let std_system_time: std::time::SystemTime = system_time.into();
+        Ok(std_system_time.into())
     }
 }
 

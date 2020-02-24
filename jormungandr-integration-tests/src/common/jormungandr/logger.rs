@@ -57,10 +57,7 @@ impl LogEntry {
 
 impl Into<Timestamp> for LogEntry {
     fn into(self) -> Timestamp {
-        use jormungandr_lib::time::SystemTime;
-        let system_time: SystemTime = self.ts.parse().unwrap();
-        let std_system_time: std::time::SystemTime = system_time.into();
-        std_system_time.into()
+        self.ts.parse().unwrap()
     }
 }
 
