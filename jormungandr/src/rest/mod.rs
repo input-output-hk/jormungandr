@@ -24,8 +24,8 @@ use crate::intercom::{NetworkMsg, TransactionMsg};
 use crate::utils::async_msg::MessageBox;
 
 use chain_impl_mockchain::block::Block;
-use futures03::executor::block_on;
 use futures03::compat::Future01CompatExt;
+use futures03::executor::block_on;
 use jormungandr_lib::interfaces::NodeState;
 use tokio02::sync::RwLock;
 

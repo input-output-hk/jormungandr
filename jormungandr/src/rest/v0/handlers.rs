@@ -27,8 +27,8 @@ use jormungandr_lib::interfaces::NodeState;
 use std::str::FromStr;
 use std::sync::Arc;
 
-pub use crate::rest::{Context, FullContext};
 use crate::rest::update_stats_tip_from_storage;
+pub use crate::rest::{Context, FullContext};
 
 async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
     Ok(chain_tip_from_full(&*context.try_full().await?).await)
@@ -122,7 +122,6 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
-
 
     let mut header_block = context.stats_counter.get_tip_block().await;
 
