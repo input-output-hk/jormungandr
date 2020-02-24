@@ -130,12 +130,12 @@ fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> 
 #[test]
 pub fn itn_bootstrap() {
     let testnet_config = TestnetConfig::new_itn();
-    let jormungandr_config = testnet_config.make_config();
+    let mut jormungandr_config = testnet_config.make_config();
 
     // start from itn trusted peers
     let jormungandr_from_trusted_peers = Starter::new()
         .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_itn_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
@@ -143,10 +143,12 @@ pub fn itn_bootstrap() {
         .unwrap();
     jormungandr_from_trusted_peers.shutdown();
 
+    jormungandr_config.refresh_node_dynamic_params();
+
     // start from storage
     let jormungandr_from_storage = Starter::new()
         .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
@@ -166,7 +168,7 @@ pub fn itn_bootstrap() {
 
     let jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_from_trusted_peer_itn_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
@@ -181,17 +183,19 @@ pub fn nightly_bootstrap() {
 
     let _jormungandr = Starter::new()
         .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_nightly_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
         .unwrap();
 
+    jormungandr_config.refresh_node_dynamic_params();
+
     // start from storage
     let jormungandr_from_storage = Starter::new()
         .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
@@ -211,7 +215,7 @@ pub fn nightly_bootstrap() {
 
     let jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_from_trusted_peer_nightly_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
@@ -226,17 +230,19 @@ pub fn qa_bootstrap() {
 
     let _jormungandr = Starter::new()
         .config(testnet_config.make_config())
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_qa_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
         .unwrap();
 
+    jormungandr_config.refresh_node_dynamic_params();
+
     // start from storage
     let jormungandr_from_storage = Starter::new()
         .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
@@ -256,7 +262,7 @@ pub fn qa_bootstrap() {
 
     let jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .benchmark("passive_node_from_trusted_peer_qa_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
@@ -272,7 +278,7 @@ pub fn e2e_stake_pool() {
 
     let jormungandr = Starter::new()
         .config(testnet_config.make_config())
-        .timeout(Duration::from_secs(4000))
+        .timeout(Duration::from_secs(8000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
