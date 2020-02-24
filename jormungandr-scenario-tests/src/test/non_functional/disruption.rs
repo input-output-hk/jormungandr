@@ -137,7 +137,7 @@ pub fn passive_leader_disruption_overlap(
     utils::measure_and_log_sync_time(
         vec![&leader, &passive],
         SyncWaitParams::nodes_restart(5).into(),
-        "passive_leader_disruption_no_overlap",
+        "passive_leader_disruption_overlap",
     );
 
     leader.shutdown()?;
@@ -203,7 +203,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
     utils::measure_and_log_sync_time(
         vec![&leader1, &leader2],
         SyncWaitParams::nodes_restart(5).into(),
-        "passive_leader_disruption_no_overlap",
+        "leader_leader_disruption_overlap",
     );
 
     leader1.shutdown()?;
@@ -600,7 +600,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     utils::measure_and_log_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4, &leader5, &passive],
         SyncWaitParams::nodes_restart(5).into(),
-        "mesh_disruption_sync",
+        "custom_network_disruption",
     );
 
     passive.shutdown()?;
