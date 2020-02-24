@@ -59,7 +59,7 @@ impl SpeedBenchmarkRun {
         let stop_marker = Timestamp::from(SystemTime::now());
         SpeedBenchmarkFinish {
             definition: self.definition.clone(),
-            speed: Speed::new(&stop_marker, &self.start_marker),
+            speed: Speed::new(&self.start_marker, &stop_marker),
         }
     }
 
