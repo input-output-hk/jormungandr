@@ -54,11 +54,17 @@ impl ScenariosRepository {
     fn scenarios_tagged_by(&self, tag: &Tag) -> Vec<Scenario> {
         match tag {
             Tag::All => self.repository.clone(),
+            Tag::Unstable => self
+                .repository
+                .iter()
+                .cloned()
+                .filter(|x| x.has_tag(*tag))
+                .collect(),
             _ => self
                 .repository
                 .iter()
                 .cloned()
-                .filter(|x| x.has_tag(tag))
+                .filter(|x| x.has_tag(*tag) && x.no_tag(Tag::Unstable))
                 .collect(),
         }
     }
