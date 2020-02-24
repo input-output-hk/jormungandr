@@ -26,6 +26,9 @@ impl CertificateCommands {
             .arg("new")
             .arg("stake-delegation")
             .arg(&delegation_id)
+            // This was added as part of updating structopt to 0.3+, it changed the interface
+            // and required to add `--` before the stake pool ids
+            .arg("--")
             .arg(&stake_pool_id);
         command
     }
