@@ -56,7 +56,7 @@ pub struct StakePoolRegistration {
     #[structopt(
         long = "owner",
         name = "OWNER_KEY",
-        parse(try_from_str = "parse_pub_key"),
+        parse(try_from_str = parse_pub_key),
         required = true
     )]
     pub owners: Vec<PublicKey<Ed25519>>,
@@ -68,7 +68,7 @@ pub struct StakePoolRegistration {
     #[structopt(
         long = "operator",
         name = "OPERATOR_KEY",
-        parse(try_from_str = "parse_pub_key")
+        parse(try_from_str = parse_pub_key)
     )]
     pub operators: Vec<PublicKey<Ed25519>>,
 
@@ -76,7 +76,7 @@ pub struct StakePoolRegistration {
     #[structopt(
         long = "kes-key",
         name = "KES_KEY",
-        parse(try_from_str = "parse_pub_key")
+        parse(try_from_str = parse_pub_key)
     )]
     pub kes_key: PublicKey<SumEd25519_12>,
 
@@ -84,7 +84,7 @@ pub struct StakePoolRegistration {
     #[structopt(
         long = "vrf-key",
         name = "VRF_KEY",
-        parse(try_from_str = "parse_pub_key")
+        parse(try_from_str = parse_pub_key)
     )]
     pub vrf_key: PublicKey<Curve25519_2HashDH>,
 

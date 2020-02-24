@@ -14,7 +14,7 @@ pub enum Account {
         #[structopt(flatten)]
         output_format: OutputFormat,
         /// An Account ID either in the form of an address of kind account, or an account public key
-        #[structopt(parse(try_from_str = "AccountId::try_from_str"))]
+        #[structopt(parse(try_from_str = AccountId::try_from_str))]
         account_id: AccountId,
     },
 }

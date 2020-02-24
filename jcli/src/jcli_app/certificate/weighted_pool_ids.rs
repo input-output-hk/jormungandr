@@ -11,7 +11,7 @@ use structopt::StructOpt;
 pub struct WeightedPoolIds {
     /// hex-encoded stake pool IDs and their numeric weights in format "pool_id:weight".
     /// If weight is not provided, it defaults to 1.
-    #[structopt(name = "STAKE_POOL_IDS", raw(required = "true"))]
+    #[structopt(name = "STAKE_POOL_IDS", raw(true))]
     pool_ids: Vec<WeightedPoolId>,
 }
 

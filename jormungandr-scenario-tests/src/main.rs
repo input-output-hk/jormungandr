@@ -10,7 +10,7 @@ use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
+#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
 struct CommandArgs {
     /// path or name of the jormungandr node to test
     #[structopt(long = "jormungandr", default_value = "jormungandr")]
@@ -30,7 +30,7 @@ struct CommandArgs {
     #[structopt(
         long = "tag",
         default_value = "All",
-        parse(try_from_str = "parse_tag_from_str")
+        parse(try_from_str = parse_tag_from_str)
     )]
     tag: Tag,
 
