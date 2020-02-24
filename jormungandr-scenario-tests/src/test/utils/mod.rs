@@ -20,6 +20,10 @@ pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
     std::thread::sleep(wait_time);
 }
 
+pub fn wait(seconds: u64) {
+    std::thread::sleep(Duration::from_secs(seconds));
+}
+
 pub fn get_nodes_block_height_summary(nodes: Vec<&NodeController>) -> Vec<String> {
     nodes
         .iter()

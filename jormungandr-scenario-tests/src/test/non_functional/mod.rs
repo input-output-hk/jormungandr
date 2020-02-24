@@ -1,6 +1,8 @@
 pub mod disruption;
 pub mod soak;
 
+const PASSIVE: &str = "Passive";
+const LEADER: &str = "Leader";
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 const LEADER_3: &str = "Leader3";

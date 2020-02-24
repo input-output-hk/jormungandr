@@ -162,7 +162,43 @@ fn scenarios_repository() -> Vec<Scenario> {
     ));
 
     repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
-    // repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
+    repository.push(Scenario::new(
+        "relay",
+        relay,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
+    repository.push(Scenario::new(
+        "passive_leader_disruption_no_overlap",
+        passive_leader_disruption_no_overlap,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+    repository.push(Scenario::new(
+        "passive_leader_disruption_overlap",
+        passive_leader_disruption_overlap,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+    repository.push(Scenario::new(
+        "leader_leader_disruption_overlap",
+        leader_leader_disruption_overlap,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+    repository.push(Scenario::new(
+        "leader_leader_disruption_no_overlap",
+        leader_leader_disruption_no_overlap,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+    repository.push(Scenario::new(
+        "point_to_point_disruption",
+        point_to_point_disruption,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+    repository.push(Scenario::new(
+        "custom_network_disruption",
+        custom_network_disruption,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
 
     repository.push(Scenario::new(
         "passive_node_promotion",
@@ -171,10 +207,10 @@ fn scenarios_repository() -> Vec<Scenario> {
     ));
 
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
-    /*   repository.push(Scenario::new(
+    repository.push(Scenario::new(
         "mesh_disruption",
         mesh_disruption,
-        vec![Tag::Short],
-    ));*/
+        vec![Tag::Short, Tag::Unstable],
+    ));
     repository
 }

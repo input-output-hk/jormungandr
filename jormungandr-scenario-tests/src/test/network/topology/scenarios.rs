@@ -636,8 +636,9 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     utils::measure_and_log_sync_time(
         vec![
             &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
+            &core,
         ],
-        SyncWaitParams::network_size(9, 3).into(),
+        SyncWaitParams::network_size(10, 3).into(),
         "relay_sync",
     );
 
