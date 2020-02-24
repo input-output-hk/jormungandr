@@ -23,7 +23,9 @@ use crate::stats_counter::StatsCounter;
 use crate::intercom::{NetworkMsg, TransactionMsg};
 use crate::utils::async_msg::MessageBox;
 
+use chain_impl_mockchain::block::Block;
 use futures03::executor::block_on;
+use futures03::compat::Future01CompatExt;
 use jormungandr_lib::interfaces::NodeState;
 use tokio02::sync::RwLock;
 
@@ -127,4 +129,15 @@ fn app_config(config: &mut ServiceConfig, explorer_enabled: bool, context: Conte
     if explorer_enabled {
         config.service(explorer::service("/explorer"));
     }
+}
+
+async fn update_stats_tip_from_storage(context: &FullContext) {
+    let block: Option<Block> = context
+        .blockchain
+        .storage()
+        .get(context.blockchain_tip.get_ref_std().await.hash())
+        .compat()
+        .await
+        .unwrap_or(None);
+    context.stats_counter.set_tip_block(block.clone()).await;
 }
