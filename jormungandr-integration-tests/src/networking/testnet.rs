@@ -177,9 +177,10 @@ pub fn itn_bootstrap() {
 #[test]
 pub fn nightly_bootstrap() {
     let testnet_config = TestnetConfig::new_nightly();
+    let jormungandr_config = testnet_config.make_config();
 
     let _jormungandr = Starter::new()
-        .config(testnet_config.make_config())
+        .config(jormungandr_config.clone())
         .timeout(Duration::from_secs(4000))
         .benchmark("passive_node_nightly_bootstrap")
         .passive()
@@ -221,6 +222,7 @@ pub fn nightly_bootstrap() {
 #[test]
 pub fn qa_bootstrap() {
     let testnet_config = TestnetConfig::new_qa();
+    let jormungandr_config = testnet_config.make_config();
 
     let _jormungandr = Starter::new()
         .config(testnet_config.make_config())
