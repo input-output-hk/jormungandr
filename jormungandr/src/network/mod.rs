@@ -507,7 +507,7 @@ fn connect_and_propagate(
                     true
                 }
                 _ => {
-                    info!(conn_logger, "connection to peer failed"; "error" => ?e);
+                    info!(conn_logger, "connection to peer failed"; "reason" => %e);
                     false
                 }
             };
