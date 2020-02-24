@@ -56,3 +56,16 @@ impl Endurance {
         Status::Red
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn duration_since() {
+        let start_time: Timestamp = "2020-02-20T17:15:13.596834700+01:00".parse().unwrap();
+        let end_time: Timestamp = "2020-02-20T17:15:14.606834700+01:00".parse().unwrap();
+
+        Endurance::new(&start_time, &end_time);
+    }
+}
