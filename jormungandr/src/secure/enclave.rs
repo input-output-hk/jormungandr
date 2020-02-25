@@ -74,7 +74,7 @@ impl Enclave {
     }
 
     pub async fn add_leader_to_cache(&self, leader: &Leader, id: LeaderId) {
-        let mut cache = &mut self.leaders_data.write().await.added_leaders_cache;
+        let cache = &mut self.leaders_data.write().await.added_leaders_cache;
         // match protocol leaders prioritizing genesis ones
         match leader {
             Leader {
@@ -108,7 +108,7 @@ impl Enclave {
     }
 
     async fn _add_leader(&self, leader: Leader, id: LeaderId) {
-        let mut leaders = &mut self.leaders_data.write().await.leaders;
+        let leaders = &mut self.leaders_data.write().await.leaders;
         match leaders.insert(id, leader) {
             None => (),
             // This panic case should never happens in practice, as this structure is
@@ -133,7 +133,7 @@ impl Enclave {
     }
 
     pub async fn remove_leader(&self, leader_id: LeaderId) -> bool {
-        let mut leaders = &mut self.leaders_data.write().await.leaders;
+        let leaders = &mut self.leaders_data.write().await.leaders;
         leaders.remove(&leader_id).is_some()
     }
 
@@ -233,9 +233,7 @@ impl Enclave {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chain_crypto::{Blake2b256, Ed25519, SecretKey};
-    use chain_impl_mockchain::certificate::PoolId;
-    use chain_impl_mockchain::fragment::Fragment::PoolRegistration;
+    use chain_crypto::SecretKey;
     use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
     use chain_impl_mockchain::testing;
     use rand_core;
@@ -243,7 +241,7 @@ mod tests {
 
     #[tokio::test]
     async fn enclave_add_different_bft_leaders() {
-        let mut enclave = Enclave::new();
+        let enclave = Enclave::new();
         let rng = rand_core::OsRng;
 
         let leader1 = Leader {
@@ -274,7 +272,7 @@ mod tests {
 
     #[tokio::test]
     async fn enclave_add_duplicated_bft_leaders() {
-        let mut enclave = Enclave::new();
+        let enclave = Enclave::new();
         let secret_key = SecretKey::generate(rand_core::OsRng);
 
         let leader1 = Leader {
@@ -305,7 +303,7 @@ mod tests {
 
     #[tokio::test]
     async fn enclave_add_different_genesis_leaders() {
-        let mut enclave = Enclave::new();
+        let enclave = Enclave::new();
         let rng = rand_core::OsRng;
 
         let leader1 = Leader {
@@ -340,7 +338,7 @@ mod tests {
 
     #[tokio::test]
     async fn enclave_add_duplicated_genesis_leaders() {
-        let mut enclave = Enclave::new();
+        let enclave = Enclave::new();
 
         let rng = rand_core::OsRng;
         let sig_key_1 = SecretKey::generate(rng);
