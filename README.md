@@ -22,14 +22,27 @@ available for many operating systems and architectures.
 
 ### Prerequisites
 
+#### Rust
+
 Get the [Rust Compiler](https://www.rust-lang.org/tools/install) (latest stable
-version is recommended, minimum required: 1.35+).
+version is recommended, minimum required: 1.39+).
 
 ```sh
 rustup install stable
 rustup default stable
 rustc --version # if this fails, try a new command window, or add the path (see below)
 ```
+
+#### Dependencies
+
+* For detecting build dependencies:
+  * Homebrew on macOS.
+  * `vcpkg` on Windows.
+  * `pkg-config` on other Unix-like systems.
+* OpenSSL with header files.
+* C compiler (see [cc-rs](https://github.com/alexcrichton/cc-rs) for more details):
+  * Must be available as `cc` on Unix and MinGW.
+  * Or as `cl.exe` on Windows.
 
 #### Path
 
