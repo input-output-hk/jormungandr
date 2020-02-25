@@ -1,5 +1,45 @@
 # Change Log
 
+## [v0.8.12](https://github.com/input-output-hk/jormungandr/tree/v0.8.12) (2020-02-25)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.11...v0.8.12)
+
+**Breaking changes:**
+
+- Use LRU instead of DelayQueue in fragment module [\#1828](https://github.com/input-output-hk/jormungandr/pull/1828)
+- remove log\_ttl for the leadership and use a LruCache instead [\#1825](https://github.com/input-output-hk/jormungandr/pull/1825)
+
+**Implemented enhancements:**
+
+- netboot is too quiet [\#1819](https://github.com/input-output-hk/jormungandr/issues/1819)
+- speedup loading from storage [\#1851](https://github.com/input-output-hk/jormungandr/pull/1851)
+- Time limits on client connections [\#1836](https://github.com/input-output-hk/jormungandr/pull/1836)
+- Netboot improvements [\#1822](https://github.com/input-output-hk/jormungandr/pull/1822)
+- storage: Optimize PumpedStream [\#1817](https://github.com/input-output-hk/jormungandr/pull/1817)
+- More async [\#1814](https://github.com/input-output-hk/jormungandr/pull/1814)
+
+**Fixed bugs:**
+
+- grpc connect / shortly after seems to get stuck permanently [\#1829](https://github.com/input-output-hk/jormungandr/issues/1829)
+- Enclave avoid duplicated Leaders [\#1760](https://github.com/input-output-hk/jormungandr/pull/1760)
+
+**Closed issues:**
+
+- Super slow loading from storage 0.8.10-0.8.11 [\#1810](https://github.com/input-output-hk/jormungandr/issues/1810)
+
+**Merged pull requests:**
+
+- Bump syn from 1.0.15 to 1.0.16 [\#1848](https://github.com/input-output-hk/jormungandr/pull/1848)
+- Bump proc-macro2 from 1.0.8 to 1.0.9 [\#1847](https://github.com/input-output-hk/jormungandr/pull/1847)
+- Restore connect error message formatting [\#1844](https://github.com/input-output-hk/jormungandr/pull/1844)
+- Bump syn from 1.0.14 to 1.0.15 [\#1843](https://github.com/input-output-hk/jormungandr/pull/1843)
+- fix build warning in stuck notifier [\#1833](https://github.com/input-output-hk/jormungandr/pull/1833)
+- Remove delay queue from ref cache [\#1826](https://github.com/input-output-hk/jormungandr/pull/1826)
+- Update the stuck notifier to work in standard future [\#1823](https://github.com/input-output-hk/jormungandr/pull/1823)
+- Bump libc from 0.2.66 to 0.2.67 [\#1821](https://github.com/input-output-hk/jormungandr/pull/1821)
+- Bump error-chain from 0.12.1 to 0.12.2 [\#1820](https://github.com/input-output-hk/jormungandr/pull/1820)
+- \[Test\] Benchmark api for tests [\#1805](https://github.com/input-output-hk/jormungandr/pull/1805)
+
 ## [v0.8.11](https://github.com/input-output-hk/jormungandr/tree/v0.8.11) (2020-02-20)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.10-2...v0.8.11)
