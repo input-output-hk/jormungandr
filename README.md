@@ -1,8 +1,11 @@
 # Full Node
 
-> Just because you call something a blockchain, that doesn't mean you aren't subject to normal engineering laws.
+> Just because you call something a blockchain, that doesn't mean you aren't
+> subject to normal engineering laws.
 
-User guide documentation available [here](https://input-output-hk.github.io/jormungandr)
+User guide documentation available [here][docs]
+
+[docs]: https://input-output-hk.github.io/jormungandr
 
 ## Master current build status
 
@@ -12,21 +15,21 @@ User guide documentation available [here](https://input-output-hk.github.io/jorm
 
 ## Install from Binaries
 
-Use the [Latest Binaries](https://github.com/input-output-hk/jormungandr/releases), available for many operating systems and architectures.
+Use the [Latest Binaries](https://github.com/input-output-hk/jormungandr/releases),
+available for many operating systems and architectures.
 
 ## Install from Source
 
 ### Prerequisites
 
-Get the [Rust Compiler](https://www.rust-lang.org/tools/install) (latest stable version is recommended, minimum required: 1.35+)
-
+Get the [Rust Compiler](https://www.rust-lang.org/tools/install) (latest stable
+version is recommended, minimum required: 1.35+).
 
 ```sh
 rustup install stable
 rustup default stable
 rustc --version # if this fails, try a new command window, or add the path (see below)
 ```
-
 
 #### Path
 
@@ -35,12 +38,15 @@ rustc --version # if this fails, try a new command window, or add the path (see 
 
 #### protobuf
 
-* The [Protocol Buffers][protobuf] version bundled with crate `prost-build` will be used.
-* For distribution or container builds in general, it's a good practice to install `protoc` from the official distribution package if available.
+* The [Protocol Buffers][https://developers.google.com/protocol-buffers] version
+  bundled with crate `prost-build` will be used.
+* For distribution or container builds in general, it's a good practice to
+  install `protoc` from the official distribution package if available.
 
 ### Commands
 
-Check `<latest release tag>` on https://github.com/input-output-hk/jormungandr/releases/latest
+Check `<latest release tag>` on
+https://github.com/input-output-hk/jormungandr/releases/latest
 
 ```sh
 git clone --recurse-submodules https://github.com/input-output-hk/jormungandr
@@ -51,24 +57,23 @@ cargo install --path jormungandr # --features systemd # (on linux with systemd)
 cargo install --path jcli
 ```
 
-
 This will install 2 tools:
 
 * `jormungandr`: the node part of the blockchain;
 * `jcli`: a command line helper tool to help you use and setup the node;
 
-
 ## Configuration Basics
 
 A functional node needs 2 configurations:
 
-1. Its own [node configuration](https://input-output-hk.github.io/jormungandr/configuration/introduction.html): Where to store data, network configuration, logging.
-2. The [blockchain genesis configuration](https://input-output-hk.github.io/jormungandr/advanced/introduction.html), which contains the initial trusted setup of the blockchain:
-   coin configuration, consensus settings, initial state.
+1. Its own [node configuration](https://input-output-hk.github.io/jormungandr/configuration/introduction.html):
+   Where to store data, network configuration, logging.
+2. The [blockchain genesis configuration](https://input-output-hk.github.io/jormungandr/advanced/introduction.html),
+   which contains the initial trusted setup of the blockchain: coin
+   configuration, consensus settings, initial state.
 
 In normal use, the blockchain genesis configuration is given to you or
 automatically fetched from the network.
-
 
 ## Quick-Start - Public Mode
  
@@ -81,13 +86,13 @@ to. The simplest way to start such a node is:
 ## Quick-Start - Cardano Shelly Testnet
 
 * [Official Cardano Shelly Testnet Documentation](https://testnet.iohkdev.io/cardano/shelley/).
-* For the **nightly testnet**, ask within the [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
-
+* For the **nightly testnet**, ask within the
+  [Cardano Stake Pool Workgroup Telegram group](https://web.telegram.org/#/im?p=@CardanoStakePoolWorkgroup).
 
 ## Quick-Start - Private Mode
 
-Follow instructions on installation, then to start a private and minimal
-test setup:
+Follow instructions on installation, then to start a private and minimal test
+setup:
 
 ```sh
 mkdir mynode
@@ -112,7 +117,8 @@ run of bootstrap:
 * `faucet-send-money`
 * `faucet-send-certificate`
 
-Both scripts can be used to do simple limited operation through the jcli debugging tools.
+Both scripts can be used to do simple limited operation through the jcli
+debugging tools.
 
 ## Documentation
 
@@ -122,7 +128,7 @@ Documentation is available in the markdown format [here](doc/SUMMARY.md)
 
 This project is licensed under either of the following licenses:
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
-   http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or
-   http://opensource.org/licenses/MIT)
+* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
+  http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or
+  http://opensource.org/licenses/MIT)
