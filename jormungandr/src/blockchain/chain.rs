@@ -492,37 +492,47 @@ impl Blockchain {
         })
     }
 
-    async fn apply_block(
+    fn apply_block_dry_run(
         &self,
-        post_checked_header: PostCheckedHeader,
+        post_checked_header: &PostCheckedHeader,
         block: &Block,
-    ) -> Result<Arc<Ref>> {
-        let header = post_checked_header.header;
+    ) -> Result<Ledger> {
+        let header = &post_checked_header.header;
         let block_id = header.hash();
-        let epoch_leadership_schedule = post_checked_header.epoch_leadership_schedule;
-        let epoch_ledger_parameters = post_checked_header.epoch_ledger_parameters;
-        let ledger = post_checked_header.parent_ledger_state;
-        let time_frame = post_checked_header.time_frame;
-        let previous_epoch_state = post_checked_header.previous_epoch_state;
+        let epoch_ledger_parameters = &post_checked_header.epoch_ledger_parameters;
+        let ledger = &post_checked_header.parent_ledger_state;
 
         debug_assert!(block.header.hash() == block_id);
 
         let metadata = header.to_content_eval_context();
 
-        let new_ledger = ledger
-            .apply_block(&epoch_ledger_parameters, &block.contents, &metadata)
-            .chain_err(|| ErrorKind::CannotApplyBlock)?;
-        Ok(self
-            .create_and_store_reference(
-                block_id,
-                header,
-                new_ledger,
-                time_frame,
-                epoch_leadership_schedule,
-                epoch_ledger_parameters,
-                previous_epoch_state,
-            )
-            .await)
+        ledger
+            .apply_block(epoch_ledger_parameters, &block.contents, &metadata)
+            .chain_err(|| ErrorKind::CannotApplyBlock)
+    }
+
+    async fn apply_block_finalize(
+        &self,
+        post_checked_header: PostCheckedHeader,
+        new_ledger: Ledger,
+    ) -> Arc<Ref> {
+        let header = post_checked_header.header;
+        let block_id = header.hash();
+        let epoch_leadership_schedule = post_checked_header.epoch_leadership_schedule;
+        let epoch_ledger_parameters = post_checked_header.epoch_ledger_parameters;
+        let time_frame = post_checked_header.time_frame;
+        let previous_epoch_state = post_checked_header.previous_epoch_state;
+
+        self.create_and_store_reference(
+            block_id,
+            header,
+            new_ledger,
+            time_frame,
+            epoch_leadership_schedule,
+            epoch_ledger_parameters,
+            previous_epoch_state,
+        )
+        .await
     }
 
     /// Apply the block on the blockchain from a post checked header
@@ -534,12 +544,23 @@ impl Blockchain {
         post_checked_header: PostCheckedHeader,
         block: Block,
     ) -> Result<AppliedBlock> {
+        let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
+
         let storage = self.storage.back_to_the_future().clone();
-        let block_ref = self.apply_block(post_checked_header, &block).await?;
         let res = storage.put_block(block).await;
+
         match res {
-            Ok(()) => Ok(AppliedBlock::New(block_ref)),
-            Err(StorageError::BlockAlreadyPresent) => Ok(AppliedBlock::Existing(block_ref)),
+            Ok(()) | Err(StorageError::BlockAlreadyPresent) => {
+                let block_ref = self
+                    .apply_block_finalize(post_checked_header, new_ledger)
+                    .await;
+
+                match res {
+                    Ok(()) => Ok(AppliedBlock::New(block_ref)),
+                    Err(StorageError::BlockAlreadyPresent) => Ok(AppliedBlock::Existing(block_ref)),
+                    _ => unreachable!(),
+                }
+            }
             Err(e) => Err(e.into()),
         }
     }
@@ -761,7 +782,10 @@ impl Blockchain {
                         }
                     };
 
-                    let new_ref = self.apply_block(post_checked_header, &block).await?;
+                    let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
+                    let new_ref = self
+                        .apply_block_finalize(post_checked_header, new_ledger)
+                        .await;
 
                     count += 1;
                     let _: Arc<Ref> = branch.update_ref_std(new_ref).await;

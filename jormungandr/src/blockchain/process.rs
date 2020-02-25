@@ -302,16 +302,21 @@ pub async fn process_new_ref(
     let storage = blockchain.storage().clone();
 
     let tip_ref = tip.get_ref_std().await;
-
-    let tip_updated = if tip_ref.hash() == candidate.block_parent_hash() {
+    if tip_ref.hash() == candidate.block_parent_hash() {
         info!(
             logger,
             "update current branch tip: {} -> {}",
             tip_ref.header().description(),
             candidate.header().description(),
         );
+
+        storage
+            .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
+            .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
+            .compat()
+            .await?;
+
         tip.update_ref_std(candidate).await;
-        true
     } else {
         match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
             ComparisonResult::PreferCurrent => {
@@ -321,7 +326,6 @@ pub async fn process_new_ref(
                     candidate.header().description(),
                     tip_ref.header().description(),
                 );
-                false
             }
             ComparisonResult::PreferCandidate => {
                 info!(
@@ -330,6 +334,13 @@ pub async fn process_new_ref(
                     tip_ref.header().description(),
                     candidate.header().description(),
                 );
+
+                storage
+                    .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
+                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
+                    .compat()
+                    .await?;
+
                 let branch = blockchain
                     .branches_mut()
                     .apply_or_create(candidate)
@@ -337,20 +348,11 @@ pub async fn process_new_ref(
                     .await
                     .unwrap();
                 tip.swap_std(branch).await;
-                true
             }
         }
     };
 
-    if tip_updated {
-        storage
-            .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-            .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
-            .compat()
-            .await
-    } else {
-        Ok(())
-    }
+    Ok(())
 }
 
 pub async fn process_new_ref_owned(
