@@ -259,6 +259,12 @@ impl AppliedBlock {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub enum CheckHeaderProof {
+    SkipFromStorage,
+    Enabled,
+}
+
 impl Blockchain {
     pub fn new(block0: HeaderHash, storage: Storage, cache_capacity: usize) -> Self {
         Blockchain {
@@ -418,12 +424,11 @@ impl Blockchain {
     pub async fn pre_check_header(&self, header: Header, force: bool) -> Result<PreCheckedHeader> {
         let pre_check = self.load_header_parent(header, force).compat().await?;
         match &pre_check {
-            PreCheckedHeader::HeaderWithCache {
-                ref header,
-                ref parent_ref,
-            } => pre_verify_link(header, parent_ref.header())
-                .map(|()| pre_check)
-                .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into()),
+            PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+                pre_verify_link(header, parent_ref.header())
+                    .map(|()| pre_check)
+                    .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into())
+            }
             _ => Ok(pre_check),
         }
     }
@@ -456,6 +461,7 @@ impl Blockchain {
         &self,
         header: Header,
         parent: Arc<Ref>,
+        check_header_proof: CheckHeaderProof,
     ) -> Result<PostCheckedHeader> {
         let current_date = header.block_date();
 
@@ -467,19 +473,23 @@ impl Blockchain {
             previous_epoch_state,
         ) = new_epoch_leadership_from(current_date.epoch, parent);
 
-        match epoch_leadership_schedule.verify(&header) {
-            Verification::Success => Ok(PostCheckedHeader {
-                header,
-                epoch_leadership_schedule,
-                epoch_ledger_parameters,
-                parent_ledger_state,
-                time_frame,
-                previous_epoch_state,
-            }),
-            Verification::Failure(error) => {
-                Err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()).into())
-            }
+        if check_header_proof == CheckHeaderProof::Enabled {
+            match epoch_leadership_schedule.verify(&header) {
+                Verification::Failure(error) => {
+                    Err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()))
+                }
+                Verification::Success => Ok(()),
+            }?;
         }
+
+        Ok(PostCheckedHeader {
+            header,
+            epoch_leadership_schedule,
+            epoch_ledger_parameters,
+            parent_ledger_state,
+            time_frame,
+            previous_epoch_state,
+        })
     }
 
     async fn apply_block(
@@ -698,6 +708,8 @@ impl Blockchain {
         let mut branch = block0_branch;
         let mut count = 0u64;
 
+        let mut block_processing = std::time::Duration::from_secs(0);
+
         while let Some(r) = block_stream.next().await {
             match r {
                 Err(e) => {
@@ -713,17 +725,27 @@ impl Blockchain {
                     if count % PROCESS_LOGGING_DISTANCE == 0 {
                         info!(
                             logger,
-                            "loading from storage, currently at {} ...",
-                            header.description()
+                            "loading from storage, currently at {} processing={:?} ({:?} per block) ...",
+                            header.description(),
+                            block_processing,
+                            block_processing / PROCESS_LOGGING_DISTANCE as u32,
                         );
+                        block_processing = std::time::Duration::from_secs(0);
                     }
+
+                    let block_process_start = std::time::SystemTime::now();
 
                     let pre_checked_header: PreCheckedHeader =
                         self.pre_check_header(header, true).await?;
 
-                    let post_checked_header: PostCheckedHeader = match pre_checked_header {
+                    let post_checked_header = match pre_checked_header {
                         PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                            self.post_check_header(header, parent_ref).await?
+                            self.post_check_header(
+                                header,
+                                parent_ref,
+                                CheckHeaderProof::SkipFromStorage,
+                            )
+                            .await?
                         }
                         PreCheckedHeader::AlreadyPresent {
                             header,
@@ -743,6 +765,12 @@ impl Blockchain {
 
                     count += 1;
                     let _: Arc<Ref> = branch.update_ref_std(new_ref).await;
+
+                    let block_process_end = std::time::SystemTime::now();
+                    let duration = block_process_end
+                        .duration_since(block_process_start)
+                        .unwrap_or(std::time::Duration::from_secs(0));
+                    block_processing = block_processing + duration;
                     ()
                 }
             }

@@ -1,6 +1,6 @@
 use super::{
     candidate,
-    chain::{self, AppliedBlock},
+    chain::{self, AppliedBlock, CheckHeaderProof},
     chain_selection::{self, ComparisonResult},
     Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
@@ -435,7 +435,9 @@ async fn process_leadership_block_inner(
 
     let post_checked = if let Some(parent_ref) = parent {
         debug!(logger, "processing block from leader event");
-        blockchain.post_check_header(header, parent_ref).await?
+        blockchain
+            .post_check_header(header, parent_ref, CheckHeaderProof::Enabled)
+            .await?
     } else {
         error!(
             logger,
@@ -643,7 +645,7 @@ async fn check_and_apply_block(
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
     let post_checked = blockchain
-        .post_check_header(block.header(), parent_ref)
+        .post_check_header(block.header(), parent_ref, CheckHeaderProof::Enabled)
         .await?;
     let header = post_checked.header();
     let block_hash = header.hash();

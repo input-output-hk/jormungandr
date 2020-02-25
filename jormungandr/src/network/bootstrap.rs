@@ -292,7 +292,7 @@ async fn handle_block(
         }
         PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
             let post_checked = blockchain
-                .post_check_header(header, parent_ref)
+                .post_check_header(header, parent_ref, blockchain::CheckHeaderProof::Enabled)
                 .await
                 .map_err(|e| Error::HeaderCheckFailed { source: e })?;
 
