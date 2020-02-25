@@ -13,9 +13,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build and Deploy
-        uses: JamesIves/github-pages-deploy-action@releases/v3
-        with:
-          ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: doc # The folder the action should deploy.
+      - name: Deploy
+          uses: crazy-max/ghaction-github-pages@v1
+          with:
+            target_branch: gh-pages
+            build_dir: doc
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
