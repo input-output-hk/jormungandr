@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tokio02::sync::RwLock;
 
+#[derive(Default)]
 struct EnclaveLeadersWithCache {
     leaders: BTreeMap<LeaderId, Leader>,
     added_leaders_cache: HashMap<String, LeaderId>,
@@ -28,13 +29,63 @@ fn get_maximum_id<A>(leaders: &BTreeMap<LeaderId, A>) -> LeaderId {
     leaders.keys().last().copied().unwrap_or(LeaderId::new())
 }
 
+fn leader_identifier(leader: &Leader) -> String {
+    match leader {
+        Leader {
+            bft_leader: None,
+            genesis_leader: None,
+        } => "".to_owned(),
+        Leader {
+            bft_leader: None,
+            genesis_leader: Some(l),
+        } => l.node_id.to_string(),
+        Leader {
+            bft_leader: Some(l),
+            genesis_leader: None,
+        } => l.sig_key.to_public().to_string(),
+        Leader {
+            bft_leader: Some(_),
+            genesis_leader: Some(l),
+        } => l.node_id.to_string(),
+    }
+}
+
+impl EnclaveLeadersWithCache {
+    fn add(&mut self, leader: Leader) -> LeaderId {
+        let identifier = leader_identifier(&leader);
+        if let Some(leader_id) = self.added_leaders_cache.get(&identifier) {
+            *leader_id
+        } else {
+            let leader_id = get_maximum_id(&self.leaders).next();
+
+            self.added_leaders_cache.insert(identifier, leader_id);
+            self.leaders.insert(leader_id, leader);
+
+            leader_id
+        }
+    }
+
+    fn remove(&mut self, leader_id: LeaderId) -> bool {
+        if let Some(leader) = self.leaders.remove(&leader_id) {
+            let identifier = leader_identifier(&leader);
+
+            self.added_leaders_cache.remove(&identifier);
+
+            true
+        } else {
+            false
+        }
+    }
+
+    fn get_leader_ids(&self) -> Vec<LeaderId> {
+        self.added_leaders_cache.values().copied().collect()
+    }
+}
+
 impl Enclave {
     pub fn new() -> Self {
         Enclave {
-            leaders_data: Arc::new(RwLock::new(EnclaveLeadersWithCache {
-                leaders: BTreeMap::new(),
-                added_leaders_cache: HashMap::new(),
-            })),
+            leaders_data: Arc::new(RwLock::new(EnclaveLeadersWithCache::default())),
         }
     }
 
@@ -45,96 +96,17 @@ impl Enclave {
         }
         e
     }
-    async fn get_maximum_id(&self) -> LeaderId {
-        let leaders = &self.leaders_data.read().await.leaders;
-        get_maximum_id(leaders).next()
-    }
 
-    pub async fn get_leader_id_if_present(&self, leader: &Leader) -> Option<LeaderId> {
-        let cache = &self.leaders_data.read().await.added_leaders_cache;
-        // match protocol leaders prioritizing genesis ones
-        match leader {
-            Leader {
-                bft_leader: None,
-                genesis_leader: None,
-            } => None,
-            Leader {
-                bft_leader: None,
-                genesis_leader: Some(l),
-            } => cache.get(&l.node_id.to_string()).cloned(),
-            Leader {
-                bft_leader: Some(l),
-                genesis_leader: None,
-            } => cache.get(&l.sig_key.to_public().to_string()).cloned(),
-            Leader {
-                bft_leader: Some(_),
-                genesis_leader: Some(l),
-            } => cache.get(&l.node_id.to_string()).cloned(),
-        }
-    }
-
-    pub async fn add_leader_to_cache(&self, leader: &Leader, id: LeaderId) {
-        let cache = &mut self.leaders_data.write().await.added_leaders_cache;
-        // match protocol leaders prioritizing genesis ones
-        match leader {
-            Leader {
-                bft_leader: None,
-                genesis_leader: None,
-            } => (),
-            Leader {
-                bft_leader: None,
-                genesis_leader: Some(l),
-            } => {
-                cache.insert(l.node_id.to_string(), id);
-            }
-            Leader {
-                bft_leader: Some(l),
-                genesis_leader: None,
-            } => {
-                cache.insert(l.sig_key.to_public().to_string(), id);
-            }
-            Leader {
-                bft_leader: Some(_),
-                genesis_leader: Some(l),
-            } => {
-                cache.insert(l.node_id.to_string(), id);
-            }
-        }
-    }
-
-    pub async fn get_leaderids(&self) -> Vec<LeaderId> {
-        let leaders = &self.leaders_data.read().await.leaders;
-        leaders.keys().cloned().collect()
-    }
-
-    async fn _add_leader(&self, leader: Leader, id: LeaderId) {
-        let leaders = &mut self.leaders_data.write().await.leaders;
-        match leaders.insert(id, leader) {
-            None => (),
-            // This panic case should never happens in practice, as this structure is
-            // not supposed to be shared between thread.
-            Some(_) => panic!("enclave leader failed : duplicated value race"),
-        };
+    pub async fn get_leader_ids(&self) -> Vec<LeaderId> {
+        self.leaders_data.read().await.get_leader_ids()
     }
 
     pub async fn add_leader(&self, leader: Leader) -> LeaderId {
-        match self.get_leader_id_if_present(&leader).await {
-            Some(id) => return id,
-            None => {}
-        }
-
-        let next_leader_id = self.get_maximum_id().await;
-
-        // Add the new leader to the cache
-        self.add_leader_to_cache(&leader, next_leader_id).await;
-        // Add the new leader
-        self._add_leader(leader, next_leader_id).await;
-        next_leader_id
+        self.leaders_data.write().await.add(leader)
     }
 
     pub async fn remove_leader(&self, leader_id: LeaderId) -> bool {
-        let leaders = &mut self.leaders_data.write().await.leaders;
-        leaders.remove(&leader_id).is_some()
+        self.leaders_data.write().await.remove(leader_id)
     }
 
     // temporary method
