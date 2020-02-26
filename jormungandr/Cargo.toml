@@ -16,6 +16,7 @@ actix-cors = "0.2.0"
 actix-rt = "^1.0.0"
 actix-threadpool = "^0.3.1"
 actix-web = { version = "2.0.0", default-features = false, features = [ "rustls" ] }
+arc-swap = "0.4.4"
 juniper = "0.14.2"
 bincode = "1.0.1"
 bytes = "0.4"

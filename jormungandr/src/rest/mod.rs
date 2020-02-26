@@ -139,5 +139,12 @@ async fn update_stats_tip_from_storage(context: &FullContext) {
         .compat()
         .await
         .unwrap_or(None);
-    context.stats_counter.set_tip_block(block.clone()).await;
+
+    // Update block if found
+    match block {
+        Some(b) => {
+            context.stats_counter.set_tip_block(Arc::new(b));
+        }
+        None => (),
+    }
 }

@@ -123,13 +123,13 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
 
-    let mut header_block = context.stats_counter.get_tip_block().await;
+    let mut header_block = context.stats_counter.get_tip_block();
 
     // In case we do not have a cached block in the stats_counter we can retrieve it from the
     // storage, this should happen just once.
     if header_block.is_none() {
         update_stats_tip_from_storage(context).await;
-        header_block = context.stats_counter.get_tip_block().await;
+        header_block = context.stats_counter.get_tip_block();
     }
 
     header_block
