@@ -80,6 +80,6 @@ impl StatsCounter {
     }
 
     pub fn get_tip_block(&self) -> Option<Arc<Block>> {
-        self.stats.tip_block.load_full().clone()
+        self.stats.tip_block.load_full()
     }
 }
