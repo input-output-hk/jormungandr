@@ -316,7 +316,7 @@ pub async fn get_shutdown(context: Data<Context>) -> Result<impl Responder, Erro
 
 pub async fn get_leaders(context: Data<Context>) -> Result<impl Responder, Error> {
     Ok(Json(json! {
-        context.try_full().await?.enclave.get_leaderids().await
+        context.try_full().await?.enclave.get_leader_ids().await
     }))
 }
 
