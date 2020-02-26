@@ -54,6 +54,11 @@ jobs:
           override: true
           default: true
 
+      - name: Downgrade cross
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.config.cross }}
+        args: install --version 0.1.16 cross
+
       - name: Checkout code
         uses: actions/checkout@v1
         with:
