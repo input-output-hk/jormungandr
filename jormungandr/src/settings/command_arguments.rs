@@ -57,14 +57,14 @@ pub struct RestArguments {
 #[derive(StructOpt, Debug)]
 #[structopt(
     name = "jormungandr",
-    raw(setting = "structopt::clap::AppSettings::ColoredHelp")
+    setting = structopt::clap::AppSettings::ColoredHelp
 )]
 pub struct CommandLine {
     /// Set log messages minimum severity. If not configured anywhere, defaults to "info".
     #[structopt(
         long = "log-level",
-        parse(try_from_str = "log_level_parse"),
-        raw(possible_values = "&LOG_FILTER_LEVEL_POSSIBLE_VALUES")
+        parse(try_from_str = log_level_parse),
+        possible_values = &LOG_FILTER_LEVEL_POSSIBLE_VALUES
     )]
     pub log_level: Option<FilterLevel>,
 

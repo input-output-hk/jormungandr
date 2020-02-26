@@ -12,7 +12,7 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 pub struct StakeDelegation {
     /// the public key used in the stake key registration
-    #[structopt(name = "STAKE_KEY", parse(try_from_str = "parse_pub_key"))]
+    #[structopt(name = "STAKE_KEY", parse(try_from_str = parse_pub_key))]
     stake_id: PublicKey<Ed25519>,
 
     #[structopt(flatten)]

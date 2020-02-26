@@ -275,7 +275,7 @@ pub fn assert_key_from_bytes_fails(
     key_type: &str,
     expected_msg: &str,
 ) {
-    process_assert::assert_process_failed_and_matches_message(
+    process_assert::assert_process_failed_and_contains_message(
         jcli_commands::get_key_from_bytes_command(&path_to_input_file, &key_type),
         expected_msg,
     );
