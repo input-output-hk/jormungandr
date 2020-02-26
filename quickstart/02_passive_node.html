@@ -1,0 +1,348 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Starting a passive node - Jormungandr</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div id="sidebar-scrollbox" class="sidebar-scrollbox">
+                <ol class="chapter"><li class="expanded affix "><a href="../introduction.html">Introduction</a></li><li class="expanded "><a href="../concepts/introduction.html"><strong aria-hidden="true">1.</strong> General Concepts</a></li><li><ol class="section"><li class="expanded "><a href="../concepts/blockchain.html"><strong aria-hidden="true">1.1.</strong> Blockchain concepts</a></li><li class="expanded "><a href="../concepts/stake.html"><strong aria-hidden="true">1.2.</strong> Stake</a></li><li class="expanded "><a href="../concepts/node.html"><strong aria-hidden="true">1.3.</strong> Node organisation</a></li><li class="expanded "><a href="../concepts/network.html"><strong aria-hidden="true">1.4.</strong> Network overview</a></li></ol></li><li class="expanded "><a href="../quickstart/introduction.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="expanded "><a href="../quickstart/01_command_line.html"><strong aria-hidden="true">2.1.</strong> Command lines tools</a></li><li class="expanded "><a href="../quickstart/02_passive_node.html" class="active"><strong aria-hidden="true">2.2.</strong> Starting a passive node</a></li><li class="expanded "><a href="../quickstart/03_rest_api.html"><strong aria-hidden="true">2.3.</strong> REST API</a></li><li class="expanded "><a href="../quickstart/04_explorer.html"><strong aria-hidden="true">2.4.</strong> Explorer API</a></li><li class="expanded "><a href="../quickstart/05_leader_candidate.html"><strong aria-hidden="true">2.5.</strong> Starting as a leader candidate</a></li></ol></li><li class="expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="expanded "><a href="../configuration/logging.html"><strong aria-hidden="true">3.1.</strong> Logging</a></li><li class="expanded "><a href="../configuration/network.html"><strong aria-hidden="true">3.2.</strong> Node network</a></li><li class="expanded "><a href="../configuration/mempool.html"><strong aria-hidden="true">3.3.</strong> Fragment Pool</a></li><li class="expanded "><a href="../configuration/leadership.html"><strong aria-hidden="true">3.4.</strong> Leader Events</a></li></ol></li><li class="expanded "><a href="../jcli/introduction.html"><strong aria-hidden="true">4.</strong> jcli</a></li><li><ol class="section"><li class="expanded "><a href="../jcli/key.html"><strong aria-hidden="true">4.1.</strong> Cryptographic keys</a></li><li class="expanded "><a href="../jcli/address.html"><strong aria-hidden="true">4.2.</strong> Address</a></li><li class="expanded "><a href="../jcli/transaction.html"><strong aria-hidden="true">4.3.</strong> Transaction</a></li><li class="expanded "><a href="../jcli/certificate.html"><strong aria-hidden="true">4.4.</strong> Certificate</a></li><li class="expanded "><a href="../jcli/genesis.html"><strong aria-hidden="true">4.5.</strong> Genesis</a></li><li class="expanded "><a href="../jcli/rest.html"><strong aria-hidden="true">4.6.</strong> REST</a></li></ol></li><li class="expanded "><a href="../stake_pool/introduction.html"><strong aria-hidden="true">5.</strong> staking and stake pool</a></li><li><ol class="section"><li class="expanded "><a href="../stake_pool/delegating_stake.html"><strong aria-hidden="true">5.1.</strong> delegating your stake</a></li><li class="expanded "><a href="../stake_pool/registering_stake_pool.html"><strong aria-hidden="true">5.2.</strong> registering stake pool</a></li></ol></li><li class="expanded "><a href="../advanced/introduction.html"><strong aria-hidden="true">6.</strong> Advanced</a></li><li><ol class="section"><li class="expanded "><a href="../advanced/01_the_genesis_block.html"><strong aria-hidden="true">6.1.</strong> Genesis block</a></li><li class="expanded "><a href="../advanced/02_starting_bft_blockchain.html"><strong aria-hidden="true">6.2.</strong> Starting a bft blockchain</a></li><li class="expanded "><a href="../advanced/03_starting_genesis_praos_blockchain.html"><strong aria-hidden="true">6.3.</strong> Starting a genesis blockchain</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Jormungandr</h1>
+
+                        <div class="right-buttons">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p>In order to start the node, you first need to gather the blockchain
+information you need to connect to.</p>
+<ol>
+<li>the hash of the <strong>genesis block</strong> of the blockchain, this will be the source
+of truth of the blockchain. It is 64 hexadecimal characters.</li>
+<li>the <strong>trusted peers</strong> identifiers and access points.</li>
+</ol>
+<p>These information are essentials to start your node in a secure way.</p>
+<p>The <strong>genesis block</strong> is the first block of the blockchain. It contains the
+static parameters of the blockchain as well as the initial funds. Your node
+will utilise the <strong>Hash</strong> to retrieve it from the other peers. It will also
+allows the Node to verify the integrity of the downloaded <strong>genesis block</strong>.</p>
+<p>The <strong>trusted peers</strong> are the nodes in the public network that your Node will
+trust in order to initialise the Peer To Peer network.</p>
+<h1><a class="header" href="#the-node-configuration" id="the-node-configuration">The node configuration</a></h1>
+<p>Your node configuration file may look like the following:</p>
+<p><strong>Note</strong></p>
+<p>This config shouldn't work as it is, the ip address and port for the trusted peer should be those of an already running node.
+Also, the public_address ('u.x.v.t') should be a valid address (you can use an internal one, eg: 127.0.0.1).
+Furthermore, you need to have permission to write in the path specified by the storage config.</p>
+<pre><code class="language-yaml">storage: &quot;/mnt/cardano/storage&quot;
+
+rest:
+  listen: &quot;127.0.0.1:8443&quot;
+
+p2p:
+  trusted_peers:
+    - address: &quot;/ip4/104.24.28.11/tcp/8299&quot;
+      id: ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d
+</code></pre>
+<p>Description of the fields:</p>
+<ul>
+<li><code>storage</code>: (optional) Path to the storage. If omitted, the
+blockchain is stored in memory only.</li>
+<li><code>log</code>: (optional) Logging configuration:
+<ul>
+<li><code>level</code>: log messages minimum severity. If not configured anywhere, defaults to &quot;info&quot;.
+Possible values: &quot;off&quot;, &quot;critical&quot;, &quot;error&quot;, &quot;warn&quot;, &quot;info&quot;, &quot;debug&quot;, &quot;trace&quot;.</li>
+<li><code>format</code>: Log output format, <code>plain</code> or <code>json</code>.</li>
+<li><code>output</code>: Log output destination. Possible values are:
+<ul>
+<li><code>stdout</code>: standard output</li>
+<li><code>stderr</code>: standard error</li>
+<li><code>syslog</code>: syslog (only available on Unix systems)</li>
+<li><code>syslogudp</code>: remote syslog  (only available on Unix systems)
+<ul>
+<li><code>host</code>: address and port of a syslog server</li>
+<li><code>hostname</code>: hostname to attach to syslog messages</li>
+</ul>
+</li>
+<li><code>journald</code>: journald service (only available on Linux with systemd,
+(if jormungandr is built with the <code>systemd</code> feature)</li>
+<li><code>gelf</code>: Configuration fields for GELF (Graylog) network logging protocol
+(if jormungandr is built with the <code>gelf</code> feature):
+<ul>
+<li><code>backend</code>: <em>hostname</em>:<em>port</em> of a GELF server</li>
+<li><code>log_id</code>: identifier of the source of the log, for the <code>host</code> field
+in the messages.</li>
+</ul>
+</li>
+<li><code>file</code>: path to the log file.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>rest</code>: (optional) Configuration of the REST endpoint.
+<ul>
+<li><code>listen</code>: <em>address</em>:<em>port</em> to listen for requests</li>
+<li><code>tls</code>: (optional) enables TLS and disables plain HTTP if provided
+<ul>
+<li><code>cert_file</code>: path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item</li>
+<li><code>priv_key_file</code>: path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key</li>
+</ul>
+</li>
+<li><code>cors</code>: (optional) CORS configuration, if not provided, CORS is disabled
+<ul>
+<li><code>allowed_origins</code>: (optional) allowed origins, if none provided, echos request origin</li>
+<li><code>max_age_secs</code>: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>p2p</code>: P2P network settings
+<ul>
+<li><code>trusted_peers</code>: (optional) the list of nodes's <a href="https://github.com/multiformats/multiaddr">multiaddr</a> with their associated <code>public_id</code>
+to connect to in order to bootstrap the P2P topology (and bootstrap our local blockchain);</li>
+<li><code>public_id</code>: (optional) the node's public ID that will be used to
+identify this node to the network.</li>
+<li><code>public_address</code>: <a href="https://github.com/multiformats/multiaddr">multiaddr</a> string specifying address of the
+P2P service. This is the public address that will be distributed to other
+peers of the network that may find interest in participating to the
+blockchain dissemination with the node.</li>
+<li><code>listen_address</code>: (optional) <a href="https://github.com/multiformats/multiaddr">multiaddr</a> specifies the address the node
+will listen to to receive p2p connection. Can be left empty and the node will listen
+to whatever value was given to <code>public_address</code>.</li>
+<li><code>topics_of_interest</code>: The dissemination topics this node is interested to hear about:
+<ul>
+<li><code>messages</code>: Transactions and other ledger entries.
+Typical setting for a non-mining node: <code>low</code>. For a stakepool: <code>high</code>;</li>
+<li><code>blocks</code>: Notifications about new blocks.
+Typical setting for a non-mining node: <code>normal</code>. For a stakepool: <code>high</code>.</li>
+</ul>
+</li>
+<li><code>max_connections</code>: The maximum number of simultaneous P2P connections
+this node should maintain.</li>
+</ul>
+</li>
+<li><code>explorer</code>: (optional) Explorer settings
+<ul>
+<li><code>enabled</code>: True or false</li>
+</ul>
+</li>
+<li><code>no_blockchain_updates_warning_interval</code>: (optional, seconds) if no new blocks
+were received after this period of time, the node will start sending you
+warnings in the logs.</li>
+</ul>
+<h1><a class="header" href="#starting-the-node" id="starting-the-node">Starting the node</a></h1>
+<pre><code>jormungandr --config config.yaml --genesis-block-hash 'abcdef987654321....'
+</code></pre>
+<p>The 'abcdef987654321....' part refers to the hash of the genesis, that should be given to you from one of the peers in the network you are connecting to.</p>
+<p>In case you have the genesis file (for example, because you are creating the network) you can get this hash with jcli.</p>
+<pre><code class="language-sh">cat block-0 | jcli genesis hash
+</code></pre>
+<p>or, in case you only have the yaml file</p>
+<pre><code class="language-sh">cat genesis.yaml | jcli genesis encode | jcli genesis hash
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../quickstart/01_command_line.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="../quickstart/03_rest_api.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="../quickstart/01_command_line.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="../quickstart/03_rest_api.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+        
+        
+        <script type="text/javascript">
+            window.playpen_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

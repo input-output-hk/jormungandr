@@ -1,0 +1,342 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Node network - Jormungandr</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div id="sidebar-scrollbox" class="sidebar-scrollbox">
+                <ol class="chapter"><li class="expanded affix "><a href="../introduction.html">Introduction</a></li><li class="expanded "><a href="../concepts/introduction.html"><strong aria-hidden="true">1.</strong> General Concepts</a></li><li><ol class="section"><li class="expanded "><a href="../concepts/blockchain.html"><strong aria-hidden="true">1.1.</strong> Blockchain concepts</a></li><li class="expanded "><a href="../concepts/stake.html"><strong aria-hidden="true">1.2.</strong> Stake</a></li><li class="expanded "><a href="../concepts/node.html"><strong aria-hidden="true">1.3.</strong> Node organisation</a></li><li class="expanded "><a href="../concepts/network.html"><strong aria-hidden="true">1.4.</strong> Network overview</a></li></ol></li><li class="expanded "><a href="../quickstart/introduction.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="expanded "><a href="../quickstart/01_command_line.html"><strong aria-hidden="true">2.1.</strong> Command lines tools</a></li><li class="expanded "><a href="../quickstart/02_passive_node.html"><strong aria-hidden="true">2.2.</strong> Starting a passive node</a></li><li class="expanded "><a href="../quickstart/03_rest_api.html"><strong aria-hidden="true">2.3.</strong> REST API</a></li><li class="expanded "><a href="../quickstart/04_explorer.html"><strong aria-hidden="true">2.4.</strong> Explorer API</a></li><li class="expanded "><a href="../quickstart/05_leader_candidate.html"><strong aria-hidden="true">2.5.</strong> Starting as a leader candidate</a></li></ol></li><li class="expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="expanded "><a href="../configuration/logging.html"><strong aria-hidden="true">3.1.</strong> Logging</a></li><li class="expanded "><a href="../configuration/network.html" class="active"><strong aria-hidden="true">3.2.</strong> Node network</a></li><li class="expanded "><a href="../configuration/mempool.html"><strong aria-hidden="true">3.3.</strong> Fragment Pool</a></li><li class="expanded "><a href="../configuration/leadership.html"><strong aria-hidden="true">3.4.</strong> Leader Events</a></li></ol></li><li class="expanded "><a href="../jcli/introduction.html"><strong aria-hidden="true">4.</strong> jcli</a></li><li><ol class="section"><li class="expanded "><a href="../jcli/key.html"><strong aria-hidden="true">4.1.</strong> Cryptographic keys</a></li><li class="expanded "><a href="../jcli/address.html"><strong aria-hidden="true">4.2.</strong> Address</a></li><li class="expanded "><a href="../jcli/transaction.html"><strong aria-hidden="true">4.3.</strong> Transaction</a></li><li class="expanded "><a href="../jcli/certificate.html"><strong aria-hidden="true">4.4.</strong> Certificate</a></li><li class="expanded "><a href="../jcli/genesis.html"><strong aria-hidden="true">4.5.</strong> Genesis</a></li><li class="expanded "><a href="../jcli/rest.html"><strong aria-hidden="true">4.6.</strong> REST</a></li></ol></li><li class="expanded "><a href="../stake_pool/introduction.html"><strong aria-hidden="true">5.</strong> staking and stake pool</a></li><li><ol class="section"><li class="expanded "><a href="../stake_pool/delegating_stake.html"><strong aria-hidden="true">5.1.</strong> delegating your stake</a></li><li class="expanded "><a href="../stake_pool/registering_stake_pool.html"><strong aria-hidden="true">5.2.</strong> registering stake pool</a></li></ol></li><li class="expanded "><a href="../advanced/introduction.html"><strong aria-hidden="true">6.</strong> Advanced</a></li><li><ol class="section"><li class="expanded "><a href="../advanced/01_the_genesis_block.html"><strong aria-hidden="true">6.1.</strong> Genesis block</a></li><li class="expanded "><a href="../advanced/02_starting_bft_blockchain.html"><strong aria-hidden="true">6.2.</strong> Starting a bft blockchain</a></li><li class="expanded "><a href="../advanced/03_starting_genesis_praos_blockchain.html"><strong aria-hidden="true">6.3.</strong> Starting a genesis blockchain</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Jormungandr</h1>
+
+                        <div class="right-buttons">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p>There are 2 different network interfaces which are covered by their respective section:</p>
+<pre><code class="language-yaml">rest:
+   ...
+p2p:
+   ...
+</code></pre>
+<h2><a class="header" href="#rest-interface-configuration" id="rest-interface-configuration">REST interface configuration</a></h2>
+<ul>
+<li><code>listen</code>: listen address</li>
+<li><code>tls</code>: (optional) enables TLS and disables plain HTTP if provided
+<ul>
+<li><code>cert_file</code>: path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item</li>
+<li><code>priv_key_file</code>: path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key</li>
+</ul>
+</li>
+<li><code>cors</code>: (optional) CORS configuration, if not provided, CORS is disabled
+<ul>
+<li><code>allowed_origins</code>: (optional) allowed origins, if none provided, echos request origin</li>
+<li><code>max_age_secs</code>: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled</li>
+</ul>
+</li>
+</ul>
+<h3><a class="header" href="#configuring-tls" id="configuring-tls">Configuring TLS</a></h3>
+<p>In order to enable TLS there must be provided certificate and private key files.</p>
+<h4><a class="header" href="#example-generation-of-files-for-self-signed-tls" id="example-generation-of-files-for-self-signed-tls">Example generation of files for self-signed TLS</a></h4>
+<p>Generate private key</p>
+<pre><code class="language-bash">openssl genrsa -out priv.key 2048
+</code></pre>
+<p>Wrap private key in PKCS8</p>
+<pre><code class="language-bash">openssl pkcs8 -topk8 -inform PEM -outform PEM -in priv.key -out priv.pk8 -nocrypt
+</code></pre>
+<p>Generate a self-signed certificate for private key</p>
+<pre><code class="language-bash">openssl req -new -key priv.key -out cert_req.csr
+openssl x509 -req -days 3650 -in cert_req.csr -signkey priv.key -out cert.crt
+</code></pre>
+<p>Use generated files in config</p>
+<pre><code class="language-yaml">rest:
+  tls:
+    cert_file: cert.crt
+    priv_key_file: priv.pk8
+</code></pre>
+<h2><a class="header" href="#p2p-configuration" id="p2p-configuration">P2P configuration</a></h2>
+<ul>
+<li><code>trusted_peers</code>: (optional) the list of nodes' <a href="https://github.com/multiformats/multiaddr">multiaddr</a> to connect to in order to
+bootstrap the p2p topology (and bootstrap our local blockchain) with the associated <code>id</code> (24 bytes
+in hexadecimal given by the trusted peers to allow initial connection to it).</li>
+<li><code>public_address</code>: <a href="https://github.com/multiformats/multiaddr">multiaddr</a> the address to listen from and accept connection
+from. This is the public address that will be distributed to other peers
+of the network that may find interest into participating to the blockchain
+dissemination with the node.  Currently only TCP is supported.</li>
+<li><code>public_id</code>: (optional) This is a static identifier, 24 bytes encoded in hexadecimal. They are used
+to bootstrap the connection to the node if the node introduce itself as a trusted peer.
+<strong>Most of the user don't need to set this value</strong> and in fact we are working toward potentially
+removing the need for this value.</li>
+<li><code>listen_address</code>: (optional) <a href="https://github.com/multiformats/multiaddr">multiaddr</a> specifies the address the node
+will listen to to receive p2p connection. Can be left empty and the node will listen
+to whatever value was given to <code>public_address</code>.</li>
+<li><code>topics_of_interest</code>: (optional) the different topics we are interested to hear about:
+<ul>
+<li><code>messages</code>: notify other peers this node is interested about Transactions
+typical setting for a non mining node: <code>&quot;low&quot;</code>. For a stakepool: <code>&quot;high&quot;</code>;</li>
+<li><code>blocks</code>: notify other peers this node is interested about new Blocks.
+typical settings for a non mining node: <code>&quot;normal&quot;</code>. For a stakepool: <code>&quot;high&quot;</code>.</li>
+</ul>
+</li>
+<li><code>max_connections</code>: the maximum number of P2P connections this node should
+maintain. If not specified, an internal limit is used by default <code>[default: 256]</code></li>
+<li><code>max_client_connections</code>: the maximum number of client P2P connections this
+node should keep open. <code>[default: 8]</code></li>
+<li><code>policy</code>: (optional) set the setting for the policy module
+<ul>
+<li><code>quarantine_duration</code> set the time to leave a node in quarantine before allowing
+it back (or not) into the fold.
+It is recommended to leave the default value <code>[default: 30min]</code>.</li>
+</ul>
+</li>
+<li><code>max_unreachable_nodes_to_connect_per_event</code>: (optional) set the maximum number of unreachable nodes
+to contact at a time for every new notification.
+Every time a new propagation event is triggered, the node will select
+randomly a certain amount of unreachable nodes to connect to in addition
+to the one selected by other p2p topology layer <code>[default: 20]</code></li>
+<li><code>gossip_interval</code>: (optional) interval to start gossiping with new nodes,
+changing the value will affect the bandwidth. The more often the node will
+gossip the more bandwidth the node will need. The less often the node gossips
+the less good the resilience to node churn. <code>[default: 10s]</code></li>
+<li><code>topology_force_reset_interval</code>: (optional) If this value is set, it will
+trigger a force reset of the topology layers. The default is to not do
+force the reset. It is recommended to let the protocol handle it.</li>
+<li><code>max_bootstrap_attempts</code>: (optional) number of times to retry bootstrapping from trusted peers.
+If not set, default beavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
+If set to <em>0</em> (zero), the node will skip bootstrap all together -- <em>even if trusted peers are defined</em>.
+If the node fails to bootstrap from any of the trusted peers and the number of bootstrap retry attempts is exceeded,
+then the node will continue to run without completing the bootstrap process.
+This will allow the node to act as the first node in the p2p network (i.e. genesis node),
+or immediately begin gossip with the trusted peers if any are defined.</li>
+</ul>
+<h3><a class="header" href="#the-trusted-peers" id="the-trusted-peers">The trusted peers</a></h3>
+<p>The trusted peers is a concept that is not fully implemented yet. One of the key element
+for now is that this is the first node any node tries to connect in order to meet new nodes.
+Right now, as far as we know, only one of them is needed. IOHK provides a few others for
+redundancy.</p>
+<h3><a class="header" href="#setting-the-public_id" id="setting-the-public_id">Setting the <code>public_id</code></a></h3>
+<p>This is needed to advertise your node as a trusted peer.
+If not set, the node will generate a random ID, which is fine for a regular user.
+You can generate a public id with <strong>openssl</strong>, for example: <code>openssl rand -hex 24</code></p>
+<h3><a class="header" href="#topics_of_interest" id="topics_of_interest"><code>topics_of_interest</code></a></h3>
+<p>This is optional an optional value to set. The default is:</p>
+<pre><code class="language-yaml">messages: low
+blocks: normal
+</code></pre>
+<p>These value makes sense for most of the users that are not running stake pools or
+that are not even publicly reachable.</p>
+<p>However for a publicly reachable node, the recommended setting would be:</p>
+<pre><code class="language-yaml">messages: normal
+blocks: normal
+</code></pre>
+<p>and for a stake pool</p>
+<pre><code class="language-yaml">messages: high
+blocks: high
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../configuration/logging.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="../configuration/mempool.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="../configuration/logging.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="../configuration/mempool.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+        
+        
+        <script type="text/javascript">
+            window.playpen_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

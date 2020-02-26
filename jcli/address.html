@@ -1,0 +1,281 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Address - Jormungandr</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div id="sidebar-scrollbox" class="sidebar-scrollbox">
+                <ol class="chapter"><li class="expanded affix "><a href="../introduction.html">Introduction</a></li><li class="expanded "><a href="../concepts/introduction.html"><strong aria-hidden="true">1.</strong> General Concepts</a></li><li><ol class="section"><li class="expanded "><a href="../concepts/blockchain.html"><strong aria-hidden="true">1.1.</strong> Blockchain concepts</a></li><li class="expanded "><a href="../concepts/stake.html"><strong aria-hidden="true">1.2.</strong> Stake</a></li><li class="expanded "><a href="../concepts/node.html"><strong aria-hidden="true">1.3.</strong> Node organisation</a></li><li class="expanded "><a href="../concepts/network.html"><strong aria-hidden="true">1.4.</strong> Network overview</a></li></ol></li><li class="expanded "><a href="../quickstart/introduction.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="expanded "><a href="../quickstart/01_command_line.html"><strong aria-hidden="true">2.1.</strong> Command lines tools</a></li><li class="expanded "><a href="../quickstart/02_passive_node.html"><strong aria-hidden="true">2.2.</strong> Starting a passive node</a></li><li class="expanded "><a href="../quickstart/03_rest_api.html"><strong aria-hidden="true">2.3.</strong> REST API</a></li><li class="expanded "><a href="../quickstart/04_explorer.html"><strong aria-hidden="true">2.4.</strong> Explorer API</a></li><li class="expanded "><a href="../quickstart/05_leader_candidate.html"><strong aria-hidden="true">2.5.</strong> Starting as a leader candidate</a></li></ol></li><li class="expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="expanded "><a href="../configuration/logging.html"><strong aria-hidden="true">3.1.</strong> Logging</a></li><li class="expanded "><a href="../configuration/network.html"><strong aria-hidden="true">3.2.</strong> Node network</a></li><li class="expanded "><a href="../configuration/mempool.html"><strong aria-hidden="true">3.3.</strong> Fragment Pool</a></li><li class="expanded "><a href="../configuration/leadership.html"><strong aria-hidden="true">3.4.</strong> Leader Events</a></li></ol></li><li class="expanded "><a href="../jcli/introduction.html"><strong aria-hidden="true">4.</strong> jcli</a></li><li><ol class="section"><li class="expanded "><a href="../jcli/key.html"><strong aria-hidden="true">4.1.</strong> Cryptographic keys</a></li><li class="expanded "><a href="../jcli/address.html" class="active"><strong aria-hidden="true">4.2.</strong> Address</a></li><li class="expanded "><a href="../jcli/transaction.html"><strong aria-hidden="true">4.3.</strong> Transaction</a></li><li class="expanded "><a href="../jcli/certificate.html"><strong aria-hidden="true">4.4.</strong> Certificate</a></li><li class="expanded "><a href="../jcli/genesis.html"><strong aria-hidden="true">4.5.</strong> Genesis</a></li><li class="expanded "><a href="../jcli/rest.html"><strong aria-hidden="true">4.6.</strong> REST</a></li></ol></li><li class="expanded "><a href="../stake_pool/introduction.html"><strong aria-hidden="true">5.</strong> staking and stake pool</a></li><li><ol class="section"><li class="expanded "><a href="../stake_pool/delegating_stake.html"><strong aria-hidden="true">5.1.</strong> delegating your stake</a></li><li class="expanded "><a href="../stake_pool/registering_stake_pool.html"><strong aria-hidden="true">5.2.</strong> registering stake pool</a></li></ol></li><li class="expanded "><a href="../advanced/introduction.html"><strong aria-hidden="true">6.</strong> Advanced</a></li><li><ol class="section"><li class="expanded "><a href="../advanced/01_the_genesis_block.html"><strong aria-hidden="true">6.1.</strong> Genesis block</a></li><li class="expanded "><a href="../advanced/02_starting_bft_blockchain.html"><strong aria-hidden="true">6.2.</strong> Starting a bft blockchain</a></li><li class="expanded "><a href="../advanced/03_starting_genesis_praos_blockchain.html"><strong aria-hidden="true">6.3.</strong> Starting a genesis blockchain</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Jormungandr</h1>
+
+                        <div class="right-buttons">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#address" id="address">Address</a></h1>
+<p>Jormungandr comes with a separate CLI to create and manipulate addresses.</p>
+<p>This is useful for creating addresses from their components in the CLI,
+for debugging addresses and for testing.</p>
+<h2><a class="header" href="#display-address-info" id="display-address-info">Display address info</a></h2>
+<p>To display an address and verify it is in a valid format you can utilise:</p>
+<pre><code>$ jcli address info ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
+discrimination: testing
+public key: ed25519e_pk1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtpsx9rnmx
+</code></pre>
+<p>or for example:</p>
+<pre><code>$ jcli address \
+    info \
+    ca1qsy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxz8ah8dldkhvwfghn77se8dp76uguavzyxh5cccek9epryr7mkkr8n7kgx
+discrimination: production
+public key: ed25519_pk1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtpsx9rnmx
+group key:  ed25519_pk1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtpsx9rnmx
+</code></pre>
+<h2><a class="header" href="#creating-an-address" id="creating-an-address">Creating an address</a></h2>
+<p>Each command following allows to create addresses for production and testing
+chains. For chains, where the discrimination is <code>testing</code>, you need to
+use the <code>--testing</code> flag.</p>
+<p>There's 3 types of addresses:</p>
+<ul>
+<li>Single address : A simple spending key. This doesn't have any stake in the system</li>
+<li>Grouped address : A spending key attached to an account key. The stake is automatically</li>
+<li>Account address : An account key. The account is its own stake</li>
+</ul>
+<h3><a class="header" href="#address-for-utxo" id="address-for-utxo">Address for UTxO</a></h3>
+<p>You can create a single address (non-staked) using the spending public key for
+this address utilising the following command:</p>
+<pre><code>$ jcli address \
+    single ed25519e_pk1jnlhwdgzv3c9frknyv7twsv82su26qm30yfpdmvkzyjsdgw80mfqduaean
+ca1qw207ae4qfj8q4yw6v3ned6psa2r3tgrw9u3y9hdjcgj2p4pcaldyukyka8
+</code></pre>
+<p>To add the staking information and make a group address, simply add the account
+public key as a second parameter of the command:</p>
+<pre><code>$ jcli address \
+    single \
+    ed25519_pk1fxvudq6j7mfxvgk986t5f3f258sdtw89v4n3kr0fm6mpe4apxl4q0vhp3k \
+    ed25519_pk1as03wxmy2426ceh8nurplvjmauwpwlcz7ycwj7xtl9gmx9u5gkqscc5ylx
+ca1q3yen35r2tmdye3zc5lfw3x992s7p4dcu4jkwxcda80tv8xh5ym74mqlzudkg42443nw08cxr7e9hmcuzals9ufsa9uvh723kvteg3vpvrcxcq
+</code></pre>
+<h3><a class="header" href="#address-for-account" id="address-for-account">Address for Account</a></h3>
+<p>To create an account address you need the account public key and run:</p>
+<pre><code>$ jcli address \
+    account ed25519_pk1c4yq3hflulynn8fef0hdq92579n3c49qxljasrl9dnuvcksk84gs9sqvc2
+ca1qhz5szxa8lnujwva8997a5q42nckw8z55qm7tkq0u4k03nz6zc74ze780qe
+</code></pre>
+<h3><a class="header" href="#changing-the-address-prefix" id="changing-the-address-prefix">changing the address prefix</a></h3>
+<p>You can decide to change the address prefix, allowing you to provide more
+enriched data to the user. However, this prefix is not forwarded to the node,
+it is only for UI/UX.</p>
+<pre><code>$ jcli address \
+    account \
+    --prefix=address_ \
+    ed25519_pk1yx6q8rsndawfx8hjzwntfs2h2c37v5g6edv67hmcxvrmxfjdz9wqeejchg
+address_1q5smgquwzdh4eyc77gf6ddxp2atz8ej3rt94nt6l0qes0vexf5g4cw68kdx
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../jcli/key.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="../jcli/transaction.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="../jcli/key.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="../jcli/transaction.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+        
+        
+        <script type="text/javascript">
+            window.playpen_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

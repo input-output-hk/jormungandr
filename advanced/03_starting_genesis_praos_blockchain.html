@@ -1,0 +1,286 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Starting a genesis blockchain - Jormungandr</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div id="sidebar-scrollbox" class="sidebar-scrollbox">
+                <ol class="chapter"><li class="expanded affix "><a href="../introduction.html">Introduction</a></li><li class="expanded "><a href="../concepts/introduction.html"><strong aria-hidden="true">1.</strong> General Concepts</a></li><li><ol class="section"><li class="expanded "><a href="../concepts/blockchain.html"><strong aria-hidden="true">1.1.</strong> Blockchain concepts</a></li><li class="expanded "><a href="../concepts/stake.html"><strong aria-hidden="true">1.2.</strong> Stake</a></li><li class="expanded "><a href="../concepts/node.html"><strong aria-hidden="true">1.3.</strong> Node organisation</a></li><li class="expanded "><a href="../concepts/network.html"><strong aria-hidden="true">1.4.</strong> Network overview</a></li></ol></li><li class="expanded "><a href="../quickstart/introduction.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="expanded "><a href="../quickstart/01_command_line.html"><strong aria-hidden="true">2.1.</strong> Command lines tools</a></li><li class="expanded "><a href="../quickstart/02_passive_node.html"><strong aria-hidden="true">2.2.</strong> Starting a passive node</a></li><li class="expanded "><a href="../quickstart/03_rest_api.html"><strong aria-hidden="true">2.3.</strong> REST API</a></li><li class="expanded "><a href="../quickstart/04_explorer.html"><strong aria-hidden="true">2.4.</strong> Explorer API</a></li><li class="expanded "><a href="../quickstart/05_leader_candidate.html"><strong aria-hidden="true">2.5.</strong> Starting as a leader candidate</a></li></ol></li><li class="expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="expanded "><a href="../configuration/logging.html"><strong aria-hidden="true">3.1.</strong> Logging</a></li><li class="expanded "><a href="../configuration/network.html"><strong aria-hidden="true">3.2.</strong> Node network</a></li><li class="expanded "><a href="../configuration/mempool.html"><strong aria-hidden="true">3.3.</strong> Fragment Pool</a></li><li class="expanded "><a href="../configuration/leadership.html"><strong aria-hidden="true">3.4.</strong> Leader Events</a></li></ol></li><li class="expanded "><a href="../jcli/introduction.html"><strong aria-hidden="true">4.</strong> jcli</a></li><li><ol class="section"><li class="expanded "><a href="../jcli/key.html"><strong aria-hidden="true">4.1.</strong> Cryptographic keys</a></li><li class="expanded "><a href="../jcli/address.html"><strong aria-hidden="true">4.2.</strong> Address</a></li><li class="expanded "><a href="../jcli/transaction.html"><strong aria-hidden="true">4.3.</strong> Transaction</a></li><li class="expanded "><a href="../jcli/certificate.html"><strong aria-hidden="true">4.4.</strong> Certificate</a></li><li class="expanded "><a href="../jcli/genesis.html"><strong aria-hidden="true">4.5.</strong> Genesis</a></li><li class="expanded "><a href="../jcli/rest.html"><strong aria-hidden="true">4.6.</strong> REST</a></li></ol></li><li class="expanded "><a href="../stake_pool/introduction.html"><strong aria-hidden="true">5.</strong> staking and stake pool</a></li><li><ol class="section"><li class="expanded "><a href="../stake_pool/delegating_stake.html"><strong aria-hidden="true">5.1.</strong> delegating your stake</a></li><li class="expanded "><a href="../stake_pool/registering_stake_pool.html"><strong aria-hidden="true">5.2.</strong> registering stake pool</a></li></ol></li><li class="expanded "><a href="../advanced/introduction.html"><strong aria-hidden="true">6.</strong> Advanced</a></li><li><ol class="section"><li class="expanded "><a href="../advanced/01_the_genesis_block.html"><strong aria-hidden="true">6.1.</strong> Genesis block</a></li><li class="expanded "><a href="../advanced/02_starting_bft_blockchain.html"><strong aria-hidden="true">6.2.</strong> Starting a bft blockchain</a></li><li class="expanded "><a href="../advanced/03_starting_genesis_praos_blockchain.html" class="active"><strong aria-hidden="true">6.3.</strong> Starting a genesis blockchain</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Jormungandr</h1>
+
+                        <div class="right-buttons">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#starting-a-genesis-blockchain" id="starting-a-genesis-blockchain">starting a genesis blockchain</a></h1>
+<p>When starting a genesis praos blockchain there is an element to take
+into consideration while constructing the block 0: <em>the stake distribution</em>.</p>
+<p>In the context of Genesis/Praos the network is fully decentralized and it is
+necessary to think ahead about initial stake pools and to make sure there
+is stake delegated to these stake pools.</p>
+<p>In your genesis yaml file, make sure to set the following values to the appropriate
+values/desired values:</p>
+<pre><code class="language-yaml"># The Blockchain Configuration defines the settings of the blockchain.
+blockchain_configuration:
+  block0_consensus: genesis_praos
+  consensus_genesis_praos_active_slot_coeff: 0.1
+  kes_update_speed: 43200 # 12hours
+</code></pre>
+<p><code>block0_consensus</code> set to <code>genesis_praos</code> means you want to start a blockchain with
+genesis praos as the consensus layer.</p>
+<p><code>consensus_genesis_praos_active_slot_coeff</code> determines minimum stake required to
+try becoming slot leader, must be in range 0 exclusive and 1 inclusive.</p>
+<h2><a class="header" href="#the-initial-certificates" id="the-initial-certificates">The initial certificates</a></h2>
+<p>In the <code>initial_certs</code> field you will set the initial certificate. This is important
+to declare the stake pool and delegate stake to them. Otherwise no block will be ever
+created.</p>
+<p>Remember that in this array the <strong>order</strong> matters:</p>
+<p>In order to delegate your stake, you need a stake pool to already exist, so the stake pool registration certificate should go first.</p>
+<h3><a class="header" href="#stake-pool-registration" id="stake-pool-registration">Stake pool registration</a></h3>
+<p>Now you can register a stake pool.
+Follow the instruction in <a href="../stake_pool/registering_stake_pool.html">registering stake pool guide</a>.</p>
+<p>The <em>owner key</em> (the key you sign the stake pool registration certificate) is the secret
+key associated to a previously registered stake key.</p>
+<h3><a class="header" href="#delegating-stake" id="delegating-stake">Delegating stake</a></h3>
+<p>Now that there is both your stake key and there are stake pools available
+in the block0 you need to delegate to one of the stake pool. Follow the instruction
+in <a href="../stake_pool/delegating_stake.html">delegating stake</a>.</p>
+<p>And in the initial funds start adding the addresses. To create an address with delegation
+follow the instruction in <a href="../jcli/address.html">JCLI's address guide</a>. Utilise the stake key
+registered previously as group address:</p>
+<pre><code>jcli address single $(cat wallet_key.pub) $(cat stake_key.pub)
+ta1sjx4j3jwel94g0cgwzq9au7h6m8f5q3qnyh0gfnryl3xan6qnmjse3k2uv062mzj34eacjnxthxqv8fvdcn6f4xhxwa7ms729ak3gsl4qrq2mm
+</code></pre>
+<p>You will notice that addresses with delegation are longer (about twice longer) than
+address without delegation.</p>
+<p>For example, the most minimal setting you may have is:</p>
+<pre><code class="language-yaml">initial_certs:
+  # register a stake pool (P), owner of the stake pool is the stake key (K)
+  - cert1qsqqqqqqqqqqqqqqqqqqq0p5avfqp9tzusr26chayeddkkmdlap6tl23ceca8unsghc22tap8clhrzslkehdycufa4ywvqvs4u36zctw4ydtg7xagprfgz0vuujh3lgtxgfszqzqj4xk4sxxyg392p5nqz8s7ev5wna7eqz7ycsuas05mrupmdsfk0fqqudanew6c0nckf5tsp0lgnk8e8j0dpnxvjk2usn52vs8umr3qrccegxaz
+
+  # delegate stake associated to stake key (K) to stake pool (P)
+  - cert1q0rv4ccl54k99rtnm39xvhwvqcwjcm385n2dwvamahpu5tmdz3plt65rpewev3a03xj7nfx5pz0xap2cjxjnxvt2ma9y9dalzder3xm5qyqyq0lx05ggrws0ghuffqrg7scqzdsd665v4m7087eam5zvw4f26v2tsea3ujrxly243sgqkn42uttk5juvq78ajvfx9ttcmj05lfuwtq9qhdxzr0
+
+initial_funds:
+  # address without delegation
+  - address: ta1swx4j3jwel94g0cgwzq9au7h6m8f5q3qnyh0gfnryl3xan6qnmjsczt057x
+    value: 10000
+  # address delegating to stake key (K)
+  - address: ta1sjx4j3jwel94g0cgwzq9au7h6m8f5q3qnyh0gfnryl3xan6qnmjse3k2uv062mzj34eacjnxthxqv8fvdcn6f4xhxwa7ms729ak3gsl4qrq2mm
+    value: 1000000
+</code></pre>
+<h3><a class="header" href="#starting-the-node" id="starting-the-node">Starting the node</a></h3>
+<p>Now, for starting the node and be able to generate new blocks, you have to put your pool's private keys and id in a file and start the node with the <code>--secret filename</code> parameter.</p>
+<hr />
+<p>For example, if you follow the examples of the <a href="../stake_pool/registering_stake_pool.html">registering stake pool guide</a> </p>
+<p>You could create a file called poolsecret.yaml with the following content.</p>
+<pre><code class="language-yaml">genesis:
+  sig_key: Content of stake_pool_kes.prv file
+  vrf_key: Content of stake_pool_vrf.prv file
+  node_id: Content of stake_pool.id file
+</code></pre>
+<p>And you could start the node with this command </p>
+<pre><code class="language-sh">jormungandr --genesis-block block-0.bin --config config.yaml --secret poolsecret.yaml
+</code></pre>
+<h1><a class="header" href="#test-script" id="test-script">Test script</a></h1>
+<p>There is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap">here</a> that can be used to bootstrap a test node with a pre-set faucet and stake pool and can be used as an example.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../advanced/02_starting_bft_blockchain.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="../advanced/02_starting_bft_blockchain.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+        
+        
+        <script type="text/javascript">
+            window.playpen_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

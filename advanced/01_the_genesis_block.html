@@ -1,0 +1,494 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Genesis block - Jormungandr</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div id="sidebar-scrollbox" class="sidebar-scrollbox">
+                <ol class="chapter"><li class="expanded affix "><a href="../introduction.html">Introduction</a></li><li class="expanded "><a href="../concepts/introduction.html"><strong aria-hidden="true">1.</strong> General Concepts</a></li><li><ol class="section"><li class="expanded "><a href="../concepts/blockchain.html"><strong aria-hidden="true">1.1.</strong> Blockchain concepts</a></li><li class="expanded "><a href="../concepts/stake.html"><strong aria-hidden="true">1.2.</strong> Stake</a></li><li class="expanded "><a href="../concepts/node.html"><strong aria-hidden="true">1.3.</strong> Node organisation</a></li><li class="expanded "><a href="../concepts/network.html"><strong aria-hidden="true">1.4.</strong> Network overview</a></li></ol></li><li class="expanded "><a href="../quickstart/introduction.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="expanded "><a href="../quickstart/01_command_line.html"><strong aria-hidden="true">2.1.</strong> Command lines tools</a></li><li class="expanded "><a href="../quickstart/02_passive_node.html"><strong aria-hidden="true">2.2.</strong> Starting a passive node</a></li><li class="expanded "><a href="../quickstart/03_rest_api.html"><strong aria-hidden="true">2.3.</strong> REST API</a></li><li class="expanded "><a href="../quickstart/04_explorer.html"><strong aria-hidden="true">2.4.</strong> Explorer API</a></li><li class="expanded "><a href="../quickstart/05_leader_candidate.html"><strong aria-hidden="true">2.5.</strong> Starting as a leader candidate</a></li></ol></li><li class="expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="expanded "><a href="../configuration/logging.html"><strong aria-hidden="true">3.1.</strong> Logging</a></li><li class="expanded "><a href="../configuration/network.html"><strong aria-hidden="true">3.2.</strong> Node network</a></li><li class="expanded "><a href="../configuration/mempool.html"><strong aria-hidden="true">3.3.</strong> Fragment Pool</a></li><li class="expanded "><a href="../configuration/leadership.html"><strong aria-hidden="true">3.4.</strong> Leader Events</a></li></ol></li><li class="expanded "><a href="../jcli/introduction.html"><strong aria-hidden="true">4.</strong> jcli</a></li><li><ol class="section"><li class="expanded "><a href="../jcli/key.html"><strong aria-hidden="true">4.1.</strong> Cryptographic keys</a></li><li class="expanded "><a href="../jcli/address.html"><strong aria-hidden="true">4.2.</strong> Address</a></li><li class="expanded "><a href="../jcli/transaction.html"><strong aria-hidden="true">4.3.</strong> Transaction</a></li><li class="expanded "><a href="../jcli/certificate.html"><strong aria-hidden="true">4.4.</strong> Certificate</a></li><li class="expanded "><a href="../jcli/genesis.html"><strong aria-hidden="true">4.5.</strong> Genesis</a></li><li class="expanded "><a href="../jcli/rest.html"><strong aria-hidden="true">4.6.</strong> REST</a></li></ol></li><li class="expanded "><a href="../stake_pool/introduction.html"><strong aria-hidden="true">5.</strong> staking and stake pool</a></li><li><ol class="section"><li class="expanded "><a href="../stake_pool/delegating_stake.html"><strong aria-hidden="true">5.1.</strong> delegating your stake</a></li><li class="expanded "><a href="../stake_pool/registering_stake_pool.html"><strong aria-hidden="true">5.2.</strong> registering stake pool</a></li></ol></li><li class="expanded "><a href="../advanced/introduction.html"><strong aria-hidden="true">6.</strong> Advanced</a></li><li><ol class="section"><li class="expanded "><a href="../advanced/01_the_genesis_block.html" class="active"><strong aria-hidden="true">6.1.</strong> Genesis block</a></li><li class="expanded "><a href="../advanced/02_starting_bft_blockchain.html"><strong aria-hidden="true">6.2.</strong> Starting a bft blockchain</a></li><li class="expanded "><a href="../advanced/03_starting_genesis_praos_blockchain.html"><strong aria-hidden="true">6.3.</strong> Starting a genesis blockchain</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Jormungandr</h1>
+
+                        <div class="right-buttons">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#genesis-file" id="genesis-file">genesis file</a></h1>
+<p>The genesis file is the file that allows you to create a new blockchain
+from block 0. It lays out the different parameter of your blockchain:
+the initial utxo, the start time, the slot duration time, etc...</p>
+<p>Example of a BFT genesis file with an initial address UTxO and an account UTxO.
+More info regarding <a href="./02_starting_bft_blockchain.html">starting a BFT blockchain here</a>
+and <a href="../jcli/address.html">regarding addresses there</a>.
+You could also find information regarding the <a href="../jcli/genesis.html">jcli genesis tooling</a>.</p>
+<p>You can generate a documented pre-generated genesis file:</p>
+<pre><code>jcli genesis init
+</code></pre>
+<p>For example your genesis file may look like:</p>
+<pre><code class="language-yaml"># The Blockchain Configuration defines the settings of the blockchain.
+blockchain_configuration:
+
+  # The block0-date defines the date the blockchain starts
+  # expected value in seconds since UNIX_EPOCH
+  #
+  # By default the value will be the current date and time. Or you can
+  # add a specific time by entering the number of seconds since UNIX
+  # Epoch
+  block0_date: {default_block0_date}
+
+  # This is the type of discrimination of the blockchain
+  # of this blockchain is meant for production then
+  # use 'production' instead.
+  #
+  # otherwise leave as this
+  discrimination: {discrimination}
+
+  # The initial consensus version:
+  #
+  # * BFT consensus: bft
+  # * Genesis Praos consensus: genesis
+  block0_consensus: bft
+
+  # Number of slots in each epoch.
+  #
+  # default value is {default_slots_per_epoch}
+  slots_per_epoch: {default_slots_per_epoch}
+
+  # The slot duration, in seconds, is the time between the creation
+  # of 2 blocks
+  #
+  # default value is {default_slot_duration}
+  slot_duration: {default_slot_duration}
+
+  # set the block content max size
+  #
+  # This is the size, in bytes, of all the contents of the block (excluding the
+  # block header).
+  #
+  # default value is {default_block_content_max_size}
+  block_content_max_size: {default_block_content_max_size}
+
+  # A list of Ed25519 PublicKey that represents the
+  # BFT leaders encoded as bech32. The order in the list matters.
+  consensus_leader_ids:
+    - {leader_1}
+    - {leader_2}
+
+  # Epoch stability depth
+  #
+  # Optional: default value {default_epoch_stability_depth}
+  epoch_stability_depth: {default_epoch_stability_depth}
+
+  # Genesis praos active slot coefficient
+  # Determines minimum stake required to try becoming slot leader, must be in range (0,1]
+  #
+  # default value: {default_consensus_genesis_praos_active_slot_coeff}
+  consensus_genesis_praos_active_slot_coeff: {default_consensus_genesis_praos_active_slot_coeff}
+
+  # The fee calculations settings
+  #
+  # total fees: constant + (num_inputs + num_outputs) * coefficient [+ certificate]
+  linear_fees:
+    # this is the minimum value to pay for every transaction
+    constant: 2
+    # the additional fee to pay for every inputs and outputs
+    coefficient: 1
+    # the additional fee to pay if the transaction embeds a certificate
+    certificate: 4
+    # (optional) fees for different types of certificates, to override the one
+    # given in `certificate` just above
+    #
+    # here: all certificate fees are set to `4` except for pool registration
+    # and stake delegation which are respectively `5` and `2`.
+    per_certificate_fees:
+      # (optional) if not specified, the pool registration certificate fee will be
+      # the one set by linear_fees.certificate
+      certificate_pool_registration: 5
+      # (optional) if not specified, the delegation certificate fee will be
+      # the one set by linear_fees.certificate
+      certificate_stake_delegation: 2
+      # (optional) if not specified, the owner delegation certificate fee will be
+      # the one set by linear_fees.certificate. Uncomment to set the owner stake
+      # delegation to `1` instead of default `4`:
+      # certificate_owner_stake_delegation: 1
+
+  # The speed to update the KES Key in seconds
+  #
+  # default value: {default_kes_update_speed}
+  kes_update_speed: {default_kes_update_speed}
+
+  # Set where to send the fees generated by transactions activity.
+  #
+  # by default it is send to the &quot;rewards&quot; pot of the epoch which is then
+  # distributed to the different stake pools who created blocks that given
+  # epoch.
+  #
+  # It is possible to send all the generated fees to the &quot;treasury&quot;.
+  #
+  # Optional, default is &quot;rewards&quot;
+  # fees_go_to: &quot;rewards&quot;
+
+  # initial value the treasury will start with, if not set the treasury
+  # starts at 0
+  treasury: 1000000000000
+
+  # set the treasury parameters, this is the tax type, just as in stake pool
+  # registration certificate parameters.
+  #
+  # When distributing the rewards, the treasury will be first serve as per
+  # the incentive specification document
+  #
+  # if not set, the treasury will not grow
+  treasury_parameters:
+    # the fix value the treasury will take from the total reward pot of the epoch
+    fixed: 1000
+    # the extra percentage the the treasury will take from the reward pot of the epoch
+    ratio: &quot;1/10&quot;
+    # It is possible to add a max bound to the total value the treasury takes
+    # at each reward distribution. For example, one could cap the treasury tax
+    # to 10000. Uncomment the following line to apply a max limit:
+    # max_limit: 10000
+
+  # Set the total reward supply available for monetary creation
+  #
+  # if not set there is no monetary creation
+  # once emptied, there is no more monetary creation
+  total_reward_supply: 100000000000000
+
+  # set the reward supply consumption. These parameters will define how the
+  # total_reward_supply is consumed for the stake pool reward
+  #
+  # There's fundamentally many potential choices for how rewards are contributed back, and here's two potential valid examples:
+  #
+  # Linear formula: constant - ratio * (#epoch after epoch_start / epoch_rate)
+  # Halving formula: constant * ratio ^ (#epoch after epoch_start / epoch_rate)
+  #
+  reward_parameters:
+    halving: # or use &quot;linear&quot; for the linear formula
+      # In the linear formula, it represents the starting point of the contribution
+      # at #epoch=0, whereas in halving formula is used as starting constant for
+      # the calculation.
+      constant: 100
+
+      # In the halving formula, an effective value between 0.0 to 1.0 indicates a
+      # reducing contribution, whereas above 1.0 it indicate an acceleration of contribution.
+      #
+      # However in linear formula the meaning is just a scaling factor for the epoch zone
+      # (current_epoch - start_epoch / epoch_rate). Further requirement is that this ratio
+      # is expressed in fractional form (e.g. 1/2), which allow calculation in integer form.
+      ratio: &quot;13/19&quot;
+
+      # indicates when this contribution start. note that if the epoch is not
+      # the same or after the epoch_start, the overall contribution is zero.
+      epoch_start: 1
+
+      # the rate at which the contribution is tweaked related to epoch.
+      epoch_rate: 3
+
+  # set some reward constraints and limits
+  #
+  # this value is optional, the default is no constraints at all. The settings
+  # are commented below:
+  #
+  #reward_constraints:
+  #  # limit the epoch total reward drawing limit to a portion of the total
+  #  # active stake of the system.
+  #  #
+  #  # for example, if set to 10%, the reward drawn will be bounded by the
+  #  # 10% of the total active stake.
+  #  #
+  #  # this value is optional, the default is no reward drawing limit
+  #  reward_drawing_limit_max: &quot;10/100&quot;
+  #
+  #  # settings to incentivize the numbers of stake pool to be registered
+  #  # on the blockchain.
+  #  #
+  #  # These settings does not prevent more stake pool to be added. For example
+  #  # if there is already 1000 stake pools, someone can still register a new
+  #  # stake pool and affect the rewards of everyone else too.
+  #  #
+  #  # if the threshold is reached, the pool doesn't really have incentive to
+  #  # create more blocks than 1 / set-value-of-pools % of stake.
+  #  #
+  #  # this value is optional, the default is no pool participation capping
+  #  pool_participation_capping:
+  #    min: 300
+  #    max: 1000
+
+# Initial state of the ledger. Each item is applied in order of this list
+initial:
+  # Initial deposits present in the blockchain
+  - fund:
+      # UTxO addresses or account
+      - address: {initial_funds_address}
+        value: 10000
+
+  # Initial certificates
+  #- cert: ..
+
+  # Initial deposits present in the blockchain
+  #- legacy_fund:
+  #    # Legacy Cardano address
+  #    - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
+  #      value: 123
+</code></pre>
+<p>There are multiple <em>parts</em> in the genesis file:</p>
+<ul>
+<li><code>blockchain_configuration</code>: this is a list of configuration
+parameters of the blockchain, some of which can be changed later
+via the update protocol;</li>
+<li><code>initial</code>: list of steps to create initial state of ledger</li>
+</ul>
+<h2><a class="header" href="#blockchain_configuration-options" id="blockchain_configuration-options"><code>blockchain_configuration</code> options</a></h2>
+<table><thead><tr><th align="left">option</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
+<tr><td align="left"><code>block0_date</code></td><td align="left">number</td><td align="left">the official start time of the blockchain, in seconds since UNIX EPOCH</td></tr>
+<tr><td align="left"><code>discrimination</code></td><td align="left">string</td><td align="left"><code>production</code> or <code>test</code></td></tr>
+<tr><td align="left"><code>block0_consensus</code></td><td align="left">string</td><td align="left"><code>bft</code></td></tr>
+<tr><td align="left"><code>slot_duration</code></td><td align="left">number</td><td align="left">the number of seconds between the creation of 2 blocks</td></tr>
+<tr><td align="left"><code>epoch_stability_depth</code></td><td align="left">number</td><td align="left">allowed size of a fork (in number of block)</td></tr>
+<tr><td align="left"><code>consensus_leader_ids</code></td><td align="left">array</td><td align="left">the list of the BFT leader at the beginning of the blockchain</td></tr>
+<tr><td align="left"><code>block_content_max_size</code></td><td align="left">number</td><td align="left">the maximum size of the block content, in bytes.</td></tr>
+<tr><td align="left"><code>linear_fees</code></td><td align="left">object</td><td align="left">linear fee settings, set the fee for transaction and certificate publishing</td></tr>
+<tr><td align="left"><code>consensus_genesis_praos_active_slot_coeff</code></td><td align="left">number</td><td align="left">genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1]</td></tr>
+<tr><td align="left"><code>kes_update_speed</code></td><td align="left">number</td><td align="left">the speed to update the KES Key in seconds</td></tr>
+<tr><td align="left"><code>slots_per_epoch</code></td><td align="left">number</td><td align="left">number of slots in each epoch</td></tr>
+</tbody></table>
+<p><em>for more information about the BFT leaders in the genesis file, see
+<a href="./02_starting_bft_blockchain.html">Starting a BFT Blockchain</a></em></p>
+<h2><a class="header" href="#initial-options" id="initial-options"><code>initial</code> options</a></h2>
+<p>Each entry can be one of 3 variants:</p>
+<table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
+<tr><td align="left"><code>fund</code></td><td align="left">sequence</td><td align="left">initial deposits present in the blockchain (up to 255 outputs per entry)</td></tr>
+<tr><td align="left"><code>cert</code></td><td align="left">string</td><td align="left">initial certificate</td></tr>
+<tr><td align="left"><code>legacy_fund</code></td><td align="left">sequence</td><td align="left">same as <code>fund</code>, but with legacy Cardano address format</td></tr>
+</tbody></table>
+<p>Example:</p>
+<pre><code class="language-yaml">initial:
+  - fund:
+      - address: &lt;address&gt;
+        value: 10000
+      - address: &lt;address2&gt;
+        value: 20000
+      - address: &lt;address3&gt;
+        value: 30000
+  - cert: &lt;certificate&gt;
+  - legacy_fund:
+      - address: &lt;legacy address&gt;
+        value: 123
+  - fund:
+      - address: &lt;another address&gt;
+        value: 1001
+</code></pre>
+<h3><a class="header" href="#fund-and-legacy_fund-format" id="fund-and-legacy_fund-format"><code>fund</code> and <code>legacy_fund</code> format</a></h3>
+<table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
+<tr><td align="left"><code>address</code></td><td align="left">string</td><td align="left">can be a <a href="../jcli/address.html#address-for-utxo">single address</a> or an <a href="../jcli/address.html#address-for-account">account address</a></td></tr>
+<tr><td align="left"><code>value</code></td><td align="left">number</td><td align="left">assigned value</td></tr>
+</tbody></table>
+<p><code>legacy_fund</code> differs only in address format, which is legacy Cardano</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../advanced/introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="../advanced/02_starting_bft_blockchain.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="../advanced/introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="../advanced/02_starting_bft_blockchain.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+        
+        
+        <script type="text/javascript">
+            window.playpen_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>

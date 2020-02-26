@@ -1,0 +1,329 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>registering stake pool - Jormungandr</title>
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div id="sidebar-scrollbox" class="sidebar-scrollbox">
+                <ol class="chapter"><li class="expanded affix "><a href="../introduction.html">Introduction</a></li><li class="expanded "><a href="../concepts/introduction.html"><strong aria-hidden="true">1.</strong> General Concepts</a></li><li><ol class="section"><li class="expanded "><a href="../concepts/blockchain.html"><strong aria-hidden="true">1.1.</strong> Blockchain concepts</a></li><li class="expanded "><a href="../concepts/stake.html"><strong aria-hidden="true">1.2.</strong> Stake</a></li><li class="expanded "><a href="../concepts/node.html"><strong aria-hidden="true">1.3.</strong> Node organisation</a></li><li class="expanded "><a href="../concepts/network.html"><strong aria-hidden="true">1.4.</strong> Network overview</a></li></ol></li><li class="expanded "><a href="../quickstart/introduction.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="expanded "><a href="../quickstart/01_command_line.html"><strong aria-hidden="true">2.1.</strong> Command lines tools</a></li><li class="expanded "><a href="../quickstart/02_passive_node.html"><strong aria-hidden="true">2.2.</strong> Starting a passive node</a></li><li class="expanded "><a href="../quickstart/03_rest_api.html"><strong aria-hidden="true">2.3.</strong> REST API</a></li><li class="expanded "><a href="../quickstart/04_explorer.html"><strong aria-hidden="true">2.4.</strong> Explorer API</a></li><li class="expanded "><a href="../quickstart/05_leader_candidate.html"><strong aria-hidden="true">2.5.</strong> Starting as a leader candidate</a></li></ol></li><li class="expanded "><a href="../configuration/introduction.html"><strong aria-hidden="true">3.</strong> Configuration</a></li><li><ol class="section"><li class="expanded "><a href="../configuration/logging.html"><strong aria-hidden="true">3.1.</strong> Logging</a></li><li class="expanded "><a href="../configuration/network.html"><strong aria-hidden="true">3.2.</strong> Node network</a></li><li class="expanded "><a href="../configuration/mempool.html"><strong aria-hidden="true">3.3.</strong> Fragment Pool</a></li><li class="expanded "><a href="../configuration/leadership.html"><strong aria-hidden="true">3.4.</strong> Leader Events</a></li></ol></li><li class="expanded "><a href="../jcli/introduction.html"><strong aria-hidden="true">4.</strong> jcli</a></li><li><ol class="section"><li class="expanded "><a href="../jcli/key.html"><strong aria-hidden="true">4.1.</strong> Cryptographic keys</a></li><li class="expanded "><a href="../jcli/address.html"><strong aria-hidden="true">4.2.</strong> Address</a></li><li class="expanded "><a href="../jcli/transaction.html"><strong aria-hidden="true">4.3.</strong> Transaction</a></li><li class="expanded "><a href="../jcli/certificate.html"><strong aria-hidden="true">4.4.</strong> Certificate</a></li><li class="expanded "><a href="../jcli/genesis.html"><strong aria-hidden="true">4.5.</strong> Genesis</a></li><li class="expanded "><a href="../jcli/rest.html"><strong aria-hidden="true">4.6.</strong> REST</a></li></ol></li><li class="expanded "><a href="../stake_pool/introduction.html"><strong aria-hidden="true">5.</strong> staking and stake pool</a></li><li><ol class="section"><li class="expanded "><a href="../stake_pool/delegating_stake.html"><strong aria-hidden="true">5.1.</strong> delegating your stake</a></li><li class="expanded "><a href="../stake_pool/registering_stake_pool.html" class="active"><strong aria-hidden="true">5.2.</strong> registering stake pool</a></li></ol></li><li class="expanded "><a href="../advanced/introduction.html"><strong aria-hidden="true">6.</strong> Advanced</a></li><li><ol class="section"><li class="expanded "><a href="../advanced/01_the_genesis_block.html"><strong aria-hidden="true">6.1.</strong> Genesis block</a></li><li class="expanded "><a href="../advanced/02_starting_bft_blockchain.html"><strong aria-hidden="true">6.2.</strong> Starting a bft blockchain</a></li><li class="expanded "><a href="../advanced/03_starting_genesis_praos_blockchain.html"><strong aria-hidden="true">6.3.</strong> Starting a genesis blockchain</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Jormungandr</h1>
+
+                        <div class="right-buttons">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                            
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#registering-stake-pool" id="registering-stake-pool">registering stake pool</a></h1>
+<p>There are multiple components to be aware of when running a stake pool:</p>
+<ul>
+<li>your <code>NodeId</code>: it is the identifier within the blockchain protocol (wallet
+will delegate to your stake pool via this <code>NodeId</code>);</li>
+<li>your <a href="https://en.wikipedia.org/wiki/Verifiable_random_function"><strong>VRF</strong></a> key pairs: this is the cryptographic material we will use to participate
+to the leader election;</li>
+<li>your <strong>KES</strong> key pairs: this is the cryptographic material we will use to sign the
+block with.</li>
+<li>the stake pool <strong>Tax</strong>: the value the stake pool will take from the total reward due to
+the stake pool before distributing rewards (if any left) to the delegators.</li>
+</ul>
+<p>So in order to start your stake pool you will need to generate these objects.</p>
+<h2><a class="header" href="#the-primitives" id="the-primitives">The primitives</a></h2>
+<h3><a class="header" href="#vrf-key-pair" id="vrf-key-pair">VRF key pair</a></h3>
+<p>To generate your <a href="https://en.wikipedia.org/wiki/Verifiable_random_function"><strong>VRF</strong></a> Key pairs, we will utilise <a href="../jcli/introduction.html"><code>jcli</code></a> as described
+<a href="../jcli/key.html">here</a>:</p>
+<pre><code class="language-sh">jcli key generate --type=Curve25519_2HashDH &gt; stake_pool_vrf.prv
+</code></pre>
+<p><code>stake_pool_vrf.prv</code> file now contains the VRF private key.</p>
+<pre><code class="language-sh">cat stake_pool_vrf.prv | jcli key to-public &gt; stake_pool_vrf.pub
+</code></pre>
+<h3><a class="header" href="#kes-key-pair" id="kes-key-pair">KES key pair</a></h3>
+<p>Similar to above:</p>
+<pre><code class="language-sh">jcli key generate --type=SumEd25519_12 &gt; stake_pool_kes.prv
+</code></pre>
+<p><code>stake_pool_kes.prv</code> now contains your KES private key</p>
+<pre><code class="language-sh">cat stake_pool_kes.prv | jcli key to-public &gt; stake_pool_kes.pub
+</code></pre>
+<h2><a class="header" href="#choosing-the-tax-parameters" id="choosing-the-tax-parameters">Choosing the <strong>Tax</strong> parameters</a></h2>
+<p>There are 3 values you can set to configure the stake pool's <strong>Tax</strong>:</p>
+<ul>
+<li><code>tax-fixed</code>: this is the fixed cut the stake pool will take from the total reward due to
+the stake pool;</li>
+<li><code>tax-ratio</code>: this is the percentage of the remaining value that will be taken from the total due</li>
+<li><code>tax-limit</code>: a value that can be set to limit the pool's <strong>Tax</strong>.</li>
+</ul>
+<p>All of these values are optionals, if not set, they will be set to <code>0</code>. This will mean
+no tax for the stake pool: rewards are all distributed to the delegators.</p>
+<h3><a class="header" href="#so-how-does-this-works" id="so-how-does-this-works">So how does this works</a></h3>
+<p>Let say you control a stake pool <code>SP</code>, with 2 owners (<code>O1</code> and <code>O2</code>). During epoch 1, <code>SP</code> has
+created some blocks and is entitled to receive <code>10_000</code>.</p>
+<p>Before distributing the <code>10_000</code> among the delegators, <code>SP</code> will take its <strong>Tax</strong>.</p>
+<ol>
+<li>we extract the <code>tax-fixed</code>. If this is greater or equal to the total (<code>10_000</code>)
+then we stop there, there is no more rewards to distribute.</li>
+<li>with what remains the <code>SP</code> extracts its <code>tax-ratio</code> and checks the <strong>tax</strong> from the ratio
+is not greater than <code>tax-limit</code>.</li>
+<li>the total <code>SP</code> rewards will then be distributed equally to the owners (O1 and O2).
+Note that if the <code>--reward-account</code> is set, the rewards for <code>SP</code> are then distributed
+to that account and nothing to <code>O1</code> and <code>O2</code>.</li>
+</ol>
+<p>For example:</p>
+<table><thead><tr><th></th><th align="center">total</th><th align="center">fixed</th><th align="center">ratio</th><th align="center">limit</th><th align="center"><code>SP</code></th><th align="center"><code>O1</code></th><th align="center"><code>O2</code></th><th align="center">for delegators</th></tr></thead><tbody>
+<tr><td>takes 100%</td><td align="center">10000</td><td align="center">0</td><td align="center">1/1</td><td align="center">0</td><td align="center">10000</td><td align="center">5000</td><td align="center">5000</td><td align="center">0</td></tr>
+<tr><td>fixed of 1000</td><td align="center">10000</td><td align="center">1000</td><td align="center">0/1</td><td align="center">0</td><td align="center">1000</td><td align="center">500</td><td align="center">500</td><td align="center">9000</td></tr>
+<tr><td>fixed + 10%</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/10</td><td align="center">0</td><td align="center">1100</td><td align="center">550</td><td align="center">550</td><td align="center">900</td></tr>
+<tr><td>fixed + 20% up to 150</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/5</td><td align="center">150</td><td align="center">1150</td><td align="center">575</td><td align="center">575</td><td align="center">850</td></tr>
+</tbody></table>
+<h3><a class="header" href="#the-options-to-set" id="the-options-to-set">The options to set</a></h3>
+<pre><code>--tax-limit &lt;TAX_LIMIT&gt;
+    The maximum tax value the stake pool will take.
+
+    This will set the maximum the stake pool value will reserve for themselves from the `--tax-ratio` (excluding `--tax-fixed`).
+--tax-ratio &lt;TAX_RATIO&gt;
+    The percentage take of the stake pool.
+
+    Once the `tax-fixed` has been take, this is the percentage the stake pool will take for themselves. [default: 0/1]
+--tax-fixed &lt;TAX_VALUE&gt;
+    set the fixed value tax the stake pool will reserve from the reward
+
+    For example, a stake pool may set this value to cover their fixed operation costs. [default: 0]
+</code></pre>
+<h2><a class="header" href="#creating-a-stake-pool-certificate" id="creating-a-stake-pool-certificate">creating a stake pool certificate</a></h2>
+<p>The certificate is what will be sent to the blockchain in order to register
+yourself to the other participants of the blockchain that you are a stake
+pool too.</p>
+<pre><code class="language-sh">jcli certificate new stake-pool-registration \
+    --kes-key $(cat stake_pool_kes.pub) \
+    --vrf-key $(cat stake_pool_vrf.pub) \
+    --start-validity 0 \
+    --management-threshold 1 \
+    --tax-fixed 1000000 \
+    --tax-limit 1000000000 \
+    --tax-ratio &quot;1/10&quot; \
+    --owner $(cat owner_key.pub) &gt; stake_pool.cert
+</code></pre>
+<p>The <code>--operator</code> flag is optional.</p>
+<p>And now you can retrieve your stake pool id (<code>NodeId</code>):</p>
+<pre><code class="language-sh">cat stake_pool.cert | jcli certificate get-stake-pool-id | tee stake_pool.id
+ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74
+</code></pre>
+<h2><a class="header" href="#submitting-to-a-node" id="submitting-to-a-node">submitting to a node</a></h2>
+<p>The <code>jcli transaction add-certificate</code> command should be used to add a certificate <strong>before finalizing</strong> the transaction.</p>
+<p>For example:</p>
+<pre><code class="language-sh">...
+
+jcli transaction add-certificate $(cat stake_pool.cert) --staging tx
+jcli transaction finalize CHANGE_ADDRESS --fee-constant 5 --fee-coefficient 2 --fee-certificate 2 --staging tx
+
+...
+jcli transaction seal --staging tx
+jcli transaction auth --key owner_key.prv --staging tx
+...
+</code></pre>
+<p>The <code>--fee-certificate</code> flag indicates the cost of adding a certificate, used for computing the fees, it can be omitted if it is zero.</p>
+<p>See <a href="../jcli/transaction.html">here</a> for more documentation on transaction creation.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+                            <a rel="prev" href="../stake_pool/delegating_stake.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+
+                        
+                            <a rel="next" href="../advanced/introduction.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+                    <a href="../stake_pool/delegating_stake.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+
+                
+                    <a href="../advanced/introduction.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+        
+        
+        <script type="text/javascript">
+            window.playpen_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+
+    </body>
+</html>
