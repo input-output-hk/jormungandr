@@ -1,5 +1,22 @@
 # Change Log
 
+## [v0.8.13](https://github.com/input-output-hk/jormungandr/tree/v0.8.13) (2020-02-26)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.12...v0.8.13)
+
+**Implemented enhancements:**
+
+- Avoid inconsistency between block store and state [\#1852](https://github.com/input-output-hk/jormungandr/pull/1852)
+
+**Fixed bugs:**
+
+- Promoting Leader is broken in 0.8.12 [\#1857](https://github.com/input-output-hk/jormungandr/issues/1857)
+- huge simplification of the code for the leader enclave holder [\#1858](https://github.com/input-output-hk/jormungandr/pull/1858)
+
+**Merged pull requests:**
+
+- Publish docs with github actions [\#1854](https://github.com/input-output-hk/jormungandr/pull/1854)
+
 ## [v0.8.12](https://github.com/input-output-hk/jormungandr/tree/v0.8.12) (2020-02-25)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.11...v0.8.12)
