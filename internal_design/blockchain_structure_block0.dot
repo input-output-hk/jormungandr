@@ -1,0 +1,42 @@
+digraph G {
+    subgraph cluster_0 {
+        style = filled;
+        color = lightgrey;
+        node [ style = filled; color = white ];
+        "block0";
+        label = "blocks";
+    }
+
+    subgraph cluster_1 {
+        node [style = filled, color = cyan ];
+        "ledger0";
+        color = none;
+    }
+
+    subgraph parameters {
+        node [style = filled, color = orange ];
+        "epoch 1 parameters";
+        color = none;
+    }
+
+    subgraph stake {
+        node [style = filled, color = pink ];
+        "epoch 0 stake distribution" ;
+        color = none;
+    }
+
+    subgraph leadership {
+        node [ color = red ];
+        "epoch 1 leadership" ; "epoch 2 leadership";
+        color = none;
+    }
+
+    "ledger0" -> "epoch 1 parameters" [ label = "create" ];
+
+    "ledger0" -> "epoch 0 stake distribution" [ label = "create" ];
+
+    "epoch 0 stake distribution" -> "epoch 1 leadership" [ label = "create" ];
+    "epoch 0 stake distribution" -> "epoch 2 leadership" [ label = "create" ];
+
+    "block0" -> "ledger0";
+}
