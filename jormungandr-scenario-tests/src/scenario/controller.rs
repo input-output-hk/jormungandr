@@ -198,7 +198,9 @@ impl Controller {
         persistence_mode: PersistenceMode,
     ) -> Result<NodeController> {
         node.shutdown()?;
-        self.spawn_node(node.alias(), leadership_mode, persistence_mode)
+        let new_node = self.spawn_node(node.alias(), leadership_mode, persistence_mode)?;
+        new_node.wait_for_bootstrap()?;
+        Ok(new_node)
     }
 
     pub fn monitor_nodes(&mut self) {
