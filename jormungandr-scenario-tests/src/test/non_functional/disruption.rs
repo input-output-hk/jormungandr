@@ -14,6 +14,7 @@ pub fn passive_leader_disruption_no_overlap(
         "passive_leader_disruption_no_overlap",
         &mut context,
         topology [
+            LEADER,
             PASSIVE -> LEADER,
         ]
         blockchain {
@@ -81,6 +82,7 @@ pub fn passive_leader_disruption_no_overlap(
 
     leader.shutdown()?;
     passive.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
@@ -91,6 +93,7 @@ pub fn passive_leader_disruption_overlap(
         "passive_leader_disruption_overlap",
         &mut context,
         topology [
+            LEADER,
             PASSIVE -> LEADER,
         ]
         blockchain {
@@ -142,6 +145,7 @@ pub fn passive_leader_disruption_overlap(
 
     leader.shutdown()?;
     passive.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
@@ -150,6 +154,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
         "leader_leader_disruption_overlap",
         &mut context,
         topology [
+            LEADER_2,
             LEADER_1 -> LEADER_2,
         ]
         blockchain {
@@ -159,7 +164,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
             leaders = [ LEADER_1 ],
             initials = [
                 account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
+                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -208,6 +213,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
 
     leader1.shutdown()?;
     leader2.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
@@ -218,6 +224,7 @@ pub fn leader_leader_disruption_no_overlap(
         "leader_leader_disruption_no_overlap",
         &mut context,
         topology [
+            LEADER_2,
             LEADER_1 -> LEADER_2,
         ]
         blockchain {
@@ -227,7 +234,7 @@ pub fn leader_leader_disruption_no_overlap(
             leaders = [ LEADER_1 ],
             initials = [
                 account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
+                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -295,6 +302,7 @@ pub fn leader_leader_disruption_no_overlap(
 
     leader1.shutdown()?;
     leader2.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
@@ -364,6 +372,7 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
 
     leader3.shutdown()?;
     leader1.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
@@ -494,6 +503,7 @@ pub fn point_to_point_disruption_overlap(
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
@@ -502,6 +512,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         "custom_network_disruption",
         &mut context,
         topology [
+            LEADER_5,
             LEADER_1 -> LEADER_3,
             LEADER_2 -> LEADER_3,LEADER_5,
             LEADER_3 -> LEADER_5,
@@ -608,6 +619,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
@@ -616,10 +628,10 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         "Disruption_Mesh",
         &mut context,
         topology [
+            LEADER_4,
             LEADER_1 -> LEADER_4,LEADER_5,
             LEADER_2 -> LEADER_1,LEADER_3,
             LEADER_3 -> LEADER_1,LEADER_4,
-            LEADER_4 -> LEADER_5,
             LEADER_5 -> LEADER_3,LEADER_1,
         ]
         blockchain {
@@ -689,7 +701,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader5,
+        &leader1,
     )?;
 
     leader5 =
@@ -699,7 +711,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader3,
+        &leader1,
     )?;
 
     utils::measure_and_log_sync_time(
@@ -713,5 +725,6 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
+    controller.finalize();
     Ok(ScenarioResult::passed())
 }
