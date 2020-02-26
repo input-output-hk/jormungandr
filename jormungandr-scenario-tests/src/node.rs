@@ -446,7 +446,7 @@ impl NodeController {
         let max_try = 2;
         let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
-            if let Err(_err) = self.stats() {
+            if self.stats().is_err() && self.node_rest_listen_port_opened() {
                 return Ok(());
             };
             std::thread::sleep(sleep);
@@ -459,6 +459,15 @@ impl NodeController {
             ),
             self.logger().get_log_content()
         ))
+    }
+
+    fn node_rest_listen_port_opened(&self) -> bool {
+        use std::net::TcpListener;
+        let port = self.settings.config.rest.listen.port();
+        match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(_) => true,
+            Err(_) => false,
+        }
     }
 
     pub fn shutdown(&self) -> Result<()> {
