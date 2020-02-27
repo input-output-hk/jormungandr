@@ -12,6 +12,10 @@ use std::{
     process::{Child, Command},
     time::{Duration, Instant},
 };
+use std::{
+    process::{Output, Stdio},
+    thread, time,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -71,9 +75,13 @@ impl StartupVerification for RestStartupVerification {
     }
 
     fn if_succeed(&self) -> bool {
-        let output = process_utils::run_process_and_get_output(
-            jcli_commands::get_rest_stats_command(&self.config.get_node_address()),
-        );
+        let output = jcli_commands::get_rest_stats_command(&self.config.get_node_address())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+            .wait_with_output()
+            .expect("failed to execute get_rest_stats command");
 
         let content_result = output.try_as_single_node_yaml();
         if content_result.is_err() {
@@ -209,6 +217,7 @@ impl Starter {
         loop {
             let mut command = self.get_command(&config);
             println!("Starting node with configuration : {:?}", &config);
+            println!("Bootstrapping...");
 
             let process = command
                 .spawn()

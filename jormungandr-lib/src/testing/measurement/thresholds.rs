@@ -88,9 +88,9 @@ impl Thresholds<Endurance> {
 
 impl Thresholds<Speed> {
     pub fn new_speed(duration: Duration) -> Thresholds<Speed> {
-        let green = Duration::from_secs(duration.as_secs() / 2);
+        let green = Duration::from_secs(duration.as_secs() / 4);
         let yellow = Duration::from_secs(duration.as_secs() / 3);
-        let red = Duration::from_secs(duration.as_secs() / 4);
+        let red = Duration::from_secs(duration.as_secs() / 2);
         Thresholds::<Speed>::new(
             green.into(),
             yellow.into(),

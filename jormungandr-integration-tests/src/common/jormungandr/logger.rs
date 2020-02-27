@@ -11,6 +11,8 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use thiserror::Error;
 
+use jormungandr_lib::testing::Timestamp;
+
 #[derive(Debug, Error)]
 pub enum LoggerError {
     #[error("{log_file}")]
@@ -50,6 +52,12 @@ impl LogEntry {
             Some(reason) => reason.contains(reason_part),
             None => false,
         }
+    }
+}
+
+impl Into<Timestamp> for LogEntry {
+    fn into(self) -> Timestamp {
+        self.ts.parse().unwrap()
     }
 }
 

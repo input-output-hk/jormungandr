@@ -95,6 +95,11 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_storage(&mut self, path: PathBuf) -> &mut Self {
+        self.node_config_builder.with_storage(path);
+        self
+    }
+
     pub fn with_block0_consensus(&mut self, consensus: ConsensusVersion) -> &mut Self {
         self.block0_consensus = consensus;
         self
