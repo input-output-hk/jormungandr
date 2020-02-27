@@ -137,7 +137,8 @@ pub fn test_100_transaction_is_processed_simple() {
             i.into(),
             &jormungandr,
         ) {
-            benchmark.exception(error.to_string()).print();
+            let message = format!("{}", error);
+            benchmark.exception(message).print();
             return;
         }
 
