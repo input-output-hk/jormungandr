@@ -12,6 +12,12 @@ pub struct ExplorerLastBlock {
     date: BlockDateLib,
 }
 
+impl ExplorerLastBlock {
+    pub fn id(&self) -> Hash {
+        self.id
+    }
+}
+
 impl TryFrom<GraphQLResponse> for ExplorerLastBlock {
     type Error = serde_json::Error;
 

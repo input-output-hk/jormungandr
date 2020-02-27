@@ -6,13 +6,14 @@ use crate::common::{
     startup,
 };
 use jormungandr_lib::{
+    crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value},
     testing::{
         benchmark_efficiency, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
     },
     wallet::Wallet,
 };
-use std::{iter, time::Duration};
+use std::{iter, str::FromStr, time::Duration};
 
 #[test]
 pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
@@ -80,7 +81,10 @@ fn finish_test_prematurely(error_message: String, benchmark: EnduranceBenchmarkR
 fn check_explorer_and_rest_are_in_sync(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
-    let block_tip = jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
+    let block_tip = Hash::from_str(&jcli_wrapper::assert_rest_get_block_tip(
+        &jormungandr.rest_address(),
+    ))
+    .unwrap();
 
     let explorer = jormungandr.explorer();
     let block = explorer

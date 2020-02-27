@@ -26,14 +26,18 @@ pub enum NodeStuckError {
     TipIsNotMoving { tip_hash: String, logs: String },
     #[error("node block counter is not moving up. Stuck at {block_counter}")]
     BlockCounterIsNoIncreased { block_counter: u64, logs: String },
-    #[error("accounts funds were not trasfered (actual: {actual} vs expected: {expected})")]
+    #[error("accounts funds were not trasfered (actual: {actual} vs expected: {expected}). Logs: {logs}")]
     FundsNotTransfered {
         actual: Value,
         expected: Value,
         logs: String,
     },
-    #[error("explorer is out of sync with rest node (actual: {actual} vs expected: {expected})")]
-    ExplorerTipIsOutOfSync { actual: Hash, expected: Hash },
+    #[error("explorer is out of sync with rest node (actual: {actual} vs expected: {expected}). Logs: {logs}")]
+    ExplorerTipIsOutOfSync {
+        actual: Hash,
+        expected: Hash,
+        logs: String,
+    },
     #[error("error in logs found")]
     InternalJormungandrError(#[from] JormungandrError),
     #[error("jcli error")]
