@@ -8,15 +8,14 @@ use std::convert::TryFrom;
 mod client;
 mod data;
 
-error_chain! {
-    links {
-        GraphQLClientError(self::client::Error, self::client::ErrorKind);
-    }
+use thiserror::Error;
 
-    foreign_links {
-        JsonError(serde_json::error::Error);
-        Reqwest(reqwest::Error);
-    }
+#[derive(Error, Debug)]
+pub enum ExplorerError {
+    #[error("graph client error")]
+    ClientError(#[from] client::GraphQLClientError),
+    #[error("json serializiation error")]
+    SerializationError(#[from] serde_json::Error),
 }
 
 pub struct Explorer {

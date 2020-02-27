@@ -12,7 +12,7 @@ use crate::common::{
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrProcess},
 };
-use jormungandr_lib::interfaces::Value;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -27,10 +27,14 @@ pub enum NodeStuckError {
         expected: Value,
         logs: String,
     },
+    #[error("explorer is out of sync with rest node (actual: {actual} vs expected: {expected})")]
+    ExplorerTipIsOutOfSync { actual: Hash, expected: Hash },
     #[error("error in logs found")]
     InternalJormungandrError(#[from] JormungandrError),
     #[error("jcli error")]
     InternalJcliError(#[from] jcli_wrapper::Error),
+    #[error("exploer error")]
+    InternalExplorerError(#[from] ExplorerError),
 }
 
 pub fn send_transaction_and_ensure_block_was_produced(
