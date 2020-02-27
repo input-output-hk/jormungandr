@@ -21,11 +21,7 @@ use jormungandr_lib::{
     time::SystemTime,
 };
 use slog::Logger;
-use std::{
-    collections::VecDeque,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{collections::VecDeque, sync::Arc, time::Instant};
 use thiserror::Error;
 use tokio02::time::{delay_until, timeout_at, Instant as TokioInstant};
 

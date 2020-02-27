@@ -42,7 +42,7 @@ pub fn send_transaction_and_ensure_block_was_produced(
     let block_counter_before_transaction = jormungandr.logger.get_created_blocks_counter();
 
     jcli_wrapper::send_transactions_and_wait_until_in_block(&transation_messages, &jormungandr)
-        .map_err(|err| NodeStuckError::InternalJcliError(err));
+        .map_err(|err| NodeStuckError::InternalJcliError(err))?;
 
     let block_tip_after_transaction =
         jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());

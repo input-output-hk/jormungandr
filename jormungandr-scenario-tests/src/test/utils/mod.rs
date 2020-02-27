@@ -64,7 +64,7 @@ pub fn measure_and_log_sync_time(
     }
 
     // we know it fails, this method is used only for reporting
-    assert_are_in_sync(SyncWaitParams::ZeroWait, nodes);
+    assert_are_in_sync(SyncWaitParams::ZeroWait, nodes).unwrap();
     benchmark.stop().print();
 }
 

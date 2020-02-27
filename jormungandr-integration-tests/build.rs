@@ -1,8 +1,5 @@
 extern crate protoc_rust;
 
-use protoc_rust::Customize;
-use std::env;
-
 fn main() {
     // generate grpc mock
 

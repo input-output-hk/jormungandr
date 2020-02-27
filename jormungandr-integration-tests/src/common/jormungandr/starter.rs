@@ -8,14 +8,12 @@ use crate::common::{
     process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
 use jormungandr_lib::testing::{SpeedBenchmarkDef, SpeedBenchmarkRun};
+use std::process::Stdio;
 use std::{
     process::{Child, Command},
     time::{Duration, Instant},
 };
-use std::{
-    process::{Output, Stdio},
-    thread, time,
-};
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]

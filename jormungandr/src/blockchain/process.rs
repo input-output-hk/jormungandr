@@ -712,7 +712,7 @@ async fn process_chain_headers(
             );
             reply.reply_error(chain_header_error_into_reply(e));
         }
-        Ok((header_ids, maybe_remainder)) => {
+        Ok((header_ids, _maybe_remainder)) => {
             header_ids
                 .iter()
                 .try_for_each(|header_id| pull_headers_scheduler.declare_completed(*header_id))
