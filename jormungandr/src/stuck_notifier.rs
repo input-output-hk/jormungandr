@@ -25,6 +25,8 @@ pub async fn check_last_block_time(
         let tip = blockchain_tip.get_ref_std().await;
         let era = tip.epoch_leadership_schedule().era();
 
+        let now = SystemTime::now();
+
         let tip_date = tip.block_date();
         let tip_slot = era.from_era_to_slot(EpochPosition {
             epoch: Epoch(tip_date.epoch),
@@ -37,7 +39,6 @@ pub async fn check_last_block_time(
             break;
         };
 
-        let now = SystemTime::now();
         let system_current_slot = tip.time_frame().slot_at(&now);
         let system_current_blockdate = system_current_slot
             .and_then(|scs| era.from_slot_to_era(scs))
