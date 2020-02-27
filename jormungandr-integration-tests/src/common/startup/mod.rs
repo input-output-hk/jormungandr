@@ -138,6 +138,7 @@ pub fn start_stake_pool(
         .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .with_consensus_leaders_ids(leaders)
         .with_funds(funds)
+        .with_explorer()
         .with_initial_certs(initial_certs)
         .build();
 
