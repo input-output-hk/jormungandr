@@ -4,7 +4,6 @@ use jormungandr_lib::time::SecondsSinceUnixEpoch;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
-use tokio02::sync::RwLock;
 
 const SLOT_START_TIME_UNDEFINED: u64 = u64::max_value();
 
