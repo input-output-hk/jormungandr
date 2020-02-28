@@ -411,20 +411,24 @@ impl NodeController {
         let stats = self.get("node/stats")?.text()?;
         let stats: Stats =
             serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
-        self.progress_bar
-            .log_info(format!("node stats ({:?})", &stats));
         Ok(stats)
     }
 
+    pub fn log_stats(&self) {
+        self.progress_bar
+            .log_info(format!("node stats ({:?})", self.stats()));
+    }
+
     pub fn wait_for_bootstrap(&self) -> Result<()> {
-        let max_try = 40;
-        let sleep = Duration::from_secs(2);
+        let max_try = 10;
+        let sleep = Duration::from_secs(8);
         for _ in 0..max_try {
             let stats = self.stats();
             match stats {
                 Ok(stats) => {
                     if let Some(uptime) = stats.uptime {
                         if uptime > 0 {
+                            self.log_stats();
                             return Ok(());
                         }
                     }
