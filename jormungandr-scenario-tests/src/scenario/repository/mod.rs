@@ -10,11 +10,8 @@ pub use tag::{parse_tag_from_str, Tag};
 
 use crate::{
     test::{
-        comm::leader_leader::*,
-        comm::passive_leader::*,
-        network::topology::scenarios::*,
-        non_functional::{disruption::*, soak::*},
-        Result,
+        comm::leader_leader::*, comm::passive_leader::*, network::topology::scenarios::*,
+        non_functional::soak::*, Result,
     },
     Context,
 };

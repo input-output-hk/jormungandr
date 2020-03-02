@@ -377,7 +377,7 @@ impl NodeController {
         let max_try = 2;
         let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
-            if let Err(err) = self.stats() {
+            if let Err(_err) = self.stats() {
                 return Ok(());
             };
             std::thread::sleep(sleep);

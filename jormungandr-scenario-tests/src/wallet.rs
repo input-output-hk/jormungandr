@@ -165,7 +165,7 @@ impl Wallet {
         iobuilder.add_output(address.into(), value.into()).unwrap();
 
         let payload_data = NoExtra.payload_data();
-        self.add_input(payload_data.borrow(), &mut iobuilder, fees);
+        self.add_input(payload_data.borrow(), &mut iobuilder, fees)?;
 
         //let (_, tx) = txbuilder
         //    .seal_with_output_policy(fees, output_policy)
