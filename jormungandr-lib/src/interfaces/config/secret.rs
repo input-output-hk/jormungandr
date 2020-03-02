@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NodeSecret {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bft: Option<Bft>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub genesis: Option<GenesisPraos>,
 }
 
