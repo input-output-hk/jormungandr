@@ -11,7 +11,7 @@ use jormungandr_integration_tests::{
     mock::{client::JormungandrClient, read_into},
     response_to_vec,
 };
-use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus, Stats};
+use jormungandr_lib::interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, Stats};
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
@@ -50,6 +50,10 @@ error_chain! {
         }
         InvalidNodeStats {
             description("Node stats in an invalid format")
+        }
+
+        InvalidEnclaveLeaderIds {
+            description("Leaders ids in an invalid format")
         }
 
         NodeStopped (status: Status) {
@@ -154,6 +158,10 @@ impl NodeController {
 
     pub fn check_running(&self) -> bool {
         self.status() == Status::Running
+    }
+
+    fn path(&self, path: &str) -> String {
+        format!("{}/{}", self.base_url(), path)
     }
 
     fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::Response> {
@@ -338,6 +346,67 @@ impl NodeController {
         ))
     }
 
+    pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>> {
+        let leaders = self.get("leaders")?.text()?;
+        let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&leaders).chain_err(|| ErrorKind::InvalidEnclaveLeaderIds)?
+        };
+
+        self.progress_bar
+            .log_info(format!("leaders ids ({})", leaders.len()));
+
+        Ok(leaders)
+    }
+
+    pub fn promote(&self) -> Result<EnclaveLeaderId> {
+        let path = "leaders";
+        let secrets = self.settings.secrets();
+        self.progress_bar.log_info(format!("POST '{}'", &path));
+        let client = reqwest::Client::new();
+        let mut response = reqwest::Client::new()
+            .post(&self.path(path))
+            .json(&secrets)
+            .send()?;
+
+        self.progress_bar
+            .log_info(format!("Leader promotion for '{}' sent", self.alias()));
+
+        let res = response.error_for_status_ref();
+        if let Err(err) = res {
+            self.progress_bar.log_err(format!(
+                "Leader promotion for '{}' fail to sent: {}",
+                self.alias(),
+                err,
+            ));
+        }
+
+        let leader_id: EnclaveLeaderId = response.json()?;
+        Ok(leader_id)
+    }
+
+    pub fn demote(&self, leader_id: u32) -> Result<()> {
+        let path = format!("leaders/{}", leader_id);
+        let secrets = self.settings.secrets();
+        self.progress_bar.log_info(format!("DELETE '{}'", &path));
+        let client = reqwest::Client::new();
+        let mut response = reqwest::Client::new().delete(&self.path(&path)).send()?;
+
+        self.progress_bar
+            .log_info(format!("Leader demote for '{}' sent", self.alias()));
+
+        let res = response.error_for_status_ref();
+        if let Err(err) = res {
+            self.progress_bar.log_err(format!(
+                "Leader demote for '{}' fail to sent: {}",
+                self.alias(),
+                err,
+            ));
+        }
+        Ok(())
+    }
+
     pub fn stats(&self) -> Result<Stats> {
         let stats = self.get("node/stats")?.text()?;
         let stats: Stats =
@@ -486,14 +555,17 @@ impl Node {
         command.arguments(&[
             "--config",
             &config_file.display().to_string(),
-            "--secret",
-            &config_secret.display().to_string(),
             "--log-level=warn",
         ]);
 
         match block0 {
             NodeBlock0::File(path) => {
-                command.arguments(&["--genesis-block", &path.display().to_string()]);
+                command.arguments(&[
+                    "--genesis-block",
+                    &path.display().to_string(),
+                    "--secret",
+                    &config_secret.display().to_string(),
+                ]);
             }
             NodeBlock0::Hash(hash) => {
                 command.arguments(&["--genesis-block-hash", &hash.to_string()]);
