@@ -126,3 +126,15 @@ impl fmt::Display for EnclaveLeaderId {
         self.0.fmt(f)
     }
 }
+
+impl Into<u32> for EnclaveLeaderId {
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
+impl From<u32> for EnclaveLeaderId {
+    fn from(inner: u32) -> EnclaveLeaderId {
+        EnclaveLeaderId(inner)
+    }
+}

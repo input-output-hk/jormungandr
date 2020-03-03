@@ -10,8 +10,12 @@ pub use tag::{parse_tag_from_str, Tag};
 
 use crate::{
     test::{
-        comm::leader_leader::*, comm::passive_leader::*, network::topology::scenarios::*,
-        non_functional::soak::*, Result,
+        comm::leader_leader::*,
+        comm::passive_leader::*,
+        features::leader_promotion::*,
+        network::topology::scenarios::*,
+        non_functional::{disruption::*, soak::*},
+        Result,
     },
     Context,
 };
@@ -153,6 +157,13 @@ fn scenarios_repository() -> Vec<Scenario> {
 
     repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
     // repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
+
+    repository.push(Scenario::new(
+        "passive_node_promotion",
+        passive_node_promotion,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
     /*   repository.push(Scenario::new(
         "mesh_disruption",

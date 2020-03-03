@@ -6,6 +6,8 @@ pub enum Tag {
     Short,
     Perf,
     Long,
+    Feature,
+    Unstable,
     All,
 }
 
@@ -15,6 +17,8 @@ pub fn parse_tag_from_str(tag: &str) -> Result<Tag> {
         "short" => Ok(Tag::Short),
         "long" => Ok(Tag::Long),
         "perf" => Ok(Tag::Perf),
+        "feature" => Ok(Tag::Feature),
+        "unstable" => Ok(Tag::Unstable),
         _ => Ok(Tag::All),
     }
 }
