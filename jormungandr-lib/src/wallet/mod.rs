@@ -3,13 +3,42 @@ pub mod delegation;
 pub mod utxo;
 
 use crate::{
-    crypto::{account::Identifier as AccountIdentifier, key::Identifier},
-    interfaces::Address,
+    crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
+    interfaces::{Address, Value},
 };
 use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
 
 use rand_core::{CryptoRng, RngCore};
+use thiserror::Error;
+
+pub use chain_impl_mockchain::{
+    block::{Block, ConsensusVersion},
+    certificate::{PoolId, SignedCertificate},
+    fee::LinearFee,
+    fragment::Fragment,
+    header::HeaderId,
+    milli::Milli,
+    transaction::UnspecifiedAccountIdentifier,
+};
+
+#[derive(Error, Debug)]
+pub enum WalletError {
+    #[error("couldn't create file")]
+    IOError(#[from] std::io::Error),
+    #[error("cannot add input to the transaction")]
+    CannotAddInput,
+    #[error("cannot make witness for the transaction")]
+    CannotMakeWitness,
+    #[error("cannot compute the transaction's balance")]
+    CannotComputeBalance,
+    #[error("Cannot compute the new fees of {0} for a new input")]
+    CannotAddCostOfExtraInput(u64),
+    #[error("transaction already balanced")]
+    TransactionAlreadyBalanced,
+    #[error("the transaction has {0} value extra than necessary")]
+    TransactionAlreadyExtraValue(Value),
+}
 
 #[derive(Debug, Clone)]
 pub enum Wallet {
@@ -89,6 +118,33 @@ impl Wallet {
     pub fn confirm_transaction(&mut self) {
         match self {
             Wallet::Account(account) => account.increment_counter(),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
+        match &self {
+            Wallet::Account(account) => Some(account.stake_key()),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
+        match &self {
+            Wallet::Account(account) => account.delegation_cert_for_block0(pool_id),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn transaction_to(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        address: Address,
+        value: Value,
+    ) -> Result<Fragment, WalletError> {
+        match self {
+            Wallet::Account(account) => account.transaction_to(block0_hash, fees, address, value),
             _ => unimplemented!(),
         }
     }
