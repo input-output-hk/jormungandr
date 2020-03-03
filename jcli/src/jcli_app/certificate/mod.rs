@@ -106,7 +106,7 @@ pub enum NewArgs {
     ///
     /// by doing so all remaining stake delegated to this stake pool will
     /// become pending and will need to be re-delegated.
-    Retire(new_stake_pool_retirement::StakePoolRetirement),
+    StakePoolRetirement(new_stake_pool_retirement::StakePoolRetirement),
 }
 
 #[derive(StructOpt)]
