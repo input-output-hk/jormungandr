@@ -133,7 +133,7 @@ impl NewArgs {
             NewArgs::StakePoolRegistration(args) => args.exec()?,
             NewArgs::StakeDelegation(args) => args.exec()?,
             NewArgs::OwnerStakeDelegation(args) => args.exec()?,
-            NewArgs::Retire(args) => args.exec()?,
+            NewArgs::StakePoolRetirement(args) => args.exec()?,
         }
         Ok(())
     }
