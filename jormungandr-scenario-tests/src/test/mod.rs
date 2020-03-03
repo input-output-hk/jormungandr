@@ -8,9 +8,13 @@ use jormungandr_lib::interfaces::FragmentStatus;
 use std::time::Duration;
 
 error_chain! {
+
+    foreign_links {
+        Wallet(jormungandr_lib::wallet::WalletError);
+    }
+
     links {
         Node(crate::node::Error, crate::node::ErrorKind);
-        Wallet(crate::wallet::Error, crate::wallet::ErrorKind);
         Scenario(crate::scenario::Error, crate::scenario::ErrorKind);
     }
 

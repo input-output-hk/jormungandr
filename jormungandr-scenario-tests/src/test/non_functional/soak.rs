@@ -136,7 +136,7 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         wallet7.confirm_transaction();
 
         // 48 hours
-        if now.elapsed().unwrap().as_secs() > (86_400 * 2) {
+        if now.elapsed().unwrap().as_secs() > (900) {
             break;
         }
     }
@@ -158,6 +158,7 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     relay1.shutdown()?;
     relay2.shutdown()?;
+    core.shutdown()?;
 
     controller.finalize();
     Ok(ScenarioResult::passed())
