@@ -9,7 +9,7 @@ use futures03::{compat::Compat, prelude::*, ready, stream::FusedStream};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use r2d2::{ManageConnection, Pool};
 use slog::Logger;
-use tokio02::{sync::Mutex, task::spawn_blocking};
+use tokio02::task::spawn_blocking;
 
 use std::convert::identity;
 use std::error::Error;
@@ -105,14 +105,6 @@ impl ManageConnection for ConnectionManager {
 #[derive(Clone)]
 pub struct Storage03 {
     pool: Pool<ConnectionManager>,
-
-    // All write operations must be performed only via this lock. The lock helps
-    // us to ensure that all of the write operations are performed in the right
-    // sequence. Otherwise they can be performed out of the expected order (for
-    // example, by different tokio executors) which eventually leads to a panic
-    // because the block data would be inconsistent at the time of a write.
-    write_lock: Arc<Mutex<()>>,
-
     logger: Logger,
 }
 
@@ -160,13 +152,8 @@ impl Storage03 {
     pub fn new(storage: NodeStorage, logger: Logger) -> Self {
         let manager = ConnectionManager::new(storage);
         let pool = Pool::builder().build(manager).unwrap();
-        let write_lock = Arc::new(Mutex::new(()));
 
-        Storage03 {
-            pool,
-            write_lock,
-            logger,
-        }
+        Storage03 { pool, logger }
     }
 
     async fn run<F, T, E>(&self, f: F) -> Result<T, E>
@@ -184,7 +171,6 @@ impl Storage03 {
     }
 
     pub async fn put_tag(&self, tag: String, header_hash: HeaderHash) -> Result<(), StorageError> {
-        let _write_lock = self.write_lock.lock().await;
         self.run(move |connection| connection.put_tag(&tag, &header_hash))
             .await
     }
@@ -250,7 +236,6 @@ impl Storage03 {
     }
 
     pub async fn put_block(&self, block: Block) -> Result<(), StorageError> {
-        let _write_lock = self.write_lock.lock().await;
         self.run(move |connection| match connection.put_block(&block) {
             Err(StorageError::BlockNotFound) => unreachable!(),
             Err(e) => Err(e),

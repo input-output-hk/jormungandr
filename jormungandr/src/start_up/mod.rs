@@ -7,12 +7,14 @@ use crate::{
     log, network,
     settings::start::Settings,
 };
-use chain_storage_sqlite_old::{BlockStore, BlockStoreConnection};
+use chain_storage_sqlite_old::{BlockStore, BlockStoreBuilder, BlockStoreConnection};
 use slog::Logger;
 use tokio_compat::runtime;
 
 pub type NodeStorage = BlockStore;
 pub type NodeStorageConnection = BlockStoreConnection<Block>;
+
+const BLOCKSTORE_BUSY_TIMEOUT: u64 = 1000;
 
 /// prepare the block storage from the given settings
 ///
@@ -20,7 +22,9 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, E
     let raw_block_store = match &setting.storage {
         None => {
             info!(logger, "storing blockchain in memory");
-            BlockStore::memory()
+            BlockStoreBuilder::memory()
+                .busy_timeout(BLOCKSTORE_BUSY_TIMEOUT)
+                .build()
         }
         Some(dir) => {
             std::fs::create_dir_all(dir).map_err(|err| Error::IO {
@@ -30,7 +34,9 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, E
             let mut sqlite = dir.clone();
             sqlite.push("blocks.sqlite");
             info!(logger, "storing blockchain in '{:?}'", sqlite);
-            BlockStore::file(sqlite)
+            BlockStoreBuilder::file(sqlite)
+                .busy_timeout(BLOCKSTORE_BUSY_TIMEOUT)
+                .build()
         }
     };
 
