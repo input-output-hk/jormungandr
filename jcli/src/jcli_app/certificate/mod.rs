@@ -11,6 +11,7 @@ mod get_stake_pool_id;
 mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
+mod new_stake_pool_retirement;
 mod sign;
 mod weighted_pool_ids;
 
@@ -101,6 +102,11 @@ pub enum NewArgs {
     StakeDelegation(new_stake_delegation::StakeDelegation),
     /// build an owner stake delegation certificate
     OwnerStakeDelegation(new_owner_stake_delegation::OwnerStakeDelegation),
+    /// retire the given stake pool ID From the blockchain
+    ///
+    /// by doing so all remaining stake delegated to this stake pool will
+    /// become pending and will need to be re-delegated.
+    Retire(new_stake_pool_retirement::StakePoolRetirement),
 }
 
 #[derive(StructOpt)]
@@ -127,6 +133,7 @@ impl NewArgs {
             NewArgs::StakePoolRegistration(args) => args.exec()?,
             NewArgs::StakeDelegation(args) => args.exec()?,
             NewArgs::OwnerStakeDelegation(args) => args.exec()?,
+            NewArgs::Retire(args) => args.exec()?,
         }
         Ok(())
     }
@@ -199,7 +206,10 @@ pub(crate) fn read_input(input: Option<&Path>) -> Result<String, Error> {
     Ok(input_str)
 }
 
-fn write_cert(output: Option<&Path>, cert: interfaces::Certificate) -> Result<(), Error> {
+fn write_cert<P>(output: Option<P>, cert: interfaces::Certificate) -> Result<(), Error>
+where
+    P: AsRef<Path>,
+{
     write_output(output, cert)
 }
 
@@ -210,10 +220,13 @@ fn write_signed_cert(
     write_output(output, signedcert)
 }
 
-fn write_output(output: Option<&Path>, data: impl Display) -> Result<(), Error> {
+fn write_output<P>(output: Option<P>, data: impl Display) -> Result<(), Error>
+where
+    P: AsRef<Path>,
+{
     let mut writer = io::open_file_write(&output).map_err(|source| Error::OutputInvalid {
         source,
-        path: output.map(|x| x.to_path_buf()).unwrap_or_default(),
+        path: output.map(|x| x.as_ref().to_path_buf()).unwrap_or_default(),
     })?;
     writeln!(writer, "{}", data)?;
     Ok(())
