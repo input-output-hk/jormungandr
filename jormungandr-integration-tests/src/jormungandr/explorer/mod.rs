@@ -3,13 +3,15 @@ use crate::common::{
     jormungandr::ConfigurationBuilder,
     process_utils::Wait,
     startup,
+    transaction_utils::TransactionHash,
 };
+
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use std::time::Duration;
 
 #[test]
 pub fn explorer_test() {
-    let faucet = startup::create_new_account_address();
+    let mut faucet = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
     let mut config = ConfigurationBuilder::new();
@@ -19,13 +21,15 @@ pub fn explorer_test() {
 
     let (jormungandr, _) = startup::start_stake_pool(&[faucet.clone()], &mut config).unwrap();
 
-    let transaction =
-        JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-            .assert_add_account(&faucet.address().to_string(), &1_000.into())
-            .assert_add_output(&receiver.address().to_string(), &1_000.into())
-            .assert_finalize()
-            .seal_with_witness_for_address(&faucet)
-            .assert_to_message();
+    let transaction = faucet
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            receiver.address(),
+            1_000.into(),
+        )
+        .unwrap()
+        .encode();
 
     let wait = Wait::new(Duration::from_secs(3), 20);
 
