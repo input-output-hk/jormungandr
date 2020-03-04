@@ -199,7 +199,6 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short, Tag::Unstable],
     ));
 
-
     repository.push(Scenario::new(
         "passive_node_promotion",
         passive_node_promotion,

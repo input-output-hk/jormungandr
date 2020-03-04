@@ -104,8 +104,6 @@ impl Settings {
         RNG: RngCore + CryptoRng,
         I: Iterator<Item = &'a WalletTemplate>,
     {
-        let discrimination = self.block0.blockchain_configuration.discrimination;
-
         for wallet_template in wallet_templates {
             // TODO: check the wallet does not already exist ?
             let wallet = match wallet_template.wallet_type() {
@@ -117,7 +115,7 @@ impl Settings {
                 }
             };
 
-            let initial_address = wallet.address(discrimination);
+            let initial_address = wallet.address();
 
             // TODO add support for sharing fragment with multiple utxos
             let initial_fragment = Initial::Fund(vec![InitialUTxO {

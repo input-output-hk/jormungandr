@@ -364,7 +364,6 @@ impl NodeController {
         let path = "leaders";
         let secrets = self.settings.secrets();
         self.progress_bar.log_info(format!("POST '{}'", &path));
-        let client = reqwest::Client::new();
         let mut response = reqwest::Client::new()
             .post(&self.path(path))
             .json(&secrets)
@@ -388,10 +387,8 @@ impl NodeController {
 
     pub fn demote(&self, leader_id: u32) -> Result<()> {
         let path = format!("leaders/{}", leader_id);
-        let secrets = self.settings.secrets();
         self.progress_bar.log_info(format!("DELETE '{}'", &path));
-        let client = reqwest::Client::new();
-        let mut response = reqwest::Client::new().delete(&self.path(&path)).send()?;
+        let response = reqwest::Client::new().delete(&self.path(&path)).send()?;
 
         self.progress_bar
             .log_info(format!("Leader demote for '{}' sent", self.alias()));
