@@ -4,13 +4,14 @@ use crate::common::{
     jormungandr::ConfigurationBuilder,
     process_utils::Wait,
     startup,
+    transaction_utils::TransactionHash,
 };
 
 use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool},
-    testing::{benchmark_efficiency, benchmark_endurance},
+    testing::benchmark_endurance,
 };
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 #[test]
 pub fn test_blocks_are_being_created_for_48_hours() {
@@ -32,17 +33,19 @@ pub fn test_blocks_are_being_created_for_48_hours() {
     )
     .unwrap();
 
-    let mut benchmark = endurance_benchmark("test_blocks_are_being_created_for_48_hours")
+    let benchmark = benchmark_endurance("test_blocks_are_being_created_for_48_hours")
         .target(duration_48_hours.clone())
         .start();
     loop {
-        let new_transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-                .assert_add_account(&sender.address().to_string(), &1.into())
-                .assert_add_output(&receiver.address().to_string(), &1.into())
-                .assert_finalize()
-                .seal_with_witness_for_address(&sender)
-                .assert_to_message();
+        let new_transaction = sender
+            .transaction_to(
+                &jormungandr.genesis_block_hash(),
+                &jormungandr.fees(),
+                receiver.address(),
+                1.into(),
+            )
+            .unwrap()
+            .encode();
 
         let wait: Wait = Wait::new(Duration::from_secs(10), 10);
         let fragment_id =
@@ -50,7 +53,7 @@ pub fn test_blocks_are_being_created_for_48_hours() {
         if let Err(err) =
             jcli_wrapper::wait_until_transaction_processed(fragment_id.clone(), &jormungandr, &wait)
         {
-            message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
+            let message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
                 err,
                 fragment_id,
                 jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_address()),

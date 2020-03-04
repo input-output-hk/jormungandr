@@ -26,10 +26,10 @@ pub use jormungandr_lib::interfaces::{
 error_chain! {
     links {
         Node(crate::node::Error, crate::node::ErrorKind);
-        Wallet(crate::wallet::Error, crate::wallet::ErrorKind);
     }
 
     foreign_links {
+        Wallet(jormungandr_lib::wallet::WalletError);
         Io(std::io::Error);
         Reqwest(reqwest::Error);
         BlockFormatError(chain_core::mempack::ReadError);

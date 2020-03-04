@@ -3,8 +3,7 @@
 use crate::common::configuration::{Block0ConfigurationBuilder, NodeConfigBuilder};
 use crate::common::file_utils;
 use chain_core::mempack;
-use chain_impl_mockchain::block::Block;
-use chain_impl_mockchain::fragment::Fragment;
+use chain_impl_mockchain::{block::Block, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     interfaces::{Block0Configuration, NodeConfig, NodeSecret, TrustedPeer, UTxOInfo},
     wallet::Wallet,
@@ -53,6 +52,13 @@ impl JormungandrConfig {
         .unwrap();
 
         self.node_config.p2p.listen_address = self.node_config.p2p.public_address.clone();
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.block0_configuration
+            .blockchain_configuration
+            .linear_fees
+            .clone()
     }
 
     pub fn get_p2p_listen_port(&self) -> u16 {

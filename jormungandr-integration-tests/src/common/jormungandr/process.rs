@@ -2,10 +2,9 @@ use super::{logger::JormungandrLogger, JormungandrError};
 use crate::common::{
     configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
 };
-
-use jormungandr_lib::interfaces::TrustedPeer;
-use std::path::PathBuf;
-use std::process::Child;
+use chain_impl_mockchain::fee::LinearFee;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::TrustedPeer};
+use std::{path::PathBuf, process::Child, str::FromStr};
 
 #[derive(Debug)]
 pub struct JormungandrProcess {
@@ -70,6 +69,14 @@ impl JormungandrProcess {
 
     pub fn rest_address(&self) -> String {
         self.config.get_node_address()
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.config.fees()
+    }
+
+    pub fn genesis_block_hash(&self) -> Hash {
+        Hash::from_str(&self.config.genesis_block_hash).unwrap()
     }
 
     pub fn config(&self) -> JormungandrConfig {

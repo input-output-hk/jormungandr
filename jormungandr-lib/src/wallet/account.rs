@@ -1,19 +1,23 @@
+use super::WalletError;
 use crate::{
     crypto::{
         account::{Identifier, SigningKey},
         hash::Hash,
     },
-    interfaces::Address,
+    interfaces::{Address, Value},
 };
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     account,
     certificate::{PoolId, SignedCertificate, StakeDelegation},
+    fee::{FeeAlgorithm, LinearFee},
+    fragment::Fragment,
     transaction::{
-        AccountBindingSignature, TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier,
-        Witness,
+        AccountBindingSignature, Balance, Input, InputOutputBuilder, NoExtra, Payload,
+        PayloadSlice, TransactionSignDataHash, TxBuilder, UnspecifiedAccountIdentifier, Witness,
     },
 };
+
 use rand_core::{CryptoRng, RngCore};
 
 /// wallet for an account
@@ -111,5 +115,55 @@ impl Wallet {
             self.internal_counter(),
             |d| self.signing_key().as_ref().sign(d),
         )
+    }
+
+    pub fn transaction_to(
+        &self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        address: Address,
+        value: Value,
+    ) -> Result<Fragment, WalletError> {
+        let mut iobuilder = InputOutputBuilder::empty();
+        iobuilder.add_output(address.into(), value.into()).unwrap();
+
+        let payload_data = NoExtra.payload_data();
+        self.add_input(payload_data.borrow(), &mut iobuilder, fees)?;
+
+        let ios = iobuilder.build();
+        let txbuilder = TxBuilder::new()
+            .set_nopayload()
+            .set_ios(&ios.inputs, &ios.outputs);
+
+        let sign_data = txbuilder.get_auth_data_for_witness().hash();
+        let witness = self.mk_witness(block0_hash, &sign_data);
+        let witnesses = vec![witness];
+        let tx = txbuilder.set_witnesses(&witnesses).set_payload_auth(&());
+        Ok(Fragment::Transaction(tx))
+    }
+
+    pub fn add_input<'a, Extra: Payload>(
+        &self,
+        payload: PayloadSlice<'a, Extra>,
+        iobuilder: &mut InputOutputBuilder,
+        fees: &LinearFee,
+    ) -> Result<(), WalletError>
+    where
+        LinearFee: FeeAlgorithm,
+    {
+        let balance = iobuilder
+            .get_balance_with_placeholders(payload, fees, 1, 0)
+            .map_err(|_| WalletError::CannotComputeBalance)?;
+        let value = match balance {
+            Balance::Negative(value) => value,
+            Balance::Zero => return Err(WalletError::TransactionAlreadyBalanced),
+            Balance::Positive(value) => {
+                return Err(WalletError::TransactionAlreadyExtraValue(value.into()))
+            }
+        };
+
+        let input = Input::from_account_single(self.identifier().to_inner().into(), value);
+        iobuilder.add_input(&input).unwrap();
+        Ok(())
     }
 }

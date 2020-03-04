@@ -8,6 +8,7 @@ use crate::common::{
     jcli_wrapper::JCLITransactionWrapper,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
+    transaction_utils::TransactionHash,
 };
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{
@@ -292,7 +293,7 @@ pub fn upload_block_nonexisting_stake_pool() {
 // L1020 Get fragments
 #[test]
 pub fn get_fragments() {
-    let sender = startup::create_new_account_address();
+    let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
     let output_value = 1u64;
     let config = ConfigurationBuilder::new()
@@ -305,12 +306,15 @@ pub fn get_fragments() {
 
     let server = Starter::new().config(config.clone()).start().unwrap();
 
-    let transaction = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
-        .assert_add_account(&sender.address().to_string(), &output_value.into())
-        .assert_add_output(&receiver.address().to_string(), &output_value.into())
-        .assert_finalize()
-        .seal_with_witness_for_address(&sender)
-        .assert_to_message();
+    let transaction = sender
+        .transaction_to(
+            &server.genesis_block_hash(),
+            &server.fees(),
+            receiver.address(),
+            output_value.into(),
+        )
+        .unwrap()
+        .encode();
 
     let fragment_id = jcli_wrapper::assert_transaction_in_block(&transaction, &server);
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
