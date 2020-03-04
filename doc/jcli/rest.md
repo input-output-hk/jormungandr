@@ -399,8 +399,9 @@ YAML printed on success
   wake_at_time: "2019-08-19T23:18:35.001254555+00:00"
   status:
     Block:
-      chain_length: 201018,
-      block: "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
+      chain_length: 201018
+      block: d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174
+      parent: cc72d4ca957b03d7c795596b7fd7b1ff09c649c3e2877c508c0466abc8604832
 
 ```
 
@@ -412,11 +413,12 @@ status: Pending
 ```
 
 ```yaml
-# meaning the action successfully create the given block with the given hash
+# meaning the action successfully create the given block with the given hash and parent
 status:
   Block:
-    chain_length: 201018,
-    block: "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
+    chain_length: 201018
+    block: d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174
+    parent: cc72d4ca957b03d7c795596b7fd7b1ff09c649c3e2877c508c0466abc8604832
 ```
 
 ```yaml
