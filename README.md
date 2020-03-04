@@ -66,8 +66,8 @@ git clone --recurse-submodules https://github.com/input-output-hk/jormungandr
 cd jormungandr
 git checkout tags/<latest release tag> #replace this with something like v1.2.3
 git submodule update
-cargo install --path jormungandr # --features systemd # (on linux with systemd)
-cargo install --path jcli
+cargo install --locked --path jormungandr # --features systemd # (on linux with systemd)
+cargo install --locked --path jcli
 ```
 
 This will install 2 tools:
