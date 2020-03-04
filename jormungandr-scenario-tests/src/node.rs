@@ -364,7 +364,6 @@ impl NodeController {
         let path = "leaders";
         let secrets = self.settings.secrets();
         self.progress_bar.log_info(format!("POST '{}'", &path));
-        let client = reqwest::Client::new();
         let mut response = reqwest::Client::new()
             .post(&self.path(path))
             .json(&secrets)
@@ -388,10 +387,8 @@ impl NodeController {
 
     pub fn demote(&self, leader_id: u32) -> Result<()> {
         let path = format!("leaders/{}", leader_id);
-        let secrets = self.settings.secrets();
         self.progress_bar.log_info(format!("DELETE '{}'", &path));
-        let client = reqwest::Client::new();
-        let mut response = reqwest::Client::new().delete(&self.path(&path)).send()?;
+        let response = reqwest::Client::new().delete(&self.path(&path)).send()?;
 
         self.progress_bar
             .log_info(format!("Leader demote for '{}' sent", self.alias()));
@@ -411,20 +408,24 @@ impl NodeController {
         let stats = self.get("node/stats")?.text()?;
         let stats: Stats =
             serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
-        self.progress_bar
-            .log_info(format!("node stats ({:?})", &stats));
         Ok(stats)
     }
 
+    pub fn log_stats(&self) {
+        self.progress_bar
+            .log_info(format!("node stats ({:?})", self.stats()));
+    }
+
     pub fn wait_for_bootstrap(&self) -> Result<()> {
-        let max_try = 40;
-        let sleep = Duration::from_secs(2);
+        let max_try = 10;
+        let sleep = Duration::from_secs(8);
         for _ in 0..max_try {
             let stats = self.stats();
             match stats {
                 Ok(stats) => {
                     if let Some(uptime) = stats.uptime {
                         if uptime > 0 {
+                            self.log_stats();
                             return Ok(());
                         }
                     }
@@ -446,7 +447,7 @@ impl NodeController {
         let max_try = 2;
         let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
-            if let Err(_err) = self.stats() {
+            if self.stats().is_err() && self.node_rest_listen_port_opened() {
                 return Ok(());
             };
             std::thread::sleep(sleep);
@@ -459,6 +460,15 @@ impl NodeController {
             ),
             self.logger().get_log_content()
         ))
+    }
+
+    fn node_rest_listen_port_opened(&self) -> bool {
+        use std::net::TcpListener;
+        let port = self.settings.config.rest.listen.port();
+        match TcpListener::bind(("127.0.0.1", port)) {
+            Ok(_) => true,
+            Err(_) => false,
+        }
     }
 
     pub fn shutdown(&self) -> Result<()> {

@@ -35,7 +35,7 @@ pub fn passive_node_promotion(mut context: Context<ChaChaRng>) -> Result<Scenari
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader.wait_for_bootstrap()?;
-    let mut passive =
+    let passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
     controller.monitor_nodes();

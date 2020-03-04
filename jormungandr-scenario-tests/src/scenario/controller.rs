@@ -198,7 +198,9 @@ impl Controller {
         persistence_mode: PersistenceMode,
     ) -> Result<NodeController> {
         node.shutdown()?;
-        self.spawn_node(node.alias(), leadership_mode, persistence_mode)
+        let new_node = self.spawn_node(node.alias(), leadership_mode, persistence_mode)?;
+        new_node.wait_for_bootstrap()?;
+        Ok(new_node)
     }
 
     pub fn monitor_nodes(&mut self) {
@@ -228,7 +230,7 @@ impl Controller {
     ) -> Result<MemPoolCheck> {
         let block0_hash = &self.block0_hash;
         let fees = &self.settings.block0.blockchain_configuration.linear_fees;
-        let address = to.address(chain_addr::Discrimination::Test);
+        let address = to.address();
 
         let fragment = from.transaction_to(&block0_hash.clone().into(), fees, address, value)?;
 

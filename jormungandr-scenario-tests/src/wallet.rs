@@ -1,13 +1,9 @@
 use crate::scenario::Wallet as WalletTemplate;
-use chain_addr::Discrimination;
 use chain_impl_mockchain::{
-    certificate::{PoolId, SignedCertificate, StakeDelegation},
-    fee::{FeeAlgorithm, LinearFee},
+    certificate::{PoolId, SignedCertificate},
+    fee::LinearFee,
     fragment::Fragment,
-    transaction::{
-        AccountBindingSignature, Balance, Input, InputOutputBuilder, NoExtra, Payload,
-        PayloadSlice, TxBuilder, UnspecifiedAccountIdentifier,
-    },
+    transaction::UnspecifiedAccountIdentifier,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -60,7 +56,7 @@ impl Wallet {
         }
     }
 
-    pub fn address(&self, discrimination: Discrimination) -> Address {
+    pub fn address(&self) -> Address {
         self.inner.address()
     }
 
