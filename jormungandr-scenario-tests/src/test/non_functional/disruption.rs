@@ -267,17 +267,7 @@ pub fn leader_leader_disruption_no_overlap(
     // 3. No nodes are up
     leader2.shutdown()?;
 
-    // 4. Only node 1 is up
-    let leader1 = controller.spawn_node(
-        LEADER_1,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    leader1.wait_for_bootstrap()?;
-
-    // 5. No nodes are up
-    leader1.shutdown()?;
-
+    // 4.- 5. is disabled due to restriction that trusted peer is down
     // 6. Both nodes are up
 
     let leader2 = controller.spawn_node(
@@ -286,12 +276,12 @@ pub fn leader_leader_disruption_no_overlap(
         PersistenceMode::Persistent,
     )?;
 
+    leader2.wait_for_bootstrap()?;
     let leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
 
     utils::measure_and_log_sync_time(
@@ -650,13 +640,15 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let mut leader5 = controller.spawn_node(
-        LEADER_5,
+    let leader4 = controller.spawn_node(
+        LEADER_4,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader4 = controller.spawn_node(
-        LEADER_4,
+    leader4.wait_for_bootstrap()?;
+
+    let mut leader5 = controller.spawn_node(
+        LEADER_5,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
@@ -677,7 +669,6 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     )?;
 
     leader5.wait_for_bootstrap()?;
-    leader4.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
     leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
