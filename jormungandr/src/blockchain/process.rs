@@ -118,6 +118,7 @@ impl Process {
                             network_msg_box,
                             explorer_msg_box,
                             block,
+                            stats_counter,
                         )
                         .await
                     },
@@ -373,7 +374,6 @@ async fn process_and_propagate_new_ref(
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
-
     debug!(logger, "processing the new block and propagating"; "hash" => %hash);
 
     process_new_ref(logger, blockchain, tip, new_block_ref).await?;
@@ -395,6 +395,7 @@ async fn process_leadership_block(
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     block: Block,
+    stats_counter: StatsCounter,
 ) -> Result<(), Error> {
     let new_block_ref =
         process_leadership_block_inner(&logger, &mut blockchain, block.clone()).await?;
@@ -413,6 +414,9 @@ async fn process_leadership_block(
         network_msg_box,
     )
     .await?;
+
+    // Track block as new new tip block
+    stats_counter.set_tip_block(Arc::new(block.clone()));
 
     if let Some(msg_box) = explorer_msg_box {
         msg_box
@@ -527,14 +531,16 @@ async fn process_network_blocks(
     let (stream, reply) = handle.into_stream_and_reply();
     let mut stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
     let mut candidate = None;
+    let mut latest_block: Option<Arc<Block>> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
         let (maybe_block, new_stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
         match maybe_block {
             Some(block) => {
+                latest_block = Some(Arc::new(block.clone()));
                 let res = process_network_block(
                     &mut blockchain,
-                    block,
+                    block.clone(),
                     &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
                     &mut get_next_block_scheduler,
@@ -563,6 +569,7 @@ async fn process_network_blocks(
                 }
             }
             None => {
+                latest_block = None;
                 reply.reply_ok(());
                 break candidate;
             }
@@ -579,6 +586,14 @@ async fn process_network_blocks(
                 network_msg_box,
             )
             .await?;
+
+            // Add block if found
+            match latest_block {
+                Some(b) => {
+                    stats_counter.set_tip_block(b);
+                }
+                None => (),
+            };
             Ok(r)
         }
         None => Ok(()),

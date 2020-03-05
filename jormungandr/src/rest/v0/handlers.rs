@@ -27,6 +27,7 @@ use jormungandr_lib::interfaces::NodeState;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use crate::rest::update_stats_tip_from_storage;
 pub use crate::rest::{Context, FullContext};
 
 async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
@@ -121,13 +122,19 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
-    context
-        .blockchain
-        .storage()
-        .get(tip.hash())
-        .compat()
-        .await
-        .map_err(ErrorInternalServerError)?
+
+    let mut header_block = context.stats_counter.get_tip_block();
+
+    // In case we do not have a cached block in the stats_counter we can retrieve it from the
+    // storage, this should happen just once.
+    if header_block.is_none() {
+        update_stats_tip_from_storage(context).await;
+        header_block = context.stats_counter.get_tip_block();
+    }
+
+    header_block
+        .as_ref()
+        .as_ref()
         .ok_or(ErrorInternalServerError("Could not find block for tip"))?
         .contents
         .iter()
@@ -136,7 +143,7 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
                 Ok((t.total_input()?, t.total_output()?))
             }
 
-            let (total_input, total_output) = match fragment {
+            let (total_input, total_output) = match &fragment {
                 Fragment::Transaction(tx) => totals(tx),
                 Fragment::OwnerStakeDelegation(tx) => totals(tx),
                 Fragment::StakeDelegation(tx) => totals(tx),

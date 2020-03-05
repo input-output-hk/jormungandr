@@ -1973,6 +1973,7 @@ dependencies = [
  "actix-rt",
  "actix-threadpool",
  "actix-web",
+ "arc-swap",
  "async-trait",
  "bech32",
  "bincode",

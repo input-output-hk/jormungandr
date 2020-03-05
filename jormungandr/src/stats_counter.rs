@@ -1,3 +1,5 @@
+use arc_swap::ArcSwapOption;
+use chain_impl_mockchain::block::Block;
 use jormungandr_lib::time::SecondsSinceUnixEpoch;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -16,6 +18,7 @@ struct StatsCounterImpl {
     block_recv_cnt: AtomicUsize,
     start_time: Instant,
     slot_start_time: AtomicU64,
+    tip_block: ArcSwapOption<Block>,
 }
 
 impl Default for StatsCounterImpl {
@@ -25,6 +28,7 @@ impl Default for StatsCounterImpl {
             block_recv_cnt: AtomicUsize::default(),
             start_time: Instant::now(),
             slot_start_time: AtomicU64::new(SLOT_START_TIME_UNDEFINED),
+            tip_block: ArcSwapOption::from(None),
         }
     }
 }
@@ -68,5 +72,13 @@ impl StatsCounter {
             slot_start_time => Some(slot_start_time),
         }
         .map(SecondsSinceUnixEpoch::from_secs)
+    }
+
+    pub fn set_tip_block(&self, block: Arc<Block>) {
+        self.stats.tip_block.swap(Some(block));
+    }
+
+    pub fn get_tip_block(&self) -> Option<Arc<Block>> {
+        self.stats.tip_block.load_full()
     }
 }
