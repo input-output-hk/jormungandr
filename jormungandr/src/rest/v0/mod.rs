@@ -57,6 +57,14 @@ pub fn service(root_path: &str) -> impl HttpServiceFactory {
         .route("/node/stats", get().to(handlers::get_stats_counter))
         .route("/tip", get().to(handlers::get_tip))
         .route(
+            "/rewards/history/{length}",
+            get().to(handlers::get_rewards_info_history),
+        )
+        .route(
+            "/rewards/epoch/{epoch_number}",
+            get().to(handlers::get_rewards_info_epoch),
+        )
+        .route(
             "/utxo/{fragment_id}/{output_index}",
             get().to(handlers::get_utxo),
         )
