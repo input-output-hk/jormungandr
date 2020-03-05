@@ -200,7 +200,7 @@ paths:
                                 block:
                                   description: Block hash where the fragment was last seen
                                   type: string
-                                  pattern: '[0-9]+\.[0-9]+'
+                                  pattern: '[0-9a-fA-F]+'
               examples:
                 Pending:
                   value: |
@@ -383,14 +383,18 @@ paths:
                           properties:
                             InABlock:
                               type: object
-                              required: [chain_length, block]
+                              required: [chain_length, block, parent]
                               properties:
                                 block:
                                   description: Block hash that has been created
                                   type: string
-                                  pattern: '[0-9]+\.[0-9]+'
+                                  pattern: '[0-9a-fA-F]+'
+                                parent:
+                                  description: Parent hash of the block that has been created
+                                  type: string
+                                  pattern: '[0-9a-fA-F]+'
                                 chain_length:
-                                  description: Block hash that has been created
+                                  description: Chain length
                                   type: number
                                   minimum: 0
               example:
@@ -418,7 +422,8 @@ paths:
                       "status": {
                         "Block": {
                           "chain_length": 201910,
-                          "block": "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174"
+                          "block": "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174",
+                          "parent": "cc72d4ca957b03d7c795596b7fd7b1ff09c649c3e2877c508c0466abc8604832"
                         }
                       }
                     }
@@ -560,6 +565,7 @@ paths:
                   lastBlockHash:
                     description: The block hash, it's unique identifier in the blockchain
                     type: string
+                    pattern: '[0-9a-fA-F]+'
                   lastBlockHeight:
                     description: The block number, in order, since the block0
                     type: number

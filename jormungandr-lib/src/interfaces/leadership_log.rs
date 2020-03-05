@@ -15,8 +15,14 @@ pub struct LeadershipLogId(EnclaveLeaderId, BlockDate);
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum LeadershipLogStatus {
     Pending,
-    Rejected { reason: String },
-    Block { block: Hash, chain_length: u32 },
+    Rejected {
+        reason: String,
+    },
+    Block {
+        block: Hash,
+        parent: Hash,
+        chain_length: u32,
+    },
 }
 
 /// provides information regarding events in the leadership schedule

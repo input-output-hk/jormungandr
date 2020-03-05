@@ -495,6 +495,7 @@ impl Module {
             Ok(maybe_block) => {
                 if let Some(block) = maybe_block {
                     let id = block.header.hash();
+                    let parent = block.header.block_parent_hash();
                     let chain_length: u32 = block.header.chain_length().into();
                     sender
                         .sink_compat()
@@ -504,6 +505,7 @@ impl Module {
                     event_logs
                         .set_status(LeadershipLogStatus::Block {
                             block: id.into(),
+                            parent: parent.into(),
                             chain_length,
                         })
                         .await;
