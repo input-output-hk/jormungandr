@@ -45,7 +45,11 @@ Note:
 
 ## advanced
 
-this is not a recommended settings as it may take memory and may trigger some latency:
+starting the node `jormungandr` with the command line option `--rewards-report-all` will
+collect a thorough report of all the reward distribution. It can then be accessed via the
+REST end points `/api/v0/rewards/history/1` or `/api/v0/rewards/epoch/10`.
+
+**this is not a recommended settings as it may take memory and may trigger some latency**.
 
 If you want to record the reward distributions in a directory it is possible to set
 the environment variable: `JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD`.
