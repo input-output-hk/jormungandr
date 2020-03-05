@@ -825,6 +825,32 @@ paths:
                   type: string
                   pattern: '[0-9a-fA-F]+'
               example: [ "5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f" ]
+  /api/v0/rewards/epoch/{epoch}:
+    get:
+      description: returns the rewards history of the given "epoch"
+      parameters:
+        - name: epoch
+          in: path
+          required: true
+          schema:
+            description: the epoch number to collect rewards info from
+            type: number
+      responses:
+        200:
+          description: Success
+  /api/v0/rewards/history/{length}:
+    get:
+      description: returns the rewards history of the "length" last epoch from tip
+      parameters:
+        - name: length
+          in: path
+          required: true
+          schema:
+            description: number of epochs to go back in history to display
+            type: number
+      responses:
+        200:
+          description: Success
   /api/v0/stake_pool/{pool_id}:
     get:
       description: Gets stake pool details
