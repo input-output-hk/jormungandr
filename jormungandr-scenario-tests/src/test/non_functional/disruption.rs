@@ -35,13 +35,12 @@ pub fn passive_leader_disruption_no_overlap(
     //controller.monitor_nodes();
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    leader.wait_for_bootstrap()?;
     let passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
     )?;
-
-    leader.wait_for_bootstrap()?;
     passive.wait_for_bootstrap()?;
 
     // 1. both nodes are up
@@ -114,13 +113,13 @@ pub fn passive_leader_disruption_overlap(
     //controller.monitor_nodes();
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    leader.wait_for_bootstrap()?;
+
     let passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
     )?;
-
-    leader.wait_for_bootstrap()?;
     passive.wait_for_bootstrap()?;
 
     // 1. both nodes are up
