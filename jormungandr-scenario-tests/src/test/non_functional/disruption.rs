@@ -249,12 +249,13 @@ pub fn leader_leader_disruption_no_overlap(
         PersistenceMode::Persistent,
     )?;
 
+    leader2.wait_for_bootstrap()?;
+
     let leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
 
     // 1. Both nodes are up
@@ -585,7 +586,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         &mut controller,
         &mut wallet1,
         &mut wallet3,
-        &leader1,
+        &leader3,
     )?;
 
     leader2.shutdown()?;
@@ -717,7 +718,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         vec![&leader1, &leader2, &leader3, &leader4, &leader5],
         SyncWaitParams::nodes_restart(5).into(),
         "mesh_disruption_sync",
-    );
+    )?;
 
     leader5.shutdown()?;
     leader4.shutdown()?;
