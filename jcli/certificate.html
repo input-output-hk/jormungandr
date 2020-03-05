@@ -169,6 +169,29 @@
 <li><code>--operator &lt;operator-public-key&gt;</code> - <em>optional</em>, public key of the operator(s) of the pool.</li>
 <li><code>output-file</code>                      - <em>optional</em>, write the output to the given file or print it to the standard output if not defined</li>
 </ul>
+<h2><a class="header" href="#retiring-a-stake-pool" id="retiring-a-stake-pool">Retiring a stake pool</a></h2>
+<p>It is possible to retire a stake pool from the blockchain. By doing so the stake delegated
+to the stake pool will become dangling and will need to be re-delegated.</p>
+<p>Remember though that the action won't be applied until the next following epoch. I.e.
+the certificate will take a whole epoch before being applied, this should leave time
+for stakers to redistribute their stake to other pools before having their stake
+becoming dangling.</p>
+<p>It might be valuable for a stake pool operator to keep the stake pool running until
+the stake pool retirement certificate is fully applied in order to not miss any
+potential rewards.</p>
+<p>example:</p>
+<pre><code class="language-sh">jcli certificate new stake-pool-retirement \
+    --pool-id &lt;POOL_ID&gt; \
+    --retirement-time &lt;seconds-since-start&gt; \
+    [&lt;output-file&gt;]
+</code></pre>
+<p>where:</p>
+<ul>
+<li><code>output-file</code> - <em>optional</em>, write the output of to the given file
+or print it to the standard output if not defined.</li>
+<li><code>--retirement-time</code> is the number of seconds since the start in order
+to make the stake pool retire. <code>0</code> means as soon as possible.</li>
+</ul>
 <h2><a class="header" href="#building-stake-pool-delegation-certificate" id="building-stake-pool-delegation-certificate">Building stake pool delegation certificate</a></h2>
 <p>Builds a stake pool delegation certificate.</p>
 <pre><code class="language-sh">jcli certificate new stake-delegation &lt;STAKE_KEY&gt; &lt;STAKE_POOL_IDS&gt; [--output &lt;output-file&gt;]
