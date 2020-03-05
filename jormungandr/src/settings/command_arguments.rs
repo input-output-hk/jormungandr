@@ -80,6 +80,13 @@ pub struct CommandLine {
     #[structopt(long = "log-output", parse(try_from_str))]
     pub log_output: Option<LogOutput>,
 
+    /// report all the rewards in the reward distribution history
+    ///
+    /// NOTE: this will slowdown the epoch transition computation and will add
+    /// add a lot of items for in-memory operations, this is not recommended to set
+    #[structopt(long = "rewards-report-all")]
+    pub rewards_report_all: bool,
+
     #[structopt(flatten)]
     pub rest_arguments: RestArguments,
 

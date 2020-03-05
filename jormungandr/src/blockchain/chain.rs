@@ -185,6 +185,8 @@ pub struct Blockchain {
     storage: Storage,
 
     block0: HeaderHash,
+
+    rewards_report_all: bool,
 }
 
 pub enum PreCheckedHeader {
@@ -267,13 +269,19 @@ pub enum CheckHeaderProof {
 }
 
 impl Blockchain {
-    pub fn new(block0: HeaderHash, storage: Storage, cache_capacity: usize) -> Self {
+    pub fn new(
+        block0: HeaderHash,
+        storage: Storage,
+        cache_capacity: usize,
+        rewards_report_all: bool,
+    ) -> Self {
         Blockchain {
             branches: Branches::new(),
             ref_cache: RefCache::new(cache_capacity),
             ledgers: Multiverse::new(),
             storage,
             block0,
+            rewards_report_all,
         }
     }
 
@@ -467,6 +475,7 @@ impl Blockchain {
         check_header_proof: CheckHeaderProof,
     ) -> Result<PostCheckedHeader> {
         let current_date = header.block_date();
+        let rewards_report_all = self.rewards_report_all;
 
         let (
             parent_ledger_state,
@@ -475,7 +484,7 @@ impl Blockchain {
             epoch_rewards_info,
             time_frame,
             previous_epoch_state,
-        ) = new_epoch_leadership_from(current_date.epoch, parent);
+        ) = new_epoch_leadership_from(current_date.epoch, parent, rewards_report_all);
 
         if check_header_proof == CheckHeaderProof::Enabled {
             match epoch_leadership_schedule.verify(&header) {
@@ -872,6 +881,7 @@ fn write_reward_info(
 pub fn new_epoch_leadership_from(
     epoch: Epoch,
     parent: Arc<Ref>,
+    rewards_report_all: bool,
 ) -> (
     Arc<Ledger>,
     Arc<Leadership>,
@@ -897,8 +907,7 @@ pub fn new_epoch_leadership_from(
         // 1. distribute the rewards (if any) This will give us the transition state
         let (transition_state, epoch_rewards_info) =
             if let Some(distribution) = parent.epoch_leadership_schedule().stake_distribution() {
-                let store_rewards = std::env::var("JORMUNGANDR_REWARD_DUMP_DIRECTORY").is_ok();
-                let reward_info_dist = if store_rewards {
+                let reward_info_dist = if rewards_report_all {
                     RewardsInfoParameters::report_all()
                 } else {
                     RewardsInfoParameters::default()

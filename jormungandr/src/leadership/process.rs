@@ -526,8 +526,11 @@ impl Module {
         ));
 
         if epoch_tip < current_slot_position.epoch {
-            let (_, leadership, _, _, _, _) =
-                new_epoch_leadership_from(current_slot_position.epoch.0, Arc::clone(&self.tip_ref));
+            let (_, leadership, _, _, _, _) = new_epoch_leadership_from(
+                current_slot_position.epoch.0,
+                Arc::clone(&self.tip_ref),
+                false,
+            );
 
             let slot_start = current_slot_position.slot.0 + 1;
             let nb_slots = leadership.era().slots_per_epoch() - slot_start;
