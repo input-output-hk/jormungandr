@@ -27,7 +27,7 @@ serde_yaml = "^0.8"
 [dev-dependencies]
 approx = "0.3"
 tokio = { version = "^0.2.12", features = ["full"] }
-tokio-compat = "^0.1.4"
+tokio-compat = "^0.1.5"
 legacy_tokio = { package = "tokio", version = "^0.1.22" }
 legacy_futures = { package = "futures", version = "0.1.29" }
 tracing-subscriber = "0.2.2"
