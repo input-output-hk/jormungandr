@@ -596,8 +596,6 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         &passive,
     )?;
 
-    leader5.shutdown()?;
-
     utils::measure_and_log_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4, &leader5, &passive],
         SyncWaitParams::nodes_restart(5).into(),
@@ -605,6 +603,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     );
 
     passive.shutdown()?;
+    leader5.shutdown()?;
     leader4.shutdown()?;
     leader3.shutdown()?;
     leader2.shutdown()?;
