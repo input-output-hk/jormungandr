@@ -60,7 +60,10 @@ pub fn measure_and_log_sync_time(
                     .unwrap()
             })
             .collect();
-        println!("Block heights: {:?}", block_heights);
+        println!(
+            "Measuring sync time... current block heights: {:?}",
+            block_heights
+        );
         let max_block_height = block_heights.iter().max().unwrap();
         if !block_heights.iter().any(|x| *x != *max_block_height) {
             benchmark.stop().print();
