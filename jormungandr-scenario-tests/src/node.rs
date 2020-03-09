@@ -417,7 +417,7 @@ impl NodeController {
     }
 
     pub fn wait_for_bootstrap(&self) -> Result<()> {
-        let max_try = 10;
+        let max_try = 20;
         let sleep = Duration::from_secs(8);
         for _ in 0..max_try {
             let stats = self.stats();
@@ -447,7 +447,7 @@ impl NodeController {
         let max_try = 2;
         let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
-            if self.stats().is_err() && self.node_rest_listen_port_opened() {
+            if self.stats().is_err() && self.ports_are_opened() {
                 return Ok(());
             };
             std::thread::sleep(sleep);
@@ -462,9 +462,21 @@ impl NodeController {
         ))
     }
 
-    fn node_rest_listen_port_opened(&self) -> bool {
+    fn ports_are_opened(&self) -> bool {
+        self.port_opened(self.settings.config.rest.listen.port())
+            && self.port_opened(
+                self.settings
+                    .config
+                    .p2p
+                    .listen_address
+                    .to_socketaddr()
+                    .unwrap()
+                    .port(),
+            )
+    }
+
+    fn port_opened(&self, port: u16) -> bool {
         use std::net::TcpListener;
-        let port = self.settings.config.rest.listen.port();
         match TcpListener::bind(("127.0.0.1", port)) {
             Ok(_) => true,
             Err(_) => false,

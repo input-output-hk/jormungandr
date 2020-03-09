@@ -35,13 +35,12 @@ pub fn passive_leader_disruption_no_overlap(
     //controller.monitor_nodes();
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    leader.wait_for_bootstrap()?;
     let passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
     )?;
-
-    leader.wait_for_bootstrap()?;
     passive.wait_for_bootstrap()?;
 
     // 1. both nodes are up
@@ -114,13 +113,13 @@ pub fn passive_leader_disruption_overlap(
     //controller.monitor_nodes();
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    leader.wait_for_bootstrap()?;
+
     let passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
     )?;
-
-    leader.wait_for_bootstrap()?;
     passive.wait_for_bootstrap()?;
 
     // 1. both nodes are up
@@ -250,12 +249,13 @@ pub fn leader_leader_disruption_no_overlap(
         PersistenceMode::Persistent,
     )?;
 
+    leader2.wait_for_bootstrap()?;
+
     let leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
 
     // 1. Both nodes are up
@@ -267,17 +267,7 @@ pub fn leader_leader_disruption_no_overlap(
     // 3. No nodes are up
     leader2.shutdown()?;
 
-    // 4. Only node 1 is up
-    let leader1 = controller.spawn_node(
-        LEADER_1,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    leader1.wait_for_bootstrap()?;
-
-    // 5. No nodes are up
-    leader1.shutdown()?;
-
+    // 4.- 5. is disabled due to restriction that trusted peer is down
     // 6. Both nodes are up
 
     let leader2 = controller.spawn_node(
@@ -286,12 +276,12 @@ pub fn leader_leader_disruption_no_overlap(
         PersistenceMode::Persistent,
     )?;
 
+    leader2.wait_for_bootstrap()?;
     let leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
 
     utils::measure_and_log_sync_time(
@@ -586,7 +576,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         &mut controller,
         &mut wallet1,
         &mut wallet3,
-        &leader1,
+        &leader3,
     )?;
 
     leader2.shutdown()?;
@@ -606,8 +596,6 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         &passive,
     )?;
 
-    leader5.shutdown()?;
-
     utils::measure_and_log_sync_time(
         vec![&leader1, &leader2, &leader3, &leader4, &leader5, &passive],
         SyncWaitParams::nodes_restart(5).into(),
@@ -615,6 +603,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     );
 
     passive.shutdown()?;
+    leader5.shutdown()?;
     leader4.shutdown()?;
     leader3.shutdown()?;
     leader2.shutdown()?;
@@ -650,13 +639,15 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let mut leader5 = controller.spawn_node(
-        LEADER_5,
+    let leader4 = controller.spawn_node(
+        LEADER_4,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader4 = controller.spawn_node(
-        LEADER_4,
+    leader4.wait_for_bootstrap()?;
+
+    let mut leader5 = controller.spawn_node(
+        LEADER_5,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
@@ -677,7 +668,6 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     )?;
 
     leader5.wait_for_bootstrap()?;
-    leader4.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
     leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
@@ -718,7 +708,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         vec![&leader1, &leader2, &leader3, &leader4, &leader5],
         SyncWaitParams::nodes_restart(5).into(),
         "mesh_disruption_sync",
-    );
+    )?;
 
     leader5.shutdown()?;
     leader4.shutdown()?;

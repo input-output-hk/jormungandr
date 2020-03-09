@@ -43,7 +43,7 @@ pub fn measure_and_log_sync_time(
     nodes: Vec<&NodeController>,
     sync_wait: Thresholds<Speed>,
     info: &str,
-) {
+) -> Result<()> {
     let benchmark = benchmark_speed(info.to_owned())
         .with_thresholds(sync_wait)
         .start();
@@ -60,16 +60,21 @@ pub fn measure_and_log_sync_time(
                     .unwrap()
             })
             .collect();
+        println!(
+            "Measuring sync time... current block heights: {:?}",
+            block_heights
+        );
         let max_block_height = block_heights.iter().max().unwrap();
         if !block_heights.iter().any(|x| *x != *max_block_height) {
             benchmark.stop().print();
-            return;
+            return Ok(());
         }
     }
 
     // we know it fails, this method is used only for reporting
-    assert_are_in_sync(SyncWaitParams::ZeroWait, nodes).unwrap();
+    let result = assert_are_in_sync(SyncWaitParams::ZeroWait, nodes);
     benchmark.stop().print();
+    result
 }
 
 pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str) -> Result<()> {
