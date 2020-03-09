@@ -4,7 +4,7 @@ use crate::{
     explorer, network, secure,
     settings::{self, logging},
 };
-use chain_storage_sqlite_old::Error as StorageError;
+use chain_storage::Error as StorageError;
 use std::io;
 use thiserror::Error;
 

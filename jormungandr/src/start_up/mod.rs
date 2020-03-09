@@ -7,11 +7,11 @@ use crate::{
     log, network,
     settings::start::Settings,
 };
-use chain_storage_sqlite_old::{BlockStore, BlockStoreBuilder, BlockStoreConnection};
+use chain_storage::{BlockStore, BlockStoreBuilder, BlockStoreConnection};
 use slog::Logger;
 use tokio_compat::runtime;
 
-pub type NodeStorage = BlockStore;
+pub type NodeStorage = BlockStore<Block>;
 pub type NodeStorageConnection = BlockStoreConnection<Block>;
 
 const BLOCKSTORE_BUSY_TIMEOUT: u64 = 1000;
