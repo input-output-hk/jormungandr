@@ -87,6 +87,17 @@ pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str)
     Ok(())
 }
 
+pub fn assert_is_up(node: &NodeController) -> Result<()> {
+    if !node.is_up() {
+        bail!(ErrorKind::AssertionFailed(format!(
+            "Node '{}' is not up. Logs: {}",
+            node.alias(),
+            node.log_content()
+        )))
+    }
+    Ok(())
+}
+
 pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Result<()> {
     if !status.is_in_a_block() {
         bail!(ErrorKind::AssertionFailed(format!(

@@ -483,6 +483,19 @@ impl NodeController {
         }
     }
 
+    pub fn is_up(&self) -> bool {
+        let stats = self.stats();
+        match stats {
+            Ok(stats) => {
+                if let Some(uptime) = stats.uptime {
+                    return uptime > 0;
+                }
+                return false;
+            }
+            Err(_) => false,
+        }
+    }
+
     pub fn shutdown(&self) -> Result<()> {
         let result = self.get("shutdown")?.text()?;
 
