@@ -163,12 +163,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     ));
 
     repository.push(Scenario::new("tree", tree, vec![Tag::Short]));
-    repository.push(Scenario::new(
-        "relay",
-        relay,
-        vec![Tag::Short, Tag::Unstable],
-    ));
-
+    repository.push(Scenario::new("relay", relay, vec![Tag::Short]));
     repository.push(Scenario::new(
         "passive_leader_disruption_no_overlap",
         passive_leader_disruption_no_overlap,
