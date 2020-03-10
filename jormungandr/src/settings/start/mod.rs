@@ -39,6 +39,7 @@ pub struct Settings {
     pub secrets: Vec<PathBuf>,
     pub rest: Option<Rest>,
     pub mempool: Mempool,
+    pub rewards_report_all: bool,
     pub leadership: Leadership,
     pub explorer: bool,
     pub no_blockchain_updates_warning_interval: std::time::Duration,
@@ -173,6 +174,7 @@ impl RawSettings {
             block_0,
             network,
             secrets,
+            rewards_report_all: command_line.rewards_report_all,
             rest,
             mempool: config
                 .as_ref()

@@ -197,9 +197,15 @@ pub fn load_blockchain(
     block0: Block,
     storage: Storage,
     cache_capacity: usize,
+    rewards_report_all: bool,
     logger: &Logger,
 ) -> Result<(Blockchain, Tip), Error> {
-    let blockchain = Blockchain::new(block0.header.hash(), storage, cache_capacity);
+    let blockchain = Blockchain::new(
+        block0.header.hash(),
+        storage,
+        cache_capacity,
+        rewards_report_all,
+    );
 
     let mut rt = tokio02::runtime::Runtime::new().unwrap();
     rt.block_on(async {

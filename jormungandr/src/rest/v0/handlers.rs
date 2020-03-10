@@ -1,6 +1,6 @@
 use jormungandr_lib::interfaces::{
-    AccountState, Address, EnclaveLeaderId, FragmentOrigin, Rewards as StakePoolRewards,
-    StakePoolStats, TaxTypeSerde,
+    AccountState, Address, EnclaveLeaderId, EpochRewardsInfo, FragmentOrigin,
+    Rewards as StakePoolRewards, StakePoolStats, TaxTypeSerde,
 };
 use jormungandr_lib::time::SystemTime;
 
@@ -394,6 +394,70 @@ pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder,
         })
         .collect::<Vec<_>>();
     Ok(Json(network_stats))
+}
+
+pub async fn get_rewards_info_epoch(
+    context: Data<Context>,
+    epoch: Path<u32>,
+) -> Result<impl Responder, Error> {
+    let mut tip_ref = chain_tip(&context).await?;
+    let epoch = epoch.into_inner();
+
+    if epoch > tip_ref.block_date().epoch {
+        return Err(ErrorNotFound("Invalid epoch, does not exist yet..."));
+    }
+
+    loop {
+        if tip_ref.block_date().epoch == epoch {
+            break;
+        } else {
+            if let Some(previous_epoch) = tip_ref.last_ref_previous_epoch() {
+                assert_eq!(
+                    previous_epoch.block_date().epoch + 1,
+                    tip_ref.block_date().epoch
+                );
+                tip_ref = Arc::clone(previous_epoch);
+            } else {
+                return Err(ErrorNotFound("Epoch not found..."));
+            }
+        }
+    }
+
+    if let Some(epoch_rewards_info) = tip_ref.epoch_rewards_info() {
+        let v = EpochRewardsInfo::from(tip_ref.block_date().epoch, epoch_rewards_info.as_ref());
+
+        Ok(Json(v))
+    } else {
+        Err(ErrorNotFound("No rewards for this epoch..."))
+    }
+}
+
+pub async fn get_rewards_info_history(
+    context: Data<Context>,
+    length: Path<usize>,
+) -> Result<impl Responder, Error> {
+    let mut tip_ref = chain_tip(&context).await?;
+    let length = length.into_inner();
+
+    let mut vec = Vec::new();
+    while let Some(epoch_rewards_info) = tip_ref.epoch_rewards_info() {
+        vec.push(EpochRewardsInfo::from(
+            tip_ref.block_date().epoch,
+            epoch_rewards_info.as_ref(),
+        ));
+
+        if let Some(previous_epoch) = tip_ref.last_ref_previous_epoch() {
+            tip_ref = Arc::clone(previous_epoch);
+        } else {
+            break;
+        }
+
+        if vec.len() >= length {
+            break;
+        }
+    }
+
+    Ok(Json(vec))
 }
 
 pub async fn get_utxo(

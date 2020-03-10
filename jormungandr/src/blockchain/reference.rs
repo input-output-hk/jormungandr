@@ -1,5 +1,6 @@
 use crate::blockcfg::{
-    BlockDate, ChainLength, Header, HeaderHash, Leadership, Ledger, LedgerParameters,
+    BlockDate, ChainLength, EpochRewardsInfo, Header, HeaderHash, Leadership, Ledger,
+    LedgerParameters,
 };
 use chain_impl_mockchain::multiverse;
 use chain_time::{
@@ -30,6 +31,10 @@ pub struct Ref {
     /// The object will be shared between different Ref of the same epoch
     epoch_ledger_parameters: Arc<LedgerParameters>,
 
+    /// If present, this is the rewards info distributed at the beginning of
+    /// the epoch. Useful to follow up on the reward distribution history
+    epoch_rewards_info: Option<Arc<EpochRewardsInfo>>,
+
     /// keep the Block header in memory, this will avoid retrieving
     /// the data from the storage if needs be
     header: Header,
@@ -48,6 +53,7 @@ impl Ref {
         time_frame: Arc<TimeFrame>,
         epoch_leadership_schedule: Arc<Leadership>,
         epoch_ledger_parameters: Arc<LedgerParameters>,
+        epoch_rewards_info: Option<Arc<EpochRewardsInfo>>,
         header: Header,
         previous_epoch_state: Option<Arc<Ref>>,
     ) -> Self {
@@ -62,6 +68,7 @@ impl Ref {
             time_frame,
             epoch_leadership_schedule,
             epoch_ledger_parameters,
+            epoch_rewards_info,
             header,
             previous_epoch_state,
         }
@@ -109,6 +116,12 @@ impl Ref {
 
     pub fn epoch_ledger_parameters(&self) -> &Arc<LedgerParameters> {
         &self.epoch_ledger_parameters
+    }
+
+    /// access the rewards info that were distributed at the end of the previous epoch
+    /// (and that are accessible/visible from this epoch only).
+    pub fn epoch_rewards_info(&self) -> Option<&Arc<EpochRewardsInfo>> {
+        self.epoch_rewards_info.as_ref()
     }
 
     pub fn last_ref_previous_epoch(&self) -> Option<&Arc<Ref>> {

@@ -332,8 +332,13 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     let cache_capacity = 102_400;
 
-    let (blockchain, blockchain_tip) =
-        start_up::load_blockchain(block0, storage, cache_capacity, &bootstrap_logger)?;
+    let (blockchain, blockchain_tip) = start_up::load_blockchain(
+        block0,
+        storage,
+        cache_capacity,
+        settings.rewards_report_all,
+        &bootstrap_logger,
+    )?;
 
     let mut bootstrap_attempt: usize = 0;
     loop {

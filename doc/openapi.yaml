@@ -1,9 +1,9 @@
-openapi: "3.0.2"
+openapi: 3.0.2
 info:
   title: Generic blockchain node REST API
   version: 0.0.1
 paths:
-  /api/v0/account/{account_id}:
+  '/api/v0/account/{account_id}':
     get:
       description: Gets account state
       parameters:
@@ -15,13 +15,15 @@ paths:
             type: string
             pattern: '[0-9a-fA-F]+'
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
               schema:
                 type: object
-                required: [value, counter]
+                required:
+                  - value
+                  - counter
                 properties:
                   delegation:
                     description: Hex-encoded stake pool ID this account is delegating to
@@ -58,9 +60,9 @@ paths:
                       "reward": 2028
                     }
                 }
-        404:
+        '404':
           description: Account with given ID was not found
-  /api/v0/block/{block_id}:
+  '/api/v0/block/{block_id}':
     get:
       description: Gets block
       parameters:
@@ -72,7 +74,7 @@ paths:
             type: string
             pattern: '[0-9a-fA-F]+'
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/octet-stream:
@@ -80,9 +82,9 @@ paths:
                 description: Binary blob with block
                 type: string
                 format: binary
-        400:
+        '400':
           description: Block with given ID was not found
-  /api/v0/block/{block_id}/next_id:
+  '/api/v0/block/{block_id}/next_id':
     get:
       description: Gets IDs of descendants of block
       parameters:
@@ -102,23 +104,23 @@ paths:
             maximum: 100
             default: 1
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/octet-stream:
               schema:
-                description: Concatenated binary blobs with block IDs, sorted from closest to furthest descendant
+                description: 'Concatenated binary blobs with block IDs, sorted from closest to furthest descendant'
                 type: string
                 format: binary
-        400:
+        '400':
           description: Block ID malformed
-        404:
+        '404':
           description: Block with given ID was not found in chain of the tip
   /api/v0/diagnostic:
     get:
       description: Get system diagnostic information
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -142,7 +144,7 @@ paths:
     get:
       description: Gets logs from node message pool
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -150,7 +152,12 @@ paths:
                 type: array
                 items:
                   type: object
-                  required: [fragment_id, received_from, received_at, last_updated_at, status]
+                  required:
+                    - fragment_id
+                    - received_from
+                    - received_at
+                    - last_updated_at
+                    - status
                   properties:
                     fragment_id:
                       description: Hex-encoded fragment ID
@@ -159,7 +166,9 @@ paths:
                     received_from:
                       description: Source of the fragment
                       type: string
-                      enum: [Network, Rest]
+                      enum:
+                        - Network
+                        - Rest
                     received_at:
                       description: When fragment was received by node
                       type: string
@@ -173,30 +182,36 @@ paths:
                       oneOf:
                         - description: Fragment is yet to be processed
                           type: string
-                          enum: [Pending]
-                        - description: Fragment was rejected and won't be added to a block
+                          enum:
+                            - Pending
+                        - description: "Fragment was rejected and won't be added to a block"
                           type: object
-                          required: [Rejected]
+                          required:
+                            - Rejected
                           properties:
                             Rejected:
                               type: object
-                              required: [reason]
+                              required:
+                                - reason
                               properties:
                                 reason:
                                   description: Reason for rejection
                                   type: string
                         - description: Fragment was added to a block
                           type: object
-                          required: [InABlock]
+                          required:
+                            - InABlock
                           properties:
                             InABlock:
                               type: object
-                              required: [date, block]
+                              required:
+                                - date
+                                - block
                               properties:
                                 date:
                                   description: Epoch and slot ID of block containing fragment separated with a dot
                                   type: string
-                                  pattern: '[0-9]+\.[0-9]+'
+                                  pattern: "[0-9]+\\.[0-9]+"
                                 block:
                                   description: Block hash where the fragment was last seen
                                   type: string
@@ -248,7 +263,7 @@ paths:
     get:
       description: Gets leader IDs
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -259,7 +274,9 @@ paths:
                   description: ID of the leader
                   type: integer
                   minimum: 0
-              example: [1, 5]
+              example:
+                - 1
+                - 5
     post:
       description: Registers new leader
       requestBody:
@@ -273,7 +290,8 @@ paths:
                 bft:
                   description: Secret key for BFT node
                   type: object
-                  required: [signing_key]
+                  required:
+                    - signing_key
                   properties:
                     signing_key:
                       description: Bech32-encoded BFT signing key
@@ -281,7 +299,10 @@ paths:
                 genesis:
                   description: Secret key for genesis node
                   type: object
-                  required: [node_id, sig_key, vrf_key]
+                  required:
+                    - node_id
+                    - sig_key
+                    - vrf_key
                   properties:
                     node_id:
                       description: Hex-encoded node ID
@@ -311,7 +332,7 @@ paths:
                     }
                   }
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -324,7 +345,7 @@ paths:
     get:
       description: Gets leader logs
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -334,7 +355,11 @@ paths:
                 items:
                   description: Log entry
                   type: object
-                  required: [created_at_time, scheduled_at_time, scheduled_at_date, enclave_leader_id]
+                  required:
+                    - created_at_time
+                    - scheduled_at_time
+                    - scheduled_at_date
+                    - enclave_leader_id
                   properties:
                     created_at_time:
                       description: Timestamp of when this log entry was created
@@ -347,7 +372,7 @@ paths:
                     scheduled_at_date:
                       description: Epoch and slot ID of start of leadership according to schedule
                       type: string
-                      pattern: '[0-9]+\.[0-9]+'
+                      pattern: "[0-9]+\\.[0-9]+"
                     wake_at_time:
                       description: Timestamp of when leadership was started
                       type: string
@@ -365,21 +390,25 @@ paths:
                       oneOf:
                         - description: Event is yet to be processed
                           type: string
-                          enum: [Pending]
-                        - description: Event was rejected and won't be create a block
+                          enum:
+                            - Pending
+                        - description: "Event was rejected and won't be create a block"
                           type: object
-                          required: [Rejected]
+                          required:
+                            - Rejected
                           properties:
                             Rejected:
                               type: object
-                              required: [reason]
+                              required:
+                                - reason
                               properties:
                                 reason:
                                   description: Reason for rejection
                                   type: string
                         - description: Event has successfully created a block
                           type: object
-                          required: [Block]
+                          required:
+                            - Block
                           properties:
                             InABlock:
                               type: object
@@ -444,7 +473,7 @@ paths:
                       }
                     }
                   ]
-  /api/v0/leaders/{leader_id}:
+  '/api/v0/leaders/{leader_id}':
     delete:
       description: Deletes leader
       parameters:
@@ -456,9 +485,9 @@ paths:
             type: integer
             minimum: 0
       responses:
-        200:
+        '200':
           description: Success
-        404:
+        '404':
           description: Leader with given ID does not exist
   /api/v0/message:
     post:
@@ -473,15 +502,15 @@ paths:
               type: string
               format: binary
       responses:
-        200:
+        '200':
           description: Success
-        400:
+        '400':
           description: Message is malformed
   /api/v0/network/stats:
     get:
       description: Fetches network stats
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -491,7 +520,10 @@ paths:
                 items:
                   description: Node stats
                   type: object
-                  required: [addr, nodeId, establishedAt]
+                  required:
+                    - addr
+                    - nodeId
+                    - establishedAt
                   properties:
                     addr:
                       description: Node address
@@ -535,22 +567,37 @@ paths:
     get:
       description: Fetches node stats
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
               schema:
                 type: object
-                required: [blockRecvCnt, lastReceivedBlockTime, lastBlockContentSize, lastBlockFees, lastBlockSum, lastBlockTx, state, txRecvCnt, uptime, version, peerAvailableCnt, peerQuarantinedCnt, peerUnreachableCnt, peerTotalCnt, nodeId]
+                required:
+                  - blockRecvCnt
+                  - lastReceivedBlockTime
+                  - lastBlockContentSize
+                  - lastBlockFees
+                  - lastBlockSum
+                  - lastBlockTx
+                  - state
+                  - txRecvCnt
+                  - uptime
+                  - version
+                  - peerAvailableCnt
+                  - peerQuarantinedCnt
+                  - peerUnreachableCnt
+                  - peerTotalCnt
+                  - nodeId
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
                     type: integer
                     minimum: 0
                   lastReceivedBlockTime:
-                      description: The time at which we received the last block, not necessarily the current tip block
-                      type: string
-                      format: date-time
+                    description: 'The time at which we received the last block, not necessarily the current tip block'
+                    type: string
+                    format: date-time
                   lastBlockContentSize:
                     description: Size in bytes of all transactions in last block
                     type: integer
@@ -563,20 +610,20 @@ paths:
                     type: integer
                     minimum: 0
                   lastBlockHash:
-                    description: The block hash, it's unique identifier in the blockchain
+                    description: "The block hash, it's unique identifier in the blockchain"
                     type: string
                     pattern: '[0-9a-fA-F]+'
                   lastBlockHeight:
-                    description: The block number, in order, since the block0
+                    description: 'The block number, in order, since the block0'
                     type: number
                   lastBlockSum:
                     description: Sum of all input values in all transactions in last block
                     type: integer
                     minimum: 0
                   lastBlockTime:
-                      description: The slot time of the block
-                      type: string
-                      format: date-time
+                    description: The slot time of the block
+                    type: string
+                    format: date-time
                   lastBlockTx:
                     description: Number of transactions in last block
                     type: integer
@@ -603,7 +650,13 @@ paths:
                   state:
                     description: State of the node
                     type: string
-                    enum: [StartingRestServer, PreparingStorage, PreparingBlock0, Bootstrapping, StartingWorkers, Running]
+                    enum:
+                      - StartingRestServer
+                      - PreparingStorage
+                      - PreparingBlock0
+                      - Bootstrapping
+                      - StartingWorkers
+                      - Running
                   txRecvCnt:
                     description: Number of transactions received by node
                     type: integer
@@ -641,13 +694,23 @@ paths:
     get:
       description: Gets node settings
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
               schema:
                 type: object
-                required: [block0Hash, block0Time, blockContentMaxSize, consensusVersion, epochStabilityDepth, fees, slotDuration, slotsPerEpoch, rewardParams, treasuryTax]
+                required:
+                  - block0Hash
+                  - block0Time
+                  - blockContentMaxSize
+                  - consensusVersion
+                  - epochStabilityDepth
+                  - fees
+                  - slotDuration
+                  - slotsPerEpoch
+                  - rewardParams
+                  - treasuryTax
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -658,44 +721,49 @@ paths:
                     type: string
                     format: date-time
                   blockContentMaxSize:
-                    description: The block content's max size in bytes
+                    description: "The block content's max size in bytes"
                     type: integer
                     minimum: 1
                   consensusVersion:
-                    description: Version of consensus, which is currently used
+                    description: 'Version of consensus, which is currently used'
                     type: string
-                    enum: [bft, genesis]
+                    enum:
+                      - bft
+                      - genesis
                   currSlotStartTime:
-                    description: When current slot was opened, not set if none is currently open
+                    description: 'When current slot was opened, not set if none is currently open'
                     type: string
                     format: date-time
                   epochStabilityDepth:
-                    description: The depth, number of blocks, to which we consider the blockchain to be stable and prevent rollback beyond that depth
+                    description: 'The depth, number of blocks, to which we consider the blockchain to be stable and prevent rollback beyond that depth'
                     type: integer
                     minimum: 1
                   fees:
                     description: Linear fees configuration
                     type: object
-                    required: [certificate, coefficient, constant]
+                    required:
+                      - certificate
+                      - coefficient
+                      - constant
                     properties:
                       certificate:
                         description: Fee per certificate used in witness
                         type: integer
                         minimum: 0
                       per_certificate_fees:
-                        description: Fee per certificate operations, all zero if this object absent
+                        description: 'Fee per certificate operations, all zero if this object absent'
                         type: object
                         properties:
                           certificate_pool_registration:
-                            description: Fee per pool registration, zero if absent
+                            description: 'Fee per pool registration, zero if absent'
                             type: integer
                             minimum: 1
                           certificate_stake_delegation:
-                            description: Fee per stake delegation, zero if absent
+                            description: 'Fee per stake delegation, zero if absent'
                             type: integer
                             minimum: 1
                           certificate_owner_stake_delegation:
-                            description: Fee per pool owner stake delegation, zero if absent
+                            description: 'Fee per pool owner stake delegation, zero if absent'
                             type: integer
                             minimum: 1
                       coefficient:
@@ -709,12 +777,19 @@ paths:
                   rewardParams:
                     description: Parameters for rewards calculation
                     type: object
-                    required: [compoundingRatio, compoundingType, epochRate, epochStart, initialValue]
+                    required:
+                      - compoundingRatio
+                      - compoundingType
+                      - epochRate
+                      - epochStart
+                      - initialValue
                     properties:
                       compoundingRatio:
                         description: Speed at which reward is reduced. Expressed as numerator/denominator
                         type: object
-                        required: [numerator, denominator]
+                        required:
+                          - numerator
+                          - denominator
                         properties:
                           numerator:
                             type: integer
@@ -725,7 +800,9 @@ paths:
                       compoundingType:
                         description: Reward reduction algorithm
                         type: string
-                        enum: [Linear, Halvening]
+                        enum:
+                          - Linear
+                          - Halvening
                       epochRate:
                         description: Number of epochs between reward
                         type: integer
@@ -749,7 +826,10 @@ paths:
                   treasuryTax:
                     description: Tax from reward that goes to pot
                     type: object
-                    required: [fixed, ratio, max]
+                    required:
+                      - fixed
+                      - ratio
+                      - max
                     properties:
                       fixed:
                         description: What get subtracted as fixed value
@@ -758,7 +838,9 @@ paths:
                       ratio:
                         description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
                         type: object
-                        required: [numerator, denominator]
+                        required:
+                          - numerator
+                          - denominator
                         properties:
                           numerator:
                             type: integer
@@ -813,13 +895,13 @@ paths:
     get:
       description: Starts node shutdown procedure
       responses:
-        200:
+        '200':
           description: Success
   /api/v0/stake_pools:
     get:
       description: Gets stake pool IDs
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
@@ -830,8 +912,176 @@ paths:
                   description: Hex-encoded stake pool ID
                   type: string
                   pattern: '[0-9a-fA-F]+'
-              example: [ "5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f" ]
-  /api/v0/stake_pool/{pool_id}:
+              example:
+                - 5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f
+  '/api/v0/rewards/epoch/{epoch}':
+    get:
+      description: 'returns the rewards history of the given "epoch"'
+      parameters:
+        - name: epoch
+          in: path
+          required: true
+          schema:
+            description: the epoch number to collect rewards info from
+            type: number
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    stakepools:
+                      type: object
+                      additionalProperties:
+                        type: array
+                        maxItems: 2
+                        items:
+                          type: integer
+                          minimum: 0
+                        minItems: 2
+                    treasury:
+                      type: integer
+                      minimum: 0
+                    fees:
+                      type: integer
+                      minimum: 0
+                    drawn:
+                      type: integer
+                      minimum: 0
+                    epoch:
+                      type: integer
+                      minimum: 0
+                    accounts:
+                      type: object
+                      additionalProperties:
+                        type: integer
+                        minimum: 0
+              example: |
+                [
+                  {
+                    "epoch": 82,
+                    "drawn": 3835616440000,
+                    "fees": 1828810000,
+                    "treasury": 462179124139,
+                    "stake_pools": {
+                      "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+                        1683091391,
+                        32665712521
+                      ],
+                      "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+                        47706672,
+                        906426770
+                      ],
+                    },
+                    "accounts": {
+                      "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
+                      "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+                      "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+                      "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+                      "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                    }
+                  }
+                ]
+  '/api/v0/rewards/history/{length}':
+    get:
+      description: 'returns the rewards history of the "length" last epoch from tip'
+      parameters:
+        - name: length
+          in: path
+          required: true
+          schema:
+            description: number of epochs to go back in history to display
+            type: number
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    stakepools:
+                      type: object
+                      additionalProperties:
+                        type: array
+                        maxItems: 2
+                        items:
+                          type: integer
+                          minimum: 0
+                        minItems: 2
+                    treasury:
+                      type: integer
+                      minimum: 0
+                    fees:
+                      type: integer
+                      minimum: 0
+                    drawn:
+                      type: integer
+                      minimum: 0
+                    epoch:
+                      type: integer
+                      minimum: 0
+                    accounts:
+                      type: object
+                      additionalProperties:
+                        type: integer
+                        minimum: 0
+              example: |
+                [
+                  {
+                    "epoch": 82,
+                    "drawn": 3835616440000,
+                    "fees": 1828810000,
+                    "treasury": 462179124139,
+                    "stake_pools": {
+                      "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+                        1683091391,
+                        32665712521
+                      ],
+                      "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+                        47706672,
+                        906426770
+                      ],
+                    },
+                    "accounts": {
+                      "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
+                      "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+                      "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+                      "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+                      "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                    },
+                    {
+                      "epoch": 81,
+                      "drawn": 3835616440000,
+                      "fees": 1828810000,
+                      "treasury": 462179124139,
+                      "stake_pools": {
+                        "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+                          1683091391,
+                          32665712521
+                        ],
+                        "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+                          47706672,
+                          906426770
+                        ],
+                      },
+                      "accounts": {
+                        "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
+                        "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+                        "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+                        "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+                        "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                      }
+                    }
+                  }
+                ]
+  '/api/v0/stake_pool/{pool_id}':
     get:
       description: Gets stake pool details
       parameters:
@@ -843,19 +1093,26 @@ paths:
             type: string
             pattern: '[0-9a-fA-F]+'
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
               schema:
                 description: Stake pool details
                 type: object
-                required: [tax, total_stake, kesPublicKey, vrfPublicKey]
+                required:
+                  - tax
+                  - total_stake
+                  - kesPublicKey
+                  - vrfPublicKey
                 properties:
                   tax:
                     description: Pool reward
                     type: object
-                    required: [fixed, ratio, max]
+                    required:
+                      - fixed
+                      - ratio
+                      - max
                     properties:
                       fixed:
                         description: What get subtracted as fixed value
@@ -864,7 +1121,9 @@ paths:
                       ratio:
                         description: Ratio of tax after fixed amount is subtracted. Expressed as numerator/denominator
                         type: object
-                        required: [numerator, denominator]
+                        required:
+                          - numerator
+                          - denominator
                         properties:
                           numerator:
                             type: integer
@@ -926,25 +1185,29 @@ paths:
     get:
       description: Gets stake distribution
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
               schema:
                 type: object
-                required: [epoch]
+                required:
+                  - epoch
                 properties:
                   epoch:
                     description: Epoch of last block
                     type: integer
                     minimum: 0
                   stake:
-                    description: Stake state, present only if there is leadership and it works with Genesis Praos consensus
+                    description: 'Stake state, present only if there is leadership and it works with Genesis Praos consensus'
                     type: object
-                    required: [dangling, pools, unassigned]
+                    required:
+                      - dangling
+                      - pools
+                      - unassigned
                     properties:
                       dangling:
-                        description: Total value stored in accounts, but assigned to nonexistent pools
+                        description: 'Total value stored in accounts, but assigned to nonexistent pools'
                         type: integer
                         minimum: 0
                       pools:
@@ -964,7 +1227,7 @@ paths:
                           minItems: 2
                           maxItems: 2
                       unassigned:
-                        description: Total value stored in accounts, but not assigned to any pool
+                        description: 'Total value stored in accounts, but not assigned to any pool'
                         type: integer
                         minimum: 0
               example: |
@@ -985,7 +1248,7 @@ paths:
     get:
       description: Gets ID of the blockchain tip
       responses:
-        200:
+        '200':
           description: Success
           content:
             text/plain:
@@ -994,7 +1257,7 @@ paths:
                 type: string
                 pattern: '[0-9a-fA-F]+'
               example: 8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7
-  /api/v0/utxo/{fragment_id}/{output_index}:
+  '/api/v0/utxo/{fragment_id}/{output_index}':
     get:
       description: Fetches UTxO details
       parameters:
@@ -1014,14 +1277,16 @@ paths:
             minimum: 0
             maximum: 255
       responses:
-        200:
+        '200':
           description: Success
           content:
             application/json:
               schema:
                 description: UTXOs details
                 type: object
-                required: [address, value]
+                required:
+                  - address
+                  - value
                 properties:
                   address:
                     description: Bech32-encoded address of owner of UTXO
@@ -1035,13 +1300,13 @@ paths:
                   "address": "ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w",
                   "value": 10000
                 }
-        404:
+        '404':
           description: Fragment with given ID or its output with given index was not found in the UTxO
   /api/v0/network/p2p/non_public:
     get:
       description: list all the nodes that are connected to ours but that are not publicly reachable
       responses:
-        200:
+        '200':
           description: array of nodes that are not publicly reachable
           content:
             application/json:
@@ -1050,16 +1315,20 @@ paths:
                 items:
                   description: a node and its associated logged data and records
                   type: object
-                  required: [profile]
+                  required:
+                    - profile
                   properties:
                     profile:
                       type: object
-                      required: [info, subscriptions]
+                      required:
+                        - info
+                        - subscriptions
                       description: the node public profile
                       properties:
                         info:
                           type: object
-                          required: [id]
+                          required:
+                            - id
                           description: the node public info
                           properties:
                             address:
@@ -1074,20 +1343,28 @@ paths:
                           items:
                             description: a subscription
                             type: object
-                            required: [interest, topic]
+                            required:
+                              - interest
+                              - topic
                             properties:
                               interest:
                                 type: string
                                 description: the level of interest on the associate subscription
-                                enum: [High, Normal, Low]
+                                enum:
+                                  - High
+                                  - Normal
+                                  - Low
                               topic:
                                 type: integer
                                 description: 0 for fragment topic and 1 for a block topic
-                                enum: [0, 1]
+                                enum:
+                                  - 0
+                                  - 1
                     records:
                       type: object
                       description: all the recorded error with this node
-                      required: [strikes]
+                      required:
+                        - strikes
                       properties:
                         strikes:
                           description: the strikes recorded on this node
@@ -1095,7 +1372,9 @@ paths:
                           items:
                             description: the type of strike recorded against a node
                             type: object
-                            required: [reason, when]
+                            required:
+                              - reason
+                              - when
                             properties:
                               reason:
                                 type: string
@@ -1103,7 +1382,9 @@ paths:
                               when:
                                 description: when the strike was recorded
                                 type: object
-                                required: [seconds_since_epoch, nanos_since_epoch]
+                                required:
+                                  - seconds_since_epoch
+                                  - nanos_since_epoch
                                 properties:
                                   seconds_since_epoch:
                                     type: integer
@@ -1113,16 +1394,18 @@ paths:
                                     type: integer
                                     description: elapsed nanoseconds since unix epoch
                                     minimum: 0
-
                     logs:
                       type: object
                       description: the different logged events associated to this node
-                      required: [creation_time]
+                      required:
+                        - creation_time
                       properties:
                         creation_time:
                           description: when the node was known of our node
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1135,7 +1418,9 @@ paths:
                         last_gossip:
                           description: the last time we gossiped with the node
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1148,7 +1433,9 @@ paths:
                         last_update:
                           description: the last time we received an update of the node (via gossiping with another node)
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1161,7 +1448,9 @@ paths:
                         quarantined:
                           description: the time at which the node was quarantined (if not there then the node is not quarantined)
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1175,10 +1464,12 @@ paths:
                           description: the last time this node has been part of a view for event propagation
                           type: object
                           properties:
-                            "0":
+                            '0':
                               description: the last time the node was selected for fragment propagation
                               type: object
-                              required: [seconds_since_epoch, nanos_since_epoch]
+                              required:
+                                - seconds_since_epoch
+                                - nanos_since_epoch
                               properties:
                                 seconds_since_epoch:
                                   type: integer
@@ -1188,10 +1479,12 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
-                            "1":
+                            '1':
                               description: the last time the node was selected for block propagation
                               type: object
-                              required: [seconds_since_epoch, nanos_since_epoch]
+                              required:
+                                - seconds_since_epoch
+                                - nanos_since_epoch
                               properties:
                                 seconds_since_epoch:
                                   type: integer
@@ -1205,7 +1498,7 @@ paths:
     get:
       description: list all the nodes that are available for p2p discovery and events propagation
       responses:
-        200:
+        '200':
           description: array of nodes info
           content:
             application/json:
@@ -1214,16 +1507,21 @@ paths:
                 items:
                   description: a node and its associated logged data and records
                   type: object
-                  required: [profile]
+                  required:
+                    - profile
                   properties:
                     profile:
                       type: object
-                      required: [info, subscriptions]
+                      required:
+                        - info
+                        - subscriptions
                       description: the node public profile
                       properties:
                         info:
                           type: object
-                          required: [id, address]
+                          required:
+                            - id
+                            - address
                           description: the node public info
                           properties:
                             address:
@@ -1238,20 +1536,28 @@ paths:
                           items:
                             description: a subscription
                             type: object
-                            required: [interest, topic]
+                            required:
+                              - interest
+                              - topic
                             properties:
                               interest:
                                 type: string
                                 description: the level of interest on the associate subscription
-                                enum: [High, Normal, Low]
+                                enum:
+                                  - High
+                                  - Normal
+                                  - Low
                               topic:
                                 type: integer
                                 description: 0 for fragment topic and 1 for a block topic
-                                enum: [0, 1]
+                                enum:
+                                  - 0
+                                  - 1
                     records:
                       type: object
                       description: all the recorded error with this node
-                      required: [strikes]
+                      required:
+                        - strikes
                       properties:
                         strikes:
                           description: the strikes recorded on this node
@@ -1259,7 +1565,9 @@ paths:
                           items:
                             description: the type of strike recorded against a node
                             type: object
-                            required: [reason, when]
+                            required:
+                              - reason
+                              - when
                             properties:
                               reason:
                                 type: string
@@ -1267,7 +1575,9 @@ paths:
                               when:
                                 description: when the strike was recorded
                                 type: object
-                                required: [seconds_since_epoch, nanos_since_epoch]
+                                required:
+                                  - seconds_since_epoch
+                                  - nanos_since_epoch
                                 properties:
                                   seconds_since_epoch:
                                     type: integer
@@ -1277,16 +1587,18 @@ paths:
                                     type: integer
                                     description: elapsed nanoseconds since unix epoch
                                     minimum: 0
-
                     logs:
                       type: object
                       description: the different logged events associated to this node
-                      required: [creation_time]
+                      required:
+                        - creation_time
                       properties:
                         creation_time:
                           description: when the node was known of our node
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1299,7 +1611,9 @@ paths:
                         last_gossip:
                           description: the last time we gossiped with the node
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1312,7 +1626,9 @@ paths:
                         last_update:
                           description: the last time we received an update of the node (via gossiping with another node)
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1325,7 +1641,9 @@ paths:
                         quarantined:
                           description: the time at which the node was quarantined (if not there then the node is not quarantined)
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1339,10 +1657,12 @@ paths:
                           description: the last time this node has been part of a view for event propagation
                           type: object
                           properties:
-                            "0":
+                            '0':
                               description: the last time the node was selected for fragment propagation
                               type: object
-                              required: [seconds_since_epoch, nanos_since_epoch]
+                              required:
+                                - seconds_since_epoch
+                                - nanos_since_epoch
                               properties:
                                 seconds_since_epoch:
                                   type: integer
@@ -1352,10 +1672,12 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
-                            "1":
+                            '1':
                               description: the last time the node was selected for block propagation
                               type: object
-                              required: [seconds_since_epoch, nanos_since_epoch]
+                              required:
+                                - seconds_since_epoch
+                                - nanos_since_epoch
                               properties:
                                 seconds_since_epoch:
                                   type: integer
@@ -1369,7 +1691,7 @@ paths:
     get:
       description: list all the nodes that have been quarantined
       responses:
-        200:
+        '200':
           description: array of nodes info
           content:
             application/json:
@@ -1378,16 +1700,21 @@ paths:
                 items:
                   description: a node and its associated logged data and records
                   type: object
-                  required: [profile]
+                  required:
+                    - profile
                   properties:
                     profile:
                       type: object
-                      required: [info, subscriptions]
+                      required:
+                        - info
+                        - subscriptions
                       description: the node public profile
                       properties:
                         info:
                           type: object
-                          required: [id, address]
+                          required:
+                            - id
+                            - address
                           description: the node public info
                           properties:
                             address:
@@ -1402,20 +1729,28 @@ paths:
                           items:
                             description: a subscription
                             type: object
-                            required: [interest, topic]
+                            required:
+                              - interest
+                              - topic
                             properties:
                               interest:
                                 type: string
                                 description: the level of interest on the associate subscription
-                                enum: [High, Normal, Low]
+                                enum:
+                                  - High
+                                  - Normal
+                                  - Low
                               topic:
                                 type: integer
                                 description: 0 for fragment topic and 1 for a block topic
-                                enum: [0, 1]
+                                enum:
+                                  - 0
+                                  - 1
                     records:
                       type: object
                       description: all the recorded error with this node
-                      required: [strikes]
+                      required:
+                        - strikes
                       properties:
                         strikes:
                           description: the strikes recorded on this node
@@ -1423,7 +1758,9 @@ paths:
                           items:
                             description: the type of strike recorded against a node
                             type: object
-                            required: [reason, when]
+                            required:
+                              - reason
+                              - when
                             properties:
                               reason:
                                 type: string
@@ -1431,7 +1768,9 @@ paths:
                               when:
                                 description: when the strike was recorded
                                 type: object
-                                required: [seconds_since_epoch, nanos_since_epoch]
+                                required:
+                                  - seconds_since_epoch
+                                  - nanos_since_epoch
                                 properties:
                                   seconds_since_epoch:
                                     type: integer
@@ -1441,16 +1780,19 @@ paths:
                                     type: integer
                                     description: elapsed nanoseconds since unix epoch
                                     minimum: 0
-
                     logs:
                       type: object
                       description: the different logged events associated to this node
-                      required: [creation_time, quarantined]
+                      required:
+                        - creation_time
+                        - quarantined
                       properties:
                         creation_time:
                           description: when the node was known of our node
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1463,7 +1805,9 @@ paths:
                         last_gossip:
                           description: the last time we gossiped with the node
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1476,7 +1820,9 @@ paths:
                         last_update:
                           description: the last time we received an update of the node (via gossiping with another node)
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1489,7 +1835,9 @@ paths:
                         quarantined:
                           description: the time at which the node was quarantined (if not there then the node is not quarantined)
                           type: object
-                          required: [seconds_since_epoch, nanos_since_epoch]
+                          required:
+                            - seconds_since_epoch
+                            - nanos_since_epoch
                           properties:
                             seconds_since_epoch:
                               type: integer
@@ -1503,10 +1851,12 @@ paths:
                           description: the last time this node has been part of a view for event propagation
                           type: object
                           properties:
-                            "0":
+                            '0':
                               description: the last time the node was selected for fragment propagation
                               type: object
-                              required: [seconds_since_epoch, nanos_since_epoch]
+                              required:
+                                - seconds_since_epoch
+                                - nanos_since_epoch
                               properties:
                                 seconds_since_epoch:
                                   type: integer
@@ -1516,10 +1866,12 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
-                            "1":
+                            '1':
                               description: the last time the node was selected for block propagation
                               type: object
-                              required: [seconds_since_epoch, nanos_since_epoch]
+                              required:
+                                - seconds_since_epoch
+                                - nanos_since_epoch
                               properties:
                                 seconds_since_epoch:
                                   type: integer
@@ -1533,7 +1885,7 @@ paths:
     get:
       description: list all the nodes that are selected for gossiping/peer discovery
       responses:
-        200:
+        '200':
           description: array of nodes info
           content:
             application/json:
@@ -1542,7 +1894,9 @@ paths:
                 items:
                   description: a node id and addresses
                   type: object
-                  required: [id, address]
+                  required:
+                    - id
+                    - address
                   properties:
                     address:
                       type: string
@@ -1550,7 +1904,7 @@ paths:
                     id:
                       type: string
                       description: the node public id
-  /api/v0/network/p2p/view/{topic}:
+  '/api/v0/network/p2p/view/{topic}':
     get:
       parameters:
         - in: path
@@ -1559,10 +1913,12 @@ paths:
           description: the topic name
           schema:
             type: string
-            enum: [blocks, fragments]
+            enum:
+              - blocks
+              - fragments
       description: list all the nodes that are selected for the given topic
       responses:
-        200:
+        '200':
           description: array of nodes info
           content:
             application/json:
@@ -1571,7 +1927,9 @@ paths:
                 items:
                   description: a node id and addresses
                   type: object
-                  required: [id, address]
+                  required:
+                    - id
+                    - address
                   properties:
                     address:
                       type: string
