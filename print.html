@@ -770,7 +770,10 @@ storage: &quot;./storage&quot;
 <p>Note:
 The node configuration uses the <a href="https://en.wikipedia.org/wiki/YAML">YAML</a> format.</p>
 <h2><a class="header" href="#advanced" id="advanced">advanced</a></h2>
-<p>this is not a recommended settings as it may take memory and may trigger some latency:</p>
+<p>starting the node <code>jormungandr</code> with the command line option <code>--rewards-report-all</code> will
+collect a thorough report of all the reward distribution. It can then be accessed via the
+REST end points <code>/api/v0/rewards/history/1</code> or <code>/api/v0/rewards/epoch/10</code>.</p>
+<p><strong>this is not a recommended settings as it may take memory and may trigger some latency</strong>.</p>
 <p>If you want to record the reward distributions in a directory it is possible to set
 the environment variable: <code>JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD</code>.</p>
 <p>If an error occur while dumping the reward, the node will <strong>panic</strong> with an appropriate
