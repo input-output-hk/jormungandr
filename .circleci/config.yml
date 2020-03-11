@@ -2,8 +2,8 @@ version: 2
 jobs:
   cargo_fetch:
     docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
+      - image: inputoutput/rust:stable
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - run: git submodule sync
@@ -22,8 +22,8 @@ jobs:
 
   cargo_audit:
     docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
+      - image: inputoutput/rust:stable
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - run: git submodule sync
@@ -31,9 +31,6 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Install Cargo Audit
-          command: cargo install cargo-audit
       - run:
           name: Print Cargo Audit Version
           command: cargo audit --version
@@ -43,8 +40,8 @@ jobs:
 
   rustfmt:
     docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
+      - image: inputoutput/rust:stable
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - run:
@@ -59,10 +56,10 @@ jobs:
 
   test_debug:
     docker:
-      - image: rust:latest
+      - image: inputoutput/rust:stable
     environment:
       CARGO_INCREMENTAL: 0
-    working_directory: /mnt/crate
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - run: git submodule sync
@@ -87,8 +84,8 @@ jobs:
 
   test_release:
     docker:
-      - image: rust:latest
-    working_directory: /mnt/crate
+      - image: inputoutput/rust:stable
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - run: git submodule sync
@@ -114,7 +111,7 @@ jobs:
       - image: instrumentisto/rust:beta
     environment:
       CARGO_INCREMENTAL: 0
-    working_directory: /mnt/crate
+    working_directory: /home/circleci/project
     steps:
       - checkout
       - run: git submodule sync
