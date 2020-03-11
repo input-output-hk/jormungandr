@@ -264,6 +264,44 @@ pub async fn get_stake_distribution(context: Data<Context>) -> Result<impl Respo
     })))
 }
 
+pub async fn get_stake_distribution_at(
+    context: Data<Context>,
+    epoch: Path<u32>,
+) -> Result<impl Responder, Error> {
+    let mut tip_ref = chain_tip(&context).await?;
+    let epoch = epoch.into_inner();
+
+    if epoch > tip_ref.block_date().epoch {
+        return Err(ErrorNotFound("Invalid epoch, does not exist yet..."));
+    }
+
+    loop {
+        if tip_ref.block_date().epoch == epoch {
+            break;
+        } else {
+            if let Some(previous_epoch) = tip_ref.last_ref_previous_epoch() {
+                assert_eq!(
+                    previous_epoch.block_date().epoch + 1,
+                    tip_ref.block_date().epoch
+                );
+                tip_ref = Arc::clone(previous_epoch);
+            } else {
+                return Err(ErrorNotFound("Epoch not found..."));
+            }
+        }
+    }
+
+    let stake = tip_ref
+        .epoch_leadership_schedule()
+        .stake_distribution()
+        .map(create_stake);
+
+    Ok(Json(json!({
+        "epoch": epoch,
+        "stake": stake,
+    })))
+}
+
 fn create_stake(stake: &StakeDistribution) -> serde_json::Value {
     let unassigned: u64 = stake.unassigned.into();
     let dangling: u64 = stake.dangling.into();
