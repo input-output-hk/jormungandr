@@ -50,6 +50,10 @@ pub fn service(root_path: &str) -> impl HttpServiceFactory {
         )
         .route("/settings", get().to(handlers::get_settings))
         .route("/stake", get().to(handlers::get_stake_distribution))
+        .route(
+            "/stake/{epoch}",
+            get().to(handlers::get_stake_distribution_at),
+        )
         .route("/stake_pools", get().to(handlers::get_stake_pools))
         .route("/stake_pool/{pool_id}", get().to(handlers::get_stake_pool))
         .route("/shutdown", get().to(handlers::get_shutdown))
