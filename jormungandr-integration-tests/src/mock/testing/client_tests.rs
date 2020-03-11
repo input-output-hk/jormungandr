@@ -5,7 +5,6 @@ use crate::mock::{
 
 use crate::common::{
     jcli_wrapper,
-    jcli_wrapper::JCLITransactionWrapper,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
     transaction_utils::TransactionHash,

@@ -4,12 +4,8 @@ use crate::common::{
     file_assert, file_utils, process_assert,
     process_utils::{self, output_extensions::ProcessOutput},
 };
-use chain_impl_mockchain::{
-    certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
-};
-use std::{path::PathBuf, str::FromStr};
-
-use jormungandr_lib::interfaces::{Certificate, TaxType};
+use jormungandr_lib::interfaces::TaxType;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct JCLICertificateWrapper {
@@ -142,9 +138,12 @@ impl JCLICertificateWrapper {
     }
 
     pub fn assert_new_stake_pool_retirement(&self, stake_pool_id: &str) -> String {
-        let pool_id = PoolId::from_str(&stake_pool_id).unwrap();
-        let start_validity = 0u64;
-        let certificate = build_stake_pool_retirement_cert(pool_id, start_validity);
-        format!("{}", Certificate::from(certificate).to_bech32().unwrap())
+        println!("Running create retirement certification...");
+        let output = process_utils::run_process_and_get_output(
+            self.commands.get_retire_command(&stake_pool_id, 0u64),
+        );
+        let certification = output.as_single_line();
+        process_assert::assert_process_exited_successfully(output);
+        certification
     }
 }

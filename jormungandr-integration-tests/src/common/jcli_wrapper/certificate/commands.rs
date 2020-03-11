@@ -30,6 +30,19 @@ impl CertificateCommands {
         command
     }
 
+    pub fn get_retire_command(&self, stake_pool_id: &str, retirement_time: u64) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("certificate")
+            .arg("new")
+            .arg("stake-pool-retirement")
+            .arg("--pool-id")
+            .arg(&stake_pool_id)
+            .arg("--retirement-time")
+            .arg(&retirement_time.to_string());
+        command
+    }
+
     pub fn get_stake_pool_registration_command(
         &self,
         kes_key: &str,
