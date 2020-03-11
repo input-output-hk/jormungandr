@@ -31,12 +31,19 @@ jobs:
       - restore_cache:
           keys:
             - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+      - restore_cache:
+          keys:
+            - cargo-advisory-db-v1
       - run:
           name: Print Cargo Audit Version
           command: cargo audit --version
       - run:
           name: Check Cargo Audit
           command: cargo audit
+      - save_cache:
+          key: cargo-advisory-db-v1
+          paths:
+            - /usr/local/cargo/advisory-db
 
   rustfmt:
     docker:
