@@ -1244,6 +1244,76 @@ paths:
                     "unassigned": 0
                   }
                 }
+  /api/v0/stake/{epoch}:
+    get:
+      description: Gets stake distribution
+      parameters:
+        - name: epoch
+          in: path
+          required: true
+          schema:
+            description: the epoch to get the stake distribution from
+            type: number
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - epoch
+                properties:
+                  epoch:
+                    description: Epoch of last block
+                    type: integer
+                    minimum: 0
+                  stake:
+                    description: 'Stake state, present only if there is leadership and it works with Genesis Praos consensus'
+                    type: object
+                    required:
+                      - dangling
+                      - pools
+                      - unassigned
+                    properties:
+                      dangling:
+                        description: 'Total value stored in accounts, but assigned to nonexistent pools'
+                        type: integer
+                        minimum: 0
+                      pools:
+                        description: All valid assignments of value stored in accounts to pools
+                        type: array
+                        items:
+                          description: The first item is always stake pool ID and the second is always pool value
+                          type: array
+                          items:
+                            oneOf:
+                              - description: Hex-encoded stake pool ID
+                                type: string
+                                pattern: '[0-9a-fA-F]+'
+                              - description: Total pool value
+                                type: integer
+                                minimum: 0
+                          minItems: 2
+                          maxItems: 2
+                      unassigned:
+                        description: 'Total value stored in accounts, but not assigned to any pool'
+                        type: integer
+                        minimum: 0
+              example: |
+                {
+                  "epoch": 0,
+                  "stake": {
+                    "dangling": 0,
+                    "pools": [
+                      [
+                        "d882fc32c4b4b901cb29dfb4162e070d7650e937abb7bc2947d3a7d48b6c86a6",
+                        2000000000000
+                      ]
+                    ],
+                    "unassigned": 0
+                  }
+                }
   /api/v0/tip:
     get:
       description: Gets ID of the blockchain tip
