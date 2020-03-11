@@ -11,7 +11,6 @@ use self::indexing::{
 };
 use self::persistent_sequence::PersistentSequence;
 
-use self::future::Either;
 use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
@@ -24,6 +23,7 @@ use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse;
+use futures03::{compat::*, stream::TryStreamExt};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::prelude::*;
@@ -206,30 +206,26 @@ impl ExplorerDB {
             blockchain: blockchain.clone(),
         };
 
-        rt.block_on(
-            blockchain
+        rt.block_on_std(async move {
+            let maybe_head = blockchain
                 .storage()
                 .get_tag(MAIN_BRANCH_TAG.to_owned())
-                .map_err(|err| err.into())
-                .and_then(move |head_option| match head_option {
-                    None => Either::A(future::err(Error::from(ErrorKind::BootstrapError(
+                .await?;
+            let stream = match maybe_head {
+                Some(head) => blockchain.storage().stream_from_to(block0_id, head).await?,
+                None => {
+                    return Err(Error::from(ErrorKind::BootstrapError(
                         "Couldn't read the HEAD tag from storage".to_owned(),
-                    )))),
-                    Some(head) => Either::B(
-                        blockchain
-                            .storage()
-                            .stream_from_to(block0_id, head)
-                            .map_err(|err| Error::from(err)),
-                    ),
+                    )))
+                }
+            };
+            stream
+                .map_err(|err| Error::from(err))
+                .try_fold(bootstraped_db, |mut db, block| {
+                    db.apply_block(block).and_then(|_gc_root| Ok(db)).compat()
                 })
-                .and_then(move |stream| {
-                    stream
-                        .map_err(|err| Error::from(err))
-                        .fold(bootstraped_db, |mut db, block| {
-                            db.apply_block(block).and_then(|_gc_root| Ok(db))
-                        })
-                }),
-        )
+                .await
+        })
     }
 
     /// Try to add a new block to the indexes, this can fail if the parent of the block is

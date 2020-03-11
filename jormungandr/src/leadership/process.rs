@@ -80,7 +80,7 @@ impl Module {
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
     ) -> Result<Self, LeadershipError> {
-        let tip_ref = tip.get_ref_std().await;
+        let tip_ref = tip.get_ref().await;
 
         Ok(Self {
             schedule: Schedule::default(),
@@ -225,7 +225,7 @@ impl Module {
         let deadline = self.wait_peek_deadline()?;
         delay_until(TokioInstant::from_std(deadline)).await;
         let tip = self.tip.clone();
-        self.tip_ref = tip.get_ref_std().await;
+        self.tip_ref = tip.get_ref().await;
         Ok(self)
     }
 

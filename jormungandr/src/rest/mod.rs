@@ -24,7 +24,6 @@ use crate::intercom::{NetworkMsg, TransactionMsg};
 use crate::utils::async_msg::MessageBox;
 
 use chain_impl_mockchain::block::Block;
-use futures03::compat::Future01CompatExt;
 use futures03::executor::block_on;
 use jormungandr_lib::interfaces::NodeState;
 use tokio02::sync::RwLock;
@@ -135,8 +134,7 @@ async fn update_stats_tip_from_storage(context: &FullContext) {
     let block: Option<Block> = context
         .blockchain
         .storage()
-        .get(context.blockchain_tip.get_ref_std().await.hash())
-        .compat()
+        .get(context.blockchain_tip.get_ref().await.hash())
         .await
         .unwrap_or(None);
 

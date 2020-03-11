@@ -14,6 +14,7 @@ use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::leadership::bft;
+use futures03::executor::block_on;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
 use std::convert::TryFrom;
@@ -169,11 +170,7 @@ impl Block {
     }
 
     pub fn treasury(&self, context: &Context) -> FieldResult<Option<Treasury>> {
-        let treasury = context
-            .db
-            .blockchain()
-            .get_ref(self.hash)
-            .wait()
+        let treasury = block_on(context.db.blockchain().get_ref(self.hash))
             .unwrap_or(None)
             .map(|reference| {
                 let ledger = reference.ledger();

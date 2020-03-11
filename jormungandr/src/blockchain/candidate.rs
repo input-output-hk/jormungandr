@@ -5,10 +5,15 @@ use super::{
 use crate::blockcfg::{Header, HeaderHash};
 use crate::utils::async_msg::MessageQueue;
 
-use futures::future::{self, Either, Loop};
-use futures::prelude::*;
+use futures03::{
+    compat::*,
+    future::poll_fn,
+    prelude::*,
+    ready,
+    task::{Context, Poll},
+};
 use slog::Logger;
-use tokio_compat::prelude::*;
+use std::{marker::Unpin, pin::Pin};
 
 // derive
 use thiserror::Error;
@@ -44,26 +49,21 @@ mod chain_landing {
 
     impl<S> State<S>
     where
-        S: Stream<Item = Header, Error = Error>,
+        S: Stream<Item = Result<Header, Error>> + Unpin,
     {
-        /// Read the first header from the stream.
-        /// Return a future that resolves to a state object.
-        /// This method starts the sequence of processing a header chain.
-        pub fn start(stream: S, blockchain: Blockchain) -> impl Future<Item = Self, Error = Error> {
-            stream
-                .into_future()
-                .map_err(|(err, _)| err)
-                .and_then(move |(maybe_first, stream)| match maybe_first {
-                    Some(header) => {
-                        let state = State {
-                            blockchain,
-                            header,
-                            stream,
-                        };
-                        Ok(state)
-                    }
-                    None => Err(Error::EmptyHeaderStream),
-                })
+        // Read the first header from the stream.
+        // Return a future that resolves to a state object.
+        // This method starts the sequence of processing a header chain.
+        pub async fn start(stream: S, blockchain: Blockchain) -> Result<Self, Error> {
+            let (maybe_first, stream) = stream.into_future().await;
+            match maybe_first {
+                Some(header) => Ok(State {
+                    blockchain,
+                    header: header?,
+                    stream,
+                }),
+                None => Err(Error::EmptyHeaderStream),
+            }
         }
 
         /// Reads the stream and skips blocks that are already present in the storage.
@@ -72,47 +72,49 @@ mod chain_landing {
         /// to be read. If the stream ends before the requisite header is found,
         /// resolves with None.
         /// The chain also is pre-verified for sanity.
-        pub fn skip_present_blocks(self) -> impl Future<Item = Option<(Header, S)>, Error = Error> {
-            future::loop_fn(self, move |state| {
+        pub async fn skip_present_blocks(self) -> Result<Option<(Header, S)>, Error> {
+            let mut state = self;
+            loop {
                 let State {
                     blockchain,
                     header,
                     stream,
                 } = state;
-                blockchain
-                    .pre_check_header_old(header, false)
-                    .map_err(|e| e.into())
-                    .and_then(move |pre_checked| match pre_checked {
-                        PreCheckedHeader::AlreadyPresent { .. } => {
-                            let fut = stream.into_future().map_err(|(err, _)| err).and_then(
-                                move |(maybe_next, stream)| match maybe_next {
-                                    Some(header) => {
-                                        let state = State {
-                                            blockchain,
-                                            header,
-                                            stream,
-                                        };
-                                        Ok(Loop::Continue(state))
-                                    }
-                                    None => Ok(Loop::Break(None)),
-                                },
-                            );
-                            Either::A(fut)
+
+                let pre_checked = blockchain.pre_check_header(header, false).await?;
+
+                match pre_checked {
+                    PreCheckedHeader::AlreadyPresent { .. } => {
+                        let (maybe_next, stream) = stream.into_future().await;
+                        match maybe_next {
+                            Some(header) => {
+                                state = State {
+                                    blockchain,
+                                    header: header?,
+                                    stream,
+                                };
+                                continue;
+                            }
+                            None => break Ok(None),
                         }
-                        PreCheckedHeader::HeaderWithCache { header, .. } => {
-                            Either::B(future::ok(Loop::Break(Some((header, stream)))))
-                        }
-                        PreCheckedHeader::MissingParent { header } => Either::B(future::err(
-                            Error::MissingParentBlock(header.block_parent_hash()),
-                        )),
-                    })
-            })
+                    }
+                    PreCheckedHeader::HeaderWithCache { header, .. } => {
+                        break Ok(Some((header, stream)))
+                    }
+                    PreCheckedHeader::MissingParent { header } => {
+                        break Err(Error::MissingParentBlock(header.block_parent_hash()))
+                    }
+                }
+            }
         }
     }
 }
 
-struct ChainAdvance {
-    stream: HeaderStream,
+struct ChainAdvance<S>
+where
+    S: Stream<Item = Result<Header, Error>> + Unpin,
+{
+    stream: S,
     parent_header: Header,
     header: Option<Header>,
     new_hashes: Vec<HeaderHash>,
@@ -126,7 +128,10 @@ mod chain_advance {
     }
 }
 
-impl ChainAdvance {
+impl<S> ChainAdvance<S>
+where
+    S: Stream<Item = Result<Header, Error>> + Unpin,
+{
     fn process_header(&mut self, header: Header) -> Result<(), Error> {
         // Pre-validate the chain and pick up header hashes.
         let block_hash = header.hash();
@@ -149,37 +154,39 @@ impl ChainAdvance {
         Ok(())
     }
 
-    fn poll_done(&mut self) -> Poll<chain_advance::Outcome, Error> {
+    fn poll_done(&mut self, cx: &mut Context) -> Poll<Result<chain_advance::Outcome, Error>> {
         use self::chain_advance::Outcome;
 
         loop {
             if let Some(header) = self.header.take() {
                 self.process_header(header)?;
             } else {
-                match try_ready!(self.stream.poll().map_err(|()| Error::Unexpected)) {
-                    Some(header) => {
+                match ready!(Pin::new(&mut self.stream).poll_next(cx)) {
+                    Some(Ok(header)) => {
                         self.process_header(header)?;
                     }
-                    None => return Ok(Outcome::Complete.into()),
+                    Some(Err(_)) => return Poll::Ready(Err(Error::Unexpected)),
+                    None => return Poll::Ready(Ok(Outcome::Complete.into())),
                 }
             }
             // TODO: bail out when block data are needed due to new epoch.
             if self.new_hashes.len() as u64 >= chunk_sizes::BLOCKS {
-                return Ok(Outcome::Incomplete.into());
+                return Poll::Ready(Ok(Outcome::Incomplete.into()));
             }
         }
     }
 }
 
-async fn land_header_chain(
+async fn land_header_chain<S>(
     blockchain: Blockchain,
-    stream: HeaderStream,
+    stream: S,
     logger: Logger,
-) -> Result<Option<ChainAdvance>, Error> {
-    let state = chain_landing::State::start(stream.map_err(|()| unreachable!()), blockchain)
-        .compat()
-        .await?;
-    let maybe_new = state.skip_present_blocks().compat().await?;
+) -> Result<Option<ChainAdvance<S>>, Error>
+where
+    S: Stream<Item = Result<Header, Error>> + Unpin,
+{
+    let state = chain_landing::State::start(stream, blockchain).await?;
+    let maybe_new = state.skip_present_blocks().await?;
     match maybe_new {
         Some((header, stream)) => {
             // We have got a header that may not be in storage yet,
@@ -195,7 +202,7 @@ async fn land_header_chain(
             );
             let new_hashes = vec![root_hash];
             let landing = ChainAdvance {
-                stream: stream.into_inner(),
+                stream,
                 parent_header: header,
                 header: None,
                 new_hashes,
@@ -221,21 +228,33 @@ pub async fn advance_branch(
     blockchain: Blockchain,
     header_stream: HeaderStream,
     logger: Logger,
-) -> Result<(Vec<HeaderHash>, Option<HeaderStream>), Error> {
-    let mut advance = land_header_chain(blockchain, header_stream, logger).await?;
+) -> Result<
+    (
+        Vec<HeaderHash>,
+        Option<impl Stream<Item = Result<Header, Error>>>,
+    ),
+    Error,
+> {
+    let mut advance = land_header_chain(
+        blockchain,
+        header_stream.compat().map_err(|_| unreachable!()),
+        logger,
+    )
+    .await?;
 
     if advance.is_some() {
-        let fut = future::poll_fn(move || {
+        poll_fn(|cx| {
             use self::chain_advance::Outcome;
-            let done = try_ready!(advance.as_mut().unwrap().poll_done());
+            let done = ready!(advance.as_mut().unwrap().poll_done(cx));
             let advance = advance.take().unwrap();
             let ret_stream = match done {
-                Outcome::Complete => None,
-                Outcome::Incomplete => Some(advance.stream),
+                Ok(Outcome::Complete) => None,
+                Ok(Outcome::Incomplete) => Some(advance.stream),
+                Err(err) => return Poll::Ready(Err(err)),
             };
-            Ok((advance.new_hashes, ret_stream).into())
-        });
-        fut.compat().await
+            Poll::Ready(Ok((advance.new_hashes, ret_stream)))
+        })
+        .await
     } else {
         Ok((Vec::new(), None))
     }
