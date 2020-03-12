@@ -13,6 +13,8 @@ pub enum Stake {
         debug: DebugFlag,
         #[structopt(flatten)]
         output_format: OutputFormat,
+        /// Epoch to get the stake distribution from
+        epoch: Option<u32>,
     },
 }
 
@@ -22,8 +24,14 @@ impl Stake {
             addr,
             debug,
             output_format,
+            epoch,
         } = self;
-        let url = addr.with_segments(&["v0", "stake"])?.into_url();
+        let url = match epoch {
+            Some(epoch) => addr
+                .with_segments(&["v0", "stake", &epoch.to_string()])?
+                .into_url(),
+            _ => addr.with_segments(&["v0", "stake"])?.into_url(),
+        };
         let builder = reqwest::Client::new().get(url);
         let response = RestApiSender::new(builder, &debug).send()?;
         response.ok_response()?;

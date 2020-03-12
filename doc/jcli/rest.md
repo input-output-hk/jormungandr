@@ -455,8 +455,10 @@ YAML printed on success
 Fetches stake information
 
 ```sh
-jcli rest v0 stake get <options>
+jcli rest v0 stake get <options> [<epoch>]
 ```
+
+- \<epoch\> - Epoch to get the stake distribution from. (optional)
 
 The options are
 
@@ -466,9 +468,26 @@ The options are
 
 YAML printed on success
 
+- `jcli rest v0 stake get <options>` - stake distribution from the current epoch
+
 ```yaml
 ---
 epoch: 228      # Epoch of last block
+stake:
+  dangling: 0 # Total value stored in accounts, but assigned to nonexistent pools
+  pools:
+    - - 5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f # stake pool ID
+      - 1000000000000                                                    # staked value
+    - - 3815602c096fcbb91072f419c296c3dfe1f730e0f446a9bd2553145688e75615 # stake pool ID
+      - 1000000000000                                                    # staked value
+  unassigned: 0 # Total value stored in accounts, but not assigned to any pool
+```
+
+- `jcli rest v0 stake get <options> 10` - stake distribution from a specific epoch (epoch 10 in this example)
+
+```yaml
+---
+epoch: 10      # Epoch specified in the request
 stake:
   dangling: 0 # Total value stored in accounts, but assigned to nonexistent pools
   pools:
