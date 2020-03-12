@@ -4,9 +4,7 @@ use network_grpc::server::{self, TcpListen};
 
 use futures::stream::FuturesUnordered;
 use slog::Logger;
-use tokio::net::TcpStream;
-use tokio::prelude::*;
-use tokio_threadpool::{Shutdown, ThreadPool};
+use tokio02::net::TcpStream;
 
 use std::any::Any;
 use std::net::SocketAddr;
