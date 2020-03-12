@@ -6,14 +6,14 @@ use crate::{
     network::p2p::{Gossips, Id, Node, Policy, PolicyConfig},
     settings::start::network::Configuration,
 };
+use futures03::prelude::*;
 use poldercast::{
     custom_layers,
     poldercast::{Cyclon, Rings, Vicinity},
     NodeProfile, PolicyReport, StrikeReason, Topology,
 };
 use slog::Logger;
-use tokio::prelude::future::{self, Future};
-use tokio::sync::lock::{Lock, LockGuard};
+use tokio02::sync::{Mutex, MutexGuard};
 
 pub struct View {
     pub self_node: NodeProfile,

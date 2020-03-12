@@ -1,4 +1,4 @@
-pub use network_core::gossip::Gossip;
+pub use chain_network::data::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
     block::{Block, ConsensusVersion},

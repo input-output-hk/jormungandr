@@ -43,6 +43,11 @@ mod buffer_sizes {
     }
 }
 
+mod concurrency_limits {
+    // How many concurrent requests are permitted per client connection
+    pub const CLIENT_REQUESTS: usize = 256;
+}
+
 use self::client::ConnectError;
 use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
@@ -54,16 +59,15 @@ use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TokioServiceInfo,
 };
+use chain_network::data::gossip::Gossip;
 use futures::future;
 use futures::future::Either::{A, B};
 use futures::prelude::*;
 use futures::stream;
-use network_core::gossip::{Gossip, Node};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
-use tokio::timer::Interval;
-use tokio_compat::runtime::TaskExecutor;
+use tokio02::time::Interval;
 
 use std::collections::BTreeMap;
 use std::convert::Infallible;

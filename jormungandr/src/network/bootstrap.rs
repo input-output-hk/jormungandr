@@ -3,15 +3,10 @@ use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
-use futures03::compat::*;
-use network_core::client::{BlockService, Client as _, GossipService};
-use network_core::error::Error as NetworkError;
-use network_grpc::client::Connection;
+use chain_network::error::Error as NetworkError;
 use slog::Logger;
 use thiserror::Error;
-use tokio::prelude::future::Either;
-use tokio::prelude::*;
-use tokio_compat::runtime::Runtime;
+use tokio02::runtime;
 
 use std::fmt::Debug;
 use std::io;
@@ -53,7 +48,11 @@ pub fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>,
         "getting peers from bootstrap peer {}", peer.connection
     );
 
-    let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
+    let mut runtime = runtime::Builder::new()
+        .thread_name("peer-resolver")
+        .core_threads(2)
+        .build()
+        .map_err(|e| Error::RuntimeInit { source: e })?;
     let bootstrap = grpc::connect(&peer, None, runtime.executor())
         .map_err(|e| Error::Connect { source: e })
         .and_then(|client: Connection<BlockConfig>| {

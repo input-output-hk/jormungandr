@@ -20,13 +20,14 @@ arc-swap = "0.4.4"
 juniper = "0.14.2"
 bincode = "1.0.1"
 bytes = "0.4"
+chain-addr = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
+chain-network = { path = "../chain-deps/chain-network" }
 chain-storage   = { path = "../chain-deps/chain-storage" }
 chain-storage-sqlite-old = { path = "../chain-deps/chain-storage-sqlite-old" }
 chain-time      = { path = "../chain-deps/chain-time" }
-chain-addr = { path = "../chain-deps/chain-addr" }
 cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 error-chain = "0.12"
@@ -34,12 +35,9 @@ futures    = "0.1"
 futures03 = { package = "futures", version = "0.3.4", features = ["compat"] }
 http = "0.1.16"
 humantime = "2.0"
-hyper = "0.12"
 jormungandr-lib = { path = "../jormungandr-lib" }
 lazy_static = "1.3"
 linked-hash-map = "0.5"
-network-core    = { path = "../chain-deps/network-core" }
-network-grpc    = { path = "../chain-deps/network-grpc" }
 pin-utils = "0.1.0-alpha.4"
 poldercast = "0.11.4"
 r2d2 = "0.8"
@@ -62,6 +60,7 @@ tokio      = "^0.1.16"
 tokio-compat = "^0.1.5"
 tokio02 = { package = "tokio", version = "0.2.12", features = ["full"]}
 tokio-threadpool = "0.1"
+tonic = "0.1"
 bech32 = "0.7"
 async-trait = "0.1"
 reqwest = "0.10"
