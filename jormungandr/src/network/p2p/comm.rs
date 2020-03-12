@@ -14,10 +14,6 @@ use network_core::error as core_error;
 use network_core::gossip::{Gossip, Node};
 use network_core::subscription::{BlockEvent, ChainPullRequest};
 use slog::Logger;
-use tokio::{
-    prelude::future,
-    sync::lock::{Lock, LockGuard},
-};
 
 use std::fmt;
 use std::mem;
