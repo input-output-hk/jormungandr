@@ -115,9 +115,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             network_msgbox.clone(),
         );
 
-        services.spawn_future("fragment", move |info| {
-            let fut = process.start(info, stats_counter, fragment_queue);
-            Box::pin(fut).compat()
+        services.spawn_try_future_std("fragment", move |info| {
+            process.start(info, stats_counter, fragment_queue)
         });
     };
 
@@ -223,7 +222,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let enclave = leadership::Enclave::new(enclave.clone());
         let fragment_msgbox = fragment_msgbox.clone();
 
-        services.spawn_future("leadership", move |info| {
+        services.spawn_try_future_std("leadership", move |info| {
             let fut = leadership::Module::new(
                 info,
                 leadership_logs,
@@ -233,9 +232,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 block_msgbox,
             )
             .and_then(|module| module.run())
-            .map_err(|e| unimplemented!("error in leadership {}", e));
+            .map_err(|e| {
+                eprint!("leadership error: {}", e);
+            });
 
-            Box::pin(fut).compat()
+            fut
         });
     }
 
