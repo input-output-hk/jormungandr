@@ -1,23 +1,21 @@
 use super::super::{service::NodeService, Channels, GlobalStateR, ListenError};
 use crate::settings::start::network::Listen;
-use network_grpc::server::{self, TcpListen};
+use chain_network::grpc::server::{self, TcpListen};
 
 use futures::stream::FuturesUnordered;
 use slog::Logger;
-use tokio::net::TcpStream;
-use tokio::prelude::*;
-use tokio_threadpool::{Shutdown, ThreadPool};
+use tokio02::net::TcpStream;
 
 use std::any::Any;
 use std::net::SocketAddr;
 
 type Server = server::Server<NodeService>;
 
-pub fn run_listen_socket(
+pub async fn run_listen_socket(
     listen: &Listen,
     state: GlobalStateR,
     channels: Channels,
-) -> Result<impl Future<Item = (), Error = ()>, ListenError> {
+) -> Result<(), ListenError> {
     let sockaddr = listen.address();
 
     let logger = state.logger().new(o!("local_addr" => sockaddr.to_string()));
