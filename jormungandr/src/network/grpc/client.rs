@@ -1,129 +1,78 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
-    network::{p2p::Id, BlockConfig},
+    network::concurrency_limits,
+    network::p2p::Id,
     settings::start::network::{Peer, Protocol},
 };
+use chain_network::error as net_error;
+use chain_network::grpc::Client;
 use futures::prelude::*;
-use http::{HttpTryFrom, Uri};
-use hyper::client::connect::{Destination, HttpConnector};
-use network_core::client::{BlockService, Client as _};
-use network_core::error as core_error;
-use network_grpc::client::Connect;
 use slog::Logger;
 use thiserror::Error;
-use tokio::timer::{self, Timeout};
-use tokio_compat::prelude::*;
-use tokio_compat::runtime::{Runtime, TaskExecutor};
+use tonic::transport;
 
-use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::slice;
 
 #[derive(Error, Debug)]
 pub enum FetchBlockError {
-    #[error("runtime initialization failed")]
-    RuntimeInit { source: io::Error },
     #[error("connection to peer failed")]
     Connect { source: ConnectError },
     #[error("connection broken")]
-    ClientNotReady { source: core_error::Error },
+    ClientNotReady { source: net_error::Error },
     #[error("block request failed")]
-    GetBlocks { source: core_error::Error },
+    GetBlocks { source: net_error::Error },
     #[error("block response stream failed")]
-    GetBlocksStream { source: core_error::Error },
+    GetBlocksStream { source: net_error::Error },
     #[error("no blocks received")]
     NoBlocks,
 }
 
-pub type Connection = network_grpc::client::Connection<BlockConfig>;
+pub type ConnectError = transport::Error;
 
-#[derive(Debug, thiserror::Error)]
-pub enum ConnectError {
-    #[error("{0}")]
-    Failed(#[source] network_grpc::client::ConnectError<io::Error>),
-    #[error("connection timed out")]
-    TimedOut,
-    #[error("timer error occurred during connection")]
-    Timer(#[source] timer::Error),
-}
-
-pub struct ConnectFuture {
-    inner: Timeout<network_grpc::client::ConnectFuture<BlockConfig, HttpConnector, TaskExecutor>>,
-}
-
-impl Future for ConnectFuture {
-    type Item = Connection;
-    type Error = ConnectError;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        self.inner.poll().map_err(|e| {
-            if e.is_inner() {
-                return ConnectError::Failed(e.into_inner().unwrap());
-            }
-            if e.is_elapsed() {
-                return ConnectError::TimedOut;
-            }
-            if e.is_timer() {
-                return ConnectError::Timer(e.into_timer().unwrap());
-            }
-            unreachable!("unexpected timeout error: {:?}", e);
-        })
-    }
-}
-
-pub fn connect(peer: &Peer, node_id: Option<Id>, executor: TaskExecutor) -> ConnectFuture {
+pub async fn connect(peer: &Peer, node_id: Option<Id>) -> Result<Client, ConnectError> {
     assert!(peer.protocol == Protocol::Grpc);
-    let uri = destination_uri(peer.connection);
-    let mut connector = HttpConnector::new_with_executor(executor.clone(), None);
-    connector.set_nodelay(true);
-    let mut builder = Connect::with_executor(connector, executor);
-    if let Some(id) = node_id {
-        builder.node_id(id);
-    }
-    let connect = builder.connect(Destination::try_from_uri(uri).unwrap());
-    ConnectFuture {
-        inner: Timeout::new(connect, peer.timeout),
-    }
+    let endpoint = destination_endpoint(peer.connection);
+    endpoint.concurrency_limit(concurrency_limits::CLIENT_REQUESTS);
+    endpoint.timeout(peer.timeout);
+    Client::connect(endpoint)
 }
 
-fn destination_uri(addr: SocketAddr) -> Uri {
+fn destination_endpoint(addr: SocketAddr) -> transport::Endpoint {
     let ip = addr.ip();
     let uri = match ip {
         IpAddr::V4(ip) => format!("http://{}:{}", ip, addr.port()),
         IpAddr::V6(ip) => format!("http://[{}]:{}", ip, addr.port()),
     };
-    HttpTryFrom::try_from(uri).unwrap()
+    transport::Endpoint::try_from(uri).unwrap()
 }
 
-// Fetches a block from a network peer in a one-off, blocking call.
+// Fetches a block from a network peer.
 // This function is used during node bootstrap to fetch the genesis block.
-pub fn fetch_block(
+pub async fn fetch_block(
     peer: &Peer,
     hash: HeaderHash,
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     info!(logger, "fetching block {}", hash);
-    let mut runtime = Runtime::new().map_err(|e| FetchBlockError::RuntimeInit { source: e })?;
-    let fetch = connect(peer, None, runtime.executor())
-        .map_err(|err| FetchBlockError::Connect { source: err })
-        .and_then(move |client: Connection| {
-            client
-                .ready()
-                .map_err(|err| FetchBlockError::ClientNotReady { source: err })
-        })
-        .and_then(move |mut client| {
-            client
-                .get_blocks(slice::from_ref(&hash))
-                .map_err(|err| FetchBlockError::GetBlocks { source: err })
-        })
-        .and_then(move |stream| {
-            stream
-                .into_future()
-                .map_err(|(err, _)| FetchBlockError::GetBlocksStream { source: err })
-        })
-        .and_then(|(maybe_block, _)| match maybe_block {
-            None => Err(FetchBlockError::NoBlocks),
-            Some(block) => Ok(block),
-        });
-    runtime.block_on_std(fetch.compat())
+    let client = connect(peer, None)
+        .await
+        .map_err(|err| FetchBlockError::Connect { source: err })?;
+    client
+        .ready()
+        .await
+        .map_err(|err| FetchBlockError::ClientNotReady { source: err })?;
+    let stream = client
+        .get_blocks(slice::from_ref(&hash))
+        .await
+        .map_err(|err| FetchBlockError::GetBlocks { source: err })?;
+    let (maybe_block, _) = stream
+        .into_future()
+        .await
+        .map_err(|(err, _)| FetchBlockError::GetBlocksStream { source: err })?;
+
+    match maybe_block {
+        None => Err(FetchBlockError::NoBlocks),
+        Some(block) => Ok(block),
+    }
 }
