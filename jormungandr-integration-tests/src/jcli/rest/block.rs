@@ -1,6 +1,4 @@
 use crate::common::{jcli_wrapper, jormungandr::starter::Starter, process_assert};
-use jormungandr_lib::crypto::hash::Hash;
-use std::str::FromStr;
 
 #[test]
 pub fn test_non_empty_hash_is_returned_for_block0() {
@@ -28,9 +26,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
 
 #[test]
 pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_request() {
-    let incorrect_block_id =
-        Hash::from_str("e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa")
-            .unwrap();
+    let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
 
     let jormungandr = Starter::new().start().unwrap();
 

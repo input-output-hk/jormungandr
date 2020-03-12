@@ -1,5 +1,5 @@
 use crate::common::{jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils, startup};
-use jormungandr_lib::interfaces::{LeadershipLog, LeadershipLogStatus};
+use jormungandr_lib::interfaces::LeadershipLogStatus;
 
 #[test]
 pub fn test_leadership_logs_parent_hash_is_correct() {
@@ -16,11 +16,11 @@ pub fn test_leadership_logs_parent_hash_is_correct() {
         if let LeadershipLogStatus::Block {
             block,
             parent,
-            chain_length,
+            chain_length: _,
         } = leadership.status()
         {
             let actual_block =
-                jcli_wrapper::assert_rest_get_next_block_id(parent, &1, &rest_address);
+                jcli_wrapper::assert_rest_get_next_block_id(&parent.to_string(), &1, &rest_address);
             assert_eq!(actual_block, *block, "wrong parent block");
         }
     }

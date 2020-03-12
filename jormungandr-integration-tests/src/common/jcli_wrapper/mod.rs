@@ -334,7 +334,7 @@ pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
     single_line
 }
 
-pub fn assert_rest_get_next_block_id(block_id: &Hash, id_count: &i32, host: &str) -> Hash {
+pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str) -> Hash {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_get_next_block_id_command(&block_id, &id_count, &host),
     );

@@ -3,7 +3,6 @@
 use super::configuration;
 use super::Discrimination;
 use crate::common::file_utils;
-use jormungandr_lib::crypto::hash::Hash;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -127,13 +126,13 @@ pub fn get_rest_get_block_command(block_id: &str, host: &str) -> Command {
 }
 
 /// Get rest next block id command.
-pub fn get_rest_get_next_block_id_command(block_id: &Hash, id_count: &i32, host: &str) -> Command {
+pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: &i32, host: &str) -> Command {
     let mut command = get_jcli_command();
     command
         .arg("rest")
         .arg("v0")
         .arg("block")
-        .arg(&block_id.to_string())
+        .arg(&block_id)
         .arg("next-id")
         .arg("get")
         .arg("--count")
