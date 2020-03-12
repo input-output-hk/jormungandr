@@ -1,5 +1,61 @@
 # Change Log
 
+## [v0.8.14](https://github.com/input-output-hk/jormungandr/tree/v0.8.14) (2020-03-12)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.13...v0.8.14)
+
+**Implemented enhancements:**
+
+- put parent hash for created block in leaders logs [\#1881](https://github.com/input-output-hk/jormungandr/issues/1881)
+- access random stake distribution in time [\#1901](https://github.com/input-output-hk/jormungandr/pull/1901)
+- Reward history [\#1886](https://github.com/input-output-hk/jormungandr/pull/1886)
+- add parent hash for created block in leadership logs [\#1883](https://github.com/input-output-hk/jormungandr/pull/1883)
+- add Stake Pool retirement command in JCLI [\#1877](https://github.com/input-output-hk/jormungandr/pull/1877)
+- Blockchain tip tracking in stats\_counter [\#1809](https://github.com/input-output-hk/jormungandr/pull/1809)
+
+**Fixed bugs:**
+
+- rust compile issues - rustc 1.41.1 \(f3e1a954d 2020-02-24\) [\#1879](https://github.com/input-output-hk/jormungandr/issues/1879)
+- aarch64-unknown-linux-gnu is missing in the release [\#1856](https://github.com/input-output-hk/jormungandr/issues/1856)
+- stuck\_notifier: get current time before tip\_date [\#1867](https://github.com/input-output-hk/jormungandr/pull/1867)
+
+**Closed issues:**
+
+- Please investigate a potential vector to a Sybil attack [\#1899](https://github.com/input-output-hk/jormungandr/issues/1899)
+- A Single Node Generated an Adversarial Fork [\#1890](https://github.com/input-output-hk/jormungandr/issues/1890)
+- v0.8.9 I get the error report of node stuck, but the node running well [\#1824](https://github.com/input-output-hk/jormungandr/issues/1824)
+
+**Merged pull requests:**
+
+- Use custom CircleCI image [\#1904](https://github.com/input-output-hk/jormungandr/pull/1904)
+- \[Tests\] jcli retirement test case [\#1903](https://github.com/input-output-hk/jormungandr/pull/1903)
+- Bump rand\_chacha from 0.2.1 to 0.2.2 [\#1900](https://github.com/input-output-hk/jormungandr/pull/1900)
+- \[Tests\] Change 'relay' test case tag - removed unstable [\#1898](https://github.com/input-output-hk/jormungandr/pull/1898)
+- Bump base64 from 0.11.0 to 0.12.0 [\#1895](https://github.com/input-output-hk/jormungandr/pull/1895)
+- Bump chrono from 0.4.10 to 0.4.11 [\#1894](https://github.com/input-output-hk/jormungandr/pull/1894)
+- Bump console from 0.9.2 to 0.10.0 [\#1893](https://github.com/input-output-hk/jormungandr/pull/1893)
+- \[Tests\] Stabilize disruption tests [\#1892](https://github.com/input-output-hk/jormungandr/pull/1892)
+- Bump tracing-subscriber from 0.2.2 to 0.2.3 [\#1888](https://github.com/input-output-hk/jormungandr/pull/1888)
+- update the documentation and make sure we use the `--locked` `Cargo.lock` [\#1880](https://github.com/input-output-hk/jormungandr/pull/1880)
+- Bump tokio-compat from 0.1.4 to 0.1.5 [\#1878](https://github.com/input-output-hk/jormungandr/pull/1878)
+- \[Tests\] move wallet transaction logic to libs [\#1876](https://github.com/input-output-hk/jormungandr/pull/1876)
+- Bump proc-macro-error from 0.4.9 to 0.4.11 [\#1875](https://github.com/input-output-hk/jormungandr/pull/1875)
+- Bump structopt from 0.3.9 to 0.3.11 [\#1874](https://github.com/input-output-hk/jormungandr/pull/1874)
+- \[Private network tests\] Leader promotion [\#1871](https://github.com/input-output-hk/jormungandr/pull/1871)
+- Bump tokio2 deps to 0.2.12 [\#1870](https://github.com/input-output-hk/jormungandr/pull/1870)
+- Bump tracing-subscriber from 0.2.1 to 0.2.2 [\#1869](https://github.com/input-output-hk/jormungandr/pull/1869)
+- Warnings cleaning [\#1866](https://github.com/input-output-hk/jormungandr/pull/1866)
+- Bump tracing-futures from 0.2.2 to 0.2.3 [\#1864](https://github.com/input-output-hk/jormungandr/pull/1864)
+- Bump tracing from 0.1.12 to 0.1.13 [\#1863](https://github.com/input-output-hk/jormungandr/pull/1863)
+- Cargo lock update [\#1861](https://github.com/input-output-hk/jormungandr/pull/1861)
+- GitHub actions mdbook build and deploy [\#1860](https://github.com/input-output-hk/jormungandr/pull/1860)
+- GitHub actions cross compiling fix [\#1859](https://github.com/input-output-hk/jormungandr/pull/1859)
+- storage: make use of busy timeouts and remove lock [\#1853](https://github.com/input-output-hk/jormungandr/pull/1853)
+- \[Tests\] Scenario tests disruption [\#1850](https://github.com/input-output-hk/jormungandr/pull/1850)
+- Update build documentation in README [\#1846](https://github.com/input-output-hk/jormungandr/pull/1846)
+- Structopt to 0.3 [\#1845](https://github.com/input-output-hk/jormungandr/pull/1845)
+- allow getting blocks by chain height [\#1797](https://github.com/input-output-hk/jormungandr/pull/1797)
+
 ## [v0.8.13](https://github.com/input-output-hk/jormungandr/tree/v0.8.13) (2020-02-26)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.12...v0.8.13)
