@@ -43,6 +43,11 @@ mod buffer_sizes {
     }
 }
 
+mod concurrency_limits {
+    // How many concurrent requests are permitted per client connection
+    pub const CLIENT_REQUESTS: usize = 256;
+}
+
 use self::client::ConnectError;
 use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
@@ -54,16 +59,16 @@ use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TokioServiceInfo,
 };
+use chain_network::data::gossip::Gossip;
 use futures::future;
 use futures::future::Either::{A, B};
 use futures::prelude::*;
 use futures::stream;
-use network_core::gossip::{Gossip, Node};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
-use tokio::timer::Interval;
-use tokio_compat::runtime::TaskExecutor;
+use tokio02::time::Interval;
+use tonic::transport;
 
 use std::collections::BTreeMap;
 use std::convert::Infallible;
@@ -81,7 +86,7 @@ use crate::stats_counter::StatsCounter;
 
 #[derive(Debug)]
 pub struct ListenError {
-    cause: io::Error,
+    cause: transport::Error,
     sockaddr: SocketAddr,
 }
 
@@ -102,8 +107,6 @@ impl error::Error for ListenError {
 }
 
 type Connection = SocketAddr;
-
-pub enum BlockConfig {}
 
 /// all the different channels the network may need to talk to
 pub struct Channels {
@@ -129,7 +132,6 @@ pub struct GlobalState {
     pub stats_counter: StatsCounter,
     pub topology: P2pTopology,
     pub peers: Peers,
-    pub executor: TaskExecutor,
     pub logger: Logger,
 }
 
@@ -142,7 +144,6 @@ impl GlobalState {
         config: Configuration,
         topology: P2pTopology,
         stats_counter: StatsCounter,
-        executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
         let peers = Peers::new(config.max_connections, logger.clone());
@@ -153,7 +154,6 @@ impl GlobalState {
             stats_counter,
             topology,
             peers,
-            executor,
             logger,
         }
     }
