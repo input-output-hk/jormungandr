@@ -5,6 +5,7 @@ mod leaders;
 mod message;
 mod network;
 mod node;
+mod rewards;
 mod settings;
 mod shutdown;
 mod stake;
@@ -47,6 +48,8 @@ pub enum V0 {
     Utxo(utxo::Utxo),
     /// System diagnostic information
     Diagnostic(diagnostic::Diagnostic),
+    /// Rewards information
+    Rewards(rewards::Rewards),
 }
 
 impl V0 {
@@ -66,6 +69,7 @@ impl V0 {
             V0::Tip(tip) => tip.exec(),
             V0::Utxo(utxo) => utxo.exec(),
             V0::Diagnostic(diagnostic) => diagnostic.exec(),
+            V0::Rewards(rewards) => rewards.exec(),
         }
     }
 }
