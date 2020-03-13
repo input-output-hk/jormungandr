@@ -326,12 +326,14 @@ impl Starter {
                 &config.node_config_path,
                 &config.genesis_block_hash,
                 &config.log_file_path,
+                config.rewards_history,
             ),
             Role::Leader => commands::get_start_jormungandr_as_leader_node_command(
                 &config.node_config_path,
                 &config.genesis_block_path,
                 &config.secret_model_paths,
                 &config.log_file_path,
+                config.rewards_history,
             ),
         }
     }

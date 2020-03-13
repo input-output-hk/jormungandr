@@ -9,11 +9,17 @@ pub fn get_start_jormungandr_as_leader_node_command(
     genesis_block_path: &PathBuf,
     secret_paths: &[PathBuf],
     log_file_path: &PathBuf,
+    reward_history: bool,
 ) -> Command {
     let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
     for secret_path in secret_paths {
         command.arg("--secret").arg(secret_path.as_os_str());
     }
+
+    if reward_history {
+        command.arg("--rewards-report-all");
+    }
+
     command
         .arg("--config")
         .arg(config_path.as_os_str())
@@ -28,8 +34,14 @@ pub fn get_start_jormungandr_as_passive_node_command(
     config_path: &PathBuf,
     genesis_block_hash: &String,
     log_file_path: &PathBuf,
+    reward_history: bool,
 ) -> Command {
     let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
+
+    if reward_history {
+        command.arg("--rewards-report-all");
+    }
+
     command
         .arg("--config")
         .arg(config_path.as_os_str())

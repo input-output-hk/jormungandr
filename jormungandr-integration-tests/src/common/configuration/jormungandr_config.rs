@@ -20,6 +20,7 @@ pub struct JormungandrConfig {
     pub node_config: NodeConfig,
     pub secret_models: Vec<NodeSecret>,
     pub log_file_path: PathBuf,
+    pub rewards_history: bool,
 }
 
 impl JormungandrConfig {
@@ -91,6 +92,7 @@ impl JormungandrConfig {
             block0_configuration: block0_configuration,
             node_config: node_config,
             secret_models: Vec::new(),
+            rewards_history: false,
         }
     }
 

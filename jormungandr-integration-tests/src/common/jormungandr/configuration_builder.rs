@@ -29,6 +29,7 @@ pub struct ConfigurationBuilder {
     linear_fees: LinearFee,
     consensus_leader_ids: Vec<ConsensusLeaderId>,
     node_config_builder: NodeConfigBuilder,
+    rewards_history: bool,
 }
 
 impl ConfigurationBuilder {
@@ -46,6 +47,7 @@ impl ConfigurationBuilder {
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
             kes_update_speed: KESUpdateSpeed::new(12 * 3600).unwrap(),
             node_config_builder: NodeConfigBuilder::new(),
+            rewards_history: false,
         }
     }
 
@@ -66,6 +68,11 @@ impl ConfigurationBuilder {
 
     pub fn with_kes_update_speed(&mut self, kes_update_speed: KESUpdateSpeed) -> &mut Self {
         self.kes_update_speed = kes_update_speed;
+        self
+    }
+
+    pub fn with_rewards_history(&mut self) -> &mut Self {
+        self.rewards_history = true;
         self
     }
 
@@ -192,6 +199,7 @@ impl ConfigurationBuilder {
         let secret_model = SecretModelFactory::bft(leader_key_pair.signing_key());
         let secret_model_path = SecretModelFactory::serialize(&secret_model);
 
+        config.rewards_history = self.rewards_history;
         config.secret_models = vec![secret_model];
         config.secret_model_paths = vec![secret_model_path];
         config.genesis_block_path = path_to_output_block.clone();
