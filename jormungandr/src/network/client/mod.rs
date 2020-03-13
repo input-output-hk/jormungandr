@@ -1,7 +1,7 @@
 mod connect;
 
 use super::{
-    buffer_sizes,
+    buffer_sizes, grpc,
     p2p::{
         comm::{OutboundSubscription, PeerComms},
         Gossip as NodeData, Id,
@@ -14,10 +14,8 @@ use crate::{
     intercom::{self, BlockMsg, ClientMsg},
     utils::async_msg::MessageBox,
 };
-use network_core::client as core_client;
-use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
-use network_core::error as core_error;
-use network_core::subscription::{BlockEvent, ChainPullRequest};
+use chain_network::data::BlockEvent;
+use chain_network::error as net_error;
 
 use futures::prelude::*;
 use slog::Logger;
@@ -25,11 +23,8 @@ use slog::Logger;
 pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 
 #[must_use = "Client must be polled"]
-pub struct Client<S>
-where
-    S: BlockService + FragmentService + GossipService,
-{
-    service: S,
+pub struct Client {
+    inner: grpc::Client,
     logger: Logger,
     global_state: GlobalStateR,
     inbound: InboundSubscriptions<S>,
