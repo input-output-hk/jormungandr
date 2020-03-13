@@ -2,10 +2,9 @@
 
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
-    AccountState, Block0Configuration, FragmentLog, FragmentStatus, SettingsDto, StakePoolStats,
-    UTxOInfo, UTxOOutputInfo,
+    AccountState, Block0Configuration, FragmentLog, FragmentStatus, LeadershipLog, SettingsDto,
+    StakePoolStats, UTxOInfo, UTxOOutputInfo,
 };
-
 pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
@@ -19,7 +18,7 @@ use super::process_assert;
 use super::process_utils::{self, output_extensions::ProcessOutput, Wait};
 use crate::common::{jormungandr::JormungandrProcess, startup};
 use chain_addr::Discrimination;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -292,6 +291,16 @@ pub fn assert_key_to_bytes_fails(
     );
 }
 
+pub fn assert_rest_get_leadership_log(host: &str) -> Vec<LeadershipLog> {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_rest_leaders_logs_command(&host),
+    );
+    let content = output.as_lossy_string();
+    process_assert::assert_process_exited_successfully(output);
+
+    serde_yaml::from_str(&content).unwrap()
+}
+
 pub fn assert_rest_get_block_tip(host: &str) -> String {
     let output =
         process_utils::run_process_and_get_output(jcli_commands::get_rest_block_tip_command(&host));
@@ -325,13 +334,13 @@ pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
     single_line
 }
 
-pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str) -> String {
+pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str) -> Hash {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_rest_get_next_block_id_command(&block_id, &id_count, &host),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
-    single_line
+    Hash::from_str(&single_line).unwrap()
 }
 
 pub fn assert_transaction_in_block(

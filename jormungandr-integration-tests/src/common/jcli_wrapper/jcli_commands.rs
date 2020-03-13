@@ -3,9 +3,8 @@
 use super::configuration;
 use super::Discrimination;
 use crate::common::file_utils;
-use std::process::Command;
-
 use std::path::PathBuf;
+use std::process::Command;
 
 /// Get genesis encode command.
 ///
@@ -93,6 +92,19 @@ pub fn get_rest_block_tip_command(host: &str) -> Command {
         .arg("rest")
         .arg("v0")
         .arg("tip")
+        .arg("get")
+        .arg("-h")
+        .arg(&host);
+    command
+}
+
+pub fn get_rest_leaders_logs_command(host: &str) -> Command {
+    let mut command = get_jcli_command();
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("leaders")
+        .arg("logs")
         .arg("get")
         .arg("-h")
         .arg(&host);
