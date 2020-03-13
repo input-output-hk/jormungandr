@@ -5,7 +5,7 @@ use crate::{
     settings::start::network::{Peer, Protocol},
 };
 use chain_network::error as net_error;
-use chain_network::grpc::Client;
+pub use chain_network::grpc::Client;
 use futures::prelude::*;
 use slog::Logger;
 use thiserror::Error;
