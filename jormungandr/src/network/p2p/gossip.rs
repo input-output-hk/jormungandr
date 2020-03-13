@@ -178,9 +178,8 @@ impl property::Deserialize for Gossip {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use poldercast::{Address, NodeProfile, NodeProfileBuilder};
-    use std::net::{Ipv4Addr, Ipv6Addr};
-    use std::str::FromStr;
+    use poldercast::{Address, NodeProfileBuilder};
+    use std::net::Ipv4Addr;
 
     #[test]
     fn gossip_global_ipv4_private() {
