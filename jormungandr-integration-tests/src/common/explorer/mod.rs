@@ -1,6 +1,6 @@
 use self::{
     client::GraphQLClient,
-    data::{ExplorerTransaction, GraphQLQuery, GraphQLResponse},
+    data::{ExplorerLastBlock, ExplorerTransaction, GraphQLQuery, GraphQLResponse},
 };
 use jormungandr_lib::crypto::hash::Hash;
 use std::convert::TryFrom;
@@ -8,15 +8,14 @@ use std::convert::TryFrom;
 mod client;
 mod data;
 
-error_chain! {
-    links {
-        GraphQLClientError(self::client::Error, self::client::ErrorKind);
-    }
+use thiserror::Error;
 
-    foreign_links {
-        JsonError(serde_json::error::Error);
-        Reqwest(reqwest::Error);
-    }
+#[derive(Error, Debug)]
+pub enum ExplorerError {
+    #[error("graph client error")]
+    ClientError(#[from] client::GraphQLClientError),
+    #[error("json serializiation error")]
+    SerializationError(#[from] serde_json::Error),
 }
 
 pub struct Explorer {
@@ -30,10 +29,35 @@ impl Explorer {
         }
     }
 
-    pub fn get_transaction(&self, hash: Hash) -> Result<ExplorerTransaction> {
+    pub fn get_last_block(&self) -> Result<ExplorerLastBlock, ExplorerError> {
+        let query = ExplorerLastBlock::query();
+        let mut request_response = self
+            .client
+            .run(query)
+            .map_err(|e| ExplorerError::ClientError(e))?;
+        println!("{:?}", request_response);
+        let text = request_response
+            .text()
+            .map_err(|e| client::GraphQLClientError::ReqwestError(e))?;
+        println!("{:?}", text);
+        let response: GraphQLResponse =
+            serde_json::from_str(&text).map_err(|e| ExplorerError::SerializationError(e))?;
+        ExplorerLastBlock::try_from(response).map_err(|e| e.into())
+    }
+
+    pub fn get_transaction(&self, hash: Hash) -> Result<ExplorerTransaction, ExplorerError> {
         let query = ExplorerTransaction::query_by_id(hash);
-        let response = self.client.run(query);
-        let response: GraphQLResponse = serde_json::from_str(&response?.text()?)?;
+        let mut request_response = self
+            .client
+            .run(query)
+            .map_err(|e| ExplorerError::ClientError(e))?;
+        println!("{:?}", request_response);
+        let text = request_response
+            .text()
+            .map_err(|e| client::GraphQLClientError::ReqwestError(e))?;
+        println!("{:?}", text);
+        let response: GraphQLResponse =
+            serde_json::from_str(&text).map_err(|e| ExplorerError::SerializationError(e))?;
         ExplorerTransaction::try_from(response).map_err(|e| e.into())
     }
 }
