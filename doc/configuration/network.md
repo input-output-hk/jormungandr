@@ -75,7 +75,7 @@ rest:
 - `max_connections`: the maximum number of P2P connections this node should
     maintain. If not specified, an internal limit is used by default `[default: 256]`
 - `max_client_connections`: the maximum number of client P2P connections this
-    node should keep open. `[default: 8]`
+    node should keep open. `[default: 192]`
 - `policy`: (optional) set the setting for the policy module
   - `quarantine_duration` set the time to leave a node in quarantine before allowing
     it back (or not) into the fold.
