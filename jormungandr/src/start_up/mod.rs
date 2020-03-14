@@ -157,7 +157,6 @@ pub fn prepare_block_0(
                 .build()
                 .unwrap();
 
-            let storage = storage.back_to_the_future();
             let storage_or_http_block0 = rt.block_on_std(async {
                 if let Some(block0) = storage.get(*block0_id).await.unwrap() {
                     debug!(
@@ -219,7 +218,7 @@ pub fn load_blockchain(
             Ok(branch) => Ok(branch),
         }?;
         let tip = Tip::new(main_branch);
-        let tip_ref = tip.get_ref_std().await;
+        let tip_ref = tip.get_ref().await;
         info!(
             logger,
             "Loaded from storage tip is : {}",

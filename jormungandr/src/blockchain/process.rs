@@ -23,9 +23,8 @@ use crate::{
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
 
+use futures03::{compat::*, prelude::*};
 use slog::Logger;
-use tokio::prelude::*;
-use tokio_compat::prelude::*;
 
 use std::{sync::Arc, time::Duration};
 
@@ -64,23 +63,20 @@ pub struct Process {
 }
 
 impl Process {
-    pub fn start(
-        mut self,
-        service_info: TokioServiceInfo,
-        input: MessageQueue<BlockMsg>,
-    ) -> impl Future<Item = (), Error = ()> {
+    pub async fn start(mut self, service_info: TokioServiceInfo, input: MessageQueue<BlockMsg>) {
         self.start_branch_reprocessing(&service_info);
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
-        input.for_each(move |msg| {
+        let mut input = input.compat();
+        while let Some(maybe_msg) = input.next().await {
+            let msg = maybe_msg.expect("error when receiving an incoming message");
             self.handle_input(
                 &service_info,
                 msg,
                 &pull_headers_scheduler,
                 &get_next_block_scheduler,
             );
-            future::ok(())
-        })
+        }
     }
 
     fn handle_input(
@@ -109,19 +105,16 @@ impl Process {
                 info.timeout_spawn_failable_std(
                     "process leadership block",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP),
-                    async {
-                        process_leadership_block(
-                            logger,
-                            blockchain,
-                            blockchain_tip,
-                            tx_msg_box,
-                            network_msg_box,
-                            explorer_msg_box,
-                            block,
-                            stats_counter,
-                        )
-                        .await
-                    },
+                    process_leadership_block(
+                        logger,
+                        blockchain,
+                        blockchain_tip,
+                        tx_msg_box,
+                        network_msg_box,
+                        explorer_msg_box,
+                        block,
+                        stats_counter,
+                    ),
                 )
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
@@ -220,9 +213,10 @@ impl Process {
         let scheduler = scheduler_future.scheduler();
         let logger = info.logger().clone();
         let future = scheduler_future
-            .map(|never| match never {})
+            .compat()
+            .map_ok(|never| match never {})
             .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
-        info.spawn_failable_std("pull headers scheduling", future.compat());
+        info.spawn_failable_std("pull headers scheduling", future);
         scheduler
     }
 
@@ -246,9 +240,10 @@ impl Process {
         let scheduler = scheduler_future.scheduler();
         let logger = info.logger().clone();
         let future = scheduler_future
-            .map(|never| match never {})
+            .compat()
+            .map_ok(|never| match never {})
             .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
-        info.spawn_failable_std("get next block scheduling", future.compat());
+        info.spawn_failable_std("get next block scheduling", future);
         scheduler
     }
 }
@@ -268,9 +263,9 @@ fn try_request_fragment_removal(
 /// this is because a branch may have become more interesting with time
 /// moving forward and branches may have been dismissed
 async fn reprocess_tip(logger: Logger, mut blockchain: Blockchain, tip: Tip) -> Result<(), Error> {
-    let branches: Vec<Arc<Ref>> = blockchain.branches().branches().compat().await.unwrap();
+    let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
 
-    let tip_as_ref = tip.get_ref_std().await;
+    let tip_as_ref = tip.get_ref().await;
 
     let others = branches
         .iter()
@@ -300,9 +295,8 @@ pub async fn process_new_ref(
     candidate: Arc<Ref>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
-    let storage = blockchain.storage().clone();
 
-    let tip_ref = tip.get_ref_std().await;
+    let tip_ref = tip.get_ref().await;
     if tip_ref.hash() == candidate.block_parent_hash() {
         info!(
             logger,
@@ -311,13 +305,13 @@ pub async fn process_new_ref(
             candidate.header().description(),
         );
 
-        storage
+        blockchain
+            .storage()
             .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-            .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
-            .compat()
-            .await?;
+            .await
+            .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
 
-        tip.update_ref_std(candidate).await;
+        tip.update_ref(candidate).await;
     } else {
         match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
             ComparisonResult::PreferCurrent => {
@@ -336,19 +330,14 @@ pub async fn process_new_ref(
                     candidate.header().description(),
                 );
 
-                storage
+                blockchain
+                    .storage()
                     .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))
-                    .compat()
-                    .await?;
-
-                let branch = blockchain
-                    .branches_mut()
-                    .apply_or_create(candidate)
-                    .compat()
                     .await
-                    .unwrap();
-                tip.swap_std(branch).await;
+                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
+
+                let branch = blockchain.branches_mut().apply_or_create(candidate).await;
+                tip.swap(branch).await;
             }
         }
     };
@@ -380,11 +369,11 @@ async fn process_and_propagate_new_ref(
 
     debug!(logger, "propagating block to the network"; "hash" => %hash);
     network_msg_box
+        .sink_compat()
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+        .await
         .map_err(|_| "Cannot propagate block to network".into())
         .map(|_| ())
-        .compat()
-        .await
 }
 
 async fn process_leadership_block(
@@ -420,10 +409,10 @@ async fn process_leadership_block(
 
     if let Some(msg_box) = explorer_msg_box {
         msg_box
+            .sink_compat()
             .send(ExplorerMsg::NewBlock(block))
-            .map_err(|_| "Cannot propagate block to explorer".to_string())
-            .compat()
-            .await?;
+            .await
+            .map_err(|_| "Cannot propagate block to explorer".to_string())?;
     }
     Ok(())
 }
@@ -437,7 +426,7 @@ async fn process_leadership_block_inner(
     let parent_hash = block.parent_id();
     // This is a trusted block from the leadership task,
     // so we can skip pre-validation.
-    let parent = blockchain.get_ref(parent_hash).compat().await?;
+    let parent = blockchain.get_ref(parent_hash).await?;
 
     let post_checked = if let Some(parent_ref) = parent {
         debug!(logger, "processing block from leader event");
@@ -529,14 +518,16 @@ async fn process_network_blocks(
     logger: Logger,
 ) -> Result<(), Error> {
     let (stream, reply) = handle.into_stream_and_reply();
-    let mut stream = stream.map_err(|()| Error::from("Error while processing block input stream"));
+    let mut stream = stream
+        .compat()
+        .map_err(|()| Error::from("Error while processing block input stream"));
     let mut candidate = None;
     let mut latest_block: Option<Arc<Block>> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
-        let (maybe_block, new_stream) = stream.into_future().map_err(|(e, _)| e).compat().await?;
+        let (maybe_block, new_stream) = stream.into_future().await;
         match maybe_block {
-            Some(block) => {
+            Some(Ok(block)) => {
                 latest_block = Some(Arc::new(block.clone()));
                 let res = process_network_block(
                     &mut blockchain,
@@ -567,6 +558,9 @@ async fn process_network_blocks(
                         break candidate;
                     }
                 }
+            }
+            Some(Err(err)) => {
+                return Err(err);
             }
             None => {
                 latest_block = None;
@@ -739,11 +733,11 @@ async fn process_chain_headers(
                 ()
             } else {
                 network_msg_box
+                    .sink_compat()
                     .send(NetworkMsg::GetBlocks(header_ids))
+                    .await
                     .map_err(|_| error!(logger, "cannot request blocks from network"))
                     .map(|_| ())
-                    .compat()
-                    .await
                     .unwrap();
 
                 reply.reply_ok(())

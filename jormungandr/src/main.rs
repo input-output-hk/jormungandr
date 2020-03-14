@@ -151,7 +151,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
-        services.spawn_future("block", move |info| {
+        services.spawn_future_std("block", move |info| {
             let process = blockchain::Process {
                 blockchain,
                 blockchain_tip,

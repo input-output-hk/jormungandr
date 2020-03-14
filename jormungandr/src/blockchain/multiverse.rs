@@ -1,5 +1,6 @@
 use crate::blockcfg::{ChainLength, HeaderHash, Ledger, Multiverse as MultiverseData};
 use chain_impl_mockchain::multiverse;
+use futures03::compat::*;
 use std::convert::Infallible;
 use tokio::{prelude::*, sync::lock::Lock};
 
@@ -51,10 +52,14 @@ impl Multiverse<Ledger> {
     /// TODO: this function is only working for the `Ledger` at the moment
     ///       we need to generalize the `chain_impl_mockchain` to handle
     ///       the garbage collection for any `T`
-    pub fn purge(&self) -> impl Future<Item = (), Error = Infallible> {
+    pub async fn purge(&self) {
         let mut inner = self.inner.clone();
 
-        future::poll_fn(move || Ok(inner.poll_lock())).map(|mut guard| guard.gc())
+        future::poll_fn(move || Ok::<_, Infallible>(inner.poll_lock()))
+            .map(|mut guard| guard.gc())
+            .compat()
+            .await
+            .unwrap();
     }
 }
 

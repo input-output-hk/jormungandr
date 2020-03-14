@@ -21,8 +21,10 @@ use chain_storage_sqlite_old::Error as StorageError;
 use crate::blockchain::Ref;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
-use futures::Stream;
-use futures03::compat::Future01CompatExt;
+use futures03::{
+    compat::Future01CompatExt,
+    stream::{StreamExt, TryStreamExt},
+};
 use jormungandr_lib::interfaces::NodeState;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -35,7 +37,7 @@ async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
 }
 
 async fn chain_tip_from_full(context: &FullContext) -> Arc<Ref> {
-    context.blockchain_tip.get_ref_std().await
+    context.blockchain_tip.get_ref().await
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -198,7 +200,6 @@ pub async fn get_block_id(
         .blockchain
         .storage()
         .get(parse_block_hash(&block_id_hex)?)
-        .compat()
         .await
         .map_err(ErrorInternalServerError)?
         .ok_or(ErrorNotFound("Block not found"))?
@@ -219,7 +220,6 @@ pub async fn get_block_next_id(
         .blockchain
         .storage()
         .stream_from_to(block_id, tip.hash())
-        .compat()
         .await
         .map_err(|e| match e {
             StorageError::CannotIterate => ErrorNotFound("Block is not in chain of the tip"),
@@ -227,12 +227,11 @@ pub async fn get_block_next_id(
             _ => ErrorInternalServerError(e),
         })?
         .map_err(ErrorInternalServerError)
-        .take(query_params.get_count())
-        .fold(BytesMut::new(), |mut bytes, block| {
+        .take(query_params.get_count() as usize)
+        .try_fold(BytesMut::new(), |mut bytes, block| async move {
             bytes.extend_from_slice(block.id().as_ref());
             Result::<BytesMut, Error>::Ok(bytes)
         })
-        .compat()
         .await
 }
 

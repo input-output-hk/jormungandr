@@ -3,6 +3,7 @@ use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
+use futures03::compat::*;
 use network_core::client::{BlockService, Client as _, GossipService};
 use network_core::error::Error as NetworkError;
 use network_grpc::client::Connection;
@@ -89,34 +90,44 @@ pub fn bootstrap_from_peer(
     tip: Tip,
     logger: Logger,
 ) -> Result<(), Error> {
+    use futures03::future::try_join;
+
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
     let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
+    let grpc_executor = runtime.executor();
 
-    let bootstrap = grpc::connect(&peer, None, runtime.executor())
-        .map_err(|e| Error::Connect { source: e })
-        .and_then(|client: Connection<BlockConfig>| {
-            client
-                .ready()
-                .map_err(|e| Error::ClientNotReady { source: e })
-        })
-        .join(
-            blockchain
-                .get_checkpoints_old(tip.branch())
-                .map_err(|e| Error::GetCheckpointsFailed { source: e }),
+    runtime.block_on_std(async move {
+        let client = grpc::connect(&peer, None, grpc_executor)
+            .compat()
+            .await
+            .map_err(|e| Error::Connect { source: e })?;
+
+        let (mut client, checkpoints) = try_join(
+            async {
+                client
+                    .ready()
+                    .compat()
+                    .await
+                    .map_err(|e| Error::ClientNotReady { source: e })
+            },
+            async { Ok(blockchain.get_checkpoints(tip.branch()).await) },
         )
-        .and_then(move |(mut client, checkpoints)| {
-            info!(
-                logger,
-                "pulling blocks starting from checkpoints: {:?}", checkpoints
-            );
-            client
-                .pull_blocks_to_tip(checkpoints.as_slice())
-                .map_err(|e| Error::PullRequestFailed { source: e })
-                .and_then(move |stream| bootstrap_from_stream(blockchain, tip, stream, logger))
-        });
+        .await?;
 
-    runtime.block_on(bootstrap)
+        info!(
+            logger,
+            "pulling blocks starting from checkpoints: {:?}", checkpoints
+        );
+        let stream = client
+            .pull_blocks_to_tip(checkpoints.as_slice())
+            .compat()
+            .await
+            .map_err(|e| Error::PullRequestFailed { source: e })?;
+        bootstrap_from_stream(blockchain, tip, stream, logger)
+            .compat()
+            .await
+    })
 }
 
 struct BootstrapInfo {
@@ -253,7 +264,6 @@ fn process_new_ref_old(
     tip: Tip,
     candidate: Arc<Ref>,
 ) -> impl Future<Item = (), Error = blockchain::Error> {
-    use futures03::compat::Compat;
     Compat::new(Box::pin(blockchain::process_new_ref_owned(
         logger, blockchain, tip, candidate,
     )))
@@ -264,7 +274,6 @@ fn handle_block_old(
     block: Block,
     logger: Logger,
 ) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    use futures03::compat::Compat;
     Compat::new(Box::pin(handle_block(blockchain, block, logger)))
 }
 

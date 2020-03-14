@@ -1,7 +1,7 @@
 use crate::{blockcfg::HeaderHash, blockchain::Ref};
 use lru::LruCache;
-use std::{convert::Infallible, sync::Arc};
-use tokio::{prelude::*, sync::lock::Lock};
+use std::sync::Arc;
+use tokio02::sync::Mutex;
 
 /// object that store the [`Ref`] in a cache. Every time a [`Ref`]
 /// is accessed its TTL will be reset. Once the TTL of [`Ref`] has
@@ -14,7 +14,7 @@ use tokio::{prelude::*, sync::lock::Lock};
 /// [`purge`]: ./struct.Ref.html#method.purge
 #[derive(Clone)]
 pub struct RefCache {
-    inner: Lock<LruCache<HeaderHash, Arc<Ref>>>,
+    inner: Arc<Mutex<LruCache<HeaderHash, Arc<Ref>>>>,
 }
 
 impl RefCache {
@@ -22,7 +22,7 @@ impl RefCache {
     ///
     pub fn new(cap: usize) -> Self {
         RefCache {
-            inner: Lock::new(LruCache::new(cap)),
+            inner: Arc::new(Mutex::new(LruCache::new(cap))),
         }
     }
 
@@ -33,15 +33,9 @@ impl RefCache {
     ///
     /// there is no error possible yet.
     ///
-    pub fn insert(
-        &self,
-        key: HeaderHash,
-        value: Arc<Ref>,
-    ) -> impl Future<Item = (), Error = Infallible> {
-        let mut inner = self.inner.clone();
-        future::poll_fn(move || Ok(inner.poll_lock())).map(move |mut guard| {
-            guard.put(key, value);
-        })
+    pub async fn insert(&self, key: HeaderHash, value: Arc<Ref>) {
+        let mut guard = self.inner.lock().await;
+        guard.put(key, value);
     }
 
     /// return a future to get a [`Ref`] from the cache
@@ -55,10 +49,8 @@ impl RefCache {
     ///
     /// No error possible yet
     ///
-    pub fn get(&self, key: HeaderHash) -> impl Future<Item = Option<Arc<Ref>>, Error = Infallible> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .map(move |mut guard| guard.get(&key).map(Arc::clone))
+    pub async fn get(&self, key: HeaderHash) -> Option<Arc<Ref>> {
+        let mut guard = self.inner.lock().await;
+        guard.get(&key).map(Arc::clone)
     }
 }

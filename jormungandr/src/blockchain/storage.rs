@@ -1,11 +1,11 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
-    intercom::{self, ReplySendError, ReplyStreamHandle, ReplyStreamHandle03},
+    intercom::{self, ReplySendError, ReplyStreamHandle03},
     start_up::{NodeStorage, NodeStorageConnection},
 };
 use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Stream as Stream01};
-use futures03::{compat::Compat, prelude::*, ready, stream::FusedStream};
+use futures03::{prelude::*, ready, stream::FusedStream};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use r2d2::{ManageConnection, Pool};
 use slog::Logger;
@@ -103,15 +103,9 @@ impl ManageConnection for ConnectionManager {
 }
 
 #[derive(Clone)]
-pub struct Storage03 {
+pub struct Storage {
     pool: Pool<ConnectionManager>,
     logger: Logger,
-}
-
-// Compatibility layer for using new storage with old futures API.
-#[derive(Clone)]
-pub struct Storage {
-    inner: Storage03,
 }
 
 pub struct Ancestor {
@@ -148,12 +142,12 @@ enum StreamingError {
     ),
 }
 
-impl Storage03 {
+impl Storage {
     pub fn new(storage: NodeStorage, logger: Logger) -> Self {
         let manager = ConnectionManager::new(storage);
         let pool = Pool::builder().build(manager).unwrap();
 
-        Storage03 { pool, logger }
+        Storage { pool, logger }
     }
 
     async fn run<F, T, E>(&self, f: F) -> Result<T, E>
@@ -394,130 +388,6 @@ impl Storage03 {
             }))
         })
         .await
-    }
-}
-
-impl Storage {
-    /// get back to the future
-    pub fn back_to_the_future(&self) -> &Storage03 {
-        &self.inner
-    }
-
-    pub fn new(storage: NodeStorage, logger: Logger) -> Self {
-        Self {
-            inner: Storage03::new(storage, logger),
-        }
-    }
-
-    pub fn get_tag(
-        &self,
-        tag: String,
-    ) -> impl Future01<Item = Option<HeaderHash>, Error = StorageError> {
-        let inner = self.inner.clone();
-        Compat::new(Box::pin(async move { inner.get_tag(tag).await }))
-    }
-
-    pub fn put_tag(
-        &self,
-        tag: String,
-        header_hash: HeaderHash,
-    ) -> impl Future01<Item = (), Error = StorageError> {
-        let inner = self.inner.clone();
-        Compat::new(Box::pin(
-            async move { inner.put_tag(tag, header_hash).await },
-        ))
-    }
-
-    pub fn get(
-        &self,
-        header_hash: HeaderHash,
-    ) -> impl Future01<Item = Option<Block>, Error = StorageError> {
-        let inner = self.inner.clone();
-        Compat::new(Box::pin(async move { inner.get(header_hash).await }))
-    }
-
-    pub fn get_with_info(
-        &self,
-        header_hash: HeaderHash,
-    ) -> impl Future01<Item = Option<(Block, BlockInfo<HeaderHash>)>, Error = StorageError> {
-        let inner = self.inner.clone();
-        Compat::new(Box::pin(
-            async move { inner.get_with_info(header_hash).await },
-        ))
-    }
-
-    pub fn block_exists(
-        &self,
-        header_hash: HeaderHash,
-    ) -> impl Future01<Item = bool, Error = StorageError> {
-        let inner = self.inner.clone();
-        Compat::new(Box::pin(
-            async move { inner.block_exists(header_hash).await },
-        ))
-    }
-
-    pub fn put_block(&self, block: Block) -> impl Future01<Item = (), Error = StorageError> {
-        let inner = self.inner.clone();
-        Compat::new(Box::pin(async move { inner.put_block(block).await }))
-    }
-
-    pub fn stream_from_to(
-        &self,
-        from: HeaderHash,
-        to: HeaderHash,
-    ) -> impl Future01<Item = impl Stream01<Item = Block, Error = intercom::Error>, Error = StorageError>
-    {
-        let inner = self.inner.clone();
-        let fut = async move {
-            inner
-                .stream_from_to(from, to)
-                .map_ok(|stream| Box::pin(stream).compat())
-                .await
-        };
-        Box::pin(fut).compat()
-    }
-
-    pub fn send_branch(
-        &self,
-        to: HeaderHash,
-        depth: Option<u64>,
-        sink: ReplyStreamHandle<Block>,
-    ) -> impl Future01<Item = (), Error = ReplySendError> {
-        let inner = self.inner.clone();
-        let fut = async move { inner.send_branch(to, depth, sink.into_03()).await };
-        Box::pin(fut).compat()
-    }
-
-    pub fn send_branch_with<T, F>(
-        &self,
-        to: HeaderHash,
-        depth: Option<u64>,
-        sink: ReplyStreamHandle<T>,
-        transform: F,
-    ) -> impl Future01<Item = (), Error = ReplySendError>
-    where
-        F: FnMut(Block) -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        let inner = self.inner.clone();
-        let fut = async move {
-            inner
-                .send_branch_with(to, depth, sink.into_03(), transform)
-                .await
-        };
-        Box::pin(fut).compat()
-    }
-
-    pub fn find_closest_ancestor(
-        &self,
-        checkpoints: Vec<HeaderHash>,
-        descendant: HeaderHash,
-    ) -> impl Future01<Item = Option<Ancestor>, Error = StorageError> {
-        let inner = self.inner.clone();
-        Compat::new(Box::pin(async move {
-            inner.find_closest_ancestor(checkpoints, descendant).await
-        }))
     }
 }
 

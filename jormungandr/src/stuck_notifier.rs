@@ -22,7 +22,7 @@ pub async fn check_last_block_time(
 
     loop {
         interval.tick().await;
-        let tip = blockchain_tip.get_ref_std().await;
+        let tip = blockchain_tip.get_ref().await;
         let era = tip.epoch_leadership_schedule().era();
 
         let now = SystemTime::now();
