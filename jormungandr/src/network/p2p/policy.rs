@@ -36,16 +36,24 @@ pub struct Records {
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct PolicyConfig {
     quarantine_duration: Duration,
-    max_quarantine: Duration,
-    max_num_quarantine_records: usize,
+    #[serde(default)]
+    max_quarantine: Option<Duration>,
+    #[serde(default)]
+    max_num_quarantine_records: Option<usize>,
 }
 
 impl Policy {
     pub fn new(pc: PolicyConfig, logger: Logger) -> Self {
         Self {
             quarantine_duration: pc.quarantine_duration.into(),
-            max_quarantine: pc.max_quarantine.into(),
-            records: LruCache::new(pc.max_num_quarantine_records),
+            max_quarantine: pc
+                .max_quarantine
+                .unwrap_or(DEFAULT_MAX_QUARANTINE_DURATION.into())
+                .into(),
+            records: LruCache::new(
+                pc.max_num_quarantine_records
+                    .unwrap_or(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
+            ),
             logger,
         }
     }
@@ -75,8 +83,8 @@ impl Default for PolicyConfig {
     fn default() -> Self {
         Self {
             quarantine_duration: Duration::from(DEFAULT_QUARANTINE_DURATION),
-            max_quarantine: Duration::from(DEFAULT_MAX_QUARANTINE_DURATION),
-            max_num_quarantine_records: DEFAULT_MAX_NUM_QUARANTINE_RECORDS,
+            max_quarantine: Some(Duration::from(DEFAULT_MAX_QUARANTINE_DURATION)),
+            max_num_quarantine_records: Some(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
         }
     }
 }
