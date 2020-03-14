@@ -186,6 +186,7 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
         "peerAvailableCnt": nodes_count.available_count,
         "peerUnreachableCnt": nodes_count.not_reachable_count,
         "peerQuarantinedCnt": nodes_count.quarantined_count,
+        "peerConnectedCnt": stats.peer_connected_cnt(),
         "nodeId": node_id,
     }))
 }
