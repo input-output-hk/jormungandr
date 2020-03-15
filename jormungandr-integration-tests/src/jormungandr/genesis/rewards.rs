@@ -2,8 +2,13 @@ use crate::common::{
     configuration::JormungandrConfig, jcli_wrapper, jormungandr::ConfigurationBuilder,
     process_utils, startup,
 };
+
 use chain_impl_mockchain::value::Value;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, StakePoolStats};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{ActiveSlotCoefficient, EpochRewardsInfo, StakePoolStats, Value as LibValue},
+};
+use std::str::FromStr;
 
 #[test]
 pub fn collect_reward() {
@@ -64,4 +69,90 @@ fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
         .into();
     let wait_time = ((slots_per_epoch * (slot_duration as u32)) * 2) + grace_period;
     process_utils::sleep(wait_time.into());
+}
+
+#[test]
+pub fn reward_history() {
+    let stake_pool_owners = [
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+        startup::create_new_account_address(),
+    ];
+    let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
+        &stake_pool_owners,
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(20)
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_rewards_history()
+            .with_slot_duration(3),
+    )
+    .unwrap();
+
+    let empty_vec: Vec<EpochRewardsInfo> = Vec::new();
+
+    assert_eq!(
+        empty_vec,
+        jormungandr.rest().reward_history(1).unwrap(),
+        "reward history for epoch in the future should be empty"
+    );
+    assert!(
+        jormungandr.rest().epoch_reward_history(1).is_err(),
+        "reward per epoch for epoch in the future should return error"
+    );
+
+    assert_eq!(
+        empty_vec,
+        jormungandr.rest().reward_history(0).unwrap(),
+        "reward history for current epoch should be empty"
+    );
+    assert!(
+        jormungandr.rest().epoch_reward_history(0).is_err(),
+        "reward per epoch for current epoch in the future should return error"
+    );
+
+    sleep_till_next_epoch(10, &jormungandr.config);
+
+    let history = jormungandr.rest().reward_history(1).unwrap();
+    let epoch_reward_info_from_history = history.get(0).unwrap();
+
+    let epoch_reward_info_from_epoch = jormungandr
+        .rest()
+        .epoch_reward_history(epoch_reward_info_from_history.clone().epoch().into())
+        .unwrap();
+    assert_eq!(
+        *epoch_reward_info_from_history, epoch_reward_info_from_epoch,
+        "reward history is not equal to reward by epoch"
+    );
+
+    let stake_pools_data: Vec<(Hash, StakePoolStats)> = stake_pool_ids
+        .iter()
+        .map(|x| {
+            (
+                Hash::from_str(x).unwrap(),
+                jcli_wrapper::assert_rest_get_stake_pool(x, &jormungandr.rest_address()),
+            )
+        })
+        .collect();
+
+    for (stake_pool_hash, (value_taxed, value_for_stakers)) in
+        epoch_reward_info_from_epoch.stake_pools()
+    {
+        let (_, stake_pool_data) = stake_pools_data
+            .iter()
+            .find(|(x, _)| x == stake_pool_hash)
+            .unwrap();
+        let actual_value_taxed: LibValue = stake_pool_data.rewards.value_taxed.into();
+        let value_for_stakers: LibValue = stake_pool_data.rewards.value_for_stakers.into();
+        assert_eq!(value_taxed.clone(), actual_value_taxed, "value taxed");
+        assert_eq!(
+            value_for_stakers.clone(),
+            value_for_stakers,
+            "value for stakers"
+        );
+    }
 }

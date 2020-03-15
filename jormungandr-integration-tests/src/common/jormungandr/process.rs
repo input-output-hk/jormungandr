@@ -1,4 +1,4 @@
-use super::{logger::JormungandrLogger, JormungandrError};
+use super::{logger::JormungandrLogger, JormungandrError, JormungandrRest};
 use crate::common::{
     configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
 };
@@ -36,6 +36,10 @@ impl JormungandrProcess {
             logger: JormungandrLogger::new(log_file_path.clone()),
             config: config,
         }
+    }
+
+    pub fn rest(&self) -> JormungandrRest {
+        JormungandrRest::new(self.config.clone())
     }
 
     pub fn shutdown(&self) {
