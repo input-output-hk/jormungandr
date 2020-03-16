@@ -106,7 +106,7 @@ pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder,
         Err(_) => None,
     };
     Ok(Json(NodeStatsDto {
-        version: env!("SIMPLE_VERSION"),
+        version: env!("SIMPLE_VERSION").to_string(),
         state: context.node_state().await,
         stats,
     }))

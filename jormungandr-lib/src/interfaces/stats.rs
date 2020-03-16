@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NodeStatsDto {
-    pub version: &'static str,
+    pub version: String,
     pub state: NodeState,
     #[serde(flatten)]
     pub stats: Option<NodeStats>,

@@ -11,7 +11,9 @@ use jormungandr_integration_tests::{
     mock::{client::JormungandrClient, read_into},
     response_to_vec,
 };
-use jormungandr_lib::interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, NodeStats};
+use jormungandr_lib::interfaces::{
+    EnclaveLeaderId, FragmentLog, FragmentStatus, NodeState, NodeStatsDto,
+};
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
@@ -404,11 +406,11 @@ impl NodeController {
         Ok(())
     }
 
-    pub fn stats(&self) -> Result<NodeStats> {
+    pub fn stats(&self) -> Result<NodeStatsDto> {
         let stats = self.get("node/stats")?.text()?;
-        let stats: NodeStats =
+        let full_stats: NodeStatsDto =
             serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
-        Ok(stats)
+        Ok(full_stats)
     }
 
     pub fn log_stats(&self) {
@@ -423,11 +425,9 @@ impl NodeController {
             let stats = self.stats();
             match stats {
                 Ok(stats) => {
-                    if let Some(uptime) = stats.uptime {
-                        if uptime > 0 {
-                            self.log_stats();
-                            return Ok(());
-                        }
+                    if stats.state == NodeState::Running {
+                        self.log_stats();
+                        return Ok(());
                     }
                 }
                 Err(err) => self
@@ -486,12 +486,7 @@ impl NodeController {
     pub fn is_up(&self) -> bool {
         let stats = self.stats();
         match stats {
-            Ok(stats) => {
-                if let Some(uptime) = stats.uptime {
-                    return uptime > 0;
-                }
-                return false;
-            }
+            Ok(stats) => stats.state == NodeState::Running,
             Err(_) => false,
         }
     }
