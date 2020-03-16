@@ -39,7 +39,7 @@ pub const DEFAULT_MAX_CONNECTIONS: usize = 256;
 
 /// The limit on the number of simultaneous P2P client connections
 /// used unless the corresponding configuration option is specified.
-pub const DEFAULT_MAX_CLIENT_CONNECTIONS: usize = 8;
+pub const DEFAULT_MAX_CLIENT_CONNECTIONS: usize = 192;
 
 /// The default timeout for connections
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
