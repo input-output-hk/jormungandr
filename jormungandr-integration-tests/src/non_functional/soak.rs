@@ -9,13 +9,13 @@ use crate::common::{
 
 use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool},
-    testing::benchmark_endurance,
+    testing::{benchmark_consumption, benchmark_endurance},
 };
 use std::time::Duration;
 
 #[test]
 pub fn test_blocks_are_being_created_for_48_hours() {
-    let duration_48_hours = Duration::from_secs(86400 * 2);
+    let duration_48_hours = Duration::from_secs(60);
 
     let mut receiver = startup::create_new_account_address();
     let mut sender = startup::create_new_account_address();
@@ -33,9 +33,16 @@ pub fn test_blocks_are_being_created_for_48_hours() {
     )
     .unwrap();
 
-    let benchmark = benchmark_endurance("test_blocks_are_being_created_for_48_hours")
+    let benchmark_endurance = benchmark_endurance("test_blocks_are_being_created_for_48_hours")
         .target(duration_48_hours.clone())
         .start();
+
+    let mut benchmark_consumption =
+        benchmark_consumption("test_blocks_are_being_created_for_48_hours_resources")
+            .bare_metal_stake_pool_consumption_target()
+            .for_process(jormungandr.pid() as usize)
+            .start();
+
     loop {
         let new_transaction = sender
             .transaction_to(
@@ -59,13 +66,17 @@ pub fn test_blocks_are_being_created_for_48_hours() {
                 jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_address()),
                 jormungandr.logger.get_log_content()
             );
-            benchmark.exception(message.clone()).print();
+            benchmark_endurance.exception(message.clone()).print();
+            benchmark_consumption.exception(message.clone()).print();
             panic!(message.clone());
         }
         sender.confirm_transaction();
 
-        if benchmark.max_endurance_reached() {
-            benchmark.stop().print();
+        benchmark_consumption.snapshot();
+
+        if benchmark_endurance.max_endurance_reached() {
+            benchmark_consumption.stop().print();
+            benchmark_endurance.stop().print();
             return;
         }
 
