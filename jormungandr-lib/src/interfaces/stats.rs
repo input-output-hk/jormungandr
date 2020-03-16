@@ -2,27 +2,35 @@ use crate::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct Stats {
-    pub version: String,
-    pub node_id: Option<String>,
-    pub peer_total_cnt: Option<u32>,
-    pub peer_available_cnt: Option<u32>,
-    pub peer_quarantined_cnt: Option<u32>,
-    pub peer_unreachable_cnt: Option<u32>,
-    pub tx_recv_cnt: Option<u32>,
-    pub block_recv_cnt: Option<u32>,
-    pub uptime: Option<u32>,
+#[serde(deny_unknown_fields)]
+pub struct NodeStatsDto {
+    pub version: &'static str,
     pub state: NodeState,
+    #[serde(flatten)]
+    pub stats: Option<NodeStats>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct NodeStats {
+    pub block_recv_cnt: u64,
+    pub last_block_content_size: u32,
+    pub last_block_date: Option<String>,
+    pub last_block_fees: u64,
     pub last_block_hash: Option<String>,
     pub last_block_height: Option<String>,
-    pub last_block_date: Option<String>,
+    pub last_block_sum: u64,
     pub last_block_time: Option<SystemTime>,
+    pub last_block_tx: u64,
     pub last_received_block_time: Option<SystemTime>,
-    pub last_block_tx: Option<u32>,
-    pub last_block_sum: Option<u32>,
-    pub last_block_fees: Option<u32>,
-    pub last_block_content_size: Option<u32>,
+    pub node_id: String,
+    pub peer_available_cnt: usize,
+    pub peer_connected_cnt: usize,
+    pub peer_quarantined_cnt: usize,
+    pub peer_total_cnt: usize,
+    pub peer_unreachable_cnt: usize,
+    pub tx_recv_cnt: u64,
+    pub uptime: Option<u64>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

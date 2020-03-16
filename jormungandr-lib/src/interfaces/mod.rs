@@ -43,7 +43,7 @@ pub use self::reward_parameters::RewardParams;
 pub use self::rewards_info::EpochRewardsInfo;
 pub use self::settings::{ParametersDef, RatioDef, SettingsDto, TaxTypeDef, TaxTypeSerde};
 pub use self::stake_pool_stats::{Rewards, StakePoolStats};
-pub use self::stats::{NodeState, Stats};
+pub use self::stats::{NodeState, NodeStats, NodeStatsDto};
 pub use self::tax_type::TaxType;
 pub use self::transaction_input::{TransactionInput, TransactionInputType};
 pub use self::transaction_output::TransactionOutput;

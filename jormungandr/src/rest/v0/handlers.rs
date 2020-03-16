@@ -2,6 +2,7 @@ use jormungandr_lib::interfaces::{
     AccountState, Address, EnclaveLeaderId, EpochRewardsInfo, FragmentOrigin,
     Rewards as StakePoolRewards, StakePoolStats, TaxTypeSerde,
 };
+use jormungandr_lib::interfaces::{NodeStats, NodeStatsDto};
 use jormungandr_lib::time::SystemTime;
 
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
@@ -25,7 +26,7 @@ use futures03::{
     compat::Future01CompatExt,
     stream::{StreamExt, TryStreamExt},
 };
-use jormungandr_lib::interfaces::NodeState;
+
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -99,14 +100,6 @@ pub async fn get_tip(context: Data<Context>) -> Result<impl Responder, Error> {
     chain_tip(&context).await.map(|tip| tip.hash().to_string())
 }
 
-#[derive(Serialize)]
-struct NodeStatsDto {
-    version: &'static str,
-    state: NodeState,
-    #[serde(flatten)]
-    stats: Option<serde_json::Value>,
-}
-
 pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder, Error> {
     let stats = match context.try_full().await {
         Ok(full_context) => Some(create_stats(&*full_context).await?),
@@ -119,7 +112,7 @@ pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder,
     }))
 }
 
-async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error> {
+async fn create_stats(context: &FullContext) -> Result<NodeStats, Error> {
     let tip = chain_tip_from_full(context).await;
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
@@ -169,26 +162,27 @@ async fn create_stats(context: &FullContext) -> Result<serde_json::Value, Error>
     let tip_header = tip.header();
     let stats = &context.stats_counter;
     let node_id = &context.p2p.node_id().to_string();
-    Ok(json!({
-        "txRecvCnt": stats.tx_recv_cnt(),
-        "blockRecvCnt": stats.block_recv_cnt(),
-        "lastReceivedBlockTime": stats.slot_start_time().map(SystemTime::from),
-        "uptime": stats.uptime_sec(),
-        "lastBlockHash": tip_header.hash().to_string(),
-        "lastBlockHeight": tip_header.chain_length().to_string(),
-        "lastBlockDate": tip_header.block_date().to_string(),
-        "lastBlockTime": SystemTime::from(tip.time()),
-        "lastBlockTx": block_tx_count,
-        "lastBlockContentSize": tip_header.block_content_size(),
-        "lastBlockSum": block_input_sum.0,
-        "lastBlockFees": block_fee_sum.0,
-        "peerTotalCnt": nodes_count.all_count,
-        "peerAvailableCnt": nodes_count.available_count,
-        "peerUnreachableCnt": nodes_count.not_reachable_count,
-        "peerQuarantinedCnt": nodes_count.quarantined_count,
-        "peerConnectedCnt": stats.peer_connected_cnt(),
-        "nodeId": node_id,
-    }))
+    let node_stats = NodeStats {
+        block_recv_cnt: stats.block_recv_cnt(),
+        last_block_content_size: tip_header.block_content_size(),
+        last_block_date: tip_header.block_date().to_string().into(),
+        last_block_fees: block_fee_sum.0,
+        last_block_hash: tip_header.hash().to_string().into(),
+        last_block_height: tip_header.chain_length().to_string().into(),
+        last_block_sum: block_input_sum.0,
+        last_block_time: SystemTime::from(tip.time()).into(),
+        last_block_tx: block_tx_count,
+        last_received_block_time: stats.slot_start_time().map(SystemTime::from),
+        node_id: node_id.to_owned(),
+        peer_available_cnt: nodes_count.available_count,
+        peer_connected_cnt: stats.peer_connected_cnt(),
+        peer_quarantined_cnt: nodes_count.quarantined_count,
+        peer_total_cnt: nodes_count.all_count,
+        peer_unreachable_cnt: nodes_count.not_reachable_count,
+        tx_recv_cnt: stats.tx_recv_cnt(),
+        uptime: stats.uptime_sec().into(),
+    };
+    Ok(node_stats)
 }
 
 pub async fn get_block_id(

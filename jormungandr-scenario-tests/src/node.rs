@@ -11,7 +11,7 @@ use jormungandr_integration_tests::{
     mock::{client::JormungandrClient, read_into},
     response_to_vec,
 };
-use jormungandr_lib::interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, Stats};
+use jormungandr_lib::interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, NodeStats};
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
@@ -404,9 +404,9 @@ impl NodeController {
         Ok(())
     }
 
-    pub fn stats(&self) -> Result<Stats> {
+    pub fn stats(&self) -> Result<NodeStats> {
         let stats = self.get("node/stats")?.text()?;
-        let stats: Stats =
+        let stats: NodeStats =
             serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
         Ok(stats)
     }
