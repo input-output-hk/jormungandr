@@ -1,32 +1,80 @@
 use jormungandr_lib::time::Duration;
-use poldercast::{Node, PolicyReport};
+use lru::LruCache;
+use poldercast::{Id, Node, PolicyReport};
 use serde::{Deserialize, Serialize};
 use slog::Logger;
+use std::time::{Duration as StdDuration, Instant};
 
-/// default quarantine duration is 30min
-const DEFAULT_QUARANTINE_DURATION: std::time::Duration = std::time::Duration::from_secs(1800);
+/// default quarantine duration is 10min
+const DEFAULT_QUARANTINE_DURATION: StdDuration = StdDuration::from_secs(10 * 60);
+
+/// default max quarantine is 2 days
+const DEFAULT_MAX_QUARANTINE_DURATION: StdDuration = StdDuration::from_secs(2 * 24 * 3600);
+
+/// default number of records is 24_000
+const DEFAULT_MAX_NUM_QUARANTINE_RECORDS: usize = 24_000;
 
 /// This is the P2P policy. Right now it is very similar to the default policy
 /// defined in `poldercast` crate.
 ///
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Policy {
-    quarantine_duration: std::time::Duration,
+    quarantine_duration: StdDuration,
+    max_quarantine: StdDuration,
+    records: LruCache<Id, Records>,
 
     logger: Logger,
+}
+
+pub struct Records {
+    /// record the number of time the given node has been quarantined
+    /// in known time.
+    quarantine: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct PolicyConfig {
     quarantine_duration: Duration,
+    #[serde(default)]
+    max_quarantine: Option<Duration>,
+    #[serde(default)]
+    max_num_quarantine_records: Option<usize>,
 }
 
 impl Policy {
     pub fn new(pc: PolicyConfig, logger: Logger) -> Self {
         Self {
             quarantine_duration: pc.quarantine_duration.into(),
+            max_quarantine: pc
+                .max_quarantine
+                .unwrap_or(DEFAULT_MAX_QUARANTINE_DURATION.into())
+                .into(),
+            records: LruCache::new(
+                pc.max_num_quarantine_records
+                    .unwrap_or(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
+            ),
             logger,
+        }
+    }
+
+    fn quarantine_duration_for(&mut self, id: Id) -> StdDuration {
+        if let Some(r) = self.records.get_mut(&id) {
+            r.quarantine_for(self.quarantine_duration, self.max_quarantine)
+        } else {
+            let r = Records::new();
+            let t = r.quarantine_for(self.quarantine_duration, self.max_quarantine);
+            self.records.put(id, r);
+            t
+        }
+    }
+
+    fn update(&mut self, id: Id) {
+        if let Some(r) = self.records.get_mut(&id) {
+            r.update();
+        } else {
+            let r = Records::new();
+            self.records.put(id, r);
         }
     }
 }
@@ -35,7 +83,32 @@ impl Default for PolicyConfig {
     fn default() -> Self {
         Self {
             quarantine_duration: Duration::from(DEFAULT_QUARANTINE_DURATION),
+            max_quarantine: Some(Duration::from(DEFAULT_MAX_QUARANTINE_DURATION)),
+            max_num_quarantine_records: Some(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
         }
+    }
+}
+
+impl Records {
+    fn new() -> Records {
+        Self { quarantine: 0 }
+    }
+
+    fn update(&mut self) {
+        self.quarantine += 1;
+    }
+
+    fn quarantine_for(
+        &self,
+        quarantine_instant: StdDuration,
+        max_quarantine: StdDuration,
+    ) -> StdDuration {
+        std::cmp::max(
+            quarantine_instant
+                .checked_mul(self.quarantine)
+                .unwrap_or(max_quarantine),
+            max_quarantine,
+        )
     }
 }
 
@@ -47,8 +120,9 @@ impl poldercast::Policy for Policy {
         // if the node is already quarantined
         if let Some(since) = node.logs().quarantined() {
             let duration = since.elapsed().unwrap();
+            let quarantine_duration = self.quarantine_duration_for(node.id().clone());
 
-            if duration < self.quarantine_duration {
+            if duration < quarantine_duration {
                 // the node still need to do some quarantine time
                 PolicyReport::None
             } else if node.logs().last_update().elapsed().unwrap() < self.quarantine_duration {
@@ -73,6 +147,7 @@ impl poldercast::Policy for Policy {
         } else {
             // if the record is not `clear` then we quarantine the block for some time
             debug!(logger, "move node to quarantine");
+            self.update(node.id().clone());
             PolicyReport::Quarantine
         }
     }
