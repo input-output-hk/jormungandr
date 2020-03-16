@@ -226,11 +226,11 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         "T3004_Mesh",
         &mut context,
         topology [
-            LEADER_1 -> LEADER_4,LEADER_5,
-            LEADER_2 -> LEADER_1,LEADER_3,
-            LEADER_3 -> LEADER_1,LEADER_4,
+            LEADER_1 -> LEADER_4 -> LEADER_5,
+            LEADER_2 -> LEADER_1 -> LEADER_3,
+            LEADER_3 -> LEADER_1 -> LEADER_4,
             LEADER_4 -> LEADER_5,
-            LEADER_5 -> LEADER_3,LEADER_1,
+            LEADER_5 -> LEADER_3 -> LEADER_1,
         ]
         blockchain {
             consensus = GenesisPraos,
