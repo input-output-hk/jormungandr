@@ -40,17 +40,19 @@ example:
 
 ```sh
 jcli certificate new stake-pool-retirement \
-    --pool-id <POOL_ID> \
+    --pool-id <STAKE_POOL_ID> \
     --retirement-time <seconds-since-start> \
     [<output-file>]
 ```
 
 where:
 
-- `output-file` - *optional*, write the output of to the given file
-  or print it to the standard output if not defined.
-- `--retirement-time` is the number of seconds since the start in order
-  to make the stake pool retire. `0` means as soon as possible.
+- `output-file`                 - *optional*, write the output of to the given file
+                                  or print it to the standard output if not defined.
+- `--retirement-time`           - is the number of seconds since the start in order
+                                  to make the stake pool retire. `0` means as soon as possible.
+- `--pool-id`                   - hex-encoded stake pool ID. Can be retrieved using  `jcli certificate get-stake-pool-id` command. 
+                                  See [here](../stake_pool/registering_stake_pool.md) for more details. 
 
 ## Building stake pool delegation certificate
 
