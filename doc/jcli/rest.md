@@ -26,7 +26,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -80,8 +80,8 @@ Fetches UTxO details
 jcli rest v0 utxo <fragment-id> <output-index> get <options>
 ```
 
-<fragment-id>   - hex-encoded ID of the transaction fragment
-<output-index>  - index of the transaction output
+- \<fragment-id\>   - hex-encoded ID of the transaction fragment
+- \<output-index\>  - index of the transaction output
 
 The options are
 
@@ -196,7 +196,7 @@ Retrieves a hex-encoded block with given ID
 jcli rest v0 block <block_id> get <options>
 ```
 
-<block_id> - hex-encoded block ID
+- <block_id> - hex-encoded block ID
 
 The options are
 
@@ -212,13 +212,13 @@ Every list element is in separate line. The IDs are sorted from closest to farth
 jcli rest v0 block <block_id> next-id get <options>
 ```
 
-<block_id> - hex-encoded block ID
+- <block_id> - hex-encoded block ID
 
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- -c --count <count> - Maximum number of IDs, must be between 1 and 100, default 1
+- -c --count \<count\> - Maximum number of IDs, must be between 1 and 100, default 1
 
 ## Get account state
 
@@ -228,13 +228,13 @@ Get account state
 jcli rest v0 account get <account-id> <options>
 ```
 
-<account-id> - ID of an account, bech32-encoded
+- \<account-id\> - ID of an account, bech32-encoded
 
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -264,7 +264,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -327,7 +327,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -349,8 +349,8 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
--f, --file <file> - File containing YAML with leader secret. It must have the same format as secret YAML passed to Jormungandr as --secret. If not provided, YAML will be read from stdin.
+- --output-format \<format\> - see [conventions](#conventions)
+-f, --file \<file\> - File containing YAML with leader secret. It must have the same format as secret YAML passed to Jormungandr as --secret. If not provided, YAML will be read from stdin.
 
 On success created leader ID is printed
 
@@ -366,7 +366,7 @@ Delete leader with given ID
 jcli rest v0 leaders delete <id> <options>
 ```
 
-<id> - ID of deleted leader
+- \<id\> - ID of deleted leader
 
 The options are
 
@@ -385,7 +385,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -440,7 +440,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -462,7 +462,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -491,7 +491,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -519,13 +519,13 @@ Fetches stake pool details
 jcli rest v0 stake-pool get <pool-id> <options>
 ```
 
-<pool-id> - hex-encoded pool ID
+- \<pool-id\> - hex-encoded pool ID
 
 The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -542,4 +542,131 @@ total_stake: 2000000000000  # total stake pool value
 kesPublicKey: kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r
 # bech32-encoded stake pool VRF key
 vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
+```
+
+## Get rewards history for a specific epoch
+
+Get the rewards history of a given *epoch*.
+
+```sh
+jcli rest v0 rewards epoch get <epoch> <options>
+```
+
+- \<epoch\> - epoch number to get the rewards history for.
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
+
+```sh
+jcli rest v0 rewards epoch get 82 --output-format json -h <node_addr>
+```
+
+```json
+[
+  {
+    "epoch": 82,              // the epoch number to collect rewards info from (rewards are from epoch 81)
+    "drawn": 3835616440000,   // Total Drawn from reward escrow pot for the epoch
+    "fees": 1828810000,       // Fees contributed into the pot the epoch
+    "treasury": 462179124139, // Value added to the treasury
+    "stake_pools": {
+      "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+        1683091391, // pool's owned rewards from taxes
+        32665712521 // distributed rewards to delegators
+      ],
+      "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+        47706672,
+        906426770
+      ],
+    },
+    "accounts": {
+      "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785, // Amount added to each account
+      "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+      "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+      "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+      "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+    }
+  }
+]
+```
+
+## Get rewards history for some epochs
+
+Get the rewards history of the *length* last epoch(s) from tip.
+
+```sh
+jcli rest v0 rewards history get <length> <options>
+```
+
+- \<length\> - number of epochs, starting from the last epoch from tip, to get the reward history for.
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
+
+```sh
+jcli rest v0 rewards history get 2 --output-format json -h <node_addr>
+```
+
+```json
+[
+  {
+    "epoch": 93,
+    "drawn": 3835616440000,
+    "fees": 641300000,
+    "treasury": 467151470296,
+    "stake_pools": {
+      "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+        1121750881,
+        21771124247
+      ],
+      "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+        429241408,
+        8155586765
+      ],
+      "01bd272cede02d0b0c9cd47b16e5356ab3fb2330dd9d1e972ab5494365309d2a": [
+        1691506850,
+        32829041110
+      ],
+    },
+    "accounts": {
+      "ed25519_pk1002kje4l8j7kvsseyauusk3s7nzef4wcvvafltjmg0rkzr6qccyqg064kz": 33311805,
+      "ed25519_pk100549kxqn8tnzfzr5ndu0wx7pp2y2ck28mnykq03m2z5qcwkvazqx9fp0h": 15809,
+      "ed25519_pk10054y058qfn5wnazalnkax0mthg06ucq87nn9320rphtye5ca0xszjcelk": 10007789,
+      "ed25519_pk10069dsunppwttl4qtsfnyhjnqwkunuwxjxlandl2fnpwpuznf5pqmg3twe": 545094806,
+      "ed25519_pk1009sfpljfgx30z70l3n63gj7w9vp3epugmd3vn62fyr07ut9pfwqjp7f8h": 4208232,
+    },
+  },
+  {
+    "epoch": 92,
+    "drawn": 3835616440000,
+    "fees": 620400000,
+    "treasury": 480849578351,
+    "stake_pools": {
+      "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+        979164601,
+        19003786459
+      ],
+      "0105449dd66524111349ef677d1ebc25247a5ba2d094913f52aa4db265eac03a": [
+        26977274,
+        972170279
+      ],
+      "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+        299744265,
+        5695141053
+      ],
+    },
+    "accounts": {
+      "ed25519_pk1002kje4l8j7kvsseyauusk3s7nzef4wcvvafltjmg0rkzr6qccyqg064kz": 40581616,
+      "ed25519_pk100549kxqn8tnzfzr5ndu0wx7pp2y2ck28mnykq03m2z5qcwkvazqx9fp0h": 49156,
+      "ed25519_pk10054y058qfn5wnazalnkax0mthg06ucq87nn9320rphtye5ca0xszjcelk": 12306084,
+      "ed25519_pk10069dsunppwttl4qtsfnyhjnqwkunuwxjxlandl2fnpwpuznf5pqmg3twe": 142737175,
+      "ed25519_pk1009sfpljfgx30z70l3n63gj7w9vp3epugmd3vn62fyr07ut9pfwqjp7f8h": 3932910,
+    },
+  }
+]
 ```
