@@ -14,6 +14,7 @@ use tokio::timer::Interval;
 use tokio_compat::prelude::*;
 use tokio_compat::runtime::{self, Runtime, TaskExecutor};
 
+use futures03::future::{TryFuture, TryFutureExt};
 use std::fmt::Debug;
 use std::future::Future;
 use std::sync::mpsc::{self, Receiver, RecvError, Sender};
@@ -110,6 +111,49 @@ impl Services {
             // this will allow to finish the node with an error code instead
             // of an success error code
             let _ = finish_notifier.sender.send(true);
+            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
+            std::mem::drop(finish_notifier);
+        });
+
+        let task = Service::new(name, now);
+        self.services.push(task);
+    }
+
+    /// Spawn the given Future in a new dedicated runtime
+    pub fn spawn_try_future_std<F, T>(&mut self, name: &'static str, f: F)
+    where
+        F: FnOnce(TokioServiceInfo) -> T,
+        F: Send + 'static,
+        T: Future<Output = Result<(), ()>> + Send + 'static,
+    {
+        let logger = self
+            .logger
+            .new(o!(crate::log::KEY_TASK => name))
+            .into_erased();
+
+        let executor = self.runtime.executor();
+        let now = Instant::now();
+        let future_service_info = TokioServiceInfo {
+            name,
+            up_time: now,
+            logger: logger.clone(),
+            executor,
+        };
+
+        let finish_notifier = self.finish_listener.notifier();
+        self.runtime.spawn_std(async move {
+            let res = f(future_service_info).await;
+            let outcome = if res.is_ok() {
+                "successfully"
+            } else {
+                "with error"
+            };
+            info!(logger, "service finished {}", outcome);
+
+            // send the finish notifier if the service finished with an error.
+            // this will allow to finish the node with an error code instead
+            // of an success error code
+            let _ = finish_notifier.sender.send(res.is_ok());
             // Holds finish notifier, so it's dropped when whole future finishes or is dropped
             std::mem::drop(finish_notifier);
         });
