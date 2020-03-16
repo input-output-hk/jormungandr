@@ -19,6 +19,7 @@ struct StatsCounterImpl {
     start_time: Instant,
     slot_start_time: AtomicU64,
     tip_block: ArcSwapOption<Block>,
+    peers_connected_cnt: AtomicUsize,
 }
 
 impl Default for StatsCounterImpl {
@@ -29,6 +30,7 @@ impl Default for StatsCounterImpl {
             start_time: Instant::now(),
             slot_start_time: AtomicU64::new(SLOT_START_TIME_UNDEFINED),
             tip_block: ArcSwapOption::from(None),
+            peers_connected_cnt: AtomicUsize::default(),
         }
     }
 }
@@ -51,6 +53,25 @@ impl StatsCounter {
 
     pub fn block_recv_cnt(&self) -> u64 {
         self.stats.block_recv_cnt.load(Ordering::Relaxed) as u64
+    }
+
+    pub fn add_peer_connected_cnt(&self, count: usize) -> usize {
+        self.stats
+            .peers_connected_cnt
+            .fetch_add(count, Ordering::SeqCst)
+    }
+
+    pub fn sub_peer_connected_cnt(&self, count: usize) -> usize {
+        self.stats
+            .peers_connected_cnt
+            .fetch_sub(count, Ordering::SeqCst)
+    }
+
+    pub fn peer_connected_cnt(&self) -> usize {
+        self.stats
+            .peers_connected_cnt
+            .load(Ordering::Relaxed)
+            .saturating_add(1)
     }
 
     pub fn uptime_sec(&self) -> u64 {

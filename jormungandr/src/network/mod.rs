@@ -77,6 +77,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub use self::bootstrap::Error as BootstrapError;
+use crate::stats_counter::StatsCounter;
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -125,11 +126,11 @@ impl Clone for Channels {
 pub struct GlobalState {
     pub block0_hash: HeaderHash,
     pub config: Configuration,
+    pub stats_counter: StatsCounter,
     pub topology: P2pTopology,
     pub peers: Peers,
     pub executor: TaskExecutor,
     pub logger: Logger,
-    client_count: AtomicUsize,
 }
 
 type GlobalStateR = Arc<GlobalState>;
@@ -140,6 +141,7 @@ impl GlobalState {
         block0_hash: HeaderHash,
         config: Configuration,
         topology: P2pTopology,
+        stats_counter: StatsCounter,
         executor: TaskExecutor,
         logger: Logger,
     ) -> Self {
@@ -148,11 +150,11 @@ impl GlobalState {
         GlobalState {
             block0_hash,
             config,
+            stats_counter,
             topology,
             peers,
             executor,
             logger,
-            client_count: AtomicUsize::new(0),
         }
     }
 
@@ -167,26 +169,23 @@ impl GlobalState {
         self.executor.spawn(f)
     }
 
-    fn client_count(&self) -> usize {
-        self.client_count.load(atomic::Ordering::Relaxed)
-    }
-
     fn inc_client_count(&self) {
-        self.client_count.fetch_add(1, atomic::Ordering::SeqCst);
+        self.stats_counter.add_peer_connected_cnt(1);
     }
 
     fn dec_client_count(&self) {
-        let prev_count = self.client_count.fetch_sub(1, atomic::Ordering::SeqCst);
+        let prev_count = self.stats_counter.sub_peer_connected_cnt(1);
         assert!(prev_count != 0);
+    }
+
+    fn client_count(&self) -> usize {
+        self.stats_counter.peer_connected_cnt()
     }
 
     // How many client connections to bump when a new one is about to be
     // established
     fn num_clients_to_bump(&self) -> usize {
-        let count = self
-            .client_count
-            .load(atomic::Ordering::Relaxed)
-            .saturating_add(1);
+        let count = self.stats_counter.peer_connected_cnt();
         if count > self.config.max_client_connections {
             count - self.config.max_client_connections
         } else {
@@ -238,6 +237,7 @@ pub fn start(
     service_info: TokioServiceInfo,
     params: TaskParams,
     topology: P2pTopology,
+    stats_counter: StatsCounter,
 ) -> impl Future<Item = (), Error = ()> {
     // TODO: the node needs to be saved/loaded
     //
@@ -248,6 +248,7 @@ pub fn start(
         params.block0_hash,
         params.config,
         topology,
+        stats_counter,
         service_info.executor().clone(),
         service_info.logger().clone(),
     ));

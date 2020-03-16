@@ -183,6 +183,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let block_msgbox = block_msgbox.clone();
         let block0_hash = bootstrapped_node.block0_hash;
         let config = bootstrapped_node.settings.network.clone();
+        let stats_counter = stats_counter.clone();
         let channels = network::Channels {
             client_box: client_msgbox,
             transaction_box: fragment_msgbox,
@@ -197,7 +198,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 input: network_queue,
                 channels,
             };
-            network::start(info, params, topology)
+            network::start(info, params, topology, stats_counter)
         });
     }
 
