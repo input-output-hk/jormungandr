@@ -1,7 +1,7 @@
 use crate::testing::measurement::{
     attribute::Consumption, marker::ResourcesUsage, thresholds::Thresholds,
 };
-use std::fmt;
+use std::{convert::TryInto, fmt};
 use sysinfo::{ProcessExt, SystemExt};
 use thiserror::Error;
 
@@ -73,7 +73,7 @@ impl ConsumptionBenchmarkRun {
         let (_, process) = system
             .get_processes()
             .iter()
-            .find(|(pid, _)| **pid == self.definition.pid)
+            .find(|(pid, _)| **pid == self.definition.pid.try_into().unwrap())
             .ok_or(ConsumptionBenchmarkError::NoProcessWitId(
                 self.definition.pid,
             ))?;
