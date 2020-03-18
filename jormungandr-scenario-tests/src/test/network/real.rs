@@ -72,10 +72,12 @@ fn prepare_real_scenario(
             .expect("active slot coefficient in millis"),
     );
 
-    for i in 0..leader_counter {
-        let initial_wallet_name = wallet_name(i + 1);
+    blockchain.add_leader(CORE_NODE);
+
+    for i in 1..leader_counter {
+        let initial_wallet_name = wallet_name(i);
         let mut wallet = Wallet::new_account(initial_wallet_name.to_owned(), Value(100_000));
-        *wallet.delegate_mut() = Some(leader_name(i + 1).to_owned());
+        *wallet.delegate_mut() = Some(leader_name(i).to_owned());
         blockchain.add_wallet(wallet);
     }
     builder.set_blockchain(blockchain);
