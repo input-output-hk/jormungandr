@@ -48,20 +48,29 @@ pub fn measure_and_log_sync_time(
         .with_thresholds(sync_wait)
         .start();
 
+    let mut report_node_stats_counter = 0;
+    let report_node_stats_interval = 20;
+
     while !benchmark.timeout_exceeded() {
         let block_heights: Vec<u32> = nodes
             .iter()
             .map(|node| {
-                node.stats()
-                    .unwrap()
-                    .stats
-                    .unwrap()
-                    .last_block_height
-                    .unwrap()
-                    .parse()
-                    .unwrap()
+                let stats = node.stats().unwrap().stats.unwrap();
+
+                if report_node_stats_counter >= report_node_stats_interval {
+                    println!("Node: {} -> {:?}", node.alias(), stats);
+                }
+
+                stats.last_block_height.unwrap().parse().unwrap()
             })
             .collect();
+
+        if report_node_stats_counter >= report_node_stats_interval {
+            report_node_stats_counter = 0;
+        } else {
+            report_node_stats_counter = report_node_stats_counter + 1;
+        }
+
         println!(
             "Measuring sync time... current block heights: {:?}",
             block_heights

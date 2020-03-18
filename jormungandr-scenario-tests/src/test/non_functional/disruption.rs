@@ -504,7 +504,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         topology [
             LEADER_5,
             LEADER_1 -> LEADER_3,
-            LEADER_2 -> LEADER_3,LEADER_5,
+            LEADER_2 -> LEADER_3 -> LEADER_5,
             LEADER_3 -> LEADER_5,
             LEADER_4 -> LEADER_5,
             PASSIVE -> LEADER_5,
@@ -618,10 +618,10 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &mut context,
         topology [
             LEADER_4,
-            LEADER_1 -> LEADER_4,LEADER_5,
-            LEADER_2 -> LEADER_1,LEADER_3,
-            LEADER_3 -> LEADER_1,LEADER_4,
-            LEADER_5 -> LEADER_3,LEADER_1,
+            LEADER_1 -> LEADER_4 -> LEADER_5,
+            LEADER_2 -> LEADER_1 -> LEADER_3,
+            LEADER_3 -> LEADER_1 -> LEADER_4,
+            LEADER_5 -> LEADER_3 -> LEADER_1,
         ]
         blockchain {
             consensus = GenesisPraos,
