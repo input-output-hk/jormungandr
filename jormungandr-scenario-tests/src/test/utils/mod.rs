@@ -32,7 +32,7 @@ pub fn get_nodes_block_height_summary(nodes: Vec<&NodeController>) -> Vec<String
                 return format!(
                     "node '{}' has block height: '{:?}'\n",
                     node.alias(),
-                    node.stats().unwrap().last_block_height
+                    node.stats().unwrap().stats.unwrap().last_block_height
                 );
             }
         })
@@ -53,6 +53,8 @@ pub fn measure_and_log_sync_time(
             .iter()
             .map(|node| {
                 node.stats()
+                    .unwrap()
+                    .stats
                     .unwrap()
                     .last_block_height
                     .unwrap()
@@ -120,7 +122,7 @@ pub fn assert_are_in_sync(sync_wait: SyncWaitParams, nodes: Vec<&NodeController>
     let first_node = nodes.iter().next().unwrap();
 
     let expected_block_hashes = first_node.all_blocks_hashes()?;
-    let block_height = first_node.stats()?.last_block_height;
+    let block_height = first_node.stats()?.stats.unwrap().last_block_height;
 
     for node in nodes.iter().skip(1) {
         let all_block_hashes = node.all_blocks_hashes()?;
@@ -136,7 +138,7 @@ pub fn assert_are_in_sync(sync_wait: SyncWaitParams, nodes: Vec<&NodeController>
         )?;
         assert_equals(
             &block_height,
-            &node.stats()?.last_block_height,
+            &node.stats()?.stats.unwrap().last_block_height,
             &format!("nodes are out of sync (different block height) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
                 duration,
                 first_node.alias(),
