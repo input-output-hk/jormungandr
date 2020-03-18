@@ -1,3 +1,5 @@
+#![cfg(feature = "sanity-non-functional")]
+
 pub mod compatibility;
 /*
  Explorer soak test. Run node for ~15 minutes and verify explorer is in sync with node rest
@@ -12,6 +14,11 @@ pub mod sanity;
 Long running test for self node (48 h)
 */
 pub mod soak;
+
+/*
+Long running test for dumping rewards each epoch
+*/
+pub mod rewards;
 
 use crate::common::{
     explorer::ExplorerError,
