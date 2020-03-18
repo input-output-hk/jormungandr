@@ -11,6 +11,6 @@ pub use benchmark::{
     EnduranceBenchmarkDef, EnduranceBenchmarkFinish, EnduranceBenchmarkRun, SpeedBenchmarkDef,
     SpeedBenchmarkFinish, SpeedBenchmarkRun,
 };
-pub use marker::{Counter, Timestamp};
+pub use marker::{Counter, ResourcesUsage, Timestamp};
 pub use status::Status;
 pub use thresholds::Thresholds;
