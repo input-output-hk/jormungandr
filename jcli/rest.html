@@ -489,8 +489,11 @@ status:
 </code></pre>
 <h2><a class="header" href="#get-stake-distribution" id="get-stake-distribution">Get stake distribution</a></h2>
 <p>Fetches stake information</p>
-<pre><code class="language-sh">jcli rest v0 stake get &lt;options&gt;
+<pre><code class="language-sh">jcli rest v0 stake get &lt;options&gt; [&lt;epoch&gt;]
 </code></pre>
+<ul>
+<li>&lt;epoch&gt; - Epoch to get the stake distribution from. (optional)</li>
+</ul>
 <p>The options are</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
@@ -498,8 +501,25 @@ status:
 <li>--output-format <format> - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
+<ul>
+<li><code>jcli rest v0 stake get &lt;options&gt;</code> - stake distribution from the current epoch</li>
+</ul>
 <pre><code class="language-yaml">---
 epoch: 228      # Epoch of last block
+stake:
+  dangling: 0 # Total value stored in accounts, but assigned to nonexistent pools
+  pools:
+    - - 5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f # stake pool ID
+      - 1000000000000                                                    # staked value
+    - - 3815602c096fcbb91072f419c296c3dfe1f730e0f446a9bd2553145688e75615 # stake pool ID
+      - 1000000000000                                                    # staked value
+  unassigned: 0 # Total value stored in accounts, but not assigned to any pool
+</code></pre>
+<ul>
+<li><code>jcli rest v0 stake get &lt;options&gt; 10</code> - stake distribution from a specific epoch (epoch 10 in this example)</li>
+</ul>
+<pre><code class="language-yaml">---
+epoch: 10      # Epoch specified in the request
 stake:
   dangling: 0 # Total value stored in accounts, but assigned to nonexistent pools
   pools:
