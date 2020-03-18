@@ -1,9 +1,5 @@
-#![cfg(feature = "soak-non-functional")]
 use crate::common::{
-    jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
-    jormungandr::ConfigurationBuilder,
-    process_utils::Wait,
-    startup,
+    jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils::Wait, startup,
     transaction_utils::TransactionHash,
 };
 

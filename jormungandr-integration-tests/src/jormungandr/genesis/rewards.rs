@@ -1,7 +1,4 @@
-use crate::common::{
-    configuration::JormungandrConfig, jcli_wrapper, jormungandr::ConfigurationBuilder,
-    process_utils, startup,
-};
+use crate::common::{jcli_wrapper, jormungandr::ConfigurationBuilder, startup};
 
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::{
@@ -30,7 +27,7 @@ pub fn collect_reward() {
             .with_slot_duration(3),
     )
     .unwrap();
-    sleep_till_next_epoch(10, &jormungandr.config);
+    startup::sleep_till_next_epoch(10, &jormungandr.config);
 
     let stake_pools_data: Vec<StakePoolStats> = stake_pool_ids
         .iter()
@@ -54,21 +51,6 @@ pub fn collect_reward() {
             .any(|x| x.rewards.value_taxed != Value::zero()),
         "zero value_taxed epoch"
     );
-}
-
-fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
-    let slots_per_epoch: u32 = config
-        .block0_configuration
-        .blockchain_configuration
-        .slots_per_epoch
-        .into();
-    let slot_duration: u8 = config
-        .block0_configuration
-        .blockchain_configuration
-        .slot_duration
-        .into();
-    let wait_time = ((slots_per_epoch * (slot_duration as u32)) * 2) + grace_period;
-    process_utils::sleep(wait_time.into());
 }
 
 #[test]
@@ -115,7 +97,7 @@ pub fn reward_history() {
         "reward per epoch for current epoch in the future should return error"
     );
 
-    sleep_till_next_epoch(10, &jormungandr.config);
+    startup::sleep_till_next_epoch(10, &jormungandr.config);
 
     let history = jormungandr.rest().reward_history(1).unwrap();
     let epoch_reward_info_from_history = history.get(0).unwrap();

@@ -1,4 +1,3 @@
-#![cfg(feature = "sanity-non-functional")]
 use super::NodeStuckError;
 use crate::common::{
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
@@ -7,13 +6,10 @@ use crate::common::{
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value},
-    testing::{
-        benchmark_efficiency, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
-    },
-    wallet::Wallet,
+    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
+    testing::{benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds},
 };
-use std::{iter, str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 #[test]
 pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {

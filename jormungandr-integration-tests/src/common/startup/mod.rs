@@ -1,8 +1,9 @@
 use crate::common::{
-    configuration::SecretModelFactory,
+    configuration::{JormungandrConfig, SecretModelFactory},
     file_utils,
     jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
+    process_utils,
 };
 use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::block::ConsensusVersion;
@@ -170,6 +171,25 @@ pub fn start_stake_pool(
         .config(config)
         .start()
         .map(|process| (process, stake_pool_ids))
+}
+
+pub fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
+    sleep_till_epoch(3, grace_period, config);
+}
+
+pub fn sleep_till_epoch(epoch: u32, grace_period: u32, config: &JormungandrConfig) {
+    let slots_per_epoch: u32 = config
+        .block0_configuration
+        .blockchain_configuration
+        .slots_per_epoch
+        .into();
+    let slot_duration: u8 = config
+        .block0_configuration
+        .blockchain_configuration
+        .slot_duration
+        .into();
+    let wait_time = ((slots_per_epoch * (slot_duration as u32)) * epoch) + grace_period;
+    process_utils::sleep(wait_time.into());
 }
 
 // temporary struct which should be replaced by one from chain-libs or jormungandr-lib
