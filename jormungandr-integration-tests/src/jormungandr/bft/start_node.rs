@@ -1,5 +1,4 @@
 use crate::common::jormungandr::{ConfigurationBuilder, Starter};
-
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput};
 
 #[test]

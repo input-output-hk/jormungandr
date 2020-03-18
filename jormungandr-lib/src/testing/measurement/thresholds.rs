@@ -1,5 +1,6 @@
 use super::{
-    attribute::{Efficiency, Endurance, Speed},
+    attribute::{Consumption, Efficiency, Endurance, Speed},
+    marker::ResourcesUsage,
     Status,
 };
 
@@ -107,5 +108,29 @@ impl Thresholds<Efficiency> {
         let red = Efficiency::new(target / 4, target);
         let max = Efficiency::new(target, target);
         Thresholds::<Efficiency>::new(green, yellow, red, max)
+    }
+}
+
+impl Thresholds<Consumption> {
+    pub fn new_consumption(resources_usage: ResourcesUsage) -> Thresholds<Consumption> {
+        let target_cpu = resources_usage.cpu_usage();
+        let target_memory = resources_usage.memory_usage();
+        let target_virtual_memory = resources_usage.virtual_memory_usage();
+
+        let green_marker =
+            ResourcesUsage::new(target_cpu / 2, target_memory / 2, target_virtual_memory / 2);
+        let green = Consumption::new(vec![green_marker]);
+
+        let yellow_marker =
+            ResourcesUsage::new(target_cpu / 3, target_memory / 3, target_virtual_memory / 3);
+        let yellow = Consumption::new(vec![yellow_marker]);
+
+        let red_marker =
+            ResourcesUsage::new(target_cpu / 4, target_memory / 4, target_virtual_memory / 4);
+        let red = Consumption::new(vec![red_marker]);
+
+        let max_marker = ResourcesUsage::new(target_cpu, target_memory, target_virtual_memory);
+        let max = Consumption::new(vec![max_marker]);
+        Thresholds::<Consumption>::new(green, yellow, red, max)
     }
 }

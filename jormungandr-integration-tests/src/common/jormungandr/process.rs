@@ -87,6 +87,10 @@ impl JormungandrProcess {
         self.config.clone()
     }
 
+    pub fn pid(&self) -> u32 {
+        self.child.id()
+    }
+
     pub fn explorer(&self) -> Explorer {
         Explorer::new(self.config.node_config.rest.listen.to_string())
     }
