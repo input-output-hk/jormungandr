@@ -44,7 +44,7 @@ pub fn collect_reward_for_15_minutes() {
 
     let mut benchmark_consumption =
         benchmark_consumption("collect_reward_for_15_minutes_resources")
-            .target(ResourcesUsage::new(10, 10_000, 30_000))
+            .target(ResourcesUsage::new(10, 200_000, 5_000_000))
             .for_process(jormungandr.pid() as usize)
             .start();
 

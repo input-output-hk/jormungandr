@@ -19,13 +19,29 @@ impl PartialEq for ResourcesUsage {
 
 impl PartialOrd for ResourcesUsage {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.usage_indicator().partial_cmp(&other.usage_indicator())
+        let cpu_cmp = self.cpu_usage().partial_cmp(&other.cpu_usage()).unwrap();
+        let memory_cmp = self
+            .memory_usage()
+            .partial_cmp(&other.memory_usage())
+            .unwrap();
+        let virtual_memory_cmp = self
+            .virtual_memory_usage()
+            .partial_cmp(&other.virtual_memory_usage())
+            .unwrap();
+
+        Some(cpu_cmp.then(memory_cmp).then(virtual_memory_cmp))
     }
 }
 
 impl Ord for ResourcesUsage {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.usage_indicator().cmp(&other.usage_indicator())
+        let cpu_cmp = self.cpu_usage().cmp(&other.cpu_usage());
+        let memory_cmp = self.memory_usage().cmp(&other.memory_usage());
+        let virtual_memory_cmp = self
+            .virtual_memory_usage()
+            .cmp(&other.virtual_memory_usage());
+
+        cpu_cmp.then(memory_cmp).then(virtual_memory_cmp)
     }
 }
 
@@ -46,10 +62,6 @@ impl ResourcesUsage {
             memory_usage,
             virtual_memory_usage,
         }
-    }
-
-    pub fn usage_indicator(&self) -> u32 {
-        self.cpu_usage() * 10 + self.memory_usage() + self.virtual_memory_usage()
     }
 
     pub fn cpu_usage(&self) -> u32 {
