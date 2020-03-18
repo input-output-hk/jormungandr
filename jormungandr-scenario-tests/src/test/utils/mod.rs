@@ -55,10 +55,7 @@ pub fn measure_and_log_sync_time(
         let block_heights: Vec<u32> = nodes
             .iter()
             .map(|node| {
-                 let stats = node.stats()
-                    .unwrap()
-                    .stats
-                    .unwrap();
+                let stats = node.stats().unwrap().stats.unwrap();
 
                 if report_node_stats_counter >= report_node_stats_interval {
                     println!("Node: {} -> {:?}", node.alias(), stats);
