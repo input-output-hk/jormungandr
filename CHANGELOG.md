@@ -1,5 +1,34 @@
 # Change Log
 
+## [v0.8.15](https://github.com/input-output-hk/jormungandr/tree/v0.8.15) (2020-03-18)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.14...v0.8.15)
+
+**Implemented enhancements:**
+
+- Added peer connected count to stats [\#1918](https://github.com/input-output-hk/jormungandr/pull/1918)
+- p2p quarantine policy update and vicinity randomnisation [\#1916](https://github.com/input-output-hk/jormungandr/pull/1916)
+- jcli: /api/v0/stake/{epoch} - exposed [\#1910](https://github.com/input-output-hk/jormungandr/pull/1910)
+
+**Closed issues:**
+
+- One Stats to rule them all [\#1919](https://github.com/input-output-hk/jormungandr/issues/1919)
+- Document the steps for jcli pool retirement [\#1906](https://github.com/input-output-hk/jormungandr/issues/1906)
+
+**Merged pull requests:**
+
+- \[Tests\] Private network multiple trust fix [\#1926](https://github.com/input-output-hk/jormungandr/pull/1926)
+- Rest: node stats - use interface dto [\#1923](https://github.com/input-output-hk/jormungandr/pull/1923)
+- \[Tests\] System resources monitoring for node [\#1922](https://github.com/input-output-hk/jormungandr/pull/1922)
+- Changed default value of max\_client\_connections [\#1917](https://github.com/input-output-hk/jormungandr/pull/1917)
+- \[Test\] Reward history test case [\#1914](https://github.com/input-output-hk/jormungandr/pull/1914)
+- \[Docs\] jcli retirement docs [\#1909](https://github.com/input-output-hk/jormungandr/pull/1909)
+- blockchain: convert internals to futures 0.3 [\#1908](https://github.com/input-output-hk/jormungandr/pull/1908)
+- move different modules to new tokio runtime [\#1907](https://github.com/input-output-hk/jormungandr/pull/1907)
+- \[Tests\] test case for leadership log parent hash [\#1905](https://github.com/input-output-hk/jormungandr/pull/1905)
+- \[Tests\]Explorer soak test [\#1902](https://github.com/input-output-hk/jormungandr/pull/1902)
+
+
 ## [v0.8.14](https://github.com/input-output-hk/jormungandr/tree/v0.8.14) (2020-03-12)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.13...v0.8.14)
