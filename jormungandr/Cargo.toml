@@ -78,7 +78,7 @@ rand_core = "0.5"
 versionisator = "1.0.2"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.67"
+libc = "0.2.68"
 nix = "0.17.0"
 slog-syslog = "0.12.0"
 
