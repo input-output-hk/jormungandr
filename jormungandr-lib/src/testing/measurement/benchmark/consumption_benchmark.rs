@@ -38,6 +38,11 @@ impl ConsumptionBenchmarkDef {
         self
     }
 
+    pub fn target(&mut self, target: ResourcesUsage) -> &mut Self {
+        self.thresholds = Some(Thresholds::<Consumption>::new_consumption(target));
+        self
+    }
+
     pub fn no_target(&mut self) -> &mut Self {
         self.thresholds = None;
         self
