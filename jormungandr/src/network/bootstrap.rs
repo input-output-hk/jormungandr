@@ -9,13 +9,10 @@ use futures03::prelude::*;
 use slog::Logger;
 
 use std::fmt::Debug;
-use std::io;
 use std::sync::Arc;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("runtime initialization failed")]
-    RuntimeInit { source: io::Error },
     #[error("failed to connect to bootstrap peer")]
     Connect { source: grpc::ConnectError },
     #[error("peers not available {source}")]
@@ -161,74 +158,67 @@ impl BootstrapInfo {
 }
 
 async fn bootstrap_from_stream<S>(
-    blockchain: Blockchain,
+    mut blockchain: Blockchain,
     branch: Tip,
-    stream: S,
+    mut stream: S,
     logger: Logger,
 ) -> Result<(), Error>
 where
-    S: Stream<Item = Result<net_data::Block, NetworkError>>,
+    S: Stream<Item = Result<net_data::Block, NetworkError>> + Unpin,
 {
+    const PROCESS_LOGGING_DISTANCE: u64 = 2500;
     let block0 = blockchain.block0().clone();
-    let logger2 = logger.clone();
-    let blockchain2 = blockchain.clone();
-    let branch2 = branch.clone();
 
-    stream
-        .map_err(|e| Error::PullStreamFailed { source: e })
-        .and_then(|block| async {
-            Block::deserialize(block.as_bytes())
-                .map_err(|e| Error::BlockDecodingFailed { source: e })
-        })
-        .try_skip_while(|&block| async move { Ok(block.header.hash() == block0) })
-        .map(|res| Ok(res))
-        .try_fold(
-            (BootstrapInfo::new(), None),
-            move |(mut bi, parent_tip): (BootstrapInfo, Option<Arc<Ref>>), block_or_err| async {
-                match block_or_err {
-                    Ok(block) => {
-                        const PROCESS_LOGGING_DISTANCE: u64 = 2500;
-                        bi.append_block(&block);
-                        if bi.block_received % PROCESS_LOGGING_DISTANCE == 0 {
-                            bi.report(&logger)
-                        }
+    let mut bootstrap_info = BootstrapInfo::new();
+    let mut maybe_parent_tip = None;
 
-                        handle_block(blockchain.clone(), block, logger.clone())
-                            .await
-                            .map(move |aref| (bi, Some(aref)))
-                    }
-                    Err(e) => {
-                        if let Some(parent_tip) = parent_tip {
-                            let _ = blockchain::process_new_ref_owned(
-                                logger.clone(),
-                                blockchain.clone(),
-                                branch.clone(),
-                                parent_tip.clone(),
-                            )
-                            .await;
-                        }
-                        Err(e)
-                    }
+    while let Some(block_result) = stream.next().await {
+        match block_result {
+            Ok(block) => {
+                let block = Block::deserialize(block.as_bytes())
+                    .map_err(|e| Error::BlockDecodingFailed { source: e })?;
+
+                if block.header.hash() == block0 {
+                    continue;
                 }
-            },
-        )
-        .and_then(move |(_, maybe_new_tip)| async {
-            if let Some(new_tip) = maybe_new_tip {
-                blockchain::process_new_ref_owned(logger2, blockchain2, branch2, new_tip.clone())
-                    .await
-                    .map_err(|e| Error::ChainSelectionFailed { source: e })
-            } else {
-                info!(logger2, "no new blocks in bootstrap stream");
-                Ok(())
+
+                bootstrap_info.append_block(&block);
+
+                if bootstrap_info.block_received % PROCESS_LOGGING_DISTANCE == 0 {
+                    bootstrap_info.report(&logger);
+                }
+
+                maybe_parent_tip = Some(handle_block(&blockchain, block, &logger).await?);
             }
-        })
-        .await
+            Err(err) => {
+                if let Some(parent_tip) = maybe_parent_tip {
+                    let _ = blockchain::process_new_ref(
+                        &logger,
+                        &mut blockchain,
+                        branch.clone(),
+                        parent_tip.clone(),
+                    )
+                    .await;
+                }
+                return Err(Error::PullStreamFailed { source: err });
+            }
+        }
+    }
+
+    if let Some(parent_tip) = maybe_parent_tip {
+        blockchain::process_new_ref(&logger, &mut blockchain, branch, parent_tip)
+            .await
+            .map_err(|e| Error::ChainSelectionFailed { source: e })
+    } else {
+        info!(logger, "no new blocks in bootstrap stream");
+        Ok(())
+    }
 }
 
 async fn handle_block(
-    blockchain: Blockchain,
+    blockchain: &Blockchain,
     block: Block,
-    logger: Logger,
+    logger: &Logger,
 ) -> Result<Arc<Ref>, Error> {
     let header = block.header();
     let pre_checked = blockchain
