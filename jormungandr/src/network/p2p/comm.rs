@@ -7,12 +7,12 @@ use crate::network::{
     client::ConnectHandle,
     p2p::{Gossip as NodeData, Id, Node as NodeRef},
 };
-use futures::prelude::*;
-use futures::stream;
-use futures::sync::mpsc;
-use network_core::error as core_error;
-use network_core::gossip::{Gossip, Node};
-use network_core::subscription::{BlockEvent, ChainPullRequest};
+use chain_network::data::block::BlockEvent;
+use chain_network::data::gossip::{Gossip, Node};
+use chain_network::error as net_error;
+use futures03::channel::mpsc;
+use futures03::prelude::*;
+use futures03::stream;
 use slog::Logger;
 
 use std::fmt;
