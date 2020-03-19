@@ -685,7 +685,7 @@ pub async fn bootstrap(
         .await;
 
         match res {
-            Err(bootstrap::Error::Connect { source: e }) => {
+            Err(bootstrap::Error::Connect(e)) => {
                 warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
             }
             Err(e) => {
