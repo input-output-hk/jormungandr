@@ -143,15 +143,7 @@ impl ExplorerDB {
     /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
-    pub fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
-        use tokio_compat::runtime;
-
-        let mut rt = runtime::Builder::new()
-            .name_prefix("explorer-bootstrap-worker-")
-            .core_threads(1)
-            .build()
-            .unwrap();
-
+    pub async fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -192,8 +184,10 @@ impl ExplorerDB {
 
         let multiverse = Multiverse::<State>::new();
         let block0_id = block0.id();
-        let initial_state_ref = rt
-            .block_on(multiverse.insert(block0.chain_length(), block0_id, initial_state))
+        let initial_state_ref = multiverse
+            .insert(block0.chain_length(), block0_id, initial_state)
+            .compat()
+            .await
             .expect("The multiverse to be empty");
 
         let bootstraped_db = ExplorerDB {
@@ -206,26 +200,24 @@ impl ExplorerDB {
             blockchain: blockchain.clone(),
         };
 
-        rt.block_on_std(async move {
-            let maybe_head = blockchain
-                .storage()
-                .get_tag(MAIN_BRANCH_TAG.to_owned())
-                .await?;
-            let stream = match maybe_head {
-                Some(head) => blockchain.storage().stream_from_to(block0_id, head).await?,
-                None => {
-                    return Err(Error::from(ErrorKind::BootstrapError(
-                        "Couldn't read the HEAD tag from storage".to_owned(),
-                    )))
-                }
-            };
-            stream
-                .map_err(|err| Error::from(err))
-                .try_fold(bootstraped_db, |mut db, block| {
-                    db.apply_block(block).and_then(|_gc_root| Ok(db)).compat()
-                })
-                .await
-        })
+        let maybe_head = blockchain
+            .storage()
+            .get_tag(MAIN_BRANCH_TAG.to_owned())
+            .await?;
+        let stream = match maybe_head {
+            Some(head) => blockchain.storage().stream_from_to(block0_id, head).await?,
+            None => {
+                return Err(Error::from(ErrorKind::BootstrapError(
+                    "Couldn't read the HEAD tag from storage".to_owned(),
+                )))
+            }
+        };
+        stream
+            .map_err(|err| Error::from(err))
+            .try_fold(bootstraped_db, |mut db, block| {
+                db.apply_block(block).and_then(|_gc_root| Ok(db)).compat()
+            })
+            .await
     }
 
     /// Try to add a new block to the indexes, this can fail if the parent of the block is

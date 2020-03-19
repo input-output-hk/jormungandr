@@ -35,6 +35,7 @@ use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::time::Duration;
+use tokio_compat::runtime::Runtime;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -60,7 +61,8 @@ use stats_counter::StatsCounter;
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
 
-    let bootstrapped_node = bootstrap(initialized_node)?;
+    let mut rt = Runtime::new().expect("failed to create the bootstrap runtime");
+    let bootstrapped_node = rt.block_on_std(bootstrap(initialized_node))?;
 
     start_services(bootstrapped_node)
 }
@@ -313,7 +315,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 /// * network / peer discoveries (?)
 ///
 ///
-fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
+async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
     let InitializedNode {
         settings,
         block0,
@@ -346,7 +348,8 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         cache_capacity,
         settings.rewards_report_all,
         &bootstrap_logger,
-    )?;
+    )
+    .await?;
 
     block_on(async {
         if let Some(rest_context) = &rest_context {
@@ -357,6 +360,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     });
 
     let mut bootstrap_attempt: usize = 0;
+
     loop {
         bootstrap_attempt += 1;
 
@@ -378,7 +382,9 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
             blockchain.clone(),
             blockchain_tip.clone(),
             &bootstrap_logger,
-        )? {
+        )
+        .await?
+        {
             break; // bootstrap succeeded, exit loop
         }
 
@@ -393,10 +399,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     }
 
     let explorer_db = if settings.explorer {
-        Some(explorer::ExplorerDB::bootstrap(
-            block0_explorer,
-            &blockchain,
-        )?)
+        Some(explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain).await?)
     } else {
         None
     };
