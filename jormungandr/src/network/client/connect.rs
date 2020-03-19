@@ -3,11 +3,11 @@ use super::super::{
         self,
         client::{BlockSubscription, FragmentSubscription, GossipSubscription},
     },
-    p2p::{comm::PeerComms, Gossip as NodeData, Id},
+    p2p::{comm::PeerComms, Id},
     Channels, ConnectionState,
 };
 use super::{Client, ClientBuilder, GlobalStateR, InboundSubscriptions};
-use crate::blockcfg::{Block, Fragment, HeaderHash};
+use crate::blockcfg::HeaderHash;
 use chain_network::data::block::BlockId;
 use chain_network::error::{self as net_error, HandshakeError};
 
@@ -16,7 +16,6 @@ use futures03::future::BoxFuture;
 use futures03::prelude::*;
 use thiserror::Error;
 
-use std::error;
 use std::mem;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -132,10 +131,6 @@ impl SubscriptionRequests {
     }
 }
 
-fn poll_client_ready(client: &mut grpc::Client) -> Poll<Result<(), ConnectError>> {
-    client.poll_ready().map_err(ConnectError::ClientNotReady)
-}
-
 impl Future for ConnectFuture {
     type Output = Result<Client, ConnectError>;
 
@@ -154,17 +149,12 @@ impl Future for ConnectFuture {
 
             let new_state = match self.state {
                 State::Connecting(ref mut future) => {
-                    let client = try_ready!(future.poll().map_err(ConnectError::Connect));
+                    let client = try_ready!(future.poll(cx).map_err(ConnectError::Connect));
                     self.client = Some(client);
-                    State::BeforeHandshake
-                }
-                State::BeforeHandshake => {
-                    let client = self.client.as_mut().expect("client must be connected");
-                    try_ready!(poll_client_ready(client));
-                    State::Handshake(client.handshake())
+                    State::Handshake(Box::pin(self.client.handshake()))
                 }
                 State::Handshake(ref mut future) => {
-                    let block0 = try_ready!(future.poll().map_err(ConnectError::Handshake));
+                    let block0 = try_ready!(future.poll(cx).map_err(ConnectError::Handshake));
                     self.match_block0(block0)?;
                     State::Subscribing(SubscriptionStaging::new())
                 }
@@ -240,7 +230,7 @@ impl SubscriptionStaging {
         }
     }
 
-    fn try_complete(&mut self) -> Option<InboundSubscriptions<T>> {
+    fn try_complete(&mut self) -> Option<InboundSubscriptions> {
         match (&self.block_events, &self.fragments, &self.gossip) {
             (&Some(_), &Some(_), &Some(_)) => Some(InboundSubscriptions {
                 node_id: self.node_id.take().expect("remote node ID should be known"),
@@ -285,23 +275,19 @@ impl SubscriptionStaging {
             return Ok(Some(inbound).into());
         }
 
-        // Initiate subscription requests, but wait if the client is not ready
-        // before any one of the requests.
+        // Initiate subscription requests.
         if !self.comms.block_announcements_subscribed() {
-            try_ready!(poll_client_ready(client));
-            ready = Async::Ready(());
+            ready = Poll::Ready(());
             let outbound = self.comms.subscribe_to_block_announcements();
             self.req.blocks = Some(client.block_subscription(outbound));
         }
         if !self.comms.fragments_subscribed() {
-            try_ready!(poll_client_ready(client));
-            ready = Async::Ready(());
+            ready = Poll::Ready(());
             let outbound = self.comms.subscribe_to_fragments();
             self.req.fragments = Some(client.fragment_subscription(outbound));
         }
         if !self.comms.gossip_subscribed() {
-            try_ready!(poll_client_ready(client));
-            ready = Async::Ready(());
+            ready = Poll::Ready(());
             let outbound = self.comms.subscribe_to_gossip();
             self.req.gossip = Some(client.gossip_subscription(outbound));
         }
@@ -313,38 +299,32 @@ impl SubscriptionStaging {
     }
 }
 
-fn drive_subscribe_request<R, S, E>(
+fn drive_subscribe_request<R, S>(
+    cx: &mut Context<'_>,
     req: &mut Option<R>,
     sub: &mut Option<S>,
     discovered_node_id: &mut Option<Id>,
-    ready: &mut Async<()>,
-) -> Result<(), ConnectError<E>>
+    ready: &mut Poll<()>,
+) -> Result<(), ConnectError>
 where
-    R: Future<Item = (S, Id), Error = net_error::Error>,
-    E: error::Error + 'static,
+    R: Future<Output = Result<(S, Id), net_error::Error>>,
 {
     if let Some(future) = req {
-        let polled = future.poll().map_err(ConnectError::Subscription)?;
+        let polled = future.poll(cx).map_err(ConnectError::Subscription)?;
         match polled {
-            Async::NotReady => {}
-            Async::Ready((stream, node_id)) => {
+            Poll::Pending => {}
+            Poll::Ready((stream, node_id)) => {
                 *req = None;
                 handle_subscription_node_id(discovered_node_id, node_id)?;
                 *sub = Some(stream);
-                *ready = Async::Ready(());
+                *ready = Poll::Ready(());
             }
         }
     }
     Ok(().into())
 }
 
-fn handle_subscription_node_id<E>(
-    staged: &mut Option<Id>,
-    node_id: Id,
-) -> Result<(), ConnectError<E>>
-where
-    E: error::Error + 'static,
-{
+fn handle_subscription_node_id(staged: &mut Option<Id>, node_id: Id) -> Result<(), ConnectError> {
     match *staged {
         None => {
             *staged = Some(node_id);
