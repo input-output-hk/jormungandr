@@ -192,7 +192,7 @@ pub fn prepare_block_0(
     }
 }
 
-pub fn load_blockchain(
+pub async fn load_blockchain(
     block0: Block,
     storage: Storage,
     cache_capacity: usize,
@@ -206,24 +206,21 @@ pub fn load_blockchain(
         rewards_report_all,
     );
 
-    let mut rt = tokio02::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        let main_branch = match blockchain.load_from_block0(block0.clone()).await {
-            Err(error) => match error.kind() {
-                BlockchainError::Block0AlreadyInStorage => {
-                    blockchain.load_from_storage(block0, logger).await
-                }
-                _ => Err(error),
-            },
-            Ok(branch) => Ok(branch),
-        }?;
-        let tip = Tip::new(main_branch);
-        let tip_ref = tip.get_ref().await;
-        info!(
-            logger,
-            "Loaded from storage tip is : {}",
-            tip_ref.header().description()
-        );
-        Ok((blockchain, tip))
-    })
+    let main_branch = match blockchain.load_from_block0(block0.clone()).await {
+        Err(error) => match error.kind() {
+            BlockchainError::Block0AlreadyInStorage => {
+                blockchain.load_from_storage(block0, logger).await
+            }
+            _ => Err(error),
+        },
+        Ok(branch) => Ok(branch),
+    }?;
+    let tip = Tip::new(main_branch);
+    let tip_ref = tip.get_ref().await;
+    info!(
+        logger,
+        "Loaded from storage tip is : {}",
+        tip_ref.header().description()
+    );
+    Ok((blockchain, tip))
 }
