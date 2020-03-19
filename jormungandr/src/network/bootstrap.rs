@@ -16,17 +16,17 @@ use std::sync::Arc;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("failed to connect to bootstrap peer")]
-    Connect { source: grpc::ConnectError },
+    Connect(#[from] grpc::ConnectError),
     #[error("connection broken")]
-    ClientNotReady { source: NetworkError },
-    #[error("peers not available {source}")]
-    PeersNotAvailable { source: NetworkError },
+    ClientNotReady(#[source] NetworkError),
+    #[error("peers not available")]
+    PeersNotAvailable(#[source] NetworkError),
     #[error("bootstrap pull request failed")]
-    PullRequestFailed { source: NetworkError },
+    PullRequestFailed(#[source] NetworkError),
     #[error("bootstrap pull stream failed")]
-    PullStreamFailed { source: NetworkError },
+    PullStreamFailed(#[source] NetworkError),
     #[error("block header check failed")]
-    HeaderCheckFailed { source: BlockchainError },
+    HeaderCheckFailed(#[source] BlockchainError),
     #[error(
         "received block {0} is already present, but does not descend from any of the checkpoints"
     )]
@@ -34,11 +34,11 @@ pub enum Error {
     #[error("received block {0} is not connected to the block chain")]
     BlockMissingParent(HeaderHash),
     #[error("failed to fetch checkpoints from storage")]
-    GetCheckpointsFailed { source: BlockchainError },
+    GetCheckpointsFailed(#[source] BlockchainError),
     #[error("failed to apply block to the blockchain")]
-    ApplyBlockFailed { source: BlockchainError },
+    ApplyBlockFailed(#[source] BlockchainError),
     #[error("failed to select the new tip")]
-    ChainSelectionFailed { source: BlockchainError },
+    ChainSelectionFailed(#[source] BlockchainError),
 }
 
 pub async fn peers_from_trusted_peer(
@@ -53,18 +53,17 @@ pub async fn peers_from_trusted_peer(
 
     let mut client = grpc::connect(&peer, None, executor)
         .compat()
-        .await
-        .map_err(|e| Error::Connect { source: e })?
+        .await?
         .ready()
         .compat()
         .await
-        .map_err(|e| Error::ClientNotReady { source: e })?;
+        .map_err(|e| Error::ClientNotReady(e))?;
 
     let peers = client
         .peers()
         .compat()
         .await
-        .map_err(|e| Error::PeersNotAvailable { source: e })?;
+        .map_err(|e| Error::PeersNotAvailable(e))?;
 
     info!(
         logger,
@@ -91,16 +90,13 @@ pub async fn bootstrap_from_peer(
 
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let client = grpc::connect(&peer, None, executor)
-        .compat()
-        .await
-        .map_err(|e| Error::Connect { source: e })?;
+    let client = grpc::connect(&peer, None, executor).compat().await?;
 
     let (mut client, checkpoints) = try_join(
         client
             .ready()
             .compat()
-            .map_err(|e| Error::ClientNotReady { source: e }),
+            .map_err(|e| Error::ClientNotReady(e)),
         blockchain.get_checkpoints(tip.branch()).map(|res| Ok(res)),
     )
     .await?;
@@ -113,7 +109,7 @@ pub async fn bootstrap_from_peer(
         .pull_blocks_to_tip(checkpoints.as_slice())
         .compat()
         .await
-        .map_err(|e| Error::PullRequestFailed { source: e })?;
+        .map_err(|e| Error::PullRequestFailed(e))?;
     bootstrap_from_stream(blockchain, tip, stream.compat(), logger).await
 }
 
@@ -222,7 +218,7 @@ where
                     )
                     .await;
                 }
-                return Err(Error::PullStreamFailed { source: err });
+                return Err(Error::PullStreamFailed(err));
             }
         }
     }
@@ -230,7 +226,7 @@ where
     if let Some(parent_tip) = maybe_parent_tip {
         blockchain::process_new_ref(&logger, &mut blockchain, branch, parent_tip)
             .await
-            .map_err(|e| Error::ChainSelectionFailed { source: e })
+            .map_err(|e| Error::ChainSelectionFailed(e))
     } else {
         info!(logger, "no new blocks in bootstrap stream");
         Ok(())
@@ -246,7 +242,7 @@ async fn handle_block(
     let pre_checked = blockchain
         .pre_check_header(header, true)
         .await
-        .map_err(|e| Error::HeaderCheckFailed { source: e })?;
+        .map_err(|e| Error::HeaderCheckFailed(e))?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent {
             cached_reference: Some(block_ref),
@@ -263,7 +259,7 @@ async fn handle_block(
             let post_checked = blockchain
                 .post_check_header(header, parent_ref, blockchain::CheckHeaderProof::Enabled)
                 .await
-                .map_err(|e| Error::HeaderCheckFailed { source: e })?;
+                .map_err(|e| Error::HeaderCheckFailed(e))?;
 
             debug!(
                 logger,
@@ -274,7 +270,7 @@ async fn handle_block(
             let applied = blockchain
                 .apply_and_store_block(post_checked, block)
                 .await
-                .map_err(|e| Error::ApplyBlockFailed { source: e })?;
+                .map_err(|e| Error::ApplyBlockFailed(e))?;
             Ok(applied.cached_ref())
         }
     }
