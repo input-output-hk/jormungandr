@@ -1,20 +1,25 @@
 use super::super::{
-    grpc,
+    grpc::{
+        self,
+        client::{BlockSubscription, FragmentSubscription, GossipSubscription},
+    },
     p2p::{comm::PeerComms, Gossip as NodeData, Id},
     Channels, ConnectionState,
 };
 use super::{Client, ClientBuilder, GlobalStateR, InboundSubscriptions};
 use crate::blockcfg::{Block, Fragment, HeaderHash};
-use network_core::client::{self as core_client};
-use network_core::client::{BlockService, FragmentService, GossipService, P2pService};
-use network_core::error as core_error;
+use chain_network::data::block::BlockId;
+use chain_network::error::{self as net_error, HandshakeError};
 
-use futures::prelude::*;
-use futures::sync::oneshot;
+use futures03::channel::oneshot;
+use futures03::future::BoxFuture;
+use futures03::prelude::*;
 use thiserror::Error;
 
 use std::error;
 use std::mem;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 /// Initiates a client connection, returning a connection handle and
 /// the connection future that must be polled to complete the connection.
@@ -23,10 +28,7 @@ use std::mem;
 /// gRPC protocol, all other code is generic in terms of network-core traits.
 /// This is intentional, to facilitate extension to different protocols
 /// in the future.
-pub fn connect(
-    state: ConnectionState,
-    channels: Channels,
-) -> (ConnectHandle, ConnectFuture<grpc::ConnectFuture>) {
+pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
     let node_id = state.global.topology.node_id();
@@ -72,31 +74,24 @@ impl ConnectHandle {
 
 /// The future that drives P2P client to establish a connection.
 #[must_use = "futures do nothing unless polled"]
-pub struct ConnectFuture<F>
-where
-    F: Future,
-    F::Item: BlockService + FragmentService + GossipService,
-{
+pub struct ConnectFuture {
     sender: Option<oneshot::Sender<PeerComms>>,
     builder: Option<ClientBuilder>,
     global: GlobalStateR,
-    client: Option<F::Item>,
-    state: State<F>,
+    client: Option<grpc::Client>,
+    state: State,
 }
 
 #[derive(Error, Debug)]
-pub enum ConnectError<E>
-where
-    E: error::Error + 'static,
-{
+pub enum ConnectError {
     #[error("connection has been canceled")]
     Canceled,
     #[error("connection failed")]
-    Connect(#[source] E),
+    Connect(#[source] tonic::transport::Error),
     #[error("client connection unable to send requests")]
-    ClientNotReady(#[source] core_error::Error),
+    ClientNotReady(#[source] net_error::Error),
     #[error("protocol handshake failed: {0}")]
-    Handshake(#[source] core_client::HandshakeError),
+    Handshake(#[source] HandshakeError),
     #[error(
         "genesis block hash {peer_responded} reported by the peer is not the expected {expected}"
     )]
@@ -105,39 +100,29 @@ where
         peer_responded: HeaderHash,
     },
     #[error("subscription request failed")]
-    Subscription(#[source] core_error::Error),
+    Subscription(#[source] net_error::Error),
     #[error(
         "node identifier {peer_responded} reported by the peer is not the expected {expected}"
     )]
     IdMismatch { expected: Id, peer_responded: Id },
 }
 
-enum State<F>
-where
-    F: Future,
-    F::Item: BlockService + FragmentService + GossipService,
-{
+enum State {
     // Establishing the protocol connection
-    Connecting(F),
+    Connecting(BoxFuture<'static, grpc::Client>),
     BeforeHandshake,
-    Handshake(<F::Item as BlockService>::HandshakeFuture),
-    Subscribing(SubscriptionStaging<F::Item>),
+    Handshake(BoxFuture<'static, Result<BlockId, HandshakeError>>),
+    Subscribing(SubscriptionStaging),
     Done,
 }
 
-struct SubscriptionRequests<T>
-where
-    T: BlockService + FragmentService + GossipService,
-{
-    pub blocks: Option<<T as BlockService>::BlockSubscriptionFuture>,
-    pub fragments: Option<<T as FragmentService>::FragmentSubscriptionFuture>,
-    pub gossip: Option<<T as GossipService>::GossipSubscriptionFuture>,
+struct SubscriptionRequests {
+    pub blocks: Option<BoxFuture<'static, BlockSubscription>>,
+    pub fragments: Option<BoxFuture<'static, FragmentSubscription>>,
+    pub gossip: Option<BoxFuture<'static, GossipSubscription>>,
 }
 
-impl<T> SubscriptionRequests<T>
-where
-    T: BlockService + FragmentService + GossipService,
-{
+impl SubscriptionRequests {
     fn new() -> Self {
         SubscriptionRequests {
             blocks: None,
@@ -147,35 +132,21 @@ where
     }
 }
 
-fn poll_client_ready<T, E>(client: &mut T) -> Poll<(), ConnectError<E>>
-where
-    T: core_client::Client,
-    E: error::Error + 'static,
-{
+fn poll_client_ready(client: &mut grpc::Client) -> Poll<Result<(), ConnectError>> {
     client.poll_ready().map_err(ConnectError::ClientNotReady)
 }
 
-impl<F> Future for ConnectFuture<F>
-where
-    F: Future,
-    F::Error: error::Error + 'static,
-    F::Item: core_client::Client,
-    F::Item: P2pService<NodeId = Id>,
-    F::Item: BlockService<Block = Block>,
-    F::Item: FragmentService<Fragment = Fragment>,
-    F::Item: GossipService<Node = NodeData>,
-{
-    type Item = Client<F::Item>;
-    type Error = ConnectError<F::Error>;
+impl Future for ConnectFuture {
+    type Output = Result<Client, ConnectError>;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {
             // First, check if the connection is cancelled
-            if let Async::Ready(()) = self
+            if let Poll::Ready(()) = self
                 .sender
                 .as_mut()
                 .expect("polled a future after it has been resolved")
-                .poll_cancel()
+                .poll_canceled()
                 .unwrap()
             {
                 return Err(ConnectError::Canceled);
@@ -234,13 +205,8 @@ where
     }
 }
 
-impl<F> ConnectFuture<F>
-where
-    F: Future,
-    F::Error: error::Error + 'static,
-    F::Item: BlockService + FragmentService + GossipService,
-{
-    fn match_block0(&self, peer_responded: HeaderHash) -> Result<(), ConnectError<F::Error>> {
+impl ConnectFuture {
+    fn match_block0(&self, peer_responded: HeaderHash) -> Result<(), ConnectError> {
         let expected = self.global.block0_hash;
         if expected == peer_responded {
             Ok(())
@@ -253,22 +219,16 @@ where
     }
 }
 
-struct SubscriptionStaging<T>
-where
-    T: BlockService + FragmentService + GossipService,
-{
+struct SubscriptionStaging {
     pub node_id: Option<Id>,
-    pub block_events: Option<<T as BlockService>::BlockSubscription>,
-    pub fragments: Option<<T as FragmentService>::FragmentSubscription>,
-    pub gossip: Option<<T as GossipService>::GossipSubscription>,
-    pub req: SubscriptionRequests<T>,
+    pub block_events: Option<BlockSubscription>,
+    pub fragments: Option<FragmentSubscription>,
+    pub gossip: Option<GossipSubscription>,
+    pub req: SubscriptionRequests,
     pub comms: PeerComms,
 }
 
-impl<T> SubscriptionStaging<T>
-where
-    T: BlockService + FragmentService + GossipService,
-{
+impl SubscriptionStaging {
     fn new() -> Self {
         SubscriptionStaging {
             node_id: None,
@@ -293,22 +253,12 @@ where
     }
 }
 
-impl<T> SubscriptionStaging<T>
-where
-    T: core_client::Client,
-    T: P2pService<NodeId = Id>,
-    T: BlockService<Block = Block>,
-    T: FragmentService<Fragment = Fragment>,
-    T: GossipService<Node = NodeData>,
-{
-    fn poll_complete<E>(
+impl SubscriptionStaging {
+    fn poll_complete(
         &mut self,
-        client: &mut T,
-    ) -> Poll<Option<InboundSubscriptions<T>>, ConnectError<E>>
-    where
-        E: error::Error + 'static,
-    {
-        let mut ready = Async::NotReady;
+        client: &mut grpc::Client,
+    ) -> Poll<Result<Option<InboundSubscriptions>, ConnectError>> {
+        let mut ready = Poll::Pending;
 
         // Poll and resolve the request futures that are in progress
         drive_subscribe_request(
@@ -370,7 +320,7 @@ fn drive_subscribe_request<R, S, E>(
     ready: &mut Async<()>,
 ) -> Result<(), ConnectError<E>>
 where
-    R: Future<Item = (S, Id), Error = core_error::Error>,
+    R: Future<Item = (S, Id), Error = net_error::Error>,
     E: error::Error + 'static,
 {
     if let Some(future) = req {
