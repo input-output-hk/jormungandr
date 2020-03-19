@@ -172,7 +172,7 @@ where
     let mut maybe_parent_tip = None;
 
     while let Some(block_result) = stream.next().await {
-        match block_result {
+        let result = match block_result {
             Ok(block) => {
                 let block = Block::deserialize(block.as_bytes())?;
 
@@ -186,19 +186,29 @@ where
                     bootstrap_info.report(&logger);
                 }
 
-                maybe_parent_tip = Some(handle_block(&blockchain, block, &logger).await?);
+                handle_block(&blockchain, block, &logger).await
+            }
+            Err(err) => Err(Error::PullStreamFailed(err)),
+        };
+
+        match result {
+            Ok(parent_tip) => {
+                maybe_parent_tip = Some(parent_tip);
             }
             Err(err) => {
                 if let Some(parent_tip) = maybe_parent_tip {
-                    let _ = blockchain::process_new_ref(
+                    if let Err(err) = blockchain::process_new_ref(
                         &logger,
                         &mut blockchain,
                         branch.clone(),
                         parent_tip.clone(),
                     )
-                    .await;
+                    .await
+                    {
+                        warn!(logger, "couldn't gracefully exit from failed netboot"; "error" => ?err);
+                    }
                 }
-                return Err(Error::PullStreamFailed(err));
+                return Err(err);
             }
         }
     }
