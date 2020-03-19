@@ -345,15 +345,6 @@ pub async fn process_new_ref(
     Ok(())
 }
 
-pub async fn process_new_ref_owned(
-    logger: Logger,
-    mut blockchain: Blockchain,
-    tip: Tip,
-    candidate: Arc<Ref>,
-) -> Result<(), Error> {
-    process_new_ref(&logger, &mut blockchain, tip, candidate).await
-}
-
 async fn process_and_propagate_new_ref(
     logger: &Logger,
     blockchain: &mut Blockchain,

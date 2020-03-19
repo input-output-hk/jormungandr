@@ -78,7 +78,6 @@ use std::fmt;
 use std::io;
 use std::iter;
 use std::net::SocketAddr;
-use std::sync::atomic::{self, AtomicUsize};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -610,7 +609,7 @@ impl BootstrapPeers {
 }
 
 /// Try to get sufficient peers to do a netboot from
-fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
+async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
     let mut peers = BootstrapPeers::new();
 
     // extract the trusted peers from the config
@@ -626,9 +625,10 @@ fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
         let mut trusted_peers = trusted_peers;
         trusted_peers.shuffle(&mut rng);
         for tpeer in trusted_peers {
-            //let peer = Peer::new(peer, Protocol::Grpc);
+            // let peer = Peer::new(peer, Protocol::Grpc);
             let tp_logger = logger.new(o!("peer_addr" => tpeer.address().to_string()));
             let received_peers = bootstrap::peers_from_trusted_peer(&tpeer, tp_logger.clone())
+                .await
                 .unwrap_or_else(|e| {
                     warn!(
                         tp_logger,
@@ -648,7 +648,7 @@ fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
     peers
 }
 
-pub fn bootstrap(
+pub async fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
     branch: Tip,
@@ -672,7 +672,7 @@ pub fn bootstrap(
 
     let mut bootstrapped = false;
 
-    let netboot_peers = netboot_peers(config, logger);
+    let netboot_peers = netboot_peers(config, logger).await;
 
     for peer in netboot_peers.randomly() {
         let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
@@ -681,7 +681,9 @@ pub fn bootstrap(
             blockchain.clone(),
             branch.clone(),
             logger.clone(),
-        );
+        )
+        .await;
+
         match res {
             Err(bootstrap::Error::Connect { source: e }) => {
                 warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
