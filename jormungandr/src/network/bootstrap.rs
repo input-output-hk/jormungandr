@@ -1,26 +1,20 @@
-use super::{grpc, BlockConfig};
+use super::grpc;
 use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::Peer;
 use chain_core::property::HasHeader;
-use futures03::compat::*;
+use futures03::{compat::*, prelude::*};
 use network_core::client::{BlockService, Client as _, GossipService};
 use network_core::error::Error as NetworkError;
-use network_grpc::client::Connection;
 use slog::Logger;
 use thiserror::Error;
-use tokio::prelude::future::Either;
-use tokio::prelude::*;
-use tokio_compat::runtime::Runtime;
+use tokio_compat::runtime::TaskExecutor;
 
 use std::fmt::Debug;
-use std::io;
 use std::sync::Arc;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("runtime initialization failed")]
-    RuntimeInit { source: io::Error },
     #[error("failed to connect to bootstrap peer")]
     Connect { source: grpc::ConnectError },
     #[error("connection broken")]
@@ -47,87 +41,80 @@ pub enum Error {
     ChainSelectionFailed { source: BlockchainError },
 }
 
-pub fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>, Error> {
+pub async fn peers_from_trusted_peer(
+    peer: &Peer,
+    logger: Logger,
+    executor: TaskExecutor,
+) -> Result<Vec<Peer>, Error> {
     info!(
         logger,
         "getting peers from bootstrap peer {}", peer.connection
     );
 
-    let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
-    let bootstrap = grpc::connect(&peer, None, runtime.executor())
-        .map_err(|e| Error::Connect { source: e })
-        .and_then(|client: Connection<BlockConfig>| {
-            client
-                .ready()
-                .map_err(|e| Error::ClientNotReady { source: e })
-        })
-        .and_then(move |mut client| {
-            client
-                .peers()
-                .map_err(|e| Error::PeersNotAvailable { source: e })
-                .and_then(move |peers| {
-                    info!(
-                        logger,
-                        "peer {} : peers known : {}",
-                        peer.connection,
-                        peers.peers.len()
-                    );
-                    let peers = peers
-                        .peers
-                        .iter()
-                        .map(|peer| Peer::new(peer.addr))
-                        .collect();
-                    future::ok(peers)
-                })
-        });
+    let mut client = grpc::connect(&peer, None, executor)
+        .compat()
+        .await
+        .map_err(|e| Error::Connect { source: e })?
+        .ready()
+        .compat()
+        .await
+        .map_err(|e| Error::ClientNotReady { source: e })?;
 
-    runtime.block_on(bootstrap)
+    let peers = client
+        .peers()
+        .compat()
+        .await
+        .map_err(|e| Error::PeersNotAvailable { source: e })?;
+
+    info!(
+        logger,
+        "peer {} : peers known : {}",
+        peer.connection,
+        peers.peers.len()
+    );
+
+    Ok(peers
+        .peers
+        .iter()
+        .map(|peer| Peer::new(peer.addr))
+        .collect())
 }
 
-pub fn bootstrap_from_peer(
+pub async fn bootstrap_from_peer(
     peer: &Peer,
     blockchain: Blockchain,
     tip: Tip,
     logger: Logger,
+    executor: TaskExecutor,
 ) -> Result<(), Error> {
     use futures03::future::try_join;
 
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
-    let grpc_executor = runtime.executor();
+    let client = grpc::connect(&peer, None, executor)
+        .compat()
+        .await
+        .map_err(|e| Error::Connect { source: e })?;
 
-    runtime.block_on_std(async move {
-        let client = grpc::connect(&peer, None, grpc_executor)
+    let (mut client, checkpoints) = try_join(
+        client
+            .ready()
             .compat()
-            .await
-            .map_err(|e| Error::Connect { source: e })?;
+            .map_err(|e| Error::ClientNotReady { source: e }),
+        blockchain.get_checkpoints(tip.branch()).map(|res| Ok(res)),
+    )
+    .await?;
 
-        let (mut client, checkpoints) = try_join(
-            async {
-                client
-                    .ready()
-                    .compat()
-                    .await
-                    .map_err(|e| Error::ClientNotReady { source: e })
-            },
-            async { Ok(blockchain.get_checkpoints(tip.branch()).await) },
-        )
-        .await?;
-
-        info!(
-            logger,
-            "pulling blocks starting from checkpoints: {:?}", checkpoints
-        );
-        let stream = client
-            .pull_blocks_to_tip(checkpoints.as_slice())
-            .compat()
-            .await
-            .map_err(|e| Error::PullRequestFailed { source: e })?;
-        bootstrap_from_stream(blockchain, tip, stream, logger)
-            .compat()
-            .await
-    })
+    info!(
+        logger,
+        "pulling blocks starting from checkpoints: {:?}", checkpoints
+    );
+    let stream = client
+        .pull_blocks_to_tip(checkpoints.as_slice())
+        .compat()
+        .await
+        .map_err(|e| Error::PullRequestFailed { source: e })?;
+    bootstrap_from_stream(blockchain, tip, stream.compat(), logger).await
 }
 
 struct BootstrapInfo {
@@ -195,92 +182,65 @@ impl BootstrapInfo {
     }
 }
 
-fn bootstrap_from_stream<S>(
-    blockchain: Blockchain,
+async fn bootstrap_from_stream<S>(
+    mut blockchain: Blockchain,
     branch: Tip,
-    stream: S,
+    mut stream: S,
     logger: Logger,
-) -> impl Future<Item = (), Error = Error>
+) -> Result<(), Error>
 where
-    S: Stream<Item = Block, Error = NetworkError>,
-    S::Error: Debug,
+    S: Stream<Item = Result<Block, NetworkError>> + Unpin,
 {
+    const PROCESS_LOGGING_DISTANCE: u64 = 2500;
     let block0 = blockchain.block0().clone();
-    let logger2 = logger.clone();
-    let blockchain2 = blockchain.clone();
-    let branch2 = branch.clone();
 
-    stream
-        .skip_while(move |block| Ok(block.header.hash() == block0))
-        .then(|res| Ok(res))
-        .fold(
-            (BootstrapInfo::new(), None),
-            move |(mut bi, parent_tip): (BootstrapInfo, Option<Arc<Ref>>), block_or_err| {
-                match block_or_err {
-                    Ok(block) => {
-                        const PROCESS_LOGGING_DISTANCE: u64 = 2500;
-                        bi.append_block(&block);
-                        if bi.block_received % PROCESS_LOGGING_DISTANCE == 0 {
-                            bi.report(&logger)
-                        }
+    let mut bootstrap_info = BootstrapInfo::new();
+    let mut maybe_parent_tip = None;
 
-                        let fut = handle_block_old(blockchain.clone(), block, logger.clone())
-                            .map(move |aref| (bi, Some(aref)));
-                        Either::A(fut)
-                    }
-                    Err(e) => {
-                        let fut = if let Some(parent_tip) = parent_tip {
-                            Either::A(process_new_ref_old(
-                                logger.clone(),
-                                blockchain.clone(),
-                                branch.clone(),
-                                parent_tip.clone(),
-                            ))
-                        } else {
-                            Either::B(future::ok(()))
-                        }
-                        .then(|_| Err(Error::PullStreamFailed { source: e }));
-                        Either::B(fut)
-                    }
+    while let Some(block_result) = stream.next().await {
+        match block_result {
+            Ok(block) => {
+                if block.header.hash() == block0 {
+                    continue;
                 }
-            },
-        )
-        .and_then(move |(_, maybe_new_tip)| {
-            if let Some(new_tip) = maybe_new_tip {
-                Either::A(
-                    process_new_ref_old(logger2, blockchain2, branch2, new_tip.clone())
-                        .map_err(|e| Error::ChainSelectionFailed { source: e }),
-                )
-            } else {
-                info!(logger2, "no new blocks in bootstrap stream");
-                Either::B(future::ok(()))
+
+                bootstrap_info.append_block(&block);
+
+                if bootstrap_info.block_received % PROCESS_LOGGING_DISTANCE == 0 {
+                    bootstrap_info.report(&logger);
+                }
+
+                maybe_parent_tip = Some(handle_block(&blockchain, block, &logger).await?);
             }
-        })
-}
+            Err(err) => {
+                if let Some(parent_tip) = maybe_parent_tip {
+                    let _ = blockchain::process_new_ref(
+                        &logger,
+                        &mut blockchain,
+                        branch.clone(),
+                        parent_tip.clone(),
+                    )
+                    .await;
+                }
+                return Err(Error::PullStreamFailed { source: err });
+            }
+        }
+    }
 
-fn process_new_ref_old(
-    logger: Logger,
-    blockchain: Blockchain,
-    tip: Tip,
-    candidate: Arc<Ref>,
-) -> impl Future<Item = (), Error = blockchain::Error> {
-    Compat::new(Box::pin(blockchain::process_new_ref_owned(
-        logger, blockchain, tip, candidate,
-    )))
-}
-
-fn handle_block_old(
-    blockchain: Blockchain,
-    block: Block,
-    logger: Logger,
-) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    Compat::new(Box::pin(handle_block(blockchain, block, logger)))
+    if let Some(parent_tip) = maybe_parent_tip {
+        blockchain::process_new_ref(&logger, &mut blockchain, branch, parent_tip)
+            .await
+            .map_err(|e| Error::ChainSelectionFailed { source: e })
+    } else {
+        info!(logger, "no new blocks in bootstrap stream");
+        Ok(())
+    }
 }
 
 async fn handle_block(
-    blockchain: Blockchain,
+    blockchain: &Blockchain,
     block: Block,
-    logger: Logger,
+    logger: &Logger,
 ) -> Result<Arc<Ref>, Error> {
     let header = block.header();
     let pre_checked = blockchain

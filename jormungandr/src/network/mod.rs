@@ -72,7 +72,6 @@ use std::fmt;
 use std::io;
 use std::iter;
 use std::net::SocketAddr;
-use std::sync::atomic::{self, AtomicUsize};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -600,7 +599,11 @@ impl BootstrapPeers {
 }
 
 /// Try to get sufficient peers to do a netboot from
-fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
+async fn netboot_peers(
+    config: &Configuration,
+    logger: &Logger,
+    executor: TaskExecutor,
+) -> BootstrapPeers {
     let mut peers = BootstrapPeers::new();
 
     // extract the trusted peers from the config
@@ -616,17 +619,19 @@ fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
         let mut trusted_peers = trusted_peers;
         trusted_peers.shuffle(&mut rng);
         for tpeer in trusted_peers {
-            //let peer = Peer::new(peer, Protocol::Grpc);
+            // let peer = Peer::new(peer, Protocol::Grpc);
             let tp_logger = logger.new(o!("peer_addr" => tpeer.address().to_string()));
-            let received_peers = bootstrap::peers_from_trusted_peer(&tpeer, tp_logger.clone())
-                .unwrap_or_else(|e| {
-                    warn!(
-                        tp_logger,
-                        "failed to retrieve the list of bootstrap peers from trusted peer";
-                        "reason" => %e,
-                    );
-                    vec![tpeer]
-                });
+            let received_peers =
+                bootstrap::peers_from_trusted_peer(&tpeer, tp_logger.clone(), executor.clone())
+                    .await
+                    .unwrap_or_else(|e| {
+                        warn!(
+                            tp_logger,
+                            "failed to retrieve the list of bootstrap peers from trusted peer";
+                            "reason" => %e,
+                        );
+                        vec![tpeer]
+                    });
             let added = peers.add_peers(&received_peers);
             info!(logger, "adding {} peers from peer", added);
 
@@ -638,11 +643,12 @@ fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
     peers
 }
 
-pub fn bootstrap(
+pub async fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
     branch: Tip,
     logger: &Logger,
+    executor: TaskExecutor,
 ) -> Result<bool, bootstrap::Error> {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
@@ -662,7 +668,7 @@ pub fn bootstrap(
 
     let mut bootstrapped = false;
 
-    let netboot_peers = netboot_peers(config, logger);
+    let netboot_peers = netboot_peers(config, logger, executor.clone()).await;
 
     for peer in netboot_peers.randomly() {
         let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
@@ -671,7 +677,10 @@ pub fn bootstrap(
             blockchain.clone(),
             branch.clone(),
             logger.clone(),
-        );
+            executor.clone(),
+        )
+        .await;
+
         match res {
             Err(bootstrap::Error::Connect { source: e }) => {
                 warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
