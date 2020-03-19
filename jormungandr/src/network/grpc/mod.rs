@@ -1,4 +1,4 @@
-mod client;
+pub(super) mod client;
 mod server;
 
 pub use self::client::{connect, fetch_block, Client, ConnectError, FetchBlockError};
