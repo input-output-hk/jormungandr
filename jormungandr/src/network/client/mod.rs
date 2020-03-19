@@ -27,7 +27,7 @@ pub struct Client {
     inner: grpc::Client,
     logger: Logger,
     global_state: GlobalStateR,
-    inbound: InboundSubscriptions<S>,
+    inbound: InboundSubscriptions,
     block_solicitations: OutboundSubscription<Vec<HeaderHash>>,
     chain_pulls: OutboundSubscription<ChainPullRequest<HeaderHash>>,
     block_sink: BlockAnnouncementProcessor,
@@ -113,10 +113,7 @@ where
     }
 }
 
-struct InboundSubscriptions<S>
-where
-    S: BlockService + FragmentService + GossipService,
-{
+struct InboundSubscriptions {
     pub node_id: Id,
     pub block_events: <S as BlockService>::BlockSubscription,
     pub fragments: <S as FragmentService>::FragmentSubscription,
