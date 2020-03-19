@@ -5,7 +5,6 @@ use crate::{
     settings::start::network::{Peer, Protocol},
 };
 use chain_network::error as net_error;
-pub use chain_network::grpc::Client;
 use futures::prelude::*;
 use slog::Logger;
 use thiserror::Error;
@@ -13,6 +12,10 @@ use tonic::transport;
 
 use std::net::{IpAddr, SocketAddr};
 use std::slice;
+
+pub use chain_network::grpc::client::{
+    BlockSubscription, FragmentSubscription, GossipSubscription,
+};
 
 #[derive(Error, Debug)]
 pub enum FetchBlockError {
@@ -29,6 +32,8 @@ pub enum FetchBlockError {
 }
 
 pub type ConnectError = transport::Error;
+
+pub type Client = chain_network::grpc::Client<tonic::transport::Channel>;
 
 pub async fn connect(peer: &Peer, node_id: Option<Id>) -> Result<Client, ConnectError> {
     assert!(peer.protocol == Protocol::Grpc);
