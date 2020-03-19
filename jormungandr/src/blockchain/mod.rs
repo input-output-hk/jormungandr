@@ -33,7 +33,7 @@ pub use self::{
     chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,
-    process::{process_new_ref_owned, Process},
+    process::{process_new_ref, Process},
     reference::Ref,
     storage::Storage,
     tip::Tip,
