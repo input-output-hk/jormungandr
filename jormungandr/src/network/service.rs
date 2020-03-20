@@ -9,11 +9,10 @@ use super::{
 };
 use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream, RequestFuture, RequestSink};
+use chain_network::data::gossip::{Gossip, Peers};
+use chain_network::error as net_error;
 use futures::future::{self, FutureResult};
 use futures::prelude::*;
-use network_core::error as core_error;
-use network_core::gossip::{Gossip, PeersResponse};
-use network_core::server::{BlockService, FragmentService, GossipService, Node, P2pService};
 use slog::Logger;
 
 #[derive(Clone)]
