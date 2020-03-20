@@ -62,6 +62,12 @@ impl From<u64> for Value {
     }
 }
 
+impl Into<u64> for Value {
+    fn into(self) -> u64 {
+        (self.0).0
+    }
+}
+
 /* ------------------- Serde ----------------------------------------------- */
 
 impl Serialize for Value {
