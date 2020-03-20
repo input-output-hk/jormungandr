@@ -272,16 +272,15 @@ pub async fn get_stake_distribution_at(
     loop {
         if tip_ref.block_date().epoch == epoch {
             break;
-        } else {
-            if let Some(previous_epoch) = tip_ref.last_ref_previous_epoch() {
-                assert_eq!(
-                    previous_epoch.block_date().epoch + 1,
-                    tip_ref.block_date().epoch
-                );
+        }
+        match tip_ref.last_ref_previous_epoch() {
+            Some(previous_epoch) => {
+                if epoch > previous_epoch.block_date().epoch {
+                    return Err(ErrorNotFound("Epoch not found..."));
+                }
                 tip_ref = Arc::clone(previous_epoch);
-            } else {
-                return Err(ErrorNotFound("Epoch not found..."));
             }
+            _ => return Err(ErrorNotFound("Epoch not found...")),
         }
     }
 
@@ -442,16 +441,15 @@ pub async fn get_rewards_info_epoch(
     loop {
         if tip_ref.block_date().epoch == epoch {
             break;
-        } else {
-            if let Some(previous_epoch) = tip_ref.last_ref_previous_epoch() {
-                assert_eq!(
-                    previous_epoch.block_date().epoch + 1,
-                    tip_ref.block_date().epoch
-                );
+        }
+        match tip_ref.last_ref_previous_epoch() {
+            Some(previous_epoch) => {
+                if epoch > previous_epoch.block_date().epoch {
+                    return Err(ErrorNotFound("Epoch not found..."));
+                }
                 tip_ref = Arc::clone(previous_epoch);
-            } else {
-                return Err(ErrorNotFound("Epoch not found..."));
             }
+            _ => return Err(ErrorNotFound("Epoch not found...")),
         }
     }
 
