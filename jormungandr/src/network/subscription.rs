@@ -12,16 +12,15 @@ use crate::{
     settings::start::network::Configuration,
     utils::async_msg::{self, MessageBox},
 };
+use chain_network::data::gossip::Gossip;
+use chain_network::error as net_error;
 use jormungandr_lib::interfaces::FragmentOrigin;
-use network_core::error as core_error;
-use network_core::gossip::{Gossip, Node as _};
-use network_core::server::request_stream::{MapResponse, ProcessingError};
 
-use futures::future::{self, FutureResult};
-use futures::prelude::*;
+use futures03::prelude::*;
 use slog::Logger;
 
 use std::fmt::Debug;
+use std::task::{Context, Poll};
 
 #[must_use = "`ServeBlockEvents` needs to be plugged into a service trait implementation"]
 pub struct ServeBlockEvents<In> {
@@ -41,10 +40,9 @@ impl<In> ServeBlockEvents<In> {
 }
 
 impl<In> Future for ServeBlockEvents<In> {
-    type Item = Subscription<In, BlockEventSubscription>;
-    type Error = core_error::Error;
+    type Output = Result<Subscription<In, BlockEventSubscription>, net_error::Error>;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let polled_outbound = self
             .lock
             .poll_subscribe_with(|comms| comms.subscribe_to_block_events());
@@ -74,7 +72,7 @@ impl<In> ServeFragments<In> {
 
 impl<In> Future for ServeFragments<In> {
     type Item = Subscription<In, FragmentSubscription>;
-    type Error = core_error::Error;
+    type Error = net_error::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let polled_outbound = self
@@ -106,7 +104,7 @@ impl<In> ServeGossip<In> {
 
 impl<In> Future for ServeGossip<In> {
     type Item = Subscription<In, GossipSubscription>;
-    type Error = core_error::Error;
+    type Error = net_error::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let polled_outbound = self
@@ -138,11 +136,11 @@ impl<In, Out> Subscription<In, Out> {
 
 impl<In, Out> Stream for Subscription<In, Out>
 where
-    Out: Stream<Error = core_error::Error>,
+    Out: Stream<Error = net_error::Error>,
     Out::Item: Debug,
 {
     type Item = Out::Item;
-    type Error = core_error::Error;
+    type Error = net_error::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         match self.outbound.poll() {
@@ -171,10 +169,10 @@ where
 
 impl<In, Out> Sink for Subscription<In, Out>
 where
-    In: Sink<SinkError = core_error::Error>,
+    In: Sink<SinkError = net_error::Error>,
 {
     type SinkItem = In::SinkItem;
-    type SinkError = core_error::Error;
+    type SinkError = net_error::Error;
 
     fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
         // Not logging the item here because start_send might refuse to send it
@@ -221,7 +219,7 @@ where
 
 impl<In, Out> MapResponse for Subscription<In, Out> {
     type Response = ();
-    type ResponseFuture = FutureResult<(), core_error::Error>;
+    type ResponseFuture = FutureResult<(), net_error::Error>;
 
     fn on_stream_termination(&mut self, res: Result<(), ProcessingError>) -> Self::ResponseFuture {
         match res {
@@ -240,8 +238,8 @@ impl<In, Out> MapResponse for Subscription<In, Out> {
                     "error" => ?e,
                     "direction" => "in",
                 );
-                future::err(core_error::Error::new(
-                    core_error::Code::Canceled,
+                future::err(net_error::Error::new(
+                    net_error::Code::Canceled,
                     "closed due to inbound stream failure",
                 ))
             }
@@ -284,7 +282,7 @@ impl BlockAnnouncementProcessor {
         self.mbox.clone()
     }
 
-    fn mbox_error<T>(&self, err: async_msg::SendError<T>) -> core_error::Error
+    fn mbox_error<T>(&self, err: async_msg::SendError<T>) -> net_error::Error
     where
         T: Send + Sync + 'static,
     {
@@ -293,7 +291,7 @@ impl BlockAnnouncementProcessor {
             "failed to send block announcement to the block task";
             "reason" => %err,
         );
-        core_error::Error::new(core_error::Code::Internal, err)
+        net_error::Error::new(net_error::Code::Internal, err)
     }
 
     fn refresh_stat(&self) {
@@ -407,9 +405,9 @@ impl GossipProcessor {
 
 impl Sink for BlockAnnouncementProcessor {
     type SinkItem = Header;
-    type SinkError = core_error::Error;
+    type SinkError = net_error::Error;
 
-    fn start_send(&mut self, header: Header) -> StartSend<Header, core_error::Error> {
+    fn start_send(&mut self, header: Header) -> StartSend<Header, net_error::Error> {
         let polled_ready = self.mbox.poll_ready().map_err(|e| self.mbox_error(e))?;
         if polled_ready.is_not_ready() {
             return Ok(AsyncSink::NotReady(header));
@@ -430,34 +428,34 @@ impl Sink for BlockAnnouncementProcessor {
         }
     }
 
-    fn poll_complete(&mut self) -> Poll<(), core_error::Error> {
+    fn poll_complete(&mut self) -> Poll<(), net_error::Error> {
         self.mbox.poll_complete().map_err(|e| {
             error!(
                 self.logger,
                 "communication channel to the block task failed";
                 "reason" => %e,
             );
-            core_error::Error::new(core_error::Code::Internal, e)
+            net_error::Error::new(net_error::Code::Internal, e)
         })
     }
 
-    fn close(&mut self) -> Poll<(), core_error::Error> {
+    fn close(&mut self) -> Poll<(), net_error::Error> {
         self.mbox.close().map_err(|e| {
             warn!(
                 self.logger,
                 "failed to close communication channel to the block task";
                 "reason" => %e,
             );
-            core_error::Error::new(core_error::Code::Internal, e)
+            net_error::Error::new(net_error::Code::Internal, e)
         })
     }
 }
 
 impl Sink for FragmentProcessor {
     type SinkItem = Fragment;
-    type SinkError = core_error::Error;
+    type SinkError = net_error::Error;
 
-    fn start_send(&mut self, fragment: Fragment) -> StartSend<Fragment, core_error::Error> {
+    fn start_send(&mut self, fragment: Fragment) -> StartSend<Fragment, net_error::Error> {
         if self.buffered_fragments.len() >= buffer_sizes::inbound::FRAGMENTS {
             return Ok(AsyncSink::NotReady(fragment));
         }
@@ -466,7 +464,7 @@ impl Sink for FragmentProcessor {
         Ok(async_send.map(|()| self.buffered_fragments.pop().unwrap()))
     }
 
-    fn poll_complete(&mut self) -> Poll<(), core_error::Error> {
+    fn poll_complete(&mut self) -> Poll<(), net_error::Error> {
         if self.buffered_fragments.is_empty() {
             self.mbox.poll_complete().map_err(|e| {
                 error!(
@@ -474,7 +472,7 @@ impl Sink for FragmentProcessor {
                     "communication channel to the fragment task failed";
                     "reason" => %e,
                 );
-                core_error::Error::new(core_error::Code::Internal, e)
+                net_error::Error::new(net_error::Code::Internal, e)
             })
         } else {
             match self.try_send_fragments()? {
@@ -484,20 +482,20 @@ impl Sink for FragmentProcessor {
         }
     }
 
-    fn close(&mut self) -> Poll<(), core_error::Error> {
+    fn close(&mut self) -> Poll<(), net_error::Error> {
         self.mbox.close().map_err(|e| {
             warn!(
                 self.logger,
                 "failed to close communication channel to the fragment task";
                 "reason" => %e,
             );
-            core_error::Error::new(core_error::Code::Internal, e)
+            net_error::Error::new(net_error::Code::Internal, e)
         })
     }
 }
 
 impl FragmentProcessor {
-    fn try_send_fragments(&mut self) -> Result<AsyncSink<()>, core_error::Error> {
+    fn try_send_fragments(&mut self) -> Result<AsyncSink<()>, net_error::Error> {
         let fragments = self.buffered_fragments.split_off(0);
         let polled = self
             .mbox
@@ -511,7 +509,7 @@ impl FragmentProcessor {
                     "failed to send fragments to the fragment task";
                     "reason" => %e,
                 );
-                core_error::Error::new(core_error::Code::Internal, e)
+                net_error::Error::new(net_error::Code::Internal, e)
             })?;
         match polled {
             AsyncSink::Ready => {
@@ -529,17 +527,17 @@ impl FragmentProcessor {
 
 impl Sink for GossipProcessor {
     type SinkItem = Gossip<NodeData>;
-    type SinkError = core_error::Error;
+    type SinkError = net_error::Error;
 
     fn start_send(
         &mut self,
         gossip: Gossip<NodeData>,
-    ) -> StartSend<Self::SinkItem, core_error::Error> {
+    ) -> StartSend<Self::SinkItem, net_error::Error> {
         self.process_item(gossip);
         Ok(AsyncSink::Ready)
     }
 
-    fn poll_complete(&mut self) -> Poll<(), core_error::Error> {
+    fn poll_complete(&mut self) -> Poll<(), net_error::Error> {
         Ok(Async::Ready(()))
     }
 }
