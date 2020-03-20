@@ -1,7 +1,11 @@
 mod connect;
 
 use super::{
-    buffer_sizes, grpc,
+    buffer_sizes,
+    grpc::{
+        self,
+        client::{BlockSubscription, FragmentSubscription, GossipSubscription},
+    },
     p2p::{
         comm::{OutboundSubscription, PeerComms},
         Gossip as NodeData, Id,
@@ -14,11 +18,13 @@ use crate::{
     intercom::{self, BlockMsg, ClientMsg},
     utils::async_msg::MessageBox,
 };
-use chain_network::data::BlockEvent;
+use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
 use chain_network::error as net_error;
 
-use futures::prelude::*;
+use futures03::prelude::*;
 use slog::Logger;
+
+use std::task::Poll;
 
 pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 
@@ -28,8 +34,8 @@ pub struct Client {
     logger: Logger,
     global_state: GlobalStateR,
     inbound: InboundSubscriptions,
-    block_solicitations: OutboundSubscription<Vec<HeaderHash>>,
-    chain_pulls: OutboundSubscription<ChainPullRequest<HeaderHash>>,
+    block_solicitations: OutboundSubscription<BlockIds>,
+    chain_pulls: OutboundSubscription<ChainPullRequest>,
     block_sink: BlockAnnouncementProcessor,
     fragment_sink: FragmentProcessor,
     gossip_processor: GossipProcessor,
@@ -44,10 +50,7 @@ struct ClientBuilder {
     pub channels: Channels,
 }
 
-impl<S> Client<S>
-where
-    S: BlockService + FragmentService + GossipService,
-{
+impl Client {
     pub fn remote_node_id(&self) -> Id {
         self.inbound.node_id
     }
@@ -57,19 +60,12 @@ where
     }
 }
 
-impl<S> Client<S>
-where
-    S: core_client::Client,
-    S: P2pService<NodeId = Id>,
-    S: BlockService<Block = Block>,
-    S: FragmentService<Fragment = Fragment>,
-    S: GossipService<Node = NodeData>,
-{
+impl Client {
     fn new(
-        inner: S,
+        inner: grpc::Client,
         builder: ClientBuilder,
         global_state: GlobalStateR,
-        inbound: InboundSubscriptions<S>,
+        inbound: InboundSubscriptions,
         comms: &mut PeerComms,
     ) -> Self {
         let remote_node_id = inbound.node_id;
@@ -115,9 +111,9 @@ where
 
 struct InboundSubscriptions {
     pub node_id: Id,
-    pub block_events: <S as BlockService>::BlockSubscription,
-    pub fragments: <S as FragmentService>::FragmentSubscription,
-    pub gossip: <S as GossipService>::GossipSubscription,
+    pub block_events: BlockSubscription,
+    pub fragments: FragmentSubscription,
+    pub gossip: GossipSubscription,
 }
 
 #[derive(Copy, Clone)]
@@ -129,9 +125,9 @@ enum ProcessingOutcome {
 struct Progress(pub Option<ProcessingOutcome>);
 
 impl Progress {
-    fn update(&mut self, async_outcome: Async<ProcessingOutcome>) {
+    fn update(&mut self, async_outcome: Poll<ProcessingOutcome>) {
         use self::ProcessingOutcome::*;
-        if let Async::Ready(outcome) = async_outcome {
+        if let Poll::Ready(outcome) = async_outcome {
             match (self.0, outcome) {
                 (None, outcome) | (Some(Continue), outcome) => {
                     self.0 = Some(outcome);
@@ -142,13 +138,7 @@ impl Progress {
     }
 }
 
-impl<S> Client<S>
-where
-    S: BlockService<Block = Block>,
-    S: FragmentService + GossipService,
-    S::PushHeadersFuture: Send + 'static,
-    S::UploadBlocksFuture: Send + 'static,
-{
+impl Client {
     fn process_block_event(&mut self) -> Poll<ProcessingOutcome, ()> {
         use self::ProcessingOutcome::*;
 
@@ -219,7 +209,7 @@ where
 
     fn upload_blocks(&mut self, block_ids: Vec<HeaderHash>) {
         debug!(self.logger, "peer requests {} blocks", block_ids.len());
-        let (reply_handle, stream) = intercom::stream_reply::<_, core_error::Error>(
+        let (reply_handle, stream) = intercom::stream_reply::<_, net_error::Error>(
             buffer_sizes::outbound::BLOCKS,
             self.logger.new(o!("solicitation" => "UploadBlocks")),
         );
@@ -250,7 +240,7 @@ where
             "checkpoints" => ?req.from,
             "to" => ?req.to,
         );
-        let (reply_handle, stream) = intercom::stream_reply::<_, core_error::Error>(
+        let (reply_handle, stream) = intercom::stream_reply::<_, net_error::Error>(
             buffer_sizes::outbound::HEADERS,
             self.logger.new(o!("solicitation" => "PushHeaders")),
         );
@@ -274,21 +264,13 @@ where
                 }),
         );
     }
-}
 
-impl<S> Client<S>
-where
-    S: BlockService<Block = Block>,
-    S: FragmentService + GossipService,
-    S::PullHeadersFuture: Send + 'static,
-    S::PullHeadersStream: Send + 'static,
-{
     fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
         let block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "PullHeaders"));
         let req_err_logger = logger.clone();
         let res_logger = logger.clone();
-        let (handle, sink) = intercom::stream_request::<Header, (), core_error::Error>(
+        let (handle, sink) = intercom::stream_request::<Header, (), net_error::Error>(
             buffer_sizes::inbound::HEADERS,
             logger.clone(),
         );
@@ -345,7 +327,7 @@ where
         let logger = self.logger.new(o!("request" => "GetBlocks"));
         let req_err_logger = logger.clone();
         let res_logger = logger.clone();
-        let (handle, sink) = intercom::stream_request::<Block, (), core_error::Error>(
+        let (handle, sink) = intercom::stream_request::<Block, (), net_error::Error>(
             buffer_sizes::inbound::BLOCKS,
             logger.clone(),
         );
@@ -466,25 +448,10 @@ where
     }
 }
 
-impl<S> Future for Client<S>
-where
-    S: core_client::Client,
-    S: P2pService<NodeId = Id>,
-    S: BlockService<Block = Block>,
-    S: FragmentService<Fragment = Fragment>,
-    S: GossipService<Node = NodeData>,
-    S::GetBlocksFuture: Send + 'static,
-    S::GetBlocksStream: Send + 'static,
-    S::PullBlocksToTipFuture: Send + 'static,
-    S::PullBlocksStream: Send + 'static,
-    S::PullHeadersFuture: Send + 'static,
-    S::PullHeadersStream: Send + 'static,
-    S::PushHeadersFuture: Send + 'static,
-    S::UploadBlocksFuture: Send + 'static,
-{
-    type Item = ();
-    type Error = ();
-    fn poll(&mut self) -> Poll<(), ()> {
+impl Future for Client {
+    type Output = ();
+
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         use self::ProcessingOutcome::*;
 
         loop {
