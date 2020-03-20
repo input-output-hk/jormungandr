@@ -1,0 +1,86 @@
+use crate::common::{
+    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+};
+use chain_impl_mockchain::fee::LinearFee;
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool, Value};
+
+#[test]
+pub fn accounts_funds_are_updated_after_transaction() {
+    let receiver = startup::create_new_account_address();
+    let mut sender = startup::create_new_account_address();
+    let fee = LinearFee::new(1, 1, 1);
+    let value_to_send = 1;
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[receiver.clone()],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(20)
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(3)
+            .with_linear_fees(fee.clone())
+            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
+            .with_mempool(Mempool {
+                pool_max_entries: 1_000_000usize.into(),
+                log_max_entries: 1_000_000usize.into(),
+            }),
+    )
+    .unwrap();
+
+    let sender_account_state_before = jcli_wrapper::assert_rest_account_get_stats(
+        &sender.address().to_string(),
+        &jormungandr.rest_address(),
+    );
+    let receiever_account_state_before = jcli_wrapper::assert_rest_account_get_stats(
+        &receiver.address().to_string(),
+        &jormungandr.rest_address(),
+    );
+
+    let sender_value_before = sender_account_state_before.value();
+    let receiver_value_before = receiever_account_state_before.value();
+
+    let new_transaction = sender
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            receiver.address(),
+            value_to_send.into(),
+        )
+        .unwrap()
+        .encode();
+
+    jcli_wrapper::assert_transaction_in_block(&new_transaction, &jormungandr);
+    sender.confirm_transaction();
+
+    let sender_account_state = jcli_wrapper::assert_rest_account_get_stats(
+        &sender.address().to_string(),
+        &jormungandr.rest_address(),
+    );
+    let receiver_account_state = jcli_wrapper::assert_rest_account_get_stats(
+        &receiver.address().to_string(),
+        &jormungandr.rest_address(),
+    );
+
+    let sender_value_before_u64: u64 = sender_value_before.clone().into();
+    let receiver_value_before_u64: u64 = receiver_value_before.clone().into();
+
+    let sender_last_reward: u64 = sender_account_state.last_rewards().reward().clone().into();
+
+    let sender_expected_value: Value =
+        (sender_value_before_u64 - value_to_send - fee.constant - (fee.coefficient * 2)
+            + sender_last_reward)
+            .into();
+    let receiver_expected_value: Value = (receiver_value_before_u64 + value_to_send).into();
+
+    let sender_account_state_value: Value = *sender_account_state.value();
+    let receiver_account_state_value: Value = *receiver_account_state.value();
+
+    assert_eq!(
+        sender_expected_value, sender_account_state_value,
+        "sender value after transaction"
+    );
+    assert_eq!(
+        receiver_expected_value, receiver_account_state_value,
+        "receiver value after transaction"
+    );
+}

@@ -1,11 +1,12 @@
 use crate::common::{
-    configuration::SecretModelFactory,
+    configuration::{jormungandr_config::JormungandrConfig, SecretModelFactory},
     file_utils,
     jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
+    process_utils,
 };
 use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
-use chain_impl_mockchain::block::ConsensusVersion;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::{Identifier, KeyPair},
     interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, Ratio, TaxType},
@@ -105,6 +106,7 @@ fn create_stake_pool_owner_delegation_cert(stake_pool: &StakePool) -> String {
 
 pub fn start_stake_pool(
     owners: &[Wallet],
+    initial_funds: &[Wallet],
     config_builder: &mut ConfigurationBuilder,
 ) -> Result<(JormungandrProcess, Vec<String>), StartupError> {
     let stake_pools: Vec<StakePool> = owners.iter().map(|x| create_stake_pool(x)).collect();
@@ -126,13 +128,23 @@ pub fn start_stake_pool(
         .map(|x| x.leader.identifier().into())
         .collect();
 
-    let funds: Vec<InitialUTxO> = owners
+    let mut funds: Vec<InitialUTxO> = owners
         .iter()
         .map(|x| InitialUTxO {
             address: x.address(),
             value: 1_000_000_000.into(),
         })
         .collect();
+
+    let funds_non_owners: Vec<InitialUTxO> = initial_funds
+        .iter()
+        .map(|x| InitialUTxO {
+            address: x.address(),
+            value: 1_000_000_000.into(),
+        })
+        .collect();
+
+    funds.extend(funds_non_owners);
 
     let mut config = config_builder
         .with_block0_consensus(ConsensusVersion::GenesisPraos)
@@ -170,6 +182,28 @@ pub fn start_stake_pool(
         .config(config)
         .start()
         .map(|process| (process, stake_pool_ids))
+}
+
+
+pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &JormungandrConfig) {
+    let coeff = epoch_interval * 2;
+    let slots_per_epoch: u32 = config
+        .block0_configuration
+        .blockchain_configuration
+        .slots_per_epoch
+        .into();
+    let slot_duration: u8 = config
+        .block0_configuration
+        .blockchain_configuration
+        .slot_duration
+        .into();
+    let wait_time = ((slots_per_epoch * (slot_duration as u32)) * coeff) + grace_period;
+    process_utils::sleep(wait_time.into());
+}
+
+
+pub fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
+    sleep_till_epoch(1,grace_period,config);
 }
 
 // temporary struct which should be replaced by one from chain-libs or jormungandr-lib
