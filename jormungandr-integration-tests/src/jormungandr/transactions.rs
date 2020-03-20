@@ -2,7 +2,7 @@ use crate::common::{
     jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use chain_impl_mockchain::fee::LinearFee;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool, Value};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
 
 #[test]
 pub fn accounts_funds_are_updated_after_transaction() {
@@ -19,7 +19,6 @@ pub fn accounts_funds_are_updated_after_transaction() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
             .with_linear_fees(fee.clone())
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),

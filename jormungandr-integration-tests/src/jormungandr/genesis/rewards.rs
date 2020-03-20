@@ -123,9 +123,7 @@ pub fn reward_history() {
         })
         .collect();
 
-    for (stake_pool_hash, (value_taxed, value_for_stakers)) in
-        epoch_reward_info_from_epoch.stake_pools()
-    {
+    for (stake_pool_hash, (value_taxed, _)) in epoch_reward_info_from_epoch.stake_pools() {
         let (_, stake_pool_data) = stake_pools_data
             .iter()
             .find(|(x, _)| x == stake_pool_hash)

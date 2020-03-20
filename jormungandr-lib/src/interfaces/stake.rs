@@ -62,6 +62,12 @@ impl From<u64> for Stake {
     }
 }
 
+impl Into<u64> for Stake {
+    fn into(self) -> u64 {
+        (self.0).0
+    }
+}
+
 /* ------------------- Serde ----------------------------------------------- */
 
 impl Serialize for Stake {
