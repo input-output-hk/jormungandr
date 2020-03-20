@@ -59,6 +59,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
     let mut sender = startup::create_new_account_address();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
@@ -106,6 +107,7 @@ pub fn test_100_transaction_is_processed_simple() {
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
@@ -192,6 +194,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)

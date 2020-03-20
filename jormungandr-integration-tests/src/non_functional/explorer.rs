@@ -22,6 +22,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)

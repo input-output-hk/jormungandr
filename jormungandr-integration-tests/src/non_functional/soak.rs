@@ -21,6 +21,7 @@ pub fn test_blocks_are_being_created_for_48_hours() {
     let mut sender = startup::create_new_account_address();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)

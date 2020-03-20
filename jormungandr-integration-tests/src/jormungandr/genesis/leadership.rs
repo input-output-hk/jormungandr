@@ -5,7 +5,7 @@ use jormungandr_lib::interfaces::LeadershipLogStatus;
 pub fn test_leadership_logs_parent_hash_is_correct() {
     let faucet = startup::create_new_account_address();
     let (jormungandr, _) =
-        startup::start_stake_pool(&[faucet], &mut ConfigurationBuilder::new()).unwrap();
+        startup::start_stake_pool(&[faucet], &[], &mut ConfigurationBuilder::new()).unwrap();
 
     process_utils::sleep(5);
 

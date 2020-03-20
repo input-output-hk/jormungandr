@@ -13,7 +13,7 @@ use jormungandr_lib::interfaces::{ActiveSlotCoefficient, InitialUTxO, KESUpdateS
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
     let faucet = startup::create_new_account_address();
     let (_jormungandr, _) =
-        startup::start_stake_pool(&[faucet], &mut ConfigurationBuilder::new()).unwrap();
+        startup::start_stake_pool(&[faucet], &[], &mut ConfigurationBuilder::new()).unwrap();
 }
 
 #[test]

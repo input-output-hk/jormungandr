@@ -1,5 +1,5 @@
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
-use jormungandr_lib::interfaces::{EpochRewardsInfo, Info, NodeStatsDto, PeerRecord, PeerStats};
+use jormungandr_lib::interfaces::{EpochRewardsInfo, Info, NodeStatsDto, PeerRecord, PeerStats, StakeDistributionDto};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -34,6 +34,17 @@ impl JormungandrRest {
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         reqwest::blocking::get(&format!("{}/v0/{}", self.config.get_node_address(), path))
+    }
+
+    pub fn stake_distribution(&self) -> Result<StakeDistributionDto, RestError> {
+        let response_text = self.get("stake")?.text()?;
+        serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
+    }
+
+    pub fn stake_distribution_at(&self, epoch: u32) -> Result<StakeDistributionDto, RestError> {
+        let request = format!("stake/{}", epoch);
+        let response_text = self.get(&request)?.text()?;
+        serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
     }
 
     pub fn stats(&self) -> Result<NodeStatsDto, RestError> {

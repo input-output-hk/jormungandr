@@ -6,7 +6,7 @@ use crate::common::{
     process_utils,
 };
 use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::block::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::{Identifier, KeyPair},
     interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, Ratio, TaxType},
