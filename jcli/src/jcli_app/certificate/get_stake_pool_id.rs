@@ -23,6 +23,10 @@ impl GetStakePoolId {
                 self.output.as_ref().map(|x| x.deref()),
                 stake_pool_info.to_id(),
             ),
+            Certificate::PoolRetirement(stake_pool_info) => write_output(
+                self.output.as_ref().map(|x| x.deref()),
+                stake_pool_info.pool_id,
+            ),
             _ => Err(Error::NotStakePoolRegistration),
         }
     }
