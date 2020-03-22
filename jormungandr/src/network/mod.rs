@@ -58,6 +58,7 @@ use futures::future;
 use futures::future::Either::{A, B};
 use futures::prelude::*;
 use futures::stream;
+use futures03::{channel::oneshot::Receiver, future::Shared};
 use network_core::gossip::{Gossip, Node};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
@@ -615,7 +616,7 @@ async fn netboot_peers(
     if config.bootstrap_from_trusted_peers {
         let _: usize = peers.add_peers(&trusted_peers);
     } else {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rngs::OsRng;
         let mut trusted_peers = trusted_peers;
         trusted_peers.shuffle(&mut rng);
         for tpeer in trusted_peers {
@@ -647,9 +648,12 @@ pub async fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
     branch: Tip,
+    bootstrap_stopper: Shared<Receiver<()>>,
     logger: &Logger,
     executor: TaskExecutor,
 ) -> Result<bool, bootstrap::Error> {
+    use futures03::future::{select, Either, FutureExt};
+
     if config.protocol != Protocol::Grpc {
         unimplemented!()
     }
@@ -668,7 +672,18 @@ pub async fn bootstrap(
 
     let mut bootstrapped = false;
 
-    let netboot_peers = netboot_peers(config, logger, executor.clone()).await;
+    let (netboot_peers, bootstrap_stopper) = match select(
+        netboot_peers(config, logger, executor.clone()).boxed(),
+        bootstrap_stopper,
+    )
+    .await
+    {
+        Either::Left(result) => result,
+        Either::Right((bootstrap_stopper_result, _)) => match bootstrap_stopper_result {
+            Ok(()) => return Err(bootstrap::Error::Interrupted),
+            Err(_) => panic!("failed to wait for SIGINT"),
+        },
+    };
 
     for peer in netboot_peers.randomly() {
         let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
@@ -676,6 +691,7 @@ pub async fn bootstrap(
             peer,
             blockchain.clone(),
             branch.clone(),
+            bootstrap_stopper.clone(),
             logger.clone(),
             executor.clone(),
         )
@@ -684,6 +700,10 @@ pub async fn bootstrap(
         match res {
             Err(bootstrap::Error::Connect(e)) => {
                 warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
+            }
+            Err(bootstrap::Error::Interrupted) => {
+                warn!(logger, "the bootstrap process was interrupted");
+                return Err(bootstrap::Error::Interrupted);
             }
             Err(e) => {
                 warn!(logger, "initial bootstrap failed"; "error" => ?e);
