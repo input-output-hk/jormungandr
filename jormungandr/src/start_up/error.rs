@@ -48,7 +48,7 @@ pub enum Error {
     #[error("Error fetching the genesis block from the network")]
     FetchBlock0(#[from] network::FetchBlockError),
     #[error("Error while loading the blockchain from the network")]
-    NetworkBootstrapError(#[from] network::BootstrapError),
+    NetworkBootstrapError(#[source] network::BootstrapError),
     #[error("Error while loading the node's secrets.")]
     NodeSecrets(#[from] secure::NodeSecretFromFileError),
     #[error("Block 0 is set to start in the future")]
@@ -59,12 +59,24 @@ pub enum Error {
     ServiceTerminatedWithError,
     #[error("Unable to get system limits: {0}")]
     DiagnosticError(#[from] DiagnosticError),
+    #[error("Interrupted by the user")]
+    Interrupted,
+}
+
+impl From<network::BootstrapError> for Error {
+    fn from(error: network::BootstrapError) -> Error {
+        match error {
+            network::BootstrapError::Interrupted => Error::Interrupted,
+            error => Error::NetworkBootstrapError(error),
+        }
+    }
 }
 
 impl Error {
     #[inline]
     pub fn code(&self) -> i32 {
         match self {
+            Error::Interrupted => 0,
             Error::LoggingInitializationError { .. } => 1,
             Error::ConfigurationError { .. } => 2,
             Error::IO { .. } => 3,
