@@ -35,7 +35,7 @@ use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use std::time::Duration;
-use tokio_compat::runtime::Runtime;
+use tokio02::signal::ctrl_c;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -61,8 +61,7 @@ use stats_counter::StatsCounter;
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
 
-    let mut rt = Runtime::new().expect("failed to create the bootstrap runtime");
-    let bootstrapped_node = rt.block_on_std(bootstrap(initialized_node))?;
+    let bootstrapped_node = bootstrap(initialized_node)?;
 
     start_services(bootstrapped_node)
 }
@@ -280,6 +279,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
+    services.spawn_try_future_std("sigint_listener", move |_info| ctrl_c().map_err(|_| ()));
+
     match services.wait_any_finished() {
         Err(err) => {
             crit!(
@@ -313,9 +314,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 /// * download all the existing blocks
 /// * verify all the downloaded blocks
 /// * network / peer discoveries (?)
-///
-///
-async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
+fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
     let InitializedNode {
         settings,
         block0,
@@ -325,6 +324,58 @@ async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode
         services,
     } = initialized_node;
 
+    let BootstrapData {
+        blockchain,
+        blockchain_tip,
+        block0_hash,
+        explorer_db,
+        rest_context,
+        settings,
+    } = services.block_on_task_std("bootstrap", |info| {
+        bootstrap_internal(
+            rest_context,
+            info.logger().clone(),
+            block0,
+            storage,
+            settings,
+            info.executor().clone(),
+        )
+    })?;
+
+    Ok(BootstrappedNode {
+        settings,
+        block0_hash,
+        blockchain,
+        blockchain_tip,
+        logger,
+        explorer_db,
+        rest_context,
+        services,
+    })
+}
+
+struct BootstrapData {
+    blockchain: Blockchain,
+    blockchain_tip: blockchain::Tip,
+    block0_hash: HeaderHash,
+    explorer_db: Option<explorer::ExplorerDB>,
+    rest_context: Option<rest::Context>,
+    settings: Settings,
+}
+
+async fn bootstrap_internal(
+    rest_context: Option<rest::Context>,
+    logger: Logger,
+    block0: blockcfg::Block,
+    storage: blockchain::Storage,
+    settings: Settings,
+) -> Result<BootstrapData, start_up::Error> {
+    use futures03::{
+        channel::oneshot::channel,
+        future::{select, Either, FutureExt},
+    };
+    use tokio02::spawn;
+
     if let Some(context) = rest_context.as_ref() {
         block_on(async {
             context
@@ -333,8 +384,6 @@ async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode
                 .set_node_state(NodeState::Bootstrapping)
         })
     }
-
-    let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
     let block0_hash = block0.header.hash();
 
@@ -347,7 +396,7 @@ async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode
         storage,
         cache_capacity,
         settings.rewards_report_all,
-        &bootstrap_logger,
+        &logger,
     )
     .await?;
 
@@ -361,6 +410,20 @@ async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode
 
     let mut bootstrap_attempt: usize = 0;
 
+    let (shutdown_tx, shutdown_rx) = channel();
+    let shutdown_rx = shutdown_rx.shared();
+
+    spawn(
+        ctrl_c()
+            .map_ok(|()| {
+                shutdown_tx
+                    .send(())
+                    .expect("failed to gracefully stop netboot")
+            })
+            .map_err(|_| panic!("failed to wait for SIGINT"))
+            .boxed(),
+    );
+
     loop {
         bootstrap_attempt += 1;
 
@@ -369,7 +432,7 @@ async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode
         if let Some(max_bootstrap_attempt) = settings.network.max_bootstrap_attempts {
             if bootstrap_attempt > max_bootstrap_attempt {
                 warn!(
-                    &bootstrap_logger,
+                    &logger,
                     "maximum allowable bootstrap attempts exceeded, continuing..."
                 );
                 break; // maximum bootstrap attempts exceeded, exit loop
@@ -381,7 +444,8 @@ async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode
             &settings.network,
             blockchain.clone(),
             blockchain_tip.clone(),
-            &bootstrap_logger,
+            shutdown_rx.clone(),
+            &logger,
         )
         .await?
         {
@@ -389,30 +453,50 @@ async fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode
         }
 
         info!(
-            &bootstrap_logger,
+            &logger,
             "bootstrap attempt #{} failed, trying again in {} seconds...",
             bootstrap_attempt,
             BOOTSTRAP_RETRY_WAIT.as_secs()
         );
+
         // Sleep for a little while before trying again.
-        std::thread::sleep(BOOTSTRAP_RETRY_WAIT);
+        if let Either::Right((result, _)) = select(
+            tokio02::time::delay_for(BOOTSTRAP_RETRY_WAIT),
+            shutdown_rx.clone(),
+        )
+        .await
+        {
+            match result {
+                Ok(()) => return Err(start_up::Error::Interrupted),
+                Err(_) => panic!("failed to wait for SIGINT"),
+            }
+        }
     }
 
     let explorer_db = if settings.explorer {
-        Some(explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain).await?)
+        match select(
+            explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain).boxed(),
+            shutdown_rx,
+        )
+        .await
+        {
+            Either::Left((result, _)) => Some(result?),
+            Either::Right((result, _)) => match result {
+                Ok(()) => return Err(start_up::Error::Interrupted),
+                Err(_) => panic!("failed to wait for SIGINT"),
+            },
+        }
     } else {
         None
     };
 
-    Ok(BootstrappedNode {
-        settings,
+    Ok(BootstrapData {
         block0_hash,
         blockchain,
         blockchain_tip,
-        logger,
         explorer_db,
         rest_context,
-        services,
+        settings,
     })
 }
 

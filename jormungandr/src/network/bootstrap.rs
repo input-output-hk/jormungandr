@@ -5,10 +5,19 @@ use crate::settings::start::network::Peer;
 use chain_core::property::{Deserialize, HasHeader};
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
-use futures03::prelude::*;
+use futures03::{
+    channel::oneshot::Receiver,
+    future::{Either, Shared},
+    prelude::*,
+    stream,
+    task::Poll,
+};
+use network_core::client::{BlockService, Client as _, GossipService};
+use network_core::error::Error as NetworkError;
 use slog::Logger;
 
 use std::fmt::Debug;
+use std::pin::Pin;
 use std::sync::Arc;
 
 #[derive(thiserror::Error, Debug)]
@@ -39,6 +48,8 @@ pub enum Error {
     ApplyBlockFailed(#[source] BlockchainError),
     #[error("failed to select the new tip")]
     ChainSelectionFailed(#[source] BlockchainError),
+    #[error("the bootstrap process was interrupted")]
+    Interrupted,
 }
 
 const MAX_BOOTSTRAP_PEERS: u32 = 32;
@@ -69,26 +80,45 @@ pub async fn bootstrap_from_peer(
     peer: &Peer,
     blockchain: Blockchain,
     tip: Tip,
+    bootstrap_stopper: Shared<Receiver<()>>,
     logger: Logger,
 ) -> Result<(), Error> {
+    use futures03::future::select;
+
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let client = grpc::connect(&peer, None)
-        .await
-        .map_err(|e| Error::Connect(e))?;
+    let blockchain1 = blockchain.clone();
+    let tip1 = tip.clone();
 
-    let checkpoints = blockchain.get_checkpoints(tip.branch()).await;
-    let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
+    let stream_future = async move {
+        let client = grpc::connect(&peer, None)
+            .await
+            .map_err(|e| Error::Connect(e))?;
 
-    info!(
-        logger,
-        "pulling blocks starting from checkpoints: {:?}", checkpoints
-    );
-    let stream = client
-        .pull_blocks_to_tip(checkpoints)
-        .await
-        .map_err(|e| Error::PullRequestFailed(e))?;
-    bootstrap_from_stream(blockchain, tip, stream, logger).await
+        let checkpoints = blockchain1.get_checkpoints(tip1.branch()).await;
+        let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
+
+        info!(
+            logger,
+            "pulling blocks starting from checkpoints: {:?}", checkpoints
+        );
+
+        client
+            .pull_blocks_to_tip(checkpoints)
+            .await
+            .map_err(|e| Error::PullRequestFailed(e))
+    };
+
+    // process a signal from the stopper if it arrives before the stream is ready
+    match select(stream_future.boxed(), bootstrap_stopper).await {
+        Either::Left((stream_result, bootstrap_stopper)) => {
+            bootstrap_from_stream(blockchain, tip, stream_result?, bootstrap_stopper, logger).await
+        }
+        Either::Right((bootstrap_stopper_result, _)) => match bootstrap_stopper_result {
+            Ok(()) => Err(Error::Interrupted),
+            Err(_) => panic!("failed to wait for SIGINT"),
+        },
+    }
 }
 
 struct BootstrapInfo {
@@ -159,7 +189,8 @@ impl BootstrapInfo {
 async fn bootstrap_from_stream<S>(
     mut blockchain: Blockchain,
     branch: Tip,
-    mut stream: S,
+    stream: S,
+    bootstrap_stopper: Shared<Receiver<()>>,
     logger: Logger,
 ) -> Result<(), Error>
 where
@@ -170,6 +201,27 @@ where
 
     let mut bootstrap_info = BootstrapInfo::new();
     let mut maybe_parent_tip = None;
+
+    let mut stream = stream.map_err(Error::PullStreamFailed);
+    let mut bootstrap_stopper = bootstrap_stopper.map(|res| match res {
+        Ok(()) => Err(Error::Interrupted),
+        Err(_) => panic!("failed to wait for SIGINT"),
+    });
+
+    // This stream will either end when the block stream is exhausted or when
+    // the cancellation signal arrives. Building such stream allows us to
+    // correctly write all blocks and update the block tip upon the arrival of
+    // the cancellation signal.
+    let mut stream = stream::poll_fn(move |cx| {
+        let bootstrap_stopper = Pin::new(&mut bootstrap_stopper);
+        match bootstrap_stopper.poll(cx) {
+            Poll::Pending => {
+                let stream = Pin::new(&mut stream);
+                stream.poll_next(cx)
+            }
+            Poll::Ready(value) => Poll::Ready(Some(value)),
+        }
+    });
 
     while let Some(block_result) = stream.next().await {
         let result = match block_result {
@@ -188,7 +240,7 @@ where
 
                 handle_block(&blockchain, block, &logger).await
             }
-            Err(err) => Err(Error::PullStreamFailed(err)),
+            Err(err) => Err(err),
         };
 
         match result {
