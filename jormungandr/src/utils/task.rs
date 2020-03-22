@@ -14,7 +14,6 @@ use tokio::timer::Interval;
 use tokio_compat::prelude::*;
 use tokio_compat::runtime::{self, Runtime, TaskExecutor};
 
-use futures03::future::{TryFuture, TryFutureExt};
 use std::fmt::Debug;
 use std::future::Future;
 use std::sync::mpsc::{self, Receiver, RecvError, Sender};
@@ -231,6 +230,27 @@ impl Services {
     /// select on all the started services. this function will block until first services returns
     pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
         self.finish_listener.wait_any_finished()
+    }
+
+    // Run the task to completion
+    pub fn block_on_task_std<F, Fut, T>(&mut self, name: &'static str, f: F) -> T
+    where
+        F: FnOnce(TokioServiceInfo) -> Fut,
+        Fut: Future<Output = T>,
+    {
+        let logger = self
+            .logger
+            .new(o!(crate::log::KEY_TASK => name))
+            .into_erased();
+        let executor = self.runtime.executor();
+        let now = Instant::now();
+        let future_service_info = TokioServiceInfo {
+            name,
+            up_time: now,
+            logger: logger,
+            executor,
+        };
+        self.runtime.block_on_std(f(future_service_info))
     }
 }
 
