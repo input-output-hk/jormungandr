@@ -1,12 +1,15 @@
 use crate::crypto::key::Identifier;
 use chain_crypto::{bech32::Bech32 as _, Ed25519, PublicKey};
-use chain_impl_mockchain::{config::ConfigParam, leadership::bft::LeaderId};
+use chain_impl_mockchain::{
+    config::ConfigParam,
+    key::{BftLeaderId, BftVerificationAlg},
+};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConsensusLeaderId(pub LeaderId);
+pub struct ConsensusLeaderId(pub BftLeaderId);
 
 #[derive(Debug, Error)]
 pub enum TryFromConsensusLeaderIdError {
@@ -32,13 +35,13 @@ impl From<ConsensusLeaderId> for ConfigParam {
 
 impl From<Identifier<Ed25519>> for ConsensusLeaderId {
     fn from(identifier: Identifier<Ed25519>) -> Self {
-        ConsensusLeaderId(LeaderId::from(identifier.into_public_key()))
+        ConsensusLeaderId(BftLeaderId::from(identifier.into_public_key()))
     }
 }
 
 impl From<PublicKey<Ed25519>> for ConsensusLeaderId {
     fn from(public_key: PublicKey<Ed25519>) -> Self {
-        ConsensusLeaderId(LeaderId::from(public_key))
+        ConsensusLeaderId(BftLeaderId::from(public_key))
     }
 }
 
@@ -74,7 +77,9 @@ impl<'de> Deserialize<'de> for ConsensusLeaderId {
                 E: de::Error,
             {
                 PublicKey::try_from_bech32_str(s)
-                    .map(|pk| ConsensusLeaderId(pk.into()))
+                    .map(|pk: chain_crypto::PublicKey<BftVerificationAlg>| {
+                        ConsensusLeaderId(pk.into())
+                    })
                     .map_err(E::custom)
             }
         }
@@ -94,7 +99,7 @@ mod test {
 
             let kp: KeyPair<Ed25519> = KeyPair::arbitrary(g);
             let public_key = kp.identifier().into_public_key();
-            ConsensusLeaderId(LeaderId::from(public_key))
+            ConsensusLeaderId(BftLeaderId::from(public_key))
         }
     }
 

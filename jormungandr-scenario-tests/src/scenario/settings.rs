@@ -7,8 +7,8 @@ use crate::{
 };
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
-    block::ConsensusVersion,
     certificate::{PoolPermissions, PoolSignature},
+    chaintypes::ConsensusVersion,
     fee::LinearFee,
     rewards::TaxType,
     transaction::{SingleAccountBindingSignature, TxBuilder},
@@ -141,7 +141,7 @@ impl Settings {
                     } else {
                         // create and register the stake pool
                         use chain_impl_mockchain::{
-                            certificate::PoolRegistration, leadership::genesis::GenesisPraosLeader,
+                            certificate::PoolRegistration, key::GenesisPraosLeader,
                         };
                         use rand::{distributions::Standard, Rng as _};
                         let serial: u128 = context.rng_mut().sample(Standard);

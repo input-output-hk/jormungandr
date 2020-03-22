@@ -3,7 +3,7 @@ use crate::common::{
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use crate::mock::client::JormungandrClient;
-use chain_impl_mockchain::block::ConsensusVersion;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
 use std::{thread, time::Duration};
 const LOCALHOST: &str = "127.0.0.1";

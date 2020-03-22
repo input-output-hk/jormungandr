@@ -1,13 +1,15 @@
 pub use network_core::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
-    block::{Block, ConsensusVersion},
+    block::Block,
+    chaineval::HeaderContentEvalContext,
+    chaintypes::ConsensusVersion,
     config::{self, Block0Date, ConfigParam},
     fragment::{ConfigParams, Contents, ContentsBuilder, Fragment, FragmentId},
     header::{
         BlockDate, BlockVersion, ChainLength, Epoch, Header, HeaderBft, HeaderBftBuilder,
-        HeaderBuilder, HeaderBuilderNew, HeaderContentEvalContext, HeaderDesc, HeaderGenesisPraos,
-        HeaderGenesisPraosBuilder, HeaderId, HeaderSetConsensusSignature, SlotId,
+        HeaderBuilder, HeaderBuilderNew, HeaderDesc, HeaderGenesisPraos, HeaderGenesisPraosBuilder,
+        HeaderId, HeaderSetConsensusSignature, SlotId,
     },
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{

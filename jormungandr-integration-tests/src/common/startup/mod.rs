@@ -6,7 +6,7 @@ use crate::common::{
     process_utils,
 };
 use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
-use chain_impl_mockchain::block::ConsensusVersion;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::{Identifier, KeyPair},
     interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, Ratio, TaxType},
@@ -184,7 +184,6 @@ pub fn start_stake_pool(
         .map(|process| (process, stake_pool_ids))
 }
 
-
 pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &JormungandrConfig) {
     let coeff = epoch_interval * 2;
     let slots_per_epoch: u32 = config
@@ -201,9 +200,8 @@ pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &Jormung
     process_utils::sleep(wait_time.into());
 }
 
-
 pub fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
-    sleep_till_epoch(1,grace_period,config);
+    sleep_till_epoch(1, grace_period, config);
 }
 
 // temporary struct which should be replaced by one from chain-libs or jormungandr-lib

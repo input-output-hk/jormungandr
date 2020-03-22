@@ -13,8 +13,9 @@ use rand_core::{CryptoRng, RngCore};
 use thiserror::Error;
 
 pub use chain_impl_mockchain::{
-    block::{Block, ConsensusVersion},
+    block::Block,
     certificate::{PoolId, SignedCertificate},
+    chaintypes::ConsensusVersion,
     fee::LinearFee,
     fragment::Fragment,
     header::HeaderId,

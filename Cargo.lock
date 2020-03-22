@@ -655,7 +655,7 @@ name = "cardano-legacy-address"
 version = "0.1.1"
 dependencies = [
  "cbor_event",
- "cryptoxide 0.1.3",
+ "cryptoxide",
  "ed25519-bip32",
 ]
 
@@ -698,7 +698,7 @@ dependencies = [
  "cfg-if",
  "chain-core",
  "chain-crypto",
- "cryptoxide 0.1.3",
+ "cryptoxide",
  "quickcheck",
 ]
 
@@ -717,7 +717,7 @@ version = "0.1.0"
 dependencies = [
  "bech32",
  "cfg-if",
- "cryptoxide 0.1.3",
+ "cryptoxide",
  "curve25519-dalek",
  "digest 0.8.1",
  "ed25519-bip32",
@@ -1015,12 +1015,6 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "cryptoxide"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e35f15e1a0699dd988fed910dd78fdc6407f44654cd12589c91fa44ea67d9159"
-
-[[package]]
-name = "cryptoxide"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbb2eda75391be2fa7273d047766e3f7e4a9f6a74df95e58b603b5c43087e91e"
@@ -1122,7 +1116,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4727ce16fc016d8047462988ced12496aad2bb29b2b55ecf60d29eb5706fc6f"
 dependencies = [
- "cryptoxide 0.2.0",
+ "cryptoxide",
 ]
 
 [[package]]
@@ -3940,15 +3934,15 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "530efb820d53b712f4e347916c5e7ed20deb76a4f0457943b3182fb889b06d2c"
+checksum = "57bd81eb48f4c437cadc685403cad539345bf703d78e63707418431cecd4522b"
 
 [[package]]
 name = "strum_macros"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e6e163a520367c465f59e0a61a23cfae3b10b6546d78b6f672a382be79f7110"
+checksum = "87c85aa3f8ea653bfd3ddf25f7ee357ee4d204731f6aa9ad04002306f6e2774c"
 dependencies = [
  "heck",
  "proc-macro2 1.0.10",

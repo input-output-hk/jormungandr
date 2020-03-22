@@ -1,5 +1,7 @@
 use crate::common::configuration::jormungandr_config::JormungandrConfig;
-use jormungandr_lib::interfaces::{EpochRewardsInfo, Info, NodeStatsDto, PeerRecord, PeerStats, StakeDistributionDto};
+use jormungandr_lib::interfaces::{
+    EpochRewardsInfo, Info, NodeStatsDto, PeerRecord, PeerStats, StakeDistributionDto,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

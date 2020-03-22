@@ -74,7 +74,7 @@ pub fn stake_distribution() {
         &jormungandr.rest_address(),
     );
 
-    startup::sleep_till_epoch(3,10, &jormungandr.config);
+    startup::sleep_till_epoch(3, 10, &jormungandr.config);
 
     jcli_wrapper::assert_rest_account_get_stats(
         &stake_pool_owner_1.address().to_string(),

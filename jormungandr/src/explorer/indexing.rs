@@ -4,17 +4,18 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 
 use crate::blockcfg::{Block, BlockDate, ChainLength, Epoch, Fragment, FragmentId, HeaderHash};
+use cardano_legacy_address::Addr as OldAddress;
 use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
+use chain_core::property::LeaderId;
 use chain_impl_mockchain::block::Proof;
 use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration};
+use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
 use std::{convert::TryInto, sync::Arc};
-
-use cardano_legacy_address::Addr as OldAddress;
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
 
@@ -52,7 +53,7 @@ pub struct ExplorerBlock {
 pub enum BlockProducer {
     None,
     StakePool(PoolId),
-    BftLeader(bft::LeaderId),
+    BftLeader(BftLeaderId),
 }
 
 #[derive(Clone)]
