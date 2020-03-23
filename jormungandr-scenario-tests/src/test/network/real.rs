@@ -1,14 +1,16 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
+    node::{LeadershipMode, NodeController, PersistenceMode},
     scenario::{
         repository::ScenarioResult, ActiveSlotCoefficient, Blockchain, ConsensusVersion,
         ControllerBuilder, KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration,
         TopologyBuilder, Value, Wallet,
     },
-    test::utils,
     test::Result,
     Context,
 };
+
+use jormungandr_lib::{interfaces::NodeState, testing::benchmark_efficiency};
+
 use rand_chacha::ChaChaRng;
 use std::time::{Duration, SystemTime};
 
@@ -121,6 +123,19 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     controller.monitor_nodes();
     core.wait_for_bootstrap()?;
     leaders.last().unwrap().wait_for_bootstrap()?;
+    measure_how_many_nodes_are_running(&leaders);
+
+    controller.finalize();
+    Ok(ScenarioResult::passed())
+}
+
+fn measure_how_many_nodes_are_running(leaders: &Vec<NodeController>) {
+    let leaders_nodes_count = leaders.len() as u32;
+
+    let mut efficiency_benchmark_run = benchmark_efficiency("real_network_bootstrap_score")
+        .target(leaders_nodes_count)
+        .start();
+    let mut leaders_ids: Vec<u32> = (1..leaders_nodes_count).collect();
     let now = SystemTime::now();
 
     loop {
@@ -130,11 +145,21 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         }
         std::thread::sleep(Duration::from_secs(10));
 
-        for leader in leaders.iter() {
-            utils::assert_is_up(&leader)?;
+        leaders_ids.retain(|leader_id| {
+            let leader_id_usize = *leader_id as usize;
+            let leader: &NodeController = leaders.get(leader_id_usize).unwrap();
+            if let Ok(stats) = leader.stats() {
+                if let NodeState::Running = stats.state {
+                    efficiency_benchmark_run.increment();
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        if leaders_ids.is_empty() {
+            break;
         }
     }
-
-    controller.finalize();
-    Ok(ScenarioResult::passed())
+    efficiency_benchmark_run.stop().print()
 }

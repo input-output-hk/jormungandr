@@ -210,14 +210,12 @@ impl Controller {
     }
 
     pub fn monitor_nodes(&mut self) {
-        if let ProgressBarMode::None = self.context.progress_bar_mode() {
-            return;
+        if let ProgressBarMode::Monitor = self.context.progress_bar_mode() {
+            let pb = Arc::clone(&self.progress_bar);
+            self.progress_bar_thread = Some(std::thread::spawn(move || {
+                pb.join().unwrap();
+            }));
         }
-
-        let pb = Arc::clone(&self.progress_bar);
-        self.progress_bar_thread = Some(std::thread::spawn(move || {
-            pb.join().unwrap();
-        }));
     }
 
     pub fn finalize(self) {
