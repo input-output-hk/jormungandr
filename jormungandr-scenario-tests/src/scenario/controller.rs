@@ -1,6 +1,8 @@
 use crate::{
     node::{LeadershipMode, Node, PersistenceMode},
-    scenario::{settings::Settings, Blockchain, ContextChaCha, ErrorKind, Result, Topology},
+    scenario::{
+        settings::Settings, Blockchain, ContextChaCha, ErrorKind, ProgressBarMode, Result, Topology,
+    },
     style, MemPoolCheck, NodeBlock0, NodeController, Wallet,
 };
 use chain_impl_mockchain::header::HeaderId;
@@ -88,8 +90,12 @@ impl ControllerBuilder {
         self.controller_progress.finish_and_clear();
         self.summary();
 
-        if context.disable_progress_bar() {
-            println!("nodes monitoring disabled due to legacy logging setting enabled");
+        match context.progress_bar_mode() {
+            ProgressBarMode::None => println!("nodes logging disabled"),
+            ProgressBarMode::Standard => {
+                println!("nodes monitoring disabled due to legacy logging setting enabled")
+            }
+            _ => (),
         }
 
         Controller::new(self.settings.unwrap(), context, working_directory)
@@ -204,7 +210,7 @@ impl Controller {
     }
 
     pub fn monitor_nodes(&mut self) {
-        if self.context.disable_progress_bar() {
+        if let ProgressBarMode::None = self.context.progress_bar_mode() {
             return;
         }
 
