@@ -4,7 +4,9 @@ extern crate jormungandr_integration_tests;
 
 use jormungandr_scenario_tests::{
     node::{LeadershipMode, PersistenceMode},
-    parse_tag_from_str, prepare_command, style, Context, ScenariosRepository, Seed, Tag,
+    parse_tag_from_str, prepare_command,
+    scenario::{parse_progress_bar_mode_from_str, ProgressBarMode},
+    style, Context, ScenariosRepository, Seed, Tag,
 };
 use std::{path::PathBuf, thread, time::Duration};
 use structopt::StructOpt;
@@ -52,8 +54,12 @@ struct CommandArgs {
     /// but simple log on console enabled
     ///
     /// no progress bar, only simple console output
-    #[structopt(long = "disable-progress-bar")]
-    disable_progress_bar: bool,
+    #[structopt(
+        long = "progress-bar-mode",
+        default_value = "Monitor",
+        parse(try_from_str = parse_progress_bar_mode_from_str)
+    )]
+    progress_bar_mode: ProgressBarMode,
 
     /// set exit code based on test result
     #[structopt(long = "set-exit-code")]
@@ -69,7 +75,7 @@ fn main() {
 
     let jormungandr = prepare_command(command_args.jormungandr);
     let jcli = prepare_command(command_args.jcli);
-    let disable_progress_bar = command_args.disable_progress_bar;
+    let progress_bar_mode = command_args.progress_bar_mode;
     let seed = command_args
         .seed
         .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
@@ -82,7 +88,7 @@ fn main() {
         jcli,
         testing_directory,
         generate_documentation,
-        disable_progress_bar,
+        progress_bar_mode,
     );
 
     introduction(&context);

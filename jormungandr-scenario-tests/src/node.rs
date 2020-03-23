@@ -1,4 +1,7 @@
-use crate::{scenario::settings::NodeSetting, style, Context, NodeAlias};
+use crate::{
+    scenario::{settings::NodeSetting, ProgressBarMode},
+    style, Context, NodeAlias,
+};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::{
     block::Block,
@@ -116,7 +119,7 @@ pub enum Status {
 struct ProgressBarController {
     progress_bar: ProgressBar,
     prefix: String,
-    legacy_logging: bool,
+    logging_mode: ProgressBarMode,
 }
 
 /// send query to a running node
@@ -557,7 +560,7 @@ impl Node {
         let progress_bar = ProgressBarController::new(
             progress_bar,
             format!("{}@{}", alias, node_settings.config().rest.listen),
-            context.disable_progress_bar(),
+            context.progress_bar_mode(),
         );
 
         let config_file = dir.join(NODE_CONFIG);
@@ -674,11 +677,11 @@ impl Node {
 use std::fmt::Display;
 
 impl ProgressBarController {
-    fn new(progress_bar: ProgressBar, prefix: String, legacy_logging: bool) -> Self {
+    fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {
         ProgressBarController {
             progress_bar,
             prefix,
-            legacy_logging,
+            logging_mode,
         }
     }
 
@@ -701,11 +704,11 @@ impl ProgressBarController {
         L: Display,
         M: Display,
     {
-        match self.legacy_logging {
-            true => {
+        match self.logging_mode {
+            ProgressBarMode::Standard => {
                 println!("[{}][{}]: {}", lvl, &self.prefix, msg);
             }
-            false => {
+            ProgressBarMode::Monitor => {
                 self.progress_bar.println(format!(
                     "[{}][{}{}]: {}",
                     lvl,
@@ -714,6 +717,7 @@ impl ProgressBarController {
                     msg,
                 ));
             }
+            ProgressBarMode::None => (),
         }
     }
 }

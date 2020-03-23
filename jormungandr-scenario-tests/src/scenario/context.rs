@@ -12,6 +12,8 @@ use std::{
     },
 };
 
+use crate::scenario::ProgressBarMode;
+
 pub type ContextChaCha = Context<ChaChaRng>;
 
 #[derive(Clone)]
@@ -39,7 +41,7 @@ pub struct Context<RNG: RngCore + Sized> {
 
     testing_directory: TestingDirectory,
     generate_documentation: bool,
-    disable_progress_bar: bool,
+    progress_bar_mode: ProgressBarMode,
 }
 
 impl Seed {
@@ -61,7 +63,7 @@ impl Context<ChaChaRng> {
         jcli: bawawa::Command,
         testing_directory: Option<PathBuf>,
         generate_documentation: bool,
-        disable_progress_bar: bool,
+        progress_bar_mode: ProgressBarMode,
     ) -> Self {
         let rng = ChaChaRng::from_seed(seed.0);
 
@@ -80,7 +82,7 @@ impl Context<ChaChaRng> {
             jcli,
             testing_directory,
             generate_documentation,
-            disable_progress_bar,
+            progress_bar_mode,
         }
     }
 
@@ -99,7 +101,7 @@ impl Context<ChaChaRng> {
             jcli: self.jcli().clone(),
             testing_directory: self.testing_directory.clone(),
             generate_documentation: self.generate_documentation.clone(),
-            disable_progress_bar: self.disable_progress_bar.clone(),
+            progress_bar_mode: self.progress_bar_mode.clone(),
         }
     }
 
@@ -154,8 +156,8 @@ impl<RNG: RngCore> Context<RNG> {
         &self.seed
     }
 
-    pub fn disable_progress_bar(&self) -> bool {
-        self.disable_progress_bar
+    pub fn progress_bar_mode(&self) -> ProgressBarMode {
+        self.progress_bar_mode
     }
 }
 
