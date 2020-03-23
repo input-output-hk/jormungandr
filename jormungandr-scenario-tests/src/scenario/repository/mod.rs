@@ -150,7 +150,7 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short],
     ));
     repository.push(Scenario::new("star", star, vec![Tag::Short]));
-    repository.push(Scenario::new("mesh", mesh, vec![Tag::Short]));
+    repository.push(Scenario::new("mesh", mesh, vec![Tag::Short, Tag::Unstable]));
     repository.push(Scenario::new(
         "point_to_point",
         point_to_point,
@@ -172,7 +172,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_leader_disruption_overlap",
         passive_leader_disruption_overlap,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_overlap",
