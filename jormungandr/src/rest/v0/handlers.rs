@@ -411,14 +411,15 @@ pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder,
     let network_stats = peer_stats
         .into_iter()
         .map(|info| {
-            json! ({
-                "nodeId": info.id.to_string(),
-                "addr": info.addr,
-                "establishedAt": SystemTime::from(info.stats.connection_established()),
-                "lastBlockReceived": info.stats.last_block_received().map(SystemTime::from),
-                "lastFragmentReceived": info.stats.last_fragment_received().map(SystemTime::from),
-                "lastGossipReceived": info.stats.last_gossip_received().map(SystemTime::from),
-            })
+            json! (PeerStats{
+                    nodeId: info.id.to_string(),
+                    addr: info.addr,
+                    establishedAt: SystemTime::from(info.stats.connection_established()),
+                    lastBlockReceived: info.stats.last_block_received().map(SystemTime::from),
+                    lastFragmentReceived: info.stats.last_fragment_received().map(SystemTime::from),
+                    lastGossipReceived: info.stats.last_gossip_received().map(SystemTime::from),
+                }
+            )
         })
         .collect::<Vec<_>>();
     Ok(Json(network_stats))
