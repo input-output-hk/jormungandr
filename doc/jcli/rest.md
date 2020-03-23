@@ -558,10 +558,9 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format \<format\> - see [conventions](#conventions)
 
 ```sh
-jcli rest v0 rewards epoch get 82 --output-format json -h <node_addr>
+jcli rest v0 rewards epoch get 82 -h <node_addr>
 ```
 
 ```json
@@ -606,10 +605,9 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format \<format\> - see [conventions](#conventions)
 
 ```sh
-jcli rest v0 rewards history get 2 --output-format json -h <node_addr>
+jcli rest v0 rewards history get 2 -h <node_addr>
 ```
 
 ```json
