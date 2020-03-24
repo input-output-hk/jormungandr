@@ -123,6 +123,7 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     controller.monitor_nodes();
     core.wait_for_bootstrap()?;
     leaders.last().unwrap().wait_for_bootstrap()?;
+
     measure_how_many_nodes_are_running(&leaders);
 
     controller.finalize();
@@ -135,19 +136,18 @@ fn measure_how_many_nodes_are_running(leaders: &Vec<NodeController>) {
     let mut efficiency_benchmark_run = benchmark_efficiency("real_network_bootstrap_score")
         .target(leaders_nodes_count)
         .start();
-    let mut leaders_ids: Vec<u32> = (1..leaders_nodes_count).collect();
+    let mut leaders_ids: Vec<u32> = (1..=leaders_nodes_count).collect();
     let now = SystemTime::now();
 
     loop {
-        // 48 hours
         if now.elapsed().unwrap().as_secs() > (10 * 60) {
             break;
         }
         std::thread::sleep(Duration::from_secs(10));
 
         leaders_ids.retain(|leader_id| {
-            let leader_id_usize = *leader_id as usize;
-            let leader: &NodeController = leaders.get(leader_id_usize).unwrap();
+            let leader_index_usize = (leader_id - 1) as usize;
+            let leader: &NodeController = leaders.get(leader_index_usize).unwrap();
             if let Ok(stats) = leader.stats() {
                 if let NodeState::Running = stats.state {
                     efficiency_benchmark_run.increment();
@@ -161,5 +161,26 @@ fn measure_how_many_nodes_are_running(leaders: &Vec<NodeController>) {
             break;
         }
     }
+
+    print_error_for_failed_leaders(leaders_ids, leaders);
+
     efficiency_benchmark_run.stop().print()
+}
+
+pub fn print_error_for_failed_leaders(leaders_ids: Vec<u32>, leaders: &Vec<NodeController>) {
+    if leaders_ids.is_empty() {
+        return;
+    }
+
+    println!("Nodes which failed to bootstrap: ");
+    for leader_id in leaders_ids {
+        let leader_index_usize = (leader_id - 1) as usize;
+        let error_lines: Vec<String> = leaders
+            .get(leader_index_usize)
+            .unwrap()
+            .logger()
+            .get_lines_with_error_and_invalid()
+            .collect();
+        println!("{} - Error Logs: {:?}", leader_name(leader_id), error_lines);
+    }
 }
