@@ -1,18 +1,15 @@
 use crate::{
-    node::{LeadershipMode, NodeController, PersistenceMode},
+    node::{LeadershipMode, PersistenceMode},
     scenario::{
         repository::ScenarioResult, ActiveSlotCoefficient, Blockchain, ConsensusVersion,
         ControllerBuilder, KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration,
         TopologyBuilder, Value, Wallet,
     },
-    test::Result,
+    test::{utils, utils::SyncWaitParams, Result},
     Context,
 };
 
-use jormungandr_lib::{interfaces::NodeState, testing::benchmark_efficiency};
-
 use rand_chacha::ChaChaRng;
-use std::time::{Duration, SystemTime};
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE: &str = "Relay";
@@ -124,63 +121,21 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     core.wait_for_bootstrap()?;
     leaders.last().unwrap().wait_for_bootstrap()?;
 
-    measure_how_many_nodes_are_running(&leaders);
+    utils::measure_how_many_nodes_are_running(&leaders, "real_network_bootstrap_score");
+
+    //shut down core and relays nodes
+    core.shutdown()?;
+    for relay_node in relays {
+        relay_node.shutdown()?;
+    }
+
+    let leaders_count = leaders.len() as u64;
+    utils::measure_and_log_sync_time(
+        leaders.iter().collect(),
+        SyncWaitParams::network_size(leaders_count, leaders_count / 2).into(),
+        "real_network_sync_after_relay_nodes_shutdown",
+    );
 
     controller.finalize();
     Ok(ScenarioResult::passed())
-}
-
-fn measure_how_many_nodes_are_running(leaders: &Vec<NodeController>) {
-    let leaders_nodes_count = leaders.len() as u32;
-
-    let mut efficiency_benchmark_run = benchmark_efficiency("real_network_bootstrap_score")
-        .target(leaders_nodes_count)
-        .start();
-    let mut leaders_ids: Vec<u32> = (1..=leaders_nodes_count).collect();
-    let now = SystemTime::now();
-
-    loop {
-        if now.elapsed().unwrap().as_secs() > (10 * 60) {
-            break;
-        }
-        std::thread::sleep(Duration::from_secs(10));
-
-        leaders_ids.retain(|leader_id| {
-            let leader_index_usize = (leader_id - 1) as usize;
-            let leader: &NodeController = leaders.get(leader_index_usize).unwrap();
-            if let Ok(stats) = leader.stats() {
-                if let NodeState::Running = stats.state {
-                    efficiency_benchmark_run.increment();
-                    return false;
-                }
-            }
-            return true;
-        });
-
-        if leaders_ids.is_empty() {
-            break;
-        }
-    }
-
-    print_error_for_failed_leaders(leaders_ids, leaders);
-
-    efficiency_benchmark_run.stop().print()
-}
-
-pub fn print_error_for_failed_leaders(leaders_ids: Vec<u32>, leaders: &Vec<NodeController>) {
-    if leaders_ids.is_empty() {
-        return;
-    }
-
-    println!("Nodes which failed to bootstrap: ");
-    for leader_id in leaders_ids {
-        let leader_index_usize = (leader_id - 1) as usize;
-        let error_lines: Vec<String> = leaders
-            .get(leader_index_usize)
-            .unwrap()
-            .logger()
-            .get_lines_with_error_and_invalid()
-            .collect();
-        println!("{} - Error Logs: {:?}", leader_name(leader_id), error_lines);
-    }
 }

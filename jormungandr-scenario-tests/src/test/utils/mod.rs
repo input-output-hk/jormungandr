@@ -9,11 +9,14 @@ use crate::{
     wallet::Wallet,
 };
 use jormungandr_lib::{
-    interfaces::FragmentStatus,
-    testing::{benchmark_speed, Speed, Thresholds},
+    interfaces::{FragmentStatus, NodeState},
+    testing::{benchmark_efficiency, benchmark_speed, Speed, Thresholds},
     time::Duration as LibsDuration,
 };
-use std::{fmt, thread, time::Duration};
+use std::{
+    fmt, thread,
+    time::{Duration, SystemTime},
+};
 
 pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
     let wait_time = sync_wait_params.wait_time();
@@ -193,4 +196,55 @@ pub fn sending_transactions_to_node_sequentially(
         assert_is_in_block(status, &node)?;
     }
     Ok(())
+}
+
+pub fn measure_how_many_nodes_are_running(leaders: &Vec<NodeController>, name: &str) {
+    let leaders_nodes_count = leaders.len() as u32;
+
+    let mut efficiency_benchmark_run = benchmark_efficiency(name)
+        .target(leaders_nodes_count)
+        .start();
+    let mut leaders_ids: Vec<u32> = (1..=leaders_nodes_count).collect();
+    let now = SystemTime::now();
+
+    loop {
+        if now.elapsed().unwrap().as_secs() > (10 * 60) {
+            break;
+        }
+        std::thread::sleep(Duration::from_secs(10));
+
+        leaders_ids.retain(|leader_id| {
+            let leader_index_usize = (leader_id - 1) as usize;
+            let leader: &NodeController = leaders.get(leader_index_usize).unwrap();
+            if let Ok(stats) = leader.stats() {
+                if let NodeState::Running = stats.state {
+                    efficiency_benchmark_run.increment();
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        if leaders_ids.is_empty() {
+            break;
+        }
+    }
+
+    print_error_for_failed_leaders(leaders_ids, leaders);
+
+    efficiency_benchmark_run.stop().print()
+}
+
+fn print_error_for_failed_leaders(leaders_ids: Vec<u32>, leaders: &Vec<NodeController>) {
+    if leaders_ids.is_empty() {
+        return;
+    }
+
+    println!("Nodes which failed to bootstrap: ");
+    for leader_id in leaders_ids {
+        let leader_index_usize = (leader_id - 1) as usize;
+        let leader = leaders.get(leader_index_usize).unwrap();
+        let error_lines: Vec<String> = leader.logger().get_lines_with_error_and_invalid().collect();
+        println!("{} - Error Logs: {:?}", leader.alias(), error_lines);
+    }
 }
