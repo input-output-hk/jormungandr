@@ -5,7 +5,10 @@ use crate::{
         ControllerBuilder, KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration,
         TopologyBuilder, Value, Wallet,
     },
-    test::{utils, utils::SyncWaitParams, Result},
+    test::{
+        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        Result,
+    },
     Context,
 };
 
@@ -132,8 +135,9 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let leaders_count = leaders.len() as u64;
     utils::measure_and_log_sync_time(
         leaders.iter().collect(),
-        SyncWaitParams::network_size(leaders_count, leaders_count / 2).into(),
+        SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync_after_relay_nodes_shutdown",
+        SyncMeasurementInterval::Long,
     );
 
     controller.finalize();
