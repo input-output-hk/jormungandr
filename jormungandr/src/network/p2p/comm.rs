@@ -7,10 +7,11 @@ use crate::network::{
     client::ConnectHandle,
     p2p::{Gossip as NodeData, Id, Node as NodeRef},
 };
-use chain_network::data::block::BlockEvent;
+use chain_network::data::block::{BlockEvent, ChainPullRequest};
 use chain_network::data::gossip::{Gossip, Node};
 use chain_network::error as net_error;
 use futures03::channel::mpsc;
+use futures03::lock::{Mutex, MutexLockFuture};
 use futures03::prelude::*;
 use futures03::stream;
 use slog::Logger;
@@ -18,6 +19,7 @@ use slog::Logger;
 use std::fmt;
 use std::mem;
 use std::net::SocketAddr;
+use std::task::{Context, Poll};
 use std::time::SystemTime;
 
 // Buffer size determines the number of stream items pending processing that
@@ -68,11 +70,10 @@ pub struct OutboundSubscription<T> {
 }
 
 impl<T> Stream for OutboundSubscription<T> {
-    type Item = T;
-    type Error = core_error::Error;
+    type Item = Result<T, net_error::Error>;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        Ok(self.inner.poll().unwrap())
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Ok(self.inner.poll_next(cx))
     }
 }
 
@@ -243,9 +244,9 @@ enum SubscriptionState<T> {
 pub struct PeerComms {
     block_announcements: CommHandle<Header>,
     block_solicitations: CommHandle<Vec<HeaderHash>>,
-    chain_pulls: CommHandle<ChainPullRequest<HeaderHash>>,
+    chain_pulls: CommHandle<ChainPullRequest>,
     fragments: CommHandle<Fragment>,
-    gossip: CommHandle<Gossip<NodeData>>,
+    gossip: CommHandle<Gossip>,
 }
 
 impl PeerComms {
@@ -370,7 +371,7 @@ pub struct ConnectOptions {
     /// Fragment to send once the subscription is established
     pub pending_fragment: Option<Fragment>,
     /// Gossip to send once the subscription is established
-    pub pending_gossip: Option<Gossip<NodeData>>,
+    pub pending_gossip: Option<Gossip>,
     /// The to number of client connections that need to be removed
     /// prior to connecting.
     pub evict_clients: usize,
@@ -463,21 +464,20 @@ pub struct PeerInfo {
 /// all network connection tasks.
 #[derive(Clone)]
 pub struct Peers {
-    mutex: Lock<peer_map::PeerMap>,
+    mutex: Mutex<PeerMap>,
     logger: Logger,
 }
 
 impl Peers {
     pub fn new(capacity: usize, logger: Logger) -> Self {
         Peers {
-            mutex: Lock::new(peer_map::PeerMap::new(capacity)),
+            mutex: Mutex::new(PeerMap::new(capacity)),
             logger,
         }
     }
 
-    fn inner<E>(&self) -> impl Future<Item = LockGuard<peer_map::PeerMap>, Error = E> {
-        let mut lock = self.mutex.clone();
-        future::poll_fn(move || Ok(lock.poll_lock()))
+    fn inner(&self) -> MutexLockFuture<PeerMap> {
+        self.mutex.lock()
     }
 
     pub fn clear<E>(&self) -> impl Future<Item = (), Error = E> {
@@ -776,12 +776,12 @@ impl Peers {
 }
 
 pub struct LockServerComms {
-    lock: Lock<PeerMap>,
+    lock: Mutex<PeerMap>,
     peer: Id,
 }
 
 impl LockServerComms {
-    pub fn poll_subscribe_with<F, S>(&mut self, f: F) -> Async<S>
+    pub fn poll_subscribe_with<F, S>(&mut self, f: F) -> Poll<S>
     where
         F: FnOnce(&mut PeerComms) -> S,
     {
