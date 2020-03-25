@@ -29,7 +29,6 @@ chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
 chain-time    = { path = "../chain-deps/chain-time" }
-reqwest = "0.9.11"
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.5.6"
 openapiv3 = "0.3.0"
@@ -41,6 +40,11 @@ thiserror = "1.0"
 version = "2.32"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
+
+[dependencies.reqwest]
+version = "0.9"
+features = ["rustls-tls"]
+default-features = false
 
 [dev-dependencies]
 maplit = "1.0.2"

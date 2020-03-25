@@ -64,8 +64,12 @@ tokio02 = { package = "tokio", version = "0.2.12", features = ["full"]}
 tokio-threadpool = "0.1"
 bech32 = "0.7"
 async-trait = "0.1"
-reqwest = "0.10"
 lru = "^0.4.3"
+
+[dependencies.reqwest]
+version = "0.10"
+features = ["rustls-tls"]
+default-features = false
 
 [dev-dependencies]
 chain-core           = { path = "../chain-deps/chain-core", features=["property-test-api"]}
