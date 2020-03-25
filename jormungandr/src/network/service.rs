@@ -8,11 +8,14 @@ use super::{
     Channels, GlobalStateR,
 };
 use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
-use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream, RequestFuture, RequestSink};
+use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream};
+use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
+use chain_network::data as net_data;
 use chain_network::data::gossip::{Gossip, Peers};
-use chain_network::error as net_error;
-use futures::future::{self, FutureResult};
-use futures::prelude::*;
+use chain_network::error::{self as net_error, Error};
+
+use async_trait::async_trait;
+use futures03::prelude::*;
 use slog::Logger;
 
 #[derive(Clone)]
@@ -38,11 +41,8 @@ impl NodeService {
     }
 }
 
-impl NodeService
-where
-    Self: P2pService,
-{
-    fn subscription_logger(&self, subscriber: <Self as P2pService>::NodeId) -> Logger {
+impl NodeService {
+    fn subscription_logger(&self, subscriber: Id) -> Logger {
         self.logger.new(o!("node_id" => subscriber.to_string()))
     }
 }
@@ -65,39 +65,19 @@ impl Node for NodeService {
     }
 }
 
-impl P2pService for NodeService {
-    type NodeId = Id;
-
-    fn node_id(&self) -> Id {
-        self.global_state.topology.node_id()
-    }
-}
-
+#[async_trait]
 impl BlockService for NodeService {
-    type BlockId = HeaderHash;
-    type BlockDate = BlockDate;
-    type Block = Block;
-    type TipFuture = RequestFuture<ClientMsg, Header, core_error::Error>;
-    type Header = Header;
-    type PullBlocksStream = ReplyStream<Block, core_error::Error>;
-    type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
-    type PullBlocksToTipFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
-    type GetBlocksStream = ReplyStream<Block, core_error::Error>;
-    type GetBlocksFuture = FutureResult<Self::GetBlocksStream, core_error::Error>;
-    type PullHeadersStream = ReplyStream<Header, core_error::Error>;
-    type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
-    type GetHeadersStream = ReplyStream<Header, core_error::Error>;
-    type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type PushHeadersSink = RequestSink<Header, (), core_error::Error>;
-    type UploadBlocksSink = RequestSink<Block, (), core_error::Error>;
-    type BlockSubscription = Subscription<BlockAnnouncementProcessor, BlockEventSubscription>;
-    type BlockSubscriptionFuture = subscription::ServeBlockEvents<BlockAnnouncementProcessor>;
+    type PullBlocksToTipStream = ReplyStream<Block, Error>;
+    type GetBlocksStream = ReplyStream<Block, Error>;
+    type PullHeadersStream = ReplyStream<Header, Error>;
+    type GetHeadersStream = ReplyStream<Header, Error>;
+    type SubscriptionStream = ReplyStream<net_data::BlockEvent, Error>;
 
-    fn block0(&mut self) -> HeaderHash {
-        self.global_state.block0_hash
+    fn block0(&mut self) -> net_data::BlockId {
+        net_data::BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap()
     }
 
-    fn tip(&mut self) -> Self::TipFuture {
+    async fn tip(&self) -> Result<Header, Error> {
         intercom::unary_future(
             self.channels.client_box.clone(),
             self.logger().new(o!("request" => "Tip")),
@@ -105,7 +85,10 @@ impl BlockService for NodeService {
         )
     }
 
-    fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
+    async fn pull_blocks_to_tip(
+        &self,
+        from: net_data::BlockIds,
+    ) -> Result<Self::PullBlocksToTipStream, Error> {
         let logger = self.logger().new(o!("request" => "PullBlocksToTip"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
@@ -119,7 +102,7 @@ impl BlockService for NodeService {
         future::ok(stream)
     }
 
-    fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture {
+    async fn get_blocks(&self, ids: net_data::BlockIds) -> Result<Self::GetBlocksStream, Error> {
         let logger = self.logger().new(o!("request" => "GetBlocks"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
@@ -132,7 +115,7 @@ impl BlockService for NodeService {
         future::ok(stream)
     }
 
-    fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture {
+    async fn get_headers(&self, ids: net_data::BlockIds) -> Result<Self::GetHeadersStream, Error> {
         let logger = self.logger().new(o!("request" => "GetHeaders"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
@@ -145,19 +128,11 @@ impl BlockService for NodeService {
         future::ok(stream)
     }
 
-    fn pull_blocks(
-        &mut self,
-        _from: &[Self::BlockId],
-        _to: &Self::BlockId,
-    ) -> Self::PullBlocksFuture {
-        future::err(core_error::Error::unimplemented())
-    }
-
-    fn pull_headers(
-        &mut self,
-        from: &[Self::BlockId],
-        to: &Self::BlockId,
-    ) -> Self::PullHeadersFuture {
+    async fn pull_headers(
+        &self,
+        from: net_data::BlockIds,
+        to: net_data::BlockId,
+    ) -> Result<Self::PullHeadersStream, Error> {
         let logger = self.logger().new(o!("request" => "PullHeaders"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
@@ -171,11 +146,7 @@ impl BlockService for NodeService {
         future::ok(stream)
     }
 
-    fn pull_headers_to_tip(&mut self, _from: &[Self::BlockId]) -> Self::PullHeadersFuture {
-        future::err(core_error::Error::unimplemented())
-    }
-
-    fn push_headers(&mut self) -> Self::PushHeadersSink {
+    async fn push_headers(&self, stream: PushStream<Header>) -> Result<(), Error> {
         let logger = self.logger.new(o!("request" => "PushHeaders"));
         let (handle, sink) =
             intercom::stream_request(buffer_sizes::inbound::HEADERS, logger.clone());
@@ -198,7 +169,7 @@ impl BlockService for NodeService {
         sink
     }
 
-    fn upload_blocks(&mut self) -> Self::UploadBlocksSink {
+    async fn upload_blocks(&self, stream: PushStream<Block>) -> Result<(), Error> {
         let logger = self.logger.new(o!("request" => "UploadBlocks"));
         let (handle, sink) =
             intercom::stream_request(buffer_sizes::inbound::BLOCKS, logger.clone());
@@ -221,7 +192,10 @@ impl BlockService for NodeService {
         sink
     }
 
-    fn block_subscription(&mut self, subscriber: Self::NodeId) -> Self::BlockSubscriptionFuture {
+    async fn block_subscription(
+        &self,
+        stream: PushStream<Header>,
+    ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self
             .subscription_logger(subscriber)
             .new(o!("stream" => "block_events"));
@@ -241,22 +215,22 @@ impl BlockService for NodeService {
     }
 }
 
+#[async_trait]
 impl FragmentService for NodeService {
-    type Fragment = Fragment;
-    type FragmentId = FragmentId;
-    type GetFragmentsStream = ReplyStream<Self::Fragment, core_error::Error>;
-    type GetFragmentsFuture = FutureResult<Self::GetFragmentsStream, core_error::Error>;
-    type FragmentSubscription = Subscription<FragmentProcessor, OutboundSubscription<Fragment>>;
-    type FragmentSubscriptionFuture = subscription::ServeFragments<FragmentProcessor>;
+    type GetFragmentsStream = ReplyStream<net_data::Fragment, Error>;
+    type SubscriptionStream = ReplyStream<net_data::Fragment, Error>;
 
-    fn get_fragments(&mut self, _ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture {
-        future::err(core_error::Error::unimplemented())
+    async fn get_fragments(
+        &self,
+        ids: net_data::FragmentIds,
+    ) -> Result<Self::GetFragmentsStream, Error> {
+        future::err(net_error::Error::unimplemented())
     }
 
-    fn fragment_subscription(
-        &mut self,
-        subscriber: Self::NodeId,
-    ) -> Self::FragmentSubscriptionFuture {
+    async fn fragment_subscription(
+        &self,
+        stream: PushStream<Fragment>,
+    ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self
             .subscription_logger(subscriber)
             .new(o!("stream" => "fragments"));
@@ -276,13 +250,14 @@ impl FragmentService for NodeService {
     }
 }
 
+#[async_trait]
 impl GossipService for NodeService {
-    type Node = NodeData;
-    type GossipSubscription = Subscription<GossipProcessor, OutboundSubscription<Gossip<NodeData>>>;
-    type GossipSubscriptionFuture = subscription::ServeGossip<GossipProcessor>;
-    type PeersFuture = RequestFuture<ClientMsg, PeersResponse, core_error::Error>;
+    type SubscriptionStream = ReplyStream<net_data::Gossip, Error>;
 
-    fn gossip_subscription(&mut self, subscriber: Self::NodeId) -> Self::GossipSubscriptionFuture {
+    async fn gossip_subscription(
+        &self,
+        stream: PushStream<Header>,
+    ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self
             .subscription_logger(subscriber)
             .new(o!("stream" => "gossip"));
