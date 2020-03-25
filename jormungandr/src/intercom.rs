@@ -5,16 +5,17 @@ use crate::blockchain::Checkpoints;
 use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 use crate::network::p2p::comm::PeerInfo;
 use crate::network::p2p::Id as NodeId;
-use crate::network::p2p::PeersResponse;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
+use chain_network::data::gossip::Peers;
+use chain_network::error as net_error;
+use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+
 use futures::sync::mpsc as mpsc01;
 use futures::{Future as Future01, Poll as Poll01, Sink as Sink01, StartSend, Stream as Stream01};
 use futures03::channel::{mpsc, oneshot};
 use futures03::compat::{Compat, CompatSink};
 use futures03::prelude::*;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
-use network_core::error as core_error;
 use slog::Logger;
 use std::{
     error,
@@ -27,7 +28,7 @@ use std::{
 /// The error values passed via intercom messages.
 #[derive(Debug)]
 pub struct Error {
-    code: core_error::Code,
+    code: net_error::Code,
     cause: Box<dyn error::Error + Send + Sync>,
 }
 
@@ -37,7 +38,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Internal,
+            code: net_error::Code::Internal,
             cause: cause.into(),
         }
     }
@@ -47,7 +48,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Aborted,
+            code: net_error::Code::Aborted,
             cause: cause.into(),
         }
     }
@@ -57,7 +58,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Canceled,
+            code: net_error::Code::Canceled,
             cause: cause.into(),
         }
     }
@@ -67,7 +68,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::FailedPrecondition,
+            code: net_error::Code::FailedPrecondition,
             cause: cause.into(),
         }
     }
@@ -77,7 +78,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::InvalidArgument,
+            code: net_error::Code::InvalidArgument,
             cause: cause.into(),
         }
     }
@@ -87,19 +88,19 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::NotFound,
+            code: net_error::Code::NotFound,
             cause: cause.into(),
         }
     }
 
     pub fn unimplemented<S: Into<String>>(message: S) -> Self {
         Error {
-            code: core_error::Code::Unimplemented,
+            code: net_error::Code::Unimplemented,
             cause: message.into().into(),
         }
     }
 
-    pub fn code(&self) -> core_error::Code {
+    pub fn code(&self) -> net_error::Code {
         self.code
     }
 }
@@ -107,7 +108,7 @@ impl Error {
 impl From<oneshot::Canceled> for Error {
     fn from(src: oneshot::Canceled) -> Self {
         Error {
-            code: core_error::Code::Unavailable,
+            code: net_error::Code::Unavailable,
             cause: src.into(),
         }
     }
@@ -118,12 +119,12 @@ impl From<chain_storage_sqlite_old::Error> for Error {
         use chain_storage_sqlite_old::Error::*;
 
         let code = match err {
-            BlockNotFound => core_error::Code::NotFound,
-            CannotIterate => core_error::Code::Internal,
-            BackendError(_) => core_error::Code::Internal,
-            Block0InFuture => core_error::Code::Internal,
-            BlockAlreadyPresent => core_error::Code::Internal,
-            MissingParent => core_error::Code::InvalidArgument,
+            BlockNotFound => net_error::Code::NotFound,
+            CannotIterate => net_error::Code::Internal,
+            BackendError(_) => net_error::Code::Internal,
+            Block0InFuture => net_error::Code::Internal,
+            BlockAlreadyPresent => net_error::Code::Internal,
+            MissingParent => net_error::Code::InvalidArgument,
         };
         Error {
             code,
@@ -132,9 +133,9 @@ impl From<chain_storage_sqlite_old::Error> for Error {
     }
 }
 
-impl From<Error> for core_error::Error {
+impl From<Error> for net_error::Error {
     fn from(err: Error) -> Self {
-        core_error::Error::new(err.code(), err.cause)
+        net_error::Error::new(err.code(), err.cause)
     }
 }
 
@@ -169,16 +170,6 @@ impl<T> ReplyHandle<T> {
 
     pub fn reply_error(self, error: Error) {
         self.reply(Err(error))
-    }
-
-    pub fn async_reply<Fut>(self, future: Fut) -> impl Future01<Item = (), Error = ()>
-    where
-        Fut: Future01<Item = T, Error = Error>,
-    {
-        future.then(move |res| {
-            self.reply(res);
-            Ok(())
-        })
     }
 }
 
@@ -232,65 +223,6 @@ where
 {
     let (handle, future) = unary_reply03(logger);
     (handle, future.compat())
-}
-
-pub fn unary_future<T, R, E, F>(
-    mbox: MessageBox<T>,
-    logger: Logger,
-    make_msg: F,
-) -> RequestFuture<T, R, E>
-where
-    F: FnOnce(ReplyHandle<R>) -> T,
-    E: From<Error>,
-{
-    let (reply_handle, reply_future) = unary_reply(logger.clone());
-    let msg = make_msg(reply_handle);
-    let send_task = mbox.into_send_task(msg, logger);
-    RequestFuture {
-        state: request_future::State::PendingSend(send_task),
-        reply_future,
-    }
-}
-
-pub struct RequestFuture<T, R, E> {
-    state: request_future::State<T>,
-    reply_future: ReplyFuture<R, E>,
-}
-
-mod request_future {
-    use super::Error;
-    use crate::utils::async_msg::SendTask;
-
-    pub enum State<T> {
-        PendingSend(SendTask<T>),
-        AwaitingReply,
-    }
-
-    pub fn mbox_error() -> Error {
-        Error::failed("failed to enqueue request for processing")
-    }
-}
-
-impl<T, R, E> Future01 for RequestFuture<T, R, E>
-where
-    E: From<Error>,
-{
-    type Item = R;
-    type Error = E;
-
-    fn poll(&mut self) -> Poll01<R, E> {
-        use self::request_future::State;
-
-        loop {
-            match &mut self.state {
-                State::AwaitingReply => return self.reply_future.poll(),
-                State::PendingSend(future) => {
-                    try_ready!(future.poll().map_err(|()| request_future::mbox_error()));
-                    self.state = State::AwaitingReply;
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -610,7 +542,7 @@ pub enum TransactionMsg {
 /// Fetching the block headers, the block, the tip
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
-    GetPeers(ReplyHandle<PeersResponse>),
+    GetPeers(ReplyHandle<Peers>),
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
     GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
