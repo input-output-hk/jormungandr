@@ -71,10 +71,9 @@ impl<In> ServeFragments<In> {
 }
 
 impl<In> Future for ServeFragments<In> {
-    type Item = Subscription<In, FragmentSubscription>;
-    type Error = net_error::Error;
+    type Output = Result<Subscription<In, FragmentSubscription>, net_error::Error>;
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let polled_outbound = self
             .lock
             .poll_subscribe_with(|comms| comms.subscribe_to_fragments());
