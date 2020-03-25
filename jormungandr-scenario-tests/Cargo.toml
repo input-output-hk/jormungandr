@@ -12,7 +12,6 @@ bawawa = "0.1.5"
 bytes = "0.4"
 error-chain = "0.12"
 tokio = "0.1"
-reqwest = "0.9"
 mktemp = "0.4.0"
 chain-core           = { path = "../chain-deps/chain-core", features = [ "property-test-api" ] }
 chain-crypto         = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
@@ -35,3 +34,8 @@ hex = "0.4"
 console = "0.10"
 indicatif = "0.14"
 lazy_static = "1"
+
+[dependencies.reqwest]
+version = "0.9"
+features = ["rustls-tls"]
+default-features = false

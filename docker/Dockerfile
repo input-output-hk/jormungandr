@@ -35,7 +35,7 @@ RUN if [ "${ENV_BUILD}" = "false" ]; then \
 # install the node and jcli from source
 RUN if [ "${ENV_BUILD}" = "true" ]; then \
     echo "[INFO] - you have selected to build and install from source" && \
-    apt-get install -y build-essential pkg-config libssl-dev && \
+    apt-get install -y build-essential pkg-config && \
     bash -c "curl https://sh.rustup.rs -sSf | bash -s -- -y" && \
     export PATH=$HOME/.cargo/bin:$PATH && \
     rustup install stable && \
@@ -51,8 +51,8 @@ RUN if [ "${ENV_BUILD}" = "true" ]; then \
 # cleanup
 RUN rm -rf ${ENV_PREFIX}/src && \
     RM_ME=`apt-mark showauto` && \
-    apt-get remove --purge --auto-remove -y git curl build-essential pkg-config libssl-dev ${RM_ME} && \
-    apt-get install -y --no-install-recommends libssl1.1 && \
+    apt-get remove --purge --auto-remove -y git curl build-essential pkg-config ${RM_ME} && \
+    apt-get install -y --no-install-recommends && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
