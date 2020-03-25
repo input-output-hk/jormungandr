@@ -36,6 +36,6 @@ indicatif = "0.14"
 lazy_static = "1"
 
 [dependencies.reqwest]
-version = "0.9"
+version = "0.10"
 features = ["rustls-tls"]
 default-features = false

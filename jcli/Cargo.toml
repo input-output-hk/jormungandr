@@ -42,7 +42,7 @@ default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
 
 [dependencies.reqwest]
-version = "0.9"
+version = "0.10"
 features = ["rustls-tls"]
 default-features = false
 
