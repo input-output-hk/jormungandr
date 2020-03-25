@@ -186,8 +186,8 @@ impl GlobalState {
     // established
     fn num_clients_to_bump(&self) -> usize {
         let count = self.stats_counter.peer_connected_cnt();
-        if count > self.config.max_client_connections {
-            count - self.config.max_client_connections
+        if count > self.config.max_inbound_connections {
+            count - self.config.max_inbound_connections
         } else {
             0
         }
