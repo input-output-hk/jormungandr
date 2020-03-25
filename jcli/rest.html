@@ -171,7 +171,7 @@ Syntax is Go text template: https://golang.org/pkg/text/template/.</li>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -218,8 +218,10 @@ version: jormungandr 0.8.9-30d20d2e
 <p>Fetches UTxO details</p>
 <pre><code class="language-sh">jcli rest v0 utxo &lt;fragment-id&gt; &lt;output-index&gt; get &lt;options&gt;
 </code></pre>
-<p><fragment-id>   - hex-encoded ID of the transaction fragment
-<output-index>  - index of the transaction output</p>
+<ul>
+<li>&lt;fragment-id&gt;   - hex-encoded ID of the transaction fragment</li>
+<li>&lt;output-index&gt;  - index of the transaction output</li>
+</ul>
 <p>The options are</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
@@ -296,7 +298,9 @@ rejected transaction and or when a transaction has been added in a block</p>
 <p>Retrieves a hex-encoded block with given ID</p>
 <pre><code class="language-sh">jcli rest v0 block &lt;block_id&gt; get &lt;options&gt;
 </code></pre>
-<p>&lt;block_id&gt; - hex-encoded block ID</p>
+<ul>
+<li>&lt;block_id&gt; - hex-encoded block ID</li>
+</ul>
 <p>The options are</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
@@ -307,23 +311,27 @@ rejected transaction and or when a transaction has been added in a block</p>
 Every list element is in separate line. The IDs are sorted from closest to farthest.</p>
 <pre><code class="language-sh">jcli rest v0 block &lt;block_id&gt; next-id get &lt;options&gt;
 </code></pre>
-<p>&lt;block_id&gt; - hex-encoded block ID</p>
+<ul>
+<li>&lt;block_id&gt; - hex-encoded block ID</li>
+</ul>
 <p>The options are</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>-c --count <count> - Maximum number of IDs, must be between 1 and 100, default 1</li>
+<li>-c --count &lt;count&gt; - Maximum number of IDs, must be between 1 and 100, default 1</li>
 </ul>
 <h2><a class="header" href="#get-account-state" id="get-account-state">Get account state</a></h2>
 <p>Get account state</p>
 <pre><code class="language-sh">jcli rest v0 account get &lt;account-id&gt; &lt;options&gt;
 </code></pre>
-<p><account-id> - ID of an account, bech32-encoded</p>
+<ul>
+<li>&lt;account-id&gt; - ID of an account, bech32-encoded</li>
+</ul>
 <p>The options are</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -347,7 +355,7 @@ sent associated to this account.</li>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -399,7 +407,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -414,8 +422,8 @@ treasuryTax:                                    # tax from reward that goes to p
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a>
--f, --file <file> - File containing YAML with leader secret. It must have the same format as secret YAML passed to Jormungandr as --secret. If not provided, YAML will be read from stdin.</li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a>
+-f, --file &lt;file&gt; - File containing YAML with leader secret. It must have the same format as secret YAML passed to Jormungandr as --secret. If not provided, YAML will be read from stdin.</li>
 </ul>
 <p>On success created leader ID is printed</p>
 <pre><code class="language-sh">3
@@ -424,7 +432,9 @@ treasuryTax:                                    # tax from reward that goes to p
 <p>Delete leader with given ID</p>
 <pre><code class="language-sh">jcli rest v0 leaders delete &lt;id&gt; &lt;options&gt;
 </code></pre>
-<p><id> - ID of deleted leader</p>
+<ul>
+<li>&lt;id&gt; - ID of deleted leader</li>
+</ul>
 <p>The options are</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
@@ -438,7 +448,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -479,7 +489,7 @@ status:
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -497,7 +507,7 @@ status:
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <ul>
@@ -536,7 +546,7 @@ stake:
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -557,12 +567,14 @@ stake:
 <p>Fetches stake pool details</p>
 <pre><code class="language-sh">jcli rest v0 stake-pool get &lt;pool-id&gt; &lt;options&gt;
 </code></pre>
-<p><pool-id> - hex-encoded pool ID</p>
+<ul>
+<li>&lt;pool-id&gt; - hex-encoded pool ID</li>
+</ul>
 <p>The options are</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -577,6 +589,117 @@ total_stake: 2000000000000  # total stake pool value
 kesPublicKey: kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r
 # bech32-encoded stake pool VRF key
 vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
+</code></pre>
+<h2><a class="header" href="#get-rewards-history-for-a-specific-epoch" id="get-rewards-history-for-a-specific-epoch">Get rewards history for a specific epoch</a></h2>
+<p>Get the rewards history of a given <em>epoch</em>.</p>
+<pre><code class="language-sh">jcli rest v0 rewards epoch get &lt;epoch&gt; &lt;options&gt;
+</code></pre>
+<ul>
+<li>&lt;epoch&gt; - epoch number to get the rewards history for.</li>
+</ul>
+<p>The options are</p>
+<ul>
+<li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
+<li>--debug - see <a href="#conventions">conventions</a></li>
+</ul>
+<pre><code class="language-sh">jcli rest v0 rewards epoch get 82 -h &lt;node_addr&gt;
+</code></pre>
+<pre><code class="language-json">[
+  {
+    &quot;epoch&quot;: 82,              // the epoch number to collect rewards info from (rewards are from epoch 81)
+    &quot;drawn&quot;: 3835616440000,   // Total Drawn from reward escrow pot for the epoch
+    &quot;fees&quot;: 1828810000,       // Fees contributed into the pot the epoch
+    &quot;treasury&quot;: 462179124139, // Value added to the treasury
+    &quot;stake_pools&quot;: {
+      &quot;0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb&quot;: [
+        1683091391, // pool's owned rewards from taxes
+        32665712521 // distributed rewards to delegators
+      ],
+      &quot;014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a&quot;: [
+        47706672,
+        906426770
+      ],
+    },
+    &quot;accounts&quot;: {
+      &quot;ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9&quot;: 427549785, // Amount added to each account
+      &quot;ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm&quot;: 24399360,
+      &quot;ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj&quot;: 22449169,
+      &quot;ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u&quot;: 1787992,
+      &quot;ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2&quot;: 369024,
+    }
+  }
+]
+</code></pre>
+<h2><a class="header" href="#get-rewards-history-for-some-epochs" id="get-rewards-history-for-some-epochs">Get rewards history for some epochs</a></h2>
+<p>Get the rewards history of the <em>length</em> last epoch(s) from tip.</p>
+<pre><code class="language-sh">jcli rest v0 rewards history get &lt;length&gt; &lt;options&gt;
+</code></pre>
+<ul>
+<li>&lt;length&gt; - number of epochs, starting from the last epoch from tip, to get the reward history for.</li>
+</ul>
+<p>The options are</p>
+<ul>
+<li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
+<li>--debug - see <a href="#conventions">conventions</a></li>
+</ul>
+<pre><code class="language-sh">jcli rest v0 rewards history get 2 -h &lt;node_addr&gt;
+</code></pre>
+<pre><code class="language-json">[
+  {
+    &quot;epoch&quot;: 93,
+    &quot;drawn&quot;: 3835616440000,
+    &quot;fees&quot;: 641300000,
+    &quot;treasury&quot;: 467151470296,
+    &quot;stake_pools&quot;: {
+      &quot;0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb&quot;: [
+        1121750881,
+        21771124247
+      ],
+      &quot;014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a&quot;: [
+        429241408,
+        8155586765
+      ],
+      &quot;01bd272cede02d0b0c9cd47b16e5356ab3fb2330dd9d1e972ab5494365309d2a&quot;: [
+        1691506850,
+        32829041110
+      ],
+    },
+    &quot;accounts&quot;: {
+      &quot;ed25519_pk1002kje4l8j7kvsseyauusk3s7nzef4wcvvafltjmg0rkzr6qccyqg064kz&quot;: 33311805,
+      &quot;ed25519_pk100549kxqn8tnzfzr5ndu0wx7pp2y2ck28mnykq03m2z5qcwkvazqx9fp0h&quot;: 15809,
+      &quot;ed25519_pk10054y058qfn5wnazalnkax0mthg06ucq87nn9320rphtye5ca0xszjcelk&quot;: 10007789,
+      &quot;ed25519_pk10069dsunppwttl4qtsfnyhjnqwkunuwxjxlandl2fnpwpuznf5pqmg3twe&quot;: 545094806,
+      &quot;ed25519_pk1009sfpljfgx30z70l3n63gj7w9vp3epugmd3vn62fyr07ut9pfwqjp7f8h&quot;: 4208232,
+    },
+  },
+  {
+    &quot;epoch&quot;: 92,
+    &quot;drawn&quot;: 3835616440000,
+    &quot;fees&quot;: 620400000,
+    &quot;treasury&quot;: 480849578351,
+    &quot;stake_pools&quot;: {
+      &quot;0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb&quot;: [
+        979164601,
+        19003786459
+      ],
+      &quot;0105449dd66524111349ef677d1ebc25247a5ba2d094913f52aa4db265eac03a&quot;: [
+        26977274,
+        972170279
+      ],
+      &quot;014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a&quot;: [
+        299744265,
+        5695141053
+      ],
+    },
+    &quot;accounts&quot;: {
+      &quot;ed25519_pk1002kje4l8j7kvsseyauusk3s7nzef4wcvvafltjmg0rkzr6qccyqg064kz&quot;: 40581616,
+      &quot;ed25519_pk100549kxqn8tnzfzr5ndu0wx7pp2y2ck28mnykq03m2z5qcwkvazqx9fp0h&quot;: 49156,
+      &quot;ed25519_pk10054y058qfn5wnazalnkax0mthg06ucq87nn9320rphtye5ca0xszjcelk&quot;: 12306084,
+      &quot;ed25519_pk10069dsunppwttl4qtsfnyhjnqwkunuwxjxlandl2fnpwpuznf5pqmg3twe&quot;: 142737175,
+      &quot;ed25519_pk1009sfpljfgx30z70l3n63gj7w9vp3epugmd3vn62fyr07ut9pfwqjp7f8h&quot;: 3932910,
+    },
+  }
+]
 </code></pre>
 
                     </main>
