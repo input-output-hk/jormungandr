@@ -509,7 +509,7 @@ impl NodeController {
         }
     }
 
-    fn logger(&self) -> JormungandrLogger {
+    pub fn logger(&self) -> JormungandrLogger {
         let log_file = self
             .settings
             .config

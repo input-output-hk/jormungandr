@@ -5,12 +5,14 @@ use crate::{
         ControllerBuilder, KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration,
         TopologyBuilder, Value, Wallet,
     },
-    test::utils,
-    test::Result,
+    test::{
+        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        Result,
+    },
     Context,
 };
+
 use rand_chacha::ChaChaRng;
-use std::time::{Duration, SystemTime};
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE: &str = "Relay";
@@ -72,10 +74,12 @@ fn prepare_real_scenario(
             .expect("active slot coefficient in millis"),
     );
 
-    for i in 0..leader_counter {
-        let initial_wallet_name = wallet_name(i + 1);
+    blockchain.add_leader(CORE_NODE);
+
+    for i in 1..leader_counter {
+        let initial_wallet_name = wallet_name(i);
         let mut wallet = Wallet::new_account(initial_wallet_name.to_owned(), Value(100_000));
-        *wallet.delegate_mut() = Some(leader_name(i + 1).to_owned());
+        *wallet.delegate_mut() = Some(leader_name(i).to_owned());
         blockchain.add_wallet(wallet);
     }
     builder.set_blockchain(blockchain);
@@ -119,19 +123,22 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     controller.monitor_nodes();
     core.wait_for_bootstrap()?;
     leaders.last().unwrap().wait_for_bootstrap()?;
-    let now = SystemTime::now();
 
-    loop {
-        // 48 hours
-        if now.elapsed().unwrap().as_secs() > (10 * 60) {
-            break;
-        }
-        std::thread::sleep(Duration::from_secs(10));
+    utils::measure_how_many_nodes_are_running(&leaders, "real_network_bootstrap_score");
 
-        for leader in leaders.iter() {
-            utils::assert_is_up(&leader)?;
-        }
+    //shut down core and relays nodes
+    core.shutdown()?;
+    for relay_node in relays {
+        relay_node.shutdown()?;
     }
+
+    let leaders_count = leaders.len() as u64;
+    utils::measure_and_log_sync_time(
+        leaders.iter().collect(),
+        SyncWaitParams::large_network(leaders_count).into(),
+        "real_network_sync_after_relay_nodes_shutdown",
+        SyncMeasurementInterval::Long,
+    );
 
     controller.finalize();
     Ok(ScenarioResult::passed())
