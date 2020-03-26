@@ -106,7 +106,7 @@ jobs:
           name: Test
           environment:
             RUST_BACKTRACE: 1
-          command: cargo test --offline --verbose --frozen --doc
+          command: cargo test --offline --verbose --frozen --doc -- --test-threads=1
 
   test_release:
     docker:
