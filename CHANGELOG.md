@@ -1,5 +1,39 @@
 # Change Log
 
+## [v0.8.16](https://github.com/input-output-hk/jormungandr/tree/v0.8.16) (2020-03-26)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.15...v0.8.16)
+
+**Implemented enhancements:**
+
+- release: create optimised x86-64 binaries release [\#1924](https://github.com/input-output-hk/jormungandr/issues/1924)
+- jcli: certificate get-stake-pool-id - make valid also for retirement [\#1950](https://github.com/input-output-hk/jormungandr/pull/1950)
+- jcli: /api/v0/rewards - \(history,epoch\) -  exposed [\#1913](https://github.com/input-output-hk/jormungandr/pull/1913)
+
+**Fixed bugs:**
+
+- Remove asserts when searching for epoch distribution [\#1945](https://github.com/input-output-hk/jormungandr/issues/1945)
+
+**Closed issues:**
+
+- Since upgrading to 0.8.14-9ca427ef+, node gets stuck.  [\#1927](https://github.com/input-output-hk/jormungandr/issues/1927)
+
+**Merged pull requests:**
+
+- compile the tests and the doc in separate jobs [\#1968](https://github.com/input-output-hk/jormungandr/pull/1968)
+- switch to rustls from openssl [\#1961](https://github.com/input-output-hk/jormungandr/pull/1961)
+- rename max\_client\_connections [\#1960](https://github.com/input-output-hk/jormungandr/pull/1960)
+- Bump regex from 1.3.4 to 1.3.6 [\#1958](https://github.com/input-output-hk/jormungandr/pull/1958)
+- Add simd optimization for x86-64 targets on release [\#1955](https://github.com/input-output-hk/jormungandr/pull/1955)
+- \[Tests\] Move failing tests from private network tests to unstable build [\#1953](https://github.com/input-output-hk/jormungandr/pull/1953)
+- \[Tests\] Fix network builder in real network test case [\#1952](https://github.com/input-output-hk/jormungandr/pull/1952)
+- \[Private network tests\] progress bar mode which only prints scenario results [\#1951](https://github.com/input-output-hk/jormungandr/pull/1951)
+- Remove asserts when searching for epoch distribution [\#1947](https://github.com/input-output-hk/jormungandr/pull/1947)
+- Bump structopt from 0.3.11 to 0.3.12 [\#1939](https://github.com/input-output-hk/jormungandr/pull/1939)
+- Bump slog-async from 2.4.0 to 2.5.0 [\#1938](https://github.com/input-output-hk/jormungandr/pull/1938)
+- Bump arc-swap from 0.4.4 to 0.4.5 [\#1929](https://github.com/input-output-hk/jormungandr/pull/1929)
+- Bump libc from 0.2.67 to 0.2.68 [\#1928](https://github.com/input-output-hk/jormungandr/pull/1928)
+
 ## [v0.8.15](https://github.com/input-output-hk/jormungandr/tree/v0.8.15) (2020-03-18)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.14...v0.8.15)
