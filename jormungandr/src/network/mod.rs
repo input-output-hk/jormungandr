@@ -381,11 +381,13 @@ fn handle_propagation_msg(
 
 fn start_gossiping(state: GlobalStateR, channels: Channels) -> impl Future<Item = (), Error = ()> {
     let config = &state.config;
-    let topology = state.topology.clone();
+    let topology_accept = state.topology.clone();
+    let topology_initiate = state.topology.clone();
     let conn_state = state.clone();
+    let logger = state.logger().new(o!(log::KEY_SUB_TASK => "start_gossip"));
     // inject the trusted peers as initial gossips, this will make the node
     // gossip with them at least at the beginning
-    topology
+    topology_accept
         .accept_gossips(
             (*config.profile.id()).into(),
             config
@@ -401,18 +403,33 @@ fn start_gossiping(state: GlobalStateR, channels: Channels) -> impl Future<Item 
                 .collect::<Vec<p2p::Gossip>>()
                 .into(),
         )
-        .and_then(move |()| topology.view(poldercast::Selection::Any))
+        .and_then(move |_| topology_accept.view(poldercast::Selection::Any))
         .and_then(move |view| {
-            for node in view.peers {
-                let self_node = view.self_node.clone();
-                let gossip = Gossip::from_nodes(iter::once(self_node.into()));
-                let options = p2p::comm::ConnectOptions {
-                    pending_gossip: Some(gossip),
-                    ..Default::default()
-                };
-                connect_and_propagate(node, conn_state.clone(), channels.clone(), options);
-            }
-            Ok(())
+            let peers: Vec<p2p::Node> = view.peers;
+            debug!(logger, "sending gossip to {} peers", peers.len());
+            stream::iter_ok(peers).for_each(move |node| {
+                let peer_id = node.id();
+                let state_prop = state.clone();
+                let state_err = state.clone();
+                let channels_err = channels.clone();
+                topology_initiate
+                    .initiate_gossips(peer_id)
+                    .and_then(move |gossips| {
+                        state_prop
+                            .peers
+                            .propagate_gossip_to(peer_id, Gossip::from(gossips))
+                    })
+                    .then(move |res: Result<(), Gossip<p2p::Gossip>>| {
+                        if let Err(gossip) = res {
+                            let options = p2p::comm::ConnectOptions {
+                                pending_gossip: Some(gossip),
+                                ..Default::default()
+                            };
+                            connect_and_propagate(node, state_err, channels_err, options);
+                        }
+                        Ok(())
+                    })
+            })
         })
 }
 
