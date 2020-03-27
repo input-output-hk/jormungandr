@@ -2182,7 +2182,7 @@ name = "jormungandr-watchdog-derive"
 version = "0.1.0"
 dependencies = [
  "heck",
- "proc-macro-error",
+ "proc-macro-error 1.0.0",
  "proc-macro2 1.0.9",
  "quote 1.0.2",
  "syn 1.0.17",
@@ -2923,11 +2923,24 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-error"
-version = "0.4.11"
+version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7959c6467d962050d639361f7703b2051c43036d03493c36f01d440fdd3138a"
+checksum = "18f33027081eba0a6d8aba6d1b1c3a3be58cbb12106341c2d5759fcd9b5277e7"
 dependencies = [
- "proc-macro-error-attr",
+ "proc-macro-error-attr 0.4.12",
+ "proc-macro2 1.0.9",
+ "quote 1.0.2",
+ "syn 1.0.17",
+ "version_check 0.9.1",
+]
+
+[[package]]
+name = "proc-macro-error"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d259aa4825fa1a2371419d30a520219feff9fb3591550a209b4477d2ebaae4f"
+dependencies = [
+ "proc-macro-error-attr 1.0.0",
  "proc-macro2 1.0.9",
  "quote 1.0.2",
  "syn 1.0.17",
@@ -2936,9 +2949,22 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-error-attr"
-version = "0.4.11"
+version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4002d9f55991d5e019fb940a90e1a95eb80c24e77cb2462dd4dc869604d543a"
+checksum = "8a5b4b77fdb63c1eca72173d68d24501c54ab1269409f6b672c85deb18af69de"
+dependencies = [
+ "proc-macro2 1.0.9",
+ "quote 1.0.2",
+ "syn 1.0.17",
+ "syn-mid",
+ "version_check 0.9.1",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd21889899aa8e1ca2b924c1d3f08086631fc90768225b3268b5d5c3e806a503"
 dependencies = [
  "proc-macro2 1.0.9",
  "quote 1.0.2",
@@ -4014,7 +4040,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f88b8e18c69496aad6f9ddf4630dd7d585bcaf765786cb415b9aec2fe5a0430"
 dependencies = [
  "heck",
- "proc-macro-error",
+ "proc-macro-error 0.4.12",
  "proc-macro2 1.0.9",
  "quote 1.0.2",
  "syn 1.0.17",
