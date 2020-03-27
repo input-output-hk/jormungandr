@@ -656,7 +656,7 @@ name = "cardano-legacy-address"
 version = "0.1.1"
 dependencies = [
  "cbor_event",
- "cryptoxide",
+ "cryptoxide 0.1.3",
  "ed25519-bip32",
 ]
 
@@ -699,7 +699,7 @@ dependencies = [
  "cfg-if",
  "chain-core",
  "chain-crypto",
- "cryptoxide",
+ "cryptoxide 0.1.3",
  "quickcheck",
 ]
 
@@ -718,7 +718,7 @@ version = "0.1.0"
 dependencies = [
  "bech32",
  "cfg-if",
- "cryptoxide",
+ "cryptoxide 0.1.3",
  "curve25519-dalek",
  "digest 0.8.1",
  "ed25519-bip32",
@@ -1049,6 +1049,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e35f15e1a0699dd988fed910dd78fdc6407f44654cd12589c91fa44ea67d9159"
 
 [[package]]
+name = "cryptoxide"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbb2eda75391be2fa7273d047766e3f7e4a9f6a74df95e58b603b5c43087e91e"
+
+[[package]]
 name = "ct-logs"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1141,11 +1147,11 @@ checksum = "4358a9e11b9a09cf52383b451b49a169e8d797b68aa02301ff586d70d9661ea3"
 
 [[package]]
 name = "ed25519-bip32"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b5178f6ae9d2fb18d96705e1bfe37edcd7d455f2887ad4b675f971cf3a6e6ef"
+checksum = "e4727ce16fc016d8047462988ced12496aad2bb29b2b55ecf60d29eb5706fc6f"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.2.0",
 ]
 
 [[package]]
