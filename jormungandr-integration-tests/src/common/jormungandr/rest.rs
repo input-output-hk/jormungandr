@@ -32,7 +32,7 @@ impl JormungandrRest {
         serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
     }
 
-    fn get(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
-        reqwest::get(&format!("{}/v0/{}", self.config.get_node_address(), path))
+    fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
+        reqwest::blocking::get(&format!("{}/v0/{}", self.config.get_node_address(), path))
     }
 }
