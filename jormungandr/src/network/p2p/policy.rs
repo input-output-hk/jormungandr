@@ -3,6 +3,7 @@ use lru::LruCache;
 use poldercast::{Id, Node, PolicyReport};
 use serde::{Deserialize, Serialize};
 use slog::Logger;
+use std::collections::HashSet;
 use std::time::{Duration as StdDuration, Instant};
 
 /// default quarantine duration is 10min
@@ -22,7 +23,7 @@ pub struct Policy {
     quarantine_duration: StdDuration,
     max_quarantine: StdDuration,
     records: LruCache<Id, Records>,
-
+    quarantine_whitelist: HashSet<std::net::SocketAddr>,
     logger: Logger,
 }
 
@@ -40,6 +41,8 @@ pub struct PolicyConfig {
     max_quarantine: Option<Duration>,
     #[serde(default)]
     max_num_quarantine_records: Option<usize>,
+    #[serde(default)]
+    quarantine_whitelist: Option<HashSet<std::net::SocketAddr>>,
 }
 
 impl Policy {
@@ -54,6 +57,7 @@ impl Policy {
                 pc.max_num_quarantine_records
                     .unwrap_or(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
             ),
+            quarantine_whitelist: pc.quarantine_whitelist.unwrap_or(HashSet::new()),
             logger,
         }
     }
@@ -85,6 +89,7 @@ impl Default for PolicyConfig {
             quarantine_duration: Duration::from(DEFAULT_QUARANTINE_DURATION),
             max_quarantine: Some(Duration::from(DEFAULT_MAX_QUARANTINE_DURATION)),
             max_num_quarantine_records: Some(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
+            quarantine_whitelist: Some(HashSet::new()),
         }
     }
 }
@@ -116,7 +121,12 @@ impl poldercast::Policy for Policy {
     fn check(&mut self, node: &mut Node) -> PolicyReport {
         let id = node.id().to_string();
         let logger = self.logger.new(o!("id" => id));
-
+        // if the node is whitelisted
+        if let Some(Some(socket_address)) = node.address().map(|a| a.to_socketaddr()) {
+            if self.quarantine_whitelist.contains(&socket_address) {
+                return PolicyReport::None;
+            }
+        }
         // if the node is already quarantined
         if let Some(since) = node.logs().quarantined() {
             let duration = since.elapsed().unwrap();
