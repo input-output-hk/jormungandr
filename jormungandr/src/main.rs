@@ -243,8 +243,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     if let Some(rest_context) = bootstrapped_node.rest_context {
         let full_context = rest::FullContext {
             stats_counter,
-            blockchain,
-            blockchain_tip: blockchain_tip.clone(),
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
             leadership_logs,
@@ -338,6 +336,15 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         settings.rewards_report_all,
         &bootstrap_logger,
     )?;
+
+    block_on(async {
+        if let Some(rest_context) = &rest_context {
+            rest_context.set_blockchain(blockchain.clone()).await;
+            rest_context
+                .set_blockchain_tip(blockchain_tip.clone())
+                .await;
+        }
+    });
 
     let mut bootstrap_attempt: usize = 0;
     loop {

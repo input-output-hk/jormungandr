@@ -36,6 +36,8 @@ pub struct Context {
     node_state: Arc<RwLock<NodeState>>,
     logger: Arc<RwLock<Option<Logger>>>,
     diagnostic: Arc<RwLock<Option<Diagnostic>>>,
+    blockchain: Arc<RwLock<Option<Blockchain>>>,
+    blockchain_tip: Arc<RwLock<Option<Tip>>>,
 }
 
 impl Context {
@@ -46,6 +48,8 @@ impl Context {
             node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
             logger: Default::default(),
             diagnostic: Default::default(),
+            blockchain: Default::default(),
+            blockchain_tip: Default::default(),
         }
     }
 
@@ -104,13 +108,35 @@ impl Context {
             .clone()
             .ok_or_else(|| ErrorInternalServerError("Diagnostic data not set in REST context"))
     }
+
+    pub async fn set_blockchain(&self, blockchain: Blockchain) {
+        *self.blockchain.write().await = Some(blockchain)
+    }
+
+    pub async fn blockchain(&self) -> Result<Blockchain, ActixError> {
+        self.blockchain
+            .read()
+            .await
+            .clone()
+            .ok_or_else(|| ErrorInternalServerError("Blockchain not set in REST context"))
+    }
+
+    pub async fn set_blockchain_tip(&self, blockchain_tip: Tip) {
+        *self.blockchain_tip.write().await = Some(blockchain_tip)
+    }
+
+    pub async fn blockchain_tip(&self) -> Result<Tip, ActixError> {
+        self.blockchain_tip
+            .read()
+            .await
+            .clone()
+            .ok_or_else(|| ErrorInternalServerError("Blockchain tip not set in REST context"))
+    }
 }
 
 #[derive(Clone)]
 pub struct FullContext {
     pub stats_counter: StatsCounter,
-    pub blockchain: Blockchain,
-    pub blockchain_tip: Tip,
     pub network_task: MessageBox<NetworkMsg>,
     pub transaction_task: MessageBox<TransactionMsg>,
     pub leadership_logs: LeadershipLogs,
@@ -144,19 +170,23 @@ fn app_config(config: &mut ServiceConfig, explorer_enabled: bool, context: Conte
     }
 }
 
-async fn update_stats_tip_from_storage(context: &FullContext) {
+async fn update_stats_tip_from_storage(context: &Context) -> Result<(), ActixError> {
     let block: Option<Block> = context
-        .blockchain
+        .blockchain()
+        .await?
         .storage()
-        .get(context.blockchain_tip.get_ref().await.hash())
+        .get(context.blockchain_tip().await?.get_ref().await.hash())
         .await
         .unwrap_or(None);
 
     // Update block if found
-    match block {
-        Some(b) => {
-            context.stats_counter.set_tip_block(Arc::new(b));
-        }
-        None => (),
+    if let Some(block) = block {
+        context
+            .try_full()
+            .await?
+            .stats_counter
+            .set_tip_block(Arc::new(block));
     }
+
+    Ok(())
 }
