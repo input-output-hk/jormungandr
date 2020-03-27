@@ -68,6 +68,10 @@ impl StatsCounter {
     }
 
     pub fn peer_connected_cnt(&self) -> usize {
+        self.stats.peers_connected_cnt.load(Ordering::Relaxed)
+    }
+
+    pub fn peer_connected_cnt_sadd(&self) -> usize {
         self.stats
             .peers_connected_cnt
             .load(Ordering::Relaxed)
