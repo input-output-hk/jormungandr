@@ -46,7 +46,7 @@ impl Utxo {
                 &self.output_index.to_string(),
             ])?
             .into_url();
-        let builder = reqwest::Client::new().get(url);
+        let builder = reqwest::blocking::Client::new().get(url);
         let response = RestApiSender::new(builder, &debug).send()?;
         response.ok_response()?;
         let status = response.body().json_value()?;

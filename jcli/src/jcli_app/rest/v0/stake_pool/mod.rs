@@ -29,7 +29,7 @@ impl StakePool {
         let url = addr
             .with_segments(&["v0", "stake_pool", &pool_id])?
             .into_url();
-        let builder = reqwest::Client::new().get(url);
+        let builder = reqwest::blocking::Client::new().get(url);
         let response = RestApiSender::new(builder, &debug).send()?;
         response.ok_response()?;
         let status = response.body().json_value()?;

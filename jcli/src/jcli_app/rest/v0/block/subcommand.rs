@@ -28,7 +28,7 @@ impl Subcommand {
 
 fn exec_get(block_id: String, addr: HostAddr, debug: DebugFlag) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "block", &block_id])?.into_url();
-    let builder = reqwest::Client::new().get(url);
+    let builder = reqwest::blocking::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
     response.ok_response()?;
     let body = response.body().binary();

@@ -1,9 +1,13 @@
 use crate::jcli_app::utils::{open_api_verifier, DebugFlag, OpenApiVerifier};
 use hex;
-use reqwest::{self, header::HeaderValue, Client, Request, RequestBuilder, Response};
+use reqwest::{
+    self,
+    blocking::{Client, Request, RequestBuilder, Response},
+    header::HeaderValue,
+};
 use serde::{self, Serialize};
 use serde_json::error::Error as SerdeJsonError;
-use std::fmt;
+use std::{fmt, string::FromUtf8Error};
 use thiserror::Error;
 
 pub const DESERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
@@ -45,21 +49,24 @@ pub enum Error {
     RequestJsonSerializationError(#[source] SerdeJsonError),
     #[error("response JSON malformed")]
     ResponseJsonDeserializationError(#[source] SerdeJsonError),
+    #[error("response must be encoded with UTF-8")]
+    ResponseEncodingError(#[from] FromUtf8Error),
 }
 
 fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
     if err.is_timeout() {
         "connection with node timed out"
-    } else if err.is_http() {
-        "could not connect with node"
-    } else if err.is_serialization() {
-        DESERIALIZATION_ERROR_MSG
-    } else if err.is_redirect() {
-        "redirecting error while connecting with node"
-    } else if err.is_client_error() {
-        "node rejected request because of invalid parameters"
-    } else if err.is_server_error() {
-        "node internal error"
+    } else if err.is_status() {
+        let err = err.status().unwrap();
+        if err.is_client_error() {
+            "node rejected request because of invalid parameters"
+        } else if err.is_server_error() {
+            "node internal error"
+        } else if err.is_redirection() {
+            "redirecting error while connecting with node"
+        } else {
+            "communication with node failed in unexpected way"
+        }
     } else {
         "communication with node failed in unexpected way"
     }
@@ -173,14 +180,12 @@ impl fmt::Display for RestApiRequestBody {
 
 impl RestApiResponseBody {
     fn new(response: &mut Response) -> Result<Self, Error> {
+        let mut data = Vec::with_capacity(response.content_length().unwrap_or(0) as usize);
+        response.copy_to(&mut data)?;
         match is_body_binary(response) {
-            true => {
-                let mut data = Vec::with_capacity(response.content_length().unwrap_or(0) as usize);
-                response.copy_to(&mut data)?;
-                Ok(RestApiResponseBody::Binary(data))
-            }
+            true => Ok(RestApiResponseBody::Binary(data)),
             false => {
-                let data = response.text()?;
+                let data = String::from_utf8(data)?;
                 Ok(RestApiResponseBody::Text(data))
             }
         }

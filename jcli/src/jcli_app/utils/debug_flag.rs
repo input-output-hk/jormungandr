@@ -1,5 +1,5 @@
 use crate::jcli_app::utils::rest_api::{RestApiRequestBody, RestApiResponse};
-use reqwest::Request;
+use reqwest::blocking::Request;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

@@ -1974,7 +1974,7 @@ dependencies = [
  "openapiv3",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
- "reqwest 0.9.24",
+ "reqwest 0.10.4",
  "serde",
  "serde_derive",
  "serde_json",

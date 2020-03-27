@@ -30,8 +30,6 @@ pub enum Error {
     InputFileInvalid(#[from] std::io::Error),
     #[error("input yaml is not valid")]
     InputFileYamlMalformed(#[from] serde_yaml::Error),
-    #[error("failed to serialize input")]
-    InputSerializationFailed(#[source] serde_json::Error),
     #[error("input hex encoding is not valid")]
     InputHexMalformed(#[from] FromHexError),
 }

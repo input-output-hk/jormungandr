@@ -20,7 +20,7 @@ impl Diagnostic {
             Diagnostic::Get { addr, debug } => (addr, debug),
         };
         let url = addr.with_segments(&["v0", "diagnostic"])?.into_url();
-        let builder = reqwest::Client::new().get(url);
+        let builder = reqwest::blocking::Client::new().get(url);
         let response = RestApiSender::new(builder, &debug).send()?;
         response.ok_response()?;
         let diagnostic = response.body().text();
