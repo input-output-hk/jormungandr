@@ -74,7 +74,6 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::Context>,
     services: Services,
-    diagnostic: Diagnostic,
 }
 
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
@@ -252,7 +251,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             enclave,
             p2p: topology,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
-            diagnostic: bootstrapped_node.diagnostic,
         };
         block_on(async {
             rest_context.set_full(full_context).await;
@@ -319,7 +317,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         rest_context,
         services,
-        diagnostic,
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
@@ -396,7 +393,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         services,
-        diagnostic,
     })
 }
 
@@ -407,7 +403,6 @@ pub struct InitializedNode {
     pub logger: Logger,
     pub rest_context: Option<rest::Context>,
     pub services: Services,
-    pub diagnostic: Diagnostic,
 }
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
@@ -451,6 +446,10 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     };
 
     if let Some(context) = rest_context.as_ref() {
+        block_on(context.set_diagnostic_data(diagnostic))
+    }
+
+    if let Some(context) = rest_context.as_ref() {
         block_on(context.set_node_state(NodeState::PreparingStorage))
     }
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
@@ -460,6 +459,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     if let Some(context) = rest_context.as_ref() {
         block_on(context.set_node_state(NodeState::PreparingBlock0))
     }
+
     let block0 = start_up::prepare_block_0(
         &settings,
         &storage,
@@ -473,7 +473,6 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         logger,
         rest_context,
         services,
-        diagnostic,
     })
 }
 

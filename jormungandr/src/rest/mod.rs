@@ -14,6 +14,7 @@ use slog::Logger;
 use std::sync::Arc;
 
 use crate::blockchain::{Blockchain, Tip};
+use crate::diagnostic::Diagnostic;
 use crate::leadership::Logs as LeadershipLogs;
 use crate::network::p2p::P2pTopology;
 use crate::secure::enclave::Enclave;
@@ -34,6 +35,7 @@ pub struct Context {
     server_stopper: Arc<RwLock<Option<ServerStopper>>>,
     node_state: Arc<RwLock<NodeState>>,
     logger: Arc<RwLock<Option<Logger>>>,
+    diagnostic: Arc<RwLock<Option<Diagnostic>>>,
 }
 
 impl Context {
@@ -43,6 +45,7 @@ impl Context {
             server_stopper: Default::default(),
             node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
             logger: Default::default(),
+            diagnostic: Default::default(),
         }
     }
 
@@ -89,6 +92,18 @@ impl Context {
             .clone()
             .ok_or_else(|| ErrorInternalServerError("Logger not set in REST context"))
     }
+
+    pub async fn set_diagnostic_data(&self, diagnostic: Diagnostic) {
+        *self.diagnostic.write().await = Some(diagnostic);
+    }
+
+    pub async fn get_diagnostic_data(&self) -> Result<Diagnostic, ActixError> {
+        self.diagnostic
+            .read()
+            .await
+            .clone()
+            .ok_or_else(|| ErrorInternalServerError("Diagnostic data not set in REST context"))
+    }
 }
 
 #[derive(Clone)]
@@ -102,7 +117,6 @@ pub struct FullContext {
     pub enclave: Enclave,
     pub p2p: P2pTopology,
     pub explorer: Option<crate::explorer::Explorer>,
-    pub diagnostic: crate::diagnostic::Diagnostic,
 }
 
 pub fn start_rest_server(

@@ -551,8 +551,8 @@ pub async fn get_stake_pool(
 }
 
 pub async fn get_diagnostic(context: Data<Context>) -> Result<impl Responder, Error> {
-    let full_context = context.try_full().await?;
-    serde_json::to_string(&full_context.diagnostic).map_err(ErrorInternalServerError)
+    let diagnostic = context.get_diagnostic_data().await?;
+    serde_json::to_string(&diagnostic).map_err(ErrorInternalServerError)
 }
 
 pub async fn get_network_p2p_quarantined(context: Data<Context>) -> Result<impl Responder, Error> {
