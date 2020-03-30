@@ -3,7 +3,7 @@
 
 use crate::{
     log::KEY_SUB_TASK,
-    network::p2p::{Gossips, Id, Node, Policy, PolicyConfig},
+    network::p2p::{layers::PreferredListLayer, Gossips, Id, Node, Policy, PolicyConfig},
     settings::start::network::Configuration,
 };
 use poldercast::{
@@ -67,6 +67,11 @@ impl Builder {
             self.topology
                 .add_layer(custom_layers::RandomDirectConnections::default());
         }
+
+        self.topology.add_layer(PreferredListLayer::new(
+            config.layers.preferred_list.clone(),
+        ));
+
         self
     }
 

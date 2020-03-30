@@ -2032,6 +2032,7 @@ dependencies = [
  "poldercast",
  "r2d2",
  "rand 0.7.3",
+ "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "reqwest 0.10.4",
  "rustls 0.16.0",
@@ -2879,9 +2880,9 @@ checksum = "feb3b2b1033b8a60b4da6ee470325f887758c95d5320f52f9ce0df055a55940e"
 
 [[package]]
 name = "poldercast"
-version = "0.11.4"
+version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c78ef8bcc24fc1b8d4f6429d3c3f97ebfe433e92b9e3bc43ca5842335213774"
+checksum = "c632423c7af6f3ff1b23a33f9600c473c4903a8e3f4d55984b6f77f059cad24d"
 dependencies = [
  "cid",
  "hex",
