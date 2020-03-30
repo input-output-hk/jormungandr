@@ -259,7 +259,7 @@ impl Storage {
             })
             .await?;
 
-        let (rh, rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
+        let (rh, rs) = intercom::stream_reply(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
 
         struct PumpState<F> {
             iter: Box<BlockIterState<Block, F>>,
