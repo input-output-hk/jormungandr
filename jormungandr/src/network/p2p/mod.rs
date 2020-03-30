@@ -1,6 +1,7 @@
 pub mod comm;
 mod gossip;
 mod id;
+pub mod layers;
 mod node;
 mod policy;
 mod topology;
