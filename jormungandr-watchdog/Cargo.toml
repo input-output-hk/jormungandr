@@ -14,7 +14,7 @@ Process and service management and API
 
 [dependencies]
 jormungandr-watchdog-derive = { path = "../jormungandr-watchdog-derive" }
-tokio = { version = "^0.2.12", features = ["sync", "rt-threaded", "parking_lot", "time"] }
+tokio = { version = "^0.2.13", features = ["sync", "rt-threaded", "parking_lot", "time"] }
 tracing = "^0.1.13"
 tracing-futures = "^0.2.3"
 futures-util = "0.3"
@@ -26,7 +26,7 @@ serde_yaml = "^0.8"
 
 [dev-dependencies]
 approx = "0.3"
-tokio = { version = "^0.2.12", features = ["full"] }
+tokio = { version = "^0.2.13", features = ["full"] }
 tokio-compat = "^0.1.5"
 legacy_tokio = { package = "tokio", version = "^0.1.22" }
 legacy_futures = { package = "futures", version = "0.1.29" }
