@@ -11,7 +11,6 @@ use chain_network::data::gossip::Peers;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
-use futures::sync::mpsc as mpsc01;
 use futures::{Future as Future01, Poll as Poll01, Sink as Sink01, StartSend, Stream as Stream01};
 use futures03::channel::{mpsc, oneshot};
 use futures03::compat::{Compat, CompatSink};
@@ -217,14 +216,6 @@ pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>
     (ReplyHandle { sender }, future)
 }
 
-fn unary_reply01<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>)
-where
-    E: From<Error>,
-{
-    let (handle, future) = unary_reply(logger);
-    (handle, future.compat())
-}
-
 #[derive(Debug)]
 pub struct ReplySendError;
 
@@ -424,7 +415,7 @@ pub struct RequestStreamHandle<T, R> {
 
 pub struct RequestSink<T, R, E> {
     sender: MessageBox<T>,
-    reply_future: Option<ReplyFuture<R, E>>,
+    reply_future: Option<ReplyFuture03<R, E>>,
     logger: Logger,
 }
 
@@ -452,20 +443,28 @@ impl<T, R, E> RequestSink<T, R, E>
 where
     E: From<Error>,
 {
-    fn map_send_error(&self, _e: mpsc01::SendError<T>, msg: &'static str) -> E {
+    fn map_send_error(&self, _e: mpsc::SendError, msg: &'static str) -> E {
         debug!(self.logger, "{}", msg);
         Error::aborted("request stream processing ended before all items were sent").into()
     }
 }
 
-impl<T, R, E> Sink01 for RequestSink<T, R, E>
+impl<T, R, E> Sink<T> for RequestSink<T, R, E>
 where
     E: From<Error>,
 {
-    type SinkItem = T;
-    type SinkError = E;
+    type Error = E;
 
-    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
+        self.sender.poll_ready(cx).map_err(|e| {
+            self.map_send_error(
+                e,
+                "request stream processing ended before receiving some items",
+            )
+        })
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), E> {
         self.sender.start_send(item).map_err(|e| {
             self.map_send_error(
                 e,
@@ -474,8 +473,8 @@ where
         })
     }
 
-    fn poll_complete(&mut self) -> Poll01<(), Self::SinkError> {
-        self.sender.poll_complete().map_err(|e| {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
+        self.sender.poll_flush(cx).map_err(|e| {
             self.map_send_error(
                 e,
                 "request stream processing ended before receiving some items",
@@ -483,8 +482,8 @@ where
         })
     }
 
-    fn close(&mut self) -> Poll01<(), Self::SinkError> {
-        self.sender.close().map_err(|e| {
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
+        self.sender.poll_close(cx).map_err(|e| {
             self.map_send_error(
                 e,
                 "request stream processing channel did not close gracefully, \
@@ -502,7 +501,7 @@ where
     E: From<Error>,
 {
     let (sender, receiver) = async_msg::channel(buffer);
-    let (reply, reply_future) = unary_reply01(logger.clone());
+    let (reply, reply_future) = unary_reply(logger.clone());
     let handle = RequestStreamHandle { receiver, reply };
     let sink = RequestSink {
         sender,
