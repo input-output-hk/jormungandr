@@ -121,7 +121,7 @@ automatically, so they cannot be quarantined.
 
 ##### configuration:
 
-- `max_view`: this si the number of entries to show in the view each round
+- `max_view`: this is the number of entries to show in the view each round
   the layer will **randomly** select up to `max_view` entries from the whole
   preferred_list.peers list of entries. [default: 20]
 - `peers`: the list of peers to keep in the preferred list [default: EMPTY]
