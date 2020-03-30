@@ -2,9 +2,8 @@ use jormungandr_lib::interfaces::{
     AccountState, Address, EnclaveLeaderId, EpochRewardsInfo, FragmentOrigin,
     Rewards as StakePoolRewards, StakePoolStats, TaxTypeSerde,
 };
-use jormungandr_lib::interfaces::{NodeStats, NodeStatsDto};
+use jormungandr_lib::interfaces::{NodeStats, NodeStatsDto, PeerStats};
 use jormungandr_lib::time::SystemTime;
-
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::web::{Bytes, BytesMut, Data, Json, Path, Query};
 use actix_web::{Error, HttpResponse, Responder};
@@ -412,12 +411,12 @@ pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder,
         .into_iter()
         .map(|info| {
             json! (PeerStats{
-                    nodeId: info.id.to_string(),
+                    node_id: info.id.to_string(),
                     addr: info.addr,
-                    establishedAt: SystemTime::from(info.stats.connection_established()),
-                    lastBlockReceived: info.stats.last_block_received().map(SystemTime::from),
-                    lastFragmentReceived: info.stats.last_fragment_received().map(SystemTime::from),
-                    lastGossipReceived: info.stats.last_gossip_received().map(SystemTime::from),
+                    established_at: SystemTime::from(info.stats.connection_established()),
+                    last_block_received: info.stats.last_block_received().map(SystemTime::from),
+                    last_fragment_received: info.stats.last_fragment_received().map(SystemTime::from),
+                    last_gossip_received: info.stats.last_gossip_received().map(SystemTime::from),
                 }
             )
         })
