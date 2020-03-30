@@ -1,10 +1,14 @@
 //! Multiple producer, single-consumer in-memory FIFO channels with
 //! asynchronous reading.
 
-use futures::prelude::*;
-use futures::sync::mpsc::{self, Receiver, Sender};
-pub use futures::sync::mpsc::{SendError, TrySendError};
+use futures03::channel::mpsc::{self, Receiver, Sender};
+use futures03::prelude::*;
 use slog::Logger;
+
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+pub use futures03::channel::mpsc::{SendError, TrySendError};
 
 /// The output end of an in-memory FIFO channel.
 #[derive(Debug)]
@@ -38,38 +42,51 @@ impl<Msg> MessageBox<Msg> {
         self.0.try_send(a)
     }
 
-    /// Polls the channel to determine if there is guaranteed to be capacity
-    /// to send at least one item without waiting.
-    pub fn poll_ready(&mut self) -> Poll<(), SendError<()>> {
-        self.0.poll_ready()
+    /// Sends a message on the channel.
+    ///
+    /// This function should be only called after `poll_ready` has reported
+    /// that the channel is ready to receive a message.
+    pub fn start_send(&mut self, a: Msg) -> Result<(), SendError> {
+        self.0.start_send(a)
     }
 
-    /// Makes a sending task from this message box instance, the message to
+    /// Polls the channel to determine if there is guaranteed to be capacity
+    /// to send at least one item without waiting.
+    pub fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+        self.0.poll_ready(cx)
+    }
+
+    /// Makes a sending task around this message box instance, the message to
     /// send, and a logger instance to report errors. The returned future
     /// is suitable for spawning onto an executor.
-    pub fn into_send_task(self, msg: Msg, logger: Logger) -> SendTask<Msg> {
-        SendTask {
-            mbox: self,
-            pending: Some(msg),
-            logger,
+    async fn send_task(&mut self, msg: Msg, logger: Logger) {
+        if let Err(e) = self.send(msg).await {
+            error!(
+                self.logger,
+                "failed to enqueue message for processing";
+                "reason" => %e,
+            )
         }
     }
 }
 
-impl<Msg> Sink for MessageBox<Msg> {
-    type SinkItem = Msg;
-    type SinkError = SendError<Msg>;
+impl<Msg> Sink<Msg> for MessageBox<Msg> {
+    type Error = SendError;
 
-    fn start_send(&mut self, msg: Msg) -> StartSend<Msg, SendError<Msg>> {
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+        self.0.poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, msg: Msg) -> Result<(), SendError> {
         self.0.start_send(msg)
     }
 
-    fn poll_complete(&mut self) -> Poll<(), SendError<Msg>> {
-        self.0.poll_complete()
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+        self.0.poll_flush(cx)
     }
 
-    fn close(&mut self) -> Poll<(), SendError<Msg>> {
-        self.0.close()
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+        self.0.poll_close(cx)
     }
 }
 
@@ -81,45 +98,15 @@ pub struct SendTask<Msg> {
     logger: Logger,
 }
 
-impl<Msg> SendTask<Msg> {
-    fn handle_mbox_error<T>(&self, err: SendError<T>) {
-        error!(
-            self.logger,
-            "failed to enqueue message for processing";
-            "reason" => %err,
-        )
-    }
-}
-
-impl<Msg> Future for SendTask<Msg> {
-    type Item = ();
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<(), ()> {
-        if self.pending.is_some() {
-            let msg = self.pending.take().unwrap();
-            let async_sink = self
-                .mbox
-                .start_send(msg)
-                .map_err(|e| self.handle_mbox_error(e))?;
-            if let AsyncSink::NotReady(msg) = async_sink {
-                self.pending = Some(msg);
-                return Ok(Async::NotReady);
-            }
-        }
-        try_ready!(self
-            .mbox
-            .poll_complete()
-            .map_err(|e| self.handle_mbox_error(e)));
-        Ok(().into())
-    }
-}
-
 impl<Msg> Stream for MessageQueue<Msg> {
     type Item = Msg;
-    type Error = ();
-    fn poll(&mut self) -> Poll<Option<Msg>, ()> {
+
+    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<Msg>> {
         self.0.poll()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
