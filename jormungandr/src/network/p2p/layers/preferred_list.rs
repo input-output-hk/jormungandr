@@ -22,7 +22,7 @@ pub struct PreferredListConfig {
     view_max: PreferredViewMax,
 
     #[serde(default)]
-    // peers: Vec<Address>,
+    // peers: HashSet<Address>,
     peers: Vec<TrustedPeer>,
 }
 
@@ -34,7 +34,7 @@ pub struct PreferredListLayer {
     view_max: usize,
 
     /// the buddy list
-    /// TODO: once we move to poldercast 0.8.13, use `peers: Vec<Address>`,
+    /// TODO: once we move to poldercast 0.8.13, use `peers: HashSet<Address>`,
     peers: Vec<TrustedPeer>,
 
     /// a pseudo random number generator, this will help with
