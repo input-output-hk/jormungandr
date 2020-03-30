@@ -207,7 +207,7 @@ where
     }
 }
 
-fn unary_reply03<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) {
+pub fn unary_reply03<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) {
     let (sender, receiver) = oneshot::channel();
     let future = ReplyFuture03 {
         receiver,
