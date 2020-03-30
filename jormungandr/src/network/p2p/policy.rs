@@ -42,7 +42,7 @@ pub struct PolicyConfig {
     #[serde(default)]
     max_num_quarantine_records: Option<usize>,
     #[serde(default)]
-    quarantine_whitelist: Option<HashSet<Address>>,
+    quarantine_whitelist: HashSet<Address>,
 }
 
 impl Policy {
@@ -57,7 +57,7 @@ impl Policy {
                 pc.max_num_quarantine_records
                     .unwrap_or(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
             ),
-            quarantine_whitelist: pc.quarantine_whitelist.unwrap_or(HashSet::new()),
+            quarantine_whitelist: pc.quarantine_whitelist,
             logger,
         }
     }
@@ -89,7 +89,7 @@ impl Default for PolicyConfig {
             quarantine_duration: Duration::from(DEFAULT_QUARANTINE_DURATION),
             max_quarantine: Some(Duration::from(DEFAULT_MAX_QUARANTINE_DURATION)),
             max_num_quarantine_records: Some(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
-            quarantine_whitelist: Some(HashSet::new()),
+            quarantine_whitelist: HashSet::new(),
         }
     }
 }
