@@ -861,6 +861,7 @@ it back (or not) into the fold.
 It is recommended to leave the default value <code>[default: 30min]</code>.</li>
 </ul>
 </li>
+<li><code>layers</code>: (optional) set the settings for some of the poldercast custom layers (see below)</li>
 <li><code>max_unreachable_nodes_to_connect_per_event</code>: (optional) set the maximum number of unreachable nodes
 to contact at a time for every new notification.
 Every time a new propagation event is triggered, the node will select
@@ -886,6 +887,35 @@ or immediately begin gossip with the trusted peers if any are defined.</li>
 for now is that this is the first node any node tries to connect in order to meet new nodes.
 Right now, as far as we know, only one of them is needed. IOHK provides a few others for
 redundancy.</p>
+<h3><a class="header" href="#layers" id="layers">Layers</a></h3>
+<p>Jörmungandr provides multiple additional layers to the <code>poldercast</code> default ones:
+the preferred list or the bottle in the sea.</p>
+<h4><a class="header" href="#preferred-list" id="preferred-list">Preferred list</a></h4>
+<p>this is a special list that allows to connect multiple nodes together without relying
+on the auto peer discovery. All entries in the preferred list are also whitelisted
+automatically, so they cannot be quarantined.</p>
+<h5><a class="header" href="#configuration-1" id="configuration-1">configuration:</a></h5>
+<ul>
+<li><code>view_max</code>: this is the number of entries to show in the view each round
+the layer will <strong>randomly</strong> select up to <code>view_max</code> entries from the whole
+preferred_list.peers list of entries. [default: 20]</li>
+<li><code>peers</code>: the list of peers to keep in the preferred list [default: EMPTY]</li>
+</ul>
+<p>Also, the preferred list will never be quarantined or blacklisted, the node will
+attempt to connect to (up to <code>view_max</code> of) these nodes every time, even if some
+are down, unreachable or not operated anymore.</p>
+<p><strong>COMPATIBILITY NOTE</strong>: in near future the peer list will be only a list of addresses and the <strong>ID</strong>
+part will not be necessary.</p>
+<h5><a class="header" href="#example-1" id="example-1">Example:</a></h5>
+<pre><code class="language-yaml">p2p:
+  layers:
+    preferred_list:
+      view_max: 20
+      peers:
+        - address: '/ip4/127.0.0.1/tcp/2029'
+          id: 019abc...
+        - ...
+</code></pre>
 <h3><a class="header" href="#setting-the-public_id" id="setting-the-public_id">Setting the <code>public_id</code></a></h3>
 <p>This is needed to advertise your node as a trusted peer.
 If not set, the node will generate a random ID, which is fine for a regular user.
