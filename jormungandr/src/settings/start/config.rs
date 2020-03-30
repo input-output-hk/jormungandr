@@ -1,5 +1,5 @@
 use crate::{
-    network::p2p::{topic, Id, PolicyConfig},
+    network::p2p::{layers::LayersConfig, topic, Id, PolicyConfig},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
@@ -128,6 +128,10 @@ pub struct P2pConfig {
     #[serde(default)]
     pub policy: PolicyConfig,
 
+    /// settings for the different custom layers
+    #[serde(default)]
+    pub layers: LayersConfig,
+
     /// set the maximum number of unreachable nodes to contact at a time for every
     /// new notification. The default value is 20.
     ///
@@ -224,6 +228,7 @@ impl Default for P2pConfig {
             max_connections_threshold: None,
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
+            layers: LayersConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
             topology_force_reset_interval: None,

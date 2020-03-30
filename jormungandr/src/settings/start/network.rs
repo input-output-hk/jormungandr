@@ -1,4 +1,4 @@
-use crate::network::p2p::{Id, PolicyConfig};
+use crate::network::p2p::{layers::LayersConfig, Id, PolicyConfig};
 use poldercast::NodeProfile;
 use std::{net::SocketAddr, str, time::Duration};
 
@@ -71,6 +71,8 @@ pub struct Configuration {
     pub timeout: Duration,
 
     pub policy: PolicyConfig,
+
+    pub layers: LayersConfig,
 
     /// Whether to allow non-public IP addresses in gossip
     pub allow_private_addresses: bool,

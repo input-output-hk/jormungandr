@@ -1,4 +1,4 @@
-pub use poldercast::Address;
+pub use poldercast::{Address, Id};
 use poldercast::{GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
 use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -6,13 +6,22 @@ use serde::{Deserialize, Serialize};
 
 const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+/// TODO: this structure is needed only temporarily, once we have
+///       have poldercast `0.13.x` we only need the address
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TrustedPeer {
+    address: Address,
+    id: Id,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PreferredListConfig {
     #[serde(default)]
     view_max: PreferredViewMax,
 
     #[serde(default)]
-    peers: Vec<Address>,
+    // peers: Vec<Address>,
+    peers: Vec<TrustedPeer>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -23,7 +32,8 @@ pub struct PreferredListLayer {
     view_max: usize,
 
     /// the buddy list
-    peers: Vec<Address>,
+    /// TODO: once we move to poldercast 0.8.13, use `peers: Vec<Address>`,
+    peers: Vec<TrustedPeer>,
 
     /// a pseudo random number generator, this will help with
     /// testing and reproducing issues.
@@ -43,9 +53,9 @@ impl PreferredListLayer {
         Self::new_with_seed(config.view_max.into(), config.peers, seed)
     }
 
-    pub fn new_with_seed(
+    fn new_with_seed(
         view_max: usize,
-        peers: Vec<Address>,
+        peers: Vec<TrustedPeer>,
         seed: <ChaChaRng as SeedableRng>::Seed,
     ) -> Self {
         Self {
@@ -63,17 +73,23 @@ impl Layer for PreferredListLayer {
 
     fn reset(&mut self) {}
 
-    fn populate(&mut self, identity: &NodeProfile, all_nodes: &Nodes) {}
+    fn populate(&mut self, _identity: &NodeProfile, _all_nodes: &Nodes) {}
 
-    fn gossips(&mut self, identity: &NodeProfile, gossips: &mut GossipsBuilder, all_nodes: &Nodes) {
+    fn gossips(
+        &mut self,
+        _identity: &NodeProfile,
+        _gossips: &mut GossipsBuilder,
+        _all_nodes: &Nodes,
+    ) {
     }
 
-    fn view(&mut self, view: &mut ViewBuilder, all_nodes: &mut Nodes) {
+    fn view(&mut self, view: &mut ViewBuilder, _all_nodes: &mut Nodes) {
         let selected = self.peers.choose_multiple(&mut self.prng, self.view_max);
 
         for selected in selected {
-            let node = all_nodes.peek(selected);
-            view.add(node);
+            let info = poldercast::NodeInfo::new(selected.id.clone(), selected.address.clone());
+
+            view.add_info(info);
         }
     }
 }

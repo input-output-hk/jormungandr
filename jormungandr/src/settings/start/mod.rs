@@ -261,6 +261,7 @@ fn generate_network(
             .collect(),
         protocol: Protocol::Grpc,
         policy: p2p.policy.clone(),
+        layers: p2p.layers.clone(),
         max_connections: p2p
             .max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
