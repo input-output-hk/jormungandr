@@ -121,13 +121,13 @@ automatically, so they cannot be quarantined.
 
 ##### configuration:
 
-- `max_view`: this is the number of entries to show in the view each round
-  the layer will **randomly** select up to `max_view` entries from the whole
+- `view_max`: this is the number of entries to show in the view each round
+  the layer will **randomly** select up to `view_max` entries from the whole
   preferred_list.peers list of entries. [default: 20]
 - `peers`: the list of peers to keep in the preferred list [default: EMPTY]
 
 Also, the preferred list will never be quarantined or blacklisted, the node will
-attempt to connect to (up to `max_view` of) these nodes every time, even if some
+attempt to connect to (up to `view_max` of) these nodes every time, even if some
 are down, unreachable or not operated anymore.
 
 **COMPATIBILITY NOTE**: in near future the peer list will be only a list of addresses and the **ID**
@@ -139,7 +139,7 @@ part will not be necessary.
 p2p:
   layers:
     preferred_list:
-      max_view: 20
+      view_max: 20
       peers:
         - address: '/ip4/127.0.0.1/tcp/2029'
           id: 019abc...
