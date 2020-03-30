@@ -12,7 +12,7 @@ use crate::{
     test::{
         comm::leader_leader::*,
         comm::passive_leader::*,
-        features::leader_promotion::*,
+        features::{leader_promotion::*,p2p::*},
         network::real::real_network,
         network::topology::scenarios::*,
         non_functional::{disruption::*, soak::*},
@@ -202,6 +202,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     ));
 
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
+    repository.push(Scenario::new("p2p_stats_test", p2p_stats_test, vec![Tag::Short]));
     repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
     repository.push(Scenario::new(
         "mesh_disruption",
