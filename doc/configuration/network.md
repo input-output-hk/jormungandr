@@ -126,19 +126,24 @@ automatically, so they cannot be quarantined.
   preferred_list.peers list of entries. [default: 20]
 - `peers`: the list of peers to keep in the preferred list [default: EMPTY]
 
+Also, the preferred list will never be quarantined of blacklisted, the node will
+attempt to connect to (up to `max_view` of) these nodes every time, even if some
+are down, unreachable or not operated anymore.
+
 **COMPATIBILITY NOTE**: in near future the peer list will be only a list of addresses and the **ID**
 part will not be necessary.
 
 ##### Example:
 
 ```yaml
-layers:
-  preferred_list:
-    max_view: 20
-    peers:
-      - address: '/ip4/127.0.0.1/tcp/2029'
-        id: 019abc...
-      - ...
+p2p:
+  layers:
+    preferred_list:
+      max_view: 20
+      peers:
+        - address: '/ip4/127.0.0.1/tcp/2029'
+          id: 019abc...
+        - ...
 ```
 
 
