@@ -78,11 +78,12 @@ impl BlockService for NodeService {
     }
 
     async fn tip(&self) -> Result<Header, Error> {
-        intercom::unary_future(
-            self.channels.client_box.clone(),
-            self.logger().new(o!("request" => "Tip")),
-            ClientMsg::GetBlockTip,
-        )
+        let logger = self.logger().new(o!("request" => "Tip"));
+        let (reply_handle, reply_future) = intercom::unary_reply(logger);
+        let mbox = self.channels.client_box.clone();
+        mbox.send(ClientMsg::GetBlockTip(reply_handle)).await?;
+        let header = reply_handle.await?;
+        Ok(header)
     }
 
     async fn pull_blocks_to_tip(
@@ -275,11 +276,12 @@ impl GossipService for NodeService {
         )
     }
 
-    fn peers(&mut self) -> Self::PeersFuture {
-        intercom::unary_future(
-            self.channels.client_box.clone(),
-            self.logger().new(o!("request" => "Peers")),
-            ClientMsg::GetPeers,
-        )
+    async fn peers(&mut self) -> Result<Peers, Error> {
+        let logger = self.logger().new(o!("request" => "Peers"));
+        let (reply_handle, reply_future) = intercom::unary_reply(logger);
+        let mbox = self.channels.client_box.clone();
+        mbox.send(ClientMsg::GetPeers(reply_handle)).await?;
+        let peers = reply_handle.await?;
+        Ok(peers)
     }
 }
