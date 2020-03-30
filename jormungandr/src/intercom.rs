@@ -207,7 +207,7 @@ where
     }
 }
 
-fn unary_reply03<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) {
+pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) {
     let (sender, receiver) = oneshot::channel();
     let future = ReplyFuture03 {
         receiver,
@@ -217,11 +217,11 @@ fn unary_reply03<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) 
     (ReplyHandle { sender }, future)
 }
 
-fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>)
+fn unary_reply01<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>)
 where
     E: From<Error>,
 {
-    let (handle, future) = unary_reply03(logger);
+    let (handle, future) = unary_reply(logger);
     (handle, future.compat())
 }
 
@@ -403,7 +403,7 @@ where
     }
 }
 
-pub fn stream_reply03<T, E>(
+pub fn stream_reply<T, E>(
     buffer: usize,
     logger: Logger,
 ) -> (ReplyStreamHandle03<T>, ReplyStream03<T, E>) {
@@ -414,17 +414,6 @@ pub fn stream_reply03<T, E>(
         _phantom_error: PhantomData,
     };
     (ReplyStreamHandle03 { sender }, stream)
-}
-
-pub fn stream_reply<T, E>(
-    buffer: usize,
-    logger: Logger,
-) -> (ReplyStreamHandle<T>, ReplyStream<T, E>)
-where
-    E: From<Error>,
-{
-    let (handle, stream) = stream_reply03(buffer, logger);
-    (ReplyStreamHandle(handle.compat()), stream.compat())
 }
 
 #[derive(Debug)]
@@ -513,7 +502,7 @@ where
     E: From<Error>,
 {
     let (sender, receiver) = async_msg::channel(buffer);
-    let (reply, reply_future) = unary_reply(logger.clone());
+    let (reply, reply_future) = unary_reply01(logger.clone());
     let handle = RequestStreamHandle { receiver, reply };
     let sink = RequestSink {
         sender,
