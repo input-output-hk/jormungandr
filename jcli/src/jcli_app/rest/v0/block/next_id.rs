@@ -35,7 +35,9 @@ fn exec_get(
     let url = addr
         .with_segments(&["v0", "block", &block_id, "next_id"])?
         .into_url();
-    let builder = reqwest::Client::new().get(url).query(&[("count", count)]);
+    let builder = reqwest::blocking::Client::new()
+        .get(url)
+        .query(&[("count", count)]);
     let response = RestApiSender::new(builder, &debug).send()?;
     response.ok_response()?;
     let body = response.body().binary();

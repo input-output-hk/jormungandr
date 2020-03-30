@@ -169,10 +169,10 @@ impl NodeController {
         format!("{}/{}", self.base_url(), path)
     }
 
-    fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::Response> {
+    fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("POST '{}'", path));
 
-        let client = reqwest::Client::new();
+        let client = reqwest::blocking::Client::new();
         let res = client
             .post(&format!("{}/{}", self.base_url(), path))
             .body(body)
@@ -188,10 +188,10 @@ impl NodeController {
         }
     }
 
-    fn get(&self, path: &str) -> Result<reqwest::Response> {
+    fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("GET '{}'", path));
 
-        match reqwest::get(&format!("{}/{}", self.base_url(), path)) {
+        match reqwest::blocking::get(&format!("{}/{}", self.base_url(), path)) {
             Err(err) => {
                 self.progress_bar
                     .log_err(format!("Failed to send request {}", &err));
@@ -369,7 +369,7 @@ impl NodeController {
         let path = "leaders";
         let secrets = self.settings.secrets();
         self.progress_bar.log_info(format!("POST '{}'", &path));
-        let mut response = reqwest::Client::new()
+        let mut response = reqwest::blocking::Client::new()
             .post(&self.path(path))
             .json(&secrets)
             .send()?;
@@ -393,7 +393,9 @@ impl NodeController {
     pub fn demote(&self, leader_id: u32) -> Result<()> {
         let path = format!("leaders/{}", leader_id);
         self.progress_bar.log_info(format!("DELETE '{}'", &path));
-        let response = reqwest::Client::new().delete(&self.path(&path)).send()?;
+        let response = reqwest::blocking::Client::new()
+            .delete(&self.path(&path))
+            .send()?;
 
         self.progress_bar
             .log_info(format!("Leader demote for '{}' sent", self.alias()));

@@ -30,7 +30,7 @@ impl Account {
         let url = addr
             .with_segments(&["v0", "account", &account_id.to_url_arg()])?
             .into_url();
-        let builder = reqwest::Client::new().get(url);
+        let builder = reqwest::blocking::Client::new().get(url);
         let response = RestApiSender::new(builder, &debug).send()?;
         response.ok_response()?;
         let state = response.body().json_value()?;

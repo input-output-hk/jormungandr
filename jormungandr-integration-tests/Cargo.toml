@@ -40,10 +40,18 @@ jcli = { path = "../jcli" }
 poldercast = "0.11.4"
 thiserror = "1.0"
 
-[dependencies.reqwest]
-version = "0.9"
-features = ["rustls-tls"]
+[target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
+version = "0.10.4"
 default-features = false
+features = ["blocking", "json", "rustls-tls"]
+
+# rustls-native-certs required by rustls-tls does not support Android, so build
+# with OpenSSL.
+# TODO rustls-tls should work on Android when https://github.com/seanmonstar/reqwest/pull/862
+# is merged and released.
+[target.'cfg(target_os = "android")'.dependencies.reqwest]
+version = "0.10.4"
+features = ["blocking", "json"]
 
 [dev-dependencies]
 chain-core           = { path = "../chain-deps/chain-core", features=["property-test-api"]}

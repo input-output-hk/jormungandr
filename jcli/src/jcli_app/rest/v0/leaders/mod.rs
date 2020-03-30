@@ -76,7 +76,7 @@ impl Leaders {
 
 fn get(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "leaders"])?.into_url();
-    let builder = reqwest::Client::new().get(url);
+    let builder = reqwest::blocking::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
     response.ok_response()?;
     let leaders = response.body().json_value()?;
@@ -87,7 +87,7 @@ fn get(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<
 
 fn post(addr: HostAddr, debug: DebugFlag, file: Option<PathBuf>) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "leaders"])?.into_url();
-    let builder = reqwest::Client::new().post(url);
+    let builder = reqwest::blocking::Client::new().post(url);
     let input: serde_json::Value = io::read_yaml(&file)?;
     let response = RestApiSender::new(builder, &debug)
         .with_json_body(&input)?
@@ -101,7 +101,7 @@ fn delete(addr: HostAddr, debug: DebugFlag, id: u32) -> Result<(), Error> {
     let url = addr
         .with_segments(&["v0", "leaders", &id.to_string()])?
         .into_url();
-    let builder = reqwest::Client::new().delete(url);
+    let builder = reqwest::blocking::Client::new().delete(url);
     let response = RestApiSender::new(builder, &debug).send()?;
     response.ok_response()?;
     println!("Success");
@@ -110,7 +110,7 @@ fn delete(addr: HostAddr, debug: DebugFlag, id: u32) -> Result<(), Error> {
 
 fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "leaders", "logs"])?.into_url();
-    let builder = reqwest::Client::new().get(url);
+    let builder = reqwest::blocking::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
     response.ok_response()?;
     let logs = response.body().json_value()?;
