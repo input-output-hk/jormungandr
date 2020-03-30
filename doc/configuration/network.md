@@ -80,6 +80,7 @@ rest:
   - `quarantine_duration` set the time to leave a node in quarantine before allowing
     it back (or not) into the fold.
     It is recommended to leave the default value `[default: 30min]`.
+- `layers`: (optional) set the settings for some of the poldercast custom layers (see below)
 - `max_unreachable_nodes_to_connect_per_event`: (optional) set the maximum number of unreachable nodes
   to contact at a time for every new notification.
   Every time a new propagation event is triggered, the node will select
@@ -106,6 +107,41 @@ The trusted peers is a concept that is not fully implemented yet. One of the key
 for now is that this is the first node any node tries to connect in order to meet new nodes.
 Right now, as far as we know, only one of them is needed. IOHK provides a few others for
 redundancy.
+
+### Layers
+
+Jörmungandr provides multiple additional layers to the `poldercast` default ones:
+the preferred list or the bottle in the sea.
+
+#### Preferred list
+
+this is a special list that allows to connect multiple nodes together without relying
+on the auto peer discovery. All entries in the preferred list are also whitelisted
+automatically, so they cannot be quarantined.
+
+##### configuration:
+
+- `max_view`: this si the number of entries to show in the view each round
+  the layer will **randomly** select up to `max_view` entries from the whole
+  preferred_list.peers list of entries. [default: 20]
+- `peers`: the list of peers to keep in the preferred list [default: EMPTY]
+
+**COMPATIBILITY NOTE**: in near future the peer list will be only a list of addresses and the **ID**
+part will not be necessary.
+
+##### Example:
+
+```yaml
+layers:
+  preferred_list:
+    max_view: 20
+    peers:
+      - address: '/ip4/127.0.0.1/tcp/2029'
+        id: 019abc...
+      - ...
+```
+
+
 
 ### Setting the `public_id`
 

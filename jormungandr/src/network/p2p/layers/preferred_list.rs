@@ -9,12 +9,14 @@ const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
 /// TODO: this structure is needed only temporarily, once we have
 ///       have poldercast `0.13.x` we only need the address
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TrustedPeer {
     address: Address,
     id: Id,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct PreferredListConfig {
     #[serde(default)]
     view_max: PreferredViewMax,
