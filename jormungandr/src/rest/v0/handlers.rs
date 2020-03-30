@@ -34,11 +34,11 @@ use crate::rest::update_stats_tip_from_storage;
 pub use crate::rest::{Context, FullContext};
 
 async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
-    Ok(chain_tip_from_full(&*context.try_full().await?).await)
+    chain_tip_from_context(&*context).await
 }
 
-async fn chain_tip_from_full(context: &FullContext) -> Arc<Ref> {
-    context.blockchain_tip.get_ref().await
+async fn chain_tip_from_context(context: &Context) -> Result<Arc<Ref>, Error> {
+    Ok(context.blockchain_tip().await?.get_ref().await)
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -101,10 +101,7 @@ pub async fn get_tip(context: Data<Context>) -> Result<impl Responder, Error> {
 }
 
 pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder, Error> {
-    let stats = match context.try_full().await {
-        Ok(full_context) => Some(create_stats(&*full_context).await?),
-        Err(_) => None,
-    };
+    let stats = Some(create_stats(&context).await?);
     Ok(Json(NodeStatsDto {
         version: env!("SIMPLE_VERSION").to_string(),
         state: context.node_state().await,
@@ -112,19 +109,21 @@ pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder,
     }))
 }
 
-async fn create_stats(context: &FullContext) -> Result<NodeStats, Error> {
-    let tip = chain_tip_from_full(context).await;
+async fn create_stats(context: &Context) -> Result<NodeStats, Error> {
+    let tip = chain_tip_from_context(context).await?;
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
 
-    let mut header_block = context.stats_counter.get_tip_block();
+    let full_context = context.try_full().await?;
+
+    let mut header_block = full_context.stats_counter.get_tip_block();
 
     // In case we do not have a cached block in the stats_counter we can retrieve it from the
     // storage, this should happen just once.
     if header_block.is_none() {
-        update_stats_tip_from_storage(context).await;
-        header_block = context.stats_counter.get_tip_block();
+        update_stats_tip_from_storage(context).await?;
+        header_block = full_context.stats_counter.get_tip_block();
     }
 
     header_block
@@ -158,10 +157,10 @@ async fn create_stats(context: &FullContext) -> Result<NodeStats, Error> {
         })
         .collect::<Result<(), ValueError>>()
         .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
-    let nodes_count = &context.p2p.nodes_count::<Error>().compat().await?;
+    let nodes_count = &full_context.p2p.nodes_count::<Error>().compat().await?;
     let tip_header = tip.header();
-    let stats = &context.stats_counter;
-    let node_id = &context.p2p.node_id().to_string();
+    let stats = &full_context.stats_counter;
+    let node_id = &full_context.p2p.node_id().to_string();
     let node_stats = NodeStats {
         block_recv_cnt: stats.block_recv_cnt(),
         last_block_content_size: tip_header.block_content_size(),
@@ -190,9 +189,8 @@ pub async fn get_block_id(
     block_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
     context
-        .try_full()
+        .blockchain()
         .await?
-        .blockchain
         .storage()
         .get(parse_block_hash(&block_id_hex)?)
         .await
@@ -208,11 +206,10 @@ pub async fn get_block_next_id(
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<impl Responder, Error> {
-    let full_context = context.try_full().await?;
+    let blockchain = context.blockchain().await?;
     let block_id = parse_block_hash(&block_id_hex)?;
-    let tip = chain_tip_from_full(&full_context).await;
-    full_context
-        .blockchain
+    let tip = chain_tip_from_context(&context).await?;
+    blockchain
         .storage()
         .stream_from_to(block_id, tip.hash())
         .await
@@ -312,7 +309,7 @@ fn create_stake(stake: &StakeDistribution) -> serde_json::Value {
 
 pub async fn get_settings(context: Data<Context>) -> Result<impl Responder, Error> {
     let full_context = context.try_full().await?;
-    let blockchain_tip = chain_tip_from_full(&full_context).await;
+    let blockchain_tip = chain_tip_from_context(&context).await?;
     let ledger = blockchain_tip.ledger();
     let static_params = ledger.get_static_parameters();
     let consensus_version = ledger.consensus_version();
@@ -551,8 +548,8 @@ pub async fn get_stake_pool(
 }
 
 pub async fn get_diagnostic(context: Data<Context>) -> Result<impl Responder, Error> {
-    let full_context = context.try_full().await?;
-    serde_json::to_string(&full_context.diagnostic).map_err(ErrorInternalServerError)
+    let diagnostic = context.get_diagnostic_data().await?;
+    serde_json::to_string(&diagnostic).map_err(ErrorInternalServerError)
 }
 
 pub async fn get_network_p2p_quarantined(context: Data<Context>) -> Result<impl Responder, Error> {
