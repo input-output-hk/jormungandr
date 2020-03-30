@@ -15,7 +15,8 @@ use jormungandr_integration_tests::{
     response_to_vec,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, FragmentStatus, NodeState, NodeStatsDto, PeerStats, PeerRecord, Info,
+    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, NodeState, NodeStatsDto, PeerRecord,
+    PeerStats,
 };
 use rand_core::RngCore;
 use std::{
@@ -260,11 +261,8 @@ impl NodeController {
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
         let response_text = self.get("network/stats")?.text()?;
-        self.progress_bar.log_info(format!(
-            "network/stats: {}",
-            response_text
-        ));
-
+        self.progress_bar
+            .log_info(format!("network/stats: {}", response_text));
 
         let network_stats: Vec<PeerStats> = if response_text.is_empty() {
             Vec::new()
@@ -277,10 +275,8 @@ impl NodeController {
     pub fn p2p_quarantined(&self) -> Result<Vec<PeerRecord>> {
         let response_text = self.get("network/p2p/quarantined")?.text()?;
 
-        self.progress_bar.log_info(format!(
-            "network/p2p_quarantined: {}",
-            response_text
-        ));
+        self.progress_bar
+            .log_info(format!("network/p2p_quarantined: {}", response_text));
 
         let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
             Vec::new()
@@ -293,10 +289,8 @@ impl NodeController {
     pub fn p2p_non_public(&self) -> Result<Vec<PeerRecord>> {
         let response_text = self.get("network/p2p/non_public")?.text()?;
 
-        self.progress_bar.log_info(format!(
-            "network/non_publicS: {}",
-            response_text
-        ));
+        self.progress_bar
+            .log_info(format!("network/non_publicS: {}", response_text));
 
         let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
             Vec::new()
@@ -309,10 +303,8 @@ impl NodeController {
     pub fn p2p_available(&self) -> Result<Vec<PeerRecord>> {
         let response_text = self.get("network/p2p/available")?.text()?;
 
-                self.progress_bar.log_info(format!(
-            "network/available: {}",
-            response_text
-        ));
+        self.progress_bar
+            .log_info(format!("network/available: {}", response_text));
 
         let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
             Vec::new()
@@ -325,11 +317,8 @@ impl NodeController {
     pub fn p2p_view(&self) -> Result<Vec<Info>> {
         let response_text = self.get("network/p2p/view")?.text()?;
 
-
-        self.progress_bar.log_info(format!(
-            "network/view: {}",
-            response_text
-        ));
+        self.progress_bar
+            .log_info(format!("network/view: {}", response_text));
 
         let network_stats: Vec<Info> = if response_text.is_empty() {
             Vec::new()
