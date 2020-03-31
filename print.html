@@ -859,6 +859,9 @@ node should keep open. <code>[default: 192]</code></li>
 <li><code>quarantine_duration</code> set the time to leave a node in quarantine before allowing
 it back (or not) into the fold.
 It is recommended to leave the default value <code>[default: 30min]</code>.</li>
+<li><code>quarantine_whitelist</code> set a trusted list of peers that will not be quarantined in any circumstance. 
+It should be a list of valid addresses, for example: <code>[&quot;/ip4/127.0.0.1/tcp/3000&quot;]</code>.
+By default this list is empty, <code>[default: []]</code>.</li>
 </ul>
 </li>
 <li><code>layers</code>: (optional) set the settings for some of the poldercast custom layers (see below)</li>
