@@ -38,6 +38,12 @@ pub enum StartupVerificationMode {
 }
 
 #[derive(Clone, Debug, Copy)]
+pub enum FromGenesis {
+    Hash,
+    File,
+}
+
+#[derive(Clone, Debug, Copy)]
 pub enum OnFail {
     RetryOnce,
     Panic,
@@ -127,6 +133,7 @@ pub struct Starter {
     timeout: Duration,
     sleep: u64,
     role: Role,
+    from_genesis: FromGenesis,
     verification_mode: StartupVerificationMode,
     on_fail: OnFail,
     config: Option<JormungandrConfig>,
@@ -139,6 +146,7 @@ impl Starter {
             timeout: Duration::from_secs(300),
             sleep: 2,
             role: Role::Leader,
+            from_genesis: FromGenesis::File,
             verification_mode: StartupVerificationMode::Rest,
             on_fail: OnFail::RetryUnlimitedOnPortOccupied,
             config: None,
@@ -163,6 +171,19 @@ impl Starter {
 
     pub fn role(&mut self, role: Role) -> &mut Self {
         self.role = role;
+        self
+    }
+
+    pub fn from_genesis_hash(&mut self) -> &mut Self {
+        self.from_genesis(FromGenesis::Hash)
+    }
+
+    pub fn from_genesis_file(&mut self) -> &mut Self {
+        self.from_genesis(FromGenesis::File)
+    }
+
+    pub fn from_genesis(&mut self, from_genesis: FromGenesis) -> &mut Self {
+        self.from_genesis = from_genesis;
         self
     }
 
@@ -321,20 +342,31 @@ impl Starter {
     }
 
     fn get_command(&self, config: &JormungandrConfig) -> Command {
-        match self.role {
-            Role::Passive => commands::get_start_jormungandr_as_passive_node_command(
+        match (self.role, self.from_genesis) {
+            (Role::Passive, _) => commands::get_start_jormungandr_as_passive_node_command(
                 &config.node_config_path,
                 &config.genesis_block_hash,
                 &config.log_file_path,
                 config.rewards_history,
             ),
-            Role::Leader => commands::get_start_jormungandr_as_leader_node_command(
-                &config.node_config_path,
-                &config.genesis_block_path,
-                &config.secret_model_paths,
-                &config.log_file_path,
-                config.rewards_history,
-            ),
+            (Role::Leader, FromGenesis::File) => {
+                commands::get_start_jormungandr_as_leader_node_command(
+                    &config.node_config_path,
+                    &config.genesis_block_path,
+                    &config.secret_model_paths,
+                    &config.log_file_path,
+                    config.rewards_history,
+                )
+            }
+            (Role::Leader, FromGenesis::Hash) => {
+                commands::get_start_jormungandr_as_leader_node_from_hash_command(
+                    &config.node_config_path,
+                    &config.genesis_block_hash,
+                    &config.secret_model_paths,
+                    &config.log_file_path,
+                    config.rewards_history,
+                )
+            }
         }
     }
 }

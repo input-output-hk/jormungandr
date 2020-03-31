@@ -4,6 +4,31 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
+pub fn get_start_jormungandr_as_leader_node_from_hash_command(
+    config_path: &PathBuf,
+    genesis_block_hash: &str,
+    secret_paths: &[PathBuf],
+    log_file_path: &PathBuf,
+    reward_history: bool,
+) -> Command {
+    let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
+    for secret_path in secret_paths {
+        command.arg("--secret").arg(secret_path.as_os_str());
+    }
+
+    if reward_history {
+        command.arg("--rewards-report-all");
+    }
+
+    command
+        .arg("--config")
+        .arg(config_path.as_os_str())
+        .arg("--genesis-block-hash")
+        .arg(genesis_block_hash)
+        .stderr(get_stdio_from_log_file(&log_file_path));
+    println!("Running start jormungandr command: {:?}", &command);
+    command
+}
 pub fn get_start_jormungandr_as_leader_node_command(
     config_path: &PathBuf,
     genesis_block_path: &PathBuf,

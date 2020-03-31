@@ -82,6 +82,11 @@ impl NodeConfigBuilder {
         self
     }
 
+    pub fn with_quarantine_policy(&mut self, policy: Policy) -> &mut Self {
+        self.p2p.policy = Some(policy);
+        self
+    }
+
     pub fn with_log(&mut self, log: Log) -> &mut Self {
         self.log = Some(log);
         self
