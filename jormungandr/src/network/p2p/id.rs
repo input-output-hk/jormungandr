@@ -1,13 +1,12 @@
 use crate::network::p2p::limits;
 use bincode;
 use chain_core::property;
-use network_core::gossip;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
 /// a P2P node identifier
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Id(poldercast::Id);
+pub struct Id(poldercast::Address);
 
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -16,25 +15,23 @@ impl fmt::Display for Id {
 }
 
 impl FromStr for Id {
-    type Err = <poldercast::Id as FromStr>::Err;
+    type Err = <poldercast::Address as FromStr>::Err;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse().map(Id)
     }
 }
 
-impl From<poldercast::Id> for Id {
-    fn from(id: poldercast::Id) -> Self {
+impl From<poldercast::Address> for Id {
+    fn from(id: poldercast::Address) -> Self {
         Id(id)
     }
 }
 
-impl From<Id> for poldercast::Id {
+impl From<Id> for poldercast::Address {
     fn from(id: Id) -> Self {
         id.0
     }
 }
-
-impl gossip::NodeId for Id {}
 
 impl property::Serialize for Id {
     type Error = bincode::Error;
