@@ -1593,7 +1593,7 @@ dependencies = [
  "lru",
  "nix 0.17.0",
  "pin-utils",
- "poldercast",
+ "poldercast 0.13.0",
  "r2d2",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -1650,7 +1650,7 @@ dependencies = [
  "jormungandr-lib",
  "lazy_static",
  "mktemp",
- "poldercast",
+ "poldercast 0.11.7",
  "protobuf",
  "protoc-rust",
  "quickcheck",
@@ -1689,7 +1689,7 @@ dependencies = [
  "hex",
  "humantime",
  "os_info",
- "poldercast",
+ "poldercast 0.11.7",
  "quickcheck",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -1724,7 +1724,7 @@ dependencies = [
  "jormungandr-lib",
  "lazy_static",
  "mktemp",
- "poldercast",
+ "poldercast 0.11.7",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
@@ -2503,6 +2503,22 @@ name = "poldercast"
 version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c632423c7af6f3ff1b23a33f9600c473c4903a8e3f4d55984b6f77f059cad24d"
+dependencies = [
+ "cid",
+ "hex",
+ "lru",
+ "multiaddr",
+ "rand 0.7.3",
+ "rayon",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "poldercast"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64e6882cdddfde061f3585540138b14893e456ddcffb0a08b7ed7dd5bda2307c"
 dependencies = [
  "cid",
  "hex",
