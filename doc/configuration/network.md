@@ -80,6 +80,9 @@ rest:
   - `quarantine_duration` set the time to leave a node in quarantine before allowing
     it back (or not) into the fold.
     It is recommended to leave the default value `[default: 30min]`.
+  - `quarantine_whitelist` set a trusted list of peers that will not be quarantined in any circumstance. 
+    It should be a list of valid addresses, for example: `["/ip4/127.0.0.1/tcp/3000"]`.
+    By default this list is empty, `[default: []]`.
 - `layers`: (optional) set the settings for some of the poldercast custom layers (see below)
 - `max_unreachable_nodes_to_connect_per_event`: (optional) set the maximum number of unreachable nodes
   to contact at a time for every new notification.
