@@ -16,8 +16,9 @@ use crate::common::{
     explorer::ExplorerError,
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrProcess},
+    process_utils,
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value, wallet::Wallet};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
