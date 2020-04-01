@@ -9,6 +9,7 @@ mod fragment_log;
 mod leadership_log;
 mod linear_fee;
 mod old_address;
+mod peer_stats;
 mod ratio;
 mod reward_parameters;
 mod rewards_info;
@@ -38,6 +39,9 @@ pub use self::leadership_log::{
 };
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
+pub use self::peer_stats::{
+    Info, Logs, PeerRecord, PeerStats, Profile, Record, Strike, Subscription, When,
+};
 pub use self::ratio::{ParseRatioError, Ratio};
 pub use self::reward_parameters::RewardParams;
 pub use self::rewards_info::EpochRewardsInfo;

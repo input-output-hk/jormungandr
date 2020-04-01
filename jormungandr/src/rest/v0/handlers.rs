@@ -1,10 +1,3 @@
-use jormungandr_lib::interfaces::{
-    AccountState, Address, EnclaveLeaderId, EpochRewardsInfo, FragmentOrigin,
-    Rewards as StakePoolRewards, StakePoolStats, TaxTypeSerde,
-};
-use jormungandr_lib::interfaces::{NodeStats, NodeStatsDto};
-use jormungandr_lib::time::SystemTime;
-
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::web::{Bytes, BytesMut, Data, Json, Path, Query};
 use actix_web::{Error, HttpResponse, Responder};
@@ -18,6 +11,12 @@ use chain_impl_mockchain::stake::StakeDistribution;
 use chain_impl_mockchain::transaction::Transaction;
 use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage_sqlite_old::Error as StorageError;
+use jormungandr_lib::interfaces::{
+    AccountState, Address, EnclaveLeaderId, EpochRewardsInfo, FragmentOrigin,
+    Rewards as StakePoolRewards, StakePoolStats, TaxTypeSerde,
+};
+use jormungandr_lib::interfaces::{NodeStats, NodeStatsDto, PeerStats};
+use jormungandr_lib::time::SystemTime;
 
 use crate::blockchain::Ref;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
@@ -411,13 +410,13 @@ pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder,
     let network_stats = peer_stats
         .into_iter()
         .map(|info| {
-            json! ({
-                "nodeId": info.id.to_string(),
-                "addr": info.addr,
-                "establishedAt": SystemTime::from(info.stats.connection_established()),
-                "lastBlockReceived": info.stats.last_block_received().map(SystemTime::from),
-                "lastFragmentReceived": info.stats.last_fragment_received().map(SystemTime::from),
-                "lastGossipReceived": info.stats.last_gossip_received().map(SystemTime::from),
+            json!(PeerStats {
+                node_id: info.id.to_string(),
+                addr: info.addr,
+                established_at: SystemTime::from(info.stats.connection_established()),
+                last_block_received: info.stats.last_block_received().map(SystemTime::from),
+                last_fragment_received: info.stats.last_fragment_received().map(SystemTime::from),
+                last_gossip_received: info.stats.last_gossip_received().map(SystemTime::from),
             })
         })
         .collect::<Vec<_>>();

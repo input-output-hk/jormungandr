@@ -15,7 +15,8 @@ use jormungandr_integration_tests::{
     response_to_vec,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, FragmentStatus, NodeState, NodeStatsDto,
+    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, NodeState, NodeStatsDto, PeerRecord,
+    PeerStats,
 };
 use rand_core::RngCore;
 use std::{
@@ -57,8 +58,16 @@ error_chain! {
             description("Node stats in an invalid format")
         }
 
+        InvalidNetworkStats {
+            description("Network stats in an invalid format")
+        }
+
         InvalidEnclaveLeaderIds {
             description("Leaders ids in an invalid format")
+        }
+
+        InvalidPeerStats{
+            description("Peer in an invalid format")
         }
 
         NodeStopped (status: Status) {
@@ -231,6 +240,10 @@ impl NodeController {
         })
     }
 
+    pub fn log(&self, info: &str) {
+        self.progress_bar.log_info(info);
+    }
+
     pub fn tip(&self) -> Result<HeaderId> {
         let hash = self.get("tip")?.text()?;
 
@@ -244,6 +257,75 @@ impl NodeController {
     pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
         let response = self.grpc_client.pull_blocks_to_tip(from);
         Ok(response_to_vec!(response))
+    }
+
+    pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
+        let response_text = self.get("network/stats")?.text()?;
+        self.progress_bar
+            .log_info(format!("network/stats: {}", response_text));
+
+        let network_stats: Vec<PeerStats> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_quarantined(&self) -> Result<Vec<PeerRecord>> {
+        let response_text = self.get("network/p2p/quarantined")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/p2p_quarantined: {}", response_text));
+
+        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_non_public(&self) -> Result<Vec<PeerRecord>> {
+        let response_text = self.get("network/p2p/non_public")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/non_publicS: {}", response_text));
+
+        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_available(&self) -> Result<Vec<PeerRecord>> {
+        let response_text = self.get("network/p2p/available")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/available: {}", response_text));
+
+        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_view(&self) -> Result<Vec<Info>> {
+        let response_text = self.get("network/p2p/view")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/view: {}", response_text));
+
+        let network_stats: Vec<Info> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
     }
 
     pub fn all_blocks_hashes(&self) -> Result<Vec<HeaderId>> {

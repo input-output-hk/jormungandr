@@ -1,6 +1,9 @@
 use super::{logger::JormungandrLogger, JormungandrError, JormungandrRest};
 use crate::common::{
-    configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
+    configuration::jormungandr_config::JormungandrConfig,
+    explorer::Explorer,
+    jcli_wrapper,
+    jormungandr::starter::{Starter, StartupError},
 };
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{crypto::hash::Hash, interfaces::TrustedPeer};
@@ -97,6 +100,15 @@ impl JormungandrProcess {
 
     pub fn as_trusted_peer(&self) -> TrustedPeer {
         self.config.as_trusted_peer()
+    }
+
+    pub fn launch(&mut self) -> Result<Self, StartupError> {
+        let mut starter = Starter::new();
+        starter.config(self.config());
+        if self.config().genesis_block_hash != "" {
+            starter.from_genesis_hash();
+        }
+        starter.start()
     }
 }
 

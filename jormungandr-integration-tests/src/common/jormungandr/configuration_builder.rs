@@ -4,13 +4,14 @@ use crate::common::{
         SecretModelFactory,
     },
     file_utils, jcli_wrapper,
+    jormungandr::JormungandrProcess,
     startup::{build_genesis_block, create_new_key_pair},
 };
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, Block0Configuration, ConsensusLeaderId, EpochStabilityDepth, Initial,
-    InitialUTxO, KESUpdateSpeed, Log, Mempool, NumberOfSlotsPerEpoch, SignedCertificate,
+    InitialUTxO, KESUpdateSpeed, Log, Mempool, NumberOfSlotsPerEpoch, Policy, SignedCertificate,
     SlotDuration, TrustedPeer,
 };
 
@@ -76,6 +77,10 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_block_hash_from(&mut self, config: &JormungandrConfig) -> &mut Self {
+        self.with_block_hash(config.genesis_block_hash.clone())
+    }
+
     pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
         self.linear_fees = linear_fees;
         self
@@ -136,8 +141,19 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_quarantine_policy(&mut self, policy: Policy) -> &mut Self {
+        self.node_config_builder.with_quarantine_policy(policy);
+        self
+    }
+
     pub fn with_trusted_peers(&mut self, trusted_peers: Vec<TrustedPeer>) -> &mut Self {
         self.node_config_builder.with_trusted_peers(trusted_peers);
+        self
+    }
+
+    pub fn with_trusted_peer(&mut self, node: &JormungandrProcess) -> &mut Self {
+        self.node_config_builder
+            .with_trusted_peers(vec![node.as_trusted_peer()]);
         self
     }
 
