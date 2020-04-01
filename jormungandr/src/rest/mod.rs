@@ -169,24 +169,3 @@ fn app_config(config: &mut ServiceConfig, explorer_enabled: bool, context: Conte
         config.service(explorer::service("/explorer"));
     }
 }
-
-async fn update_stats_tip_from_storage(context: &Context) -> Result<(), ActixError> {
-    let block: Option<Block> = context
-        .blockchain()
-        .await?
-        .storage()
-        .get(context.blockchain_tip().await?.get_ref().await.hash())
-        .await
-        .unwrap_or(None);
-
-    // Update block if found
-    if let Some(block) = block {
-        context
-            .try_full()
-            .await?
-            .stats_counter
-            .set_tip_block(Arc::new(block));
-    }
-
-    Ok(())
-}
