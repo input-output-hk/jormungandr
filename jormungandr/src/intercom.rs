@@ -7,7 +7,7 @@ use crate::network::p2p::comm::PeerInfo;
 use crate::network::p2p::Id as NodeId;
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
-use chain_network::data::gossip::Peers;
+use chain_network::data::Peers;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
