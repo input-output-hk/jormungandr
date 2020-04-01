@@ -1,17 +1,13 @@
 use super::{
     buffer_sizes,
-    p2p::comm::{BlockEventSubscription, OutboundSubscription},
-    p2p::{Gossip as NodeData, Id},
-    subscription::{
-        self, BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor, Subscription,
-    },
+    subscription::{self, BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
     Channels, GlobalStateR,
 };
-use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
+use crate::blockcfg::{Block, Fragment, Header};
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream};
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
 use chain_network::data as net_data;
-use chain_network::data::{Gossip, Peer, Peers};
+use chain_network::data::{Peer, Peers};
 use chain_network::error::{self as net_error, Error};
 
 use async_trait::async_trait;
