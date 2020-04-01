@@ -11,7 +11,7 @@ use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream};
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
 use chain_network::data as net_data;
-use chain_network::data::gossip::{Gossip, Peers};
+use chain_network::data::{Gossip, Peer, Peers};
 use chain_network::error::{self as net_error, Error};
 
 use async_trait::async_trait;
@@ -42,8 +42,8 @@ impl NodeService {
 }
 
 impl NodeService {
-    fn subscription_logger(&self, subscriber: Id) -> Logger {
-        self.logger.new(o!("node_id" => subscriber.to_string()))
+    fn subscription_logger(&self, subscriber: Peer) -> Logger {
+        self.logger.new(o!("peer" => subscriber.to_string()))
     }
 }
 
@@ -195,6 +195,7 @@ impl BlockService for NodeService {
 
     async fn block_subscription(
         &self,
+        subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self
@@ -230,6 +231,7 @@ impl FragmentService for NodeService {
 
     async fn fragment_subscription(
         &self,
+        subscriber: Peer,
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self
@@ -257,6 +259,7 @@ impl GossipService for NodeService {
 
     async fn gossip_subscription(
         &self,
+        subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self
