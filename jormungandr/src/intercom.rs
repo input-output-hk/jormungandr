@@ -360,17 +360,15 @@ impl<T> Sink01 for ReplyStreamHandle<T> {
     }
 }
 
-pub struct ReplyStream03<T, E> {
+pub struct ReplyStream<T, E> {
     receiver: mpsc::Receiver<Result<T, Error>>,
     logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Unpin for ReplyStream03<T, E> {}
+impl<T, E> Unpin for ReplyStream<T, E> {}
 
-pub type ReplyStream<T, E> = Compat<ReplyStream03<T, E>>;
-
-impl<T, E> Stream for ReplyStream03<T, E>
+impl<T, E> Stream for ReplyStream<T, E>
 where
     E: From<Error>,
 {
@@ -397,9 +395,9 @@ where
 pub fn stream_reply<T, E>(
     buffer: usize,
     logger: Logger,
-) -> (ReplyStreamHandle03<T>, ReplyStream03<T, E>) {
+) -> (ReplyStreamHandle03<T>, ReplyStream<T, E>) {
     let (sender, receiver) = mpsc::channel(buffer);
-    let stream = ReplyStream03 {
+    let stream = ReplyStream {
         receiver,
         logger,
         _phantom_error: PhantomData,
