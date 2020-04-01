@@ -1,4 +1,5 @@
 mod preferred_list;
+mod sea_bottle;
 
 pub use self::preferred_list::{PreferredListConfig, PreferredListLayer};
 use serde::{Deserialize, Serialize};
