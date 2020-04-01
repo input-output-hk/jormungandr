@@ -60,10 +60,8 @@ use crate::utils::{
     task::TokioServiceInfo,
 };
 use chain_network::data::gossip::Gossip;
-use futures::future;
-use futures::future::Either::{A, B};
-use futures::prelude::*;
-use futures::stream;
+use futures03::prelude::*;
+use futures03::stream;
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
@@ -164,9 +162,9 @@ impl GlobalState {
 
     pub fn spawn<F>(&self, f: F)
     where
-        F: Future<Item = (), Error = ()> + Send + 'static,
+        F: Future<Output = ()> + Send + 'static,
     {
-        self.executor.spawn(f)
+        tokio02::spawn(f)
     }
 
     fn inc_client_count(&self) {
@@ -233,12 +231,12 @@ pub struct TaskParams {
     pub channels: Channels,
 }
 
-pub fn start(
+pub async fn start(
     service_info: TokioServiceInfo,
     params: TaskParams,
     topology: P2pTopology,
     stats_counter: StatsCounter,
-) -> impl Future<Item = (), Error = ()> {
+) {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
@@ -249,7 +247,6 @@ pub fn start(
         params.config,
         topology,
         stats_counter,
-        service_info.executor().clone(),
         service_info.logger().clone(),
     ));
 

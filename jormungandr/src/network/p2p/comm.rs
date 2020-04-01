@@ -8,7 +8,7 @@ use crate::network::{
     p2p::{Gossip as NodeData, Id, Node as NodeRef},
 };
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
-use chain_network::data::gossip::{Gossip, Node};
+use chain_network::data::gossip::Gossip;
 use chain_network::error as net_error;
 use futures03::channel::mpsc;
 use futures03::lock::{Mutex, MutexLockFuture};
@@ -607,40 +607,38 @@ impl Peers {
         })
     }
 
-    pub fn propagate_gossip_to(
-        &self,
-        target: Id,
-        gossip: Gossip<NodeData>,
-    ) -> impl Future<Item = (), Error = Gossip<NodeData>> {
+    pub async fn propagate_gossip_to(&self, target: Id, gossip: Gossip) -> Result<(), Gossip> {
         debug!(
             self.logger,
             "sending gossip";
             "node_id" => %target,
         );
         let logger = self.logger.clone();
-        self.inner().and_then(move |mut map| {
-            if let Some(mut entry) = map.entry(target) {
-                let res = match entry.update_comm_status() {
-                    CommStatus::Established(comms) => comms.try_send_gossip(gossip),
-                    CommStatus::Connecting(comms) => {
-                        comms.set_pending_gossip(gossip);
-                        Ok(())
-                    }
-                };
-                res.map_err(|e| {
-                    debug!(
-                        logger,
-                        "gossip propagation to peer failed, unsubscribing peer";
-                        "node_id" => %target,
-                        "reason" => %e.kind(),
-                    );
-                    entry.remove();
-                    e.into_item()
-                })
-            } else {
-                Err(gossip)
-            }
-        })
+        self.inner()
+            .and_then(move |mut map| {
+                if let Some(mut entry) = map.entry(target) {
+                    let res = match entry.update_comm_status() {
+                        CommStatus::Established(comms) => comms.try_send_gossip(gossip),
+                        CommStatus::Connecting(comms) => {
+                            comms.set_pending_gossip(gossip);
+                            Ok(())
+                        }
+                    };
+                    res.map_err(|e| {
+                        debug!(
+                            logger,
+                            "gossip propagation to peer failed, unsubscribing peer";
+                            "node_id" => %target,
+                            "reason" => %e.kind(),
+                        );
+                        entry.remove();
+                        e.into_item()
+                    })
+                } else {
+                    Err(gossip)
+                }
+            })
+            .await
     }
 
     pub fn refresh_peer_on_block<E>(&self, node_id: Id) -> impl Future<Item = bool, Error = E> {
