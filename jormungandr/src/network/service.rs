@@ -1,5 +1,8 @@
 use super::{
     buffer_sizes,
+    p2p::comm::{
+        BlockEventSubscription, FragmentSubscription, GossipSubscription, LockServerComms,
+    },
     subscription::{self, BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
     Channels, GlobalStateR,
 };
@@ -67,7 +70,7 @@ impl BlockService for NodeService {
     type GetBlocksStream = ReplyStream<Block, Error>;
     type PullHeadersStream = ReplyStream<Header, Error>;
     type GetHeadersStream = ReplyStream<Header, Error>;
-    type SubscriptionStream = ReplyStream<net_data::BlockEvent, Error>;
+    type SubscriptionStream = BlockEventSubscription;
 
     fn block0(&mut self) -> net_data::BlockId {
         net_data::BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap()
@@ -216,7 +219,7 @@ impl BlockService for NodeService {
 #[async_trait]
 impl FragmentService for NodeService {
     type GetFragmentsStream = ReplyStream<net_data::Fragment, Error>;
-    type SubscriptionStream = ReplyStream<net_data::Fragment, Error>;
+    type SubscriptionStream = FragmentSubscription;
 
     async fn get_fragments(
         &self,
@@ -251,7 +254,7 @@ impl FragmentService for NodeService {
 
 #[async_trait]
 impl GossipService for NodeService {
-    type SubscriptionStream = ReplyStream<net_data::Gossip, Error>;
+    type SubscriptionStream = GossipSubscription;
 
     async fn gossip_subscription(
         &self,
