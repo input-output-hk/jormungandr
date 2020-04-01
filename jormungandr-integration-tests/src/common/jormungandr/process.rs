@@ -49,6 +49,19 @@ impl JormungandrProcess {
         jcli_wrapper::assert_rest_shutdown(&self.config.get_node_address());
     }
 
+    pub fn assert_no_errors_in_log_with_message(&self, message: &str) {
+        let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
+
+        assert_eq!(
+            error_lines.len(),
+            0,
+            "{} there are some errors in log ({:?}): {:?}",
+            message,
+            self.logger.log_file_path,
+            error_lines,
+        );
+    }
+
     pub fn assert_no_errors_in_log(&self) {
         let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
 
