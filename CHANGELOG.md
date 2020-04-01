@@ -1,5 +1,47 @@
 # Change Log
 
+## [v0.8.17](https://github.com/input-output-hk/jormungandr/tree/v0.8.17) (2020-04-01)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.16...v0.8.17)
+
+**Implemented enhancements:**
+
+- Network whitelist: prevent specific addresses \(pool id\) to be quarantined forever [\#1973](https://github.com/input-output-hk/jormungandr/issues/1973)
+- Preferred list for poldercast layer [\#1990](https://github.com/input-output-hk/jormungandr/pull/1990)
+- Added whitelisting to Policy [\#1982](https://github.com/input-output-hk/jormungandr/pull/1982)
+- Access certain REST API methods before bootstrap is over [\#1981](https://github.com/input-output-hk/jormungandr/pull/1981)
+
+**Fixed bugs:**
+
+- When starting gossiping, network does not check for already connected node [\#1946](https://github.com/input-output-hk/jormungandr/issues/1946)
+- get\_stats\_counter: do not return errors when missing state fields [\#2000](https://github.com/input-output-hk/jormungandr/pull/2000)
+- Fix node stats peer\_connected\_cnt [\#1980](https://github.com/input-output-hk/jormungandr/pull/1980)
+- Initiate gossips fix 1946 [\#1970](https://github.com/input-output-hk/jormungandr/pull/1970)
+
+**Closed issues:**
+
+- API feature request - /api/v0/leaders/logs/{leader\_id} [\#1983](https://github.com/input-output-hk/jormungandr/issues/1983)
+
+**Merged pull requests:**
+
+- Bump assert\_cmd from 1.0.0 to 1.0.1 [\#1996](https://github.com/input-output-hk/jormungandr/pull/1996)
+- Bump proc-macro2 from 1.0.9 to 1.0.10 [\#1995](https://github.com/input-output-hk/jormungandr/pull/1995)
+- use the exact version of rustls in jormungandr [\#1994](https://github.com/input-output-hk/jormungandr/pull/1994)
+- \[Tests\] P2p stats test [\#1993](https://github.com/input-output-hk/jormungandr/pull/1993)
+- \[Tests\] implemented network stats geters. Starter improvements [\#1992](https://github.com/input-output-hk/jormungandr/pull/1992)
+- Bump async-trait from 0.1.24 to 0.1.27 [\#1989](https://github.com/input-output-hk/jormungandr/pull/1989)
+- Bump assert\_fs from 0.13.1 to 1.0.0 [\#1988](https://github.com/input-output-hk/jormungandr/pull/1988)
+- Bump serde\_json from 1.0.48 to 1.0.50 [\#1987](https://github.com/input-output-hk/jormungandr/pull/1987)
+- Bump thiserror from 1.0.11 to 1.0.14 [\#1986](https://github.com/input-output-hk/jormungandr/pull/1986)
+- update all crates to use the same version of reqwest [\#1976](https://github.com/input-output-hk/jormungandr/pull/1976)
+- Bump assert\_cmd from 0.12.0 to 1.0.0 [\#1975](https://github.com/input-output-hk/jormungandr/pull/1975)
+- use OpenSSL for reqwests 0.10 on Android [\#1971](https://github.com/input-output-hk/jormungandr/pull/1971)
+- Bump proc-macro-error from 0.4.11 to 1.0.0 [\#1967](https://github.com/input-output-hk/jormungandr/pull/1967)
+- Bump syn from 1.0.16 to 1.0.17 [\#1965](https://github.com/input-output-hk/jormungandr/pull/1965)
+- Bump sysinfo from 0.11.7 to 0.12.0 [\#1964](https://github.com/input-output-hk/jormungandr/pull/1964)
+- Bump ed25519-bip32 from 0.3.0 to 0.3.1 [\#1963](https://github.com/input-output-hk/jormungandr/pull/1963)
+- Bump serde from 1.0.104 to 1.0.105 [\#1937](https://github.com/input-output-hk/jormungandr/pull/1937)
+
 ## [v0.8.16](https://github.com/input-output-hk/jormungandr/tree/v0.8.16) (2020-03-26)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.15...v0.8.16)
