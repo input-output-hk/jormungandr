@@ -128,12 +128,6 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     utils::measure_how_many_nodes_are_running(&leaders, "real_network_bootstrap_score");
 
-    //shut down core and relays nodes
-    core.shutdown()?;
-    for relay_node in relays {
-        relay_node.shutdown()?;
-    }
-
     let leaders_count = leaders.len() as u64;
     utils::measure_and_log_sync_time(
         leaders.iter().collect(),
