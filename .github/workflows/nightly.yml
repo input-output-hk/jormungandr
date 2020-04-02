@@ -7,6 +7,24 @@ on:
 name: Nightly Release
 
 jobs:
+  nightly_release:
+    name: Create nightly release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Create Nightly
+        id: create_nightly
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: nightly
+          release_name: Nightly Build
+          draft: false
+          prerelease: true
+
   release_assets:
     name: Release assets
     runs-on: ${{ matrix.config.os }}
@@ -16,24 +34,24 @@ jobs:
         config:
           # Linux
           - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, target_cpu: generic, cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, target_cpu: broadwell, cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, target_cpu: generic, cross: true}
-          # mips and powerpc are not compitble with ring v0.16.10, so they are disabled for now
-#          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
-#          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: broadwell, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, target_cpu: generic, cross: true}
+#          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, target_cpu: broadwell, cross: false}
+#          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, target_cpu: generic, cross: true}
+#          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, target_cpu: generic, cross: true}
+#          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, target_cpu: generic, cross: true}
+#          # mips and powerpc are not compitble with ring v0.16.10, so they are disabled for now
+##          - {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64, cross: true}
+##          - {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu, cross: true}
+#          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: generic, cross: true}
+#          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: broadwell, cross: true}
+#          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, target_cpu: generic, cross: true}
           # Macos
           - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, target_cpu: generic, cross: false}
-          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, target_cpu: broadwell, cross: false}
+#          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, target_cpu: broadwell, cross: false}
           # Windows
           - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, target_cpu: generic, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: generic, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, target_cpu: broadwell, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: broadwell, cross: false}
+#          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: generic, cross: false}
+#          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, target_cpu: broadwell, cross: false}
+#          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: broadwell, cross: false}
     steps:
       - uses: actions-rs/toolchain@v1
         with:
@@ -77,11 +95,12 @@ jobs:
         run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-nightly-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.zip
 
 
-      - name: Nighly release upload
-        uses: marvinpinto/action-automatic-releases@latest
+      - name: Upload binaries to nightly release
+        uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: "nightly"
-          prerelease: true
-          title: "Nightly Build"
-          files: jormungandr-nightly-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
+          file: jormungandr-nightly-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
+          asset_name: jormungandr-nightly-${{ matrix.config.target }}
+          tag: nightly
+          file_glob: true
+          overwrite: true
