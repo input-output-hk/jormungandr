@@ -13,7 +13,7 @@ use poldercast::{
     NodeProfile, PolicyReport, StrikeReason, Topology,
 };
 use slog::Logger;
-use tokio02::sync::{Mutex, MutexGuard};
+use tokio02::sync::RwLock;
 
 pub struct View {
     pub self_node: NodeProfile,
@@ -23,7 +23,7 @@ pub struct View {
 /// object holding the P2pTopology of the Node
 #[derive(Clone)]
 pub struct P2pTopology {
-    lock: Lock<Topology>,
+    lock: RwLock<Topology>,
     node_id: Id,
     logger: Logger,
 }
@@ -78,7 +78,7 @@ impl Builder {
     fn build(self) -> P2pTopology {
         let node_id = self.topology.profile().id().clone();
         P2pTopology {
-            lock: Lock::new(self.topology),
+            lock: RwLock::new(self.topology),
             node_id: node_id.into(),
             logger: self.logger,
         }
@@ -94,122 +94,95 @@ impl P2pTopology {
             .build()
     }
 
-    // TODO: same as write now, but can be implemented differently
-    // with RwLock in tokio 0.2
-    fn read<E>(&self) -> impl Future<Item = LockGuard<Topology>, Error = E> {
-        self.write()
-    }
-
-    fn write<E>(&self) -> impl Future<Item = LockGuard<Topology>, Error = E> {
-        let mut lock = self.lock.clone();
-        future::poll_fn(move || Ok(lock.poll_lock()))
-    }
-
     /// Returns a list of neighbors selected in this turn
     /// to contact for event dissemination.
-    pub fn view<E>(&self, selection: poldercast::Selection) -> impl Future<Item = View, Error = E> {
-        self.write().map(move |mut topology| {
-            let peers = topology
-                .view(None, selection)
-                .into_iter()
-                .map(Node::new)
-                .collect();
-            View {
-                self_node: topology.profile().clone(),
-                peers,
-            }
-        })
+    pub async fn view(&self, selection: poldercast::Selection) -> View {
+        let topology = self.lock.write().await;
+        let peers = topology
+            .view(None, selection)
+            .into_iter()
+            .map(Node::new)
+            .collect();
+        View {
+            self_node: topology.profile().clone(),
+            peers,
+        }
     }
 
-    pub fn initiate_gossips<E>(&self, with: Id) -> impl Future<Item = Gossips, Error = E> {
-        self.write()
-            .map(move |mut topology| topology.initiate_gossips(with.into()).into())
+    pub async fn initiate_gossips(&self, with: Id) -> Gossips {
+        let topology = self.lock.write().await;
+        topology.initiate_gossips(with.into()).into()
     }
 
-    pub fn accept_gossips<E>(
-        &self,
-        from: Id,
-        gossips: Gossips,
-    ) -> impl Future<Item = (), Error = E> {
-        self.write()
-            .map(move |mut topology| topology.accept_gossips(from.into(), gossips.into()))
+    pub async fn accept_gossips(&self, from: Id, gossips: Gossips) {
+        let topology = self.lock.write().await;
+        topology.accept_gossips(from.into(), gossips.into())
     }
 
-    pub fn exchange_gossips<E>(
-        &mut self,
-        with: Id,
-        gossips: Gossips,
-    ) -> impl Future<Item = Gossips, Error = E> {
-        self.write().map(move |mut topology| {
-            topology
-                .exchange_gossips(with.into(), gossips.into())
-                .into()
-        })
+    pub async fn exchange_gossips(&mut self, with: Id, gossips: Gossips) -> Gossips {
+        let topology = self.lock.write().await;
+        topology
+            .exchange_gossips(with.into(), gossips.into())
+            .into()
     }
 
     pub fn node_id(&self) -> Id {
         self.node_id
     }
 
-    pub fn node<E>(&self) -> impl Future<Item = NodeProfile, Error = E> {
-        self.read().map(|topology| topology.profile().clone())
+    pub async fn node(&self) -> NodeProfile {
+        let topology = self.lock.read().await;
+        topology.profile().clone()
     }
 
-    pub fn force_reset_layers<E>(&self) -> impl Future<Item = (), Error = E> {
-        self.write()
-            .map(|mut topology| topology.force_reset_layers())
+    pub async fn force_reset_layers(&self) {
+        let topology = self.lock.write().await;
+        topology.force_reset_layers()
     }
 
-    pub fn list_quarantined<E>(&self) -> impl Future<Item = Vec<poldercast::Node>, Error = E> {
-        self.read().map(|topology| {
-            topology
-                .nodes()
-                .all_quarantined_nodes()
-                .into_iter()
-                .cloned()
-                .collect()
-        })
+    pub async fn list_quarantined(&self) -> Vec<poldercast::Node> {
+        let topology = self.lock.read().await;
+        topology
+            .nodes()
+            .all_quarantined_nodes()
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
-    pub fn list_available<E>(&self) -> impl Future<Item = Vec<poldercast::Node>, Error = E> {
-        self.read().map(|topology| {
-            topology
-                .nodes()
-                .all_available_nodes()
-                .into_iter()
-                .cloned()
-                .collect()
-        })
+    pub async fn list_available(&self) -> Vec<poldercast::Node> {
+        let topology = self.lock.read().await;
+        topology
+            .nodes()
+            .all_available_nodes()
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
-    pub fn list_non_public<E>(&self) -> impl Future<Item = Vec<poldercast::Node>, Error = E> {
-        self.read().map(|topology| {
-            topology
-                .nodes()
-                .all_unreachable_nodes()
-                .into_iter()
-                .cloned()
-                .collect()
-        })
+    pub async fn list_non_public(&self) -> Vec<poldercast::Node> {
+        let topology = self.lock.read().await;
+        topology
+            .nodes()
+            .all_unreachable_nodes()
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
-    pub fn nodes_count<E>(&self) -> impl Future<Item = poldercast::Count, Error = E> {
-        self.read().map(|topology| topology.nodes().node_count())
+    pub async fn nodes_count(&self) -> poldercast::Count {
+        let topology = self.lock.read().await;
+        topology.nodes().node_count()
     }
 
     /// register a strike against the given node id
     ///
     /// the function returns `None` if the node was not even in the
     /// the topology (not even quarantined).
-    pub fn report_node<E>(
-        &self,
-        node: Id,
-        issue: StrikeReason,
-    ) -> impl Future<Item = Option<PolicyReport>, Error = E> {
-        self.write().map(move |mut topology| {
-            topology.update_node(node.into(), |node| {
-                node.record_mut().strike(issue);
-            })
+    pub async fn report_node(&self, node: Id, issue: StrikeReason) -> Option<PolicyReport> {
+        let topology = self.lock.write().await;
+        topology.update_node(node.into(), |node| {
+            node.record_mut().strike(issue);
         })
     }
 }
