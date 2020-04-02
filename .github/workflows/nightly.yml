@@ -1,6 +1,8 @@
 on:
-  schedule:
-    - cron: '0 3 * * *' # run at 3 AM UTC
+  push:
+    branch: "nightly_build"
+#  schedule:
+#    - cron: '0 3 * * *' # run at 3 AM UTC
 
 name: Nightly Release
 
