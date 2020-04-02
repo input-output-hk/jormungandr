@@ -2059,6 +2059,7 @@ dependencies = [
  "slog-json",
  "slog-scope",
  "thiserror",
+ "url",
 ]
 
 [[package]]

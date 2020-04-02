@@ -47,14 +47,30 @@ pub struct AssetDto {
 
 impl AssetDto {
     pub fn os_type(&self) -> OsType {
-        if self.name.contains("windows") {
+        if self.is_x86_64() && self.is_windows() {
             return OsType::Windows;
-        } else if self.name.contains("linux") {
+        } else if self.is_x86_64() && self.is_unix() {
             return OsType::Linux;
-        } else if self.name.contains("apple") {
+        } else if self.is_x86_64() && self.is_apple() {
             return OsType::Macos;
         }
         OsType::Unknown
+    }
+
+    fn is_x86_64(&self) -> bool {
+        self.name.contains("x86_64")
+    }
+
+    fn is_windows(&self) -> bool {
+        self.name.contains("windows")
+    }
+
+    fn is_apple(&self) -> bool {
+        self.name.contains("apple")
+    }
+
+    fn is_unix(&self) -> bool {
+        self.name.contains("linux")
     }
 
     pub fn download_url(&self) -> String {

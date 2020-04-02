@@ -353,31 +353,28 @@ impl Starter {
     }
 
     fn get_command(&self, config: &JormungandrConfig) -> Command {
+        let commands = JormungandrStarterCommands::from_app(self.jormungandr_app_path.clone());
         match (self.role, self.from_genesis) {
-            (Role::Passive, _) => commands.as_passive_node_command(
+            (Role::Passive, _) => commands.as_passive_node(
                 &config.node_config_path,
                 &config.genesis_block_hash,
                 &config.log_file_path,
                 config.rewards_history,
             ),
-            (Role::Leader, FromGenesis::File) => {
-                commands.as_leader_node(
-                    &config.node_config_path,
-                    &config.genesis_block_path,
-                    &config.secret_model_paths,
-                    &config.log_file_path,
-                    config.rewards_history,
-                )
-            }
-            (Role::Leader, FromGenesis::Hash) => {
-                commands.as_leader_node_from_hash_command(
-                    &config.node_config_path,
-                    &config.genesis_block_hash,
-                    &config.secret_model_paths,
-                    &config.log_file_path,
-                    config.rewards_history,
-                )
-            }
+            (Role::Leader, FromGenesis::File) => commands.as_leader_node(
+                &config.node_config_path,
+                &config.genesis_block_path,
+                &config.secret_model_paths,
+                &config.log_file_path,
+                config.rewards_history,
+            ),
+            (Role::Leader, FromGenesis::Hash) => commands.as_leader_node_from_hash(
+                &config.node_config_path,
+                &config.genesis_block_hash,
+                &config.secret_model_paths,
+                &config.log_file_path,
+                config.rewards_history,
+            ),
         }
     }
 }

@@ -24,6 +24,40 @@ pub struct Release {
 }
 
 impl Release {
+    pub fn get_release_for_os(&self, os_type: &OsType) -> Option<AssetDto> {
+        let compacted_os_type = self.compact_os_types(*os_type);
+
+        println!(
+            "Releases: {:?}, info: {:?}",
+            self.releases_per_os(),
+            compacted_os_type
+        );
+
+        self.releases_per_os()
+            .get(&compacted_os_type)
+            .map(|x| x.clone())
+    }
+
+    /// narrow linux distribution to linux type
+    fn compact_os_types(&self, os_type: OsType) -> OsType {
+        match os_type {
+            OsType::Emscripten => OsType::Linux,
+            OsType::Redhat => OsType::Linux,
+            OsType::RedHatEnterprise => OsType::Linux,
+            OsType::Ubuntu => OsType::Linux,
+            OsType::Debian => OsType::Linux,
+            OsType::Arch => OsType::Linux,
+            OsType::Centos => OsType::Linux,
+            OsType::Fedora => OsType::Linux,
+            OsType::Amazon => OsType::Linux,
+            OsType::SUSE => OsType::Linux,
+            OsType::openSUSE => OsType::Linux,
+            OsType::Alpine => OsType::Linux,
+            OsType::OracleLinux => OsType::Linux,
+            _ => os_type,
+        }
+    }
+
     pub fn releases_per_os(&self) -> &HashMap<OsType, AssetDto> {
         &self.releases_per_os
     }
@@ -77,10 +111,7 @@ impl GitHubApi {
                 .find(|x| x.version == version)
             {
                 None => None,
-                Some(release) => release
-                    .releases_per_os()
-                    .get(&info.os_type())
-                    .map(|x| x.clone()),
+                Some(release) => release.get_release_for_os(&info.os_type()),
             },
         )
     }

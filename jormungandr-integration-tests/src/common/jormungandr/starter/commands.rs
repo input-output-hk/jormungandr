@@ -13,15 +13,15 @@ impl JormungandrStarterCommands {
         }
     }
 
-    pub fn as_leader_node_from_hash_command(
+    pub fn as_leader_node_from_hash(
         &self,
         config_path: &PathBuf,
         genesis_block_hash: &str,
         secret_paths: &[PathBuf],
         log_file_path: &PathBuf,
-        reward_history: bool
+        reward_history: bool,
     ) -> Command {
-        let mut command = Command::new(configuration::get_jormungandr_app().as_os_str());
+        let mut command = Command::new(self.jormungandr_app.as_os_str());
         for secret_path in secret_paths {
             command.arg("--secret").arg(secret_path.as_os_str());
         }
@@ -35,7 +35,7 @@ impl JormungandrStarterCommands {
             .arg(config_path.as_os_str())
             .arg("--genesis-block-hash")
             .arg(genesis_block_hash)
-            .stderr(get_stdio_from_log_file(&log_file_path));
+            .stderr(Self::get_stdio_from_log_file(&log_file_path));
         println!("Running start jormungandr command: {:?}", &command);
         command
     }
