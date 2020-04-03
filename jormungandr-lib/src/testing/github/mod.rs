@@ -26,13 +26,6 @@ pub struct Release {
 impl Release {
     pub fn get_release_for_os(&self, os_type: &OsType) -> Option<AssetDto> {
         let compacted_os_type = self.compact_os_types(*os_type);
-
-        println!(
-            "Releases: {:?}, info: {:?}",
-            self.releases_per_os(),
-            compacted_os_type
-        );
-
         self.releases_per_os()
             .get(&compacted_os_type)
             .map(|x| x.clone())

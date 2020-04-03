@@ -40,11 +40,6 @@ impl JormungandrRest {
         serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
     }
 
-    pub fn stats(&self) -> Result<NodeStatsDto, RestError> {
-        let response_text = self.get("node/stats")?.text()?;
-        serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
-    }
-
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         reqwest::blocking::get(&format!("{}/v0/{}", self.config.get_node_address(), path))
     }
