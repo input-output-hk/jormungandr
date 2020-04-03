@@ -57,76 +57,8 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     utils::wait(90);
     assert_node_stats(&leader1, 1, 1, 0, 1, 0)?;
     assert_node_stats(&leader2, 1, 1, 0, 1, 0)?;
-    /*
-    let leader3 =
-        controller.spawn_node(LEADER3, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-    leader3.wait_for_bootstrap()?;
-    */
-    /*   let leader4 =
-            controller.spawn_node(LEADER4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-        leader4.wait_for_bootstrap()?;
-
-        utils::wait(90);
-
-
-        println!("{:?}",leader1.stats()?.stats.expect("empty stats"));
-        println!("{:?}",leader1.network_stats());
-        println!("{:?}",leader1.p2p_quarantined());
-        println!("{:?}",leader1.p2p_non_public());
-        println!("{:?}",leader1.p2p_available());
-        println!("{:?}",leader1.p2p_view());
-
-
-        println!("{:?}",leader2.stats()?.stats.expect("empty stats"));
-        println!("{:?}",leader2.network_stats());
-        println!("{:?}",leader2.p2p_quarantined());
-        println!("{:?}",leader2.p2p_non_public());
-        println!("{:?}",leader2.p2p_available());
-        println!("{:?}",leader2.p2p_view());
-
-        println!("{:?}",leader3.stats()?.stats.expect("empty stats"));
-        println!("{:?}",leader3.network_stats());
-        println!("{:?}",leader3.p2p_quarantined());
-        println!("{:?}",leader3.p2p_non_public());
-        println!("{:?}",leader3.p2p_available());
-        println!("{:?}",leader3.p2p_view());
-    */
-    //  assert_node_stats(&leader1,3,4,0,3,0)?;
-    // assert_node_stats(&leader2,3,4,0,3,0)?;
-    // assert_node_stats(&leader3,3,4,0,3,0)?;
-    //   assert_node_stats(&leader4,3,4,0,3,0)?;
-
-    /*
-        leader2.shutdown()?;
-
-        utils::wait(60);
-
-        println!("{:?}",leader1.network_stats());
-        println!("{:?}",leader1.p2p_quarantined());
-        println!("{:?}",leader1.p2p_non_public());
-        println!("{:?}",leader1.p2p_available());
-        println!("{:?}",leader1.p2p_view());
-
-        assert_node_stats(&leader1,2,3,1,4,1)?;
-
-
-        let leader2 =
-            controller.spawn_node(LEADER2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-        leader2.wait_for_bootstrap()?;
-
-
-        utils::wait(40);
-
-        assert_node_stats(&leader1,3,4,0,3,0);
-        assert_node_stats(&leader2,3,4,0,3,0);
-        assert_node_stats(&leader3,3,4,0,3,0);
-        assert_node_stats(&leader4,3,4,0,3,0);
-
-    */
     leader1.shutdown()?;
     leader2.shutdown()?;
-    //  leader3.shutdown()?;
-    //  leader4.shutdown()?;
     controller.finalize();
     Ok(ScenarioResult::passed())
 }
