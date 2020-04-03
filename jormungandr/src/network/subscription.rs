@@ -1,9 +1,6 @@
 use super::{
     buffer_sizes,
-    p2p::comm::{
-        BlockEventSubscription, FragmentSubscription, GossipSubscription, LockServerComms,
-    },
-    p2p::{Gossip as NodeData, Id},
+    p2p::{Gossip, Id},
     GlobalStateR,
 };
 use crate::{
@@ -12,17 +9,18 @@ use crate::{
     settings::start::network::Configuration,
     utils::async_msg::{self, MessageBox},
 };
-use chain_network::data::gossip::Gossip;
-use chain_network::error as net_error;
+use chain_network::data as net_data;
+use chain_network::error::{Code, Error};
 use jormungandr_lib::interfaces::FragmentOrigin;
 
 use futures03::prelude::*;
+use futures03::ready;
 use slog::Logger;
 
-use std::fmt::Debug;
+use std::pin::Pin;
 use std::task::{Context, Poll};
 
-fn filter_gossip_node(node: &NodeData, config: &Configuration) -> bool {
+fn filter_gossip_node(node: &Gossip, config: &Configuration) -> bool {
     if config.allow_private_addresses {
         node.has_valid_address()
     } else {
@@ -30,66 +28,90 @@ fn filter_gossip_node(node: &NodeData, config: &Configuration) -> bool {
     }
 }
 
-#[must_use = "sinks do nothing unless polled"]
-pub struct BlockAnnouncementProcessor {
+fn handle_mbox_error(err: async_msg::SendError, logger: Logger) -> Error {
+    error!(
+        logger,
+        "failed to send block announcement to the block task";
+        "reason" => %err,
+    );
+    Error::new(Code::Internal, err)
+}
+
+pub async fn process_block_announcements<S>(
+    stream: S,
     mbox: MessageBox<BlockMsg>,
     node_id: Id,
     global_state: GlobalStateR,
     logger: Logger,
+) where
+    S: TryStream<Ok = net_data::Header>,
+{
+    stream
+        .try_for_each(|raw_header| async move {
+            let header = Header::from_slice(raw_header.as_bytes())
+                .map_err(|e| Error::new(Code::InvalidArgument, e))?;
+            mbox.send(BlockMsg::AnnouncedBlock(header, node_id))
+                .await
+                .map_err(|e| handle_mbox_error(e, logger))?;
+            if !global_state.peers.refresh_peer_on_block(node_id).await {
+                debug!(
+                    logger,
+                    "received block from node that is not in the peer map",
+                );
+            }
+        })
+        .await
 }
 
-impl BlockAnnouncementProcessor {
-    pub fn new(
-        mbox: MessageBox<BlockMsg>,
-        node_id: Id,
-        global_state: GlobalStateR,
-        logger: Logger,
-    ) -> Self {
-        BlockAnnouncementProcessor {
-            mbox,
-            node_id,
-            global_state,
-            logger,
-        }
-    }
-
-    pub fn message_box(&self) -> MessageBox<BlockMsg> {
-        self.mbox.clone()
-    }
-
-    fn mbox_error<T>(&self, err: async_msg::SendError<T>) -> net_error::Error
-    where
-        T: Send + Sync + 'static,
-    {
-        error!(
-            self.logger,
-            "failed to send block announcement to the block task";
-            "reason" => %err,
-        );
-        net_error::Error::new(net_error::Code::Internal, err)
-    }
-
-    fn refresh_stat(&self) {
-        let refresh_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.global_state
-                .peers
-                .refresh_peer_on_block(self.node_id)
-                .and_then(move |refreshed| {
-                    if !refreshed {
+pub async fn process_gossip<S>(stream: S, node_id: Id, global_state: GlobalStateR, logger: Logger)
+where
+    S: TryStream<Ok = net_data::Gossip>,
+{
+    stream
+        .try_for_each(move |raw_gossip| {
+            let gossip = Gossip::from(raw_gossip.as_bytes())
+                .map_err(|e| Error::new(Code::InvalidArgument, e))?;
+            let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip.into_nodes().partition(|node| {
+                filter_gossip_node(node, &global_state.config)
+                    || (node.id() == node_id && node.address().is_none())
+            });
+            if filtered_out.len() > 0 {
+                debug!(logger, "nodes dropped from gossip: {:?}", filtered_out);
+            }
+            future::join(
+                async {
+                    if !global_state.peers.refresh_peer_on_gossip(node_id).await {
                         debug!(
-                            refresh_logger,
-                            "received block from node that is not in the peer map",
+                            logger,
+                            "received gossip from node that is not in the peer map",
                         );
                     }
-                    Ok(())
-                }),
-        );
-    }
+                },
+                global_state.topology.accept_gossips(node_id, nodes.into()),
+            );
+        })
+        .await
 }
 
+pub async fn process_fragments<S>(
+    stream: S,
+    mbox: MessageBox<TransactionMsg>,
+    node_id: Id,
+    global_state: GlobalStateR,
+    logger: Logger,
+) where
+    S: TryStream<Ok = net_data::Fragment>,
+{
+    let sink = FragmentProcessor::new(mbox, node_id, global_state, logger);
+    stream.forward(sink).await.map_err(|e| {
+        debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
+    });
+}
+
+// TODO: replace with a suitable stream combinator once implemented:
+// https://github.com/rust-lang/futures-rs/issues/1919
 #[must_use = "sinks do nothing unless polled"]
-pub struct FragmentProcessor {
+struct FragmentProcessor {
     mbox: MessageBox<TransactionMsg>,
     node_id: Id,
     global_state: GlobalStateR,
@@ -98,7 +120,7 @@ pub struct FragmentProcessor {
 }
 
 impl FragmentProcessor {
-    pub fn new(
+    fn new(
         mbox: MessageBox<TransactionMsg>,
         node_id: Id,
         global_state: GlobalStateR,
@@ -147,7 +169,7 @@ impl GossipProcessor {
         }
     }
 
-    pub fn process_item(&self, gossip: Gossip<NodeData>) {
+    pub fn process_item(&self, gossip: Gossip) {
         let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip.into_nodes().partition(|node| {
             filter_gossip_node(node, &self.global_state.config)
                 || (node.id() == self.node_id && node.address().is_none())
@@ -178,102 +200,66 @@ impl GossipProcessor {
     }
 }
 
-impl Sink for BlockAnnouncementProcessor {
-    type SinkItem = Header;
-    type SinkError = net_error::Error;
+impl Sink<Fragment> for FragmentProcessor {
+    type Error = Error;
 
-    fn start_send(&mut self, header: Header) -> StartSend<Header, net_error::Error> {
-        let polled_ready = self.mbox.poll_ready().map_err(|e| self.mbox_error(e))?;
-        if polled_ready.is_not_ready() {
-            return Ok(AsyncSink::NotReady(header));
-        }
-        let polled = self
-            .mbox
-            .start_send(BlockMsg::AnnouncedBlock(header, self.node_id))
-            .map_err(|e| self.mbox_error(e))?;
-        match polled {
-            AsyncSink::Ready => {
-                self.refresh_stat();
-                Ok(AsyncSink::Ready)
-            }
-            AsyncSink::NotReady(BlockMsg::AnnouncedBlock(header, _)) => {
-                Ok(AsyncSink::NotReady(header))
-            }
-            AsyncSink::NotReady(_) => unreachable!(),
-        }
-    }
-
-    fn poll_complete(&mut self) -> Poll<(), net_error::Error> {
-        self.mbox.poll_complete().map_err(|e| {
-            error!(
-                self.logger,
-                "communication channel to the block task failed";
-                "reason" => %e,
-            );
-            net_error::Error::new(net_error::Code::Internal, e)
-        })
-    }
-
-    fn close(&mut self) -> Poll<(), net_error::Error> {
-        self.mbox.close().map_err(|e| {
-            warn!(
-                self.logger,
-                "failed to close communication channel to the block task";
-                "reason" => %e,
-            );
-            net_error::Error::new(net_error::Code::Internal, e)
-        })
-    }
-}
-
-impl Sink for FragmentProcessor {
-    type SinkItem = Fragment;
-    type SinkError = net_error::Error;
-
-    fn start_send(&mut self, fragment: Fragment) -> StartSend<Fragment, net_error::Error> {
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         if self.buffered_fragments.len() >= buffer_sizes::inbound::FRAGMENTS {
-            return Ok(AsyncSink::NotReady(fragment));
+            ready!(self.poll_send_fragments(cx));
+            debug_assert!(self.buffered_fragments.is_empty());
         }
-        self.buffered_fragments.push(fragment);
-        let async_send = self.try_send_fragments()?;
-        Ok(async_send.map(|()| self.buffered_fragments.pop().unwrap()))
+        Poll::Ready(Ok(()))
     }
 
-    fn poll_complete(&mut self) -> Poll<(), net_error::Error> {
-        if self.buffered_fragments.is_empty() {
-            self.mbox.poll_complete().map_err(|e| {
-                error!(
-                    self.logger,
-                    "communication channel to the fragment task failed";
-                    "reason" => %e,
-                );
-                net_error::Error::new(net_error::Code::Internal, e)
-            })
-        } else {
-            match self.try_send_fragments()? {
-                AsyncSink::Ready => Ok(Async::Ready(())),
-                AsyncSink::NotReady(()) => Ok(Async::NotReady),
+    fn start_send(self: Pin<&mut Self>, fragment: Fragment) -> Result<(), Self::Error> {
+        assert!(
+            self.buffered_fragments.len() < buffer_sizes::inbound::FRAGMENTS,
+            "should call `poll_ready` which returns `Poll::Ready(Ok(()))` before `start_send`",
+        );
+        self.buffered_fragments.push(fragment);
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        loop {
+            if self.buffered_fragments.is_empty() {
+                return self.mbox.poll_flush(cx).map_err(|e| {
+                    error!(
+                        self.logger,
+                        "communication channel to the fragment task failed";
+                        "reason" => %e,
+                    );
+                    Error::new(Code::Internal, e)
+                });
+            } else {
+                ready!(self.poll_send_fragments(cx));
             }
         }
     }
 
-    fn close(&mut self) -> Poll<(), net_error::Error> {
-        self.mbox.close().map_err(|e| {
-            warn!(
-                self.logger,
-                "failed to close communication channel to the fragment task";
-                "reason" => %e,
-            );
-            net_error::Error::new(net_error::Code::Internal, e)
-        })
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        loop {
+            if self.buffered_fragments.is_empty() {
+                return self.mbox.poll_close(cx).map_err(|e| {
+                    warn!(
+                        self.logger,
+                        "failed to close communication channel to the fragment task";
+                        "reason" => %e,
+                    );
+                    Error::new(Code::Internal, e)
+                });
+            } else {
+                ready!(self.poll_send_fragments(cx));
+            }
+        }
     }
 }
 
 impl FragmentProcessor {
-    fn try_send_fragments(&mut self) -> Result<AsyncSink<()>, net_error::Error> {
+    fn poll_send_fragments(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        ready!(self.mbox.poll_ready(cx));
         let fragments = self.buffered_fragments.split_off(0);
-        let polled = self
-            .mbox
+        self.mbox
             .start_send(TransactionMsg::SendTransaction(
                 FragmentOrigin::Network,
                 fragments,
@@ -284,35 +270,9 @@ impl FragmentProcessor {
                     "failed to send fragments to the fragment task";
                     "reason" => %e,
                 );
-                net_error::Error::new(net_error::Code::Internal, e)
+                Error::new(Code::Internal, e)
             })?;
-        match polled {
-            AsyncSink::Ready => {
-                self.refresh_stat();
-                Ok(AsyncSink::Ready)
-            }
-            AsyncSink::NotReady(TransactionMsg::SendTransaction(_, fragments)) => {
-                self.buffered_fragments = fragments;
-                Ok(AsyncSink::NotReady(()))
-            }
-            AsyncSink::NotReady(_) => unreachable!(),
-        }
-    }
-}
-
-impl Sink for GossipProcessor {
-    type SinkItem = Gossip<NodeData>;
-    type SinkError = net_error::Error;
-
-    fn start_send(
-        &mut self,
-        gossip: Gossip<NodeData>,
-    ) -> StartSend<Self::SinkItem, net_error::Error> {
-        self.process_item(gossip);
-        Ok(AsyncSink::Ready)
-    }
-
-    fn poll_complete(&mut self) -> Poll<(), net_error::Error> {
-        Ok(Async::Ready(()))
+        self.refresh_stat();
+        Poll::Ready(())
     }
 }
