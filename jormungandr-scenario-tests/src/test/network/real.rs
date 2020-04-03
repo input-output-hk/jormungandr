@@ -132,7 +132,27 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     utils::measure_and_log_sync_time(
         leaders.iter().collect(),
         SyncWaitParams::large_network(leaders_count).into(),
-        "real_network_sync_after_relay_nodes_shutdown",
+        "real_network_sync",
+        SyncMeasurementInterval::Long,
+    );
+
+    core.shutdown()?;
+
+    utils::measure_and_log_sync_time(
+        leaders.iter().collect(),
+        SyncWaitParams::large_network(leaders_count).into(),
+        "real_network_sync_after_core_shutdown",
+        SyncMeasurementInterval::Long,
+    );
+
+    for relay in relays {
+        relay.shutdown()?;
+    }
+
+    utils::measure_and_log_sync_time(
+        leaders.iter().collect(),
+        SyncWaitParams::large_network(leaders_count).into(),
+        "real_network_sync_after_relay_shutdown",
         SyncMeasurementInterval::Long,
     )?;
 
