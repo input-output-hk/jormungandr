@@ -1,10 +1,7 @@
 use super::{
     buffer_sizes,
-    p2p::comm::{
-        BlockEventSubscription, FragmentSubscription, GossipSubscription, LockServerComms,
-    },
-    subscription::{self, BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
-    Channels, GlobalStateR,
+    p2p::comm::{BlockEventSubscription, FragmentSubscription, GossipSubscription},
+    subscription, Channels, GlobalStateR,
 };
 use crate::blockcfg::{Block, Fragment, Header};
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream};
@@ -41,8 +38,9 @@ impl NodeService {
 }
 
 impl NodeService {
-    fn subscription_logger(&self, subscriber: Peer) -> Logger {
-        self.logger.new(o!("peer" => subscriber.to_string()))
+    fn subscription_logger(&self, subscriber: Peer, stream_name: &str) -> Logger {
+        self.logger
+            .new(o!("peer" => subscriber.to_string(), "stream" => stream_name))
     }
 }
 
@@ -197,22 +195,20 @@ impl BlockService for NodeService {
         subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let logger = self
-            .subscription_logger(subscriber)
-            .new(o!("stream" => "block_events"));
+        let logger = self.subscription_logger(subscriber, "block_events");
 
-        let sink = BlockAnnouncementProcessor::new(
-            self.channels.block_box.clone(),
-            subscriber,
-            self.global_state.clone(),
-            logger.new(o!("direction" => "in")),
-        );
+        self.global_state
+            .spawn(subscription::process_block_announcements(
+                stream,
+                self.channels.block_box.clone(),
+                subscriber,
+                self.global_state.clone(),
+                logger.new(o!("direction" => "in")),
+            ));
 
-        subscription::ServeBlockEvents::new(
-            sink,
-            self.global_state.peers.lock_server_comms(subscriber),
-            logger,
-        )
+        self.global_state
+            .peers
+            .subscribe_to_block_events(subscriber)
     }
 }
 
@@ -233,22 +229,17 @@ impl FragmentService for NodeService {
         subscriber: Peer,
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let logger = self
-            .subscription_logger(subscriber)
-            .new(o!("stream" => "fragments"));
+        let logger = self.subscription_logger(subscriber, "fragments");
 
-        let sink = FragmentProcessor::new(
+        self.global_state.spawn(subscription::process_fragments(
+            stream,
             self.channels.transaction_box.clone(),
             subscriber,
             self.global_state.clone(),
             logger.new(o!("direction" => "in")),
-        );
+        ));
 
-        subscription::ServeFragments::new(
-            sink,
-            self.global_state.peers.lock_server_comms(subscriber),
-            logger,
-        )
+        self.global_state.peers.subscribe_to_fragments(subscriber)
     }
 }
 
@@ -261,21 +252,16 @@ impl GossipService for NodeService {
         subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let logger = self
-            .subscription_logger(subscriber)
-            .new(o!("stream" => "gossip"));
+        let logger = self.subscription_logger(subscriber, "gossip");
 
-        let sink = GossipProcessor::new(
+        self.global_state.spawn(subscription::process_gossip(
+            stream,
             subscriber,
             self.global_state.clone(),
             logger.new(o!("direction" => "in")),
-        );
+        ));
 
-        subscription::ServeGossip::new(
-            sink,
-            self.global_state.peers.lock_server_comms(subscriber),
-            logger,
-        )
+        self.global_state.peers.subscribe_to_gossip(subscriber)
     }
 
     async fn peers(&mut self) -> Result<Peers, Error> {
