@@ -4,8 +4,8 @@ extern crate mktemp;
 
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
-
 /// Gets path in temp directory (does not create it)
 ///
 /// # Arguments
@@ -25,6 +25,13 @@ pub fn get_path_in_temp(file_path: &str) -> PathBuf {
     path
 }
 
+pub fn create_folder(folder_path: &str) -> PathBuf {
+    let mut path = get_temp_folder();
+    path.push(&folder_path);
+    fs::create_dir(path.as_os_str().to_str().unwrap()).unwrap();
+    path
+}
+
 pub fn create_empty_file_in_temp(file_name: &str) -> PathBuf {
     let path = create_file_in_temp(&file_name, "");
     path
@@ -35,6 +42,16 @@ pub fn get_temp_folder() -> PathBuf {
     let path = temp_dir.to_path_buf();
     temp_dir.release();
     path
+}
+
+pub fn find_file<P: AsRef<Path>>(root: P, part_of_name: &str) -> Option<PathBuf> {
+    for entry in fs::read_dir(root).expect("cannot read root directory") {
+        let entry = entry.unwrap();
+        if entry.file_name().to_str().unwrap().contains(part_of_name) {
+            return Some(entry.path());
+        }
+    }
+    None
 }
 
 /// Creates file in temporary folder

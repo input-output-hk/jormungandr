@@ -1,5 +1,4 @@
 mod benchmark;
-pub mod commands;
 mod configuration_builder;
 pub mod logger;
 pub mod process;

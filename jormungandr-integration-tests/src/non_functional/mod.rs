@@ -1,3 +1,4 @@
+pub mod compatibility;
 /*
  Explorer soak test. Run node for ~15 minutes and verify explorer is in sync with node rest
 */
@@ -16,8 +17,9 @@ use crate::common::{
     explorer::ExplorerError,
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrProcess},
+    process_utils,
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value, wallet::Wallet};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -75,5 +77,83 @@ pub fn send_transaction_and_ensure_block_was_produced(
         });
     }
 
+    Ok(())
+}
+
+pub fn check_transaction_was_processed(
+    transaction: String,
+    receiver: &Wallet,
+    value: u64,
+    jormungandr: &JormungandrProcess,
+) -> Result<(), NodeStuckError> {
+    send_transaction_and_ensure_block_was_produced(&vec![transaction], &jormungandr)?;
+
+    check_funds_transferred_to(&receiver.address().to_string(), value.into(), &jormungandr)?;
+
+    jormungandr
+        .check_no_errors_in_log()
+        .map_err(|err| NodeStuckError::InternalJormungandrError(err))
+}
+
+pub fn assert_nodes_are_in_sync(nodes: Vec<&JormungandrProcess>) {
+    if nodes.len() < 2 {
+        return;
+    }
+    let sync_wait: u64 = (nodes.len() * 10) as u64;
+    process_utils::sleep(sync_wait);
+    let first_node = nodes.iter().next().unwrap();
+    let block_height = first_node
+        .rest()
+        .stats()
+        .unwrap()
+        .stats
+        .unwrap()
+        .last_block_height
+        .unwrap()
+        .parse::<i32>()
+        .unwrap();
+    let grace_value = 2;
+
+    for node in nodes.iter().skip(1) {
+        let current_block_height = &node
+            .rest()
+            .stats()
+            .unwrap()
+            .stats
+            .unwrap()
+            .last_block_height
+            .unwrap()
+            .parse::<i32>()
+            .unwrap();
+        let abs = (current_block_height - block_height).abs();
+        println!("{} vs {}.. {}", block_height, current_block_height, abs);
+        assert!(
+            abs <= grace_value,
+            format!("Nodes are out of sync more than {}", grace_value)
+        );
+    }
+}
+
+pub fn assert_no_errors_in_logs(nodes: Vec<&JormungandrProcess>, message: &str) {
+    for node in nodes {
+        node.assert_no_errors_in_log_with_message(message);
+    }
+}
+
+pub fn check_funds_transferred_to(
+    address: &str,
+    value: Value,
+    jormungandr: &JormungandrProcess,
+) -> Result<(), NodeStuckError> {
+    let account_state =
+        jcli_wrapper::assert_rest_account_get_stats(address, &jormungandr.rest_address());
+
+    if *account_state.value() != value {
+        return Err(NodeStuckError::FundsNotTransfered {
+            actual: account_state.value().clone(),
+            expected: value.clone(),
+            logs: jormungandr.logger.get_log_content(),
+        });
+    }
     Ok(())
 }

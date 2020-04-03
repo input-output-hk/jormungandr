@@ -651,6 +651,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "bzip2"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42b7c3cbf0fa9c1b82308d57191728ca0256cb821220f4e2fd410a72ade26e3b"
+dependencies = [
+ "bzip2-sys",
+ "libc",
+]
+
+[[package]]
+name = "bzip2-sys"
+version = "0.1.8+1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05305b41c5034ff0e93937ac64133d109b5a2660114ec45e9760bc6816d83038"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
 dependencies = [
@@ -1225,6 +1245,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "filetime"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ff6d4dab0aa0c8e6346d46052e93b13a16cf847b54ed357087c35011048cc7d"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "redox_syscall",
+ "winapi 0.3.8",
+]
+
+[[package]]
 name = "fixedbitset"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1232,9 +1264,9 @@ checksum = "86d4de0081402f5e88cdac65c8dcdcc73118c1a7a465e2a05f0da05843a8ea33"
 
 [[package]]
 name = "flate2"
-version = "1.0.13"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bd6d6f4752952feb71363cffc9ebac9411b75b87c6ab6058c40c8900cf43c0f"
+checksum = "2cfff41391129e0a856d6d822600b8d71179d46879e310417eb9c762eb178b42"
 dependencies = [
  "cfg-if",
  "crc32fast",
@@ -2027,6 +2059,7 @@ dependencies = [
  "slog-json",
  "slog-scope",
  "thiserror",
+ "url",
 ]
 
 [[package]]
@@ -2042,17 +2075,23 @@ dependencies = [
  "chain-impl-mockchain",
  "chrono",
  "ed25519-bip32",
+ "flate2",
  "humantime",
+ "os_info",
  "poldercast",
  "quickcheck",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
+ "reqwest",
  "serde",
+ "serde_json",
  "serde_yaml",
  "sysinfo",
+ "tar",
  "thiserror",
  "typed-bytes",
+ "zip",
 ]
 
 [[package]]
@@ -2651,6 +2690,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "os_info"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ecb53e7b83e5016bf4ac041e15e02b0d240cb27072b19b651b0b4d8cd6bbda9"
+dependencies = [
+ "log 0.4.8",
+ "winapi 0.3.8",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2802,6 +2851,12 @@ name = "platforms"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "feb3b2b1033b8a60b4da6ee470325f887758c95d5320f52f9ce0df055a55940e"
+
+[[package]]
+name = "podio"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "780fb4b6698bbf9cf2444ea5d22411cef2953f0824b98f33cf454ec5615645bd"
 
 [[package]]
 name = "poldercast"
@@ -4035,6 +4090,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f764005d11ee5f36500a149ace24e00e3da98b0158b3e2d53a7495660d3f4d60"
 
 [[package]]
+name = "tar"
+version = "0.4.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3196bfbffbba3e57481b6ea32249fbaf590396a52505a2615adbb79d9d826d3"
+dependencies = [
+ "filetime",
+ "libc",
+ "redox_syscall",
+ "xattr",
+]
+
+[[package]]
 name = "tempdir"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5246,6 +5313,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "xattr"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "yaml-rust"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5259,3 +5335,16 @@ name = "zeroize"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cbac2ed2ba24cc90f5e06485ac8c7c1e5449fe8911aef4d8877218af021a5b8"
+
+[[package]]
+name = "zip"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6df134e83b8f0f8153a094c7b0fd79dfebe437f1d76e7715afa18ed95ebe2fd7"
+dependencies = [
+ "bzip2",
+ "crc32fast",
+ "flate2",
+ "podio",
+ "time",
+]
