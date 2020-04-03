@@ -8,7 +8,7 @@ use crate::{
 };
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
-    block::ConsensusVersion,
+    chaintypes::ConsensusVersion,
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     fragment::config::ConfigParams,

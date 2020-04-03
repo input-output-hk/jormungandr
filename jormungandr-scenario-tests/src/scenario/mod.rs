@@ -16,10 +16,7 @@ pub use self::{
     wallet::{Wallet, WalletAlias, WalletType},
 };
 pub use chain_impl_mockchain::{
-    block::{Block, ConsensusVersion},
-    header::HeaderId,
-    milli::Milli,
-    value::Value,
+    block::Block, chaintypes::ConsensusVersion, header::HeaderId, milli::Milli, value::Value,
 };
 pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,

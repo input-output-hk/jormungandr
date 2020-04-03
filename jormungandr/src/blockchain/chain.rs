@@ -840,7 +840,7 @@ pub fn new_epoch_leadership_from(
         // TODO: the time frame may change in the future, we will need to handle this
         //       special case but it is not actually clear how to modify the time frame
         //       for the blockchain
-        use chain_impl_mockchain::block::ConsensusVersion;
+        use chain_impl_mockchain::chaintypes::ConsensusVersion;
 
         // 1. distribute the rewards (if any) This will give us the transition state
         let (transition_state, epoch_rewards_info) =

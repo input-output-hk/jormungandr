@@ -8,7 +8,7 @@ use crate::common::{
     startup::{build_genesis_block, create_new_key_pair},
 };
 use chain_crypto::Ed25519;
-use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
+use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, Block0Configuration, ConsensusLeaderId, EpochStabilityDepth, Initial,
     InitialUTxO, KESUpdateSpeed, Log, Mempool, NumberOfSlotsPerEpoch, Policy, SignedCertificate,

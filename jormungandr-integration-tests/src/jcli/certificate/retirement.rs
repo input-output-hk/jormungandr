@@ -1,5 +1,5 @@
 use crate::common::{
-    file_assert, file_utils, jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
+    file_utils, jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
     startup::create_new_key_pair,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};

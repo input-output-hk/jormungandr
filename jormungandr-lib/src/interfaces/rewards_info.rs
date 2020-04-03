@@ -26,6 +26,10 @@ impl EpochRewardsInfo {
         &self.stake_pools
     }
 
+    pub fn accounts(&self) -> &BTreeMap<Identifier, Value> {
+        &self.accounts
+    }
+
     pub fn from(epoch: Epoch, eris: &EpochRewardsInfoStd) -> Self {
         Self {
             epoch,
