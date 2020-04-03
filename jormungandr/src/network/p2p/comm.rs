@@ -513,11 +513,22 @@ impl Peers {
         map.remove_peer(id)
     }
 
-    pub fn lock_server_comms(&self, id: Id) -> LockServerComms {
-        LockServerComms {
-            lock: self.mutex.clone(),
-            peer: id,
-        }
+    pub async fn subscribe_to_block_events(&self, id: Id) -> BlockEventSubscription {
+        let map = self.inner().await;
+        let comms = map.server_comms(id);
+        comms.subscribe_to_block_events()
+    }
+
+    pub async fn subscribe_to_fragments(&self, id: Id) -> FragmentSubscription {
+        let map = self.inner().await;
+        let comms = map.server_comms(id);
+        comms.subscribe_to_fragments()
+    }
+
+    pub async fn subscribe_to_gossip(&self, id: Id) -> GossipSubscription {
+        let map = self.inner().await;
+        let comms = map.server_comms(id);
+        comms.subscribe_to_gossip()
     }
 
     async fn propagate_with<T, F>(&self, nodes: Vec<NodeRef>, f: F) -> Result<(), Vec<NodeRef>>
@@ -738,21 +749,5 @@ impl Peers {
     pub async fn infos(&self) -> Vec<PeerInfo> {
         let map = self.inner().await;
         map.infos()
-    }
-}
-
-pub struct LockServerComms {
-    lock: Mutex<PeerMap>,
-    peer: Id,
-}
-
-impl LockServerComms {
-    pub fn poll_subscribe_with<F, S>(&mut self, f: F) -> Poll<S>
-    where
-        F: FnOnce(&mut PeerComms) -> S,
-    {
-        self.lock
-            .poll_lock()
-            .map(|mut peer_map| f(peer_map.server_comms(self.peer)))
     }
 }
