@@ -1,11 +1,11 @@
 use crate::network::p2p::{limits, Id};
 use bincode;
 use chain_core::property;
-use network_core::gossip::{self, Node as _};
+use chain_network::data as net_data;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 
-pub use gossip::{Peer, PeersResponse};
+pub use net_data::{Peer, Peers};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Gossip(poldercast::NodeProfile);
@@ -14,6 +14,16 @@ pub struct Gossip(poldercast::NodeProfile);
 pub struct Gossips(poldercast::Gossips);
 
 impl Gossip {
+    #[inline]
+    pub fn id(&self) -> Id {
+        (*self.0.id()).into()
+    }
+
+    #[inline]
+    pub fn address(&self) -> Option<SocketAddr> {
+        self.0.address().map(|address| address.to_socketaddr())
+    }
+
     pub fn has_valid_address(&self) -> bool {
         let addr = match self.address() {
             None => return false,
@@ -110,9 +120,9 @@ impl From<poldercast::NodeProfile> for Gossip {
     }
 }
 
-impl From<Gossips> for network_core::gossip::Gossip<Gossip> {
+impl From<Gossips> for net_data::gossip::Gossip {
     fn from(gossips: Gossips) -> Self {
-        network_core::gossip::Gossip::from_nodes(gossips.0.into_iter().map(Gossip))
+        net_data::gossip::Gossip::from_nodes(gossips.0.into_iter().map(Gossip))
     }
 }
 
@@ -132,24 +142,6 @@ impl From<Vec<Gossip>> for Gossips {
     fn from(gossips: Vec<Gossip>) -> Self {
         let v: Vec<_> = gossips.into_iter().map(|gossip| gossip.0).collect();
         Gossips(poldercast::Gossips::from(v))
-    }
-}
-
-impl gossip::Node for Gossip {
-    type Id = Id;
-
-    #[inline]
-    fn id(&self) -> Self::Id {
-        (*self.0.id()).into()
-    }
-
-    #[inline]
-    fn address(&self) -> Option<SocketAddr> {
-        if let Some(address) = self.0.address() {
-            address.to_socketaddr()
-        } else {
-            None
-        }
     }
 }
 
