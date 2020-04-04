@@ -451,7 +451,7 @@ impl NodeController {
         let path = "leaders";
         let secrets = self.settings.secrets();
         self.progress_bar.log_info(format!("POST '{}'", &path));
-        let mut response = reqwest::blocking::Client::new()
+        let response = reqwest::blocking::Client::new()
             .post(&self.path(path))
             .json(&secrets)
             .send()?;

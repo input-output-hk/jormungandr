@@ -55,7 +55,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
         SyncWaitParams::two_nodes().into(),
         "transaction_to_passive_sync",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     passive.shutdown()?;
     leader.shutdown()?;
@@ -136,7 +136,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         SyncWaitParams::nodes_restart(2).into(),
         "leader_restart",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     passive.shutdown()?;
     leader.shutdown()?;
@@ -193,7 +193,7 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
         SyncWaitParams::nodes_restart(2).into(),
         "passive_node_is_updated_sync",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     passive.shutdown()?;
     leader.shutdown()?;
