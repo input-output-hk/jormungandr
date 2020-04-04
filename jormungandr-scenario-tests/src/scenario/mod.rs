@@ -4,6 +4,7 @@ mod controller;
 mod progress_bar_mode;
 pub mod repository;
 pub mod settings;
+mod spawn_params;
 mod topology;
 mod wallet;
 
@@ -12,6 +13,7 @@ pub use self::{
     context::{Context, ContextChaCha, Seed},
     controller::{Controller, ControllerBuilder},
     progress_bar_mode::{parse_progress_bar_mode_from_str, ProgressBarMode},
+    spawn_params::SpawnParams,
     topology::{Node, NodeAlias, Topology, TopologyBuilder},
     wallet::{Wallet, WalletAlias, WalletType},
 };

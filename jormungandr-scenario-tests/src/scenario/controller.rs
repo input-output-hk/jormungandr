@@ -1,7 +1,8 @@
 use crate::{
     node::{LeadershipMode, Node, PersistenceMode},
     scenario::{
-        settings::Settings, Blockchain, ContextChaCha, ErrorKind, ProgressBarMode, Result, Topology,
+        settings::Settings, Blockchain, ContextChaCha, ErrorKind, ProgressBarMode, Result,
+        SpawnParams, Topology,
     },
     style, MemPoolCheck, NodeBlock0, NodeController, Wallet,
 };
@@ -160,19 +161,21 @@ impl Controller {
         }
     }
 
-    pub fn spawn_node(
-        &mut self,
-        node_alias: &str,
-        leadership_mode: LeadershipMode,
-        persistence_mode: PersistenceMode,
-    ) -> Result<NodeController> {
-        let node_setting = if let Some(node_setting) = self.settings.nodes.get(node_alias) {
+    pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
+        SpawnParams::new(node_alias)
+    }
+
+    pub fn spawn_node_custom(&mut self, params: &mut SpawnParams) -> Result<NodeController> {
+        let node_setting = if let Some(node_setting) = self.settings.nodes.get(&params.get_alias())
+        {
             node_setting
         } else {
-            bail!(ErrorKind::NodeNotFound(node_alias.to_owned()))
+            bail!(ErrorKind::NodeNotFound(params.get_alias()))
         };
 
-        let block0_setting = match leadership_mode {
+        let mut node_setting_overriden = params.override_settings(&node_setting);
+
+        let block0_setting = match params.get_leadership_mode() {
             LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
             LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash.clone()),
         };
@@ -181,13 +184,14 @@ impl Controller {
         let pb = self.progress_bar.add(pb);
 
         let mut node = Node::spawn(
+            &self.context.jormungandr(),
             &self.context,
             pb,
-            node_alias,
-            &mut node_setting.clone(),
+            &params.get_alias(),
+            &mut node_setting_overriden,
             block0_setting,
             &self.working_directory,
-            persistence_mode,
+            params.get_persistence_mode(),
         )?;
         let controller = node.controller();
 
@@ -195,6 +199,18 @@ impl Controller {
         self.runtime.executor().spawn(node);
 
         Ok(controller)
+    }
+
+    pub fn spawn_node(
+        &mut self,
+        node_alias: &str,
+        leadership_mode: LeadershipMode,
+        persistence_mode: PersistenceMode,
+    ) -> Result<NodeController> {
+        let mut params = self.new_spawn_params(node_alias);
+        params.leadership_mode(leadership_mode);
+        params.persistence_mode(persistence_mode);
+        self.spawn_node_custom(&mut params)
     }
 
     pub fn restart_node(

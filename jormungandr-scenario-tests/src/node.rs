@@ -629,6 +629,7 @@ impl Node {
     }
 
     pub fn spawn<R: RngCore>(
+        jormungandr: &bawawa::Command,
         context: &Context<R>,
         progress_bar: ProgressBar,
         alias: &str,
@@ -637,7 +638,7 @@ impl Node {
         working_dir: &PathBuf,
         peristence_mode: PersistenceMode,
     ) -> Result<Self> {
-        let mut command = context.jormungandr().clone();
+        let mut command = jormungandr.clone();
         let dir = working_dir.join(alias);
         std::fs::DirBuilder::new().recursive(true).create(&dir)?;
 
