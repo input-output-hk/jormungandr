@@ -139,24 +139,17 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         MeasurementReportInterval::Long,
     );
 
-    core.shutdown()?;
+    let mut wallet = controller.wallet(&wallet_name(1)).unwrap();
+    let wallet2 = controller.wallet(&wallet_name(2)).unwrap();
 
-    utils::measure_and_log_sync_time(
+    utils::measure_single_transaction_propagation_speed(
+        &mut controller,
+        &mut wallet,
+        &wallet2,
         leaders.iter().collect(),
         SyncWaitParams::large_network(leaders_count).into(),
-        "real_network_sync_after_core_shutdown",
-        MeasurementReportInterval::Long,
-    );
-
-    for relay in relays {
-        relay.shutdown()?;
-    }
-
-    utils::measure_and_log_sync_time(
-        leaders.iter().collect(),
-        SyncWaitParams::large_network(leaders_count).into(),
-        "real_network_sync_after_relay_shutdown",
-        MeasurementReportInterval::Long,
+        "real_network_single_transaction_propagation",
+        MeasurementReportInterval::Standard,
     )?;
 
     controller.finalize();
