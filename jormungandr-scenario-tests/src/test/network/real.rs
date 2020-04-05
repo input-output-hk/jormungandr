@@ -5,7 +5,7 @@ use crate::{
         KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration, Value,
     },
     test::{
-        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context,
@@ -126,14 +126,17 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     core.wait_for_bootstrap()?;
     leaders.last().unwrap().wait_for_bootstrap()?;
 
-    utils::measure_how_many_nodes_are_running(&leaders, "real_network_bootstrap_score");
+    utils::measure_how_many_nodes_are_running(
+        leaders.iter().collect(),
+        "real_network_bootstrap_score",
+    );
 
     let leaders_count = leaders.len() as u64;
     utils::measure_and_log_sync_time(
         leaders.iter().collect(),
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync",
-        SyncMeasurementInterval::Long,
+        MeasurementReportInterval::Long,
     );
 
     core.shutdown()?;
@@ -142,7 +145,7 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         leaders.iter().collect(),
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync_after_core_shutdown",
-        SyncMeasurementInterval::Long,
+        MeasurementReportInterval::Long,
     );
 
     for relay in relays {
@@ -153,7 +156,7 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         leaders.iter().collect(),
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync_after_relay_shutdown",
-        SyncMeasurementInterval::Long,
+        MeasurementReportInterval::Long,
     )?;
 
     controller.finalize();

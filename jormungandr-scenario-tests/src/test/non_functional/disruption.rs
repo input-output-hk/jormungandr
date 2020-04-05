@@ -3,7 +3,7 @@ use crate::{
     scenario::repository::ScenarioResult,
     test::{
         non_functional::*,
-        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context,
@@ -80,7 +80,7 @@ pub fn passive_leader_disruption_no_overlap(
         vec![&leader, &passive],
         SyncWaitParams::nodes_restart(5).into(),
         "passive_leader_disruption_no_overlap",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader.shutdown()?;
@@ -144,7 +144,7 @@ pub fn passive_leader_disruption_overlap(
         vec![&leader, &passive],
         SyncWaitParams::nodes_restart(5).into(),
         "passive_leader_disruption_overlap",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader.shutdown()?;
@@ -213,7 +213,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
         vec![&leader1, &leader2],
         SyncWaitParams::nodes_restart(5).into(),
         "leader_leader_disruption_overlap",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader1.shutdown()?;
@@ -294,7 +294,7 @@ pub fn leader_leader_disruption_no_overlap(
         vec![&leader1, &leader2],
         SyncWaitParams::nodes_restart(5).into(),
         "leader_leader_disruption_no_overlap",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader1.shutdown()?;
@@ -365,7 +365,7 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         vec![&leader1, &leader3],
         SyncWaitParams::nodes_restart(5).into(),
         "point_to_point_disruption",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader3.shutdown()?;
@@ -496,7 +496,7 @@ pub fn point_to_point_disruption_overlap(
         vec![&leader1, &leader2, &leader3],
         SyncWaitParams::nodes_restart(5).into(),
         "point_to_point_disruption_overlap",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader3.shutdown()?;
@@ -609,7 +609,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         vec![&leader1, &leader2, &leader3, &leader4, &leader5, &passive],
         SyncWaitParams::nodes_restart(5).into(),
         "custom_network_disruption",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     passive.shutdown()?;
@@ -718,7 +718,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         vec![&leader1, &leader2, &leader3, &leader4, &leader5],
         SyncWaitParams::nodes_restart(5).into(),
         "mesh_disruption_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader5.shutdown()?;

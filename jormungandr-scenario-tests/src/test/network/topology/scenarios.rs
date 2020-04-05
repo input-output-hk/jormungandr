@@ -1,7 +1,7 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     test::{
-        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
@@ -75,7 +75,7 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         vec![&leader1, &leader2, &leader3, &leader4],
         SyncWaitParams::network_size(4, 2).into(),
         "fully_connected_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader4.shutdown()?;
@@ -145,7 +145,7 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         vec![&leader1, &leader2, &leader3, &leader4, &leader5],
         SyncWaitParams::network_size(5, 3).into(),
         "star_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader5.shutdown()?;
@@ -212,7 +212,7 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         vec![&leader1, &leader2, &leader3, &leader4],
         SyncWaitParams::network_size(4, 3).into(),
         "ring_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader4.shutdown()?;
@@ -282,7 +282,7 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         vec![&leader1, &leader2, &leader3, &leader4, &leader5],
         SyncWaitParams::network_size(5, 3).into(),
         "mesh_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader5.shutdown()?;
@@ -347,7 +347,7 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         vec![&leader1, &leader2, &leader3, &leader4],
         SyncWaitParams::network_size(4, 4).into(),
         "point_to_point_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader4.shutdown()?;
@@ -425,7 +425,7 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
         vec![&leader1, &leader2, &leader3, &leader4],
         SyncWaitParams::network_size(4, 4).into(),
         "point_to_point_on_file_storage_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader4.shutdown()?;
@@ -505,7 +505,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         ],
         SyncWaitParams::network_size(7, 5).into(),
         "tree_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader7.shutdown()?;
@@ -647,7 +647,7 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         ],
         SyncWaitParams::network_size(10, 3).into(),
         "relay_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader7.shutdown()?;
