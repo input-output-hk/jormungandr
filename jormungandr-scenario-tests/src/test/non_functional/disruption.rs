@@ -81,7 +81,7 @@ pub fn passive_leader_disruption_no_overlap(
         SyncWaitParams::nodes_restart(5).into(),
         "passive_leader_disruption_no_overlap",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     leader.shutdown()?;
     passive.shutdown()?;
@@ -145,7 +145,7 @@ pub fn passive_leader_disruption_overlap(
         SyncWaitParams::nodes_restart(5).into(),
         "passive_leader_disruption_overlap",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     leader.shutdown()?;
     passive.shutdown()?;
@@ -214,7 +214,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
         SyncWaitParams::nodes_restart(5).into(),
         "leader_leader_disruption_overlap",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     leader1.shutdown()?;
     leader2.shutdown()?;
@@ -295,7 +295,7 @@ pub fn leader_leader_disruption_no_overlap(
         SyncWaitParams::nodes_restart(5).into(),
         "leader_leader_disruption_no_overlap",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     leader1.shutdown()?;
     leader2.shutdown()?;
@@ -366,7 +366,7 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         SyncWaitParams::nodes_restart(5).into(),
         "point_to_point_disruption",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     leader3.shutdown()?;
     leader1.shutdown()?;
@@ -497,7 +497,7 @@ pub fn point_to_point_disruption_overlap(
         SyncWaitParams::nodes_restart(5).into(),
         "point_to_point_disruption_overlap",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     leader3.shutdown()?;
     leader2.shutdown()?;
@@ -610,7 +610,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         SyncWaitParams::nodes_restart(5).into(),
         "custom_network_disruption",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     passive.shutdown()?;
     leader5.shutdown()?;

@@ -138,7 +138,7 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync_after_relay_nodes_shutdown",
         SyncMeasurementInterval::Long,
-    );
+    )?;
 
     controller.finalize();
     Ok(ScenarioResult::passed())

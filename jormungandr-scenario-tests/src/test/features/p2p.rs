@@ -4,7 +4,6 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
-use jormungandr_lib::interfaces::EnclaveLeaderId;
 use rand_chacha::ChaChaRng;
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
@@ -41,7 +40,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         controller.spawn_node(LEADER1, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader1.wait_for_bootstrap()?;
 
-    let leader1_node_id = leader1.stats()?.stats.expect("empty stats").node_id.clone();
+    let _leader1_node_id = leader1.stats()?.stats.expect("empty stats").node_id.clone();
     assert_node_stats(&leader1, 0, 0, 0, 0, 0)?;
 
     utils::assert_equals(&vec![], &leader1.network_stats()?, "network_stats")?;

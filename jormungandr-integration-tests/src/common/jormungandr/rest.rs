@@ -59,7 +59,6 @@ impl JormungandrRest {
 
     pub fn stats(&self) -> Result<NodeStatsDto, RestError> {
         let response_text = self.get("node/stats")?.text()?;
-        println!("network/stats: {}", response_text);
         serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
     }
 

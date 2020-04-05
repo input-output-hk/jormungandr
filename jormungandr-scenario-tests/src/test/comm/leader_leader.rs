@@ -67,7 +67,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         SyncWaitParams::two_nodes().into(),
         "two_transaction_to_two_leaders_sync",
         SyncMeasurementInterval::Standard,
-    );
+    )?;
 
     leader_1.shutdown().unwrap();
     leader_2.shutdown().unwrap();
