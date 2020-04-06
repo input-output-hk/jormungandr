@@ -16,7 +16,7 @@ pub fn explorer_test() {
         .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
         .with_explorer();
 
-    let (jormungandr, _) = startup::start_stake_pool(&[faucet.clone()], &mut config).unwrap();
+    let (jormungandr, _) = startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
     let transaction = faucet
         .transaction_to(

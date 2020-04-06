@@ -12,10 +12,10 @@ use crate::{
     test::{
         comm::leader_leader::*,
         comm::passive_leader::*,
-        features::leader_promotion::*,
+        features::{leader_promotion::*, p2p::*},
         network::real::real_network,
         network::topology::scenarios::*,
-        non_functional::{disruption::*, soak::*},
+        non_functional::{disruption::*, legacy::*, soak::*},
         Result,
     },
     Context,
@@ -150,7 +150,7 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short],
     ));
     repository.push(Scenario::new("star", star, vec![Tag::Short]));
-    repository.push(Scenario::new("mesh", mesh, vec![Tag::Short]));
+    repository.push(Scenario::new("mesh", mesh, vec![Tag::Short, Tag::Unstable]));
     repository.push(Scenario::new(
         "point_to_point",
         point_to_point,
@@ -172,7 +172,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_leader_disruption_overlap",
         passive_leader_disruption_overlap,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_overlap",
@@ -201,7 +201,42 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short],
     ));
 
+    repository.push(Scenario::new(
+        "legacy_last_5th_release",
+        legacy_last_5th_release,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
+    repository.push(Scenario::new(
+        "legacy_last_4th_release",
+        legacy_last_4th_release,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
+    repository.push(Scenario::new(
+        "legacy_last_3rd_release",
+        legacy_last_3rd_release,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
+    repository.push(Scenario::new(
+        "legacy_last_2nd_release",
+        legacy_last_2nd_release,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
+    repository.push(Scenario::new(
+        "legacy_last_release",
+        legacy_last_release,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
+    repository.push(Scenario::new(
+        "p2p_stats_test",
+        p2p_stats_test,
+        vec![Tag::Short, Tag::Unstable],
+    ));
     repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
     repository.push(Scenario::new(
         "mesh_disruption",

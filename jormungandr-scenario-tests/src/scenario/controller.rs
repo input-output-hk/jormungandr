@@ -1,6 +1,9 @@
 use crate::{
     node::{LeadershipMode, Node, PersistenceMode},
-    scenario::{settings::Settings, Blockchain, ContextChaCha, ErrorKind, Result, Topology},
+    scenario::{
+        settings::Settings, Blockchain, ContextChaCha, ErrorKind, ProgressBarMode, Result,
+        SpawnParams, Topology,
+    },
     style, MemPoolCheck, NodeBlock0, NodeController, Wallet,
 };
 use chain_impl_mockchain::header::HeaderId;
@@ -88,8 +91,12 @@ impl ControllerBuilder {
         self.controller_progress.finish_and_clear();
         self.summary();
 
-        if context.disable_progress_bar() {
-            println!("nodes monitoring disabled due to legacy logging setting enabled");
+        match context.progress_bar_mode() {
+            ProgressBarMode::None => println!("nodes logging disabled"),
+            ProgressBarMode::Standard => {
+                println!("nodes monitoring disabled due to legacy logging setting enabled")
+            }
+            _ => (),
         }
 
         Controller::new(self.settings.unwrap(), context, working_directory)
@@ -154,19 +161,21 @@ impl Controller {
         }
     }
 
-    pub fn spawn_node(
-        &mut self,
-        node_alias: &str,
-        leadership_mode: LeadershipMode,
-        persistence_mode: PersistenceMode,
-    ) -> Result<NodeController> {
-        let node_setting = if let Some(node_setting) = self.settings.nodes.get(node_alias) {
+    pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
+        SpawnParams::new(node_alias)
+    }
+
+    pub fn spawn_node_custom(&mut self, params: &mut SpawnParams) -> Result<NodeController> {
+        let node_setting = if let Some(node_setting) = self.settings.nodes.get(&params.get_alias())
+        {
             node_setting
         } else {
-            bail!(ErrorKind::NodeNotFound(node_alias.to_owned()))
+            bail!(ErrorKind::NodeNotFound(params.get_alias()))
         };
 
-        let block0_setting = match leadership_mode {
+        let mut node_setting_overriden = params.override_settings(&node_setting);
+
+        let block0_setting = match params.get_leadership_mode() {
             LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
             LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash.clone()),
         };
@@ -175,13 +184,14 @@ impl Controller {
         let pb = self.progress_bar.add(pb);
 
         let mut node = Node::spawn(
+            &self.context.jormungandr(),
             &self.context,
             pb,
-            node_alias,
-            &mut node_setting.clone(),
+            &params.get_alias(),
+            &mut node_setting_overriden,
             block0_setting,
             &self.working_directory,
-            persistence_mode,
+            params.get_persistence_mode(),
         )?;
         let controller = node.controller();
 
@@ -189,6 +199,18 @@ impl Controller {
         self.runtime.executor().spawn(node);
 
         Ok(controller)
+    }
+
+    pub fn spawn_node(
+        &mut self,
+        node_alias: &str,
+        leadership_mode: LeadershipMode,
+        persistence_mode: PersistenceMode,
+    ) -> Result<NodeController> {
+        let mut params = self.new_spawn_params(node_alias);
+        params.leadership_mode(leadership_mode);
+        params.persistence_mode(persistence_mode);
+        self.spawn_node_custom(&mut params)
     }
 
     pub fn restart_node(
@@ -204,14 +226,12 @@ impl Controller {
     }
 
     pub fn monitor_nodes(&mut self) {
-        if self.context.disable_progress_bar() {
-            return;
+        if let ProgressBarMode::Monitor = self.context.progress_bar_mode() {
+            let pb = Arc::clone(&self.progress_bar);
+            self.progress_bar_thread = Some(std::thread::spawn(move || {
+                pb.join().unwrap();
+            }));
         }
-
-        let pb = Arc::clone(&self.progress_bar);
-        self.progress_bar_thread = Some(std::thread::spawn(move || {
-            pb.join().unwrap();
-        }));
     }
 
     pub fn finalize(self) {

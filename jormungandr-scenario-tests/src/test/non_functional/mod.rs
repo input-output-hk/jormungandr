@@ -1,4 +1,5 @@
 pub mod disruption;
+pub mod legacy;
 pub mod soak;
 
 const PASSIVE: &str = "Passive";

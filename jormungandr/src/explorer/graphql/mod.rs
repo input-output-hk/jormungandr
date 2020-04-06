@@ -13,6 +13,7 @@ use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
+use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::leadership::bft;
 use futures03::executor::block_on;
 pub use juniper::http::GraphQLRequest;
@@ -186,7 +187,7 @@ impl Block {
 }
 
 struct BftLeader {
-    id: bft::LeaderId,
+    id: BftLeaderId,
 }
 
 #[juniper::object(

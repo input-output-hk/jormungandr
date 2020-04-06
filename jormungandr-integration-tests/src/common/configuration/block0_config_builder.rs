@@ -11,7 +11,7 @@ use self::chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey
 use self::rand::SeedableRng;
 use self::rand_chacha::ChaChaRng;
 use self::serde_derive::{Deserialize, Serialize};
-use chain_impl_mockchain::{block::ConsensusVersion, fee::LinearFee};
+use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, Block0Configuration, BlockchainConfiguration, ConsensusLeaderId,

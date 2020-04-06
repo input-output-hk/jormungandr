@@ -1,5 +1,5 @@
 use crate::{
-    network::p2p::{topic, Id, PolicyConfig},
+    network::p2p::{layers::LayersConfig, topic, Id, PolicyConfig},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
@@ -113,7 +113,8 @@ pub struct P2pConfig {
 
     /// Limit on the number of simultaneous client connections.
     /// If not specified, an internal default limit is used.
-    pub max_client_connections: Option<usize>,
+    #[serde(alias = "max_client_connections")]
+    pub max_inbound_connections: Option<usize>,
 
     /// This setting is not used and is left for backward compatibility.
     pub max_connections_threshold: Option<usize>,
@@ -126,6 +127,10 @@ pub struct P2pConfig {
     /// setting for the policy
     #[serde(default)]
     pub policy: PolicyConfig,
+
+    /// settings for the different custom layers
+    #[serde(default)]
+    pub layers: LayersConfig,
 
     /// set the maximum number of unreachable nodes to contact at a time for every
     /// new notification. The default value is 20.
@@ -219,10 +224,11 @@ impl Default for P2pConfig {
             trusted_peers: None,
             topics_of_interest: None,
             max_connections: None,
-            max_client_connections: None,
+            max_inbound_connections: None,
             max_connections_threshold: None,
             allow_private_addresses: false,
             policy: PolicyConfig::default(),
+            layers: LayersConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
             topology_force_reset_interval: None,

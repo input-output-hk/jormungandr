@@ -59,6 +59,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
     let mut sender = startup::create_new_account_address();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
@@ -106,6 +107,7 @@ pub fn test_100_transaction_is_processed_simple() {
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
@@ -131,10 +133,10 @@ pub fn test_100_transaction_is_processed_simple() {
         sender.confirm_transaction();
         println!("Sending transaction no. {}", i + 1);
 
-        if let Err(error) = check_transaction_was_processed(
+        if let Err(error) = super::check_transaction_was_processed(
             transaction.to_owned(),
             &receiver,
-            i.into(),
+            (i + 1).into(),
             &jormungandr,
         ) {
             let message = format!("{}", error);
@@ -148,43 +150,6 @@ pub fn test_100_transaction_is_processed_simple() {
     jcli_wrapper::check_all_transaction_log_shows_in_block(&jormungandr);
 }
 
-fn check_transaction_was_processed(
-    transaction: String,
-    receiver: &Wallet,
-    i: u64,
-    jormungandr: &JormungandrProcess,
-) -> Result<(), NodeStuckError> {
-    super::send_transaction_and_ensure_block_was_produced(&vec![transaction], &jormungandr)?;
-
-    check_funds_transferred_to(
-        &receiver.address().to_string(),
-        (i + 1).into(),
-        &jormungandr,
-    )?;
-
-    jormungandr
-        .check_no_errors_in_log()
-        .map_err(|err| NodeStuckError::InternalJormungandrError(err))
-}
-
-fn check_funds_transferred_to(
-    address: &str,
-    value: Value,
-    jormungandr: &JormungandrProcess,
-) -> Result<(), NodeStuckError> {
-    let account_state =
-        jcli_wrapper::assert_rest_account_get_stats(address, &jormungandr.rest_address());
-
-    if *account_state.value() != value {
-        return Err(NodeStuckError::FundsNotTransfered {
-            actual: account_state.value().clone(),
-            expected: value.clone(),
-            logs: jormungandr.logger.get_log_content(),
-        });
-    }
-    Ok(())
-}
-
 #[test]
 pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     let mut sender = startup::create_new_account_address();
@@ -192,6 +157,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)

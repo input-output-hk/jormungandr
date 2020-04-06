@@ -5,7 +5,7 @@ use openapiv3::{
     Paths, ReferenceOr, RequestBody, Schema, SchemaKind, StringFormat, StringType, Type,
     VariantOrUnknownOrEmpty,
 };
-use reqwest::{Method, Request};
+use reqwest::{blocking::Request, Method};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;

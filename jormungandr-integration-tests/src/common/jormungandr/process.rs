@@ -1,6 +1,9 @@
 use super::{logger::JormungandrLogger, JormungandrError, JormungandrRest};
 use crate::common::{
-    configuration::jormungandr_config::JormungandrConfig, explorer::Explorer, jcli_wrapper,
+    configuration::jormungandr_config::JormungandrConfig,
+    explorer::Explorer,
+    jcli_wrapper,
+    jormungandr::starter::{Starter, StartupError},
 };
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{crypto::hash::Hash, interfaces::TrustedPeer};
@@ -44,6 +47,19 @@ impl JormungandrProcess {
 
     pub fn shutdown(&self) {
         jcli_wrapper::assert_rest_shutdown(&self.config.get_node_address());
+    }
+
+    pub fn assert_no_errors_in_log_with_message(&self, message: &str) {
+        let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
+
+        assert_eq!(
+            error_lines.len(),
+            0,
+            "{} there are some errors in log ({:?}): {:?}",
+            message,
+            self.logger.log_file_path,
+            error_lines,
+        );
     }
 
     pub fn assert_no_errors_in_log(&self) {
@@ -97,6 +113,15 @@ impl JormungandrProcess {
 
     pub fn as_trusted_peer(&self) -> TrustedPeer {
         self.config.as_trusted_peer()
+    }
+
+    pub fn launch(&mut self) -> Result<Self, StartupError> {
+        let mut starter = Starter::new();
+        starter.config(self.config());
+        if self.config().genesis_block_hash != "" {
+            starter.from_genesis_hash();
+        }
+        starter.start()
     }
 }
 

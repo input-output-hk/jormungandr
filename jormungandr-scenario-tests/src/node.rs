@@ -1,4 +1,7 @@
-use crate::{scenario::settings::NodeSetting, style, Context, NodeAlias};
+use crate::{
+    scenario::{settings::NodeSetting, ProgressBarMode},
+    style, Context, NodeAlias,
+};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::{
     block::Block,
@@ -12,7 +15,8 @@ use jormungandr_integration_tests::{
     response_to_vec,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, FragmentStatus, NodeState, NodeStatsDto,
+    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, NodeState, NodeStatsDto, PeerRecord,
+    PeerStats,
 };
 use rand_core::RngCore;
 use std::{
@@ -54,8 +58,16 @@ error_chain! {
             description("Node stats in an invalid format")
         }
 
+        InvalidNetworkStats {
+            description("Network stats in an invalid format")
+        }
+
         InvalidEnclaveLeaderIds {
             description("Leaders ids in an invalid format")
+        }
+
+        InvalidPeerStats{
+            description("Peer in an invalid format")
         }
 
         NodeStopped (status: Status) {
@@ -116,7 +128,7 @@ pub enum Status {
 struct ProgressBarController {
     progress_bar: ProgressBar,
     prefix: String,
-    legacy_logging: bool,
+    logging_mode: ProgressBarMode,
 }
 
 /// send query to a running node
@@ -166,10 +178,10 @@ impl NodeController {
         format!("{}/{}", self.base_url(), path)
     }
 
-    fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::Response> {
+    fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("POST '{}'", path));
 
-        let client = reqwest::Client::new();
+        let client = reqwest::blocking::Client::new();
         let res = client
             .post(&format!("{}/{}", self.base_url(), path))
             .body(body)
@@ -185,10 +197,10 @@ impl NodeController {
         }
     }
 
-    fn get(&self, path: &str) -> Result<reqwest::Response> {
+    fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("GET '{}'", path));
 
-        match reqwest::get(&format!("{}/{}", self.base_url(), path)) {
+        match reqwest::blocking::get(&format!("{}/{}", self.base_url(), path)) {
             Err(err) => {
                 self.progress_bar
                     .log_err(format!("Failed to send request {}", &err));
@@ -228,6 +240,10 @@ impl NodeController {
         })
     }
 
+    pub fn log(&self, info: &str) {
+        self.progress_bar.log_info(info);
+    }
+
     pub fn tip(&self) -> Result<HeaderId> {
         let hash = self.get("tip")?.text()?;
 
@@ -241,6 +257,75 @@ impl NodeController {
     pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
         let response = self.grpc_client.pull_blocks_to_tip(from);
         Ok(response_to_vec!(response))
+    }
+
+    pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
+        let response_text = self.get("network/stats")?.text()?;
+        self.progress_bar
+            .log_info(format!("network/stats: {}", response_text));
+
+        let network_stats: Vec<PeerStats> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_quarantined(&self) -> Result<Vec<PeerRecord>> {
+        let response_text = self.get("network/p2p/quarantined")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/p2p_quarantined: {}", response_text));
+
+        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_non_public(&self) -> Result<Vec<PeerRecord>> {
+        let response_text = self.get("network/p2p/non_public")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/non_publicS: {}", response_text));
+
+        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_available(&self) -> Result<Vec<PeerRecord>> {
+        let response_text = self.get("network/p2p/available")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/available: {}", response_text));
+
+        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
+    }
+
+    pub fn p2p_view(&self) -> Result<Vec<Info>> {
+        let response_text = self.get("network/p2p/view")?.text()?;
+
+        self.progress_bar
+            .log_info(format!("network/view: {}", response_text));
+
+        let network_stats: Vec<Info> = if response_text.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+        };
+        Ok(network_stats)
     }
 
     pub fn all_blocks_hashes(&self) -> Result<Vec<HeaderId>> {
@@ -366,7 +451,7 @@ impl NodeController {
         let path = "leaders";
         let secrets = self.settings.secrets();
         self.progress_bar.log_info(format!("POST '{}'", &path));
-        let mut response = reqwest::Client::new()
+        let response = reqwest::blocking::Client::new()
             .post(&self.path(path))
             .json(&secrets)
             .send()?;
@@ -390,7 +475,9 @@ impl NodeController {
     pub fn demote(&self, leader_id: u32) -> Result<()> {
         let path = format!("leaders/{}", leader_id);
         self.progress_bar.log_info(format!("DELETE '{}'", &path));
-        let response = reqwest::Client::new().delete(&self.path(&path)).send()?;
+        let response = reqwest::blocking::Client::new()
+            .delete(&self.path(&path))
+            .send()?;
 
         self.progress_bar
             .log_info(format!("Leader demote for '{}' sent", self.alias()));
@@ -506,7 +593,7 @@ impl NodeController {
         }
     }
 
-    fn logger(&self) -> JormungandrLogger {
+    pub fn logger(&self) -> JormungandrLogger {
         let log_file = self
             .settings
             .config
@@ -542,6 +629,7 @@ impl Node {
     }
 
     pub fn spawn<R: RngCore>(
+        jormungandr: &bawawa::Command,
         context: &Context<R>,
         progress_bar: ProgressBar,
         alias: &str,
@@ -550,14 +638,14 @@ impl Node {
         working_dir: &PathBuf,
         peristence_mode: PersistenceMode,
     ) -> Result<Self> {
-        let mut command = context.jormungandr().clone();
+        let mut command = jormungandr.clone();
         let dir = working_dir.join(alias);
         std::fs::DirBuilder::new().recursive(true).create(&dir)?;
 
         let progress_bar = ProgressBarController::new(
             progress_bar,
             format!("{}@{}", alias, node_settings.config().rest.listen),
-            context.disable_progress_bar(),
+            context.progress_bar_mode(),
         );
 
         let config_file = dir.join(NODE_CONFIG);
@@ -674,11 +762,11 @@ impl Node {
 use std::fmt::Display;
 
 impl ProgressBarController {
-    fn new(progress_bar: ProgressBar, prefix: String, legacy_logging: bool) -> Self {
+    fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {
         ProgressBarController {
             progress_bar,
             prefix,
-            legacy_logging,
+            logging_mode,
         }
     }
 
@@ -701,11 +789,11 @@ impl ProgressBarController {
         L: Display,
         M: Display,
     {
-        match self.legacy_logging {
-            true => {
+        match self.logging_mode {
+            ProgressBarMode::Standard => {
                 println!("[{}][{}]: {}", lvl, &self.prefix, msg);
             }
-            false => {
+            ProgressBarMode::Monitor => {
                 self.progress_bar.println(format!(
                     "[{}][{}{}]: {}",
                     lvl,
@@ -714,6 +802,7 @@ impl ProgressBarController {
                     msg,
                 ));
             }
+            ProgressBarMode::None => (),
         }
     }
 }

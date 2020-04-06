@@ -53,7 +53,7 @@ impl Message {
 
 fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "fragment", "logs"])?.into_url();
-    let builder = reqwest::Client::new().get(url);
+    let builder = reqwest::blocking::Client::new().get(url);
     let response = RestApiSender::new(builder, &debug).send()?;
     response.ok_response()?;
     let status = response.body().json_value()?;
@@ -66,7 +66,7 @@ fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) -> Resu
     let msg_hex = io::read_line(&file)?;
     let msg_bin = hex::decode(&msg_hex)?;
     let url = addr.with_segments(&["v0", "message"])?.into_url();
-    let builder = reqwest::Client::new().post(url);
+    let builder = reqwest::blocking::Client::new().post(url);
     let fragment = Fragment::deserialize(msg_bin.as_slice().into_buf())
         .map_err(Error::InputFragmentMalformed)?;
     let response = RestApiSender::new(builder, &debug)

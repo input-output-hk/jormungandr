@@ -3,7 +3,7 @@ use crate::jcli_app::utils::key_parser::parse_pub_key;
 use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{Certificate, PoolPermissions, PoolRegistration},
-    leadership::genesis::GenesisPraosLeader,
+    key::GenesisPraosLeader,
     rewards,
 };
 use chain_time::DurationSeconds;

@@ -11,7 +11,8 @@ use crate::common::{
 };
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{
-    block::{Block, ConsensusVersion, Header},
+    block::{Block, Header},
+    chaintypes::ConsensusVersion,
     key::Hash,
     testing::builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
 };

@@ -1,8 +1,9 @@
 use jormungandr_lib::time::Duration;
 use lru::LruCache;
-use poldercast::{Id, Node, PolicyReport};
+use poldercast::{Address, Id, Node, PolicyReport};
 use serde::{Deserialize, Serialize};
 use slog::Logger;
+use std::collections::HashSet;
 use std::time::{Duration as StdDuration, Instant};
 
 /// default quarantine duration is 10min
@@ -22,7 +23,7 @@ pub struct Policy {
     quarantine_duration: StdDuration,
     max_quarantine: StdDuration,
     records: LruCache<Id, Records>,
-
+    quarantine_whitelist: HashSet<Address>,
     logger: Logger,
 }
 
@@ -40,6 +41,8 @@ pub struct PolicyConfig {
     max_quarantine: Option<Duration>,
     #[serde(default)]
     max_num_quarantine_records: Option<usize>,
+    #[serde(default)]
+    quarantine_whitelist: HashSet<Address>,
 }
 
 impl Policy {
@@ -54,6 +57,7 @@ impl Policy {
                 pc.max_num_quarantine_records
                     .unwrap_or(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
             ),
+            quarantine_whitelist: pc.quarantine_whitelist,
             logger,
         }
     }
@@ -85,6 +89,7 @@ impl Default for PolicyConfig {
             quarantine_duration: Duration::from(DEFAULT_QUARANTINE_DURATION),
             max_quarantine: Some(Duration::from(DEFAULT_MAX_QUARANTINE_DURATION)),
             max_num_quarantine_records: Some(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
+            quarantine_whitelist: HashSet::new(),
         }
     }
 }
@@ -116,7 +121,7 @@ impl poldercast::Policy for Policy {
     fn check(&mut self, node: &mut Node) -> PolicyReport {
         let id = node.id().to_string();
         let logger = self.logger.new(o!("id" => id));
-
+        let node_address = node.address();
         // if the node is already quarantined
         if let Some(since) = node.logs().quarantined() {
             let duration = since.elapsed().unwrap();
@@ -143,6 +148,18 @@ impl poldercast::Policy for Policy {
             }
         } else if node.record().is_clear() {
             // if the record is clear, do nothing, leave the Node in the available nodes
+            PolicyReport::None
+        } else if node_address
+            .as_ref()
+            .map(|address| self.quarantine_whitelist.contains(address))
+            .unwrap_or(false)
+        {
+            // if the node is whitelisted
+            debug!(
+                logger,
+                "node is whitelisted, peer_addr: {}",
+                node_address.unwrap().to_string()
+            );
             PolicyReport::None
         } else {
             // if the record is not `clear` then we quarantine the block for some time

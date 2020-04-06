@@ -15,6 +15,13 @@ pub enum SyncWaitParams {
 }
 
 impl SyncWaitParams {
+    pub fn large_network(no_of_nodes: u64) -> Self {
+        Self::Standard {
+            no_of_nodes: no_of_nodes * 4,
+            longest_path_length: no_of_nodes * 4,
+        }
+    }
+
     pub fn network_size(no_of_nodes: u64, longest_path_length: u64) -> Self {
         Self::Standard {
             no_of_nodes,

@@ -64,6 +64,18 @@ pub struct LastRewards {
     reward: Value,
 }
 
+impl LastRewards {
+    #[inline]
+    pub fn epoch(&self) -> &Epoch {
+        &self.epoch
+    }
+
+    #[inline]
+    pub fn reward(&self) -> &Value {
+        &self.reward
+    }
+}
+
 /// represent the current state of an account in the ledger
 ///
 /// This type is different from the [`UTxOInfo`] which represents another
@@ -101,6 +113,12 @@ impl AccountState {
     #[inline]
     pub fn counter(&self) -> u32 {
         self.counter
+    }
+
+    /// the last rewards transfered to account
+    #[inline]
+    pub fn last_rewards(&self) -> &LastRewards {
+        &self.last_rewards
     }
 }
 

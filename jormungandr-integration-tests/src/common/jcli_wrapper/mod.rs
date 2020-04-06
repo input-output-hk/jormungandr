@@ -116,10 +116,7 @@ pub fn assert_rest_utxo_get_by_utxo_not_found(host: &str, utxo: &UTxOInfo) {
 
 pub fn assert_rest_utxo_get_not_found(host: &str, fragment_id_bech32: &str, output_index: u8) {
     let command = jcli_commands::get_rest_utxo_get_command(&host, fragment_id_bech32, output_index);
-    process_assert::assert_process_failed_and_contains_message(
-        command,
-        "Client Error: 404 Not Found",
-    );
+    process_assert::assert_process_failed_and_contains_message(command, "404 Not Found");
 }
 
 pub fn assert_get_address_info(address: &str) -> BTreeMap<String, String> {

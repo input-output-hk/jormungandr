@@ -9,10 +9,13 @@ mod fragment_log;
 mod leadership_log;
 mod linear_fee;
 mod old_address;
+mod peer_stats;
 mod ratio;
 mod reward_parameters;
 mod rewards_info;
 mod settings;
+mod stake;
+mod stake_distribution;
 mod stake_pool_stats;
 mod stats;
 mod tax_type;
@@ -38,10 +41,15 @@ pub use self::leadership_log::{
 };
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
+pub use self::peer_stats::{
+    Info, Logs, PeerRecord, PeerStats, Profile, Record, Strike, Subscription, When,
+};
 pub use self::ratio::{ParseRatioError, Ratio};
 pub use self::reward_parameters::RewardParams;
 pub use self::rewards_info::EpochRewardsInfo;
 pub use self::settings::{ParametersDef, RatioDef, SettingsDto, TaxTypeDef, TaxTypeSerde};
+pub use self::stake::{Stake, StakeDef};
+pub use self::stake_distribution::StakeDistributionDto;
 pub use self::stake_pool_stats::{Rewards, StakePoolStats};
 pub use self::stats::{NodeState, NodeStats, NodeStatsDto};
 pub use self::tax_type::TaxType;

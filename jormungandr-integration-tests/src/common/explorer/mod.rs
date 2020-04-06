@@ -31,7 +31,7 @@ impl Explorer {
 
     pub fn get_last_block(&self) -> Result<ExplorerLastBlock, ExplorerError> {
         let query = ExplorerLastBlock::query();
-        let mut request_response = self
+        let request_response = self
             .client
             .run(query)
             .map_err(|e| ExplorerError::ClientError(e))?;
@@ -47,7 +47,7 @@ impl Explorer {
 
     pub fn get_transaction(&self, hash: Hash) -> Result<ExplorerTransaction, ExplorerError> {
         let query = ExplorerTransaction::query_by_id(hash);
-        let mut request_response = self
+        let request_response = self
             .client
             .run(query)
             .map_err(|e| ExplorerError::ClientError(e))?;

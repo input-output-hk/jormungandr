@@ -7,13 +7,10 @@ use crate::common::{
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Value},
-    testing::{
-        benchmark_efficiency, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
-    },
-    wallet::Wallet,
+    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
+    testing::{benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds},
 };
-use std::{iter, str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 #[test]
 pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
@@ -22,6 +19,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
+        &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)

@@ -1,16 +1,10 @@
-use jormungandr_lib::interfaces::{
-    AccountState, Address, EnclaveLeaderId, EpochRewardsInfo, FragmentOrigin,
-    Rewards as StakePoolRewards, StakePoolStats, TaxTypeSerde,
-};
-use jormungandr_lib::interfaces::{NodeStats, NodeStatsDto};
-use jormungandr_lib::time::SystemTime;
-
 use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound};
 use actix_web::web::{Bytes, BytesMut, Data, Json, Path, Query};
 use actix_web::{Error, HttpResponse, Responder};
 use chain_core::property::{Block, Deserialize, Serialize as _};
 use chain_crypto::{bech32::Bech32, Blake2b256, PublicKey};
 use chain_impl_mockchain::account::{AccountAlg, Identifier};
+use chain_impl_mockchain::block::Block as ChainBlock;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::leadership::{Leader, LeadershipConsensus};
@@ -18,8 +12,13 @@ use chain_impl_mockchain::stake::StakeDistribution;
 use chain_impl_mockchain::transaction::Transaction;
 use chain_impl_mockchain::value::{Value, ValueError};
 use chain_storage_sqlite_old::Error as StorageError;
+use jormungandr_lib::interfaces::{
+    AccountState, Address, EnclaveLeaderId, EpochRewardsInfo, FragmentOrigin,
+    Rewards as StakePoolRewards, StakePoolStats, TaxTypeSerde,
+};
+use jormungandr_lib::interfaces::{NodeStats, NodeStatsDto, PeerStats};
+use jormungandr_lib::time::SystemTime;
 
-use crate::blockchain::Ref;
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
 use futures03::{
@@ -30,16 +29,7 @@ use futures03::{
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::rest::update_stats_tip_from_storage;
 pub use crate::rest::{Context, FullContext};
-
-async fn chain_tip(context: &Data<Context>) -> Result<Arc<Ref>, Error> {
-    Ok(chain_tip_from_full(&*context.try_full().await?).await)
-}
-
-async fn chain_tip_from_full(context: &FullContext) -> Arc<Ref> {
-    context.blockchain_tip.get_ref().await
-}
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
     PublicKey::<AccountAlg>::from_str(id_hex)
@@ -62,7 +52,7 @@ pub async fn get_account_state(
     account_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
     let account_id = parse_account_id(&account_id_hex)?;
-    let chain_tip = chain_tip(&context).await?;
+    let chain_tip = context.blockchain_tip().await?.get_ref().await;
     let ledger = chain_tip.ledger();
     let state = ledger
         .accounts()
@@ -97,14 +87,17 @@ pub async fn post_message(context: Data<Context>, message: Bytes) -> Result<impl
 }
 
 pub async fn get_tip(context: Data<Context>) -> Result<impl Responder, Error> {
-    chain_tip(&context).await.map(|tip| tip.hash().to_string())
+    Ok(context
+        .blockchain_tip()
+        .await?
+        .get_ref()
+        .await
+        .hash()
+        .to_string())
 }
 
 pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder, Error> {
-    let stats = match context.try_full().await {
-        Ok(full_context) => Some(create_stats(&*full_context).await?),
-        Err(_) => None,
-    };
+    let stats = create_stats(&context).await?;
     Ok(Json(NodeStatsDto {
         version: env!("SIMPLE_VERSION").to_string(),
         state: context.node_state().await,
@@ -112,19 +105,39 @@ pub async fn get_stats_counter(context: Data<Context>) -> Result<impl Responder,
     }))
 }
 
-async fn create_stats(context: &FullContext) -> Result<NodeStats, Error> {
-    let tip = chain_tip_from_full(context).await;
+async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
+    use futures03::future::try_join3;
+
+    let (tip, blockchain, full_context) = match try_join3(
+        context.blockchain_tip(),
+        context.blockchain(),
+        context.try_full(),
+    )
+    .await
+    {
+        Ok(result) => result,
+        Err(_) => return Ok(None),
+    };
+
+    let tip = tip.get_ref().await;
+
     let mut block_tx_count = 0u64;
     let mut block_input_sum = Value::zero();
     let mut block_fee_sum = Value::zero();
 
-    let mut header_block = context.stats_counter.get_tip_block();
+    let mut header_block = full_context.stats_counter.get_tip_block();
 
     // In case we do not have a cached block in the stats_counter we can retrieve it from the
     // storage, this should happen just once.
     if header_block.is_none() {
-        update_stats_tip_from_storage(context).await;
-        header_block = context.stats_counter.get_tip_block();
+        let block: Option<ChainBlock> = blockchain.storage().get(tip.hash()).await.unwrap_or(None);
+
+        // Update block if found
+        if let Some(block) = block {
+            full_context.stats_counter.set_tip_block(Arc::new(block));
+        };
+
+        header_block = full_context.stats_counter.get_tip_block();
     }
 
     header_block
@@ -158,10 +171,10 @@ async fn create_stats(context: &FullContext) -> Result<NodeStats, Error> {
         })
         .collect::<Result<(), ValueError>>()
         .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
-    let nodes_count = &context.p2p.nodes_count::<Error>().compat().await?;
+    let nodes_count = &full_context.p2p.nodes_count::<Error>().compat().await?;
     let tip_header = tip.header();
-    let stats = &context.stats_counter;
-    let node_id = &context.p2p.node_id().to_string();
+    let stats = &full_context.stats_counter;
+    let node_id = &full_context.p2p.node_id().to_string();
     let node_stats = NodeStats {
         block_recv_cnt: stats.block_recv_cnt(),
         last_block_content_size: tip_header.block_content_size(),
@@ -182,7 +195,7 @@ async fn create_stats(context: &FullContext) -> Result<NodeStats, Error> {
         tx_recv_cnt: stats.tx_recv_cnt(),
         uptime: stats.uptime_sec().into(),
     };
-    Ok(node_stats)
+    Ok(Some(node_stats))
 }
 
 pub async fn get_block_id(
@@ -190,9 +203,8 @@ pub async fn get_block_id(
     block_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
     context
-        .try_full()
+        .blockchain()
         .await?
-        .blockchain
         .storage()
         .get(parse_block_hash(&block_id_hex)?)
         .await
@@ -208,11 +220,10 @@ pub async fn get_block_next_id(
     block_id_hex: Path<String>,
     query_params: Query<QueryParams>,
 ) -> Result<impl Responder, Error> {
-    let full_context = context.try_full().await?;
+    let blockchain = context.blockchain().await?;
     let block_id = parse_block_hash(&block_id_hex)?;
-    let tip = chain_tip_from_full(&full_context).await;
-    full_context
-        .blockchain
+    let tip = context.blockchain_tip().await?.get_ref().await;
+    blockchain
         .storage()
         .stream_from_to(block_id, tip.hash())
         .await
@@ -244,7 +255,7 @@ impl QueryParams {
 }
 
 pub async fn get_stake_distribution(context: Data<Context>) -> Result<impl Responder, Error> {
-    let blockchain_tip = chain_tip(&context).await?;
+    let blockchain_tip = context.blockchain_tip().await?.get_ref().await;
     let leadership = blockchain_tip.epoch_leadership_schedule();
     let last_epoch = blockchain_tip.block_date().epoch;
     let stake = if let LeadershipConsensus::GenesisPraos(gp) = leadership.consensus() {
@@ -262,7 +273,7 @@ pub async fn get_stake_distribution_at(
     context: Data<Context>,
     epoch: Path<u32>,
 ) -> Result<impl Responder, Error> {
-    let mut tip_ref = chain_tip(&context).await?;
+    let mut tip_ref = context.blockchain_tip().await?.get_ref().await;
     let epoch = epoch.into_inner();
 
     if epoch > tip_ref.block_date().epoch {
@@ -272,16 +283,15 @@ pub async fn get_stake_distribution_at(
     loop {
         if tip_ref.block_date().epoch == epoch {
             break;
-        } else {
-            if let Some(previous_epoch) = tip_ref.last_ref_previous_epoch() {
-                assert_eq!(
-                    previous_epoch.block_date().epoch + 1,
-                    tip_ref.block_date().epoch
-                );
+        }
+        match tip_ref.last_ref_previous_epoch() {
+            Some(previous_epoch) => {
+                if epoch > previous_epoch.block_date().epoch {
+                    return Err(ErrorNotFound("Epoch not found..."));
+                }
                 tip_ref = Arc::clone(previous_epoch);
-            } else {
-                return Err(ErrorNotFound("Epoch not found..."));
             }
+            _ => return Err(ErrorNotFound("Epoch not found...")),
         }
     }
 
@@ -313,7 +323,7 @@ fn create_stake(stake: &StakeDistribution) -> serde_json::Value {
 
 pub async fn get_settings(context: Data<Context>) -> Result<impl Responder, Error> {
     let full_context = context.try_full().await?;
-    let blockchain_tip = chain_tip_from_full(&full_context).await;
+    let blockchain_tip = context.blockchain_tip().await?.get_ref().await;
     let ledger = blockchain_tip.ledger();
     let static_params = ledger.get_static_parameters();
     let consensus_version = ledger.consensus_version();
@@ -392,8 +402,11 @@ pub async fn get_leaders_logs(context: Data<Context>) -> Result<impl Responder, 
 }
 
 pub async fn get_stake_pools(context: Data<Context>) -> Result<impl Responder, Error> {
-    let stake_pool_ids = chain_tip(&context)
+    let stake_pool_ids = context
+        .blockchain_tip()
         .await?
+        .get_ref()
+        .await
         .ledger()
         .delegation()
         .stake_pool_ids()
@@ -415,13 +428,13 @@ pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder,
     let network_stats = peer_stats
         .into_iter()
         .map(|info| {
-            json! ({
-                "nodeId": info.id.to_string(),
-                "addr": info.addr,
-                "establishedAt": SystemTime::from(info.stats.connection_established()),
-                "lastBlockReceived": info.stats.last_block_received().map(SystemTime::from),
-                "lastFragmentReceived": info.stats.last_fragment_received().map(SystemTime::from),
-                "lastGossipReceived": info.stats.last_gossip_received().map(SystemTime::from),
+            json!(PeerStats {
+                node_id: info.id.to_string(),
+                addr: info.addr,
+                established_at: SystemTime::from(info.stats.connection_established()),
+                last_block_received: info.stats.last_block_received().map(SystemTime::from),
+                last_fragment_received: info.stats.last_fragment_received().map(SystemTime::from),
+                last_gossip_received: info.stats.last_gossip_received().map(SystemTime::from),
             })
         })
         .collect::<Vec<_>>();
@@ -432,7 +445,7 @@ pub async fn get_rewards_info_epoch(
     context: Data<Context>,
     epoch: Path<u32>,
 ) -> Result<impl Responder, Error> {
-    let mut tip_ref = chain_tip(&context).await?;
+    let mut tip_ref = context.blockchain_tip().await?.get_ref().await;
     let epoch = epoch.into_inner();
 
     if epoch > tip_ref.block_date().epoch {
@@ -442,16 +455,15 @@ pub async fn get_rewards_info_epoch(
     loop {
         if tip_ref.block_date().epoch == epoch {
             break;
-        } else {
-            if let Some(previous_epoch) = tip_ref.last_ref_previous_epoch() {
-                assert_eq!(
-                    previous_epoch.block_date().epoch + 1,
-                    tip_ref.block_date().epoch
-                );
+        }
+        match tip_ref.last_ref_previous_epoch() {
+            Some(previous_epoch) => {
+                if epoch > previous_epoch.block_date().epoch {
+                    return Err(ErrorNotFound("Epoch not found..."));
+                }
                 tip_ref = Arc::clone(previous_epoch);
-            } else {
-                return Err(ErrorNotFound("Epoch not found..."));
             }
+            _ => return Err(ErrorNotFound("Epoch not found...")),
         }
     }
 
@@ -468,7 +480,7 @@ pub async fn get_rewards_info_history(
     context: Data<Context>,
     length: Path<usize>,
 ) -> Result<impl Responder, Error> {
-    let mut tip_ref = chain_tip(&context).await?;
+    let mut tip_ref = context.blockchain_tip().await?.get_ref().await;
     let length = length.into_inner();
 
     let mut vec = Vec::new();
@@ -498,7 +510,7 @@ pub async fn get_utxo(
 ) -> Result<impl Responder, Error> {
     let (fragment_id_hex, output_index) = path_params.into_inner();
     let fragment_id = parse_fragment_id(&fragment_id_hex)?;
-    let tip_reference = chain_tip(&context).await?;
+    let tip_reference = context.blockchain_tip().await?.get_ref().await;
     let ledger = tip_reference.ledger();
     let output = ledger.utxo_out(fragment_id, output_index).ok_or_else(|| {
         ErrorNotFound(format!(
@@ -517,7 +529,7 @@ pub async fn get_stake_pool(
     pool_id_hex: Path<String>,
 ) -> Result<impl Responder, Error> {
     let pool_id = pool_id_hex.parse().map_err(ErrorBadRequest)?;
-    let chain_tip = chain_tip(&context).await?;
+    let chain_tip = context.blockchain_tip().await?.get_ref().await;
     let ledger = chain_tip.ledger();
     let pool = ledger
         .delegation()
@@ -553,8 +565,8 @@ pub async fn get_stake_pool(
 }
 
 pub async fn get_diagnostic(context: Data<Context>) -> Result<impl Responder, Error> {
-    let full_context = context.try_full().await?;
-    serde_json::to_string(&full_context.diagnostic).map_err(ErrorInternalServerError)
+    let diagnostic = context.get_diagnostic_data().await?;
+    serde_json::to_string(&diagnostic).map_err(ErrorInternalServerError)
 }
 
 pub async fn get_network_p2p_quarantined(context: Data<Context>) -> Result<impl Responder, Error> {
