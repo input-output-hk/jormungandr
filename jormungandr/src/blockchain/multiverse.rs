@@ -1,48 +1,39 @@
 use crate::blockcfg::{ChainLength, HeaderHash, Ledger, Multiverse as MultiverseData};
 use chain_impl_mockchain::multiverse;
-use futures03::compat::*;
-use std::convert::Infallible;
-use tokio::{prelude::*, sync::lock::Lock};
+use std::sync::Arc;
+use tokio02::sync::RwLock;
 
 pub struct Multiverse<T> {
-    inner: Lock<MultiverseData<T>>,
+    inner: Arc<RwLock<MultiverseData<T>>>,
 }
 
 impl<T> Multiverse<T> {
     pub fn new() -> Self {
         Multiverse {
-            inner: Lock::new(MultiverseData::new()),
+            inner: Arc::new(RwLock::new(MultiverseData::new())),
         }
     }
 
-    pub fn insert(
+    pub async fn insert(
         &self,
         chain_length: ChainLength,
         hash: HeaderHash,
         value: T,
-    ) -> impl Future<Item = multiverse::Ref<T>, Error = Infallible> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .map(move |mut guard| guard.insert(chain_length, hash, value))
+    ) -> multiverse::Ref<T> {
+        let mut guard = self.inner.write().await;
+        guard.insert(chain_length, hash, value)
     }
 
-    pub fn get_ref(
-        &self,
-        hash: HeaderHash,
-    ) -> impl Future<Item = Option<multiverse::Ref<T>>, Error = Infallible> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock())).map(move |guard| guard.get_ref(&hash))
+    pub async fn get_ref(&self, hash: HeaderHash) -> Option<multiverse::Ref<T>> {
+        let guard = self.inner.read().await;
+        guard.get_ref(&hash)
     }
 }
 
 impl<T: Clone> Multiverse<T> {
-    pub fn get(&self, hash: HeaderHash) -> impl Future<Item = Option<T>, Error = Infallible> {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok(inner.poll_lock()))
-            .map(move |guard| guard.get(&hash).as_deref().cloned())
+    pub async fn get(&self, hash: HeaderHash) -> Option<T> {
+        let guard = self.inner.read().await;
+        guard.get(&hash).as_deref().cloned()
     }
 }
 
@@ -53,13 +44,8 @@ impl Multiverse<Ledger> {
     ///       we need to generalize the `chain_impl_mockchain` to handle
     ///       the garbage collection for any `T`
     pub async fn purge(&self) {
-        let mut inner = self.inner.clone();
-
-        future::poll_fn(move || Ok::<_, Infallible>(inner.poll_lock()))
-            .map(|mut guard| guard.gc())
-            .compat()
-            .await
-            .unwrap();
+        let mut guard = self.inner.write().await;
+        guard.gc()
     }
 }
 
