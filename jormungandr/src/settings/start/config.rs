@@ -173,7 +173,13 @@ pub struct P2pConfig {
 #[serde(deny_unknown_fields)]
 pub struct TrustedPeer {
     pub address: Address,
-    pub id: Id,
+
+    // KEEP the ID optional, this is no longer needed but removing this will
+    // allow to keep some back compatibility.
+    //
+    // to depreciate once we can afford having a config breaking change
+    #[serde(skip, default)]
+    pub id: Option<Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
