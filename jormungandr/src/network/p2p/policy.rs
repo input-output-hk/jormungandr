@@ -1,10 +1,10 @@
 use jormungandr_lib::time::Duration;
 use lru::LruCache;
-use poldercast::{Address, Id, Node, PolicyReport};
+use poldercast::{Address, Node, PolicyReport};
 use serde::{Deserialize, Serialize};
 use slog::Logger;
 use std::collections::HashSet;
-use std::time::{Duration as StdDuration, Instant};
+use std::time::Duration as StdDuration;
 
 /// default quarantine duration is 10min
 const DEFAULT_QUARANTINE_DURATION: StdDuration = StdDuration::from_secs(10 * 60);
@@ -22,7 +22,7 @@ const DEFAULT_MAX_NUM_QUARANTINE_RECORDS: usize = 24_000;
 pub struct Policy {
     quarantine_duration: StdDuration,
     max_quarantine: StdDuration,
-    records: LruCache<Id, Records>,
+    records: LruCache<Address, Records>,
     quarantine_whitelist: HashSet<Address>,
     logger: Logger,
 }
@@ -62,7 +62,7 @@ impl Policy {
         }
     }
 
-    fn quarantine_duration_for(&mut self, id: Id) -> StdDuration {
+    fn quarantine_duration_for(&mut self, id: Address) -> StdDuration {
         if let Some(r) = self.records.get_mut(&id) {
             r.quarantine_for(self.quarantine_duration, self.max_quarantine)
         } else {
@@ -73,7 +73,7 @@ impl Policy {
         }
     }
 
-    fn update(&mut self, id: Id) {
+    fn update(&mut self, id: Address) {
         if let Some(r) = self.records.get_mut(&id) {
             r.update();
         } else {
