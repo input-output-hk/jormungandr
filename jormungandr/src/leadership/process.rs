@@ -15,7 +15,7 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot,
 };
-use futures03::{compat::*, future::TryFutureExt, sink::SinkExt};
+use futures03::{future::TryFutureExt, sink::SinkExt};
 use jormungandr_lib::{
     interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
@@ -501,7 +501,6 @@ impl Module {
                     let parent = block.header.block_parent_hash();
                     let chain_length: u32 = block.header.chain_length().into();
                     sender
-                        .sink_compat()
                         .send(BlockMsg::LeadershipBlock(block))
                         .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
                         .await?;
