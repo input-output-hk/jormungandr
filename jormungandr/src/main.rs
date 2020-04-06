@@ -190,7 +190,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         };
         let topology = topology.clone();
 
-        services.spawn_future("network", move |info| {
+        services.spawn_future_std("network", move |info| {
             let params = network::TaskParams {
                 config,
                 block0_hash,
@@ -530,9 +530,9 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let service_context = context.clone();
             let explorer = settings.explorer;
             let server_handler = rest::start_rest_server(rest, explorer, &context)?;
-            services.spawn_future("rest", move |info| {
-                block_on(service_context.set_logger(info.into_logger()));
-                server_handler
+            services.spawn_future_std("rest", move |info| async move {
+                service_context.set_logger(info.into_logger()).await;
+                server_handler.await
             });
             Some(context)
         }

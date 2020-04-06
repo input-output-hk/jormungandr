@@ -9,13 +9,17 @@ use crate::settings::start::{Cors as CorsConfig, Rest, Tls as TlsConfig};
 use actix_cors::{Cors, CorsFactory};
 use actix_rt::System;
 use actix_web::{dev::Server as ActixServer, web::ServiceConfig, App, HttpServer};
-use futures::sync::oneshot::{self, Receiver};
-use futures::{Async, Future, Poll};
+use futures03::{
+    channel::oneshot::{self, Receiver},
+    prelude::*,
+    task::{Context, Poll},
+};
 use rustls::{internal::pemfile, Certificate, NoClientAuth, PrivateKey, ServerConfig};
 use std::{
     fs::File,
     io::BufReader,
     net::ToSocketAddrs,
+    pin::Pin,
     sync::{mpsc, Arc},
     thread,
 };
@@ -71,13 +75,13 @@ impl Server {
 }
 
 impl Future for Server {
-    type Item = ();
-    type Error = ();
+    type Output = ();
 
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         match self.stop_receiver.poll() {
-            Err(_) => Ok(Async::Ready(())),
-            Ok(ok) => Ok(ok),
+            Poll::Ready(Ok(_)) => Poll::Ready(()),
+            Poll::Ready(Err(_)) => Poll::Ready(()),
+            Poll::Pending => Poll::Pending,
         }
     }
 }
