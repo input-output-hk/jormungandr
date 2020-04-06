@@ -20,7 +20,6 @@ use juniper::{graphql_union, EmptyMutation, FieldResult, IntoResolvable, RootNod
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::str::FromStr;
-use tokio::prelude::*;
 
 use self::scalars::{
     BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Slot,
@@ -47,13 +46,10 @@ impl Block {
     }
 
     fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
-        db.get_block(&self.hash)
-            .wait()
-            .unwrap_or_else(|e| match e {})
-            .ok_or(
-                ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
-                    .into(),
-            )
+        block_on(db.get_block(&self.hash)).ok_or(
+            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
+                .into(),
+        )
     }
 }
 
@@ -256,15 +252,9 @@ struct Transaction {
 
 impl Transaction {
     fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let block_hash = context
-            .db
-            .find_block_hash_by_transaction(&id)
-            .wait()
-            .unwrap()
-            .ok_or(ErrorKind::NotFound(format!(
-                "transaction not found: {}",
-                &id,
-            )))?;
+        let block_hash = block_on(context.db.find_block_hash_by_transaction(&id)).ok_or(
+            ErrorKind::NotFound(format!("transaction not found: {}", &id,)),
+        )?;
 
         Ok(Transaction {
             id,
@@ -292,27 +282,17 @@ impl Transaction {
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
         let block_id = match self.block_hash {
             Some(block_id) => block_id,
-            None => context
-                .db
-                .find_block_hash_by_transaction(&self.id)
-                .wait()
-                .unwrap()
-                .ok_or(ErrorKind::InternalError(
-                    "Transaction's block was not found".to_owned(),
-                ))?,
+            None => block_on(context.db.find_block_hash_by_transaction(&self.id)).ok_or(
+                ErrorKind::InternalError("Transaction's block was not found".to_owned()),
+            )?,
         };
 
-        context
-            .db
-            .get_block(&block_id)
-            .wait()
-            .unwrap_or_else(|e| match e {})
-            .ok_or(
-                ErrorKind::InternalError(
-                    "transaction is in explorer but couldn't find its block".to_owned(),
-                )
-                .into(),
+        block_on(context.db.get_block(&block_id)).ok_or(
+            ErrorKind::InternalError(
+                "transaction is in explorer but couldn't find its block".to_owned(),
             )
+            .into(),
+        )
     }
 
     fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
@@ -465,11 +445,7 @@ impl Address {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<TransactionConnection> {
-        let transactions = context
-            .db
-            .get_transactions_by_address(&self.id)
-            .wait()
-            .unwrap_or_else(|e| match e {})
+        let transactions = block_on(context.db.get_transactions_by_address(&self.id))
             .unwrap_or(PersistentSequence::<FragmentId>::new());
 
         let boundaries = if transactions.len() > 0 {
@@ -821,16 +797,10 @@ pub struct Pool {
 impl Pool {
     fn from_string_id(id: &String, db: &ExplorerDB) -> FieldResult<Pool> {
         let id = certificate::PoolId::from_str(&id)?;
-        let blocks = db
-            .get_stake_pool_blocks(&id)
-            .wait()
-            .unwrap()
+        let blocks = block_on(db.get_stake_pool_blocks(&id))
             .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
-        let data = db
-            .get_stake_pool_data(&id)
-            .wait()
-            .unwrap()
+        let data = block_on(db.get_stake_pool_data(&id))
             .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
         Ok(Pool {
@@ -875,14 +845,9 @@ impl Pool {
     ) -> FieldResult<BlockConnection> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
-            None => context
-                .db
-                .get_stake_pool_blocks(&self.id)
-                .wait()
-                .unwrap()
-                .ok_or(ErrorKind::InternalError(
-                    "Stake pool in block is not indexed".to_owned(),
-                ))?,
+            None => block_on(context.db.get_stake_pool_blocks(&self.id)).ok_or(
+                ErrorKind::InternalError("Stake pool in block is not indexed".to_owned()),
+            )?,
         };
 
         let bounds = if blocks.len() > 0 {
@@ -918,11 +883,7 @@ impl Pool {
     pub fn registration(&self, context: &Context) -> FieldResult<PoolRegistration> {
         match &self.data {
             Some(data) => Ok(data.registration.clone().into()),
-            None => context
-                .db
-                .get_stake_pool_data(&self.id)
-                .wait()
-                .unwrap()
+            None => block_on(context.db.get_stake_pool_data(&self.id))
                 .map(|data| PoolRegistration::from(data.registration.clone()))
                 .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
         }
@@ -1054,9 +1015,7 @@ impl Epoch {
     }
 
     fn get_epoch_data(&self, db: &ExplorerDB) -> Option<EpochData> {
-        db.get_epoch(self.id.into())
-            .wait()
-            .expect("Infallible to not happen")
+        block_on(db.get_epoch(self.id.into()))
     }
 }
 
@@ -1087,19 +1046,19 @@ impl Epoch {
             None => return Ok(None),
         };
 
-        let epoch_lower_bound = context
-            .db
-            .get_block(&epoch_data.first_block)
-            .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
-            .wait()
-            .unwrap_or_else(|e| match e {});
+        let epoch_lower_bound = block_on(
+            context
+                .db
+                .get_block(&epoch_data.first_block)
+                .map(|block| u32::from(block.expect("The block to be indexed").chain_length)),
+        );
 
-        let epoch_upper_bound = context
-            .db
-            .get_block(&epoch_data.last_block)
-            .map(|block| u32::from(block.expect("The block to be indexed").chain_length))
-            .wait()
-            .unwrap_or_else(|e| match e {});
+        let epoch_upper_bound = block_on(
+            context
+                .db
+                .get_block(&epoch_data.last_block)
+                .map(|block| u32::from(block.expect("The block to be indexed").chain_length)),
+        );
 
         let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
             lower_bound: 0,
@@ -1118,18 +1077,13 @@ impl Epoch {
 
         BlockConnection::new(boundaries, pagination_arguments, |range| match range {
             PaginationInterval::Empty => unreachable!("No blocks found (not even genesis)"),
-            PaginationInterval::Inclusive(range) => context
-                .db
-                .get_block_hash_range(
-                    (range.lower_bound + epoch_lower_bound).into(),
-                    (range.upper_bound + epoch_lower_bound + 1).into(),
-                )
-                .wait()
-                // Error = Infallible
-                .unwrap()
-                .iter()
-                .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - epoch_lower_bound))
-                .collect(),
+            PaginationInterval::Inclusive(range) => block_on(context.db.get_block_hash_range(
+                (range.lower_bound + epoch_lower_bound).into(),
+                (range.upper_bound + epoch_lower_bound + 1).into(),
+            ))
+            .iter()
+            .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - epoch_lower_bound))
+            .collect(),
         })
         .map(Some)
     }
@@ -1192,12 +1146,10 @@ impl Query {
     }
 
     fn block_by_chain_length(length: ChainLength, context: &Context) -> FieldResult<Option<Block>> {
-        Ok(context
-            .db
-            .find_block_by_chain_length(length.try_into()?)
-            .wait()
-            .unwrap_or_else(|e| match e {})
-            .map(Block::from_valid_hash))
+        Ok(
+            block_on(context.db.find_block_by_chain_length(length.try_into()?))
+                .map(Block::from_valid_hash),
+        )
     }
 
     /// query all the blocks in a paginated view
@@ -1231,11 +1183,7 @@ impl Query {
             PaginationInterval::Inclusive(range) => {
                 let a = range.lower_bound.into();
                 let b = range.upper_bound.checked_add(1).unwrap().into();
-                context
-                    .db
-                    .get_block_hash_range(a, b)
-                    .wait()
-                    .unwrap()
+                block_on(context.db.get_block_hash_range(a, b))
                     .iter_mut()
                     .map(|(hash, chain_length)| (hash.clone(), u32::from(*chain_length)))
                     .collect()
@@ -1269,7 +1217,7 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<PoolConnection> {
-        let mut stake_pools = context.db.get_stake_pools().wait()?;
+        let mut stake_pools = block_on(context.db.get_stake_pools());
 
         // Although it's probably not a big performance concern
         // There are a few alternatives to not have to sort this
@@ -1341,12 +1289,12 @@ pub fn create_schema() -> Schema {
 }
 
 fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
-    context
-        .db
-        .get_latest_block_hash()
-        .and_then(|hash| context.db.get_block(&hash))
-        .wait()
-        .unwrap_or_else(|e| match e {})
-        .ok_or_else(|| ErrorKind::InternalError("tip is not in explorer".to_owned()))
-        .map_err(Into::into)
+    block_on(
+        context
+            .db
+            .get_latest_block_hash()
+            .and_then(|hash| context.db.get_block(&hash)),
+    )
+    .ok_or_else(|| ErrorKind::InternalError("tip is not in explorer".to_owned()))
+    .map_err(Into::into)
 }
