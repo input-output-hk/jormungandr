@@ -62,14 +62,13 @@ pub async fn get_account_state(
 }
 
 pub async fn get_message_logs(context: Data<Context>) -> Result<impl Responder, Error> {
-    let logs = intercom::unary_future(
-        context.try_full().await?.transaction_task.clone(),
-        context.logger().await?,
-        |handle| TransactionMsg::GetLogs(handle),
-    )
-    .compat()
-    .await
-    .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
+    let logger = context.logger.await?.new(o!("request" => "message_logs"));
+    let (reply_handle, reply_future) = intercom::unary_reply(logger);
+    let mbox = context.try_full().await?.transaction_task.clone();
+    mbox.send(TransactionMsg::GetLogs(reply_handle));
+    let logs = reply_future
+        .await?
+        .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
     Ok(Json(logs))
 }
 
@@ -417,14 +416,15 @@ pub async fn get_stake_pools(context: Data<Context>) -> Result<impl Responder, E
 
 pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder, Error> {
     let full_context = context.try_full().await?;
-    let peer_stats = intercom::unary_future(
-        full_context.network_task.clone(),
-        context.logger().await?,
-        |reply_handle| NetworkMsg::PeerInfo(reply_handle),
-    )
-    .compat()
-    .await
-    .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
+
+    let logger = context.logger.await?.new(o!("request" => "network_stats"));
+    let (reply_handle, reply_future) = intercom::unary_reply(logger);
+    let mbox = full_context.network_task.clone();
+    mbox.send(NetworkMsg::PeerInfo(reply_handle));
+    let peer_stats = reply_future
+        .await?
+        .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
+
     let network_stats = peer_stats
         .into_iter()
         .map(|info| {
