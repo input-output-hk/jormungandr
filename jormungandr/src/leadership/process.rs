@@ -4,7 +4,7 @@ use crate::{
         Ledger, LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, Ref, Tip},
-    intercom::{unary_future, BlockMsg, Error as IntercomError, TransactionMsg},
+    intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
     leadership::{
         enclave::{Enclave, EnclaveError, LeaderEvent},
         LeadershipLogHandle, Logs,
@@ -42,6 +42,9 @@ pub enum LeadershipError {
 
     #[error("fragment selection failed")]
     FragmentSelectionFailed(#[from] IntercomError),
+
+    #[error("Error while connecting to the fragment pool to query fragments for block")]
+    CannotConnectToFragmentPool,
 
     #[error("Cannot send the leadership block to the blockchain module")]
     CannotSendLeadershipBlock,
@@ -630,7 +633,7 @@ impl Schedule {
 }
 
 async fn prepare_block(
-    fragment_pool: MessageBox<TransactionMsg>,
+    mut fragment_pool: MessageBox<TransactionMsg>,
     block_date: BlockDate,
     ledger: Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
@@ -638,17 +641,25 @@ async fn prepare_block(
 ) -> Result<Contents, LeadershipError> {
     use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
-    unary_future(fragment_pool, logger, |reply_handle| {
-        TransactionMsg::SelectTransactions {
-            ledger: ledger.as_ref().clone(),
-            block_date,
-            ledger_params: epoch_parameters.as_ref().clone(),
-            selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
-            reply_handle,
-        }
-    })
-    .compat()
-    .await
+    let (reply_handle, reply_future) = unary_reply(logger.clone());
+
+    let msg = TransactionMsg::SelectTransactions {
+        ledger: ledger.as_ref().clone(),
+        block_date,
+        ledger_params: epoch_parameters.as_ref().clone(),
+        selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
+        reply_handle,
+    };
+
+    if fragment_pool.try_send(msg).is_err() {
+        error!(
+            logger,
+            "cannot send query to the fragment pool for some fragments"
+        );
+        Err(LeadershipError::CannotConnectToFragmentPool)
+    } else {
+        reply_future.await
+    }
 }
 
 fn too_late(now: SystemTime, event_end: SystemTime) -> bool {
