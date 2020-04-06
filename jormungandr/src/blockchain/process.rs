@@ -67,9 +67,7 @@ impl Process {
         self.start_branch_reprocessing(&service_info);
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
-        let mut input = input.compat();
-        while let Some(maybe_msg) = input.next().await {
-            let msg = maybe_msg.expect("error when receiving an incoming message");
+        while let Some(msg) = input.next().await {
             self.handle_input(
                 &service_info,
                 msg,
@@ -360,7 +358,6 @@ async fn process_and_propagate_new_ref(
 
     debug!(logger, "propagating block to the network"; "hash" => %hash);
     network_msg_box
-        .sink_compat()
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
         .await
         .map_err(|_| "Cannot propagate block to network".into())
@@ -400,7 +397,6 @@ async fn process_leadership_block(
 
     if let Some(msg_box) = explorer_msg_box {
         msg_box
-            .sink_compat()
             .send(ExplorerMsg::NewBlock(block))
             .await
             .map_err(|_| "Cannot propagate block to explorer".to_string())?;
@@ -509,16 +505,13 @@ async fn process_network_blocks(
     logger: Logger,
 ) -> Result<(), Error> {
     let (stream, reply) = handle.into_stream_and_reply();
-    let mut stream = stream
-        .compat()
-        .map_err(|()| Error::from("Error while processing block input stream"));
     let mut candidate = None;
     let mut latest_block: Option<Arc<Block>> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
         let (maybe_block, new_stream) = stream.into_future().await;
         match maybe_block {
-            Some(Ok(block)) => {
+            Some(block) => {
                 latest_block = Some(Arc::new(block.clone()));
                 let res = process_network_block(
                     &mut blockchain,
@@ -549,9 +542,6 @@ async fn process_network_blocks(
                         break candidate;
                     }
                 }
-            }
-            Some(Err(err)) => {
-                return Err(err);
             }
             None => {
                 reply.reply_ok(());
@@ -723,7 +713,6 @@ async fn process_chain_headers(
                 ()
             } else {
                 network_msg_box
-                    .sink_compat()
                     .send(NetworkMsg::GetBlocks(header_ids))
                     .await
                     .map_err(|_| error!(logger, "cannot request blocks from network"))
