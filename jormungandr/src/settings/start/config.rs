@@ -95,6 +95,11 @@ pub struct P2pConfig {
     /// all network interfaces.
     pub listen_address: Option<Address>,
 
+    /// keep the public id there and present, but yet make it optional as it is
+    /// no longer needed.
+    ///
+    /// TODO: To remove once we can afford a breaking change in the config
+    #[serde(default, skip)]
     pub public_id: Option<Id>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
@@ -177,7 +182,7 @@ pub struct TrustedPeer {
     // KEEP the ID optional, this is no longer needed but removing this will
     // allow to keep some back compatibility.
     //
-    // to depreciate once we can afford having a config breaking change
+    // TODO: to remove once we can afford having a config breaking change
     #[serde(skip, default)]
     pub id: Option<Id>,
 }
