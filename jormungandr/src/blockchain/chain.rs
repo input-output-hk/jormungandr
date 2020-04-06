@@ -317,11 +317,7 @@ impl Blockchain {
         let multiverse = self.ledgers.clone();
         let ref_cache = self.ref_cache.clone();
 
-        let ledger_ref = multiverse
-            .insert(chain_length, header_hash, ledger)
-            .compat()
-            .await
-            .unwrap();
+        let ledger_ref = multiverse.insert(chain_length, header_hash, ledger).await;
         let reference = Ref::new(
             ledger_ref,
             time_frame,
