@@ -12,8 +12,6 @@ use futures03::{
     stream,
     task::Poll,
 };
-use network_core::client::{BlockService, Client as _, GossipService};
-use network_core::error::Error as NetworkError;
 use slog::Logger;
 
 use std::fmt::Debug;
