@@ -1,9 +1,9 @@
 //! Multiple producer, single-consumer in-memory FIFO channels with
 //! asynchronous reading.
 
-use futures::prelude::*;
-use futures::sync::mpsc::{self, Receiver, Sender};
-pub use futures::sync::mpsc::{SendError, TrySendError};
+use futures03::prelude::*;
+use futures03::channel::mpsc::{self, Receiver, Sender};
+pub use futures03::channel::mpsc::{SendError, TrySendError};
 use slog::Logger;
 
 /// The output end of an in-memory FIFO channel.
