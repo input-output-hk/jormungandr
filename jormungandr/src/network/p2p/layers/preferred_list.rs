@@ -1,19 +1,11 @@
-pub use poldercast::{Address, Id};
+pub use poldercast::Address;
 use poldercast::{GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
 use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
-
-/// TODO: this structure is needed only temporarily, once we have
-///       have poldercast `0.13.x` we only need the address
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct TrustedPeer {
-    address: Address,
-    id: Id,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
@@ -22,8 +14,7 @@ pub struct PreferredListConfig {
     view_max: PreferredViewMax,
 
     #[serde(default)]
-    // peers: HashSet<Address>,
-    peers: Vec<TrustedPeer>,
+    peers: HashSet<Address>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -34,8 +25,7 @@ pub struct PreferredListLayer {
     view_max: usize,
 
     /// the buddy list
-    /// TODO: once we move to poldercast 0.8.13, use `peers: HashSet<Address>`,
-    peers: Vec<TrustedPeer>,
+    peers: HashSet<Address>,
 
     /// a pseudo random number generator, this will help with
     /// testing and reproducing issues.
@@ -57,7 +47,7 @@ impl PreferredListLayer {
 
     fn new_with_seed(
         view_max: usize,
-        peers: Vec<TrustedPeer>,
+        peers: Vec<Address>,
         seed: <ChaChaRng as SeedableRng>::Seed,
     ) -> Self {
         Self {
