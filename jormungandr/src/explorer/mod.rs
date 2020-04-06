@@ -23,11 +23,10 @@ use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse;
-use futures03::{compat::*, future::FutureExt, stream::TryStreamExt};
+use futures03::prelude::*;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::prelude::*;
-use tokio::sync::lock::{Lock, LockGuard};
+use tokio02::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Explorer {
@@ -41,7 +40,7 @@ struct Branch {
 }
 
 #[derive(Clone)]
-struct Tip(Lock<Branch>);
+struct Tip(Arc<RwLock<Branch>>);
 
 #[derive(Clone)]
 pub struct ExplorerDB {
@@ -108,15 +107,11 @@ impl Explorer {
         }
     }
 
-    pub fn handle_input(
-        &mut self,
-        info: &TokioServiceInfo,
-        input: Input<ExplorerMsg>,
-    ) -> impl Future<Item = (), Error = ()> {
+    pub async fn handle_input(&mut self, info: &TokioServiceInfo, input: Input<ExplorerMsg>) {
         let _logger = info.logger();
         let bquery = match input {
             Input::Shutdown => {
-                return future::ok(());
+                return;
             }
             Input::Input(msg) => msg,
         };
@@ -136,7 +131,6 @@ impl Explorer {
                 info.spawn_failable_std("apply block", fut)
             }
         }
-        future::ok::<(), ()>(())
     }
 }
 
@@ -275,51 +269,46 @@ impl ExplorerDB {
                 state_ref: state_ref.clone(),
                 length: chain_length,
             })
-            .compat()
-            .await
-            .map_err(|_: Infallible| unreachable!());
+            .await;
 
         Ok(state_ref)
     }
 
-    pub fn get_latest_block_hash(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
-        self.longest_chain_tip.get_block_id()
+    pub async fn get_latest_block_hash(&self) -> HeaderHash {
+        self.longest_chain_tip.get_block_id().await
     }
 
-    pub fn get_block(
-        &self,
-        block_id: &HeaderHash,
-    ) -> impl Future<Item = Option<ExplorerBlock>, Error = Infallible> {
+    pub async fn get_block(&self, block_id: &HeaderHash) -> Option<ExplorerBlock> {
         let block_id = block_id.clone();
         self.with_latest_state(move |state| {
             state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_epoch(
-        &self,
-        epoch: Epoch,
-    ) -> impl Future<Item = Option<EpochData>, Error = Infallible> {
+    pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
         let epoch = epoch.clone();
         self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| e.as_ref().clone()))
+            .await
     }
 
-    pub fn find_block_by_chain_length(
+    pub async fn find_block_by_chain_length(
         &self,
         chain_length: ChainLength,
-    ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
+    ) -> Option<HeaderHash> {
         self.with_latest_state(move |state| {
             state
                 .chain_lengths
                 .lookup(&chain_length)
                 .map(|b| b.as_ref().clone())
         })
+        .await
     }
 
-    pub fn find_block_hash_by_transaction(
+    pub async fn find_block_hash_by_transaction(
         &self,
         transaction_id: &FragmentId,
-    ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
+    ) -> Option<HeaderHash> {
         let transaction_id = transaction_id.clone();
         self.with_latest_state(move |state| {
             state
@@ -327,12 +316,13 @@ impl ExplorerDB {
                 .lookup(&transaction_id)
                 .map(|id| id.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_transactions_by_address(
+    pub async fn get_transactions_by_address(
         &self,
         address: &ExplorerAddress,
-    ) -> impl Future<Item = Option<PersistentSequence<FragmentId>>, Error = Infallible> {
+    ) -> Option<PersistentSequence<FragmentId>> {
         let address = address.clone();
         self.with_latest_state(move |state| {
             state
@@ -340,16 +330,17 @@ impl ExplorerDB {
                 .lookup(&address)
                 .map(|set| set.as_ref().clone())
         })
+        .await
     }
 
     // Get the hashes of all blocks in the range [from, to)
     // the ChainLength is returned to for easy of use in the case where
     // `to` is greater than the max
-    pub fn get_block_hash_range(
+    pub async fn get_block_hash_range(
         &self,
         from: ChainLength,
         to: ChainLength,
-    ) -> impl Future<Item = Vec<(HeaderHash, ChainLength)>, Error = Infallible> {
+    ) -> Vec<(HeaderHash, ChainLength)> {
         let from = u32::from(from);
         let to = u32::from(to);
 
@@ -363,12 +354,13 @@ impl ExplorerDB {
                 })
                 .collect()
         })
+        .await
     }
 
-    pub fn get_stake_pool_blocks(
+    pub async fn get_stake_pool_blocks(
         &self,
         pool: &PoolId,
-    ) -> impl Future<Item = Option<PersistentSequence<HeaderHash>>, Error = Infallible> {
+    ) -> Option<PersistentSequence<HeaderHash>> {
         let pool = pool.clone();
         self.with_latest_state(move |state| {
             state
@@ -376,12 +368,10 @@ impl ExplorerDB {
                 .lookup(&pool)
                 .map(|i| i.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_stake_pool_data(
-        &self,
-        pool: &PoolId,
-    ) -> impl Future<Item = Option<StakePoolData>, Error = Infallible> {
+    pub async fn get_stake_pool_data(&self, pool: &PoolId) -> Option<StakePoolData> {
         let pool = pool.clone();
         self.with_latest_state(move |state| {
             state
@@ -389,11 +379,10 @@ impl ExplorerDB {
                 .lookup(&pool)
                 .map(|i| i.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_stake_pools(
-        &self,
-    ) -> impl Future<Item = Vec<(PoolId, Arc<StakePoolData>)>, Error = Infallible> {
+    pub async fn get_stake_pools(&self) -> Vec<(PoolId, Arc<StakePoolData>)> {
         self.with_latest_state(move |state| {
             state
                 .stake_pool_data
@@ -401,30 +390,21 @@ impl ExplorerDB {
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect()
         })
+        .await
     }
 
     /// run given function with the longest branch's state
-    fn with_latest_state<T>(
-        &self,
-        f: impl Fn(State) -> T,
-    ) -> impl Future<Item = T, Error = Infallible> {
+    async fn with_latest_state<T>(&self, f: impl Fn(State) -> T) -> T {
         let multiverse = self.multiverse.clone();
-        self.get_latest_block_hash().and_then(move |branch_id| {
-            multiverse.get(branch_id).and_then(move |maybe_state| {
-                let state = maybe_state.expect("the longest chain to be indexed");
-                Ok(f(state))
-            })
-        })
+        let branch_id = self.get_latest_block_hash().await;
+        let maybe_state = multiverse.get(branch_id).await;
+        let state = maybe_state.expect("the longest chain to be indexed");
+        f(state)
     }
 
     fn blockchain(&self) -> &Blockchain {
         &self.blockchain
     }
-}
-
-fn get_lock<L>(lock: &Lock<L>) -> impl Future<Item = LockGuard<L>, Error = Infallible> {
-    let mut lock = (*lock).clone();
-    future::poll_fn(move || Ok(lock.poll_lock()))
 }
 
 fn apply_block_to_transactions(
@@ -612,23 +592,22 @@ impl BlockchainConfig {
 
 impl Tip {
     fn new(branch: Branch) -> Tip {
-        Tip(Lock::new(branch))
+        Tip(Arc::new(RwLock::new(branch)))
     }
 
-    fn compare_and_replace(&self, other: Branch) -> impl Future<Item = (), Error = Infallible> {
-        get_lock(&self.0).and_then(move |mut current| {
-            // Probably a different thing is needed for the == case
-            if other.length > (*current).length {
-                *current = Branch {
-                    state_ref: other.state_ref,
-                    length: other.length,
-                };
-            }
-            Ok(())
-        })
+    async fn compare_and_replace(&self, other: Branch) {
+        let current = self.0.write().await;
+
+        if other.length > (*current).length {
+            *current = Branch {
+                state_ref: other.state_ref,
+                length: other.length,
+            };
+        }
     }
 
-    fn get_block_id(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
-        get_lock(&self.0).map(|guard| *guard.state_ref.id())
+    async fn get_block_id(&self) -> HeaderHash {
+        let guard = self.0.read().await;
+        *guard.state_ref.id()
     }
 }
