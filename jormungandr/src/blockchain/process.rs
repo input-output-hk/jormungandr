@@ -733,7 +733,7 @@ async fn process_chain_headers(
                 ()
             } else {
                 network_msg_box
-                    .sink_compat()
+                    .sink()
                     .send(NetworkMsg::GetBlocks(header_ids))
                     .await
                     .map_err(|_| error!(logger, "cannot request blocks from network"))
