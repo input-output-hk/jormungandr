@@ -6,7 +6,7 @@ mod node;
 mod policy;
 mod topology;
 
-pub use self::gossip::{Gossip, Gossips, Peer, PeersResponse};
+pub use self::gossip::{Gossip, Gossips, Peer, Peers};
 pub use self::id::Id;
 pub use self::node::Node;
 pub use self::policy::{Policy, PolicyConfig};
