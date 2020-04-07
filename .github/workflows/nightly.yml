@@ -116,7 +116,7 @@ jobs:
         run: |
           $version=./target/${{ matrix.config.target }}/release/jormungandr.exe;
           $version=$version.trim("jormungandr ").trimend("-nightly");
-          echo ::set-env name=VERSION::$version;
+          echo "::set-env name=VERSION::$version";
 
       - name: Pack binaries if windows
         if: matrix.config.os == 'windows-latest'
