@@ -43,7 +43,7 @@ impl Pool {
         if fragments.is_empty() {
             return Ok(0);
         }
-        let mut network_msg_box = self.network_msg_box.clone().sink_compat();
+        let mut network_msg_box = self.network_msg_box.clone();
         let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
         let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
         let new_fragments = fragments
