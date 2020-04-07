@@ -105,7 +105,7 @@ jobs:
 
       - name: Get version if unix
         if: matrix.config.os != 'windows-latest'
-        run: echo "::set-env name=VERSION::`./target/${{ matrix.config.target }}/release/jormungandr --version | awk '{print $2}'`"
+        run: echo ::set-env name=VERSION::`./target/${{ matrix.config.target }}/release/jormungandr --version | awk '{print $2}'`
 
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
@@ -114,7 +114,7 @@ jobs:
       - name: Get version if windows
         if: matrix.config.os == 'windows-latest'
         run: |
-          $version=./target/${{ matrix.config.target }}/release/jormungandr.exe;
+          $version=./target/${{ matrix.config.target }}/release/jormungandr.exe --version;
           $version=$version.trim("jormungandr ").trimend("-nightly");
           echo "::set-env name=VERSION::$version";
 
