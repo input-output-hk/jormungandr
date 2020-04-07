@@ -1,6 +1,6 @@
 use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::{Storage, Tip};
-use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle03};
+use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
 use crate::network::p2p::{P2pTopology, Peer};
 use crate::utils::task::{Input, TokioServiceInfo};
 use chain_core::property::HasHeader;
@@ -132,7 +132,7 @@ async fn handle_get_headers_range(
     task_data: TaskData,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
-    handle: ReplyStreamHandle03<Header>,
+    handle: ReplyStreamHandle<Header>,
 ) {
     let res = task_data
         .storage
@@ -153,7 +153,7 @@ async fn handle_get_headers_range(
 async fn handle_get_blocks(
     task_data: TaskData,
     ids: Vec<HeaderHash>,
-    handle: ReplyStreamHandle03<Block>,
+    handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
     let mut handle = handle;
     for id in ids {
@@ -173,7 +173,7 @@ async fn handle_get_blocks(
 async fn handle_get_headers(
     task_data: TaskData,
     ids: Vec<HeaderHash>,
-    mut handle: ReplyStreamHandle03<Header>,
+    mut handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
     for id in ids {
         let res = match task_data.storage.get(id).await {
@@ -192,7 +192,7 @@ async fn handle_get_headers(
 async fn handle_pull_blocks_to_tip(
     task_data: TaskData,
     checkpoints: Vec<HeaderHash>,
-    handle: ReplyStreamHandle03<Block>,
+    handle: ReplyStreamHandle<Block>,
 ) {
     let tip = task_data.blockchain_tip.get_ref().await;
     let tip_hash = tip.hash();
