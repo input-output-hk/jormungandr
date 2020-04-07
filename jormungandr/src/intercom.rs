@@ -11,9 +11,9 @@ use chain_network::data::Peers;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
-use futures::{Future as Future01, Poll as Poll01, Sink as Sink01, StartSend, Stream as Stream01};
+use futures::{Future as Future01, Sink as Sink01, Stream as Stream01};
 use futures03::channel::{mpsc, oneshot};
-use futures03::compat::{Compat, CompatSink};
+use futures03::compat::Compat;
 use futures03::prelude::*;
 use slog::Logger;
 use std::{
@@ -262,21 +262,21 @@ impl<T: 'static> error::Error for ReplyTrySendError<T> {
 }
 
 #[derive(Debug)]
-pub struct ReplyStreamHandle03<T> {
+pub struct ReplyStreamHandle<T> {
     sender: mpsc::Sender<Result<T, Error>>,
 }
 
-impl<T> Unpin for ReplyStreamHandle03<T> {}
+impl<T> Unpin for ReplyStreamHandle<T> {}
 
-impl<T> Clone for ReplyStreamHandle03<T> {
+impl<T> Clone for ReplyStreamHandle<T> {
     fn clone(&self) -> Self {
-        ReplyStreamHandle03 {
+        ReplyStreamHandle {
             sender: self.sender.clone(),
         }
     }
 }
 
-impl<T> ReplyStreamHandle03<T> {
+impl<T> ReplyStreamHandle<T> {
     pub fn try_send_item(&mut self, item: Result<T, Error>) -> Result<(), ReplyTrySendError<T>> {
         self.sender.try_send(item).map_err(ReplyTrySendError)
     }
@@ -286,7 +286,7 @@ impl<T> ReplyStreamHandle03<T> {
     }
 }
 
-impl<T> Sink<Result<T, Error>> for ReplyStreamHandle03<T> {
+impl<T> Sink<Result<T, Error>> for ReplyStreamHandle<T> {
     type Error = ReplySendError;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
@@ -311,52 +311,6 @@ impl<T> Sink<Result<T, Error>> for ReplyStreamHandle03<T> {
         Pin::new(&mut self.sender)
             .poll_close(cx)
             .map_err(|_| ReplySendError)
-    }
-}
-
-pub struct ReplyStreamHandle<T>(CompatSink<ReplyStreamHandle03<T>, Result<T, Error>>);
-
-impl<T> ReplyStreamHandle<T> {
-    pub fn async_reply<S>(self, stream: S) -> impl Future01<Item = (), Error = ()>
-    where
-        S: Stream01<Item = T, Error = Error>,
-    {
-        self.0
-            .into_inner()
-            .sender
-            .compat()
-            .send_all(stream.then(Ok))
-            .then(|_| Ok(()))
-    }
-
-    pub fn async_error(self, err: Error) -> impl Future01<Item = (), Error = ()> {
-        self.0
-            .into_inner()
-            .sender
-            .compat()
-            .send(Err(err))
-            .then(|_| Ok(()))
-    }
-
-    pub fn into_03(self) -> ReplyStreamHandle03<T> {
-        self.0.into_inner()
-    }
-}
-
-impl<T> Sink01 for ReplyStreamHandle<T> {
-    type SinkItem = Result<T, Error>;
-    type SinkError = ReplySendError;
-
-    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, ReplySendError> {
-        self.0.start_send(item).map_err(|_| ReplySendError)
-    }
-
-    fn poll_complete(&mut self) -> Poll01<(), ReplySendError> {
-        self.0.poll_complete().map_err(|_| ReplySendError)
-    }
-
-    fn close(&mut self) -> Poll01<(), ReplySendError> {
-        self.0.close().map_err(|_| ReplySendError)
     }
 }
 
@@ -395,14 +349,14 @@ where
 pub fn stream_reply<T, E>(
     buffer: usize,
     logger: Logger,
-) -> (ReplyStreamHandle03<T>, ReplyStream<T, E>) {
+) -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
     let (sender, receiver) = mpsc::channel(buffer);
     let stream = ReplyStream {
         receiver,
         logger,
         _phantom_error: PhantomData,
     };
-    (ReplyStreamHandle03 { sender }, stream)
+    (ReplyStreamHandle { sender }, stream)
 }
 
 #[derive(Debug)]
@@ -529,10 +483,10 @@ pub enum TransactionMsg {
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
     GetPeers(ReplyHandle<Peers>),
-    GetHeaders(Vec<HeaderHash>, ReplyStreamHandle03<Header>),
-    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle03<Header>),
-    GetBlocks(Vec<HeaderHash>, ReplyStreamHandle03<Block>),
-    PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle03<Block>),
+    GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
+    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
+    GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
+    PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
 }
 
 impl Debug for ClientMsg {
