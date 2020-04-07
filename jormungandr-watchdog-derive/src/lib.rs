@@ -388,7 +388,6 @@ fn impl_core_services(input: &DeriveInput) -> TokenStream {
     }
 }
 
-
 #[proc_macro_derive(IntercomMsg)]
 pub fn derive_intercom_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Get syntax tree

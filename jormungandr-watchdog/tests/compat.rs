@@ -27,7 +27,6 @@ struct EchoMsg(String);
 #[derive(Debug, IntercomMsg)]
 struct QueryLine(tokio::sync::oneshot::Sender<legacy_tokio::sync::mpsc::Sender<EchoMsg>>);
 
-
 #[async_trait]
 impl Service for Echo {
     const SERVICE_IDENTIFIER: ServiceIdentifier = "echo";
