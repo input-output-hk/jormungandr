@@ -77,25 +77,25 @@ pub fn handle_input(
             info.timeout_spawn_failable_std(
                 "GetHeaders",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS),
-                handle_get_headers(task_data.clone(), ids, handle.into_03()),
+                handle_get_headers(task_data.clone(), ids, handle),
             );
         }
         ClientMsg::GetHeadersRange(checkpoints, to, handle) => {
             info.timeout_spawn_std(
                 "GetHeadersRange",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS_RANGE),
-                handle_get_headers_range(task_data.clone(), checkpoints, to, handle.into_03()),
+                handle_get_headers_range(task_data.clone(), checkpoints, to, handle),
             );
         }
         ClientMsg::GetBlocks(ids, handle) => {
             info.timeout_spawn_failable_std(
                 "get blocks",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCKS),
-                handle_get_blocks(task_data.clone(), ids, handle.into_03()),
+                handle_get_blocks(task_data.clone(), ids, handle),
             );
         }
         ClientMsg::PullBlocksToTip(from, handle) => {
-            let fut = handle_pull_blocks_to_tip(task_data.clone(), from, handle.into_03());
+            let fut = handle_pull_blocks_to_tip(task_data.clone(), from, handle);
             info.timeout_spawn_std(
                 "PullBlocksToTip",
                 Duration::from_secs(PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP),
