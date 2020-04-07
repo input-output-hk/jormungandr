@@ -6,7 +6,7 @@
 use async_trait::async_trait;
 use clap::App;
 use jormungandr_watchdog::{
-    service, CoreServices, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
+    service, CoreServices, IntercomMsg, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
 };
 use std::time::Duration;
 use tokio::time::delay_for;
@@ -20,13 +20,10 @@ struct Pong {
     state: ServiceState<Self>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, IntercomMsg)]
 struct PingMsg;
-#[derive(Debug)]
+#[derive(Debug, IntercomMsg)]
 struct PongMsg;
-
-impl service::IntercomMsg for PingMsg {}
-impl service::IntercomMsg for PongMsg {}
 
 #[async_trait]
 impl Service for Ping {

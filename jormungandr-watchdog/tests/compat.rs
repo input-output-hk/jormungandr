@@ -4,7 +4,7 @@
 use async_trait::async_trait;
 use clap::App;
 use jormungandr_watchdog::{
-    service, CoreServices, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
+    service, CoreServices, IntercomMsg, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
 };
 use std::time::Duration;
 use tokio::time::delay_for;
@@ -21,13 +21,12 @@ struct Client {
     state: ServiceState<Self>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, IntercomMsg)]
 struct EchoMsg(String);
 
-#[derive(Debug)]
+#[derive(Debug, IntercomMsg)]
 struct QueryLine(tokio::sync::oneshot::Sender<legacy_tokio::sync::mpsc::Sender<EchoMsg>>);
 
-impl service::IntercomMsg for QueryLine {}
 
 #[async_trait]
 impl Service for Echo {

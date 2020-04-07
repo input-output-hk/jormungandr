@@ -387,3 +387,18 @@ fn impl_core_services(input: &DeriveInput) -> TokenStream {
         _ => abort_call_site!("CoreServices only supports non-tuple struct"),
     }
 }
+
+
+#[proc_macro_derive(IntercomMsg)]
+pub fn derive_intercom_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Get syntax tree
+    let input = parse_macro_input!(input as DeriveInput);
+    // Get the type name
+    let type_name = &input.ident;
+    // Build default impl
+    let expanded = quote! {
+        impl jormungandr_watchdog::service::IntercomMsg for #type_name {}
+    };
+    // Return TokenStream for default impl
+    proc_macro::TokenStream::from(expanded)
+}
