@@ -1,4 +1,4 @@
-pub use poldercast::{Address, Id};
+pub use poldercast::{Address};
 use poldercast::{GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
 use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -6,13 +6,10 @@ use serde::{Deserialize, Serialize};
 
 const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
 
-/// TODO: this structure is needed only temporarily, once we have
-///       have poldercast `0.13.x` we only need the address
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct TrustedPeer {
     address: Address,
-    id: Id,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
