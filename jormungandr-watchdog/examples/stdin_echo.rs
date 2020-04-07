@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use clap::App;
 use jormungandr_watchdog::{
-    service, CoreServices, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
+    service, CoreServices, IntercomMsg, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
 };
 use tokio::{
     io::{stdin, stdout, AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
@@ -16,10 +16,8 @@ struct StdoutWriter {
     state: ServiceState<Self>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, IntercomMsg)]
 struct WriteMsg(String);
-
-impl service::IntercomMsg for WriteMsg {}
 
 #[async_trait]
 impl Service for StdinReader {
