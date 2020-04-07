@@ -529,10 +529,10 @@ pub enum TransactionMsg {
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
     GetPeers(ReplyHandle<Peers>),
-    GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
-    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
-    GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
-    PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
+    GetHeaders(Vec<HeaderHash>, ReplyStreamHandle03<Header>),
+    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle03<Header>),
+    GetBlocks(Vec<HeaderHash>, ReplyStreamHandle03<Block>),
+    PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle03<Block>),
 }
 
 impl Debug for ClientMsg {
