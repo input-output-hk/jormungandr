@@ -128,8 +128,8 @@ jobs:
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jormungandr-${{ env.version }}.${{ steps.current-time.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
-          asset_name: jormungandr-${{ env.version }}.${{ steps.current-time.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}
+          file: jormungandr-${{ env.VERSION }}.${{ steps.current-time.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
+          asset_name: jormungandr-${{ env.VERSION }}.${{ steps.current-time.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}
           tag: nightly
           file_glob: true
           overwrite: true
