@@ -1,7 +1,8 @@
 use async_trait::async_trait;
-use clap::App;
+use clap::{App, Arg, ArgMatches};
 use jormungandr_watchdog::{
-    service, CoreServices, IntercomMsg, Service, ServiceIdentifier, ServiceState, WatchdogBuilder,
+    service, CoreServices, IntercomMsg, Service, ServiceIdentifier, ServiceState, Settings,
+    WatchdogBuilder,
 };
 use tokio::{
     io::{stdin, stdout, AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
@@ -9,11 +10,10 @@ use tokio::{
     time::delay_for,
 };
 
-use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{fmt, EnvFilter};
-use tracing_subscriber::fmt::Subscriber;
 use std::time::Duration;
-
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::fmt::Subscriber;
+use tracing_subscriber::{fmt, EnvFilter};
 
 struct StdinReader {
     state: ServiceState<Self>,
@@ -100,14 +100,38 @@ struct LoggerConfig {
     level: LevelFilter,
 }
 
+impl Settings for LoggerConfig {
+    fn add_cli_args<'a, 'b>() -> Vec<Arg<'a, 'b>> {
+        vec![Arg::with_name("Log level")
+            .short("ll")
+            .long("log_level")
+            .takes_value(true)
+            .default_value("Warning")
+            .value_name("LOG_LEVEL")
+            .help("Services log level: []")]
+    }
+
+    fn matches_cli_args<'a>(&mut self, matches: &ArgMatches<'a>) {
+        if let Some(level) = matches.value_of("cfg") {
+            match level.to_lowercase().as_str() {
+                "debug" => self.level = LevelFilter::DEBUG,
+                "error" => self.level = LevelFilter::ERROR,
+                "info" => self.level = LevelFilter::INFO,
+                "off" => self.level = LevelFilter::OFF,
+                "trace" => self.level = LevelFilter::TRACE,
+                "warn" => self.level = LevelFilter::WARN,
+                _ => (),
+            }
+        }
+    }
+}
+
 struct LoggerService {
     state: ServiceState<Self>,
 }
 
 fn set_new_global_subscriber_default_with_filter(filter: EnvFilter) {
-    let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(filter)
-        .finish();
+    let subscriber = fmt::Subscriber::builder().with_env_filter(filter).finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
 }
 
@@ -131,8 +155,6 @@ impl Service for LoggerService {
         }
     }
 }
-
-
 
 fn main() {
     let subscriber = fmt::Subscriber::builder()
