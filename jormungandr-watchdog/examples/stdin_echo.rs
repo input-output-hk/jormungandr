@@ -8,6 +8,8 @@ use tokio::{
     stream::StreamExt as _,
 };
 
+use tracing::level_filters::LevelFilter;
+
 struct StdinReader {
     state: ServiceState<Self>,
 }
@@ -88,6 +90,32 @@ struct StdEcho {
     stdin: service::ServiceManager<StdinReader>,
     stdout: service::ServiceManager<StdoutWriter>,
 }
+
+struct LoggerConfig {
+    level: LevelFilter,
+}
+
+struct LoggerService {
+
+}
+
+#[async_trait]
+impl Service for LoggerService {
+    const SERVICE_IDENTIFIER: &'static str = "logger";
+    type State = service::NoState;
+    type Settings = LoggerConfig;
+    type IntercomMsg = service::NoIntercom;
+
+    fn prepare(service_state: ServiceState<Self>) -> Self {
+        unimplemented!()
+    }
+
+    async fn start(self) {
+        unimplemented!()
+    }
+}
+
+
 
 fn main() {
     use tracing_subscriber::{fmt, EnvFilter};
