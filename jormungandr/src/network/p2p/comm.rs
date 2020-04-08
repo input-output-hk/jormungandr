@@ -287,7 +287,7 @@ impl PeerComms {
         self.fragments = CommHandle::client_pending(fragment);
     }
 
-    pub fn set_pending_gossip(&mut self, gossip: Gossip<NodeData>) {
+    pub fn set_pending_gossip(&mut self, gossip: Gossip) {
         self.gossip = CommHandle::client_pending(gossip);
     }
 
@@ -305,10 +305,7 @@ impl PeerComms {
         self.fragments.try_send(fragment)
     }
 
-    pub fn try_send_gossip(
-        &mut self,
-        gossip: Gossip<NodeData>,
-    ) -> Result<(), PropagateError<Gossip<NodeData>>> {
+    pub fn try_send_gossip(&mut self, gossip: Gossip) -> Result<(), PropagateError<Gossip>> {
         self.gossip.try_send(gossip)
     }
 
