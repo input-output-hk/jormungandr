@@ -134,6 +134,13 @@ pub fn assert_is_up(node: &NodeController) -> Result<()> {
     Ok(())
 }
 
+pub fn assert(statement: bool, info: &str) -> Result<()> {
+    if !statement {
+        bail!(ErrorKind::AssertionFailed(info.to_string()))
+    }
+    Ok(())
+}
+
 pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Result<()> {
     if !status.is_in_a_block() {
         bail!(ErrorKind::AssertionFailed(format!(
