@@ -79,7 +79,7 @@ jobs:
 
       - name: Get current date
         run: |
-          export $DATE=`date +'%Y%m%d'`;
+          export DATE=`date +'%Y%m%d'`;
           echo ::set-env name=DATE::$DATE
         shell: bash
 
