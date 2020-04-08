@@ -22,7 +22,7 @@ pub struct P2p {
     /// the p2p discovery from.
     pub trusted_peers: Vec<TrustedPeer>,
 
-    pub listen_address: poldercast::Address,
+    pub listen_address: Option<poldercast::Address>,
 
     pub allow_private_addresses: bool,
 
@@ -69,8 +69,15 @@ pub struct NodeConfig {
 impl P2p {
     pub fn make_trusted_peer_setting(&self) -> TrustedPeer {
         TrustedPeer {
-            address: self.listen_address.clone(),
+            address: self.get_listen_address(),
             id: self.public_id.clone(),
         }
+    }
+
+    pub fn get_listen_address(&self) -> poldercast::Address {
+        if let Some(listen_address) = self.listen_address.clone() {
+            return listen_address;
+        }
+        self.public_address.clone()
     }
 }

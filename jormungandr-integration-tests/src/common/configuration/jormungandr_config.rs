@@ -52,7 +52,7 @@ impl JormungandrConfig {
         .parse()
         .unwrap();
 
-        self.node_config.p2p.listen_address = self.node_config.p2p.public_address.clone();
+        self.node_config.p2p.listen_address = Some(self.node_config.p2p.public_address.clone());
     }
 
     pub fn fees(&self) -> LinearFee {
@@ -63,7 +63,7 @@ impl JormungandrConfig {
     }
 
     pub fn get_p2p_listen_port(&self) -> u16 {
-        let address = self.node_config.p2p.listen_address.clone().to_string();
+        let address = self.node_config.p2p.get_listen_address().to_string();
         let tokens: Vec<&str> = address.split("/").collect();
         let port_str = tokens
             .get(4)
