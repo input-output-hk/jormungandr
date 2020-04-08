@@ -9,12 +9,14 @@ use tokio::{
     stream::StreamExt as _,
     time::delay_for,
 };
+use serde::{Deserialize, Serialize, Serializer, Deserializer};
 
 use std::time::Duration;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::Subscriber;
 use tracing_subscriber::{EnvFilter};
 use std::intrinsics::transmute;
+use serde::private::ser::serialize_tagged_newtype;
 
 struct StdinReader {
     state: ServiceState<Self>,
@@ -91,9 +93,36 @@ impl Service for StdoutWriter {
     }
 }
 
-#[derive(Clone)]
+
+#[derive(Debug)]
+struct LoggerLevelFilter(LevelFilter);
+
+#[derive(Clone, Serialize, Deserialize)]
 struct LoggerConfig {
-    level: EnvFilter,
+    level: LoggerLevelFilter,
+}
+
+impl Serialize for LoggerLevelFilter {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error> where
+        S: Serializer {
+        let ser = format!("{:?}", self.0).as_str();
+        serializer.serialize_i8(ser.len() as i8);
+        serializer.serialize_str(format!("{:?}", self.0).as_str())
+    }
+}
+
+impl<'de> Deserialize for LoggerLevelFilter {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error> where
+        D: Deserializer<'de> {
+        let size = deserializer.deserialize_i8()?;
+
+    }
+}
+
+impl Default for LoggerConfig {
+    fn default() -> Self {
+        LoggerConfig { level: LoggerLevelFilter(LevelFilter::ERROR) }
+    }
 }
 
 impl Settings for LoggerConfig {
@@ -109,15 +138,17 @@ impl Settings for LoggerConfig {
 
     fn matches_cli_args<'a>(&mut self, matches: &ArgMatches<'a>) {
         if let Some(level) = matches.value_of("cfg") {
-            match level.to_lowercase().as_str() {
-                "debug" => self.level = LevelFilter::DEBUG,
-                "error" => self.level = LevelFilter::ERROR,
-                "info" => self.level = LevelFilter::INFO,
-                "off" => self.level = LevelFilter::OFF,
-                "trace" => self.level = LevelFilter::TRACE,
-                "warn" => self.level = LevelFilter::WARN,
-                _ => (),
-            }
+            self.level = LoggerLevelFilter(
+                    match level.to_lowercase().as_str() {
+                        "debug" => LevelFilter::DEBUG,
+                        "error" => LevelFilter::ERROR,
+                        "info" => LevelFilter::INFO,
+                        "off" =>  LevelFilter::OFF,
+                        "trace" => LevelFilter::TRACE,
+                        "warn" => LevelFilter::WARN,
+                        _ => self.level.0.clone(),
+                }
+            );
         }
     }
 }
@@ -126,11 +157,11 @@ struct LoggerService {
     state: ServiceState<Self>,
 }
 
-fn set_new_global_subscriber_default_with_filter(filter: EnvFilter) {
-    let subscriber = Subscriber::builder().with_env_filter(filter.into()).finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
-
-}
+// fn set_new_global_subscriber_default_with_filter(filter: EnvFilter) {
+//     let subscriber = Subscriber::builder().with_env_filter(filter.into()).finish();
+//     tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
+//
+// }
 
 #[async_trait]
 impl Service for LoggerService {
@@ -140,13 +171,16 @@ impl Service for LoggerService {
     type IntercomMsg = service::NoIntercom;
 
     fn prepare(state: ServiceState<Self>) -> Self {
+        let subscriber = Subscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+        tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
         LoggerService { state }
     }
 
     async fn start(self) {
         loop {
             if let Some(cfg) = self.state.settings().updated().await {
-                set_new_global_subscriber_default_with_filter(cfg.level.clone());
+                // set_new_global_subscriber_default_with_filter(cfg.level.clone());
+                println!("{:?}", cfg.level);
             }
         }
     }
