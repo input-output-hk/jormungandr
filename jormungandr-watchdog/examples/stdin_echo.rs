@@ -6,9 +6,14 @@ use jormungandr_watchdog::{
 use tokio::{
     io::{stdin, stdout, AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
     stream::StreamExt as _,
+    time::delay_for,
 };
 
 use tracing::level_filters::LevelFilter;
+use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::fmt::Subscriber;
+use std::time::Duration;
+
 
 struct StdinReader {
     state: ServiceState<Self>,
@@ -96,7 +101,14 @@ struct LoggerConfig {
 }
 
 struct LoggerService {
+    state: ServiceState<Self>,
+}
 
+fn set_new_global_subscriber_default_with_filter(filter: EnvFilter) {
+    let subscriber = fmt::Subscriber::builder()
+        .with_env_filter(filter)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
 }
 
 #[async_trait]
@@ -106,20 +118,23 @@ impl Service for LoggerService {
     type Settings = LoggerConfig;
     type IntercomMsg = service::NoIntercom;
 
-    fn prepare(service_state: ServiceState<Self>) -> Self {
-        unimplemented!()
+    fn prepare(state: ServiceState<Self>) -> Self {
+        LoggerService { state }
     }
 
     async fn start(self) {
-        unimplemented!()
+        loop {
+            if let Some(cfg) = self.state.settings().updated().await {
+                set_new_global_subscriber_default(cfg.filter);
+            }
+            delay_for(Duration::from_secs(1)).await;
+        }
     }
 }
 
 
 
 fn main() {
-    use tracing_subscriber::{fmt, EnvFilter};
-
     let subscriber = fmt::Subscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
