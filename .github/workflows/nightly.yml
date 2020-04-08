@@ -78,10 +78,10 @@ jobs:
           args: --version 0.1.16 cross
 
       - name: Get current date
-        uses: srfrnk/current-time@master
-        id: current-date
-        with:
-          format: YYYYMMDD
+        run: |
+          export $DATE=`date +'%Y%m%d'`;
+          echo ::set-env name=DATE::$DATE
+        shell: bash
 
       - name: Checkout code
         uses: actions/checkout@v1
@@ -111,7 +111,7 @@ jobs:
 
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
-        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ env.VERSION }}.${{ steps.current-date.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.tar.gz jormungandr jcli
+        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.tar.gz jormungandr jcli
 
       - name: Get version if windows
         if: matrix.config.os == 'windows-latest'
@@ -122,14 +122,14 @@ jobs:
 
       - name: Pack binaries if windows
         if: matrix.config.os == 'windows-latest'
-        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ env.VERSION }}.${{ steps.current-date.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.zip
+        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.zip
 
       - name: Upload binaries to nightly release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jormungandr-${{ env.VERSION }}.${{ steps.current-date.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
-          asset_name: jormungandr-${{ env.VERSION }}.${{ steps.current-date.outputs.time }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}
+          file: jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
+          asset_name: jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}
           tag: nightly
           file_glob: true
           overwrite: true
