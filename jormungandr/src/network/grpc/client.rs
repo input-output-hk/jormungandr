@@ -40,7 +40,7 @@ pub async fn connect(peer: &Peer, node_id: Option<Id>) -> Result<Client, Connect
     let endpoint = destination_endpoint(peer.connection);
     endpoint.concurrency_limit(concurrency_limits::CLIENT_REQUESTS);
     endpoint.timeout(peer.timeout);
-    Client::connect(endpoint)
+    Client::connect(endpoint).await
 }
 
 fn destination_endpoint(addr: SocketAddr) -> transport::Endpoint {
