@@ -1,8 +1,6 @@
 on:
-  push:
-    branch: nightly_release_version_and_date
-#  schedule:
-#    - cron: '0 3 * * *' # run at 3 AM UTC
+  schedule:
+    - cron: '0 3 * * *' # run at 3 AM UTC
 
 name: Nightly Release
 
@@ -37,7 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: nightly
-          release_name: ${{ steps.version.outputs.version }} build
+          release_name: ${{ steps.version.outputs.version }}
           draft: false
           prerelease: true
 
