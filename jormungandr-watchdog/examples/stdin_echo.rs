@@ -90,6 +90,8 @@ impl Service for StdoutWriter {
     }
 }
 
+const LOGGER_CONFIG_LOG_LEVEL: &str = "logger config log level";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LogLevel {
     INFO,
@@ -124,24 +126,24 @@ fn log_level_into_tracing_level(level: &LogLevel) -> tracing::Level {
 
 impl Settings for LoggerConfig {
     fn add_cli_args<'a, 'b>() -> Vec<Arg<'a, 'b>> {
-        vec![Arg::with_name("Log level")
-            .short("ll")
-            .long("log_level")
+        vec![Arg::with_name(LOGGER_CONFIG_LOG_LEVEL)
+            .long("log-level")
             .takes_value(true)
-            .default_value("Warning")
+            .default_value("warn")
+            .possible_values(&["info", "warn", "debug", "error", "trace"])
             .value_name("LOG_LEVEL")
             .help("Services log level: []")]
     }
 
     fn matches_cli_args<'a>(&mut self, matches: &ArgMatches<'a>) {
-        if let Some(level) = matches.value_of("cfg") {
+        if let Some(level) = matches.value_of(LOGGER_CONFIG_LOG_LEVEL) {
             self.level = match level.to_lowercase().as_str() {
                 "info" => LogLevel::INFO,
                 "warn" => LogLevel::WARN,
                 "debug" => LogLevel::DEBUG,
                 "error" => LogLevel::ERROR,
                 "trace" => LogLevel::TRACE,
-                _ => self.level.clone(),
+                _ => unreachable!(),
             };
         }
     }
