@@ -106,7 +106,7 @@ jobs:
       - name: Get version if unix
         if: matrix.config.os != 'windows-latest'
         run: |
-          export VERSION=./target/${{ matrix.config.target }}/release/jormungandr --version | awk '{print $2}'
+          export VERSION=`./target/${{ matrix.config.target }}/release/jormungandr --version | awk '{print $2}'`
           echo "::set-env name=VERSION::$VERSION"
 
       - name: Pack binaries if unix
