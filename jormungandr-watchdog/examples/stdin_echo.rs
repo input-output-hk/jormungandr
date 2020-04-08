@@ -13,7 +13,8 @@ use tokio::{
 use std::time::Duration;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::fmt::Subscriber;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter};
+use std::intrinsics::transmute;
 
 struct StdinReader {
     state: ServiceState<Self>,
@@ -90,14 +91,9 @@ impl Service for StdoutWriter {
     }
 }
 
-#[derive(CoreServices)]
-struct StdEcho {
-    stdin: service::ServiceManager<StdinReader>,
-    stdout: service::ServiceManager<StdoutWriter>,
-}
-
+#[derive(Clone)]
 struct LoggerConfig {
-    level: LevelFilter,
+    level: EnvFilter,
 }
 
 impl Settings for LoggerConfig {
@@ -131,8 +127,9 @@ struct LoggerService {
 }
 
 fn set_new_global_subscriber_default_with_filter(filter: EnvFilter) {
-    let subscriber = fmt::Subscriber::builder().with_env_filter(filter).finish();
+    let subscriber = Subscriber::builder().with_env_filter(filter.into()).finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
+
 }
 
 #[async_trait]
@@ -149,19 +146,27 @@ impl Service for LoggerService {
     async fn start(self) {
         loop {
             if let Some(cfg) = self.state.settings().updated().await {
-                set_new_global_subscriber_default(cfg.filter);
+                set_new_global_subscriber_default_with_filter(cfg.level.clone());
             }
-            delay_for(Duration::from_secs(1)).await;
         }
     }
 }
 
-fn main() {
-    let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .finish();
 
-    tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
+#[derive(CoreServices)]
+struct StdEcho {
+    stdin: service::ServiceManager<StdinReader>,
+    stdout: service::ServiceManager<StdoutWriter>,
+    logger: service::ServiceManager<LoggerService>
+}
+
+
+fn main() {
+    // let subscriber = fmt::Subscriber::builder()
+    //     .with_env_filter(EnvFilter::from_default_env())
+    //     .finish();
+    //
+    // tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
 
     let app = App::new("stdin_echo");
     let watchdog = WatchdogBuilder::<StdEcho>::new(app).build();
@@ -170,6 +175,7 @@ fn main() {
     watchdog.spawn(async move {
         controller.start("stdout").await.unwrap();
         controller.start("stdin").await.unwrap();
+        controller.start("logger").await.unwrap();
     });
 
     watchdog.wait_finished();
