@@ -20,7 +20,7 @@ jobs:
       - name: Get version
         id: version
         run: |
-          export VERSION=`cat ./jormungandr/Cargo.toml | grep "version" | head -n 1 | awk '{print $3}'`
+          export VERSION=`cat ./jormungandr/Cargo.toml | grep "version" | head -n 1 | awk '{print $3}' | cut -d "\"" -f 2 `
           echo ::set-output name=version::$VERSION
 
       - name: Delete nightly with hub
