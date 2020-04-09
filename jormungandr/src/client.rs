@@ -115,7 +115,7 @@ async fn get_peers(topology: &P2pTopology) -> Result<Peers, Error> {
     let view = topology.view(poldercast::Selection::Any).await;
     let mut peers = Vec::new();
     for n in view.peers.into_iter() {
-        if let Some(addr) = n.address() {
+        if let Some(addr) = n.to_socketaddr() {
             peers.push(Peer { addr });
         }
     }
