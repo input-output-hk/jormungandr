@@ -137,7 +137,7 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync",
         MeasurementReportInterval::Long,
-    );
+    )?;
 
     let mut wallet = controller.wallet(&wallet_name(1)).unwrap();
     let wallet2 = controller.wallet(&wallet_name(2)).unwrap();
