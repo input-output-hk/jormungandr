@@ -187,6 +187,12 @@ pub struct TrustedPeer {
     pub id: Option<Id>,
 }
 
+// Lifted from poldercast 0.11 for backward compatibility
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Id([u8; ID_LEN]);
+
+const ID_LEN: usize = 24;
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Leadership {
