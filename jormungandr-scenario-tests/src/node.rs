@@ -178,6 +178,14 @@ impl NodeController {
         format!("{}/{}", self.base_url(), path)
     }
 
+    pub fn public_id(&self) -> poldercast::Id {
+        self.settings.config.p2p.public_id.clone()
+    }
+
+    pub fn address(&self) -> poldercast::Address {
+        self.settings.config.p2p.public_address.clone()
+    }
+
     fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("POST '{}'", path));
 
@@ -555,7 +563,7 @@ impl NodeController {
                 self.settings
                     .config
                     .p2p
-                    .listen_address
+                    .get_listen_address()
                     .to_socketaddr()
                     .unwrap()
                     .port(),
@@ -616,7 +624,7 @@ impl Node {
     }
 
     pub fn controller(&self) -> NodeController {
-        let p2p_address = format!("{}", self.node_settings.config().p2p.listen_address);
+        let p2p_address = format!("{}", self.node_settings.config().p2p.get_listen_address());
 
         NodeController {
             alias: self.alias().clone(),

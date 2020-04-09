@@ -11,9 +11,11 @@ pub struct SpawnParams {
     pub mempool: Option<Mempool>,
     pub policy: Option<Policy>,
     pub jormungandr: Option<PathBuf>,
+    pub listen_address: Option<Option<poldercast::Address>>,
     pub leadership_mode: LeadershipMode,
     pub persistence_mode: PersistenceMode,
     pub alias: String,
+    pub node_id: Option<poldercast::Id>,
 }
 
 impl SpawnParams {
@@ -27,11 +29,22 @@ impl SpawnParams {
             alias: alias.to_owned(),
             leadership_mode: LeadershipMode::Leader,
             persistence_mode: PersistenceMode::Persistent,
+            node_id: None,
+            listen_address: None,
         }
     }
 
     pub fn get_alias(&self) -> String {
         self.alias.clone()
+    }
+
+    pub fn no_listen_address(&mut self) -> &mut Self {
+        self.listen_address(None)
+    }
+
+    pub fn listen_address(&mut self, address: Option<poldercast::Address>) -> &mut Self {
+        self.listen_address = Some(address);
+        self
     }
 
     pub fn get_leadership_mode(&self) -> LeadershipMode {
@@ -44,6 +57,11 @@ impl SpawnParams {
 
     pub fn topics_of_interest(&mut self, topics_of_interest: TopicsOfInterest) -> &mut Self {
         self.topics_of_interest = Some(topics_of_interest);
+        self
+    }
+
+    pub fn node_id(&mut self, node_id: poldercast::Id) -> &mut Self {
+        self.node_id = Some(node_id);
         self
     }
 
@@ -109,6 +127,14 @@ impl SpawnParams {
 
         if let Some(policy) = &self.policy {
             new_settings.config.p2p.policy = Some(policy.clone());
+        }
+
+        if let Some(node_id) = &self.node_id {
+            new_settings.config.p2p.public_id = node_id.clone();
+        }
+
+        if let Some(listen_address_option) = &self.listen_address {
+            new_settings.config.p2p.listen_address = listen_address_option.clone();
         }
         new_settings
     }

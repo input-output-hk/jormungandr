@@ -40,63 +40,68 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         controller.spawn_node(LEADER1, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader1.wait_for_bootstrap()?;
 
-    let _leader1_node_id = leader1.stats()?.stats.expect("empty stats").node_id.clone();
-    assert_node_stats(&leader1, 0, 0, 0, 0, 0)?;
-
-    utils::assert_equals(&vec![], &leader1.network_stats()?, "network_stats")?;
-    utils::assert_equals(&vec![], &leader1.p2p_quarantined()?, "p2p_quarantined")?;
-    utils::assert_equals(&vec![], &leader1.p2p_non_public()?, "p2p_non_public")?;
-    utils::assert_equals(&vec![], &leader1.p2p_available()?, "p2p_available")?;
-    utils::assert_equals(&vec![], &leader1.p2p_view()?, "p2p_view")?;
+    super::assert_node_stats(&leader1, 0, 0, 0, 0, "no peers for leader1")?;
+    let info_before = "no peers for leader 1";
+    utils::assert_equals(
+        &vec![],
+        &leader1.network_stats()?,
+        &format!("{} network_stats", info_before),
+    )?;
+    utils::assert_equals(
+        &vec![],
+        &leader1.p2p_quarantined()?,
+        &format!("{} p2p_quarantined", info_before),
+    )?;
+    utils::assert_equals(
+        &vec![],
+        &leader1.p2p_non_public()?,
+        &format!("{} p2p_non_public", info_before),
+    )?;
+    utils::assert_equals(
+        &vec![],
+        &leader1.p2p_available()?,
+        &format!("{} p2p_available", info_before),
+    )?;
+    utils::assert_equals(
+        &vec![],
+        &leader1.p2p_view()?,
+        &format!("{} p2p_view", info_before),
+    )?;
 
     let leader2 =
-        controller.spawn_node(LEADER2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+        controller.spawn_node_custom(controller.new_spawn_params(LEADER2).no_listen_address())?;
     leader2.wait_for_bootstrap()?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 1, 0, 1, 0, "bootstrapped leader1")?;
+    super::assert_node_stats(&leader2, 1, 0, 1, 0, "bootstrapped leader2")?;
 
-    utils::wait(90);
-    assert_node_stats(&leader1, 1, 1, 0, 1, 0)?;
-    assert_node_stats(&leader2, 1, 1, 0, 1, 0)?;
-    leader1.shutdown()?;
+    let leader3 =
+        controller.spawn_node_custom(controller.new_spawn_params(LEADER3).no_listen_address())?;
+
+    leader3.wait_for_bootstrap()?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 2, 0, 2, 0, "leader1: leader3 node is up")?;
+    super::assert_node_stats(&leader2, 2, 0, 2, 0, "leader2: leader3 node is up")?;
+    super::assert_node_stats(&leader3, 2, 0, 2, 0, "leader3: leader3 node is up")?;
+
+    let leader4 =
+        controller.spawn_node_custom(controller.new_spawn_params(LEADER4).no_listen_address())?;
+
+    leader4.wait_for_bootstrap()?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 3, 0, 3, 0, "leader1: leader4 node is up")?;
+    super::assert_node_stats(&leader2, 3, 0, 3, 0, "leader2: leader4 node is up")?;
+    super::assert_node_stats(&leader3, 3, 0, 3, 0, "leader3: leader4 node is up")?;
+    super::assert_node_stats(&leader3, 3, 0, 3, 0, "leader4: leader4 node is up")?;
+
     leader2.shutdown()?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 2, 1, 3, 0, "leader1: leader 2 is down")?;
+    super::assert_node_stats(&leader3, 2, 1, 3, 0, "leader3: leader 2 is down")?;
+    super::assert_node_stats(&leader4, 2, 1, 3, 0, "leader4: leader 2 is down")?;
+
+    leader1.shutdown()?;
+    leader3.shutdown()?;
     controller.finalize();
     Ok(ScenarioResult::passed())
-}
-
-fn assert_node_stats(
-    node: &NodeController,
-    peer_available_cnt: usize,
-    peer_connected_cnt: usize,
-    peer_quarantined_cnt: usize,
-    peer_total_cnt: usize,
-    peer_unreachable_cnt: usize,
-) -> Result<()> {
-    node.log_stats();
-    let stats = node.stats()?.stats.expect("empty stats");
-    utils::assert_equals(
-        &peer_available_cnt,
-        &stats.peer_available_cnt.clone(),
-        &format!("peer_available_cnt, Node {}", node.alias()),
-    )?;
-    utils::assert_equals(
-        &peer_connected_cnt,
-        &stats.peer_connected_cnt,
-        &format!("peer_connected_cnt, Node {}", node.alias()),
-    )?;
-    utils::assert_equals(
-        &peer_quarantined_cnt,
-        &stats.peer_quarantined_cnt,
-        &format!("peer_quarantined_cnt, Node {}", node.alias()),
-    )?;
-    utils::assert_equals(
-        &peer_total_cnt,
-        &stats.peer_total_cnt,
-        &format!("peer_total_cnt, Node {}", node.alias()),
-    )?;
-    utils::assert_equals(
-        &peer_unreachable_cnt,
-        &stats.peer_unreachable_cnt,
-        &format!("peer_unreachable_cnt, Node {}", node.alias()),
-    )?;
-
-    Ok(())
 }

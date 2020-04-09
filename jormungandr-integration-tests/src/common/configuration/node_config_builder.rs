@@ -56,7 +56,7 @@ impl NodeConfigBuilder {
                 trusted_peers: vec![],
                 public_address: grpc_public_address,
                 public_id: public_id.clone(),
-                listen_address: grpc_listen_address,
+                listen_address: Some(grpc_listen_address),
                 topics_of_interest: Some(TopicsOfInterest {
                     messages: String::from("high"),
                     blocks: String::from("high"),
@@ -103,7 +103,7 @@ impl NodeConfigBuilder {
     }
 
     pub fn with_listen_address(&mut self, listen_address: String) -> &mut Self {
-        self.p2p.listen_address = listen_address.parse().unwrap();
+        self.p2p.listen_address = Some(listen_address.parse().unwrap());
         self
     }
 
