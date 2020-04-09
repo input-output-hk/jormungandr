@@ -3,7 +3,7 @@ use super::super::{
         self,
         client::{BlockSubscription, FragmentSubscription, GossipSubscription},
     },
-    p2p::{comm::PeerComms, Id},
+    p2p::{comm::PeerComms, Address},
     Channels, ConnectionState,
 };
 use super::{Client, ClientBuilder, GlobalStateR, InboundSubscriptions};
@@ -100,10 +100,11 @@ pub enum ConnectError {
     },
     #[error("subscription request failed")]
     Subscription(#[source] net_error::Error),
-    #[error(
-        "node identifier {peer_responded} reported by the peer is not the expected {expected}"
-    )]
-    IdMismatch { expected: Id, peer_responded: Id },
+    #[error("node address {peer_responded} reported by the peer is not the expected {expected}")]
+    AddressMismatch {
+        expected: Address,
+        peer_responded: Address,
+    },
 }
 
 enum State {
@@ -210,7 +211,7 @@ impl ConnectFuture {
 }
 
 struct SubscriptionStaging {
-    pub node_id: Option<Id>,
+    pub node_address: Option<Address>,
     pub block_events: Option<BlockSubscription>,
     pub fragments: Option<FragmentSubscription>,
     pub gossip: Option<GossipSubscription>,
@@ -303,19 +304,19 @@ fn drive_subscribe_request<R, S>(
     cx: &mut Context<'_>,
     req: &mut Option<R>,
     sub: &mut Option<S>,
-    discovered_node_id: &mut Option<Id>,
+    discovered_node_address: &mut Option<Address>,
     ready: &mut Poll<()>,
 ) -> Result<(), ConnectError>
 where
-    R: Future<Output = Result<(S, Id), net_error::Error>>,
+    R: Future<Output = Result<(S, Address), net_error::Error>>,
 {
     if let Some(future) = req {
         let polled = future.poll(cx).map_err(ConnectError::Subscription)?;
         match polled {
             Poll::Pending => {}
-            Poll::Ready((stream, node_id)) => {
+            Poll::Ready((stream, node_address)) => {
                 *req = None;
-                handle_subscription_node_id(discovered_node_id, node_id)?;
+                handle_subscription_node_address(discovered_node_address, node_address)?;
                 *sub = Some(stream);
                 *ready = Poll::Ready(());
             }
@@ -324,16 +325,19 @@ where
     Ok(().into())
 }
 
-fn handle_subscription_node_id(staged: &mut Option<Id>, node_id: Id) -> Result<(), ConnectError> {
+fn handle_subscription_node_address(
+    staged: &mut Option<Address>,
+    node_address: Address,
+) -> Result<(), ConnectError> {
     match *staged {
         None => {
-            *staged = Some(node_id);
+            *staged = Some(node_address);
         }
         Some(expected) => {
-            if node_id != expected {
-                return Err(ConnectError::IdMismatch {
+            if node_address != expected {
+                return Err(ConnectError::AddressMismatch {
                     expected,
-                    peer_responded: node_id,
+                    peer_responded: node_address,
                 });
             }
         }
