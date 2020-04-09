@@ -13,6 +13,7 @@ pub struct SpawnParams {
     pub listen_address: Option<Option<poldercast::Address>>,
     pub leadership_mode: LeadershipMode,
     pub persistence_mode: PersistenceMode,
+    pub max_connections: Option<u32>,
     pub alias: String,
     pub node_id: Option<poldercast::Id>,
 }
@@ -30,7 +31,7 @@ impl SpawnParams {
             persistence_mode: PersistenceMode::Persistent,
             node_id: None,
             listen_address: None,
-        }
+            max_connections: None,        }
     }
 
     pub fn get_alias(&self) -> String {
@@ -61,6 +62,11 @@ impl SpawnParams {
 
     pub fn node_id(&mut self, node_id: poldercast::Id) -> &mut Self {
         self.node_id = Some(node_id);
+        self
+    }
+
+    pub fn max_connections(&mut self, max_connections: u32) -> &mut Self {
+        self.max_connections = Some(max_connections);
         self
     }
 
