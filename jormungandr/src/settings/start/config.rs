@@ -1,5 +1,5 @@
 use crate::{
-    network::p2p::{layers::LayersConfig, topic, Id, PolicyConfig},
+    network::p2p::{layers::LayersConfig, topic, Address, PolicyConfig},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
@@ -196,9 +196,6 @@ pub struct Leadership {
     pub logs_capacity: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Address(pub poldercast::Address);
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Topic(pub poldercast::Topic);
 
@@ -264,7 +261,6 @@ impl std::str::FromStr for TrustedPeer {
         let address = if let Some(address) = split.next() {
             address
                 .parse::<poldercast::Address>()
-                .map(Address)
                 .map_err(|e| e.to_string())?
         } else {
             return Err("Missing address component".to_owned());
@@ -280,41 +276,6 @@ impl std::str::FromStr for TrustedPeer {
     }
 }
 
-impl Address {
-    pub fn to_socketaddr(&self) -> Option<SocketAddr> {
-        self.0.to_socketaddr()
-    }
-}
-
-impl std::fmt::Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl Serialize for Address {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{}", self.0))
-    }
-}
-impl Serialize for Topic {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::Error;
-        if self.0 == topic::MESSAGES.into() {
-            serializer.serialize_str("messages")
-        } else if self.0 == topic::BLOCKS.into() {
-            serializer.serialize_str("blocks")
-        } else {
-            Err(S::Error::custom("invalid state... should not happen"))
-        }
-    }
-}
 impl Serialize for InterestLevel {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -325,34 +286,6 @@ impl Serialize for InterestLevel {
             poldercast::InterestLevel::Normal => serializer.serialize_str("normal"),
             poldercast::InterestLevel::High => serializer.serialize_str("high"),
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for Address {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct AddressVisitor;
-        impl<'de> Visitor<'de> for AddressVisitor {
-            type Value = Address;
-
-            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "Multiaddr (example: /ip4/192.168.0.1/tcp/443)")
-            }
-
-            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use serde::de::Unexpected;
-                match v.parse() {
-                    Err(_err) => Err(E::invalid_value(Unexpected::Str(v), &self)),
-                    Ok(addr) => Ok(Address(addr)),
-                }
-            }
-        }
-        deserializer.deserialize_str(AddressVisitor)
     }
 }
 
