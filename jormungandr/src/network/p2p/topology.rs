@@ -3,7 +3,7 @@
 
 use crate::{
     log::KEY_SUB_TASK,
-    network::p2p::{layers::PreferredListLayer, Gossips, Id, Node, Policy, PolicyConfig},
+    network::p2p::{layers::PreferredListLayer, Address, Gossips, Policy, PolicyConfig},
     settings::start::network::Configuration,
 };
 use futures03::prelude::*;
@@ -17,14 +17,14 @@ use tokio02::sync::RwLock;
 
 pub struct View {
     pub self_node: NodeProfile,
-    pub peers: Vec<Node>,
+    pub peers: Vec<Address>,
 }
 
 /// object holding the P2pTopology of the Node
 #[derive(Clone)]
 pub struct P2pTopology {
     lock: RwLock<Topology>,
-    node_id: Id,
+    node_address: Address,
     logger: Logger,
 }
 
@@ -76,10 +76,10 @@ impl Builder {
     }
 
     fn build(self) -> P2pTopology {
-        let node_id = self.topology.profile().id().clone();
+        let node_address = self.topology.profile().id().clone();
         P2pTopology {
             lock: RwLock::new(self.topology),
-            node_id: node_id.into(),
+            node_address,
             logger: self.logger,
         }
     }
@@ -98,36 +98,32 @@ impl P2pTopology {
     /// to contact for event dissemination.
     pub async fn view(&self, selection: poldercast::Selection) -> View {
         let topology = self.lock.write().await;
-        let peers = topology
-            .view(None, selection)
-            .into_iter()
-            .map(Node::new)
-            .collect();
+        let peers = topology.view(None, selection).into_iter().collect();
         View {
             self_node: topology.profile().clone(),
             peers,
         }
     }
 
-    pub async fn initiate_gossips(&self, with: Id) -> Gossips {
+    pub async fn initiate_gossips(&self, with: Address) -> Gossips {
         let topology = self.lock.write().await;
-        topology.initiate_gossips(with.into()).into()
+        topology.initiate_gossips(with).into()
     }
 
-    pub async fn accept_gossips(&self, from: Id, gossips: Gossips) {
+    pub async fn accept_gossips(&self, from: Address, gossips: Gossips) {
         let topology = self.lock.write().await;
-        topology.accept_gossips(from.into(), gossips.into())
+        topology.accept_gossips(from, gossips.into())
     }
 
-    pub async fn exchange_gossips(&mut self, with: Id, gossips: Gossips) -> Gossips {
+    pub async fn exchange_gossips(&mut self, with: Address, gossips: Gossips) -> Gossips {
         let topology = self.lock.write().await;
         topology
             .exchange_gossips(with.into(), gossips.into())
             .into()
     }
 
-    pub fn node_id(&self) -> Id {
-        self.node_id
+    pub fn node_address(&self) -> Address {
+        self.node_address
     }
 
     pub async fn node(&self) -> NodeProfile {
@@ -179,9 +175,9 @@ impl P2pTopology {
     ///
     /// the function returns `None` if the node was not even in the
     /// the topology (not even quarantined).
-    pub async fn report_node(&self, node: Id, issue: StrikeReason) -> Option<PolicyReport> {
+    pub async fn report_node(&self, address: Address, issue: StrikeReason) -> Option<PolicyReport> {
         let topology = self.lock.write().await;
-        topology.update_node(node.into(), |node| {
+        topology.update_node(address, |node| {
             node.record_mut().strike(issue);
         })
     }
