@@ -9,7 +9,7 @@ use crate::{
     blockchain::Checkpoints,
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     log,
-    network::p2p::Id as NodeId,
+    network::p2p::Address,
     stats_counter::StatsCounter,
     utils::{
         async_msg::{self, MessageBox, MessageQueue},
@@ -28,8 +28,8 @@ use slog::Logger;
 
 use std::{sync::Arc, time::Duration};
 
-type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
-type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
+type PullHeadersScheduler = FireForgetScheduler<HeaderHash, Address, Checkpoints>;
+type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, Address, ()>;
 
 const BRANCH_REPROCESSING_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -444,7 +444,7 @@ async fn process_block_announcement(
     blockchain: Blockchain,
     blockchain_tip: Tip,
     header: Header,
-    node_id: NodeId,
+    node_id: Address,
     mut pull_headers_scheduler: PullHeadersScheduler,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,

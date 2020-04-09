@@ -1,6 +1,6 @@
 use super::{
     buffer_sizes,
-    p2p::{Gossip, Id},
+    p2p::{Address, Gossip},
     GlobalStateR,
 };
 use crate::{
@@ -40,7 +40,7 @@ fn handle_mbox_error(err: async_msg::SendError, logger: Logger) -> Error {
 pub async fn process_block_announcements<S>(
     stream: S,
     mbox: MessageBox<BlockMsg>,
-    node_id: Id,
+    node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
 ) where
@@ -63,8 +63,12 @@ pub async fn process_block_announcements<S>(
         .await
 }
 
-pub async fn process_gossip<S>(stream: S, node_id: Id, global_state: GlobalStateR, logger: Logger)
-where
+pub async fn process_gossip<S>(
+    stream: S,
+    node_id: Address,
+    global_state: GlobalStateR,
+    logger: Logger,
+) where
     S: TryStream<Ok = net_data::Gossip>,
 {
     stream
@@ -96,7 +100,7 @@ where
 pub async fn process_fragments<S>(
     stream: S,
     mbox: MessageBox<TransactionMsg>,
-    node_id: Id,
+    node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
 ) where
@@ -113,7 +117,7 @@ pub async fn process_fragments<S>(
 #[must_use = "sinks do nothing unless polled"]
 struct FragmentProcessor {
     mbox: MessageBox<TransactionMsg>,
-    node_id: Id,
+    node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
     buffered_fragments: Vec<Fragment>,
@@ -122,7 +126,7 @@ struct FragmentProcessor {
 impl FragmentProcessor {
     fn new(
         mbox: MessageBox<TransactionMsg>,
-        node_id: Id,
+        node_id: Address,
         global_state: GlobalStateR,
         logger: Logger,
     ) -> Self {
@@ -155,13 +159,13 @@ impl FragmentProcessor {
 }
 
 pub struct GossipProcessor {
-    node_id: Id,
+    node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
 }
 
 impl GossipProcessor {
-    pub fn new(node_id: Id, global_state: GlobalStateR, logger: Logger) -> Self {
+    pub fn new(node_id: Address, global_state: GlobalStateR, logger: Logger) -> Self {
         GossipProcessor {
             node_id,
             global_state,
