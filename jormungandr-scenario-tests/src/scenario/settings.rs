@@ -433,7 +433,7 @@ impl Prepare for P2p {
             public_id: poldercast::Id::generate(context.rng_mut()),
             trusted_peers: Vec::new(),
             allow_private_addresses: true,
-            listen_address: Some(context.generate_new_grpc_public_address()),
+            listen_address: None,
             topics_of_interest: Some(TopicsOfInterest::prepare(context)),
             policy: Some(Policy::prepare(context)),
         }

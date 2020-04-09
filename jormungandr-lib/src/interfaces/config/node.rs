@@ -21,7 +21,7 @@ pub struct P2p {
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Vec<TrustedPeer>,
-
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub listen_address: Option<poldercast::Address>,
 
     pub allow_private_addresses: bool,
