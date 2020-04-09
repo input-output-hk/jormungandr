@@ -18,6 +18,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
             LEADER1,
             LEADER2 -> LEADER1,
             LEADER3 -> LEADER1,
+            LEADER4 -> LEADER2 -> LEADER3,
         ]
         blockchain {
             consensus = GenesisPraos,
@@ -28,6 +29,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
                 account "delegated1" with  2_000_000_000 delegates to LEADER1,
                 account "delegated2" with  2_000_000_000 delegates to LEADER2,
                 account "delegated3" with  2_000_000_000 delegates to LEADER3,
+                account "delegated4" with  2_000_000_000 delegates to LEADER4,
             ],
         }
     };
@@ -38,9 +40,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         controller.spawn_node(LEADER1, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader1.wait_for_bootstrap()?;
 
-    let _leader1_node_id = leader1.stats()?.stats.expect("empty stats").node_id.clone();
-
-    super::assert_node_stats(&leader1, 0, 0, 0, 0, 0, "no peers for leader1")?;
+    super::assert_node_stats(&leader1, 0, 0, 0, 0, "no peers for leader1")?;
     let info_before = "no peers for leader 1";
     utils::assert_equals(
         &vec![],
@@ -70,25 +70,35 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 
     let leader2 =
         controller.spawn_node_custom(controller.new_spawn_params(LEADER2).no_listen_address())?;
-
     leader2.wait_for_bootstrap()?;
-    utils::wait(10);
-    super::assert_node_stats(&leader1, 1, 0, 0, 1, 0, "bootstrapped leader1")?;
-    super::assert_node_stats(&leader2, 1, 1, 0, 1, 0, "bootstrapped leader2")?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 1, 0, 1, 0, "bootstrapped leader1")?;
+    super::assert_node_stats(&leader2, 1, 0, 1, 0, "bootstrapped leader2")?;
 
     let leader3 =
         controller.spawn_node_custom(controller.new_spawn_params(LEADER3).no_listen_address())?;
 
     leader3.wait_for_bootstrap()?;
-    utils::wait(30);
-    super::assert_node_stats(&leader1, 2, 2, 0, 2, 0, "leader1: all nodes are up")?;
-    super::assert_node_stats(&leader2, 2, 1, 0, 2, 0, "leader2: all nodes are up")?;
-    super::assert_node_stats(&leader3, 2, 2, 0, 2, 0, "leader3: all nodes are up")?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 2, 0, 2, 0, "leader1: leader3 node is up")?;
+    super::assert_node_stats(&leader2, 2, 0, 2, 0, "leader2: leader3 node is up")?;
+    super::assert_node_stats(&leader3, 2, 0, 2, 0, "leader3: leader3 node is up")?;
+
+    let leader4 =
+        controller.spawn_node_custom(controller.new_spawn_params(LEADER4).no_listen_address())?;
+
+    leader4.wait_for_bootstrap()?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 3, 0, 3, 0, "leader1: leader4 node is up")?;
+    super::assert_node_stats(&leader2, 3, 0, 3, 0, "leader2: leader4 node is up")?;
+    super::assert_node_stats(&leader3, 3, 0, 3, 0, "leader3: leader4 node is up")?;
+    super::assert_node_stats(&leader3, 3, 0, 3, 0, "leader4: leader4 node is up")?;
 
     leader2.shutdown()?;
-
-    super::assert_node_stats(&leader1, 2, 0, 0, 2, 0, "leader1: leader 2 is down")?;
-    super::assert_node_stats(&leader3, 2, 1, 1, 2, 0, "leader3: leader 2 is down")?;
+    utils::wait(20);
+    super::assert_node_stats(&leader1, 2, 1, 3, 0, "leader1: leader 2 is down")?;
+    super::assert_node_stats(&leader3, 2, 1, 3, 0, "leader3: leader 2 is down")?;
+    super::assert_node_stats(&leader4, 2, 1, 3, 0, "leader4: leader 2 is down")?;
 
     leader1.shutdown()?;
     leader3.shutdown()?;

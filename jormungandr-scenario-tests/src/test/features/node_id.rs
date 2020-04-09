@@ -67,7 +67,7 @@ pub fn duplicated_node_id_test(mut context: Context<ChaChaRng>) -> Result<Scenar
     utils::wait(10);
 
     let info_before = "before duplicated node id";
-    super::assert_node_stats(&leader1, 2, 0, 0, 2, 0, info_before)?;
+    super::assert_node_stats(&leader1, 2, 0, 2, 0, info_before)?;
     super::assert_are_in_network_stats(&leader1, vec![&leader2, &leader3], info_before)?;
     super::assert_are_available(&leader1, vec![&leader2, &leader3], info_before)?;
     super::assert_empty_quarantine(&leader1, info_before)?;
@@ -88,7 +88,7 @@ pub fn duplicated_node_id_test(mut context: Context<ChaChaRng>) -> Result<Scenar
     leader1.log_stats();
 
     let info_after = "after leader3 duplicated node id";
-    super::assert_node_stats(&leader1, 1, 0, 1, 2, 0, &info_after)?;
+    super::assert_node_stats(&leader1, 1, 1, 2, 0, &info_after)?;
     super::assert_are_in_network_stats(&leader1, vec![&&leader3], &info_after)?;
     super::assert_are_available(&leader1, vec![&leader3], &info_after)?;
     super::assert_are_in_quarantine(&leader1, vec![], &info_after)?;
@@ -145,7 +145,7 @@ pub fn duplicated_trusted_peer_id_test(mut context: Context<ChaChaRng>) -> Resul
     utils::wait(10);
 
     let info_before = "before duplicated node id";
-    super::assert_node_stats(&leader2, 1, 1, 0, 1, 0, info_before)?;
+    super::assert_node_stats(&leader2, 1, 0, 1, 0, info_before)?;
     super::assert_are_in_network_stats(&leader2, vec![&leader1], info_before)?;
     super::assert_are_available(&leader2, vec![&leader1], info_before)?;
     super::assert_empty_quarantine(&leader2, info_before)?;
@@ -162,7 +162,7 @@ pub fn duplicated_trusted_peer_id_test(mut context: Context<ChaChaRng>) -> Resul
     utils::wait(30);
 
     let info_after = "after leader3 duplicated node id";
-    super::assert_node_stats(&leader2, 1, 1, 0, 1, 0, info_after)?;
+    super::assert_node_stats(&leader2, 1, 0, 1, 0, info_after)?;
     super::assert_are_in_network_stats(&leader2, vec![&leader1], info_after)?;
     super::assert_are_available(&leader2, vec![&leader1], info_after)?;
     super::assert_are_in_quarantine(&leader2, vec![], info_after)?;

@@ -11,7 +11,6 @@ use jormungandr_lib::interfaces::PeerRecord;
 pub fn assert_node_stats(
     node: &NodeController,
     peer_available_cnt: usize,
-    peer_connected_cnt: usize,
     peer_quarantined_cnt: usize,
     peer_total_cnt: usize,
     peer_unreachable_cnt: usize,
@@ -24,11 +23,7 @@ pub fn assert_node_stats(
         &stats.peer_available_cnt.clone(),
         &format!("{}: peer_available_cnt, Node {}", info, node.alias()),
     )?;
-    utils::assert_equals(
-        &peer_connected_cnt,
-        &stats.peer_connected_cnt,
-        &format!("{}: peer_connected_cnt, Node {}", info, node.alias()),
-    )?;
+
     utils::assert_equals(
         &peer_quarantined_cnt,
         &stats.peer_quarantined_cnt,
