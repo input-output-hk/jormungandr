@@ -1,16 +1,14 @@
 pub mod comm;
 mod gossip;
-mod id;
 pub mod layers;
-mod node;
 mod policy;
 mod topology;
 
 pub use self::gossip::{Gossip, Gossips, Peer, Peers};
-pub use self::id::Id;
-pub use self::node::Node;
 pub use self::policy::{Policy, PolicyConfig};
 pub use self::topology::P2pTopology;
+
+pub use poldercast::Address;
 
 /**
 # topics definition for p2p interest subscriptions
