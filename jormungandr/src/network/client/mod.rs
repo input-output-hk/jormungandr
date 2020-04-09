@@ -8,7 +8,7 @@ use super::{
     },
     p2p::{
         comm::{OutboundSubscription, PeerComms},
-        Gossip as NodeData, Id,
+        Address, Gossip as NodeData,
     },
     subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
     Channels, GlobalStateR,
@@ -51,7 +51,7 @@ struct ClientBuilder {
 }
 
 impl Client {
-    pub fn remote_node_id(&self) -> Id {
+    pub fn remote_node_id(&self) -> Address {
         self.inbound.node_id
     }
 
@@ -110,7 +110,7 @@ impl Client {
 }
 
 struct InboundSubscriptions {
-    pub node_id: Id,
+    pub node_id: Address,
     pub block_events: BlockSubscription,
     pub fragments: FragmentSubscription,
     pub gossip: GossipSubscription,
@@ -421,7 +421,7 @@ where
 
 impl<S> Client<S>
 where
-    S: P2pService<NodeId = Id>,
+    S: P2pService<NodeId = Address>,
     S: GossipService<Node = NodeData>,
     S: BlockService + FragmentService,
 {

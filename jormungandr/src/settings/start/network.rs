@@ -1,4 +1,4 @@
-use crate::network::p2p::{layers::LayersConfig, Id, PolicyConfig};
+use crate::network::p2p::{layers::LayersConfig, Address, PolicyConfig};
 use poldercast::NodeProfile;
 use std::{net::SocketAddr, str, time::Duration};
 
@@ -140,8 +140,8 @@ impl Listen {
 }
 
 impl Configuration {
-    pub fn public_id(&self) -> Id {
-        (*self.profile.id()).into()
+    pub fn public_address(&self) -> Option<&Address> {
+        self.profile.public_address()
     }
 
     /// Returns the listener configuration, if the options defining it

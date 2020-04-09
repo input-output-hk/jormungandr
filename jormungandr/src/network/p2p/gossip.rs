@@ -1,9 +1,9 @@
-use crate::network::p2p::{limits, Id};
+use crate::network::p2p::{limits, Address};
 use bincode;
 use chain_core::property;
 use chain_network::data as net_data;
 use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 
 pub use net_data::{Peer, Peers};
 
@@ -15,17 +15,12 @@ pub struct Gossips(poldercast::Gossips);
 
 impl Gossip {
     #[inline]
-    pub fn id(&self) -> Id {
-        (*self.0.id()).into()
-    }
-
-    #[inline]
-    pub fn address(&self) -> Option<SocketAddr> {
-        self.0.address().map(|address| address.to_socketaddr())
+    pub fn address(&self) -> Option<&Address> {
+        self.0.address()
     }
 
     pub fn has_valid_address(&self) -> bool {
-        let addr = match self.address() {
+        let addr = match self.address().to_socketaddr() {
             None => return false,
             Some(addr) => addr,
         };
@@ -66,7 +61,7 @@ impl Gossip {
             return false;
         }
 
-        let addr = match self.address() {
+        let addr = match self.address().to_socketaddr() {
             None => return false,
             Some(addr) => addr,
         };

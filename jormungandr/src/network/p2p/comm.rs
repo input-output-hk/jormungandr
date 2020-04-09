@@ -5,7 +5,7 @@ use peer_map::{CommStatus, PeerMap};
 use crate::blockcfg::{Block, Fragment, Header, HeaderHash};
 use crate::network::{
     client::ConnectHandle,
-    p2p::{Gossip as NodeData, Id, Node as NodeRef},
+    p2p::{Address, Gossip as NodeData},
 };
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
 use chain_network::data::gossip::Gossip;
@@ -450,7 +450,6 @@ fn update_last_timestamp(field: &mut Option<SystemTime>, timestamp: SystemTime) 
 
 #[derive(Debug)]
 pub struct PeerInfo {
-    pub id: Id,
     pub addr: Option<SocketAddr>,
     pub stats: PeerStats,
 }
@@ -482,12 +481,17 @@ impl Peers {
         map.clear()
     }
 
-    pub async fn insert_peer(&self, id: Id, comms: PeerComms, addr: SocketAddr) {
+    pub async fn insert_peer(&self, id: Address, comms: PeerComms, addr: SocketAddr) {
         let map = self.inner().await;
         map.insert_peer(id, comms, addr)
     }
 
-    pub async fn add_connecting(&self, id: Id, handle: ConnectHandle, options: ConnectOptions) {
+    pub async fn add_connecting(
+        &self,
+        id: Address,
+        handle: ConnectHandle,
+        options: ConnectOptions,
+    ) {
         if options.evict_clients != 0 {
             debug!(self.logger, "will evict {} clients", options.evict_clients);
         }
@@ -505,30 +509,30 @@ impl Peers {
         }
     }
 
-    pub async fn remove_peer(&self, id: Id) -> Option<PeerComms> {
+    pub async fn remove_peer(&self, id: Address) -> Option<PeerComms> {
         let map = self.inner().await;
         map.remove_peer(id)
     }
 
-    pub async fn subscribe_to_block_events(&self, id: Id) -> BlockEventSubscription {
+    pub async fn subscribe_to_block_events(&self, id: Address) -> BlockEventSubscription {
         let map = self.inner().await;
         let comms = map.server_comms(id);
         comms.subscribe_to_block_events()
     }
 
-    pub async fn subscribe_to_fragments(&self, id: Id) -> FragmentSubscription {
+    pub async fn subscribe_to_fragments(&self, id: Address) -> FragmentSubscription {
         let map = self.inner().await;
         let comms = map.server_comms(id);
         comms.subscribe_to_fragments()
     }
 
-    pub async fn subscribe_to_gossip(&self, id: Id) -> GossipSubscription {
+    pub async fn subscribe_to_gossip(&self, id: Address) -> GossipSubscription {
         let map = self.inner().await;
         let comms = map.server_comms(id);
         comms.subscribe_to_gossip()
     }
 
-    async fn propagate_with<T, F>(&self, nodes: Vec<NodeRef>, f: F) -> Result<(), Vec<NodeRef>>
+    async fn propagate_with<T, F>(&self, nodes: Vec<Address>, f: F) -> Result<(), Vec<Address>>
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
@@ -536,15 +540,14 @@ impl Peers {
         let unreached_nodes = nodes
             .into_iter()
             .filter(|node| {
-                let id = node.id();
-                if let Some(mut entry) = map.entry(id) {
+                if let Some(mut entry) = map.entry(node.clone()) {
                     match f(entry.update_comm_status()) {
                         Ok(()) => false,
                         Err(e) => {
                             debug!(
                                 self.logger,
                                 "propagation to peer failed, unsubscribing peer";
-                                "node_id" => %id,
+                                "address" => %node,
                                 "reason" => %e.kind()
                             );
                             entry.remove();
@@ -565,9 +568,9 @@ impl Peers {
 
     pub async fn propagate_block(
         &self,
-        nodes: Vec<NodeRef>,
+        nodes: Vec<Address>,
         header: Header,
-    ) -> Result<(), Vec<NodeRef>> {
+    ) -> Result<(), Vec<Address>> {
         debug!(
             self.logger,
             "propagating block";
@@ -585,9 +588,9 @@ impl Peers {
 
     pub async fn propagate_fragment(
         &self,
-        nodes: Vec<NodeRef>,
+        nodes: Vec<Address>,
         fragment: Fragment,
-    ) -> Result<(), Vec<NodeRef>> {
+    ) -> Result<(), Vec<Address>> {
         debug!(
             self.logger,
             "propagating fragment";
@@ -602,7 +605,7 @@ impl Peers {
         .await
     }
 
-    pub async fn propagate_gossip_to(&self, target: Id, gossip: Gossip) -> Result<(), Gossip> {
+    pub async fn propagate_gossip_to(&self, target: Address, gossip: Gossip) -> Result<(), Gossip> {
         debug!(
             self.logger,
             "sending gossip";
@@ -632,7 +635,7 @@ impl Peers {
         }
     }
 
-    pub async fn refresh_peer_on_block(&self, node_id: Id) -> bool {
+    pub async fn refresh_peer_on_block(&self, node_id: Address) -> bool {
         let timestamp = SystemTime::now();
         let map = self.inner().await;
         match map.refresh_peer(&node_id) {
@@ -644,7 +647,7 @@ impl Peers {
         }
     }
 
-    pub async fn refresh_peer_on_fragment(&self, node_id: Id) -> bool {
+    pub async fn refresh_peer_on_fragment(&self, node_id: Address) -> bool {
         let timestamp = SystemTime::now();
         let map = self.inner().await;
         match map.refresh_peer(&node_id) {
@@ -656,7 +659,7 @@ impl Peers {
         }
     }
 
-    pub async fn refresh_peer_on_gossip(&self, node_id: Id) -> bool {
+    pub async fn refresh_peer_on_gossip(&self, node_id: Address) -> bool {
         let timestamp = SystemTime::now();
         let map = self.inner().await;
         match map.refresh_peer(&node_id) {
@@ -685,7 +688,7 @@ impl Peers {
         }
     }
 
-    pub async fn solicit_blocks(&self, node_id: Id, hashes: Vec<HeaderHash>) {
+    pub async fn solicit_blocks(&self, node_id: Address, hashes: Vec<HeaderHash>) {
         let map = self.inner().await;
         match map.peer_comms(&node_id) {
             Some(comms) => {
@@ -713,7 +716,7 @@ impl Peers {
         }
     }
 
-    pub async fn pull_headers(&self, node_id: Id, from: Vec<HeaderHash>, to: HeaderHash) {
+    pub async fn pull_headers(&self, node_id: Address, from: Vec<HeaderHash>, to: HeaderHash) {
         let map = self.inner().await;
         match map.peer_comms(&node_id) {
             Some(comms) => {

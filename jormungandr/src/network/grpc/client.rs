@@ -1,7 +1,6 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
     network::concurrency_limits,
-    network::p2p::Id,
     settings::start::network::{Peer, Protocol},
 };
 use chain_network::error as net_error;
@@ -35,7 +34,7 @@ pub type ConnectError = transport::Error;
 
 pub type Client = chain_network::grpc::Client<tonic::transport::Channel>;
 
-pub async fn connect(peer: &Peer, node_id: Option<Id>) -> Result<Client, ConnectError> {
+pub async fn connect(peer: &Peer) -> Result<Client, ConnectError> {
     assert!(peer.protocol == Protocol::Grpc);
     let endpoint = destination_endpoint(peer.connection);
     endpoint.concurrency_limit(concurrency_limits::CLIENT_REQUESTS);
