@@ -57,6 +57,7 @@ impl NodeConfigBuilder {
                 public_address: grpc_public_address,
                 public_id: public_id.clone(),
                 listen_address: Some(grpc_listen_address),
+                max_inbound_connections: None,
                 max_connections: None,
                 topics_of_interest: Some(TopicsOfInterest {
                     messages: String::from("high"),
