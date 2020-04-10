@@ -1,5 +1,28 @@
 # Change Log
 
+## [v0.8.18](https://github.com/input-output-hk/jormungandr/tree/v0.8.18) (2020-04-10)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/nightly...v0.8.18)
+
+**Implemented enhancements:**
+
+- Nodes Compatibility test  [\#1997](https://github.com/input-output-hk/jormungandr/issues/1997)
+- Implemented derive macro for IntercomMsg [\#2034](https://github.com/input-output-hk/jormungandr/pull/2034)
+
+**Fixed bugs:**
+
+- Node stats shows wrong value for peer\_connected\_cnt [\#1977](https://github.com/input-output-hk/jormungandr/issues/1977)
+- Node created a strange block on slot 97.060 on March 19 [\#1942](https://github.com/input-output-hk/jormungandr/issues/1942)
+- always make chain selection in process\_new\_ref [\#2052](https://github.com/input-output-hk/jormungandr/pull/2052)
+
+**Merged pull requests:**
+
+- \[Tests\] move multi node legacy tests to stable build [\#2044](https://github.com/input-output-hk/jormungandr/pull/2044)
+- \[Tests\] Duplicated nodes id scenario test [\#2043](https://github.com/input-output-hk/jormungandr/pull/2043)
+- Nightly release with version and date [\#2036](https://github.com/input-output-hk/jormungandr/pull/2036)
+- Nightly build recreate fix [\#2021](https://github.com/input-output-hk/jormungandr/pull/2021)
+- \[Tests\] Jts legacy test [\#2010](https://github.com/input-output-hk/jormungandr/pull/2010)
+
 ## [v0.8.17](https://github.com/input-output-hk/jormungandr/tree/v0.8.17) (2020-04-01)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.16...v0.8.17)
