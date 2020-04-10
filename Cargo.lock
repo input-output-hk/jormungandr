@@ -2154,7 +2154,7 @@ name = "jormungandr-watchdog-derive"
 version = "0.1.0"
 dependencies = [
  "heck",
- "proc-macro-error 1.0.0",
+ "proc-macro-error 1.0.2",
  "proc-macro2 1.0.10",
  "quote 1.0.2",
  "syn 1.0.17",
@@ -2924,11 +2924,11 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-error"
-version = "1.0.0"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d259aa4825fa1a2371419d30a520219feff9fb3591550a209b4477d2ebaae4f"
+checksum = "98e9e4b82e0ef281812565ea4751049f1bdcdfccda7d3f459f2e138a40c08678"
 dependencies = [
- "proc-macro-error-attr 1.0.0",
+ "proc-macro-error-attr 1.0.2",
  "proc-macro2 1.0.10",
  "quote 1.0.2",
  "syn 1.0.17",
@@ -2950,9 +2950,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-error-attr"
-version = "1.0.0"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd21889899aa8e1ca2b924c1d3f08086631fc90768225b3268b5d5c3e806a503"
+checksum = "4f5444ead4e9935abd7f27dc51f7e852a0569ac888096d5ec2499470794e2e53"
 dependencies = [
  "proc-macro2 1.0.10",
  "quote 1.0.2",
