@@ -11,7 +11,7 @@ slog = "2"
 bawawa = "0.1.5"
 bytes = "0.4"
 error-chain = "0.12"
-tokio = "0.1"
+tokio = "0.2"
 mktemp = "0.4.0"
 chain-core           = { path = "../chain-deps/chain-core", features = [ "property-test-api" ] }
 chain-crypto         = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
