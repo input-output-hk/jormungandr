@@ -295,34 +295,34 @@ pub async fn process_new_ref(
     candidate: Arc<Ref>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
-
     let tip_ref = tip.get_ref().await;
-    if tip_ref.hash() == candidate.block_parent_hash() {
-        info!(
-            logger,
-            "update current branch tip: {} -> {}",
-            tip_ref.header().description(),
-            candidate.header().description(),
-        );
 
-        blockchain
-            .storage()
-            .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-            .await
-            .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
-
-        tip.update_ref(candidate).await;
-    } else {
-        match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
-            ComparisonResult::PreferCurrent => {
+    match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
+        ComparisonResult::PreferCurrent => {
+            info!(
+                logger,
+                "create new branch with tip {} | current-tip {}",
+                candidate.header().description(),
+                tip_ref.header().description(),
+            );
+        }
+        ComparisonResult::PreferCandidate => {
+            if tip_ref.hash() == candidate.block_parent_hash() {
                 info!(
                     logger,
-                    "create new branch with tip {} | current-tip {}",
-                    candidate.header().description(),
+                    "update current branch tip: {} -> {}",
                     tip_ref.header().description(),
+                    candidate.header().description(),
                 );
-            }
-            ComparisonResult::PreferCandidate => {
+
+                blockchain
+                    .storage()
+                    .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
+                    .await
+                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
+
+                tip.update_ref(candidate).await;
+            } else {
                 info!(
                     logger,
                     "switching branch from {} to {}",
@@ -340,7 +340,7 @@ pub async fn process_new_ref(
                 tip.swap(branch).await;
             }
         }
-    };
+    }
 
     Ok(())
 }
