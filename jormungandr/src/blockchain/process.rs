@@ -198,10 +198,14 @@ impl Process {
         let scheduler_logger = info.logger().clone();
         let scheduler_future = FireForgetSchedulerFuture::new(
             &PULL_HEADERS_SCHEDULER_CONFIG,
-            move |to, node_id, from| {
+            move |to, node_address, from| {
                 network_msgbox
                     .clone()
-                    .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                    .try_send(NetworkMsg::PullHeaders {
+                        node_address,
+                        from,
+                        to,
+                    })
                     .unwrap_or_else(|e| {
                         error!(scheduler_logger, "cannot send PullHeaders request to network";
                         "reason" => e.to_string())
