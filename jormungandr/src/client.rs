@@ -37,8 +37,9 @@ pub fn handle_input(
 
     match cquery {
         ClientMsg::GetBlockTip(handle) => {
+            let blockchain_tip = task_data.blockchain_tip.clone();
             let fut = async move {
-                let tip = get_block_tip(task_data.blockchain_tip.clone()).await;
+                let tip = get_block_tip(blockchain_tip).await;
                 let fut = handle.reply_ok(tip);
             };
             let logger = info.logger().new(o!("request" => "GetBlockTip"));
@@ -56,8 +57,9 @@ pub fn handle_input(
             );
         }
         ClientMsg::GetPeers(handle) => {
+            let topology = task_data.topology.clone();
             let fut = async move {
-                let peers = get_peers(&task_data.topology).await;
+                let peers = get_peers(&topology).await;
                 handle.reply(peers);
             };
             let logger = info.logger().new(o!("request" => "GetPeers"));
