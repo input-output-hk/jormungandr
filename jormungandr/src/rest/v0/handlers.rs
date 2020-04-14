@@ -64,7 +64,7 @@ pub async fn get_message_logs(context: Data<Context>) -> Result<impl Responder, 
     mbox.send(TransactionMsg::GetLogs(reply_handle));
     let logs = reply_future
         .await
-        .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
+        .map_err(|e| ErrorInternalServerError(e))?;
     Ok(Json(logs))
 }
 
@@ -420,7 +420,7 @@ pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder,
     mbox.send(NetworkMsg::PeerInfo(reply_handle));
     let peer_stats = reply_future
         .await
-        .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
+        .map_err(|e| ErrorInternalServerError(e))?;
 
     let network_stats = peer_stats
         .into_iter()
