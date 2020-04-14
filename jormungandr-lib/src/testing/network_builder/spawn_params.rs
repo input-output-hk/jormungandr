@@ -1,10 +1,9 @@
-use crate::{
-    node::{LeadershipMode, PersistenceMode},
-    scenario::settings::NodeSetting,
-};
-use jormungandr_lib::interfaces::{Explorer, Mempool, Policy, TopicsOfInterest};
+use crate::interfaces::{Explorer, Mempool, NodeConfig, Policy, TopicsOfInterest};
+
+use super::{LeadershipMode, PersistenceMode};
 use std::path::PathBuf;
 
+#[derive(Clone)]
 pub struct SpawnParams {
     pub topics_of_interest: Option<TopicsOfInterest>,
     pub explorer: Option<Explorer>,
@@ -110,32 +109,29 @@ impl SpawnParams {
         self
     }
 
-    pub fn override_settings(&self, node_settings: &NodeSetting) -> NodeSetting {
-        let mut new_settings = node_settings.clone();
-
+    pub fn override_settings(&self, node_config: &mut NodeConfig) {
         if let Some(topics_of_interest) = &self.topics_of_interest {
-            new_settings.config.p2p.topics_of_interest = Some(topics_of_interest.clone());
+            node_config.p2p.topics_of_interest = Some(topics_of_interest.clone());
         }
 
         if let Some(explorer) = &self.explorer {
-            new_settings.config.explorer = explorer.clone();
+            node_config.explorer = explorer.clone();
         }
 
         if let Some(mempool) = &self.mempool {
-            new_settings.config.mempool = Some(mempool.clone());
+            node_config.mempool = Some(mempool.clone());
         }
 
         if let Some(policy) = &self.policy {
-            new_settings.config.p2p.policy = Some(policy.clone());
+            node_config.p2p.policy = Some(policy.clone());
         }
 
         if let Some(node_id) = &self.node_id {
-            new_settings.config.p2p.public_id = node_id.clone();
+            node_config.p2p.public_id = node_id.clone();
         }
 
         if let Some(listen_address_option) = &self.listen_address {
-            new_settings.config.p2p.listen_address = listen_address_option.clone();
+            node_config.p2p.listen_address = listen_address_option.clone();
         }
-        new_settings
     }
 }

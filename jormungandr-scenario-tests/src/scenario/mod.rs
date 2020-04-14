@@ -1,27 +1,24 @@
-mod blockchain;
 mod context;
 mod controller;
 mod progress_bar_mode;
 pub mod repository;
 pub mod settings;
-mod spawn_params;
-mod topology;
-mod wallet;
 
 pub use self::{
-    blockchain::Blockchain,
-    context::{Context, ContextChaCha, Seed},
+    context::{Context, ContextChaCha},
     controller::{Controller, ControllerBuilder},
     progress_bar_mode::{parse_progress_bar_mode_from_str, ProgressBarMode},
-    spawn_params::SpawnParams,
-    topology::{Node, NodeAlias, Topology, TopologyBuilder},
-    wallet::{Wallet, WalletAlias, WalletType},
 };
 pub use chain_impl_mockchain::{
     block::Block, chaintypes::ConsensusVersion, header::HeaderId, milli::Milli, value::Value,
 };
 pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+};
+
+pub use jormungandr_lib::testing::network_builder::{
+    Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, TopologyBuilder, Wallet, WalletAlias,
+    WalletType,
 };
 
 error_chain! {
@@ -67,7 +64,7 @@ macro_rules! prepare_scenario {
         }
     ) => {{
         let mut builder = $crate::scenario::ControllerBuilder::new($title);
-        let mut topology_builder = $crate::scenario::TopologyBuilder::new();
+        let mut topology_builder = jormungandr_lib::testing::network_builder::TopologyBuilder::new();
         $(
             #[allow(unused_mut)]
             let mut node = $crate::scenario::Node::new($topology_tt);
@@ -76,7 +73,7 @@ macro_rules! prepare_scenario {
             )*
             topology_builder.register_node(node);
         )*
-        let topology : $crate::scenario::Topology = topology_builder.build();
+        let topology : jormungandr_lib::testing::network_builder::Topology = topology_builder.build();
         builder.set_topology(topology);
 
         let mut blockchain = $crate::scenario::Blockchain::new(
@@ -94,9 +91,9 @@ macro_rules! prepare_scenario {
 
         $(
             #[allow(unused_mut)]
-            let mut wallet = $crate::scenario::Wallet::new_account(
+            let mut wallet = jormungandr_lib::testing::network_builder::WalletTemplate::new_account(
                 $initial_wallet_name.to_owned(),
-                $crate::scenario::Value($initial_wallet_funds)
+                chain_impl_mockchain::value::Value($initial_wallet_funds).into()
             );
 
             $(

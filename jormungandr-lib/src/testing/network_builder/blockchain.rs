@@ -1,16 +1,17 @@
-use crate::scenario::{ConsensusVersion, NodeAlias, Wallet, WalletAlias};
-use jormungandr_lib::interfaces::{
+use super::{NodeAlias, WalletAlias, WalletTemplate};
+use crate::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
+pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Blockchain {
     consensus: ConsensusVersion,
     slots_per_epoch: NumberOfSlotsPerEpoch,
     slot_duration: SlotDuration,
     leaders: Vec<NodeAlias>,
-    wallets: HashMap<WalletAlias, Wallet>,
+    wallets: HashMap<WalletAlias, WalletTemplate>,
     kes_update_speed: KESUpdateSpeed,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
 }
@@ -38,7 +39,7 @@ impl Blockchain {
         self.leaders.push(alias.into())
     }
 
-    pub fn add_wallet(&mut self, wallet: Wallet) {
+    pub fn add_wallet(&mut self, wallet: WalletTemplate) {
         self.wallets.insert(wallet.alias().clone(), wallet);
     }
 
@@ -66,7 +67,7 @@ impl Blockchain {
         self.leaders.iter()
     }
 
-    pub fn wallets<'a>(&'a self) -> impl Iterator<Item = &'a Wallet> {
+    pub fn wallets<'a>(&'a self) -> impl Iterator<Item = &'a WalletTemplate> {
         self.wallets.values()
     }
 }

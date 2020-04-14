@@ -6,11 +6,10 @@ use crate::{
     node::NodeController,
     scenario::Controller,
     test::{ErrorKind, Result},
-    wallet::Wallet,
 };
 use jormungandr_lib::{
     interfaces::{FragmentStatus, NodeState},
-    testing::{benchmark_efficiency, benchmark_speed, Speed, Thresholds},
+    testing::{benchmark_efficiency, benchmark_speed, network_builder::Wallet, Speed, Thresholds},
     time::Duration as LibsDuration,
 };
 use std::{

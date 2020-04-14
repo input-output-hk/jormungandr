@@ -11,7 +11,6 @@ pub mod example_scenarios;
 mod slog;
 pub mod style;
 pub mod test;
-mod wallet;
 pub use self::node::{
     LeadershipMode, MemPoolCheck, Node, NodeBlock0, NodeController, PersistenceMode, Status,
 };
@@ -21,4 +20,4 @@ pub use self::scenario::{
     Context, Controller, NodeAlias, Seed, WalletAlias, WalletType,
 };
 pub use self::slog::{Error as SlogCodecError, SlogCodec};
-pub use self::wallet::Wallet;
+pub use jormungandr_lib::testing::network_builder::Wallet;

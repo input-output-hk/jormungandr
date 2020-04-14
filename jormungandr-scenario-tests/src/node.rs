@@ -1,7 +1,4 @@
-use crate::{
-    scenario::{settings::NodeSetting, ProgressBarMode},
-    style, Context, NodeAlias,
-};
+use crate::{scenario::ProgressBarMode, style, Context};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::{
     block::Block,
@@ -18,6 +15,10 @@ use jormungandr_lib::interfaces::{
     EnclaveLeaderId, FragmentLog, FragmentStatus, Info, NodeState, NodeStatsDto, PeerRecord,
     PeerStats,
 };
+pub use jormungandr_lib::testing::network_builder::{
+    LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
+};
+
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
@@ -98,23 +99,6 @@ error_chain! {
 
 pub struct MemPoolCheck {
     fragment_id: FragmentId,
-}
-
-pub enum NodeBlock0 {
-    Hash(HeaderId),
-    File(PathBuf),
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum LeadershipMode {
-    Leader,
-    Passive,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum PersistenceMode {
-    Persistent,
-    InMemory,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
