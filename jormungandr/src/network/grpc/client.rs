@@ -62,10 +62,6 @@ pub async fn fetch_block(
     let client = connect(peer, None)
         .await
         .map_err(|err| FetchBlockError::Connect { source: err })?;
-    client
-        .ready()
-        .await
-        .map_err(|err| FetchBlockError::ClientNotReady { source: err })?;
     let stream = client
         .get_blocks(slice::from_ref(&hash))
         .await
