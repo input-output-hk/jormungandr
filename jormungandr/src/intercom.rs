@@ -12,7 +12,6 @@ use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
 use futures::{Future as Future01, Sink as Sink01, Stream as Stream01};
 use futures03::channel::{mpsc, oneshot};
-use futures03::compat::Compat;
 use futures03::prelude::*;
 use slog::Logger;
 use std::{
@@ -171,17 +170,15 @@ impl<T> ReplyHandle<T> {
     }
 }
 
-pub struct ReplyFuture03<T, E> {
+pub struct ReplyFuture<T, E> {
     receiver: oneshot::Receiver<Result<T, Error>>,
     logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Unpin for ReplyFuture03<T, E> {}
+impl<T, E> Unpin for ReplyFuture<T, E> {}
 
-pub type ReplyFuture<T, E> = Compat<ReplyFuture03<T, E>>;
-
-impl<T, E> Future for ReplyFuture03<T, E>
+impl<T, E> Future for ReplyFuture<T, E>
 where
     E: From<Error>,
 {
@@ -205,9 +202,9 @@ where
     }
 }
 
-pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) {
+pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) {
     let (sender, receiver) = oneshot::channel();
-    let future = ReplyFuture03 {
+    let future = ReplyFuture {
         receiver,
         logger,
         _phantom_error: PhantomData,
@@ -366,7 +363,7 @@ pub struct RequestStreamHandle<T, R> {
 
 pub struct RequestSink<T, R, E> {
     sender: MessageBox<T>,
-    reply_future: Option<ReplyFuture03<R, E>>,
+    reply_future: Option<ReplyFuture<R, E>>,
     logger: Logger,
 }
 
@@ -425,7 +422,7 @@ where
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
-        self.sender.poll_flush(cx).map_err(|e| {
+        Pin::new(&mut self.sender).poll_flush(cx).map_err(|e| {
             self.map_send_error(
                 e,
                 "request stream processing ended before receiving some items",
@@ -434,7 +431,7 @@ where
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
-        self.sender.poll_close(cx).map_err(|e| {
+        Pin::new(&mut self.sender).poll_close(cx).map_err(|e| {
             self.map_send_error(
                 e,
                 "request stream processing channel did not close gracefully, \
