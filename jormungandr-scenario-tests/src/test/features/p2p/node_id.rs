@@ -7,7 +7,7 @@ use crate::{
 use jormungandr_lib::{interfaces::Policy, time::Duration};
 
 use rand_chacha::ChaChaRng;
-use std::str::FromStr;
+
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
@@ -51,8 +51,6 @@ pub fn duplicated_node_id_test(mut context: Context<ChaChaRng>) -> Result<Scenar
         controller.spawn_node(LEADER2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader2.wait_for_bootstrap()?;
 
-    let leader2_node_id = leader2.stats()?.stats.expect("empty stats").node_id.clone();
-
     let mut leader3 =
         controller.spawn_node(LEADER3, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader3.wait_for_bootstrap()?;
@@ -61,17 +59,12 @@ pub fn duplicated_node_id_test(mut context: Context<ChaChaRng>) -> Result<Scenar
 
     let info_before = "before duplicated node id";
     super::assert_node_stats(&leader1, 2, 0, 2, 0, info_before)?;
-    super::assert_are_in_network_stats(&leader1, vec![&leader2, &leader3], info_before)?;
     super::assert_are_available(&leader1, vec![&leader2, &leader3], info_before)?;
     super::assert_empty_quarantine(&leader1, info_before)?;
     super::assert_are_in_network_view(&leader1, vec![&leader2, &leader3], info_before)?;
 
     leader3.shutdown()?;
-    leader3 = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(LEADER3)
-            .node_id(poldercast::Id::from_str(&leader2_node_id).unwrap()),
-    )?;
+    leader3 = controller.spawn_node_custom(&mut controller.new_spawn_params(LEADER3))?;
     leader3.wait_for_bootstrap()?;
 
     utils::wait(30);
@@ -82,8 +75,6 @@ pub fn duplicated_node_id_test(mut context: Context<ChaChaRng>) -> Result<Scenar
 
     let info_after = "after leader3 duplicated node id";
     super::assert_node_stats(&leader1, 1, 1, 2, 0, &info_after)?;
-    super::assert_are_in_network_stats(&leader1, vec![&&leader3], &info_after)?;
-    super::assert_are_available(&leader1, vec![&leader3], &info_after)?;
     super::assert_are_in_quarantine(&leader1, vec![], &info_after)?;
     super::assert_are_in_network_view(&leader1, vec![&leader3], &info_after)?;
 
@@ -140,7 +131,6 @@ pub fn duplicated_trusted_peer_id_test(mut context: Context<ChaChaRng>) -> Resul
 
     let info_before = "before duplicated node id";
     super::assert_node_stats(&leader2, 1, 0, 1, 0, info_before)?;
-    super::assert_are_in_network_stats(&leader2, vec![&leader1], info_before)?;
     super::assert_are_available(&leader2, vec![&leader1], info_before)?;
     super::assert_empty_quarantine(&leader2, info_before)?;
     super::assert_are_in_network_view(&leader2, vec![&leader1], info_before)?;
@@ -157,7 +147,6 @@ pub fn duplicated_trusted_peer_id_test(mut context: Context<ChaChaRng>) -> Resul
 
     let info_after = "after leader3 duplicated node id";
     super::assert_node_stats(&leader2, 1, 0, 1, 0, info_after)?;
-    super::assert_are_in_network_stats(&leader2, vec![&leader1], info_after)?;
     super::assert_are_available(&leader2, vec![&leader1], info_after)?;
     super::assert_are_in_quarantine(&leader2, vec![], info_after)?;
     super::assert_are_in_network_view(&leader2, vec![&leader1], info_after)?;
