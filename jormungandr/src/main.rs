@@ -80,6 +80,8 @@ pub struct BootstrappedNode {
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
+const EXPLORER_TASK_QUEUE_LEN: usize = 32;
+const CLIENT_TASK_QUEUE_LEN: usize = 32;
 const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
@@ -98,6 +100,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (block_msgbox, block_queue) = async_msg::channel(BLOCK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
+    let (client_msgbox, client_queue) = async_msg::channel(CLIENT_TASK_QUEUE_LEN);
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
     let leadership_logs =
@@ -137,10 +140,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             // Context to give to the rest api
             let context = explorer.clone();
 
-            let task_msg_box = services.spawn_future_with_inputs("explorer", move |info, input| {
-                explorer.handle_input(info, input)
-            });
-            Some((task_msg_box, context))
+            let (explorer_msgbox, explorer_queue) = async_msg::channel(EXPLORER_TASK_QUEUE_LEN);
+
+            let task_msg_box = services
+                .spawn_future_std("explorer", move |info| explorer.start(info, explorer_queue));
+            Some((explorer_msgbox, context))
         } else {
             None
         }
@@ -169,20 +173,19 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let client_task = {
-        let mut task_data = client::TaskData {
+    {
+        let task_data = client::TaskData {
             storage: blockchain.storage().clone(),
             blockchain_tip: blockchain_tip.clone(),
             topology: topology.clone(),
         };
 
-        services.spawn_future_with_inputs("client-query", move |info, input| {
-            client::handle_input(info, &mut task_data, input)
-        })
-    };
+        services.spawn_future_std("client-query", move |info| {
+            client::start(info, task_data, client_queue)
+        });
+    }
 
     {
-        let client_msgbox = client_task.clone();
         let fragment_msgbox = fragment_msgbox.clone();
         let block_msgbox = block_msgbox.clone();
         let block0_hash = bootstrapped_node.block0_hash;
