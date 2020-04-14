@@ -657,7 +657,7 @@ async fn prepare_block(
         );
         Err(LeadershipError::CannotConnectToFragmentPool)
     } else {
-        reply_future.await
+        reply_future.await.map_err(Into::into)
     }
 }
 
