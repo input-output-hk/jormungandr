@@ -160,7 +160,7 @@ impl GlobalState {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        tokio02::spawn(f)
+        tokio02::spawn(f);
     }
 
     fn inc_client_count(&self) {
@@ -273,13 +273,11 @@ pub async fn start(
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
-    let gossip_err_logger = global_state.logger.clone();
-    let tp2p = global_state.topology.clone();
+    let reset_state = global_state.clone();
 
     if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
         service_info.run_periodic_std("force reset topology", interval, move || async {
-            tp2p.force_reset_layers().await;
-            Ok(())
+            reset_state.topology.force_reset_layers().await;
         });
     }
 
@@ -375,14 +373,13 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
 
 async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let config = &state.config;
-    let topology_accept = state.topology.clone();
-    let topology_initiate = state.topology.clone();
+    let topology = &state.topology;
     let conn_state = state.clone();
     let logger = state.logger().new(o!(log::KEY_SUB_TASK => "start_gossip"));
     let address = config.profile.address().unwrap();
     // inject the trusted peers as initial gossips, this will make the node
     // gossip with them at least at the beginning
-    topology_accept
+    topology
         .accept_gossips(
             address.clone().into(),
             config
@@ -398,14 +395,14 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
                 .into(),
         )
         .await;
-    let view = topology_accept.view(poldercast::Selection::Any).await;
+    let view = topology.view(poldercast::Selection::Any).await;
     let peers: Vec<p2p::Address> = view.peers;
     debug!(logger, "sending gossip to {} peers", peers.len());
     for address in peers {
         let state_prop = state.clone();
         let state_err = state.clone();
         let channels_err = channels.clone();
-        let gossips = topology_initiate.initiate_gossips(address).await;
+        let gossips = topology.initiate_gossips(address).await;
         let propagate_res = state_prop
             .peers
             .propagate_gossip_to(address, Gossip::from(gossips))
