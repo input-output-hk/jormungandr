@@ -219,7 +219,7 @@ fn generate_network(
     let mut profile = poldercast::NodeProfileBuilder::new();
 
     if let Some(address) = p2p.public_address {
-        profile.address(address.clone().0);
+        profile.address(address.clone());
     }
 
     for (topic, interest_level) in p2p
