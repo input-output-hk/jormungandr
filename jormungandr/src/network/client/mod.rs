@@ -8,7 +8,7 @@ use super::{
     },
     p2p::{
         comm::{OutboundSubscription, PeerComms},
-        Address, Gossip as NodeData,
+        Address,
     },
     subscription::GossipProcessor,
     Channels, GlobalStateR,
