@@ -186,7 +186,7 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let logger = info.logger().clone();
 
-        info.run_periodic_std(
+        info.run_periodic_failable_std(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
             move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
