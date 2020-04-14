@@ -62,7 +62,7 @@ impl<Msg> MessageBox<Msg> {
     async fn send_task(&mut self, msg: Msg, logger: Logger) {
         if let Err(e) = self.send(msg).await {
             error!(
-                self.logger,
+                logger,
                 "failed to enqueue message for processing";
                 "reason" => %e,
             )
@@ -82,11 +82,11 @@ impl<Msg> Sink<Msg> for MessageBox<Msg> {
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
-        self.0.poll_flush(cx)
+        Pin::new(&mut self.0).poll_flush(cx)
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
-        self.0.poll_close(cx)
+        Pin::new(&mut self.0).poll_close(cx)
     }
 }
 
@@ -102,7 +102,7 @@ impl<Msg> Stream for MessageQueue<Msg> {
     type Item = Msg;
 
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<Msg>> {
-        self.0.poll()
+        Pin::new(&mut self.0).poll_next(cx)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
