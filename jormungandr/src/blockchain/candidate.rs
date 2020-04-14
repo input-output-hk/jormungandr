@@ -161,10 +161,9 @@ where
                 self.process_header(header)?;
             } else {
                 match ready!(Pin::new(&mut self.stream).poll_next(cx)) {
-                    Some(Ok(header)) => {
+                    Some(header) => {
                         self.process_header(header)?;
                     }
-                    Some(Err(_)) => return Poll::Ready(Err(Error::Unexpected)),
                     None => return Poll::Ready(Ok(Outcome::Complete.into())),
                 }
             }
