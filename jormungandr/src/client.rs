@@ -2,7 +2,8 @@ use crate::blockcfg::{Block, Header, HeaderHash};
 use crate::blockchain::{Storage, Tip};
 use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
 use crate::network::p2p::{P2pTopology, Peer};
-use crate::utils::task::{Input, TokioServiceInfo};
+use crate::utils::async_msg::MessageQueue;
+use crate::utils::task::TokioServiceInfo;
 use chain_core::property::HasHeader;
 use chain_network::data::p2p::Peers;
 
@@ -25,17 +26,18 @@ pub struct TaskData {
     pub topology: P2pTopology,
 }
 
-pub fn handle_input(
-    info: &TokioServiceInfo,
-    task_data: &mut TaskData,
-    input: Input<ClientMsg>,
-) -> Result<(), ()> {
-    let cquery = match input {
-        Input::Shutdown => return Ok(()),
-        Input::Input(msg) => msg,
-    };
+pub async fn start(
+    info: TokioServiceInfo,
+    mut task_data: TaskData,
+    input: MessageQueue<ClientMsg>,
+) {
+    input
+        .for_each(|message| async { handle_input(&info, &mut task_data, message) })
+        .await;
+}
 
-    match cquery {
+fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: ClientMsg) {
+    match input {
         ClientMsg::GetBlockTip(handle) => {
             let blockchain_tip = task_data.blockchain_tip.clone();
             let fut = async move {
@@ -105,7 +107,6 @@ pub fn handle_input(
             );
         }
     }
-    Ok(())
 }
 
 async fn get_block_tip(blockchain_tip: Tip) -> Header {
