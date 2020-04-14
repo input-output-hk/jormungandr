@@ -27,6 +27,7 @@ imhamt = { path = "../chain-deps/imhamt" }
 error-chain = "0.12"
 futures    = "0.1"
 futures03 = { package = "futures", version = "0.3.4", features = ["compat"] }
+hex = "0.4"
 http = "0.1.16"
 humantime = "2.0"
 jormungandr-lib = { path = "../jormungandr-lib" }

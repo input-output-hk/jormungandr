@@ -7,7 +7,8 @@ use jormungandr_lib::{interfaces::Mempool, time::Duration};
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
-use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
+
+use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf, str::FromStr};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -105,6 +106,7 @@ pub struct P2pConfig {
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Option<Vec<TrustedPeer>>,
+
     /// the topic subscriptions
     ///
     /// When connecting to different nodes we will expose these too in order to
@@ -193,6 +195,33 @@ pub struct Id([u8; ID_LEN]);
 
 const ID_LEN: usize = 24;
 
+impl Id {
+    fn zero() -> Self {
+        Id([0; ID_LEN])
+    }
+}
+
+impl FromStr for Id {
+    type Err = hex::FromHexError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut v = Self::zero();
+        hex::decode_to_slice(s, &mut v.0)?;
+        Ok(v)
+    }
+}
+
+impl AsRef<[u8]> for Id {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl fmt::Debug for Id {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Id").field(&hex::encode(self)).finish()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Leadership {
@@ -272,13 +301,17 @@ impl std::str::FromStr for TrustedPeer {
             return Err("Missing address component".to_owned());
         };
 
-        let id = if let Some(id) = split.next() {
-            id.parse::<Id>().map_err(|e| e.to_string())?
+        let optional_id = if let Some(id) = split.next() {
+            let id = id.parse::<Id>().map_err(|e| e.to_string())?;
+            Some(id)
         } else {
-            return Err("Missing id component".to_owned());
+            None
         };
 
-        Ok(TrustedPeer { address, id })
+        Ok(TrustedPeer {
+            address,
+            id: optional_id,
+        })
     }
 }
 
