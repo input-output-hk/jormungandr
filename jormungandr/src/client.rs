@@ -19,7 +19,6 @@ const PROCESS_TIMEOUT_GET_HEADERS_RANGE: u64 = 5 * 60;
 const PROCESS_TIMEOUT_GET_BLOCKS: u64 = 10 * 60;
 const PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP: u64 = 60 * 60;
 
-#[derive(Clone)]
 pub struct TaskData {
     pub storage: Storage,
     pub blockchain_tip: Tip,
