@@ -76,10 +76,10 @@ impl ConfigurationBuilder {
         self.rewards_history = true;
         self
     }
-
+    /*
     pub fn with_block_hash_from(&mut self, config: &JormungandrConfig) -> &mut Self {
         self.with_block_hash(config.genesis_block_hash.clone())
-    }
+    }*/
 
     pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
         self.linear_fees = linear_fees;
@@ -141,8 +141,13 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_quarantine_policy(&mut self, policy: Policy) -> &mut Self {
-        self.node_config_builder.with_quarantine_policy(policy);
+    pub fn with_policy(&mut self, policy: Policy) -> &mut Self {
+        self.node_config_builder.with_policy(policy);
+        self
+    }
+
+    pub fn with_mempool(&mut self, mempool: Mempool) -> &mut Self {
+        self.node_config_builder.with_mempool(mempool);
         self
     }
 
@@ -170,11 +175,6 @@ impl ConfigurationBuilder {
 
     pub fn with_block_hash(&mut self, block0_hash: String) -> &mut Self {
         self.block0_hash = Some(block0_hash.clone());
-        self
-    }
-
-    pub fn with_mempool(&mut self, mempool: Mempool) -> &mut Self {
-        self.node_config_builder.with_mempool(mempool);
         self
     }
 

@@ -63,7 +63,8 @@ impl NodeConfigBuilder {
                 }),
                 allow_private_addresses: false,
                 policy: Some(Policy {
-                    quarantine_duration: Duration::new(1, 0),
+                    quarantine_duration: Some(Duration::new(1, 0)),
+                    quarantine_whitelist: None,
                 }),
             },
             mempool: Some(Mempool::default()),
@@ -82,7 +83,7 @@ impl NodeConfigBuilder {
         self
     }
 
-    pub fn with_quarantine_policy(&mut self, policy: Policy) -> &mut Self {
+    pub fn with_policy(&mut self, policy: Policy) -> &mut Self {
         self.p2p.policy = Some(policy);
         self
     }
