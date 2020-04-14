@@ -335,7 +335,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
             block0,
             storage,
             settings,
-            info.executor().clone(),
         )
     })?;
 
