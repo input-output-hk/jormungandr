@@ -21,10 +21,7 @@ use jormungandr_lib::time::SystemTime;
 
 use crate::intercom::{self, NetworkMsg, TransactionMsg};
 use crate::secure::NodeSecret;
-use futures03::{
-    compat::Future01CompatExt,
-    stream::{StreamExt, TryStreamExt},
-};
+use futures03::prelude::*;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -61,12 +58,12 @@ pub async fn get_account_state(
 }
 
 pub async fn get_message_logs(context: Data<Context>) -> Result<impl Responder, Error> {
-    let logger = context.logger.await?.new(o!("request" => "message_logs"));
+    let logger = context.logger().await?.new(o!("request" => "message_logs"));
     let (reply_handle, reply_future) = intercom::unary_reply(logger);
     let mbox = context.try_full().await?.transaction_task.clone();
     mbox.send(TransactionMsg::GetLogs(reply_handle));
     let logs = reply_future
-        .await?
+        .await
         .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
     Ok(Json(logs))
 }
@@ -169,10 +166,9 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
         })
         .collect::<Result<(), ValueError>>()
         .map_err(|e| ErrorInternalServerError(format!("Block value calculation error: {}", e)))?;
-    let nodes_count = &full_context.p2p.nodes_count::<Error>().compat().await?;
+    let nodes_count = full_context.p2p.nodes_count().await;
     let tip_header = tip.header();
     let stats = &full_context.stats_counter;
-    let node_id = &full_context.p2p.node_id().to_string();
     let node_stats = NodeStats {
         block_recv_cnt: stats.block_recv_cnt(),
         last_block_content_size: tip_header.block_content_size(),
@@ -184,7 +180,6 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
         last_block_time: SystemTime::from(tip.time()).into(),
         last_block_tx: block_tx_count,
         last_received_block_time: stats.slot_start_time().map(SystemTime::from),
-        node_id: node_id.to_owned(),
         peer_available_cnt: nodes_count.available_count,
         peer_connected_cnt: stats.peer_connected_cnt(),
         peer_quarantined_cnt: nodes_count.quarantined_count,
@@ -416,19 +411,21 @@ pub async fn get_stake_pools(context: Data<Context>) -> Result<impl Responder, E
 pub async fn get_network_stats(context: Data<Context>) -> Result<impl Responder, Error> {
     let full_context = context.try_full().await?;
 
-    let logger = context.logger.await?.new(o!("request" => "network_stats"));
+    let logger = context
+        .logger()
+        .await?
+        .new(o!("request" => "network_stats"));
     let (reply_handle, reply_future) = intercom::unary_reply(logger);
     let mbox = full_context.network_task.clone();
     mbox.send(NetworkMsg::PeerInfo(reply_handle));
     let peer_stats = reply_future
-        .await?
+        .await
         .map_err(|e: intercom::Error| ErrorInternalServerError(e))?;
 
     let network_stats = peer_stats
         .into_iter()
         .map(|info| {
             json!(PeerStats {
-                node_id: info.id.to_string(),
                 addr: info.addr,
                 established_at: SystemTime::from(info.stats.connection_established()),
                 last_block_received: info.stats.last_block_received().map(SystemTime::from),
@@ -570,31 +567,26 @@ pub async fn get_diagnostic(context: Data<Context>) -> Result<impl Responder, Er
 
 pub async fn get_network_p2p_quarantined(context: Data<Context>) -> Result<impl Responder, Error> {
     let ctx = context.try_full().await?;
-    let list = ctx.p2p.list_quarantined::<Error>().compat().await?;
+    let list = ctx.p2p.list_quarantined().await;
     Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_non_public(context: Data<Context>) -> Result<impl Responder, Error> {
     let ctx = context.try_full().await?;
-    let list = ctx.p2p.list_non_public::<Error>().compat().await?;
+    let list = ctx.p2p.list_non_public().await;
     Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_available(context: Data<Context>) -> Result<impl Responder, Error> {
     let ctx = context.try_full().await?;
-    let list = ctx.p2p.list_available::<Error>().compat().await?;
+    let list = ctx.p2p.list_available().await;
     Ok(Json(json!(list)))
 }
 
 pub async fn get_network_p2p_view(context: Data<Context>) -> Result<impl Responder, Error> {
     let ctx = context.try_full().await?;
-    let view = ctx
-        .p2p
-        .view::<Error>(poldercast::Selection::Any)
-        .compat()
-        .await?;
-    let node_infos: Vec<poldercast::NodeInfo> = view.peers.into_iter().map(Into::into).collect();
-    Ok(Json(json!(node_infos)))
+    let view = ctx.p2p.view(poldercast::Selection::Any).await;
+    Ok(Json(json!(view.peers)))
 }
 
 pub async fn get_network_p2p_view_topic(
@@ -618,7 +610,6 @@ pub async fn get_network_p2p_view_topic(
 
     let topic = parse_topic(&topic.into_inner())?;
     let ctx = context.try_full().await?;
-    let view = ctx.p2p.view::<Error>(topic).compat().await?;
-    let node_infos: Vec<poldercast::NodeInfo> = view.peers.into_iter().map(Into::into).collect();
-    Ok(Json(json!(node_infos)))
+    let view = ctx.p2p.view(topic).await;
+    Ok(Json(json!(view.peers)))
 }
