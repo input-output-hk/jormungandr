@@ -102,7 +102,7 @@ pub struct TrustedPeer {
 impl From<super::config::TrustedPeer> for TrustedPeer {
     fn from(tp: super::config::TrustedPeer) -> Self {
         TrustedPeer {
-            address: tp.address.0,
+            address: tp.address,
         }
     }
 }
@@ -140,8 +140,8 @@ impl Listen {
 }
 
 impl Configuration {
-    pub fn public_address(&self) -> Option<&Address> {
-        self.profile.public_address()
+    pub fn address(&self) -> Option<&Address> {
+        self.profile.address()
     }
 
     /// Returns the listener configuration, if the options defining it
