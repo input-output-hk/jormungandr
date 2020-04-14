@@ -63,7 +63,6 @@ use chain_time::TimeFrame;
 use slog::Logger;
 use std::sync::Arc;
 use tokio02::stream::StreamExt;
-use tokio_compat::prelude::*;
 
 // derive
 use thiserror::Error;
