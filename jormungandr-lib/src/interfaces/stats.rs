@@ -23,7 +23,6 @@ pub struct NodeStats {
     pub last_block_time: Option<SystemTime>,
     pub last_block_tx: u64,
     pub last_received_block_time: Option<SystemTime>,
-    pub node_id: String,
     pub peer_available_cnt: usize,
     pub peer_connected_cnt: usize,
     pub peer_quarantined_cnt: usize,
