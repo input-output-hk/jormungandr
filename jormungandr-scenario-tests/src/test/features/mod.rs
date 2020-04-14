@@ -73,54 +73,11 @@ pub fn assert_are_not_in_network_view(
     let network_view = node.network_stats()?;
     for peer in peers {
         utils::assert(
-            network_view.iter().any(|info| {
-                info.node_id == peer.public_id().to_string()
-                    && info.addr == peer.address().to_socketaddr()
-            }),
+            network_view
+                .iter()
+                .any(|info| info.addr == peer.address().to_socketaddr()),
             &format!(
                 "{}: Peer {} is present in network view list, while it should not",
-                info,
-                peer.alias()
-            ),
-        )?;
-    }
-    Ok(())
-}
-
-pub fn assert_are_in_network_stats(
-    node: &NodeController,
-    peers: Vec<&NodeController>,
-    info: &str,
-) -> Result<()> {
-    let network_stats = node.network_stats()?;
-    for peer in peers {
-        utils::assert(
-            network_stats
-                .iter()
-                .any(|x| x.node_id == peer.public_id().to_string()),
-            &format!(
-                "{}: Peer {} is not present in network_stats list",
-                info,
-                peer.alias()
-            ),
-        )?;
-    }
-    Ok(())
-}
-
-pub fn assert_are_not_in_network_stats(
-    node: &NodeController,
-    peers: Vec<&NodeController>,
-    info: &str,
-) -> Result<()> {
-    let network_stats = node.network_stats()?;
-    for peer in peers {
-        utils::assert(
-            network_stats
-                .iter()
-                .any(|x| x.node_id == peer.public_id().to_string()),
-            &format!(
-                "{}: Peer {} is present in network_stats list, while it should not",
                 info,
                 peer.alias()
             ),
