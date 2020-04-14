@@ -19,6 +19,7 @@ use slog::Logger;
 use std::fmt;
 use std::mem;
 use std::net::SocketAddr;
+use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::SystemTime;
 
@@ -72,7 +73,7 @@ pub struct OutboundSubscription<T> {
 impl<T> Stream for OutboundSubscription<T> {
     type Item = Result<T, net_error::Error>;
 
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Ok(self.inner.poll_next(cx))
     }
 }
