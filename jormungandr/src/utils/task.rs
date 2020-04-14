@@ -275,7 +275,33 @@ impl TokioServiceInfo {
 
     // Run the closure with the specified period on the executor
     // and execute the resulting closure.
-    pub fn run_periodic_std<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
+    pub fn run_periodic_std<F, U>(&self, name: &'static str, period: Duration, mut f: F)
+    where
+        F: FnMut() -> U,
+        F: Send + 'static,
+        U: Future<Output = ()> + Send + 'static,
+    {
+        let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
+        self.spawn_std(name, async move {
+            let mut interval = tokio02::time::interval(period);
+            loop {
+                let t_now = Instant::now();
+                interval.tick().await;
+                let t_last = Instant::now();
+                let elapsed = t_last.duration_since(t_now);
+                if elapsed > period * 2 {
+                    warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
+                }
+                f().await;
+                trace!(logger, "periodic {} finished successfully", name; "triggered_at" => ?t_now);
+            }
+        });
+    }
+
+    // Run the closure with the specified period on the executor
+    // and execute the resulting fallible async closure.
+    // If the closure returns an Err, log it.
+    pub fn run_periodic_failable_std<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
     where
         F: FnMut() -> U,
         F: Send + 'static,
