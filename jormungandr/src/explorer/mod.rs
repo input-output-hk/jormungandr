@@ -17,7 +17,8 @@ use crate::blockcfg::{
 };
 use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
-use crate::utils::task::{Input, TokioServiceInfo};
+use crate::utils::async_msg::MessageQueue;
+use crate::utils::task::TokioServiceInfo;
 use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
@@ -107,30 +108,26 @@ impl Explorer {
         }
     }
 
-    pub async fn handle_input(&mut self, info: &TokioServiceInfo, input: Input<ExplorerMsg>) {
-        let _logger = info.logger();
-        let bquery = match input {
-            Input::Shutdown => {
-                return;
-            }
-            Input::Input(msg) => msg,
-        };
+    pub async fn start(&mut self, info: TokioServiceInfo, messages: MessageQueue<ExplorerMsg>) {
+        messages
+            .for_each(|input| async {
+                let mut explorer_db = self.db.clone();
+                let logger = info.logger().clone();
 
-        let mut explorer_db = self.db.clone();
-        let logger = info.logger().clone();
-
-        match bquery {
-            ExplorerMsg::NewBlock(block) => {
-                let fut = explorer_db
-                    .apply_block(block)
-                    .map(move |result| match result {
-                        // XXX: There is no garbage collection now, so the GCRoot is not used
-                        Ok(_gc_root) => Ok(()),
-                        Err(err) => Err(error!(logger, "Explorer error: {}", err)),
-                    });
-                info.spawn_failable_std("apply block", fut)
-            }
-        }
+                match input {
+                    ExplorerMsg::NewBlock(block) => {
+                        let fut = explorer_db
+                            .apply_block(block)
+                            .map(move |result| match result {
+                                // XXX: There is no garbage collection now, so the GCRoot is not used
+                                Ok(_gc_root) => Ok(()),
+                                Err(err) => Err(error!(logger, "Explorer error: {}", err)),
+                            });
+                        info.spawn_failable_std("apply block", fut)
+                    }
+                }
+            })
+            .await;
     }
 }
 
