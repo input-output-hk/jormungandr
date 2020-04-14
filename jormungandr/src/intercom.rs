@@ -170,21 +170,17 @@ impl<T> ReplyHandle<T> {
     }
 }
 
-pub struct ReplyFuture<T, E> {
+pub struct ReplyFuture<T> {
     receiver: oneshot::Receiver<Result<T, Error>>,
     logger: Logger,
-    _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Unpin for ReplyFuture<T, E> {}
+impl<T> Unpin for ReplyFuture<T> {}
 
-impl<T, E> Future for ReplyFuture<T, E>
-where
-    E: From<Error>,
-{
-    type Output = Result<T, E>;
+impl<T> Future for ReplyFuture<T> {
+    type Output = Result<T, Error>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, E>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, Error>> {
         Pin::new(&mut self.receiver).poll(cx).map(|res| match res {
             Ok(Ok(item)) => {
                 debug!(self.logger, "request processed");
@@ -192,23 +188,19 @@ where
             }
             Ok(Err(e)) => {
                 info!(self.logger, "error processing request"; "reason" => %e);
-                Err(e.into())
+                Err(e)
             }
             Err(oneshot::Canceled) => {
                 warn!(self.logger, "response canceled by the processing task");
-                Err(Error::from(oneshot::Canceled).into())
+                Err(Error::from(oneshot::Canceled))
             }
         })
     }
 }
 
-pub fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>) {
+pub fn unary_reply<T>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T>) {
     let (sender, receiver) = oneshot::channel();
-    let future = ReplyFuture {
-        receiver,
-        logger,
-        _phantom_error: PhantomData,
-    };
+    let future = ReplyFuture { receiver, logger };
     (ReplyHandle { sender }, future)
 }
 
@@ -361,9 +353,9 @@ pub struct RequestStreamHandle<T, R> {
     reply: ReplyHandle<R>,
 }
 
-pub struct RequestSink<T, R, E> {
+pub struct RequestSink<T, R> {
     sender: MessageBox<T>,
-    reply_future: Option<ReplyFuture<R, E>>,
+    reply_future: Option<ReplyFuture<R>>,
     logger: Logger,
 }
 
@@ -373,37 +365,31 @@ impl<T, R> RequestStreamHandle<T, R> {
     }
 }
 
-impl<T, R, E> RequestSink<T, R, E> {
+impl<T, R, E> RequestSink<T, R> {
     pub fn logger(&self) -> &Logger {
         &self.logger
     }
 
     // This is for network which implements request_stream::MapResponse
     // for this type.
-    pub fn take_reply_future(&mut self) -> ReplyFuture<R, E> {
+    pub fn take_reply_future(&mut self) -> ReplyFuture<R> {
         self.reply_future
             .take()
             .expect("there can be only one waiting for the reply")
     }
 }
 
-impl<T, R, E> RequestSink<T, R, E>
-where
-    E: From<Error>,
-{
-    fn map_send_error(&self, _e: mpsc::SendError, msg: &'static str) -> E {
+impl<T, R> RequestSink<T, R> {
+    fn map_send_error(&self, _e: mpsc::SendError, msg: &'static str) -> Error {
         debug!(self.logger, "{}", msg);
         Error::aborted("request stream processing ended before all items were sent").into()
     }
 }
 
-impl<T, R, E> Sink<T> for RequestSink<T, R, E>
-where
-    E: From<Error>,
-{
-    type Error = E;
+impl<T, R> Sink<T> for RequestSink<T, R> {
+    type Error = Error;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         self.sender.poll_ready(cx).map_err(|e| {
             self.map_send_error(
                 e,
@@ -412,7 +398,7 @@ where
         })
     }
 
-    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), E> {
+    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Error> {
         self.sender.start_send(item).map_err(|e| {
             self.map_send_error(
                 e,
@@ -421,7 +407,7 @@ where
         })
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         Pin::new(&mut self.sender).poll_flush(cx).map_err(|e| {
             self.map_send_error(
                 e,
@@ -430,7 +416,7 @@ where
         })
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), E>> {
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         Pin::new(&mut self.sender).poll_close(cx).map_err(|e| {
             self.map_send_error(
                 e,
@@ -441,13 +427,10 @@ where
     }
 }
 
-pub fn stream_request<T, R, E>(
+pub fn stream_request<T, R>(
     buffer: usize,
     logger: Logger,
-) -> (RequestStreamHandle<T, R>, RequestSink<T, R, E>)
-where
-    E: From<Error>,
-{
+) -> (RequestStreamHandle<T, R>, RequestSink<T, R>) {
     let (sender, receiver) = async_msg::channel(buffer);
     let (reply, reply_future) = unary_reply(logger.clone());
     let handle = RequestStreamHandle { receiver, reply };
