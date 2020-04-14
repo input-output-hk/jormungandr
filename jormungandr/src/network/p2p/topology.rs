@@ -21,7 +21,6 @@ pub struct View {
 }
 
 /// object holding the P2pTopology of the Node
-#[derive(Clone)]
 pub struct P2pTopology {
     lock: RwLock<Topology>,
     node_address: Address,
@@ -76,7 +75,7 @@ impl Builder {
     }
 
     fn build(self) -> P2pTopology {
-        let node_address = self.topology.profile().id().clone();
+        let node_address = self.topology.profile().address().unwrap().clone();
         P2pTopology {
             lock: RwLock::new(self.topology),
             node_address,
