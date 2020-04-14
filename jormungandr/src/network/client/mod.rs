@@ -8,23 +8,23 @@ use super::{
     },
     p2p::{
         comm::{OutboundSubscription, PeerComms},
-        Address, Gossip as NodeData,
+        Address,
     },
-    subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
+    subscription::GossipProcessor,
     Channels, GlobalStateR,
 };
 use crate::{
     blockcfg::{Block, Fragment, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
-    utils::async_msg::MessageBox,
 };
 use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
 use chain_network::error as net_error;
 
 use futures03::prelude::*;
+use futures03::ready;
 use slog::Logger;
 
-use std::task::Poll;
+use std::task::{Context, Poll};
 
 pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 
@@ -36,10 +36,8 @@ pub struct Client {
     inbound: InboundSubscriptions,
     block_solicitations: OutboundSubscription<BlockIds>,
     chain_pulls: OutboundSubscription<ChainPullRequest>,
-    block_sink: BlockAnnouncementProcessor,
-    fragment_sink: FragmentProcessor,
     gossip_processor: GossipProcessor,
-    client_box: MessageBox<ClientMsg>,
+    channels: Channels,
     incoming_block_announcement: Option<Header>,
     incoming_solicitation: Option<ClientMsg>,
     incoming_fragment: Option<Fragment>,
@@ -73,18 +71,6 @@ impl Client {
             .logger
             .new(o!("node_id" => remote_node_id.to_string()));
 
-        let block_sink = BlockAnnouncementProcessor::new(
-            builder.channels.block_box,
-            remote_node_id,
-            global_state.clone(),
-            logger.new(o!("stream" => "block_events", "direction" => "in")),
-        );
-        let fragment_sink = FragmentProcessor::new(
-            builder.channels.transaction_box,
-            remote_node_id,
-            global_state.clone(),
-            logger.new(o!("stream" => "fragments", "direction" => "in")),
-        );
         let gossip_processor = GossipProcessor::new(
             remote_node_id,
             global_state.clone(),
@@ -98,8 +84,6 @@ impl Client {
             inbound,
             block_solicitations: comms.subscribe_to_block_solicitations(),
             chain_pulls: comms.subscribe_to_chain_pulls(),
-            block_sink,
-            fragment_sink,
             gossip_processor,
             client_box: builder.channels.client_box,
             incoming_block_announcement: None,
@@ -139,57 +123,75 @@ impl Progress {
 }
 
 impl Client {
-    fn process_block_event(&mut self) -> Poll<ProcessingOutcome, ()> {
+    fn process_block_event(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
         // Drive sending of a message to block task to clear the buffered
         // announcement before polling more events from the block subscription
         // stream.
+        let block_box = &mut self.channels.block_box;
+        ready!(block_box.poll_ready(cx));
         if let Some(header) = self.incoming_block_announcement.take() {
-            match self.block_sink.start_send(header).map_err(|_| ())? {
-                AsyncSink::Ready => {}
-                AsyncSink::NotReady(header) => {
-                    self.incoming_block_announcement = Some(header);
-                    return Ok(Async::NotReady);
-                }
-            }
+            block_box
+                .start_send(BlockMsg::AnnouncedBlock(header))
+                .map_err(|e| {
+                    error!(
+                        self.logger,
+                        "failed to send announced block header for processing";
+                        "reason" => %e,
+                    );
+                })?;
         } else {
-            // Ignoring possible NotReady return here: due to the following
-            // try_ready!() invocation, this function cannot return Continue
+            // Ignoring possible Pending return here: due to the following
+            // ready!() invocations, this function cannot return Continue
             // while no progress has been made.
-            self.block_sink.poll_complete().map_err(|_| ())?;
+            block_box.poll_flush(cx).map_err(|e| {
+                error!(
+                    self.logger,
+                    "processing of incoming block messages failed";
+                    "reason" => %e,
+                );
+            })?;
         }
 
         // Drive sending of a message to the client request task to clear
         // the buffered solicitation before polling more events from the
         // block subscription stream.
+        let client_box = &mut self.channels.client_box;
+        ready!(client_box.poll_ready(cx));
         if let Some(msg) = self.incoming_solicitation.take() {
-            match self.client_box.start_send(msg).map_err(|_| ())? {
-                AsyncSink::Ready => {}
-                AsyncSink::NotReady(msg) => {
-                    self.incoming_solicitation = Some(msg);
-                    return Ok(Async::NotReady);
-                }
-            }
+            client_box.start_send(msg).map_err(|e| {
+                error!(
+                    self.logger,
+                    "failed to send client request for processing";
+                    "reason" => %e,
+                );
+            })?;
         } else {
-            // Ignoring possible NotReady return here: due to the following
-            // try_ready!() invocation, this function cannot return Continue
+            // Ignoring possible Pending return here: due to the following
+            // ready!() invocation, this function cannot return Continue
             // while no progress has been made.
-            self.client_box.poll_complete().map_err(|_| ())?;
+            client_box.poll_flush(cx).map_err(|e| {
+                error!(
+                    self.logger,
+                    "processing of incoming client requests failed";
+                    "reason" => %e,
+                );
+            })?;
         }
 
-        let maybe_event = try_ready!(self.inbound.block_events.poll().map_err(|e| {
+        let maybe_event = ready!(self.inbound.block_events.poll_next(cx)).map_err(|e| {
             debug!(
                 self.logger,
                 "block subscription stream failure";
                 "error" => ?e,
             );
-        }));
+        })?;
         let event = match maybe_event {
             Some(event) => event,
             None => {
                 debug!(self.logger, "block event subscription ended by the peer");
-                return Ok(Disconnect.into());
+                return Ok(Disconnect).into();
             }
         };
         match event {
@@ -204,7 +206,7 @@ impl Client {
                 self.push_missing_headers(req);
             }
         }
-        Ok(Continue.into())
+        Ok(Continue).into()
     }
 
     fn upload_blocks(&mut self, block_ids: Vec<HeaderHash>) {
@@ -233,7 +235,7 @@ impl Client {
         );
     }
 
-    fn push_missing_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
+    fn push_missing_headers(&mut self, req: ChainPullRequest) {
         debug!(
             self.logger,
             "peer requests missing part of the chain";
@@ -265,7 +267,7 @@ impl Client {
         );
     }
 
-    fn pull_headers(&mut self, req: ChainPullRequest<HeaderHash>) {
+    fn pull_headers(&mut self, req: ChainPullRequest) {
         let block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "PullHeaders"));
         let req_err_logger = logger.clone();
@@ -313,15 +315,7 @@ impl Client {
                 }),
         );
     }
-}
 
-impl<S> Client<S>
-where
-    S: BlockService<Block = Block>,
-    S: FragmentService + GossipService,
-    S::GetBlocksFuture: Send + 'static,
-    S::GetBlocksStream: Send + 'static,
-{
     fn solicit_blocks(&mut self, block_ids: &[HeaderHash]) {
         let block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "GetBlocks"));
@@ -370,79 +364,74 @@ where
                 }),
         );
     }
-}
 
-impl<S> Client<S>
-where
-    S: FragmentService<Fragment = Fragment>,
-    S: BlockService + GossipService,
-{
-    fn process_fragments(&mut self) -> Poll<ProcessingOutcome, ()> {
+    fn process_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
         // Drive sending of a message to fragment task to completion
         // before polling more events from the fragment subscription
         // stream.
+        let fragment_box = &mut self.channels.fragment_box;
+        ready!(fragment_box.poll_ready(cx));
         if let Some(fragment) = self.incoming_fragment.take() {
-            match self.fragment_sink.start_send(fragment).map_err(|_| ())? {
-                AsyncSink::Ready => {}
-                AsyncSink::NotReady(fragment) => {
-                    self.incoming_fragment = Some(fragment);
-                    return Ok(Async::NotReady);
-                }
-            }
+            fragment_box.start_send(fragment).map_err(|e| {
+                error!(
+                    self.logger,
+                    "failed to send fragment for processing";
+                    "reason" => %e,
+                );
+            })?;
         } else {
-            // Ignoring possible NotReady return here: due to the following
+            // Ignoring possible Pending return here: due to the following
             // try_ready!() invocation, this function cannot return Continue
             // while no progress has been made.
-            self.fragment_sink.poll_complete().map_err(|_| ())?;
+            fragment_box.poll_flush(cx).map_err(|e| {
+                error!(
+                    self.logger,
+                    "processing of incoming fragments failed";
+                    "reason" => %e,
+                );
+            })?;
         }
 
-        let maybe_fragment = try_ready!(self.inbound.fragments.poll().map_err(|e| {
+        let maybe_fragment = ready!(self.inbound.fragments.poll_next(cx)).map_err(|e| {
             debug!(
                 self.logger,
                 "fragment stream failure";
                 "error" => %e,
             );
-        }));
+        })?;
         match maybe_fragment {
             Some(fragment) => {
                 debug_assert!(self.incoming_fragment.is_none());
                 self.incoming_fragment = Some(fragment);
-                Ok(Continue.into())
+                Ok(Continue).into()
             }
             None => {
                 debug!(self.logger, "fragment subscription ended by the peer");
-                Ok(Disconnect.into())
+                Ok(Disconnect).into()
             }
         }
     }
-}
 
-impl<S> Client<S>
-where
-    S: P2pService<NodeId = Address>,
-    S: GossipService<Node = NodeData>,
-    S: BlockService + FragmentService,
-{
-    fn process_gossip(&mut self) -> Poll<ProcessingOutcome, ()> {
+    fn process_gossip(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
-        let maybe_gossip = try_ready!(self.inbound.gossip.poll().map_err(|e| {
+        let maybe_gossip = ready!(self.inbound.gossip.poll_next(cx)).map_err(|e| {
             debug!(
                 self.logger,
                 "gossip stream failure";
                 "error" => %e,
             );
-        }));
+        })?;
         match maybe_gossip {
             Some(gossip) => {
                 self.gossip_processor.process_item(gossip);
-                Ok(Continue.into())
+                Ok(Continue).into()
             }
             None => {
                 debug!(self.logger, "gossip subscription ended by the peer");
-                Ok(Disconnect.into())
+                Ok(Disconnect).into()
             }
         }
     }
@@ -455,26 +444,17 @@ impl Future for Client {
         use self::ProcessingOutcome::*;
 
         loop {
-            // Drive any pending activity of the gRPC client until it is ready
-            // to process another request.
-            try_ready!(self.service.poll_ready().map_err(|e| {
-                info!(
-                    self.logger,
-                    "client connection broke down";
-                    "error" => ?e);
-            }));
-
             let mut progress = Progress(None);
 
-            progress.update(self.process_block_event()?);
-            progress.update(self.process_fragments()?);
-            progress.update(self.process_gossip()?);
+            progress.update(self.process_block_event(cx)?);
+            progress.update(self.process_fragments(cx)?);
+            progress.update(self.process_gossip(cx)?);
 
             // Block solicitations and chain pulls are special:
             // they are handled with client requests on the client side,
             // but on the server side, they are fed into the block event stream.
-            progress.update(self.block_solicitations.poll().unwrap().map(|maybe_item| {
-                match maybe_item {
+            progress.update(self.block_solicitations.poll_next(cx).map(
+                |maybe_item| match maybe_item {
                     Some(block_ids) => {
                         self.solicit_blocks(&block_ids);
                         Continue
@@ -483,12 +463,11 @@ impl Future for Client {
                         debug!(self.logger, "outbound block solicitation stream closed");
                         Disconnect
                     }
-                }
-            }));
+                },
+            ));
             progress.update(
                 self.chain_pulls
-                    .poll()
-                    .unwrap()
+                    .poll_next(cx)
                     .map(|maybe_item| match maybe_item {
                         Some(req) => {
                             self.pull_headers(req);
@@ -502,11 +481,11 @@ impl Future for Client {
             );
 
             match progress {
-                Progress(None) => return Ok(Async::NotReady),
+                Progress(None) => return Poll::Pending,
                 Progress(Some(Continue)) => continue,
                 Progress(Some(Disconnect)) => {
                     info!(self.logger, "disconnecting client");
-                    return Ok(().into());
+                    return Ok(()).into();
                 }
             }
         }
