@@ -8,7 +8,6 @@
 pub mod bootstrap;
 mod client;
 mod grpc;
-mod inbound;
 pub mod p2p;
 mod service;
 mod subscription;
