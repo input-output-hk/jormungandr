@@ -6,7 +6,6 @@ use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 use crate::network::p2p::{comm::PeerInfo, Address};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
-use chain_network::data::Peers;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
@@ -461,7 +460,6 @@ pub enum TransactionMsg {
 /// Fetching the block headers, the block, the tip
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
-    GetPeers(ReplyHandle<Peers>),
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
     GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
@@ -475,7 +473,6 @@ impl Debug for ClientMsg {
                 .debug_tuple("GetBlockTip")
                 .field(&format_args!("_"))
                 .finish(),
-            ClientMsg::GetPeers(_) => f.debug_tuple("GetPeers").field(&format_args!("_")).finish(),
             ClientMsg::GetHeaders(ids, _) => f
                 .debug_tuple("GetHeaders")
                 .field(ids)

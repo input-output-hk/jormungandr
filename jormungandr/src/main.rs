@@ -177,7 +177,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let task_data = client::TaskData {
             storage: blockchain.storage().clone(),
             blockchain_tip: blockchain_tip.clone(),
-            topology: topology.clone(),
         };
 
         services.spawn_future_std("client-query", move |info| {
@@ -196,7 +195,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             transaction_box: fragment_msgbox,
             block_box: block_msgbox,
         };
-        let topology = topology.clone();
 
         services.spawn_future_std("network", move |info| {
             let params = network::TaskParams {
