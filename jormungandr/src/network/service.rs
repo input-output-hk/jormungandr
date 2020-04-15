@@ -250,10 +250,20 @@ impl GossipService for NodeService {
 
     async fn peers(&mut self) -> Result<Peers, Error> {
         let logger = self.logger().new(o!("request" => "Peers"));
-        let (reply_handle, reply_future) = intercom::unary_reply(logger);
-        let mbox = self.channels.client_box.clone();
-        mbox.send(ClientMsg::GetPeers(reply_handle)).await?;
-        let peers = reply_handle.await?;
-        Ok(peers)
+        let topology = &self.global_state.topology;
+        let view = topology.view(poldercast::Selection::Any).await;
+        let mut peers = Vec::new();
+        for n in view.peers.into_iter() {
+            if let Some(addr) = n.to_socketaddr() {
+                peers.push(Peer { addr });
+            }
+        }
+        if peers.len() == 0 {
+            // No peers yet, put self as the peer to bootstrap from
+            if let Some(addr) = view.self_node.address().and_then(|x| x.to_socketaddr()) {
+                peers.push(Peer { addr });
+            }
+        }
+        Ok(peers.into_boxed_slice())
     }
 }
