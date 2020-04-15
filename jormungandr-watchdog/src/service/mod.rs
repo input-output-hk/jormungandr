@@ -145,8 +145,8 @@ impl<T: Service> ServiceState<T> {
     /// this from there one can "borrow" the settings or clone the reader
     ///
     /// [`SettingsReader`]: ./struct.SettingsReader.html
-    pub fn settings(&mut self) -> &mut SettingsReader<T::Settings> {
-        &mut self.settings
+    pub fn settings(&mut self) -> &SettingsReader<T::Settings> {
+        &self.settings
     }
 
     /// access the status reader of the service. If the status is updated

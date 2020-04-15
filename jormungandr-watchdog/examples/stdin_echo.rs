@@ -14,6 +14,7 @@ use tokio::{
 use std::time::Duration;
 use tracing;
 use tracing_subscriber::fmt::Subscriber;
+use tracing_subscriber::EnvFilter;
 
 struct StdinReader {
     state: ServiceState<Self>,
@@ -93,6 +94,7 @@ impl Service for StdoutWriter {
 const LOGGER_CONFIG_LOG_LEVEL: &str = "logger config log level";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(remote = "tracing::Level")]
 pub enum LogLevel {
     INFO,
     WARN,
@@ -103,25 +105,16 @@ pub enum LogLevel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct LoggerConfig {
-    level: LogLevel,
+    #[serde(with = "LogLevel")]
+    level: tracing::Level,
 }
 
 impl Default for LoggerConfig {
     fn default() -> Self {
         LoggerConfig {
-            level: LogLevel::ERROR,
+            level: tracing::Level::ERROR,
         }
     }
-}
-
-fn log_level_into_tracing_level(level: &LogLevel) -> tracing::Level {
-    return match level {
-        LogLevel::INFO => tracing::Level::INFO,
-        LogLevel::WARN => tracing::Level::WARN,
-        LogLevel::DEBUG => tracing::Level::DEBUG,
-        LogLevel::ERROR => tracing::Level::ERROR,
-        LogLevel::TRACE => tracing::Level::TRACE,
-    };
 }
 
 impl Settings for LoggerConfig {
@@ -131,18 +124,19 @@ impl Settings for LoggerConfig {
             .takes_value(true)
             .default_value("warn")
             .possible_values(&["info", "warn", "debug", "error", "trace"])
+            .env("LOG_LEVEL")
             .value_name("LOG_LEVEL")
-            .help("Services log level: []")]
+            .help("Services log level: [info, warn, debug, error, trace]")]
     }
 
     fn matches_cli_args<'a>(&mut self, matches: &ArgMatches<'a>) {
         if let Some(level) = matches.value_of(LOGGER_CONFIG_LOG_LEVEL) {
             self.level = match level.to_lowercase().as_str() {
-                "info" => LogLevel::INFO,
-                "warn" => LogLevel::WARN,
-                "debug" => LogLevel::DEBUG,
-                "error" => LogLevel::ERROR,
-                "trace" => LogLevel::TRACE,
+                "info" => tracing::Level::INFO,
+                "warn" => tracing::Level::WARN,
+                "debug" => tracing::Level::DEBUG,
+                "error" => tracing::Level::ERROR,
+                "trace" => tracing::Level::TRACE,
                 _ => unreachable!(),
             };
         }
@@ -170,10 +164,10 @@ impl Service for LoggerService {
     }
 
     async fn start(mut self) {
-        let this = &mut self;
-        while let Some(cfg) = this.state.settings().updated().await {
+        let mut settings = self.state.settings().clone();
+        while let Some(cfg) = settings.updated().await {
             let subscriber = Subscriber::builder()
-                .with_max_level(log_level_into_tracing_level(&cfg.level))
+                .with_max_level(cfg.level.clone())
                 .finish();
             tracing::subscriber::set_global_default(subscriber)
                 .expect("setting tracing default failed");
