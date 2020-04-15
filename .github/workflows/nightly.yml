@@ -92,6 +92,13 @@ jobs:
         with:
           submodules: true
 
+      - name: Get version
+        id: version
+        run: |
+          export VERSION=`cat ./jormungandr/Cargo.toml | grep "version" | head -n 1 | awk '{print $3}' | cut -d "\"" -f 2 `
+          echo ::set-output name=version::$VERSION
+        shell: bash
+
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         with:
@@ -106,34 +113,20 @@ jobs:
           command: rustc
           args: --release --target ${{ matrix.config.target }} -p jcli --bin jcli -- -C target-cpu=${{ matrix.config.target_cpu }} -C lto
 
-
-      - name: Get version if unix
-        if: matrix.config.os != 'windows-latest'
-        run: |
-          export VERSION=`./target/${{ matrix.config.target }}/release/jormungandr --version | awk '{print $2}'`
-          echo ::set-env name=VERSION::$VERSION
-
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
-        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.tar.gz jormungandr jcli
-
-      - name: Get version if windows
-        if: matrix.config.os == 'windows-latest'
-        run: |
-          $version=./target/${{ matrix.config.target }}/release/jormungandr.exe --version;
-          $version=$version.trim("jormungandr ");
-          echo "::set-env name=VERSION::$version";
+        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.tar.gz jormungandr jcli
 
       - name: Pack binaries if windows
         if: matrix.config.os == 'windows-latest'
-        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.zip
+        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.zip
 
       - name: Upload binaries to nightly release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
-          asset_name: jormungandr-${{ env.VERSION }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}
+          file: jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
+          asset_name: jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}
           tag: nightly
           file_glob: true
           overwrite: true
