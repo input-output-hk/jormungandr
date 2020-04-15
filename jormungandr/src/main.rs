@@ -569,11 +569,13 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         })
     }
 
-    let block0 = start_up::prepare_block_0(
-        &settings,
-        &storage,
-        &init_logger, /* add network to fetch block0 */
-    )?;
+    let block0 = services.block_on_task_std("prepare_block_0", |service_info| {
+        start_up::prepare_block_0(
+            &settings,
+            &storage,
+            &service_info.logger(), /* add network to fetch block0 */
+        )
+    })?;
 
     Ok(InitializedNode {
         settings,
