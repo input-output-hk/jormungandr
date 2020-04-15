@@ -70,7 +70,8 @@ pub fn get_openapi_path() -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.pop();
     path.push("doc");
-    path.push("openapi.yaml");
+    path.push("api");
+    path.push("v0.yaml");
     path
 }
 

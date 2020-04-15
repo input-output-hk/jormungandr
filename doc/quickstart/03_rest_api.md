@@ -30,4 +30,4 @@ The result may be:
 Please note that the end points and the results may change in the future.
 
 To see the whole Node API documentation,
-[click here](https://editor.swagger.io/?url=https://raw.githubusercontent.com/input-output-hk/jormungandr/master/doc/openapi.yaml)
+[click here](https://editor.swagger.io/?url=https://raw.githubusercontent.com/input-output-hk/jormungandr/master/doc/api/v0.yaml)
