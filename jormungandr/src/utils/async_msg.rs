@@ -55,19 +55,6 @@ impl<Msg> MessageBox<Msg> {
     pub fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
         self.0.poll_ready(cx)
     }
-
-    /// Makes a sending task around this message box instance, the message to
-    /// send, and a logger instance to report errors. The returned future
-    /// is suitable for spawning onto an executor.
-    async fn send_task(&mut self, msg: Msg, logger: Logger) {
-        if let Err(e) = self.send(msg).await {
-            error!(
-                logger,
-                "failed to enqueue message for processing";
-                "reason" => %e,
-            )
-        }
-    }
 }
 
 impl<Msg> Sink<Msg> for MessageBox<Msg> {
