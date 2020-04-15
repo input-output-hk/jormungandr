@@ -24,6 +24,12 @@ pub struct P2p {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub listen_address: Option<poldercast::Address>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_connections: Option<u32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_inbound_connections: Option<u32>,
+
     pub allow_private_addresses: bool,
 
     pub topics_of_interest: Option<TopicsOfInterest>,

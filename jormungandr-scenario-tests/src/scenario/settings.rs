@@ -223,6 +223,8 @@ impl Prepare for P2p {
             trusted_peers: Vec::new(),
             allow_private_addresses: true,
             listen_address: None,
+            max_connections: None,
+            max_inbound_connections: None,
             topics_of_interest: Some(TopicsOfInterest::prepare(context)),
             policy: Some(Policy::prepare(context)),
         }

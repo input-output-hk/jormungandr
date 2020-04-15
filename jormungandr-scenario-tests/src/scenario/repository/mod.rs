@@ -12,7 +12,7 @@ use crate::{
     test::{
         comm::leader_leader::*,
         comm::passive_leader::*,
-        features::{leader_promotion::*, node_id::*, p2p::*},
+        features::{leader_promotion::*, p2p::*},
         network::real::real_network,
         network::topology::scenarios::*,
         non_functional::{disruption::*, legacy::*, soak::*},
@@ -248,6 +248,12 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "duplicated_trusted_peer_id_test",
         duplicated_trusted_peer_id_test,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
+    repository.push(Scenario::new(
+        "max_connections",
+        max_connections,
         vec![Tag::Short, Tag::Unstable],
     ));
 

@@ -13,6 +13,8 @@ pub struct SpawnParams {
     pub listen_address: Option<Option<poldercast::Address>>,
     pub leadership_mode: LeadershipMode,
     pub persistence_mode: PersistenceMode,
+    pub max_connections: Option<u32>,
+    pub max_inbound_connections: Option<u32>,
     pub alias: String,
     pub node_id: Option<poldercast::Id>,
 }
@@ -30,6 +32,8 @@ impl SpawnParams {
             persistence_mode: PersistenceMode::Persistent,
             node_id: None,
             listen_address: None,
+            max_connections: None,
+            max_inbound_connections: None,
         }
     }
 
@@ -61,6 +65,16 @@ impl SpawnParams {
 
     pub fn node_id(&mut self, node_id: poldercast::Id) -> &mut Self {
         self.node_id = Some(node_id);
+        self
+    }
+
+    pub fn max_connections(&mut self, max_connections: u32) -> &mut Self {
+        self.max_connections = Some(max_connections);
+        self
+    }
+
+    pub fn max_inbound_connections(&mut self, max_inbound_connections: u32) -> &mut Self {
+        self.max_inbound_connections = Some(max_inbound_connections);
         self
     }
 
@@ -128,6 +142,14 @@ impl SpawnParams {
 
         if let Some(node_id) = &self.node_id {
             node_config.p2p.public_id = node_id.clone();
+        }
+
+        if let Some(max_inbound_connections) = &self.max_inbound_connections {
+            node_config.p2p.max_inbound_connections = Some(max_inbound_connections.clone());
+        }
+
+        if let Some(max_connections) = &self.max_connections {
+            node_config.p2p.max_connections = Some(max_connections.clone());
         }
 
         if let Some(listen_address_option) = &self.listen_address {
