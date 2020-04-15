@@ -14,6 +14,7 @@ pub struct Topology {
     nodes: HashMap<NodeAlias, Node>,
 }
 
+#[derive(Debug, Clone)]
 pub struct TopologyBuilder {
     nodes: HashMap<NodeAlias, Node>,
 }

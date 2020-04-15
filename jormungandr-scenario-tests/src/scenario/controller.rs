@@ -1,14 +1,16 @@
 use crate::{
-    node::{LeadershipMode, Node, PersistenceMode},
     scenario::{
-        settings::Settings, Blockchain, ContextChaCha, ErrorKind, ProgressBarMode, Result,
-        SpawnParams, Topology,
+        settings::{Dotifier, PrepareSettings},
+        ContextChaCha, ErrorKind, ProgressBarMode, Result,
     },
-    style, MemPoolCheck, NodeBlock0, NodeController, Wallet,
+    style, MemPoolCheck, Node, NodeBlock0, NodeController, Wallet,
 };
 use chain_impl_mockchain::header::HeaderId;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::Value;
+use jormungandr_lib::testing::network_builder::{
+    Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
+};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -115,7 +117,8 @@ impl ControllerBuilder {
         if let Some(settings) = &self.settings {
             let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
 
-            settings.dottify(file)?;
+            let dotifier = Dotifier;
+            dotifier.dottify(&settings, file)?;
 
             for wallet in settings.wallets.values() {
                 wallet.save_to(path)?;
@@ -173,7 +176,8 @@ impl Controller {
             bail!(ErrorKind::NodeNotFound(params.get_alias()))
         };
 
-        let mut node_setting_overriden = params.override_settings(&node_setting);
+        let mut node_setting_overriden = node_setting.clone();
+        params.override_settings(&mut node_setting_overriden.config);
 
         let block0_setting = match params.get_leadership_mode() {
             LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),

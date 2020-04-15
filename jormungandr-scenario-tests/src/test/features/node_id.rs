@@ -1,14 +1,10 @@
 use crate::{
-    node::NodeController,
     node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
 };
 
-use jormungandr_lib::{
-    interfaces::{PeerRecord, Policy},
-    time::Duration,
-};
+use jormungandr_lib::{interfaces::Policy, time::Duration};
 
 use rand_chacha::ChaChaRng;
 use std::str::FromStr;
@@ -40,7 +36,8 @@ pub fn duplicated_node_id_test(mut context: Context<ChaChaRng>) -> Result<Scenar
 
     let mut controller = scenario_settings.build(context)?;
     let long_quarantine_policy = Policy {
-        quarantine_duration: Duration::new(30, 0),
+        quarantine_duration: Some(Duration::new(30, 0)),
+        quarantine_whitelist: None,
     };
 
     let leader1 =
@@ -124,7 +121,8 @@ pub fn duplicated_trusted_peer_id_test(mut context: Context<ChaChaRng>) -> Resul
     };
 
     let long_quarantine_policy = Policy {
-        quarantine_duration: Duration::new(30, 0),
+        quarantine_duration: Some(Duration::new(30, 0)),
+        quarantine_whitelist: None,
     };
 
     let mut controller = scenario_settings.build(context)?;

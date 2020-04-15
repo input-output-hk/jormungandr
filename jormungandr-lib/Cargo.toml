@@ -12,8 +12,10 @@ chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
+chain-time           = { path = "../chain-deps/chain-time"}
 cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 typed-bytes = { path = "../chain-deps/typed-bytes" }
+rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
@@ -25,6 +27,7 @@ os_info = { version = "2.0.0", default-features = false }
 zip = "0.5.5"
 flate2 = "1.0.14"
 tar = "0.4"
+hex = "0.4"
 
 [dev-dependencies]
 rand = "0.7"

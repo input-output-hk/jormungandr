@@ -1,11 +1,9 @@
 use rand_chacha::ChaChaRng;
-use rand_core::{RngCore, SeedableRng};
+use rand_core::RngCore;
 use std::{
-    fmt::{self, Display, Formatter},
     net::SocketAddr,
     ops::Deref,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::{
         atomic::{self, AtomicU16},
         Arc,
@@ -13,6 +11,7 @@ use std::{
 };
 
 use crate::scenario::ProgressBarMode;
+use jormungandr_lib::testing::network_builder::{Random, Seed};
 
 pub type ContextChaCha = Context<ChaChaRng>;
 
@@ -22,16 +21,11 @@ enum TestingDirectory {
     User(PathBuf),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Seed([u8; 32]);
-
 /// scenario context with all the details to setup the necessary port number
 /// a pseudo random number generator (and its original seed).
 #[derive(Clone)]
 pub struct Context<RNG: RngCore + Sized> {
-    rng: RNG,
-
-    seed: Seed,
+    rng: Random<RNG>,
 
     jormungandr: bawawa::Command,
     jcli: bawawa::Command,
@@ -44,18 +38,6 @@ pub struct Context<RNG: RngCore + Sized> {
     progress_bar_mode: ProgressBarMode,
 }
 
-impl Seed {
-    fn zero() -> Self {
-        Seed([0; 32])
-    }
-
-    pub fn generate<RNG: RngCore>(mut rng: RNG) -> Self {
-        let mut seed = Seed::zero();
-        rng.fill_bytes(&mut seed.0);
-        seed
-    }
-}
-
 impl Context<ChaChaRng> {
     pub fn new(
         seed: Seed,
@@ -65,7 +47,7 @@ impl Context<ChaChaRng> {
         generate_documentation: bool,
         progress_bar_mode: ProgressBarMode,
     ) -> Self {
-        let rng = ChaChaRng::from_seed(seed.0);
+        let rng = Random::<ChaChaRng>::new(seed);
 
         let testing_directory = if let Some(testing_directory) = testing_directory {
             TestingDirectory::User(testing_directory)
@@ -75,7 +57,6 @@ impl Context<ChaChaRng> {
 
         Context {
             rng,
-            seed,
             next_available_rest_port_number: Arc::new(AtomicU16::new(8_000)),
             next_available_grpc_port_number: Arc::new(AtomicU16::new(12_000)),
             jormungandr,
@@ -89,12 +70,11 @@ impl Context<ChaChaRng> {
     /// derive the Context into a new context, seeding a new RNG from the original
     /// Context (so reproducibility is still available).
     pub fn derive(&mut self) -> Self {
-        let seed = Seed::generate(self.rng_mut());
-        let rng = ChaChaRng::from_seed(seed.0);
+        let seed = Seed::generate(self.rng.rng_mut());
+        let rng = Random::<ChaChaRng>::new(seed);
 
         Context {
             rng,
-            seed,
             next_available_rest_port_number: Arc::clone(&self.next_available_rest_port_number),
             next_available_grpc_port_number: Arc::clone(&self.next_available_grpc_port_number),
             jormungandr: self.jormungandr().clone(),
@@ -123,7 +103,7 @@ impl<RNG: RngCore> Context<RNG> {
         &self.jcli
     }
 
-    pub fn rng_mut(&mut self) -> &mut RNG {
+    pub fn random(&mut self) -> &mut Random<RNG> {
         &mut self.rng
     }
 
@@ -153,35 +133,11 @@ impl<RNG: RngCore> Context<RNG> {
     /// retrieve the original seed of the pseudo random generator
     #[inline]
     pub fn seed(&self) -> &Seed {
-        &self.seed
+        &self.rng.seed()
     }
 
     pub fn progress_bar_mode(&self) -> ProgressBarMode {
         self.progress_bar_mode
-    }
-}
-
-impl Display for Seed {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        hex::encode(&self.0).fmt(f)
-    }
-}
-
-impl FromStr for Seed {
-    type Err = hex::FromHexError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bytes = hex::decode(s)?;
-
-        let mut seed = Seed::zero();
-
-        if bytes.len() != seed.0.len() {
-            Err(hex::FromHexError::InvalidStringLength)
-        } else {
-            seed.0.copy_from_slice(&bytes);
-
-            Ok(seed)
-        }
     }
 }
 

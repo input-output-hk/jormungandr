@@ -1,5 +1,4 @@
 use crate::{
-    node::NodeController,
     node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,

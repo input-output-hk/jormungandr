@@ -1,19 +1,74 @@
-use crate::scenario::Wallet as WalletTemplate;
-use chain_impl_mockchain::{
-    certificate::{PoolId, SignedCertificate},
-    fee::LinearFee,
-    fragment::Fragment,
-    transaction::UnspecifiedAccountIdentifier,
-};
-use jormungandr_lib::{
+use super::NodeAlias;
+use crate::{
     crypto::hash::Hash,
     interfaces::{Address, Value},
     wallet::{
         account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
     },
 };
+use chain_impl_mockchain::{
+    certificate::{PoolId, SignedCertificate},
+    fee::LinearFee,
+    fragment::Fragment,
+    transaction::UnspecifiedAccountIdentifier,
+};
 use rand_core::{CryptoRng, RngCore};
 use std::path::Path;
+
+pub type WalletAlias = String;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WalletType {
+    Account,
+    UTxO,
+}
+
+#[derive(Clone, Debug)]
+pub struct WalletTemplate {
+    alias: WalletAlias,
+    value: Value,
+    wallet_type: WalletType,
+    delegate: Option<NodeAlias>,
+}
+
+impl WalletTemplate {
+    pub fn new_account<S: Into<WalletAlias>>(alias: S, value: Value) -> Self {
+        Self::new(alias, value, WalletType::Account)
+    }
+    pub fn new_utxo<S: Into<WalletAlias>>(alias: S, value: Value) -> Self {
+        Self::new(alias, value, WalletType::UTxO)
+    }
+
+    #[inline]
+    fn new<S: Into<WalletAlias>>(alias: S, value: Value, wallet_type: WalletType) -> Self {
+        Self {
+            alias: alias.into(),
+            value,
+            wallet_type,
+            delegate: None,
+        }
+    }
+
+    pub fn alias(&self) -> &WalletAlias {
+        &self.alias
+    }
+
+    pub fn wallet_type(&self) -> &WalletType {
+        &self.wallet_type
+    }
+
+    pub fn value(&self) -> &Value {
+        &self.value
+    }
+
+    pub fn delegate(&self) -> &Option<NodeAlias> {
+        &self.delegate
+    }
+
+    pub fn delegate_mut(&mut self) -> &mut Option<NodeAlias> {
+        &mut self.delegate
+    }
+}
 
 /// wallet to utilise when testing jormungandr
 ///
@@ -68,7 +123,7 @@ impl Wallet {
         self.inner.delegation_cert_for_block0(pool_id)
     }
 
-    pub(crate) fn template(&self) -> &WalletTemplate {
+    pub fn template(&self) -> &WalletTemplate {
         &self.template
     }
 

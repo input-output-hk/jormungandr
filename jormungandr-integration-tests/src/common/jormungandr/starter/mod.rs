@@ -10,7 +10,9 @@ use crate::common::{
     process_assert,
     process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
-use jormungandr_lib::testing::{SpeedBenchmarkDef, SpeedBenchmarkRun};
+use jormungandr_lib::testing::{
+    network_builder::LeadershipMode, SpeedBenchmarkDef, SpeedBenchmarkRun,
+};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::{
@@ -58,6 +60,24 @@ pub enum OnFail {
 pub enum Role {
     Passive,
     Leader,
+}
+
+impl From<LeadershipMode> for Role {
+    fn from(leadership_mode: LeadershipMode) -> Self {
+        match leadership_mode {
+            LeadershipMode::Leader => Self::Leader,
+            LeadershipMode::Passive => Self::Passive,
+        }
+    }
+}
+
+impl From<LeadershipMode> for FromGenesis {
+    fn from(leadership_mode: LeadershipMode) -> Self {
+        match leadership_mode {
+            LeadershipMode::Leader => FromGenesis::File,
+            LeadershipMode::Passive => FromGenesis::Hash,
+        }
+    }
 }
 
 pub trait StartupVerification {

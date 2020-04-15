@@ -39,7 +39,10 @@ pub struct TopicsOfInterest {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Policy {
-    pub quarantine_duration: Duration,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quarantine_duration: Option<Duration>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quarantine_whitelist: Option<Vec<poldercast::Address>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
