@@ -5,7 +5,7 @@ use crate::{
         KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration, Value,
     },
     test::{
-        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context,
@@ -126,20 +126,30 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     core.wait_for_bootstrap()?;
     leaders.last().unwrap().wait_for_bootstrap()?;
 
-    utils::measure_how_many_nodes_are_running(&leaders, "real_network_bootstrap_score");
-
-    //shut down core and relays nodes
-    core.shutdown()?;
-    for relay_node in relays {
-        relay_node.shutdown()?;
-    }
+    utils::measure_how_many_nodes_are_running(
+        leaders.iter().collect(),
+        "real_network_bootstrap_score",
+    );
 
     let leaders_count = leaders.len() as u64;
     utils::measure_and_log_sync_time(
         leaders.iter().collect(),
         SyncWaitParams::large_network(leaders_count).into(),
-        "real_network_sync_after_relay_nodes_shutdown",
-        SyncMeasurementInterval::Long,
+        "real_network_sync",
+        MeasurementReportInterval::Long,
+    )?;
+
+    let mut wallet = controller.wallet(&wallet_name(1)).unwrap();
+    let wallet2 = controller.wallet(&wallet_name(2)).unwrap();
+
+    utils::measure_single_transaction_propagation_speed(
+        &mut controller,
+        &mut wallet,
+        &wallet2,
+        leaders.iter().collect(),
+        SyncWaitParams::large_network(leaders_count).into(),
+        "real_network_single_transaction_propagation",
+        MeasurementReportInterval::Standard,
     )?;
 
     controller.finalize();

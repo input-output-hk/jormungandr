@@ -1,7 +1,7 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     test::{
-        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
@@ -66,7 +66,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         vec![&leader_1, &leader_2],
         SyncWaitParams::two_nodes().into(),
         "two_transaction_to_two_leaders_sync",
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader_1.shutdown().unwrap();

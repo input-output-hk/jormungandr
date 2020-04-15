@@ -101,6 +101,12 @@ pub struct MemPoolCheck {
     fragment_id: FragmentId,
 }
 
+impl MemPoolCheck {
+    pub fn fragment_id(&self) -> &FragmentId {
+        &self.fragment_id
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Status {
     Running,

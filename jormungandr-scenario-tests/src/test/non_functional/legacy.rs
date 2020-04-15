@@ -2,7 +2,7 @@ use crate::{
     node::{LeadershipMode, PersistenceMode},
     test::{
         non_functional::*,
-        utils::{self, SyncMeasurementInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
@@ -113,7 +113,7 @@ fn test_legacy_release(
         vec![&leader1, &leader2, &leader3, &leader4],
         SyncWaitParams::network_size(4, 2).into(),
         name,
-        SyncMeasurementInterval::Standard,
+        MeasurementReportInterval::Standard,
     )?;
 
     leader4.shutdown()?;

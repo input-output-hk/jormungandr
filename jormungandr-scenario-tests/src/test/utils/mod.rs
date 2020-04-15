@@ -42,12 +42,12 @@ pub fn get_nodes_block_height_summary(nodes: Vec<&NodeController>) -> Vec<String
 }
 
 #[derive(Debug, Clone)]
-pub enum SyncMeasurementInterval {
+pub enum MeasurementReportInterval {
     Standard,
     Long,
 }
 
-impl Into<u32> for SyncMeasurementInterval {
+impl Into<u32> for MeasurementReportInterval {
     fn into(self) -> u32 {
         match self {
             Self::Standard => 20,
@@ -56,11 +56,96 @@ impl Into<u32> for SyncMeasurementInterval {
     }
 }
 
+pub struct MeasurementReporter {
+    interval: u32,
+    counter: u32,
+}
+
+impl MeasurementReporter {
+    pub fn new(interval: MeasurementReportInterval) -> Self {
+        Self {
+            interval: interval.into(),
+            counter: 0u32,
+        }
+    }
+
+    pub fn is_interval_reached(&self) -> bool {
+        self.counter >= self.interval
+    }
+
+    pub fn do_if_interval_reached<F: std::marker::Send>(&self, method: F)
+    where
+        F: Fn(),
+    {
+        if self.is_interval_reached() {
+            method();
+        }
+    }
+
+    pub fn do_if_interval_reached_and_inc<F: std::marker::Send>(&mut self, method: F)
+    where
+        F: Fn(),
+    {
+        if self.is_interval_reached() {
+            method();
+            self.counter = 0;
+        } else {
+            self.increment();
+        }
+    }
+
+    pub fn increment(&mut self) {
+        self.counter = self.counter + 1;
+    }
+}
+
+pub fn measure_single_transaction_propagation_speed(
+    controller: &mut Controller,
+    mut wallet1: &mut Wallet,
+    wallet2: &Wallet,
+    leaders: Vec<&NodeController>,
+    sync_wait: Thresholds<Speed>,
+    info: &str,
+    report_node_stats_interval: MeasurementReportInterval,
+) -> Result<()> {
+    let node = leaders.iter().next().unwrap();
+    let check = controller.wallet_send_to(&mut wallet1, &wallet2, &node, 1_000.into())?;
+    let fragment_id = check.fragment_id().clone();
+    let benchmark = benchmark_speed(info.to_owned())
+        .with_thresholds(sync_wait)
+        .start();
+
+    let leaders_nodes_count = leaders.len() as u32;
+    let mut report_node_stats = MeasurementReporter::new(report_node_stats_interval);
+    let mut leaders_ids: Vec<u32> = (1..=leaders_nodes_count).collect();
+
+    while !benchmark.timeout_exceeded() {
+        leaders_ids.retain(|leader_id| {
+            let leader_index_usize = (leader_id - 1) as usize;
+            let leader: &NodeController = leaders.get(leader_index_usize).unwrap();
+            let fragment_logs = leader.fragment_logs().unwrap();
+            report_node_stats.do_if_interval_reached(|| {
+                println!("Node: {} -> {:?}", leader.alias(), leader.fragment_logs())
+            });
+
+            !fragment_logs.iter().any(|(id, _)| *id == fragment_id)
+        });
+        report_node_stats.increment();
+
+        if leaders_ids.is_empty() {
+            benchmark.stop().print();
+            break;
+        }
+    }
+    print_error_for_failed_leaders(leaders_ids, leaders);
+    Ok(())
+}
+
 pub fn measure_and_log_sync_time(
     nodes: Vec<&NodeController>,
     sync_wait: Thresholds<Speed>,
     info: &str,
-    report_node_stats_interval: SyncMeasurementInterval,
+    report_node_stats_interval: MeasurementReportInterval,
 ) -> Result<()> {
     let benchmark = benchmark_speed(info.to_owned())
         .with_thresholds(sync_wait)
@@ -226,7 +311,7 @@ pub fn sending_transactions_to_node_sequentially(
     Ok(())
 }
 
-pub fn measure_how_many_nodes_are_running(leaders: &Vec<NodeController>, name: &str) {
+pub fn measure_how_many_nodes_are_running(leaders: Vec<&NodeController>, name: &str) {
     let leaders_nodes_count = leaders.len() as u32;
 
     let mut efficiency_benchmark_run = benchmark_efficiency(name)
@@ -263,7 +348,7 @@ pub fn measure_how_many_nodes_are_running(leaders: &Vec<NodeController>, name: &
     efficiency_benchmark_run.stop().print()
 }
 
-fn print_error_for_failed_leaders(leaders_ids: Vec<u32>, leaders: &Vec<NodeController>) {
+fn print_error_for_failed_leaders(leaders_ids: Vec<u32>, leaders: Vec<&NodeController>) {
     if leaders_ids.is_empty() {
         return;
     }
