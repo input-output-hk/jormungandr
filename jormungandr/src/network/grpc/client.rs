@@ -1,16 +1,18 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
     network::concurrency_limits,
+    network::convert,
     settings::start::network::{Peer, Protocol},
 };
+use chain_network::data as net_data;
 use chain_network::error as net_error;
-use futures::prelude::*;
+use futures03::prelude::*;
 use slog::Logger;
 use thiserror::Error;
 use tonic::transport;
 
+use std::convert::TryFrom;
 use std::net::{IpAddr, SocketAddr};
-use std::slice;
 
 pub use chain_network::grpc::client::{
     BlockSubscription, FragmentSubscription, GossipSubscription,
@@ -59,20 +61,22 @@ pub async fn fetch_block(
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     info!(logger, "fetching block {}", hash);
-    let client = connect(peer, None)
+    let client = connect(peer)
         .await
         .map_err(|err| FetchBlockError::Connect { source: err })?;
+    let block_id = net_data::BlockId::try_from(hash.as_bytes()).unwrap();
     let stream = client
-        .get_blocks(slice::from_ref(&hash))
+        .get_blocks(vec![block_id].into())
         .await
         .map_err(|err| FetchBlockError::GetBlocks { source: err })?;
-    let (maybe_block, _) = stream
-        .into_future()
-        .await
-        .map_err(|(err, _)| FetchBlockError::GetBlocksStream { source: err })?;
-
-    match maybe_block {
+    let (next_block, _) = stream.into_future().await;
+    match next_block {
+        Some(Ok(block)) => {
+            let block = convert::deserialize(&block)
+                .map_err(|e| FetchBlockError::GetBlocksStream { source: e })?;
+            Ok(block)
+        }
         None => Err(FetchBlockError::NoBlocks),
-        Some(block) => Ok(block),
+        Some(Err(e)) => Err(FetchBlockError::GetBlocksStream { source: e }),
     }
 }
