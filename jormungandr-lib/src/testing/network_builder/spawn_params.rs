@@ -145,11 +145,11 @@ impl SpawnParams {
         }
 
         if let Some(max_inbound_connections) = &self.max_inbound_connections {
-            new_settings.config.p2p.max_inbound_connections = Some(max_inbound_connections.clone());
+            node_config.p2p.max_inbound_connections = Some(max_inbound_connections.clone());
         }
 
         if let Some(max_connections) = &self.max_connections {
-            new_settings.config.p2p.max_connections = Some(max_connections.clone());
+            node_config.p2p.max_connections = Some(max_connections.clone());
         }
 
         if let Some(listen_address_option) = &self.listen_address {

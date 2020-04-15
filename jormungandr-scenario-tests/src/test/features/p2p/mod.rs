@@ -11,7 +11,7 @@ use crate::{
     test::{utils, Result},
 };
 
-use jormungandr_lib::interfaces::{NodeStatsDto, PeerRecord};
+use jormungandr_lib::interfaces::PeerRecord;
 
 pub fn assert_connected_cnt(
     node: &NodeController,
