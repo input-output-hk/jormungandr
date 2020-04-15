@@ -7,6 +7,7 @@
 
 pub mod bootstrap;
 mod client;
+mod convert;
 mod grpc;
 pub mod p2p;
 mod service;
@@ -418,7 +419,7 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
 }
 
 async fn send_gossip(state: GlobalStateR, channels: Channels) {
-    let topology = state.topology.clone();
+    let topology = &state.topology;
     let logger = state.logger().new(o!(log::KEY_SUB_TASK => "send_gossip"));
     let view = topology.view(poldercast::Selection::Any).await;
     let peers = view.peers;
@@ -674,7 +675,7 @@ pub async fn bootstrap(
 /// The calling thread is blocked until the block is retrieved.
 /// This function is called during blockchain initialization
 /// to retrieve the genesis block.
-pub fn fetch_block(
+pub async fn fetch_block(
     config: &Configuration,
     hash: HeaderHash,
     logger: &Logger,
@@ -694,7 +695,7 @@ pub fn fetch_block(
     for address in trusted_peers_shuffled(&config) {
         let logger = logger.new(o!("peer_address" => address.to_string()));
         let peer = Peer::new(address);
-        match grpc::fetch_block(&peer, hash, &logger) {
+        match grpc::fetch_block(&peer, hash, &logger).await {
             Err(grpc::FetchBlockError::Connect { source: e }) => {
                 warn!(logger, "unable to reach peer for block download"; "reason" => %e);
             }
