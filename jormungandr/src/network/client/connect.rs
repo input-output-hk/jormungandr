@@ -8,13 +8,14 @@ use super::super::{
 };
 use super::{Client, ClientBuilder, GlobalStateR, InboundSubscriptions};
 use crate::blockcfg::HeaderHash;
+use chain_core::mempack::{self, ReadBuf, Readable};
 use chain_network::data::block::BlockId;
 use chain_network::error::{self as net_error, HandshakeError};
 
 use futures03::channel::oneshot;
 use futures03::future::BoxFuture;
 use futures03::prelude::*;
-use thiserror::Error;
+use futures03::ready;
 
 use std::mem;
 use std::pin::Pin;
@@ -30,18 +31,17 @@ use std::task::{Context, Poll};
 pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
-    let node_id = state.global.topology.node_id();
     let builder = Some(ClientBuilder {
         channels,
         logger: state.logger,
     });
-    let cf = grpc::connect(&peer, Some(node_id), state.global.executor.clone());
+    let cf = grpc::connect(&peer);
     let handle = ConnectHandle { receiver };
     let future = ConnectFuture {
         sender: Some(sender),
         builder,
         global: state.global.clone(),
-        state: State::Connecting(cf),
+        state: State::Connecting(Box::pin(cf)),
         client: None,
     };
     (handle, future)
@@ -81,16 +81,16 @@ pub struct ConnectFuture {
     state: State,
 }
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum ConnectError {
     #[error("connection has been canceled")]
     Canceled,
     #[error("connection failed")]
     Connect(#[source] tonic::transport::Error),
-    #[error("client connection unable to send requests")]
-    ClientNotReady(#[source] net_error::Error),
     #[error("protocol handshake failed: {0}")]
     Handshake(#[source] HandshakeError),
+    #[error("failed to decode genesis block in response")]
+    DecodeBlock0(#[source] mempack::ReadError),
     #[error(
         "genesis block hash {peer_responded} reported by the peer is not the expected {expected}"
     )]
@@ -109,7 +109,7 @@ pub enum ConnectError {
 
 enum State {
     // Establishing the protocol connection
-    Connecting(BoxFuture<'static, grpc::Client>),
+    Connecting(BoxFuture<'static, Result<grpc::Client, grpc::ConnectError>>),
     BeforeHandshake,
     Handshake(BoxFuture<'static, Result<BlockId, HandshakeError>>),
     Subscribing(SubscriptionStaging),
@@ -117,9 +117,9 @@ enum State {
 }
 
 struct SubscriptionRequests {
-    pub blocks: Option<BoxFuture<'static, BlockSubscription>>,
-    pub fragments: Option<BoxFuture<'static, FragmentSubscription>>,
-    pub gossip: Option<BoxFuture<'static, GossipSubscription>>,
+    pub blocks: Option<BoxFuture<'static, Result<BlockSubscription, net_error::Error>>>,
+    pub fragments: Option<BoxFuture<'static, Result<FragmentSubscription, net_error::Error>>>,
+    pub gossip: Option<BoxFuture<'static, Result<GossipSubscription, net_error::Error>>>,
 }
 
 impl SubscriptionRequests {
@@ -142,26 +142,30 @@ impl Future for ConnectFuture {
                 .sender
                 .as_mut()
                 .expect("polled a future after it has been resolved")
-                .poll_canceled()
-                .unwrap()
+                .poll_canceled(cx)
             {
-                return Err(ConnectError::Canceled);
+                return Err(ConnectError::Canceled).into();
             }
 
             let new_state = match self.state {
                 State::Connecting(ref mut future) => {
-                    let client = try_ready!(future.poll(cx).map_err(ConnectError::Connect));
+                    let client =
+                        ready!(Pin::new(&mut future).poll(cx)).map_err(ConnectError::Connect)?;
+                    let handshake = client.handshake();
                     self.client = Some(client);
-                    State::Handshake(Box::pin(self.client.handshake()))
+                    State::Handshake(Box::pin(handshake))
                 }
                 State::Handshake(ref mut future) => {
-                    let block0 = try_ready!(future.poll(cx).map_err(ConnectError::Handshake));
+                    let block0 =
+                        ready!(Pin::new(&mut future).poll(cx)).map_err(ConnectError::Handshake)?;
+                    let mut buf = ReadBuf::from(block0.as_bytes());
+                    let block0 = HeaderHash::read(&mut buf).map_err(ConnectError::DecodeBlock0)?;
                     self.match_block0(block0)?;
                     State::Subscribing(SubscriptionStaging::new())
                 }
                 State::Subscribing(ref mut staging) => {
                     let client = self.client.as_mut().expect("client must be connected");
-                    match try_ready!(staging.poll_complete(client)) {
+                    match ready!(staging.poll_complete(client, cx))? {
                         None => continue,
                         Some(inbound) => {
                             // After subscribing is complete, set up the client and
@@ -183,8 +187,8 @@ impl Future for ConnectFuture {
                                 &mut comms,
                             );
                             return match self.sender.take().unwrap().send(comms) {
-                                Ok(()) => Ok(client.into()),
-                                Err(_) => Err(ConnectError::Canceled),
+                                Ok(()) => Ok(client).into(),
+                                Err(_) => Err(ConnectError::Canceled).into(),
                             };
                         }
                     }
@@ -211,7 +215,7 @@ impl ConnectFuture {
 }
 
 struct SubscriptionStaging {
-    pub node_address: Option<Address>,
+    pub node_id: Option<Address>,
     pub block_events: Option<BlockSubscription>,
     pub fragments: Option<FragmentSubscription>,
     pub gossip: Option<GossipSubscription>,
@@ -234,7 +238,10 @@ impl SubscriptionStaging {
     fn try_complete(&mut self) -> Option<InboundSubscriptions> {
         match (&self.block_events, &self.fragments, &self.gossip) {
             (&Some(_), &Some(_), &Some(_)) => Some(InboundSubscriptions {
-                node_id: self.node_id.take().expect("remote node ID should be known"),
+                node_id: self
+                    .node_id
+                    .take()
+                    .expect("remote node address should be known"),
                 block_events: self.block_events.take().unwrap(),
                 fragments: self.fragments.take().unwrap(),
                 gossip: self.gossip.take().unwrap(),
@@ -248,55 +255,41 @@ impl SubscriptionStaging {
     fn poll_complete(
         &mut self,
         client: &mut grpc::Client,
+        cx: &mut Context<'_>,
     ) -> Poll<Result<Option<InboundSubscriptions>, ConnectError>> {
         let mut ready = Poll::Pending;
 
         // Poll and resolve the request futures that are in progress
-        drive_subscribe_request(
-            &mut self.req.blocks,
-            &mut self.block_events,
-            &mut self.node_id,
-            &mut ready,
-        )?;
-        drive_subscribe_request(
-            &mut self.req.fragments,
-            &mut self.fragments,
-            &mut self.node_id,
-            &mut ready,
-        )?;
-        drive_subscribe_request(
-            &mut self.req.gossip,
-            &mut self.gossip,
-            &mut self.node_id,
-            &mut ready,
-        )?;
+        drive_subscribe_request(cx, &mut self.req.blocks, &mut self.block_events, &mut ready)?;
+        drive_subscribe_request(cx, &mut self.req.fragments, &mut self.fragments, &mut ready)?;
+        drive_subscribe_request(cx, &mut self.req.gossip, &mut self.gossip, &mut ready)?;
 
         if let Some(inbound) = self.try_complete() {
             // All done
-            return Ok(Some(inbound).into());
+            return Ok(Some(inbound)).into();
         }
 
         // Initiate subscription requests.
         if !self.comms.block_announcements_subscribed() {
             ready = Poll::Ready(());
             let outbound = self.comms.subscribe_to_block_announcements();
-            self.req.blocks = Some(client.block_subscription(outbound));
+            self.req.blocks = Some(Box::pin(client.block_subscription(outbound)));
         }
         if !self.comms.fragments_subscribed() {
             ready = Poll::Ready(());
             let outbound = self.comms.subscribe_to_fragments();
-            self.req.fragments = Some(client.fragment_subscription(outbound));
+            self.req.fragments = Some(Box::pin(client.fragment_subscription(outbound)));
         }
         if !self.comms.gossip_subscribed() {
             ready = Poll::Ready(());
             let outbound = self.comms.subscribe_to_gossip();
-            self.req.gossip = Some(client.gossip_subscription(outbound));
+            self.req.gossip = Some(Box::pin(client.gossip_subscription(outbound)));
         }
 
-        // If progress was made, return Ready(None) to call this again
+        // If progress was made, return Ready(Ok(None)) to call this again
         // for the next iteration.
-        // Otherwise, return NotReady to bubble up from the poll.
-        Ok(ready.map(|()| None))
+        // Otherwise, return Pending to bubble up from the poll.
+        ready.map(|()| Ok(None))
     }
 }
 
@@ -304,43 +297,23 @@ fn drive_subscribe_request<R, S>(
     cx: &mut Context<'_>,
     req: &mut Option<R>,
     sub: &mut Option<S>,
-    discovered_node_address: &mut Option<Address>,
     ready: &mut Poll<()>,
 ) -> Result<(), ConnectError>
 where
-    R: Future<Output = Result<(S, Address), net_error::Error>>,
+    R: Future<Output = Result<S, net_error::Error>> + Unpin,
 {
     if let Some(future) = req {
-        let polled = future.poll(cx).map_err(ConnectError::Subscription)?;
+        let polled = Pin::new(future)
+            .poll(cx)
+            .map_err(ConnectError::Subscription)?;
         match polled {
             Poll::Pending => {}
-            Poll::Ready((stream, node_address)) => {
+            Poll::Ready(stream) => {
                 *req = None;
-                handle_subscription_node_address(discovered_node_address, node_address)?;
                 *sub = Some(stream);
                 *ready = Poll::Ready(());
             }
         }
     }
     Ok(().into())
-}
-
-fn handle_subscription_node_address(
-    staged: &mut Option<Address>,
-    node_address: Address,
-) -> Result<(), ConnectError> {
-    match *staged {
-        None => {
-            *staged = Some(node_address);
-        }
-        Some(expected) => {
-            if node_address != expected {
-                return Err(ConnectError::AddressMismatch {
-                    expected,
-                    peer_responded: node_address,
-                });
-            }
-        }
-    }
-    Ok(())
 }
