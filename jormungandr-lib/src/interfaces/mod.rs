@@ -49,7 +49,7 @@ pub use self::reward_parameters::RewardParams;
 pub use self::rewards_info::EpochRewardsInfo;
 pub use self::settings::{ParametersDef, RatioDef, SettingsDto, TaxTypeDef, TaxTypeSerde};
 pub use self::stake::{Stake, StakeDef};
-pub use self::stake_distribution::StakeDistributionDto;
+pub use self::stake_distribution::{StakeDistribution, StakeDistributionDto};
 pub use self::stake_pool_stats::{Rewards, StakePoolStats};
 pub use self::stats::{NodeState, NodeStats, NodeStatsDto};
 pub use self::tax_type::TaxType;
