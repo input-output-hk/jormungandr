@@ -1,11 +1,27 @@
 openapi: 3.0.2
 info:
   title: Generic blockchain node REST API
+  description: Jörmungandr Rest API v0
   version: 0.0.1
+  contact:
+    url: ''
+servers:
+  - url: 'https://localhost'
+tags:
+  - name: account
+  - name: block
+  - name: fragment
+  - name: leaders
+  - name: network
+  - name: rewards
+  - name: stake
+  - name: utils
 paths:
   '/api/v0/account/{account_id}':
     get:
       description: Gets account state
+      tags:
+        - account
       parameters:
         - name: account_id
           in: path
@@ -67,6 +83,8 @@ paths:
   '/api/v0/block/{block_id}':
     get:
       description: Gets block
+      tags:
+        - block
       parameters:
         - name: block_id
           in: path
@@ -89,6 +107,8 @@ paths:
   '/api/v0/block/{block_id}/next_id':
     get:
       description: Gets IDs of descendants of block
+      tags:
+        - block
       parameters:
         - name: block_id
           in: path
@@ -121,6 +141,8 @@ paths:
   /api/v0/diagnostic:
     get:
       description: Get system diagnostic information
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -145,6 +167,8 @@ paths:
   /api/v0/fragment/logs:
     get:
       description: Gets logs from node message pool
+      tags:
+        - fragment
       responses:
         '200':
           description: Success
@@ -264,6 +288,8 @@ paths:
   /api/v0/leaders:
     get:
       description: Gets leader IDs
+      tags:
+        - leaders
       responses:
         '200':
           description: Success
@@ -281,6 +307,8 @@ paths:
                 - 5
     post:
       description: Registers new leader
+      tags:
+        - leaders
       requestBody:
         description: Leader secret
         required: true
@@ -346,6 +374,8 @@ paths:
   /api/v0/leaders/logs:
     get:
       description: Gets leader logs
+      tags:
+        - leaders
       responses:
         '200':
           description: Success
@@ -484,6 +514,8 @@ paths:
   '/api/v0/leaders/{leader_id}':
     delete:
       description: Deletes leader
+      tags:
+        - leaders
       parameters:
         - name: leader_id
           in: path
@@ -500,6 +532,8 @@ paths:
   /api/v0/message:
     post:
       description: Posts a signed transaction
+      tags:
+        - fragment
       requestBody:
         description: Leader secret
         required: true
@@ -517,6 +551,8 @@ paths:
   /api/v0/network/stats:
     get:
       description: Fetches network stats
+      tags:
+        - network
       responses:
         '200':
           description: Success
@@ -573,6 +609,8 @@ paths:
   /api/v0/node/stats:
     get:
       description: Fetches node stats
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -702,6 +740,8 @@ paths:
   /api/v0/settings:
     get:
       description: Gets node settings
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -905,12 +945,16 @@ paths:
   /api/v0/shutdown:
     get:
       description: Starts node shutdown procedure
+      tags:
+        - utils
       responses:
         '200':
           description: Success
   /api/v0/stake_pools:
     get:
       description: Gets stake pool IDs
+      tags:
+        - stake
       responses:
         '200':
           description: Success
@@ -928,6 +972,8 @@ paths:
   '/api/v0/rewards/epoch/{epoch}':
     get:
       description: 'returns the rewards history of the given "epoch"'
+      tags:
+        - rewards
       parameters:
         - name: epoch
           in: path
@@ -1009,6 +1055,8 @@ paths:
   '/api/v0/rewards/history/{length}':
     get:
       description: 'returns the rewards history of the "length" last epoch from tip'
+      tags:
+        - rewards
       parameters:
         - name: length
           in: path
@@ -1113,6 +1161,8 @@ paths:
   '/api/v0/stake_pool/{pool_id}':
     get:
       description: Gets stake pool details
+      tags:
+        - stake
       parameters:
         - name: pool_id
           in: path
@@ -1215,6 +1265,8 @@ paths:
   /api/v0/stake:
     get:
       description: Gets stake distribution
+      tags:
+        - stake
       responses:
         '200':
           description: Success
@@ -1280,6 +1332,8 @@ paths:
   '/api/v0/stake/{epoch}':
     get:
       description: Gets stake distribution
+      tags:
+        - stake
       parameters:
         - name: epoch
           in: path
@@ -1352,6 +1406,8 @@ paths:
   /api/v0/tip:
     get:
       description: Gets ID of the blockchain tip
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -1365,6 +1421,8 @@ paths:
   '/api/v0/utxo/{fragment_id}/{output_index}':
     get:
       description: Fetches UTxO details
+      tags:
+        - fragment
       parameters:
         - name: fragment_id
           in: path
@@ -1412,6 +1470,8 @@ paths:
   /api/v0/network/p2p/non_public:
     get:
       description: list all the nodes that are connected to ours but that are not publicly reachable
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes that are not publicly reachable
@@ -1604,6 +1664,8 @@ paths:
   /api/v0/network/p2p/available:
     get:
       description: list all the nodes that are available for p2p discovery and events propagation
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
@@ -1797,6 +1859,8 @@ paths:
   /api/v0/network/p2p/quarantined:
     get:
       description: list all the nodes that have been quarantined
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
@@ -1991,6 +2055,8 @@ paths:
   /api/v0/network/p2p/view:
     get:
       description: list all the nodes that are selected for gossiping/peer discovery
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
@@ -2024,6 +2090,8 @@ paths:
               - blocks
               - fragments
       description: list all the nodes that are selected for the given topic
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
