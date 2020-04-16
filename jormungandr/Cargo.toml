@@ -56,7 +56,7 @@ tokio      = "^0.1.16"
 tokio-compat = "^0.1.5"
 tokio02 = { package = "tokio", version = "0.2.12", features = ["full"]}
 tokio-threadpool = "0.1"
-tonic = "0.1"
+tonic = "0.2"
 bech32 = "0.7"
 async-trait = "0.1"
 lru = "^0.4.3"
