@@ -594,9 +594,19 @@ fn apply_block_to_stake_pools(
                         registration.to_id(),
                         Arc::new(StakePoolData {
                             registration: registration.clone(),
+                            retirement: None,
                         }),
                     )
                     .expect("pool was registered more than once"),
+                Certificate::PoolRetirement(retirement) => {
+                    data.update::<_, ()>(&retirement.pool_id, |pool_data| {
+                        Ok(Some(Arc::new(StakePoolData {
+                            registration: pool_data.registration.clone(),
+                            retirement: Some(retirement.clone()),
+                        })))
+                    }).expect("pool was retired before registered");
+                    data
+                }
                 _ => data,
             };
         }

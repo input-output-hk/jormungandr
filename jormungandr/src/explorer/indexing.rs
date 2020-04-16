@@ -10,7 +10,7 @@ use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
 use chain_core::property::LeaderId;
 use chain_impl_mockchain::block::Proof;
-use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration};
+use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration, PoolRetirement};
 use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
@@ -32,7 +32,8 @@ pub type StakePool = Hamt<PoolId, StakePoolData>;
 #[derive(Clone)]
 pub struct StakePoolData {
     pub registration: PoolRegistration,
-    // TODO: Track updates and retirement here too?
+    pub retirement: Option<PoolRetirement>,
+    // TODO: Track updates here too?
 }
 
 /// Block with unified inputs the metadata needed in the queries
