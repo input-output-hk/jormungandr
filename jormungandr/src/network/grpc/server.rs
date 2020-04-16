@@ -14,10 +14,11 @@ pub async fn run_listen_socket(
     let logger = state.logger().new(o!("local_addr" => sockaddr.to_string()));
     info!(logger, "listening and accepting gRPC connections");
 
-    let service = grpc::Server::new(NodeService::new());
+    let service = grpc::Server::new(grpc::NodeService::new(NodeService::new(channels, state)));
 
     Server::builder()
         .add_service(service)
         .serve(sockaddr)
-        .await?
+        .await
+        .map_err(|cause| ListenError { cause, sockaddr })
 }
