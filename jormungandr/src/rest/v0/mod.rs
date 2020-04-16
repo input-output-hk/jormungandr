@@ -1,4 +1,5 @@
 mod handlers;
+pub mod logic;
 
 use actix_web::{
     dev::HttpServiceFactory,

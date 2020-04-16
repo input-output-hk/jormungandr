@@ -19,7 +19,8 @@ pub async fn graphql(
 ) -> Result<impl Responder, Error> {
     let explorer = context
         .try_full()
-        .await?
+        .await
+        .map_err(ErrorInternalServerError)?
         .explorer
         .clone()
         .ok_or(ErrorServiceUnavailable("Explorer not enabled"))?;
