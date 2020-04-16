@@ -4528,25 +4528,25 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08283643b1d483eb7f3fc77069e63b5cba3e4db93514b3d45470e67f123e4e48"
+checksum = "b058d1caf0c61cd4d7425b4f161fa3c41a4e0ca2d2e9f63af842ad2f1eca1628"
 dependencies = [
  "async-stream",
  "async-trait",
- "base64 0.10.1",
+ "base64 0.11.0",
  "bytes 0.5.4",
  "futures-core",
  "futures-util",
  "http 0.2.1",
  "http-body",
  "hyper",
- "percent-encoding 1.0.1",
+ "percent-encoding 2.1.0",
  "pin-project",
  "prost",
  "prost-derive",
  "tokio 0.2.16",
- "tokio-util 0.2.0",
+ "tokio-util 0.3.1",
  "tower",
  "tower-balance",
  "tower-load",
@@ -4558,9 +4558,9 @@ dependencies = [
 
 [[package]]
 name = "tonic-build"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0436413ba71545bcc6c2b9a0f9d78d72deb0123c6a75ccdfe7c056f9930f5e52"
+checksum = "71d8d21cb568e802d77055ab7fcd43f0992206de5028de95c8d3a41118d32e8e"
 dependencies = [
  "proc-macro2",
  "prost-build",
