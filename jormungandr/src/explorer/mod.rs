@@ -605,7 +605,7 @@ fn apply_block_to_stake_pools(
                             retirement: Some(retirement.clone()),
                         })))
                     })
-                        .expect("pool was retired before registered");
+                    .expect("pool was retired before registered");
                     data
                 }
                 _ => data,
