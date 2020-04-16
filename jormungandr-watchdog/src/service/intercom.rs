@@ -32,7 +32,7 @@ enum IntercomState<T> {
 pub struct IntercomStats {
     sent_counter: Arc<AtomicU64>,
     received_counter: Arc<AtomicU64>,
-    stats: Arc<Mutex<Stats>>,
+    stats: Arc<Stats>,
 }
 
 pub struct IntercomSender<T> {
@@ -43,7 +43,7 @@ pub struct IntercomSender<T> {
 pub struct IntercomReceiver<T> {
     receiver: mpsc::Receiver<(Instant, T)>,
     received_counter: Arc<AtomicU64>,
-    stats: Arc<Mutex<Stats>>,
+    stats: Arc<Stats>,
 }
 
 impl IntercomMsg for NoIntercom {}
@@ -69,7 +69,7 @@ pub fn channel<T: IntercomMsg>() -> (IntercomSender<T>, IntercomReceiver<T>, Int
 
     let sent_counter = Arc::new(AtomicU64::new(0));
     let received_counter = Arc::new(AtomicU64::new(0));
-    let stats = Arc::new(Mutex::new(Stats::new()));
+    let stats = Arc::new(Stats::new());
 
     (
         IntercomSender {
@@ -209,12 +209,7 @@ impl<T> IntercomReceiver<T> {
         if let Some((instant, t)) = r {
             self.received_counter.fetch_add(1, Ordering::SeqCst);
             let f = instant.elapsed().as_secs_f64();
-
-            {
-                let mut stats = self.stats.lock().await;
-                stats.push(f);
-            }
-
+            self.stats.push(f);
             Some(t)
         } else {
             None
@@ -224,15 +219,13 @@ impl<T> IntercomReceiver<T> {
 
 impl IntercomStats {
     pub async fn status(&self) -> IntercomStatus {
-        let stats = self.stats.lock().await;
-
         IntercomStatus {
             number_sent: self.sent(),
             number_received: self.received(),
             number_connections: self.number_connections(),
-            processing_speed_mean: stats.mean(),
-            processing_speed_variance: stats.variance(),
-            processing_speed_standard_derivation: stats.standard_derivation(),
+            processing_speed_mean: self.stats.mean(),
+            processing_speed_variance: self.stats.variance(),
+            processing_speed_standard_derivation: self.stats.standard_derivation(),
         }
     }
 

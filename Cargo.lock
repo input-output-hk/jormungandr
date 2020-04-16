@@ -383,6 +383,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomig"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "803b362be61e51c9515580161fa6fe75abac0e4987590050fa20c1840f171e3e"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2136,6 +2142,7 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "async-trait",
+ "atomig",
  "clap",
  "futures 0.1.29",
  "futures-util",
