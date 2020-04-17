@@ -1,12 +1,14 @@
-use crate::common::configuration::jormungandr_config::JormungandrConfig;
-use crate::common::file_utils;
-use crate::common::jormungandr::{
-    process::JormungandrProcess,
-    starter::{Starter, StartupError},
+use crate::common::{
+    configuration::jormungandr_config::JormungandrConfig,
+    file_utils,
+    jormungandr::starter::{Starter, StartupError},
+    network::Node,
 };
 use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::interfaces::NodeConfig;
+use jormungandr_lib::testing::network_builder::NodeSetting;
 use jormungandr_lib::testing::network_builder::{
-    LeadershipMode, PersistenceMode, Settings, Wallet,
+    LeadershipMode, PersistenceMode, Settings, SpawnParams, Wallet,
 };
 use std::path::PathBuf;
 use thiserror::Error;
@@ -68,29 +70,35 @@ impl Controller {
         }
     }
 
-    pub fn spawn_and_wait(&mut self, alias: &str) -> JormungandrProcess {
+    pub fn node_config(&self, alias: &str) -> Result<NodeConfig, ControllerError> {
+        Ok(self.node_settings(alias)?.config.clone())
+    }
+
+    fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
+        if let Some(node_setting) = self.settings.nodes.get(alias) {
+            return Ok(node_setting);
+        } else {
+            return Err(ControllerError::NodeNotFound(alias.to_string()));
+        }
+    }
+
+    pub fn spawn_and_wait(&mut self, alias: &str) -> Node {
         self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Leader)
             .expect(&format!("cannot start {}", alias))
     }
 
-    pub fn spawn_node(
+    pub fn spawn_custom(
         &mut self,
-        alias: &str,
-        persistence_mode: PersistenceMode,
-        leadership_mode: LeadershipMode,
-    ) -> Result<JormungandrProcess, ControllerError> {
-        let node_setting = if let Some(node_setting) = self.settings.nodes.get(alias.clone()) {
-            node_setting
-        } else {
-            return Err(ControllerError::NodeNotFound(alias.to_string()));
-        };
+        spawn_params: &mut SpawnParams,
+    ) -> Result<Node, ControllerError> {
+        let mut node_setting = self.node_settings(&spawn_params.alias)?.clone();
+        spawn_params.override_settings(&mut node_setting.config);
 
-        let mut settings = node_setting.clone();
-        let dir = file_utils::get_path_in_temp("network").join(&settings.alias);
+        let dir = file_utils::get_path_in_temp("network").join(&node_setting.alias);
 
-        if let PersistenceMode::Persistent = persistence_mode {
+        if let PersistenceMode::Persistent = spawn_params.get_persistence_mode() {
             let path_to_storage = dir.join("storage");
-            settings.config.storage = Some(path_to_storage);
+            node_setting.config.storage = Some(path_to_storage);
         }
 
         std::fs::DirBuilder::new().recursive(true).create(&dir)?;
@@ -98,9 +106,12 @@ impl Controller {
         let config_file = dir.join("node_config.xml");
         let config_secret = dir.join("node_secret.xml");
 
-        serde_yaml::to_writer(std::fs::File::create(&config_file)?, settings.config())?;
+        serde_yaml::to_writer(std::fs::File::create(&config_file)?, node_setting.config())?;
 
-        serde_yaml::to_writer(std::fs::File::create(&config_secret)?, settings.secrets())?;
+        serde_yaml::to_writer(
+            std::fs::File::create(&config_secret)?,
+            node_setting.secrets(),
+        )?;
 
         let config = JormungandrConfig {
             genesis_block_path: self.block0_file.as_path().into(),
@@ -116,9 +127,23 @@ impl Controller {
 
         Starter::new()
             .config(config)
-            .from_genesis(leadership_mode.clone().into())
-            .role(leadership_mode.into())
+            .from_genesis(spawn_params.get_leadership_mode().clone().into())
+            .role(spawn_params.get_leadership_mode().into())
             .start()
             .map_err(|e| ControllerError::SpawnError(e))
+            .map(|jormungandr| Node::new(jormungandr, &spawn_params.alias))
+    }
+
+    pub fn spawn_node(
+        &mut self,
+        alias: &str,
+        persistence_mode: PersistenceMode,
+        leadership_mode: LeadershipMode,
+    ) -> Result<Node, ControllerError> {
+        self.spawn_custom(
+            SpawnParams::new(alias)
+                .leadership_mode(leadership_mode)
+                .persistence_mode(persistence_mode),
+        )
     }
 }
