@@ -2,11 +2,14 @@ use crate::{
     service::{Service, Stats},
     watchdog::{ControlCommand, Reply, WatchdogError, WatchdogQuery},
 };
-use std::sync::{atomic::{AtomicU64, Ordering}, Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc, Mutex,
+};
 use std::time::Instant;
 use tokio::sync::{
     mpsc::{self, error::SendError},
-    oneshot
+    oneshot,
 };
 use tracing_futures::Instrument as _;
 
