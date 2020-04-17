@@ -5,11 +5,9 @@ use peer_map::{CommStatus, PeerMap};
 use crate::network::{client::ConnectHandle, p2p::Address};
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
 use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header};
-use chain_network::error as net_error;
 use futures03::channel::mpsc;
 use futures03::lock::{Mutex, MutexLockFuture};
 use futures03::prelude::*;
-use futures03::ready;
 use futures03::stream;
 use slog::Logger;
 
@@ -68,22 +66,20 @@ pub struct OutboundSubscription<T> {
 }
 
 impl<T> Stream for OutboundSubscription<T> {
-    type Item = Result<T, net_error::Error>;
+    type Item = T;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let maybe_item = ready!(Pin::new(&mut self.inner).poll_next(cx));
-        maybe_item.map(Ok).into()
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<T>> {
+        Pin::new(&mut self.inner).poll_next(cx)
     }
 }
 
-type BlockEventAnnounceStream =
-    stream::MapOk<OutboundSubscription<Header>, fn(Header) -> BlockEvent>;
+type BlockEventAnnounceStream = stream::Map<OutboundSubscription<Header>, fn(Header) -> BlockEvent>;
 
 type BlockEventSolicitStream =
-    stream::MapOk<OutboundSubscription<BlockIds>, fn(BlockIds) -> BlockEvent>;
+    stream::Map<OutboundSubscription<BlockIds>, fn(BlockIds) -> BlockEvent>;
 
 type BlockEventMissingStream =
-    stream::MapOk<OutboundSubscription<ChainPullRequest>, fn(ChainPullRequest) -> BlockEvent>;
+    stream::Map<OutboundSubscription<ChainPullRequest>, fn(ChainPullRequest) -> BlockEvent>;
 
 pub type BlockEventSubscription = stream::Select<
     BlockEventAnnounceStream,
@@ -322,13 +318,13 @@ impl PeerComms {
         let announce_events: BlockEventAnnounceStream = self
             .block_announcements
             .subscribe()
-            .map_ok(BlockEvent::Announce);
+            .map(BlockEvent::Announce);
         let solicit_events: BlockEventSolicitStream = self
             .block_solicitations
             .subscribe()
-            .map_ok(BlockEvent::Solicit);
+            .map(BlockEvent::Solicit);
         let missing_events: BlockEventMissingStream =
-            self.chain_pulls.subscribe().map_ok(BlockEvent::Missing);
+            self.chain_pulls.subscribe().map(BlockEvent::Missing);
         stream::select(
             announce_events,
             stream::select(solicit_events, missing_events),
