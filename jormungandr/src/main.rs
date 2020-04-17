@@ -1,6 +1,7 @@
 // Rustc default type_length_limit is too low for complex futures, which generate deeply nested
 // monomorphized structured with long signatures. This value is enough for current project.
-#![type_length_limit = "10000000"]
+// TODO change this back to 10000000 when rust 1.43 is out
+#![type_length_limit = "150000000"]
 
 #[macro_use]
 extern crate error_chain;
@@ -10,7 +11,6 @@ extern crate futures;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate slog;
@@ -442,8 +442,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let context = rest::Context::new();
             let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, &context)?;
-            services.spawn_future("rest", move |info| {
+            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
+            services.spawn_future_std("rest", move |info| {
                 block_on(service_context.set_logger(info.into_logger()));
                 server_handler
             });
