@@ -2,17 +2,14 @@ mod peer_map;
 
 use peer_map::{CommStatus, PeerMap};
 
-use crate::blockcfg::{Block, Fragment, Header, HeaderHash};
-use crate::network::{
-    client::ConnectHandle,
-    p2p::{Address, Gossip as NodeData},
-};
+use crate::network::{client::ConnectHandle, p2p::Address};
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
-use chain_network::data::gossip::Gossip;
+use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header};
 use chain_network::error as net_error;
 use futures03::channel::mpsc;
 use futures03::lock::{Mutex, MutexLockFuture};
 use futures03::prelude::*;
+use futures03::ready;
 use futures03::stream;
 use slog::Logger;
 
@@ -74,29 +71,28 @@ impl<T> Stream for OutboundSubscription<T> {
     type Item = Result<T, net_error::Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Ok(self.inner.poll_next(cx))
+        let maybe_item = ready!(Pin::new(&mut self.inner).poll_next(cx));
+        maybe_item.map(Ok).into()
     }
 }
 
 type BlockEventAnnounceStream =
-    stream::Map<OutboundSubscription<Header>, fn(Header) -> BlockEvent<Block>>;
+    stream::MapOk<OutboundSubscription<Header>, fn(Header) -> BlockEvent>;
 
 type BlockEventSolicitStream =
-    stream::Map<OutboundSubscription<Vec<HeaderHash>>, fn(Vec<HeaderHash>) -> BlockEvent<Block>>;
+    stream::MapOk<OutboundSubscription<BlockIds>, fn(BlockIds) -> BlockEvent>;
 
-type BlockEventMissingStream = stream::Map<
-    OutboundSubscription<ChainPullRequest<HeaderHash>>,
-    fn(ChainPullRequest<HeaderHash>) -> BlockEvent<Block>,
->;
+type BlockEventMissingStream =
+    stream::MapOk<OutboundSubscription<ChainPullRequest>, fn(ChainPullRequest) -> BlockEvent>;
 
 pub type BlockEventSubscription = stream::Select<
-    stream::Select<BlockEventAnnounceStream, BlockEventSolicitStream>,
-    BlockEventMissingStream,
+    BlockEventAnnounceStream,
+    stream::Select<BlockEventSolicitStream, BlockEventMissingStream>,
 >;
 
 pub type FragmentSubscription = OutboundSubscription<Fragment>;
 
-pub type GossipSubscription = OutboundSubscription<Gossip<NodeData>>;
+pub type GossipSubscription = OutboundSubscription<Gossip>;
 
 /// Handle used by the per-peer communication tasks to produce an outbound
 /// subscription stream towards the peer.
@@ -244,7 +240,7 @@ enum SubscriptionState<T> {
 #[derive(Default)]
 pub struct PeerComms {
     block_announcements: CommHandle<Header>,
-    block_solicitations: CommHandle<Vec<HeaderHash>>,
+    block_solicitations: CommHandle<BlockIds>,
     chain_pulls: CommHandle<ChainPullRequest>,
     fragments: CommHandle<Fragment>,
     gossip: CommHandle<Gossip>,
@@ -314,13 +310,11 @@ impl PeerComms {
         self.block_announcements.subscribe()
     }
 
-    pub fn subscribe_to_block_solicitations(&mut self) -> OutboundSubscription<Vec<HeaderHash>> {
+    pub fn subscribe_to_block_solicitations(&mut self) -> OutboundSubscription<BlockIds> {
         self.block_solicitations.subscribe()
     }
 
-    pub fn subscribe_to_chain_pulls(
-        &mut self,
-    ) -> OutboundSubscription<ChainPullRequest<HeaderHash>> {
+    pub fn subscribe_to_chain_pulls(&mut self) -> OutboundSubscription<ChainPullRequest> {
         self.chain_pulls.subscribe()
     }
 
@@ -328,16 +322,17 @@ impl PeerComms {
         let announce_events: BlockEventAnnounceStream = self
             .block_announcements
             .subscribe()
-            .map(BlockEvent::Announce);
+            .map_ok(BlockEvent::Announce);
         let solicit_events: BlockEventSolicitStream = self
             .block_solicitations
             .subscribe()
-            .map(BlockEvent::Solicit);
+            .map_ok(BlockEvent::Solicit);
         let missing_events: BlockEventMissingStream =
-            self.chain_pulls.subscribe().map(BlockEvent::Missing);
-        announce_events
-            .select(solicit_events)
-            .select(missing_events)
+            self.chain_pulls.subscribe().map_ok(BlockEvent::Missing);
+        stream::select(
+            announce_events,
+            stream::select(solicit_events, missing_events),
+        )
     }
 
     pub fn subscribe_to_fragments(&mut self) -> FragmentSubscription {
@@ -459,7 +454,6 @@ pub struct PeerInfo {
 ///
 /// This object uses internal locking and is shared between
 /// all network connection tasks.
-#[derive(Clone)]
 pub struct Peers {
     mutex: Mutex<PeerMap>,
     logger: Logger,
@@ -575,7 +569,7 @@ impl Peers {
         debug!(
             self.logger,
             "propagating block";
-            "hash" => %header.hash(),
+            "hash" => %hex::encode(header),
         );
         self.propagate_with(nodes, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_block_announcement(header.clone()),
@@ -672,7 +666,7 @@ impl Peers {
         }
     }
 
-    pub async fn fetch_blocks(&self, hashes: Vec<HeaderHash>) {
+    pub async fn fetch_blocks(&self, hashes: BlockIds) {
         let map = self.inner().await;
         if let Some((node_id, comms)) = map.next_peer_for_block_fetch() {
             debug!(self.logger, "fetching blocks from {}", node_id);
@@ -689,7 +683,7 @@ impl Peers {
         }
     }
 
-    pub async fn solicit_blocks(&self, node_id: Address, hashes: Vec<HeaderHash>) {
+    pub async fn solicit_blocks(&self, node_id: Address, hashes: BlockIds) {
         let map = self.inner().await;
         match map.peer_comms(&node_id) {
             Some(comms) => {
@@ -717,14 +711,14 @@ impl Peers {
         }
     }
 
-    pub async fn pull_headers(&self, node_id: Address, from: Vec<HeaderHash>, to: HeaderHash) {
+    pub async fn pull_headers(&self, node_id: Address, from: BlockIds, to: BlockId) {
         let map = self.inner().await;
         match map.peer_comms(&node_id) {
             Some(comms) => {
                 debug!(self.logger, "pulling headers";
                        "node_id" => %node_id,
-                       "from" => format!("[{}]", from.iter().map(|h| h.to_string()).collect::<Vec<_>>().join(", ")),
-                       "to" => %to);
+                       "from" => format!("[{}]", from.iter().map(|h| hex::encode(h)).collect::<Vec<_>>().join(", ")),
+                       "to" => %hex::encode(to));
                 comms
                     .chain_pulls
                     .try_send(ChainPullRequest { from, to })
