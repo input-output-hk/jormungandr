@@ -211,7 +211,7 @@ impl<T> IntercomReceiver<T> {
             let f = instant.elapsed().as_secs_f64();
 
             {
-                let mut stats = self.stats.lock().await;
+                let mut stats = self.stats.lock().unwrap();
                 stats.push(f);
             }
 
@@ -224,7 +224,7 @@ impl<T> IntercomReceiver<T> {
 
 impl IntercomStats {
     pub async fn status(&self) -> IntercomStatus {
-        let stats = self.stats.lock().await;
+        let stats = self.stats.lock().unwrap();
 
         IntercomStatus {
             number_sent: self.sent(),
