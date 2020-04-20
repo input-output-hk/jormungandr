@@ -134,7 +134,7 @@ pub fn assert_are_not_in_network_stats(
     let network_stats = node.network_stats()?;
     for peer in peers {
         utils::assert(
-            network_stats
+            !network_stats
                 .iter()
                 .any(|x| x.node_id == peer.public_id().to_string()),
             &format!(
