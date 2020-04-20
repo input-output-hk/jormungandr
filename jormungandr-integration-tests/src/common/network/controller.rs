@@ -87,10 +87,38 @@ impl Controller {
             .expect(&format!("cannot start {}", alias))
     }
 
+    pub fn expect_spawn_failed(
+        &mut self,
+        spawn_params: &mut SpawnParams,
+        expected_msg: &str,
+    ) -> Result<(), ControllerError> {
+        let config = self.make_config_for(spawn_params).unwrap();
+        Starter::new()
+            .config(config)
+            .from_genesis(spawn_params.get_leadership_mode().clone().into())
+            .role(spawn_params.get_leadership_mode().into())
+            .start_with_fail_in_logs(expected_msg)
+            .map_err(|e| ControllerError::SpawnError(e))
+    }
+
     pub fn spawn_custom(
         &mut self,
         spawn_params: &mut SpawnParams,
     ) -> Result<Node, ControllerError> {
+        let config = self.make_config_for(spawn_params).unwrap();
+        Starter::new()
+            .config(config)
+            .from_genesis(spawn_params.get_leadership_mode().clone().into())
+            .role(spawn_params.get_leadership_mode().into())
+            .start()
+            .map_err(|e| ControllerError::SpawnError(e))
+            .map(|jormungandr| Node::new(jormungandr, &spawn_params.alias))
+    }
+
+    pub fn make_config_for(
+        &mut self,
+        spawn_params: &mut SpawnParams,
+    ) -> Result<JormungandrConfig, ControllerError> {
         let mut node_setting = self.node_settings(&spawn_params.alias)?.clone();
         spawn_params.override_settings(&mut node_setting.config);
 
@@ -113,7 +141,7 @@ impl Controller {
             node_setting.secrets(),
         )?;
 
-        let config = JormungandrConfig {
+        Ok(JormungandrConfig {
             genesis_block_path: self.block0_file.as_path().into(),
             genesis_block_hash: self.block0_hash.to_string(),
             node_config_path: config_file,
@@ -123,15 +151,7 @@ impl Controller {
             secret_models: vec![node_setting.secrets().clone()],
             log_file_path: file_utils::get_path_in_temp("log_file.log"),
             rewards_history: false,
-        };
-
-        Starter::new()
-            .config(config)
-            .from_genesis(spawn_params.get_leadership_mode().clone().into())
-            .role(spawn_params.get_leadership_mode().into())
-            .start()
-            .map_err(|e| ControllerError::SpawnError(e))
-            .map(|jormungandr| Node::new(jormungandr, &spawn_params.alias))
+        })
     }
 
     pub fn spawn_node(
