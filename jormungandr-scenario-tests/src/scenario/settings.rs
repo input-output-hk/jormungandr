@@ -227,6 +227,7 @@ impl Prepare for P2p {
             max_inbound_connections: None,
             topics_of_interest: Some(TopicsOfInterest::prepare(context)),
             policy: Some(Policy::prepare(context)),
+            layers: None,
         }
     }
 }
