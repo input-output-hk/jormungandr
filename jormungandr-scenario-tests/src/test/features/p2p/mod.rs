@@ -91,10 +91,9 @@ pub fn assert_are_not_in_network_view(
     let network_view = node.network_stats()?;
     for peer in peers {
         utils::assert(
-            network_view.iter().any(|info| {
-                info.node_id == peer.public_id().to_string()
-                    && info.addr == peer.address().to_socketaddr()
-            }),
+            network_view
+                .iter()
+                .any(|info| info.addr == peer.address().to_socketaddr()),
             &format!(
                 "{}: Peer {} is present in network view list, while it should not",
                 info,
@@ -113,9 +112,11 @@ pub fn assert_are_in_network_stats(
     let network_stats = node.network_stats()?;
     for peer in peers {
         utils::assert(
-            network_stats
-                .iter()
-                .any(|x| x.node_id == peer.public_id().to_string()),
+            network_stats.iter().any(|x| {
+                x.addr
+                    .and_then(|a| peer.address().to_socketaddr().map(|b| a == b))
+                    .unwrap_or(false)
+            }),
             &format!(
                 "{}: Peer {} is not present in network_stats list",
                 info,
@@ -134,9 +135,11 @@ pub fn assert_are_not_in_network_stats(
     let network_stats = node.network_stats()?;
     for peer in peers {
         utils::assert(
-            network_stats
-                .iter()
-                .any(|x| x.node_id == peer.public_id().to_string()),
+            !network_stats.iter().any(|x| {
+                x.addr
+                    .and_then(|a| peer.address().to_socketaddr().map(|b| a == b))
+                    .unwrap_or(false)
+            }),
             &format!(
                 "{}: Peer {} is present in network_stats list, while it should not",
                 info,
@@ -197,15 +200,8 @@ pub fn assert_record_is_present(
         utils::assert(
             peer_list.iter().any(|x| {
                 let info = &x.profile.info;
-                println!(
-                    "{} == {} , {} == {}",
-                    info.id,
-                    peer.public_id().to_string(),
-                    info.address,
-                    peer.address().to_string()
-                );
-                info.id == peer.public_id().to_string()
-                    && info.address == peer.address().to_string()
+                println!("{} == {}", info.address, peer.address().to_string());
+                info.address == peer.address().to_string()
             }),
             &format!(
                 "{}: Peer {} is not present in {} list",
@@ -227,8 +223,7 @@ pub fn assert_record_is_not_present(
         utils::assert(
             !peer_list.iter().any(|x| {
                 let info = &x.profile.info;
-                info.id == peer.public_id().to_string()
-                    && info.address == peer.address().to_string()
+                info.address == peer.address().to_string()
             }),
             &format!(
                 "Peer {} is present in {} list, while should not",
