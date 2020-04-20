@@ -31,8 +31,12 @@ pub fn jcli_creates_correct_retirement_certificate() {
 
     let expected_certificate = certificate_wrapper.assert_new_stake_pool_retirement(&stake_pool_id);
     let actual_certificate = assert_new_stake_pool_retirement(&stake_pool_id);
-
+    let retirement_cert_file =
+        file_utils::create_file_in_temp("retirement_certificate", &actual_certificate);
+    let stake_pool_id_from_retirement =
+        certificate_wrapper.assert_get_stake_pool_id(&retirement_cert_file);
     assert_eq!(expected_certificate, actual_certificate);
+    assert_eq!(stake_pool_id, stake_pool_id_from_retirement);
 }
 
 pub fn assert_new_stake_pool_retirement(stake_pool_id: &str) -> String {

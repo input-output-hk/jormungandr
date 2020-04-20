@@ -1,24 +1,10 @@
+pub use jormungandr_lib::interfaces::{PreferredListConfig, TrustedPeer};
 pub use poldercast::Address;
 use poldercast::{GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
 use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-
-const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(deny_unknown_fields)]
-pub struct PreferredListConfig {
-    #[serde(default)]
-    view_max: PreferredViewMax,
-
-    #[serde(default)]
-    peers: HashSet<Address>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-struct PreferredViewMax(usize);
 
 pub struct PreferredListLayer {
     /// the max number of entries to add in the list of the view
@@ -83,17 +69,5 @@ impl Layer for PreferredListLayer {
 
             view.add_info(info);
         }
-    }
-}
-
-impl Default for PreferredViewMax {
-    fn default() -> Self {
-        Self(DEFAULT_PREFERRED_VIEW_MAX)
-    }
-}
-
-impl From<PreferredViewMax> for usize {
-    fn from(pvm: PreferredViewMax) -> Self {
-        pvm.0
     }
 }
