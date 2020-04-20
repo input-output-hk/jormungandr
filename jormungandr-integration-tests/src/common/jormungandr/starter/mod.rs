@@ -32,6 +32,8 @@ pub enum StartupError {
     ErrorInLogsFound { log_content: String },
     #[error("error(s) in log detected: port already in use")]
     PortAlreadyInUse,
+    #[error("expected message not found: {entry} in logs: {log_content}")]
+    EntryNotFoundInLogs { entry: String, log_content: String },
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
@@ -250,6 +252,38 @@ impl Starter {
     pub fn finish_benchmark(&self, benchmark_run: Option<SpeedBenchmarkRun>) {
         if let Some(benchmark_run) = benchmark_run {
             benchmark_run.stop().print();
+        }
+    }
+
+    pub fn start_with_fail_in_logs(
+        &mut self,
+        expected_msg_in_logs: &str,
+    ) -> Result<(), StartupError> {
+        let config = self.build_configuration();
+        let start = Instant::now();
+        let mut command = self.get_command(&config);
+        println!("Starting node with configuration : {:?}", &config);
+        println!("Bootstrapping...");
+
+        let _process = command
+            .spawn()
+            .expect("failed to execute 'start jormungandr node'");
+
+        loop {
+            let logger = JormungandrLogger::new(config.log_file_path.clone());
+            if start.elapsed() > self.timeout {
+                return Err(StartupError::EntryNotFoundInLogs {
+                    entry: expected_msg_in_logs.to_string(),
+                    log_content: logger.get_log_content(),
+                });
+            }
+            process_utils::sleep(self.sleep);
+            if logger
+                .raw_log_contains_any_of(&[expected_msg_in_logs])
+                .unwrap_or_else(|_| false)
+            {
+                return Ok(());
+            }
         }
     }
 

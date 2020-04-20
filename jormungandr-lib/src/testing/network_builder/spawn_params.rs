@@ -1,4 +1,6 @@
-use crate::interfaces::{Explorer, Mempool, NodeConfig, Policy, TopicsOfInterest};
+use crate::interfaces::{
+    Explorer, LayersConfig, Mempool, NodeConfig, Policy, TopicsOfInterest, TrustedPeer,
+};
 
 use super::{LeadershipMode, PersistenceMode};
 use std::path::PathBuf;
@@ -11,6 +13,8 @@ pub struct SpawnParams {
     pub policy: Option<Policy>,
     pub jormungandr: Option<PathBuf>,
     pub listen_address: Option<Option<poldercast::Address>>,
+    pub trusted_peers: Option<Vec<TrustedPeer>>,
+    pub preferred_layer: Option<LayersConfig>,
     pub leadership_mode: LeadershipMode,
     pub persistence_mode: PersistenceMode,
     pub max_connections: Option<u32>,
@@ -31,9 +35,11 @@ impl SpawnParams {
             leadership_mode: LeadershipMode::Leader,
             persistence_mode: PersistenceMode::Persistent,
             node_id: None,
+            trusted_peers: None,
             listen_address: None,
             max_connections: None,
             max_inbound_connections: None,
+            preferred_layer: None,
         }
     }
 
@@ -85,6 +91,16 @@ impl SpawnParams {
 
     pub fn mempool(&mut self, mempool: Mempool) -> &mut Self {
         self.mempool = Some(mempool);
+        self
+    }
+
+    pub fn trusted_peers(&mut self, trusted_peers: Vec<TrustedPeer>) -> &mut Self {
+        self.trusted_peers = Some(trusted_peers);
+        self
+    }
+
+    pub fn preferred_layer(&mut self, preferred_layer: LayersConfig) -> &mut Self {
+        self.preferred_layer = Some(preferred_layer);
         self
     }
 
@@ -154,6 +170,14 @@ impl SpawnParams {
 
         if let Some(listen_address_option) = &self.listen_address {
             node_config.p2p.listen_address = listen_address_option.clone();
+        }
+
+        if let Some(trusted_peers) = &self.trusted_peers {
+            node_config.p2p.trusted_peers = trusted_peers.clone();
+        }
+
+        if let Some(preferred_layer) = &self.preferred_layer {
+            node_config.p2p.layers = Some(preferred_layer.clone());
         }
     }
 }

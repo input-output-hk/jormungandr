@@ -2,9 +2,8 @@ use crate::common::{
     network::{builder, params, wallet, Node},
     process_utils,
 };
-use jormungandr_lib::interfaces::Explorer;
 use jormungandr_lib::{
-    interfaces::{PeerRecord, Policy},
+    interfaces::{Explorer, LayersConfig, PeerRecord, Policy, PreferredListConfig},
     time::Duration,
 };
 const CLIENT: &str = "CLIENT";
@@ -166,7 +165,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         .build()
         .unwrap();
 
-    let mut server = network_controller.spawn_and_wait(SERVER);
+    let server = network_controller.spawn_and_wait(SERVER);
 
     let server_public_address = network_controller
         .node_config(SERVER)
@@ -189,7 +188,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
     assert_node_stats(&client, 1, 0, 1, 0, "before spawning server again");
     assert_empty_quarantine(&client, "before spawning server again");
 
-    server = network_controller.spawn_and_wait(SERVER);
+    let _server_after = network_controller.spawn_and_wait(SERVER);
 
     assert_node_stats(&client, 1, 0, 1, 0, "after spawning server again");
     assert_empty_quarantine(&client, "after spawning server again");
@@ -250,4 +249,66 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         vec![&server],
         "after spawning server again (10 s. delay)",
     );
+}
+
+#[test]
+pub fn node_trust_itself() {
+    let mut network_controller = builder("node_whitelist_itself")
+        .single_trust_direction(CLIENT, SERVER)
+        .initials(vec![
+            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
+            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
+        ])
+        .custom_config(vec![params(CLIENT).explorer(Explorer { enabled: true })])
+        .build()
+        .unwrap();
+
+    let _server = network_controller.spawn_and_wait(SERVER);
+
+    let self_trusted_peer = network_controller
+        .node_config(CLIENT)
+        .unwrap()
+        .p2p
+        .make_trusted_peer_setting();
+
+    assert!(network_controller
+        .expect_spawn_failed(
+            params(CLIENT).trusted_peers(vec![self_trusted_peer]),
+            "unable to reach peer for initial bootstrap"
+        )
+        .is_ok());
+}
+
+#[test]
+pub fn node_put_itself_in_preffered_layers() {
+    let mut network_controller = builder("node_preffered_list_itself")
+        .single_trust_direction(CLIENT, SERVER)
+        .initials(vec![
+            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
+            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
+        ])
+        .build()
+        .unwrap();
+
+    let _server = network_controller.spawn_and_wait(SERVER);
+
+    let self_trusted_peer = network_controller
+        .node_config(CLIENT)
+        .unwrap()
+        .p2p
+        .make_trusted_peer_setting();
+
+    let layer = LayersConfig {
+        preferred_list: PreferredListConfig {
+            view_max: Default::default(),
+            peers: vec![self_trusted_peer],
+        },
+    };
+
+    assert!(network_controller
+        .expect_spawn_failed(
+            params(CLIENT).preferred_layer(layer),
+            "topology tells the node to connect to itself"
+        )
+        .is_ok());
 }
