@@ -1,4 +1,4 @@
-use crate::blockcfg::{HeaderHash, Fragment, Header, HeaderId};
+use crate::blockcfg::{Fragment, Header, HeaderHash, HeaderId};
 use chain_core::mempack::{ReadBuf, Readable};
 use chain_core::property::Serialize;
 use chain_network::data as net_data;
@@ -52,18 +52,12 @@ impl TryFromNetwork<Vec<HeaderHash>> for BlockIds {
 // TODO: Check if this is completly compatible
 impl TryFromNetwork<Header> for block::Header {
     fn try_from_network(header: Header) -> Result<Self, Error> {
-        Ok(block::Header::from_bytes(
-            header.as_slice(),
-        ))
+        Ok(block::Header::from_bytes(header.as_slice()))
     }
 }
 
-impl TryFromNetwork<Fragment>
-    for fragment::Fragment
-{
+impl TryFromNetwork<Fragment> for fragment::Fragment {
     fn try_from_network(fragment: Fragment) -> Result<Self, Error> {
-        Ok(fragment::Fragment::from_bytes(
-            fragment.serialize_as_vec()?,
-        ))
+        Ok(fragment::Fragment::from_bytes(fragment.serialize_as_vec()?))
     }
 }

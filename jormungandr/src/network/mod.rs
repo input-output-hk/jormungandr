@@ -79,8 +79,8 @@ use std::time::Duration;
 pub use self::bootstrap::Error as BootstrapError;
 use crate::network::convert::TryFromNetwork;
 use crate::stats_counter::StatsCounter;
+use chain_network::data::{block, fragment};
 use chain_network::data::{BlockId, BlockIds};
-use chain_network::data::{fragment, block};
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -312,7 +312,10 @@ async fn handle_network_input(
             NetworkMsg::GetNextBlock(node_id, block_id) => {
                 // TODO: This line forces `unwrap` so it is easy to detect if the method is working properly here or another method should be implemented for this
                 let block_id_vec: Vec<HeaderHash> = vec![block_id.into()];
-                state.peers.solicit_blocks(node_id, BlockIds::try_from_network(block_id_vec).unwrap()).await;
+                state
+                    .peers
+                    .solicit_blocks(node_id, BlockIds::try_from_network(block_id_vec).unwrap())
+                    .await;
             }
             NetworkMsg::PullHeaders {
                 node_address,
@@ -349,10 +352,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 .await;
             prop_state
                 .peers
-                .propagate_block(
-                    view.peers,
-                    block::Header::try_from_network(header).unwrap(),
-                )
+                .propagate_block(view.peers, block::Header::try_from_network(header).unwrap())
                 .await
         }
         PropagateMsg::Fragment(ref fragment) => {
@@ -386,16 +386,12 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
             let mut options = p2p::comm::ConnectOptions::default();
             match &msg {
                 PropagateMsg::Block(header) => {
-                    options.pending_block_announcement = Some(
-                        block::Header::try_from_network(header.clone())
-                            .unwrap(),
-                    );
+                    options.pending_block_announcement =
+                        Some(block::Header::try_from_network(header.clone()).unwrap());
                 }
                 PropagateMsg::Fragment(fragment) => {
-                    options.pending_fragment = Some(
-                        fragment::Fragment::try_from_network(fragment.clone())
-                            .unwrap(),
-                    );
+                    options.pending_fragment =
+                        Some(fragment::Fragment::try_from_network(fragment.clone()).unwrap());
                 }
             };
             connect_and_propagate(node, state.clone(), channels.clone(), options);
