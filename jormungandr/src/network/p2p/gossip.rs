@@ -20,7 +20,7 @@ impl Gossip {
     }
 
     pub fn has_valid_address(&self) -> bool {
-        let addr = match self.address().to_socketaddr() {
+        let addr = match self.address().and_then(|addr| addr.to_socketaddr()) {
             None => return false,
             Some(addr) => addr,
         };
@@ -61,7 +61,7 @@ impl Gossip {
             return false;
         }
 
-        let addr = match self.address().to_socketaddr() {
+        let addr = match self.address().and_then(|addr| addr.to_socketaddr()) {
             None => return false,
             Some(addr) => addr,
         };
@@ -117,7 +117,18 @@ impl From<poldercast::NodeProfile> for Gossip {
 
 impl From<Gossips> for net_data::gossip::Gossip {
     fn from(gossips: Gossips) -> Self {
-        net_data::gossip::Gossip::from_nodes(gossips.0.into_iter().map(Gossip))
+        let nodes = gossips
+            .0
+            .into_iter()
+            .map(|node| {
+                let gossip = Gossip(node);
+                let mut bytes = Vec::new();
+                <Gossip as property::Serialize>::serialize(&gossip, &mut bytes).unwrap();
+                net_data::gossip::Node::from_bytes(bytes)
+            })
+            .collect::<Vec<_>>()
+            .into();
+        net_data::gossip::Gossip { nodes }
     }
 }
 
