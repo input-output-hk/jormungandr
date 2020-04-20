@@ -1,9 +1,10 @@
 use super::{
-    buffer_sizes, convert,
+    buffer_sizes,
+    convert::Decode,
     p2p::comm::{BlockEventSubscription, FragmentSubscription, GossipSubscription},
     subscription, Channels, GlobalStateR,
 };
-use crate::blockcfg::{Block, Fragment, Header};
+use crate::blockcfg::{Block, Fragment, Header, HeaderId};
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
@@ -101,7 +102,7 @@ impl BlockService for NodeService {
         &self,
         from: net_data::BlockIds,
     ) -> Result<Self::PullBlocksToTipStream, Error> {
-        let from = convert::deserialize_vec(&from)?;
+        let from = from.decode()?;
         let logger = self.logger().new(o!("request" => "PullBlocksToTip"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
@@ -111,7 +112,7 @@ impl BlockService for NodeService {
     }
 
     async fn get_blocks(&self, ids: net_data::BlockIds) -> Result<Self::GetBlocksStream, Error> {
-        let ids = convert::deserialize_vec(&ids)?;
+        let ids = ids.decode()?;
         let logger = self.logger().new(o!("request" => "GetBlocks"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
@@ -121,7 +122,7 @@ impl BlockService for NodeService {
     }
 
     async fn get_headers(&self, ids: net_data::BlockIds) -> Result<Self::GetHeadersStream, Error> {
-        let ids = convert::deserialize_vec(&ids)?;
+        let ids = ids.decode()?;
         let logger = self.logger().new(o!("request" => "GetHeaders"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
@@ -135,8 +136,8 @@ impl BlockService for NodeService {
         from: net_data::BlockIds,
         to: net_data::BlockId,
     ) -> Result<Self::PullHeadersStream, Error> {
-        let from = convert::deserialize_vec(&from)?;
-        let to = convert::deserialize(&to)?;
+        let from = from.decode()?;
+        let to = to.decode()?;
         let logger = self.logger().new(o!("request" => "PullHeaders"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
@@ -157,7 +158,7 @@ impl BlockService for NodeService {
         let block_box = self.channels.block_box.clone();
         send_message(block_box, BlockMsg::ChainHeaders(handle), logger).await?;
         stream
-            .and_then(|header| async { convert::deserialize(&header) })
+            .and_then(|header| async { header.decode() })
             .forward(sink.sink_err_into())
             .await
     }
@@ -169,7 +170,7 @@ impl BlockService for NodeService {
         let block_box = self.channels.block_box.clone();
         send_message(block_box, BlockMsg::NetworkBlocks(handle), logger).await?;
         stream
-            .and_then(|block| async { convert::deserialize(&block) })
+            .and_then(|block| async { block.decode() })
             .forward(sink.sink_err_into())
             .await
     }
