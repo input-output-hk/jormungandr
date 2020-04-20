@@ -302,15 +302,12 @@ async fn handle_network_input(
                 handle_propagation_msg(msg, state.clone(), channels.clone()).await;
             }
             NetworkMsg::GetBlocks(block_ids) => {
-                // TODO: This line forces `unwrap` so it is easy to detect if the method is working properly here or another method should be implemented for this
-                // let block_ids = try_ids_from_iter(block_ids.iter()).unwrap();
                 state
                     .peers
                     .fetch_blocks(BlockIds::try_from_network(block_ids).unwrap())
                     .await;
             }
             NetworkMsg::GetNextBlock(node_id, block_id) => {
-                // TODO: This line forces `unwrap` so it is easy to detect if the method is working properly here or another method should be implemented for this
                 let block_id_vec: Vec<HeaderHash> = vec![block_id.into()];
                 state
                     .peers
