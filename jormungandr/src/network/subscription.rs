@@ -1,5 +1,6 @@
 use super::{
     buffer_sizes,
+    convert::TryFromNetwork,
     p2p::{Address, Gossip},
     GlobalStateR,
 };
@@ -104,10 +105,11 @@ pub async fn process_fragments<S>(
     global_state: GlobalStateR,
     logger: Logger,
 ) where
-    S: TryStream<Ok = net_data::Fragment>,
+    S: TryStream<Ok = net_data::Fragment, Error = Error>,
 {
+    let stream = stream.and_then(|fragment| async { Fragment::try_from_network(fragment) });
     let sink = FragmentProcessor::new(mbox, node_id, global_state, logger);
-    stream.forward(sink).await.map_err(|e| {
+    stream.into_stream().forward(sink).await.map_err(|e| {
         debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
     });
 }
