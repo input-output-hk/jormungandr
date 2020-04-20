@@ -79,8 +79,8 @@ use std::time::Duration;
 pub use self::bootstrap::Error as BootstrapError;
 use crate::network::convert::TryFromNetwork;
 use crate::stats_counter::StatsCounter;
-use chain_network::data::block::try_ids_from_iter;
 use chain_network::data::{BlockId, BlockIds};
+use chain_network::data::{fragment, block};
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -312,8 +312,7 @@ async fn handle_network_input(
             NetworkMsg::GetNextBlock(node_id, block_id) => {
                 // TODO: This line forces `unwrap` so it is easy to detect if the method is working properly here or another method should be implemented for this
                 let block_id_vec: Vec<HeaderHash> = vec![block_id.into()];
-                let block_ids = try_ids_from_iter(block_id_vec).unwrap();
-                state.peers.solicit_blocks(node_id, block_ids).await;
+                state.peers.solicit_blocks(node_id, BlockIds::try_from_network(block_id_vec).unwrap()).await;
             }
             NetworkMsg::PullHeaders {
                 node_address,
@@ -324,7 +323,7 @@ async fn handle_network_input(
                     .peers
                     .pull_headers(
                         node_address,
-                        try_ids_from_iter(from.as_slice()).unwrap(),
+                        block::try_ids_from_iter(from.as_slice()).unwrap(),
                         BlockId::try_from_network(to).unwrap(),
                     )
                     .await;
@@ -352,7 +351,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 .peers
                 .propagate_block(
                     view.peers,
-                    chain_network::data::block::Header::try_from_network(header).unwrap(),
+                    block::Header::try_from_network(header).unwrap(),
                 )
                 .await
         }
@@ -369,7 +368,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 .peers
                 .propagate_fragment(
                     view.peers,
-                    chain_network::data::fragment::Fragment::try_from_network(fragment).unwrap(),
+                    fragment::Fragment::try_from_network(fragment).unwrap(),
                 )
                 .await
         }
@@ -388,13 +387,13 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
             match &msg {
                 PropagateMsg::Block(header) => {
                     options.pending_block_announcement = Some(
-                        chain_network::data::block::Header::try_from_network(header.clone())
+                        block::Header::try_from_network(header.clone())
                             .unwrap(),
                     );
                 }
                 PropagateMsg::Fragment(fragment) => {
                     options.pending_fragment = Some(
-                        chain_network::data::fragment::Fragment::try_from_network(fragment.clone())
+                        fragment::Fragment::try_from_network(fragment.clone())
                             .unwrap(),
                     );
                 }

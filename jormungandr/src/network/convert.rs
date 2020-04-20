@@ -1,10 +1,8 @@
-use crate::blockcfg::HeaderHash;
-use crate::blockcfg::{Fragment, Header, HeaderId};
+use crate::blockcfg::{HeaderHash, Fragment, Header, HeaderId};
 use chain_core::mempack::{ReadBuf, Readable};
 use chain_core::property::Serialize;
 use chain_network::data as net_data;
-use chain_network::data::block::try_ids_from_iter;
-use chain_network::data::{BlockId, BlockIds};
+use chain_network::data::{block, fragment, BlockId, BlockIds};
 use chain_network::error::{Code, Error};
 
 fn read<T, U>(src: &T) -> Result<U, Error>
@@ -47,24 +45,24 @@ impl TryFromNetwork<HeaderHash> for BlockId {
 
 impl TryFromNetwork<Vec<HeaderHash>> for BlockIds {
     fn try_from_network(block_ids: Vec<HeaderHash>) -> Result<Self, Error> {
-        try_ids_from_iter(block_ids.iter())
+        block::try_ids_from_iter(block_ids.iter())
     }
 }
 
 // TODO: Check if this is completly compatible
-impl TryFromNetwork<chain_impl_mockchain::header::Header> for chain_network::data::block::Header {
-    fn try_from_network(header: chain_impl_mockchain::header::Header) -> Result<Self, Error> {
-        Ok(chain_network::data::block::Header::from_bytes(
+impl TryFromNetwork<Header> for block::Header {
+    fn try_from_network(header: Header) -> Result<Self, Error> {
+        Ok(block::Header::from_bytes(
             header.as_slice(),
         ))
     }
 }
 
-impl TryFromNetwork<chain_impl_mockchain::fragment::Fragment>
-    for chain_network::data::fragment::Fragment
+impl TryFromNetwork<Fragment>
+    for fragment::Fragment
 {
-    fn try_from_network(fragment: chain_impl_mockchain::fragment::Fragment) -> Result<Self, Error> {
-        Ok(chain_network::data::fragment::Fragment::from_bytes(
+    fn try_from_network(fragment: Fragment) -> Result<Self, Error> {
+        Ok(fragment::Fragment::from_bytes(
             fragment.serialize_as_vec()?,
         ))
     }
