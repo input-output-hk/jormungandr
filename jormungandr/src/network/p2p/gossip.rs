@@ -1,4 +1,5 @@
-use crate::network::p2p::{limits, Address};
+use super::{limits, Address};
+use crate::network::convert::Encode;
 use bincode;
 use chain_core::property;
 use chain_network::data as net_data;
@@ -120,12 +121,7 @@ impl From<Gossips> for net_data::gossip::Gossip {
         let nodes = gossips
             .0
             .into_iter()
-            .map(|node| {
-                let gossip = Gossip(node);
-                let mut bytes = Vec::new();
-                <Gossip as property::Serialize>::serialize(&gossip, &mut bytes).unwrap();
-                net_data::gossip::Node::from_bytes(bytes)
-            })
+            .map(|node| Gossip(node).encode())
             .collect::<Vec<_>>()
             .into();
         net_data::gossip::Gossip { nodes }
