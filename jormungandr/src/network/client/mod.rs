@@ -94,7 +94,7 @@ impl Client {
 }
 
 struct InboundSubscriptions {
-    pub node_id: Address,
+    //pub node_id: Address,
     pub block_events: BlockSubscription,
     pub fragments: FragmentSubscription,
     pub gossip: GossipSubscription,
