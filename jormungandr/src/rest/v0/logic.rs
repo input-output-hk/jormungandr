@@ -12,7 +12,7 @@ use crate::{
     rest::Context,
     secure::NodeSecret,
 };
-use chain_core::property::{Block as _, Deserialize, FromStr, Serialize};
+use chain_core::property::{Block as _, Deserialize, Serialize};
 use chain_crypto::{
     bech32::Bech32, digest::Error as DigestError, hash::Error as HashError, Blake2b256, PublicKey,
     PublicKeyFromStrError,
@@ -38,10 +38,9 @@ use jormungandr_lib::{
     time::SystemTime,
 };
 
-use std::{convert::Infallible, sync::Arc};
+use std::sync::Arc;
 
-use futures::sync::mpsc::TrySendError;
-use futures03::{compat::*, prelude::*};
+use futures03::{channel::mpsc::TrySendError, prelude::*};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -57,8 +56,6 @@ pub enum Error {
     Deserialize(std::io::Error),
     #[error(transparent)]
     TxMsgSendError(#[from] TrySendError<TransactionMsg>),
-    #[error(transparent)]
-    NetworkMsgSendError(#[from] TrySendError<NetworkMsg>),
     #[error("Block value calculation error")]
     Value(#[from] ValueError),
     #[error("Could not find block for tip")]
@@ -76,17 +73,17 @@ pub enum Error {
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
     PublicKey::<AccountAlg>::from_str(id_hex)
         .map(Into::into)
-        .map_err(Error::PublicKey)
+        .map_err(Into::into)
 }
 
 fn parse_block_hash(hex: &str) -> Result<Hash, Error> {
     Blake2b256::from_str(hex)
+        .map_err(Into::into)
         .map(Into::into)
-        .map_err(Error::Hash)
 }
 
 fn parse_fragment_id(id_hex: &str) -> Result<FragmentId, Error> {
-    FragmentId::from_str(id_hex).map_err(Error::Hash)
+    FragmentId::from_str(id_hex)
 }
 
 pub async fn get_account_state(
@@ -106,13 +103,10 @@ pub async fn get_account_state(
 
 pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {
     let logger = context.logger()?.new(o!("request" => "message_logs"));
-    intercom::unary_future(
-        context.try_full()?.transaction_task.clone(),
-        logger,
-        |handle| TransactionMsg::GetLogs(handle),
-    )
-    .compat()
-    .await
+    let (reply_handle, reply_future) = intercom::unary_reply(logger);
+    let mbox = context.try_full()?.transaction_task.clone();
+    mbox.send(TransactionMsg::GetLogs(reply_handle));
+    reply_future.await.map_err(Into::into)
 }
 
 pub async fn post_message(context: &Context, message: &[u8]) -> Result<(), Error> {
@@ -199,15 +193,9 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
             Ok(())
         })
         .collect::<Result<(), ValueError>>()?;
-    let nodes_count = full_context
-        .p2p
-        .nodes_count::<Infallible>()
-        .compat()
-        .await
-        .unwrap();
+    let nodes_count = full_context.p2p.nodes_count().await;
     let tip_header = tip.header();
     let stats = &full_context.stats_counter;
-    let node_id = &full_context.p2p.node_id().to_string();
     let node_stats = NodeStats {
         block_recv_cnt: stats.block_recv_cnt(),
         last_block_content_size: tip_header.block_content_size(),
@@ -226,7 +214,6 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
         peer_unreachable_cnt: nodes_count.not_reachable_count,
         tx_recv_cnt: stats.tx_recv_cnt(),
         uptime: stats.uptime_sec().into(),
-        node_id: node_id.to_owned(),
     };
     Ok(Some(node_stats))
 }
@@ -289,8 +276,8 @@ pub async fn get_stake_distribution(
             unassigned: distribution.unassigned.into(),
             pools: distribution
                 .to_pools
-                .iter()
-                .map(|(key, value)| (key.clone().into(), value.stake.total.clone().into()))
+                .into_iter()
+                .map(|(key, value)| (key.into(), value.stake.total.into()))
                 .collect(),
         };
         Ok(Some(StakeDistributionDto {
@@ -336,8 +323,8 @@ pub async fn get_stake_distribution_at(
                 unassigned: distribution.unassigned.into(),
                 pools: distribution
                     .to_pools
-                    .iter()
-                    .map(|(key, value)| (key.clone().into(), value.stake.total.clone().into()))
+                    .into_iter()
+                    .map(|(key, value)| (key.into(), value.stake.total.into()))
                     .collect(),
             };
 
@@ -427,18 +414,16 @@ pub async fn get_stake_pools(context: &Context) -> Result<Vec<String>, Error> {
 }
 
 pub async fn get_network_stats(context: &Context) -> Result<Vec<PeerStats>, Error> {
+    let full_context = context.try_full()?;
+
     let logger = context.logger()?.new(o!("request" => "network_stats"));
-    let peer_stats = intercom::unary_future::<_, _, Error, _>(
-        context.try_full()?.network_task.clone(),
-        logger,
-        |handle| NetworkMsg::PeerInfo(handle),
-    )
-    .compat()
-    .await?;
+    let (reply_handle, reply_future) = intercom::unary_reply(logger);
+    let mbox = full_context.network_task.clone();
+    mbox.send(NetworkMsg::PeerInfo(reply_handle));
+    let peer_stats = reply_future.await?;
     Ok(peer_stats
         .into_iter()
         .map(|info| PeerStats {
-            node_id: info.id.to_string(),
             addr: info.addr,
             established_at: SystemTime::from(info.stats.connection_established()),
             last_block_received: info.stats.last_block_received().map(SystemTime::from),
@@ -571,53 +556,30 @@ pub async fn get_diagnostic(context: &Context) -> Result<Diagnostic, Error> {
 pub async fn get_network_p2p_quarantined(
     context: &Context,
 ) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context
-        .try_full()?
-        .p2p
-        .list_quarantined::<Infallible>()
-        .compat()
-        .await
-        .unwrap())
+    Ok(context.try_full()?.p2p.list_quarantined().await)
 }
 
 pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context
-        .try_full()?
-        .p2p
-        .list_non_public::<Infallible>()
-        .compat()
-        .await
-        .unwrap())
+    Ok(context.try_full()?.p2p.list_non_public().await)
 }
 
 pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context
-        .try_full()?
-        .p2p
-        .list_available::<Infallible>()
-        .compat()
-        .await
-        .unwrap())
+    Ok(context.try_full()?.p2p.list_available().await)
 }
 
-pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<poldercast::NodeInfo>, Error> {
+pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<poldercast::Address>, Error> {
     Ok(context
         .try_full()?
         .p2p
-        .view::<Infallible>(poldercast::Selection::Any)
-        .compat()
+        .view(poldercast::Selection::Any)
         .await
-        .unwrap()
-        .peers
-        .into_iter()
-        .map(Into::into)
-        .collect())
+        .peers)
 }
 
 pub async fn get_network_p2p_view_topic(
     context: &Context,
     topic: &str,
-) -> Result<Vec<poldercast::NodeInfo>, Error> {
+) -> Result<Vec<poldercast::Address>, Error> {
     fn parse_topic(s: &str) -> Result<poldercast::Selection, Error> {
         use crate::network::p2p::topic;
         use poldercast::Selection;
@@ -634,17 +596,9 @@ pub async fn get_network_p2p_view_topic(
     }
 
     let topic = parse_topic(topic)?;
-    Ok(context
-        .try_full()?
-        .p2p
-        .view::<Infallible>(topic)
-        .compat()
-        .await
-        .unwrap()
-        .peers
-        .into_iter()
-        .map(Into::into)
-        .collect())
+    let ctx = context.try_full()?;
+    let view = ctx.p2p.view(topic).await;
+    Ok(view.peers)
 }
 
 pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
