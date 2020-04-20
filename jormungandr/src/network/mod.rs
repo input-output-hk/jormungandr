@@ -77,8 +77,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub use self::bootstrap::Error as BootstrapError;
+use crate::network::convert::TryFromNetwork;
 use crate::stats_counter::StatsCounter;
 use chain_network::data::block::try_ids_from_iter;
+use chain_network::data::{BlockId, BlockIds};
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -301,9 +303,12 @@ async fn handle_network_input(
             }
             NetworkMsg::GetBlocks(block_ids) => {
                 // TODO: This line forces `unwrap` so it is easy to detect if the method is working properly here or another method should be implemented for this
-                let block_ids = try_ids_from_iter(block_ids.iter()).unwrap();
-                state.peers.fetch_blocks(block_ids).await;
-            },
+                // let block_ids = try_ids_from_iter(block_ids.iter()).unwrap();
+                state
+                    .peers
+                    .fetch_blocks(BlockIds::try_from_network(block_ids).unwrap())
+                    .await;
+            }
             NetworkMsg::GetNextBlock(node_id, block_id) => {
                 // TODO: This line forces `unwrap` so it is easy to detect if the method is working properly here or another method should be implemented for this
                 let block_id_vec: Vec<HeaderHash> = vec![block_id.into()];
@@ -317,7 +322,11 @@ async fn handle_network_input(
             } => {
                 state
                     .peers
-                    .pull_headers(node_address, try_ids_from_iter(from.as_slice()).unwrap(), to.into())
+                    .pull_headers(
+                        node_address,
+                        try_ids_from_iter(from.as_slice()).unwrap(),
+                        BlockId::try_from_network(to).unwrap(),
+                    )
                     .await;
             }
             NetworkMsg::PeerInfo(reply) => {
@@ -339,7 +348,13 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                     topic: p2p::topic::BLOCKS,
                 })
                 .await;
-            prop_state.peers.propagate_block(view.peers, header.into()).await
+            prop_state
+                .peers
+                .propagate_block(
+                    view.peers,
+                    chain_network::data::block::Header::try_from_network(header).unwrap(),
+                )
+                .await
         }
         PropagateMsg::Fragment(ref fragment) => {
             debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
@@ -352,7 +367,10 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 .await;
             prop_state
                 .peers
-                .propagate_fragment(view.peers, fragment.into())
+                .propagate_fragment(
+                    view.peers,
+                    chain_network::data::fragment::Fragment::try_from_network(fragment).unwrap(),
+                )
                 .await
         }
     };
@@ -369,10 +387,16 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
             let mut options = p2p::comm::ConnectOptions::default();
             match &msg {
                 PropagateMsg::Block(header) => {
-                    options.pending_block_announcement = Some(header.clone().into());
+                    options.pending_block_announcement = Some(
+                        chain_network::data::block::Header::try_from_network(header.clone())
+                            .unwrap(),
+                    );
                 }
                 PropagateMsg::Fragment(fragment) => {
-                    options.pending_fragment = Some(fragment.clone().into());
+                    options.pending_fragment = Some(
+                        chain_network::data::fragment::Fragment::try_from_network(fragment.clone())
+                            .unwrap(),
+                    );
                 }
             };
             connect_and_propagate(node, state.clone(), channels.clone(), options);
