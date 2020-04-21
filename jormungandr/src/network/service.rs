@@ -2,9 +2,10 @@ use super::{
     buffer_sizes,
     convert::Decode,
     p2p::comm::{BlockEventSubscription, FragmentSubscription, GossipSubscription},
+    p2p::Address,
     subscription, Channels, GlobalStateR,
 };
-use crate::blockcfg::{Block, Fragment, Header, HeaderId};
+use crate::blockcfg::{Block, Header};
 use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
@@ -178,9 +179,10 @@ impl BlockService for NodeService {
     async fn block_subscription(
         &self,
         subscriber: Peer,
-        stream: PushStream<Header>,
+        stream: PushStream<net_data::Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self.subscription_logger(subscriber, "block_events");
+        let subscriber = Address::new(subscriber.addr()).unwrap();
 
         self.global_state
             .spawn(subscription::process_block_announcements(
@@ -191,9 +193,12 @@ impl BlockService for NodeService {
                 logger.new(o!("direction" => "in")),
             ));
 
-        self.global_state
+        let outbound = self
+            .global_state
             .peers
             .subscribe_to_block_events(subscriber)
+            .await;
+        Ok(outbound)
     }
 }
 
@@ -212,9 +217,10 @@ impl FragmentService for NodeService {
     async fn fragment_subscription(
         &self,
         subscriber: Peer,
-        stream: PushStream<Fragment>,
+        stream: PushStream<net_data::Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self.subscription_logger(subscriber, "fragments");
+        let subscriber = Address::new(subscriber.addr()).unwrap();
 
         self.global_state.spawn(subscription::process_fragments(
             stream,
@@ -224,7 +230,12 @@ impl FragmentService for NodeService {
             logger.new(o!("direction" => "in")),
         ));
 
-        self.global_state.peers.subscribe_to_fragments(subscriber)
+        let outbound = self
+            .global_state
+            .peers
+            .subscribe_to_fragments(subscriber)
+            .await;
+        Ok(outbound)
     }
 }
 
@@ -235,9 +246,10 @@ impl GossipService for NodeService {
     async fn gossip_subscription(
         &self,
         subscriber: Peer,
-        stream: PushStream<Header>,
+        stream: PushStream<net_data::Gossip>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let logger = self.subscription_logger(subscriber, "gossip");
+        let subscriber = Address::new(subscriber.addr()).unwrap();
 
         self.global_state.spawn(subscription::process_gossip(
             stream,
@@ -246,7 +258,12 @@ impl GossipService for NodeService {
             logger.new(o!("direction" => "in")),
         ));
 
-        self.global_state.peers.subscribe_to_gossip(subscriber)
+        let outbound = self
+            .global_state
+            .peers
+            .subscribe_to_gossip(subscriber)
+            .await;
+        Ok(outbound)
     }
 
     async fn peers(&mut self) -> Result<Peers, Error> {
