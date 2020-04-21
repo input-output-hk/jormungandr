@@ -1,6 +1,6 @@
 use super::{
     buffer_sizes,
-    convert::TryFromNetwork,
+    convert::Decode,
     p2p::{Address, Gossip},
     GlobalStateR,
 };
@@ -45,9 +45,9 @@ pub async fn process_block_announcements<S>(
     global_state: GlobalStateR,
     logger: Logger,
 ) where
-    S: TryStream<Ok = net_data::Header>,
+    S: TryStream<Ok = net_data::Header, Error = Error>,
 {
-    stream
+    let res = stream
         .try_for_each(|raw_header| async move {
             let header = Header::from_slice(raw_header.as_bytes())
                 .map_err(|e| Error::new(Code::InvalidArgument, e))?;
@@ -60,8 +60,16 @@ pub async fn process_block_announcements<S>(
                     "received block from node that is not in the peer map",
                 );
             }
+            Ok(())
         })
-        .await
+        .await;
+    if let Err(e) = res {
+        debug!(
+            logger,
+            "inbound subscription stream failed";
+            "error" => ?e,
+        );
+    }
 }
 
 pub async fn process_gossip<S>(
@@ -70,32 +78,19 @@ pub async fn process_gossip<S>(
     global_state: GlobalStateR,
     logger: Logger,
 ) where
-    S: TryStream<Ok = net_data::Gossip>,
+    S: TryStream<Ok = net_data::Gossip, Error = Error>,
 {
-    stream
-        .try_for_each(move |raw_gossip| {
-            let gossip = Gossip::from(raw_gossip.as_bytes())
-                .map_err(|e| Error::new(Code::InvalidArgument, e))?;
-            let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip.into_nodes().partition(|node| {
-                filter_gossip_node(node, &global_state.config)
-                    || (node.id() == node_id && node.address().is_none())
-            });
-            if filtered_out.len() > 0 {
-                debug!(logger, "nodes dropped from gossip: {:?}", filtered_out);
-            }
-            future::join(
-                async {
-                    if !global_state.peers.refresh_peer_on_gossip(node_id).await {
-                        debug!(
-                            logger,
-                            "received gossip from node that is not in the peer map",
-                        );
-                    }
-                },
-                global_state.topology.accept_gossips(node_id, nodes.into()),
-            );
-        })
-        .await
+    let processor = GossipProcessor::new(node_id, global_state, logger);
+    let res = stream
+        .try_for_each(move |item| processor.process_item(item))
+        .await;
+    if let Err(e) = res {
+        debug!(
+            logger,
+            "inbound subscription stream failed";
+            "error" => ?e,
+        );
+    }
 }
 
 pub async fn process_fragments<S>(
@@ -107,7 +102,7 @@ pub async fn process_fragments<S>(
 ) where
     S: TryStream<Ok = net_data::Fragment, Error = Error>,
 {
-    let stream = stream.and_then(|fragment| async { Fragment::try_from_network(fragment) });
+    let stream = stream.and_then(|fragment| async { fragment.decode() });
     let sink = FragmentProcessor::new(mbox, node_id, global_state, logger);
     stream.into_stream().forward(sink).await.map_err(|e| {
         debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
@@ -141,22 +136,20 @@ impl FragmentProcessor {
         }
     }
 
+    // FIXME: convert to async
     fn refresh_stat(&self) {
         let refresh_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.global_state
-                .peers
-                .refresh_peer_on_fragment(self.node_id)
-                .and_then(move |refreshed| {
-                    if !refreshed {
-                        debug!(
-                            refresh_logger,
-                            "received fragment from node that is not in the peer map",
-                        );
-                    }
-                    Ok(())
-                }),
-        );
+        let state = self.global_state.clone();
+        let node_id = self.node_id;
+        self.global_state.spawn(async move {
+            let refreshed = state.peers.refresh_peer_on_fragment(node_id).await;
+            if !refreshed {
+                debug!(
+                    refresh_logger,
+                    "received fragment from node that is not in the peer map",
+                );
+            }
+        });
     }
 }
 
@@ -175,34 +168,35 @@ impl GossipProcessor {
         }
     }
 
-    pub fn process_item(&self, gossip: Gossip) {
-        let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip.into_nodes().partition(|node| {
-            filter_gossip_node(node, &self.global_state.config)
-                || (node.id() == self.node_id && node.address().is_none())
+    pub async fn process_item(&self, gossip: net_data::Gossip) -> Result<(), Error> {
+        let nodes = gossip.nodes.decode()?;
+        let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
+            filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
         });
         if filtered_out.len() > 0 {
             debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
         }
-        let refresh_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.global_state
-                .peers
-                .refresh_peer_on_gossip(self.node_id)
-                .and_then(move |refreshed| {
-                    if !refreshed {
-                        debug!(
-                            refresh_logger,
-                            "received gossip from node that is not in the peer map",
-                        );
-                    }
-                    Ok(())
-                }),
-        );
-        self.global_state.spawn(
+        let node_id = self.node_id;
+        future::join(
+            async {
+                let refreshed = self
+                    .global_state
+                    .peers
+                    .refresh_peer_on_gossip(node_id)
+                    .await;
+                if !refreshed {
+                    debug!(
+                        self.logger,
+                        "received gossip from node that is not in the peer map",
+                    );
+                }
+            },
             self.global_state
                 .topology
-                .accept_gossips(self.node_id, nodes.into()),
-        );
+                .accept_gossips(node_id, nodes.into()),
+        )
+        .await;
+        Ok(())
     }
 }
 
@@ -229,7 +223,7 @@ impl Sink<Fragment> for FragmentProcessor {
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
-                return self.mbox.poll_flush(cx).map_err(|e| {
+                return Pin::new(&mut self.mbox).poll_flush(cx).map_err(|e| {
                     error!(
                         self.logger,
                         "communication channel to the fragment task failed";
@@ -246,7 +240,7 @@ impl Sink<Fragment> for FragmentProcessor {
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
-                return self.mbox.poll_close(cx).map_err(|e| {
+                return Pin::new(&mut self.mbox).poll_close(cx).map_err(|e| {
                     warn!(
                         self.logger,
                         "failed to close communication channel to the fragment task";
@@ -279,6 +273,6 @@ impl FragmentProcessor {
                 Error::new(Code::Internal, e)
             })?;
         self.refresh_stat();
-        Poll::Ready(())
+        Poll::Ready(Ok(()))
     }
 }
