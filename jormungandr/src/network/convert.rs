@@ -1,13 +1,13 @@
 use super::p2p::Gossip;
 use crate::blockcfg::{Block, Fragment, Header, HeaderId};
+use crate::blockchain::Checkpoints;
 use chain_core::mempack::{ReadBuf, Readable};
 use chain_core::property::{Deserialize, Serialize};
-use chain_network::data as net_data;
-use chain_network::error::{Code, Error};
 use chain_impl_mockchain::fragment::FragmentRaw;
 use chain_impl_mockchain::key;
-use crate::blockchain::Checkpoints;
+use chain_network::data as net_data;
 use chain_network::data::block;
+use chain_network::error::{Code, Error};
 
 fn read<T, U>(src: &T) -> Result<U, Error>
 where

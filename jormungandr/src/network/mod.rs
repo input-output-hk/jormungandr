@@ -77,8 +77,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub use self::bootstrap::Error as BootstrapError;
-use crate::stats_counter::StatsCounter;
 use crate::network::convert::Encode;
+use crate::stats_counter::StatsCounter;
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -301,7 +301,10 @@ async fn handle_network_input(
             }
             NetworkMsg::GetBlocks(block_ids) => state.peers.fetch_blocks(block_ids.encode()).await,
             NetworkMsg::GetNextBlock(node_id, block_id) => {
-                state.peers.solicit_blocks(node_id, vec![block_id].encode()).await;
+                state
+                    .peers
+                    .solicit_blocks(node_id, vec![block_id].encode())
+                    .await;
             }
             NetworkMsg::PullHeaders {
                 node_address,
@@ -332,7 +335,10 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                     topic: p2p::topic::BLOCKS,
                 })
                 .await;
-            prop_state.peers.propagate_block(view.peers, header.encode()).await
+            prop_state
+                .peers
+                .propagate_block(view.peers, header.encode())
+                .await
         }
         PropagateMsg::Fragment(ref fragment) => {
             debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
