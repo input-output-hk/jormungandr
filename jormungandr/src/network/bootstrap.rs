@@ -21,7 +21,7 @@ use std::sync::Arc;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("failed to connect to bootstrap peer")]
-    Connect(#[from] grpc::ConnectError),
+    Connect(#[source] grpc::ConnectError),
     #[error("connection broken")]
     ClientNotReady(#[source] NetworkError),
     #[error("peers not available")]
@@ -31,7 +31,7 @@ pub enum Error {
     #[error("bootstrap pull stream failed")]
     PullStreamFailed(#[source] NetworkError),
     #[error("decoding of a block failed")]
-    BlockDecodingFailed(#[from] <Block as Deserialize>::Error),
+    BlockDecodingFailed(#[source] <Block as Deserialize>::Error),
     #[error("block header check failed")]
     HeaderCheckFailed(#[source] BlockchainError),
     #[error(
@@ -58,7 +58,7 @@ pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<
         "getting peers from bootstrap peer {}", peer.connection
     );
 
-    let client = grpc::connect(&peer).await?;
+    let client = grpc::connect(&peer).await.map_err(Error::Connect)?;
     let peers = client
         .peers(MAX_BOOTSTRAP_PEERS)
         .await
@@ -222,7 +222,8 @@ where
     while let Some(block_result) = stream.next().await {
         let result = match block_result {
             Ok(block) => {
-                let block = Block::deserialize(block.as_bytes())?;
+                let block =
+                    Block::deserialize(block.as_bytes()).map_err(Error::BlockDecodingFailed)?;
 
                 if block.header.hash() == block0 {
                     continue;
