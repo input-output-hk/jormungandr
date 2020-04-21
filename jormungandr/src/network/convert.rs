@@ -1,6 +1,7 @@
-use crate::blockcfg::{Fragment, Header, HeaderId};
+use super::p2p::Gossip;
+use crate::blockcfg::{Block, Fragment, Header, HeaderId};
 use chain_core::mempack::{ReadBuf, Readable};
-use chain_core::property::Serialize;
+use chain_core::property::{Deserialize, Serialize};
 use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
 
@@ -21,16 +22,69 @@ where
     src.iter().map(|item| read(item)).collect()
 }
 
-pub trait TryFromNetwork<N> {
-    fn try_from_network(data: N) -> Result<Self, Error>;
+/// Conversion from a chain-network byte container data type
+/// to an application data object.
+pub trait Decode {
+    type Object;
+
+    fn decode(self) -> Result<Self::Object, Error>;
 }
 
-pub trait IntoNetwork<N> {
-    fn into_network(self) -> N;
+/// Conversion from an application data object
+/// to a chain-network byte container data type.
+pub trait Encode {
+    type NetworkData;
+
+    fn encode(self) -> Self::NetworkData;
 }
 
-impl TryFromNetwork<net_data::Fragment> for Fragment {
-    fn try_from_network(data: net_data::Fragment) -> Result<Self, Error> {
-        read(&data)
+impl<T, N> Decode for Box<[N]>
+where
+    N: Decode<Object = T>,
+{
+    type Object = Vec<T>;
+
+    fn decode(self) -> Result<Vec<T>, Error> {
+        self.into_vec().into_iter().map(Decode::decode).collect()
+    }
+}
+
+impl Decode for net_data::BlockId {
+    type Object = HeaderId;
+
+    fn decode(self) -> Result<Self::Object, Error> {
+        read(&self)
+    }
+}
+
+impl Decode for net_data::Block {
+    type Object = Block;
+
+    fn decode(self) -> Result<Self::Object, Error> {
+        read(&self)
+    }
+}
+
+impl Decode for net_data::Fragment {
+    type Object = Fragment;
+
+    fn decode(self) -> Result<Self::Object, Error> {
+        read(&self)
+    }
+}
+
+impl Decode for net_data::gossip::Node {
+    type Object = Gossip;
+    fn decode(self) -> Result<Self::Object, Error> {
+        Gossip::deserialize(self.as_bytes()).map_err(|e| Error::new(Code::InvalidArgument, e))
+    }
+}
+
+impl Encode for Gossip {
+    type NetworkData = net_data::gossip::Node;
+
+    fn encode(self) -> Self::NetworkData {
+        let bytes = self.serialize_as_vec().unwrap();
+        net_data::gossip::Node::from_bytes(bytes)
     }
 }

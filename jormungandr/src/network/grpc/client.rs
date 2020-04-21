@@ -1,7 +1,7 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
     network::concurrency_limits,
-    network::convert,
+    network::convert::Decode,
     settings::start::network::{Peer, Protocol},
 };
 use chain_network::data as net_data;
@@ -72,7 +72,8 @@ pub async fn fetch_block(
     let (next_block, _) = stream.into_future().await;
     match next_block {
         Some(Ok(block)) => {
-            let block = convert::deserialize(&block)
+            let block = block
+                .decode()
                 .map_err(|e| FetchBlockError::GetBlocksStream { source: e })?;
             Ok(block)
         }

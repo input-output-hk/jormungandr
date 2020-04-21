@@ -1,5 +1,5 @@
 use super::{limits, Address};
-use crate::network::convert::IntoNetwork;
+use crate::network::convert::Encode;
 use bincode;
 use chain_core::property;
 use chain_network::data as net_data;
@@ -121,8 +121,9 @@ impl From<Gossips> for net_data::gossip::Gossip {
         let nodes = gossips
             .0
             .into_iter()
-            .map(|node| Gossip(node).into_network())
-            .collect::<Vec<_>>();
+            .map(|node| Gossip(node).encode())
+            .collect::<Vec<_>>()
+            .into();
         net_data::gossip::Gossip { nodes }
     }
 }
