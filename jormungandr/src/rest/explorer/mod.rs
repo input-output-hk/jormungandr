@@ -1,6 +1,6 @@
 mod handlers;
 
-use crate::rest::Context;
+use crate::rest::{display_internal_server_error, Context};
 
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
@@ -28,15 +28,15 @@ pub fn filter(context: Context) -> impl Filter<Extract = impl Reply, Error = Rej
 /// Convert rejections to actual HTTP errors
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find::<handlers::Error>() {
-        let code = match err {
-            handlers::Error::ProcessingError => StatusCode::BAD_REQUEST,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        let (body, code) = match err {
+            handlers::Error::ProcessingError => (err.to_string(), StatusCode::BAD_REQUEST),
+            err => (
+                display_internal_server_error(err),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
         };
 
-        return Ok(warp::reply::with_status(
-            code.canonical_reason().unwrap(),
-            code,
-        ));
+        return Ok(warp::reply::with_status(body, code));
     }
 
     Err(err)

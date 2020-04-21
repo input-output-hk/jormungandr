@@ -9,8 +9,8 @@ pub use self::context::{Context, FullContext};
 use crate::settings::start::{Rest, Tls};
 
 use futures03::{channel::mpsc, prelude::*};
-use std::{net::SocketAddr, time::Duration};
-use warp::Filter;
+use std::{error::Error, net::SocketAddr, time::Duration};
+use warp::{Filter, Reply};
 
 #[derive(Clone)]
 pub struct ServerStopper(mpsc::Sender<()>);
@@ -83,4 +83,21 @@ async fn run_server_with_app<App>(
         let (_, server_fut) = server.bind_with_graceful_shutdown(listen_addr, shutdown_signal);
         server_fut.await;
     };
+}
+
+pub(self) fn display_internal_server_error(err: &impl Error) -> String {
+    use std::fmt::{self, Write};
+
+    fn error_to_body(err: &impl Error) -> Result<String, fmt::Error> {
+        let mut reply_body = String::new();
+        writeln!(reply_body, "Internal server error: {}", err)?;
+        let mut source = err.source();
+        while let Some(err) = source {
+            writeln!(reply_body, "-> {}", err)?;
+            source = err.source();
+        }
+        Ok(reply_body)
+    }
+
+    error_to_body(err).unwrap_or_else(|err| format!("failed to process internal error: {}", err))
 }
