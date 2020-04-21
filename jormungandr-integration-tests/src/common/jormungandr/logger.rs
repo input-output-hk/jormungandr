@@ -11,8 +11,7 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use thiserror::Error;
 
-use jormungandr_lib::testing::Timestamp;
-
+use jormungandr_lib::{testing::Timestamp, time::SystemTime};
 #[derive(Debug, Error)]
 pub enum LoggerError {
     #[error("{log_file}")]
@@ -52,6 +51,11 @@ impl LogEntry {
             Some(reason) => reason.contains(reason_part),
             None => false,
         }
+    }
+
+    pub fn is_later_than(&self, reference_time: &SystemTime) -> bool {
+        let entry_system_time = SystemTime::from_str(&self.ts).unwrap();
+        entry_system_time.duration_since(*reference_time).is_ok()
     }
 }
 
@@ -121,6 +125,13 @@ impl JormungandrLogger {
 
     pub fn get_created_blocks_hashes(&self) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
+            .map(|item| Hash::from_str(&item.hash.unwrap()).unwrap())
+            .collect()
+    }
+
+    pub fn get_created_blocks_hashes_after(&self, reference_time: SystemTime) -> Vec<Hash> {
+        self.filter_entries_with_block_creation()
+            .filter(|item| item.is_later_than(&reference_time))
             .map(|item| Hash::from_str(&item.hash.unwrap()).unwrap())
             .collect()
     }

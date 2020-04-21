@@ -50,6 +50,12 @@ impl JormungandrRest {
         serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
     }
 
+    pub fn stake_pools(&self) -> Result<Vec<String>, RestError> {
+        let response_text = self.get("stake_pools")?.text()?;
+        self.print_response_text(&response_text);
+        serde_json::from_str(&response_text).map_err(|err| RestError::CannotDeserialize(err))
+    }
+
     pub fn stake_distribution_at(&self, epoch: u32) -> Result<StakeDistributionDto, RestError> {
         let request = format!("stake/{}", epoch);
         let response_text = self.get(&request)?.text()?;
