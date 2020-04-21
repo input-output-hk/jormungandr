@@ -354,6 +354,7 @@ name = "cardano-legacy-address"
 version = "0.1.1"
 dependencies = [
  "cbor_event",
+ "chain-ser",
  "cryptoxide",
  "ed25519-bip32",
 ]
@@ -439,6 +440,7 @@ dependencies = [
  "chain-addr",
  "chain-core",
  "chain-crypto",
+ "chain-ser",
  "chain-storage",
  "chain-time",
  "ed25519-bip32",
@@ -480,6 +482,8 @@ name = "chain-time"
 version = "0.1.0"
 dependencies = [
  "cfg-if",
+ "chain-core",
+ "chain-ser",
 ]
 
 [[package]]
