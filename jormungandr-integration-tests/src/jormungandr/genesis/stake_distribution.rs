@@ -15,7 +15,7 @@ pub fn stake_distribution() {
 
     let stake_pool_owner_1 = startup::create_new_account_address();
     let fee = LinearFee::new(1, 1, 1);
-    let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
+    let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner_1.clone()],
         &[sender.clone(), receiver.clone()],
         ConfigurationBuilder::new()
@@ -35,7 +35,7 @@ pub fn stake_distribution() {
     let transaction_fee: u64 = fee.constant + fee.coefficient * 2;
     let transaction_amount = 1_000;
     let initial_funds_per_account = 1_000_000_000;
-    let stake_pool_id = Hash::from_str(stake_pool_ids.get(0).unwrap()).unwrap();
+    let stake_pool_id = Hash::from_str(stake_pools.get(0).unwrap().id()).unwrap();
 
     assert_distribution(
         initial_funds_per_account * 2,
