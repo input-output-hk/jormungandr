@@ -16,7 +16,7 @@ use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
 use futures03::executor::block_on;
 pub use juniper::http::GraphQLRequest;
-use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
+use juniper::{graphql_union, EmptyMutation, FieldResult, IntoResolvable, RootNode};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -924,6 +924,19 @@ impl Pool {
                 .unwrap()
                 .map(|data| PoolRegistration::from(data.registration.clone()))
                 .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
+        }
+    }
+
+    pub fn retirement(&self, context: &Context) -> FieldResult<Option<PoolRetirement>> {
+        match &self.data {
+            Some(data) => Ok(data.retirement.clone().map(PoolRetirement::from)),
+            None => Ok(context
+                .db
+                .get_stake_pool_data(&self.id)
+                .wait()
+                .unwrap()
+                .map(|data| data.retirement.clone())
+                .and_then(|retirement| retirement.map(PoolRetirement::from))),
         }
     }
 }
