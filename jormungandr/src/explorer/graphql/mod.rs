@@ -927,27 +927,16 @@ impl Pool {
         }
     }
 
-    pub fn retirement(&self, context: &Context) -> FieldResult<PoolRetirement> {
+    pub fn retirement(&self, context: &Context) -> FieldResult<Option<PoolRetirement>> {
         match &self.data {
-            Some(data) => data
-                .retirement
-                .clone()
-                .map(|retirement| PoolRetirement::from(retirement))
-                .ok_or(
-                    ErrorKind::NotFound("Stake pool has no retirement data associated".to_owned())
-                        .into(),
-                ),
-            None => context
+            Some(data) => Ok(data.retirement.clone().map(PoolRetirement::from)),
+            None => Ok(context
                 .db
                 .get_stake_pool_data(&self.id)
                 .wait()
                 .unwrap()
-                .and_then(|data| data.retirement.clone())
-                .map(|retirement| PoolRetirement::from(retirement))
-                .ok_or(
-                    ErrorKind::NotFound("Stake pool has no retirement data associated".to_owned())
-                        .into(),
-                ),
+                .map(|data| data.retirement.clone())
+                .and_then(|retirement| retirement.map(PoolRetirement::from))),
         }
     }
 }
