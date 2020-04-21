@@ -44,6 +44,9 @@ impl SignedCertificate {
             certificate::SignedCertificate::PoolUpdate(c, _) => {
                 Certificate(certificate::Certificate::PoolUpdate(c))
             }
+            certificate::SignedCertificate::VotePlan(c, _) => {
+                Certificate(certificate::Certificate::VotePlan(c))
+            }
         }
     }
 }
@@ -70,6 +73,10 @@ impl property::Serialize for Certificate {
             }
             certificate::Certificate::PoolUpdate(c) => {
                 writer.write_all(&[5])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::VotePlan(c) => {
+                writer.write_all(&[6])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };
@@ -104,6 +111,10 @@ impl Readable for Certificate {
                 let cert = certificate::PoolUpdate::read(buf)?;
                 Ok(Certificate(certificate::Certificate::PoolUpdate(cert)))
             }
+            6 => {
+                let cert = certificate::VotePlan::read(buf)?;
+                Ok(Certificate(certificate::Certificate::VotePlan(cert)))
+            }
             t => Err(ReadError::UnknownTag(t as u32))?,
         }
     }
@@ -136,6 +147,10 @@ impl property::Serialize for SignedCertificate {
                 writer.write_all(&[5])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::VotePlan(c, ()) => {
+                writer.write_all(&[6])?;
+                writer.write_all(c.serialize().as_slice())?;
             }
         };
         Ok(())
@@ -178,6 +193,13 @@ impl Readable for SignedCertificate {
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::PoolUpdate(cert, auth),
                 ))
+            }
+            6 => {
+                let cert = certificate::VotePlan::read(buf)?;
+                Ok(SignedCertificate(certificate::SignedCertificate::VotePlan(
+                    cert,
+                    (),
+                )))
             }
             t => Err(ReadError::UnknownTag(t as u32))?,
         }
