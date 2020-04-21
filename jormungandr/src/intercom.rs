@@ -364,7 +364,7 @@ impl<T, R> RequestStreamHandle<T, R> {
     }
 }
 
-impl<T, R, E> RequestSink<T, R> {
+impl<T, R> RequestSink<T, R> {
     pub fn logger(&self) -> &Logger {
         &self.logger
     }
