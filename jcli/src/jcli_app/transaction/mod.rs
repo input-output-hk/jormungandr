@@ -157,26 +157,14 @@ pub enum Error {
     AccountAddressSingle,
     #[error("invalid input account, this is a UTxO address with delegation")]
     AccountAddressGroup,
-    #[error("invalid input account, this is a multisig account address")]
-    AccountAddressMultisig,
-    #[error("could not add witness to finalized transaction")]
-    AddingWitnessToFinalizedTxFailed,
-    #[error("generated transaction building failed")]
-    GeneratedTxBuildingFailed,
     #[error("transaction finalization failed")]
     TxFinalizationFailed(#[from] chain::transaction::Error),
-    #[error("unexpected generated transaction type")]
-    GeneratedTxTypeUnexpected,
     #[error("serialization of message to bytes failed")]
     MessageSerializationFailed(#[source] std::io::Error),
     #[error("calculation of info failed")]
     InfoCalculationFailed(#[from] chain::value::ValueError),
-    #[error("fee calculation failed")]
-    FeeCalculationFailed,
     #[error("expected a single account, multisig is not supported yet")]
     InfoExpectedSingleAccount,
-    #[error("making legacy UTxO witness unsupported")]
-    MakeWitnessLegacyUtxoUnsupported,
     #[error("making account witness requires passing spending counter")]
     MakeWitnessAccountCounterMissing,
     #[error("transaction type doesn't need payload authentification")]
@@ -185,8 +173,6 @@ pub enum Error {
     TxNeedPayloadAuth,
     #[error("No signing keys specified (use -k or --key to specify)")]
     NoSigningKeys,
-    #[error("expecting only one signing keys but got {got}")]
-    ExpectingOnlyOneSigningKey { got: usize },
     #[error("certificate error {error}")]
     CertificateError { error: certificate::Error },
 
