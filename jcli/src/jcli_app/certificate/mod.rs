@@ -49,6 +49,8 @@ pub enum Error {
     ExpectingOnlyOneSigningKey { got: usize },
     #[error("owner stake delegation does not need a signature")]
     OwnerStakeDelegationDoesntNeedSignature,
+    #[error("vote plan certificate does not need a signature")]
+    VotePlanDoesntNeedSignature,
     #[error("secret key number {index} matching the expected public key has not been found")]
     KeyNotFound { index: usize },
     #[error("Invalid input, expected Signed Certificate or just Certificate")]
@@ -177,6 +179,7 @@ fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certific
                 SignedCertificate::PoolRegistration(pr, _) => Certificate::PoolRegistration(pr),
                 SignedCertificate::PoolRetirement(pr, _) => Certificate::PoolRetirement(pr),
                 SignedCertificate::PoolUpdate(pu, _) => Certificate::PoolUpdate(pu),
+                SignedCertificate::VotePlan(vp, _) => Certificate::VotePlan(vp),
             };
 
             Ok(interfaces::Certificate(cert))

@@ -74,6 +74,7 @@ impl Sign {
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
+            Certificate::VotePlan(_) => return Err(Error::VotePlanDoesntNeedSignature),
         };
         write_signed_cert(self.output.as_ref().map(|x| x.deref()), signedcert.into())
     }
