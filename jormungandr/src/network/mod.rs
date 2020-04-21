@@ -78,6 +78,7 @@ use std::time::Duration;
 
 pub use self::bootstrap::Error as BootstrapError;
 use crate::stats_counter::StatsCounter;
+use crate::network::convert::Encode;
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -298,9 +299,9 @@ async fn handle_network_input(
             NetworkMsg::Propagate(msg) => {
                 handle_propagation_msg(msg, state.clone(), channels.clone()).await;
             }
-            NetworkMsg::GetBlocks(block_ids) => state.peers.fetch_blocks(block_ids).await,
+            NetworkMsg::GetBlocks(block_ids) => state.peers.fetch_blocks(block_ids.encode()).await,
             NetworkMsg::GetNextBlock(node_id, block_id) => {
-                state.peers.solicit_blocks(node_id, vec![block_id]).await;
+                state.peers.solicit_blocks(node_id, vec![block_id].encode()).await;
             }
             NetworkMsg::PullHeaders {
                 node_address,
@@ -309,7 +310,7 @@ async fn handle_network_input(
             } => {
                 state
                     .peers
-                    .pull_headers(node_address, from.into(), to)
+                    .pull_headers(node_address, from.encode(), to.encode())
                     .await;
             }
             NetworkMsg::PeerInfo(reply) => {
@@ -331,7 +332,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                     topic: p2p::topic::BLOCKS,
                 })
                 .await;
-            prop_state.peers.propagate_block(view.peers, header).await
+            prop_state.peers.propagate_block(view.peers, header.encode()).await
         }
         PropagateMsg::Fragment(ref fragment) => {
             debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
@@ -344,7 +345,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 .await;
             prop_state
                 .peers
-                .propagate_fragment(view.peers, fragment)
+                .propagate_fragment(view.peers, fragment.encode())
                 .await
         }
     };
@@ -361,10 +362,10 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
             let mut options = p2p::comm::ConnectOptions::default();
             match &msg {
                 PropagateMsg::Block(header) => {
-                    options.pending_block_announcement = Some(header.clone());
+                    options.pending_block_announcement = Some(header.encode());
                 }
                 PropagateMsg::Fragment(fragment) => {
-                    options.pending_fragment = Some(fragment.clone());
+                    options.pending_fragment = Some(fragment.encode());
                 }
             };
             connect_and_propagate(node, state.clone(), channels.clone(), options);

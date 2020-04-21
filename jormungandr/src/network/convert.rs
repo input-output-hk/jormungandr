@@ -4,6 +4,10 @@ use chain_core::mempack::{ReadBuf, Readable};
 use chain_core::property::{Deserialize, Serialize};
 use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
+use chain_impl_mockchain::fragment::FragmentRaw;
+use chain_impl_mockchain::key;
+use crate::blockchain::Checkpoints;
+use chain_network::data::block;
 
 fn read<T, U>(src: &T) -> Result<U, Error>
 where
@@ -73,6 +77,14 @@ impl Decode for net_data::Fragment {
     }
 }
 
+impl Encode for Fragment {
+    type NetworkData = net_data::fragment::Fragment;
+
+    fn encode(self) -> Self::NetworkData {
+        net_data::fragment::Fragment::from_bytes(self.serialize_as_vec().unwrap())
+    }
+}
+
 impl Decode for net_data::gossip::Node {
     type Object = Gossip;
     fn decode(self) -> Result<Self::Object, Error> {
@@ -86,5 +98,37 @@ impl Encode for Gossip {
     fn encode(self) -> Self::NetworkData {
         let bytes = self.serialize_as_vec().unwrap();
         net_data::gossip::Node::from_bytes(bytes)
+    }
+}
+
+impl Encode for Header {
+    type NetworkData = net_data::Header;
+
+    fn encode(self) -> Self::NetworkData {
+        net_data::Header::from_bytes(self.as_slice())
+    }
+}
+
+impl Encode for key::Hash {
+    type NetworkData = net_data::BlockId;
+
+    fn encode(self) -> Self::NetworkData {
+        net_data::BlockId::from_bytes(self.as_bytes())
+    }
+}
+
+impl Encode for Checkpoints {
+    type NetworkData = net_data::BlockIds;
+
+    fn encode(self) -> Self::NetworkData {
+        net_data::BlockIds::from_bytes(self.as_slice())
+    }
+}
+
+impl Encode for Vec<key::Hash> {
+    type NetworkData = net_data::BlockIds;
+
+    fn encode(self) -> Self::NetworkData {
+        block::try_ids_from_iter(self.iter()).unwrap()
     }
 }
