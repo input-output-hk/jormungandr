@@ -82,7 +82,7 @@ pub async fn process_gossip<S>(
 {
     let processor = GossipProcessor::new(node_id, global_state, logger);
     let res = stream
-        .try_for_each(move |item| processor.process_item(item))
+        .try_for_each(|item| processor.process_item(item))
         .await;
     if let Err(e) = res {
         debug!(
