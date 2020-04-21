@@ -24,6 +24,7 @@ use futures03::prelude::*;
 use futures03::ready;
 use slog::Logger;
 
+use std::pin::Pin;
 use std::task::{Context, Poll};
 
 pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
@@ -371,7 +372,7 @@ impl Client {
         // Drive sending of a message to fragment task to completion
         // before polling more events from the fragment subscription
         // stream.
-        let fragment_box = &mut self.channels.fragment_box;
+        let fragment_box = &mut self.channels.transaction_box;
         ready!(fragment_box.poll_ready(cx));
         if let Some(fragment) = self.incoming_fragment.take() {
             fragment_box.start_send(fragment).map_err(|e| {
@@ -385,7 +386,7 @@ impl Client {
             // Ignoring possible Pending return here: due to the following
             // try_ready!() invocation, this function cannot return Continue
             // while no progress has been made.
-            fragment_box.poll_flush(cx).map_err(|e| {
+            Pin::new(fragment_box).poll_flush(cx).map_err(|e| {
                 error!(
                     self.logger,
                     "processing of incoming fragments failed";
@@ -394,15 +395,10 @@ impl Client {
             })?;
         }
 
-        let maybe_fragment = ready!(self.inbound.fragments.poll_next(cx)).map_err(|e| {
-            debug!(
-                self.logger,
-                "fragment stream failure";
-                "error" => %e,
-            );
-        })?;
+        let stream = Pin::new(&mut self.inbound.fragments);
+        let maybe_fragment = ready!(stream.poll_next(cx));
         match maybe_fragment {
-            Some(fragment) => {
+            Some(Ok(fragment)) => {
                 debug_assert!(self.incoming_fragment.is_none());
                 self.incoming_fragment = Some(fragment);
                 Ok(Continue).into()
@@ -411,27 +407,40 @@ impl Client {
                 debug!(self.logger, "fragment subscription ended by the peer");
                 Ok(Disconnect).into()
             }
+            Some(Err(e)) => {
+                debug!(
+                    self.logger,
+                    "fragment stream failure";
+                    "error" => %e,
+                );
+                Err(()).into()
+            }
         }
     }
 
     fn process_gossip(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
-        let maybe_gossip = ready!(self.inbound.gossip.poll_next(cx)).map_err(|e| {
-            debug!(
-                self.logger,
-                "gossip stream failure";
-                "error" => %e,
-            );
-        })?;
+        let stream = Pin::new(&mut self.inbound.gossip);
+        let maybe_gossip = ready!(stream.poll_next(cx));
         match maybe_gossip {
-            Some(gossip) => {
-                self.gossip_processor.process_item(gossip);
+            Some(Ok(gossip)) => {
+                self.gossip_processor.process_item(gossip).map_err(|e| {
+                    debug!(self.logger, "failed to process gossip"; "error" => ?e);
+                })?;
                 Ok(Continue).into()
             }
             None => {
                 debug!(self.logger, "gossip subscription ended by the peer");
                 Ok(Disconnect).into()
+            }
+            Some(Err(e)) => {
+                debug!(
+                    self.logger,
+                    "gossip stream failure";
+                    "error" => %e,
+                );
+                Err(()).into()
             }
         }
     }
