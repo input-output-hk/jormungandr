@@ -34,12 +34,6 @@ pub enum Error {
     Rand(#[from] rand::Error),
     #[error("invalid seed length, expected 32 bytes but received {seed_len}")]
     InvalidSeed { seed_len: usize },
-    #[error("invalid input file path '{path}'")]
-    InvalidInput {
-        #[source]
-        source: std::io::Error,
-        path: PathBuf,
-    },
     #[error("invalid output file path '{path}'")]
     InvalidOutput {
         #[source]

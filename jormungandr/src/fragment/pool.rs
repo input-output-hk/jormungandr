@@ -106,6 +106,7 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::PoolUpdate(_) => false,
         Fragment::UpdateProposal(_) => false,
         Fragment::UpdateVote(_) => false,
+        Fragment::VotePlan(ref tx) => false,
     }
 }
 

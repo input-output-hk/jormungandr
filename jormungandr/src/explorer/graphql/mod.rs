@@ -14,7 +14,6 @@ use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
-use chain_impl_mockchain::leadership::bft;
 use futures03::executor::block_on;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
@@ -794,6 +793,7 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::PoolUpdate(c) => {
                 Ok(Certificate::PoolUpdate(PoolUpdate::from(c)))
             }
+            certificate::Certificate::VotePlan(c) => todo!("Vote plans are not yet supported"),
         }
     }
 }
