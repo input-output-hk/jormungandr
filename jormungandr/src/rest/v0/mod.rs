@@ -1,77 +1,260 @@
 mod handlers;
 pub mod logic;
 
-use actix_web::{
-    dev::HttpServiceFactory,
-    web::{delete, get, post, resource, scope},
-};
+use crate::rest::{display_internal_server_error, ContextLock};
 
-pub fn service(root_path: &str) -> impl HttpServiceFactory {
-    scope(root_path)
-        .route(
-            "/account/{account_id}",
-            get().to(handlers::get_account_state),
-        )
-        .route("/block/{block_id}", get().to(handlers::get_block_id))
-        .route(
-            "/block/{block_id}/next_id",
-            get().to(handlers::get_block_next_id),
-        )
-        .route("/fragment/logs", get().to(handlers::get_message_logs))
-        .service(
-            resource("/leaders")
-                .route(get().to(handlers::get_leaders))
-                .route(post().to(handlers::post_leaders)),
-        )
-        .route("/leaders/logs", get().to(handlers::get_leaders_logs))
-        .route(
-            "/leaders/{leader_id}",
-            delete().to(handlers::delete_leaders),
-        )
-        .route("/network/stats", get().to(handlers::get_network_stats))
-        .route(
-            "/network/p2p/quarantined",
-            get().to(handlers::get_network_p2p_quarantined),
-        )
-        .route(
-            "/network/p2p/non_public",
-            get().to(handlers::get_network_p2p_non_public),
-        )
-        .route(
-            "/network/p2p/available",
-            get().to(handlers::get_network_p2p_available),
-        )
-        .route(
-            "/network/p2p/view",
-            get().to(handlers::get_network_p2p_view),
-        )
-        .route(
-            "/network/p2p/view/{topic}",
-            get().to(handlers::get_network_p2p_view_topic),
-        )
-        .route("/settings", get().to(handlers::get_settings))
-        .route("/stake", get().to(handlers::get_stake_distribution))
-        .route(
-            "/stake/{epoch}",
-            get().to(handlers::get_stake_distribution_at),
-        )
-        .route("/stake_pools", get().to(handlers::get_stake_pools))
-        .route("/stake_pool/{pool_id}", get().to(handlers::get_stake_pool))
-        .route("/shutdown", get().to(handlers::get_shutdown))
-        .route("/message", post().to(handlers::post_message))
-        .route("/node/stats", get().to(handlers::get_stats_counter))
-        .route("/tip", get().to(handlers::get_tip))
-        .route(
-            "/rewards/history/{length}",
-            get().to(handlers::get_rewards_info_history),
-        )
-        .route(
-            "/rewards/epoch/{epoch_number}",
-            get().to(handlers::get_rewards_info_epoch),
-        )
-        .route(
-            "/utxo/{fragment_id}/{output_index}",
-            get().to(handlers::get_utxo),
-        )
-        .route("/diagnostic", get().to(handlers::get_diagnostic))
+use warp::{http::StatusCode, Filter, Rejection, Reply};
+
+pub fn filter(
+    context: ContextLock,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    let with_context = warp::any().map(move || context.clone());
+    let root = warp::path!("api" / "v0" / ..);
+
+    let shutdown = warp::path!("shutdown")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_shutdown)
+        .boxed();
+
+    let account = warp::path!("account" / String)
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_account_state)
+        .boxed();
+
+    let block = {
+        let root = warp::path!("block" / ..);
+
+        let get = warp::path!(String)
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_block_id)
+            .boxed();
+
+        let get_next = warp::path!(String / "next_id")
+            .and(warp::get())
+            .and(warp::query())
+            .and(with_context.clone())
+            .and_then(handlers::get_block_next_id)
+            .boxed();
+
+        root.and(get.or(get_next)).boxed()
+    };
+
+    let fragment = warp::path!("fragment" / "logs")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_message_logs)
+        .boxed();
+
+    let leaders = {
+        let root = warp::path!("leaders" / ..).boxed();
+
+        let get = warp::path::end()
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_leaders)
+            .boxed();
+
+        let post = warp::path::end()
+            .and(warp::post())
+            .and(warp::body::json())
+            .and(with_context.clone())
+            .and_then(handlers::post_leaders)
+            .boxed();
+
+        let logs = warp::path!("logs")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_leaders_logs)
+            .boxed();
+
+        let delete = warp::path!(u32)
+            .and(warp::delete())
+            .and(with_context.clone())
+            .and_then(handlers::delete_leaders)
+            .boxed();
+
+        root.and(get.or(post).or(logs).or(delete)).boxed()
+    };
+
+    let p2p = {
+        let root = warp::path!("p2p" / ..);
+
+        let quarantined = warp::path!("quarantined")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_network_p2p_quarantined)
+            .boxed();
+
+        let non_public = warp::path!("non_public")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_network_p2p_non_public)
+            .boxed();
+
+        let available = warp::path!("available")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_network_p2p_available)
+            .boxed();
+
+        let view = {
+            let root = warp::path!("view" / ..);
+
+            let view = warp::path::end()
+                .and(warp::get())
+                .and(with_context.clone())
+                .and_then(handlers::get_network_p2p_view)
+                .boxed();
+
+            let view_topic = warp::path!(String)
+                .and(warp::get())
+                .and(with_context.clone())
+                .and_then(handlers::get_network_p2p_view_topic)
+                .boxed();
+
+            root.and(view.or(view_topic)).boxed()
+        };
+
+        root.and(quarantined.or(non_public).or(available).or(view))
+            .boxed()
+    };
+
+    let network = {
+        let root = warp::path!("network" / ..);
+
+        let stats = warp::path!("stats")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_network_stats)
+            .boxed();
+
+        root.and(stats.or(p2p)).boxed()
+    };
+
+    let settings = warp::path!("settings")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_settings)
+        .boxed();
+
+    let stake = {
+        let root = warp::path!("stake" / ..);
+
+        let get = warp::path::end()
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_stake_distribution)
+            .boxed();
+
+        let get_at = warp::path!(u32)
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_stake_distribution_at)
+            .boxed();
+
+        root.and(get.or(get_at)).boxed()
+    };
+
+    let stake_pools = warp::path!("stake_pools")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_stake_pools)
+        .boxed();
+
+    let stake_pool = warp::path!("stake_pool" / String)
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_stake_pool)
+        .boxed();
+
+    let message = warp::path!("message")
+        .and(warp::post())
+        .and(warp::body::bytes())
+        .and(with_context.clone())
+        .and_then(handlers::post_message)
+        .boxed();
+
+    let node_stats = warp::path!("node" / "stats")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_stats_counter)
+        .boxed();
+
+    let tip = warp::path!("tip")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_tip)
+        .boxed();
+
+    let rewards = {
+        let root = warp::path!("rewards" / ..);
+
+        let history = warp::path!("history" / usize)
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_rewards_info_history)
+            .boxed();
+
+        let epoch = warp::path!("epoch" / u32)
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_rewards_info_epoch)
+            .boxed();
+
+        root.and(history.or(epoch)).boxed()
+    };
+
+    let utxo = warp::path!("utxo" / String / u8)
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_utxo)
+        .boxed();
+
+    let diagnostic = warp::path!("diagnostic")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_diagnostic)
+        .boxed();
+
+    let routes = shutdown
+        .or(account)
+        .or(block)
+        .or(fragment)
+        .or(leaders)
+        .or(network)
+        .or(settings)
+        .or(stake)
+        .or(stake_pools)
+        .or(stake_pool)
+        .or(message)
+        .or(node_stats)
+        .or(tip)
+        .or(rewards)
+        .or(utxo)
+        .or(diagnostic)
+        .boxed();
+
+    root.and(routes).recover(handle_rejection).boxed()
+}
+
+/// Convert rejections to actual HTTP errors
+async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
+    if let Some(err) = err.find::<logic::Error>() {
+        let (body, code) = match err {
+            logic::Error::PublicKey(_) | logic::Error::Hash(_) => {
+                (err.to_string(), StatusCode::BAD_REQUEST)
+            }
+            err => (
+                display_internal_server_error(err),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+        };
+
+        return Ok(warp::reply::with_status(body, code));
+    }
+
+    Err(err)
 }

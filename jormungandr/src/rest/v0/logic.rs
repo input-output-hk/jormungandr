@@ -93,8 +93,7 @@ pub async fn get_account_state(
     account_id_hex: &str,
 ) -> Result<Option<AccountState>, Error> {
     Ok(context
-        .blockchain_tip()
-        .await?
+        .blockchain_tip()?
         .get_ref()
         .await
         .ledger()
@@ -105,9 +104,9 @@ pub async fn get_account_state(
 }
 
 pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {
-    let logger = context.logger().await?.new(o!("request" => "message_logs"));
+    let logger = context.logger()?.new(o!("request" => "message_logs"));
     intercom::unary_future(
-        context.try_full().await?.transaction_task.clone(),
+        context.try_full()?.transaction_task.clone(),
         logger,
         |handle| TransactionMsg::GetLogs(handle),
     )
@@ -118,47 +117,32 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
 pub async fn post_message(context: &Context, message: &[u8]) -> Result<(), Error> {
     let fragment = Fragment::deserialize(message).map_err(Error::Deserialize)?;
     let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
-    context
-        .try_full()
-        .await?
-        .transaction_task
-        .clone()
-        .try_send(msg)?;
+    context.try_full()?.transaction_task.clone().try_send(msg)?;
 
     Ok(())
 }
 
 pub async fn get_tip(context: &Context) -> Result<String, Error> {
-    Ok(context
-        .blockchain_tip()
-        .await?
-        .get_ref()
-        .await
-        .hash()
-        .to_string())
+    Ok(context.blockchain_tip()?.get_ref().await.hash().to_string())
 }
 
 pub async fn get_stats_counter(context: &Context) -> Result<NodeStatsDto, Error> {
     let stats = create_stats(&context).await?;
     Ok(NodeStatsDto {
         version: env!("SIMPLE_VERSION").to_string(),
-        state: context.node_state().await,
+        state: context.node_state().clone(),
         stats,
     })
 }
 
 async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
-    use futures03::future::try_join3;
-
-    let (tip, blockchain, full_context) = match try_join3(
+    let (tip, blockchain, full_context) = match (
         context.blockchain_tip(),
         context.blockchain(),
         context.try_full(),
-    )
-    .await
-    {
-        Ok(result) => result,
-        Err(_) => return Ok(None),
+    ) {
+        (Ok(tip), Ok(blockchain), Ok(full_context)) => (tip, blockchain, full_context),
+        _ => return Ok(None),
     };
 
     let tip = tip.get_ref().await;
@@ -246,8 +230,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
 
 pub async fn get_block_id(context: &Context, block_id_hex: &str) -> Result<Option<Vec<u8>>, Error> {
     context
-        .blockchain()
-        .await?
+        .blockchain()?
         .storage()
         .get(parse_block_hash(&block_id_hex)?)
         .await?
@@ -260,9 +243,9 @@ pub async fn get_block_next_id(
     block_id_hex: &str,
     count: usize,
 ) -> Result<Option<Vec<u8>>, Error> {
-    let blockchain = context.blockchain().await?;
+    let blockchain = context.blockchain()?;
     let block_id = parse_block_hash(&block_id_hex)?;
-    let tip = context.blockchain_tip().await?.get_ref().await;
+    let tip = context.blockchain_tip()?.get_ref().await;
     let maybe_stream = blockchain
         .storage()
         .stream_from_to(block_id, tip.hash())
@@ -293,7 +276,7 @@ pub async fn get_block_next_id(
 pub async fn get_stake_distribution(
     context: &Context,
 ) -> Result<Option<StakeDistributionDto>, Error> {
-    let blockchain_tip = context.blockchain_tip().await?.get_ref().await;
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     let leadership = blockchain_tip.epoch_leadership_schedule();
     if let LeadershipConsensus::GenesisPraos(gp) = leadership.consensus() {
         let last_epoch = blockchain_tip.block_date().epoch;
@@ -320,7 +303,7 @@ pub async fn get_stake_distribution_at(
     context: &Context,
     epoch: u32,
 ) -> Result<Option<StakeDistributionDto>, Error> {
-    let mut tip_ref = context.blockchain_tip().await?.get_ref().await;
+    let mut tip_ref = context.blockchain_tip()?.get_ref().await;
 
     if epoch > tip_ref.block_date().epoch {
         return Ok(None);
@@ -360,8 +343,8 @@ pub async fn get_stake_distribution_at(
 }
 
 pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
-    let full_context = context.try_full().await?;
-    let blockchain_tip = context.blockchain_tip().await?.get_ref().await;
+    let full_context = context.try_full()?;
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     let ledger = blockchain_tip.ledger();
     let static_params = ledger.get_static_parameters();
     let consensus_version = ledger.consensus_version();
@@ -393,13 +376,13 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
 
 pub async fn get_shutdown(context: &Context) -> Result<(), Error> {
     // Verify that node has fully started and is able to process shutdown
-    context.try_full().await?;
-    context.server_stopper().await?.stop();
+    context.try_full()?;
+    context.server_stopper()?.stop();
     Ok(())
 }
 
 pub async fn get_leader_ids(context: &Context) -> Result<Vec<EnclaveLeaderId>, Error> {
-    Ok(context.try_full().await?.enclave.get_leader_ids().await)
+    Ok(context.try_full()?.enclave.get_leader_ids().await)
 }
 
 pub async fn post_leaders(context: &Context, secret: NodeSecret) -> Result<EnclaveLeaderId, Error> {
@@ -407,7 +390,7 @@ pub async fn post_leaders(context: &Context, secret: NodeSecret) -> Result<Encla
         bft_leader: secret.bft(),
         genesis_leader: secret.genesis(),
     };
-    let leader_id = context.try_full().await?.enclave.add_leader(leader).await;
+    let leader_id = context.try_full()?.enclave.add_leader(leader).await;
     Ok(leader_id)
 }
 
@@ -415,12 +398,7 @@ pub async fn delete_leaders(
     context: &Context,
     leader_id: EnclaveLeaderId,
 ) -> Result<Option<()>, Error> {
-    let removed = context
-        .try_full()
-        .await?
-        .enclave
-        .remove_leader(leader_id)
-        .await;
+    let removed = context.try_full()?.enclave.remove_leader(leader_id).await;
 
     if removed {
         Ok(Some(()))
@@ -430,13 +408,12 @@ pub async fn delete_leaders(
 }
 
 pub async fn get_leaders_logs(context: &Context) -> Result<Vec<LeadershipLog>, Error> {
-    Ok(context.try_full().await?.leadership_logs.logs().await)
+    Ok(context.try_full()?.leadership_logs.logs().await)
 }
 
 pub async fn get_stake_pools(context: &Context) -> Result<Vec<String>, Error> {
     Ok(context
-        .blockchain_tip()
-        .await?
+        .blockchain_tip()?
         .get_ref()
         .await
         .ledger()
@@ -447,12 +424,9 @@ pub async fn get_stake_pools(context: &Context) -> Result<Vec<String>, Error> {
 }
 
 pub async fn get_network_stats(context: &Context) -> Result<Vec<PeerStats>, Error> {
-    let logger = context
-        .logger()
-        .await?
-        .new(o!("request" => "network_stats"));
+    let logger = context.logger()?.new(o!("request" => "network_stats"));
     let peer_stats = intercom::unary_future::<_, _, Error, _>(
-        context.try_full().await?.network_task.clone(),
+        context.try_full()?.network_task.clone(),
         logger,
         |handle| NetworkMsg::PeerInfo(handle),
     )
@@ -475,7 +449,7 @@ pub async fn get_rewards_info_epoch(
     context: &Context,
     epoch: u32,
 ) -> Result<Option<EpochRewardsInfo>, Error> {
-    let mut tip_ref = context.blockchain_tip().await?.get_ref().await;
+    let mut tip_ref = context.blockchain_tip()?.get_ref().await;
 
     if epoch > tip_ref.block_date().epoch {
         return Ok(None);
@@ -510,7 +484,7 @@ pub async fn get_rewards_info_history(
     context: &Context,
     length: usize,
 ) -> Result<Vec<EpochRewardsInfo>, Error> {
-    let mut tip_ref = context.blockchain_tip().await?.get_ref().await;
+    let mut tip_ref = context.blockchain_tip()?.get_ref().await;
 
     let mut vec = Vec::new();
     while let Some(epoch_rewards_info) = tip_ref.epoch_rewards_info() {
@@ -540,8 +514,7 @@ pub async fn get_utxo(
 ) -> Result<Option<TransactionOutput>, Error> {
     let fragment_id = parse_fragment_id(fragment_id_hex)?;
     Ok(context
-        .blockchain_tip()
-        .await?
+        .blockchain_tip()?
         .get_ref()
         .await
         .ledger()
@@ -555,7 +528,7 @@ pub async fn get_stake_pool(
     pool_id_hex: &str,
 ) -> Result<Option<StakePoolStats>, Error> {
     let pool_id = pool_id_hex.parse()?;
-    let ledger = context.blockchain_tip().await?.get_ref().await.ledger();
+    let ledger = context.blockchain_tip()?.get_ref().await.ledger();
     Ok(ledger.delegation().lookup(&pool_id).map(|pool| {
         let total_stake: u64 = ledger
             .get_stake_distribution()
@@ -588,15 +561,15 @@ pub async fn get_stake_pool(
 }
 
 pub async fn get_diagnostic(context: &Context) -> Result<Diagnostic, Error> {
-    context.get_diagnostic_data().await.map_err(Into::into)
+    let diagnostic_data = context.get_diagnostic_data()?;
+    Ok(diagnostic_data.clone())
 }
 
 pub async fn get_network_p2p_quarantined(
     context: &Context,
 ) -> Result<Vec<poldercast::Node>, Error> {
     Ok(context
-        .try_full()
-        .await?
+        .try_full()?
         .p2p
         .list_quarantined::<Infallible>()
         .compat()
@@ -606,8 +579,7 @@ pub async fn get_network_p2p_quarantined(
 
 pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
     Ok(context
-        .try_full()
-        .await?
+        .try_full()?
         .p2p
         .list_non_public::<Infallible>()
         .compat()
@@ -617,8 +589,7 @@ pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<polderc
 
 pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
     Ok(context
-        .try_full()
-        .await?
+        .try_full()?
         .p2p
         .list_available::<Infallible>()
         .compat()
@@ -628,8 +599,7 @@ pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<polderca
 
 pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<poldercast::NodeInfo>, Error> {
     Ok(context
-        .try_full()
-        .await?
+        .try_full()?
         .p2p
         .view::<Infallible>(poldercast::Selection::Any)
         .compat()
@@ -662,8 +632,7 @@ pub async fn get_network_p2p_view_topic(
 
     let topic = parse_topic(topic)?;
     Ok(context
-        .try_full()
-        .await?
+        .try_full()?
         .p2p
         .view::<Infallible>(topic)
         .compat()

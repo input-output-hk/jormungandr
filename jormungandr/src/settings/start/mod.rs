@@ -4,7 +4,6 @@ pub mod network;
 use self::config::{Config, Leadership};
 pub use self::config::{Cors, Rest, Tls};
 use self::network::Protocol;
-use crate::rest::Error as RestError;
 use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
 use jormungandr_lib::interfaces::Mempool;
@@ -23,8 +22,6 @@ pub enum Error {
     ConfigIo(#[from] std::io::Error),
     #[error("Error while parsing the node configuration file: {0}")]
     Config(#[from] serde_yaml::Error),
-    #[error("The Rest configuration is invalid: {0}")]
-    Rest(#[from] RestError),
     #[error("Cannot start the node without the information to retrieve the genesis block")]
     ExpectedBlock0Info,
     #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]

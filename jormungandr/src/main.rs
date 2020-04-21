@@ -1,6 +1,7 @@
 // Rustc default type_length_limit is too low for complex futures, which generate deeply nested
 // monomorphized structured with long signatures. This value is enough for current project.
-#![type_length_limit = "10000000"]
+// TODO change this back to 10000000 when rust 1.43 is out
+#![type_length_limit = "150000000"]
 
 #[macro_use]
 extern crate error_chain;
@@ -10,7 +11,6 @@ extern crate futures;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate slog;
@@ -72,7 +72,7 @@ pub struct BootstrappedNode {
     block0_hash: HeaderHash,
     logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
-    rest_context: Option<rest::Context>,
+    rest_context: Option<rest::ContextLock>,
     services: Services,
 }
 
@@ -83,7 +83,12 @@ const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
     if let Some(context) = bootstrapped_node.rest_context.as_ref() {
-        block_on(context.set_node_state(NodeState::StartingWorkers));
+        block_on(async {
+            context
+                .write()
+                .await
+                .set_node_state(NodeState::StartingWorkers)
+        });
     }
 
     let mut services = bootstrapped_node.services;
@@ -251,8 +256,9 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
         };
         block_on(async {
-            rest_context.set_full(full_context).await;
-            rest_context.set_node_state(NodeState::Running).await;
+            let mut rest_context = rest_context.write().await;
+            rest_context.set_full(full_context);
+            rest_context.set_node_state(NodeState::Running);
         })
     };
 
@@ -318,7 +324,12 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     } = initialized_node;
 
     if let Some(context) = rest_context.as_ref() {
-        block_on(context.set_node_state(NodeState::Bootstrapping))
+        block_on(async {
+            context
+                .write()
+                .await
+                .set_node_state(NodeState::Bootstrapping)
+        })
     }
 
     let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
@@ -339,10 +350,9 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     block_on(async {
         if let Some(rest_context) = &rest_context {
-            rest_context.set_blockchain(blockchain.clone()).await;
-            rest_context
-                .set_blockchain_tip(blockchain_tip.clone())
-                .await;
+            let mut rest_context = rest_context.write().await;
+            rest_context.set_blockchain(blockchain.clone());
+            rest_context.set_blockchain_tip(blockchain_tip.clone());
         }
     });
 
@@ -408,7 +418,7 @@ pub struct InitializedNode {
     pub block0: blockcfg::Block,
     pub storage: blockchain::Storage,
     pub logger: Logger,
-    pub rest_context: Option<rest::Context>,
+    pub rest_context: Option<rest::ContextLock>,
     pub services: Services,
 }
 
@@ -439,32 +449,37 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
-            let context = rest::Context::new();
+            use std::sync::Arc;
+            use tokio02::sync::RwLock;
+
+            let mut context = rest::Context::new();
+            context.set_diagnostic_data(diagnostic);
+            context.set_node_state(NodeState::PreparingStorage);
+            let context = Arc::new(RwLock::new(context));
+
             let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, &context)?;
-            services.spawn_future("rest", move |info| {
-                block_on(service_context.set_logger(info.into_logger()));
-                server_handler
+            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
+            services.spawn_future_std("rest", move |info| async move {
+                service_context.write().await.set_logger(info.into_logger());
+                server_handler.await
             });
             Some(context)
         }
         None => None,
     };
 
-    if let Some(context) = rest_context.as_ref() {
-        block_on(context.set_diagnostic_data(diagnostic))
-    }
-
-    if let Some(context) = rest_context.as_ref() {
-        block_on(context.set_node_state(NodeState::PreparingStorage))
-    }
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 
     if let Some(context) = rest_context.as_ref() {
-        block_on(context.set_node_state(NodeState::PreparingBlock0))
+        block_on(async {
+            context
+                .write()
+                .await
+                .set_node_state(NodeState::PreparingBlock0)
+        })
     }
 
     let block0 = start_up::prepare_block_0(

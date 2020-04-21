@@ -1,47 +1,50 @@
-use actix_threadpool::BlockingError;
-use actix_web::error::{ErrorBadRequest, ErrorInternalServerError, ErrorServiceUnavailable};
-use actix_web::web::{Data, Json};
-use actix_web::{http, Error, HttpResponse, Responder};
+use crate::{
+    explorer::graphql::GraphQLRequest,
+    rest::{context, ContextLock},
+};
 
-use crate::explorer::graphql::GraphQLRequest;
-pub use crate::rest::Context;
+use thiserror::Error;
+use tokio02::task::{spawn_blocking, JoinError};
+use warp::{reject::Reject, Rejection, Reply};
 
-pub async fn graphiql() -> impl Responder {
-    let html = juniper::http::graphiql::graphiql_source("/explorer/graphql");
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html)
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error(transparent)]
+    Context(#[from] context::Error),
+    #[error("Error processing query")]
+    ProcessingError,
+    #[error(transparent)]
+    BlockingError(#[from] JoinError),
 }
 
-pub async fn graphql(
-    context: Data<Context>,
-    data: Json<GraphQLRequest>,
-) -> Result<impl Responder, Error> {
+impl Reject for Error {}
+
+pub async fn graphiql() -> Result<impl Reply, Rejection> {
+    let html = juniper::http::graphiql::graphiql_source("/explorer/graphql");
+    Ok(warp::reply::html(html))
+}
+
+pub async fn graphql(data: GraphQLRequest, context: ContextLock) -> Result<impl Reply, Rejection> {
     let explorer = context
-        .try_full()
+        .read()
         .await
-        .map_err(ErrorInternalServerError)?
+        .try_full()
+        .map_err(Error::Context)
+        .map_err(warp::reject::custom)?
         .explorer
         .clone()
-        .ok_or(ErrorServiceUnavailable("Explorer not enabled"))?;
+        .unwrap();
+
     // Run the query in a threadpool, as Juniper is synchronous
-    let res = actix_threadpool::run(move || {
+    spawn_blocking(move || {
         let response = data.execute(&explorer.schema, &explorer.context());
-        match response.is_ok() {
-            true => serde_json::to_string(&response).map(Some),
-            false => Ok(None),
+        if response.is_ok() {
+            Ok(warp::reply::json(&response))
+        } else {
+            Err(warp::reject::custom(Error::ProcessingError))
         }
     })
-    .await;
-    let response = match res {
-        Ok(Some(response)) => response,
-        Ok(None) => return Err(ErrorBadRequest("Error processing query")),
-        Err(BlockingError::Canceled) => {
-            return Err(ErrorInternalServerError("Data execution cancelled"))
-        }
-        Err(BlockingError::Error(serde_err)) => return Err(ErrorInternalServerError(serde_err)),
-    };
-    Ok(HttpResponse::Ok()
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .body(response))
+    .await
+    .map_err(Error::BlockingError)
+    .map_err(warp::reject::custom)?
 }

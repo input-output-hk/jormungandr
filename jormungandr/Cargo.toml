@@ -12,14 +12,10 @@ Midgard Serpent
 edition = "2018"
 
 [dependencies]
-actix-cors = "0.2.0"
-actix-rt = "^1.0.0"
-actix-threadpool = "^0.3.1"
-actix-web = { version = "2.0.0", default-features = false, features = [ "rustls" ] }
 arc-swap = "0.4.5"
 juniper = "0.14.2"
 bincode = "1.0.1"
-bytes = "0.4"
+bytes = "0.5"
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
@@ -66,6 +62,7 @@ tokio-threadpool = "0.1"
 bech32 = "0.7"
 async-trait = "0.1"
 lru = "^0.4.3"
+warp = { version = "0.2.2", features = ["tls"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
 version = "0.10.4"
