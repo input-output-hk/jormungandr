@@ -13,6 +13,7 @@ pub mod p2p;
 mod service;
 mod subscription;
 
+use self::convert::Encode;
 use futures03::future;
 use futures03::prelude::*;
 use thiserror::Error;
@@ -298,18 +299,22 @@ async fn handle_network_input(
             NetworkMsg::Propagate(msg) => {
                 handle_propagation_msg(msg, state.clone(), channels.clone()).await;
             }
-            NetworkMsg::GetBlocks(block_ids) => state.peers.fetch_blocks(block_ids).await,
+            NetworkMsg::GetBlocks(block_ids) => state.peers.fetch_blocks(block_ids.encode()).await,
             NetworkMsg::GetNextBlock(node_id, block_id) => {
-                state.peers.solicit_blocks(node_id, vec![block_id]).await;
+                state
+                    .peers
+                    .solicit_blocks(node_id, Box::new([block_id.encode()]))
+                    .await;
             }
             NetworkMsg::PullHeaders {
                 node_address,
                 from,
                 to,
             } => {
+                let from: Vec<_> = from.into();
                 state
                     .peers
-                    .pull_headers(node_address, from.into(), to)
+                    .pull_headers(node_address, from.encode(), to.encode())
                     .await;
             }
             NetworkMsg::PeerInfo(reply) => {
@@ -321,10 +326,10 @@ async fn handle_network_input(
 
 async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
     let prop_state = state.clone();
-    let propagate_res = match msg {
-        PropagateMsg::Block(ref header) => {
+    let propagate_res = match &msg {
+        PropagateMsg::Block(header) => {
             debug!(state.logger(), "block to propagate"; "hash" => %header.hash());
-            let header = header.clone();
+            let header = header.clone().encode();
             let view = state
                 .topology
                 .view(poldercast::Selection::Topic {
@@ -333,9 +338,9 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 .await;
             prop_state.peers.propagate_block(view.peers, header).await
         }
-        PropagateMsg::Fragment(ref fragment) => {
+        PropagateMsg::Fragment(fragment) => {
             debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
-            let fragment = fragment.clone();
+            let fragment = fragment.clone().encode();
             let view = state
                 .topology
                 .view(poldercast::Selection::Topic {
@@ -359,12 +364,12 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
         );
         for node in unreached_nodes {
             let mut options = p2p::comm::ConnectOptions::default();
-            match &msg {
+            match msg {
                 PropagateMsg::Block(header) => {
-                    options.pending_block_announcement = Some(header.clone());
+                    options.pending_block_announcement = Some(header.encode());
                 }
                 PropagateMsg::Fragment(fragment) => {
-                    options.pending_fragment = Some(fragment.clone());
+                    options.pending_fragment = Some(fragment.encode());
                 }
             };
             connect_and_propagate(node, state.clone(), channels.clone(), options);
