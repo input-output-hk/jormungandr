@@ -1,6 +1,6 @@
 use crate::{
     explorer::graphql::GraphQLRequest,
-    rest::{context, Context},
+    rest::{context, ContextLock},
 };
 
 use thiserror::Error;
@@ -24,10 +24,11 @@ pub async fn graphiql() -> Result<impl Reply, Rejection> {
     Ok(warp::reply::html(html))
 }
 
-pub async fn graphql(data: GraphQLRequest, context: Context) -> Result<impl Reply, Rejection> {
+pub async fn graphql(data: GraphQLRequest, context: ContextLock) -> Result<impl Reply, Rejection> {
     let explorer = context
-        .try_full()
+        .read()
         .await
+        .try_full()
         .map_err(Error::Context)
         .map_err(warp::reject::custom)?
         .explorer

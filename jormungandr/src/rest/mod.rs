@@ -4,27 +4,30 @@ pub mod context;
 pub mod explorer;
 pub mod v0;
 
-pub use self::context::{Context, FullContext};
+pub use self::context::{Context, ContextLock, FullContext};
 
 use crate::settings::start::{Rest, Tls};
 
 use futures03::{channel::mpsc, prelude::*};
 use std::{error::Error, net::SocketAddr, time::Duration};
-use warp::{Filter, Reply};
+use warp::Filter;
 
 #[derive(Clone)]
 pub struct ServerStopper(mpsc::Sender<()>);
 
 impl ServerStopper {
-    pub fn stop(&mut self) {
-        self.0.try_send(()).unwrap();
+    pub fn stop(&self) {
+        self.0.clone().try_send(()).unwrap();
     }
 }
 
-pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: Context) {
+pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: ContextLock) {
     let (stopper_tx, stopper_rx) = mpsc::channel::<()>(0);
     let stopper_rx = stopper_rx.into_future().map(|_| ());
-    context.set_server_stopper(ServerStopper(stopper_tx)).await;
+    context
+        .write()
+        .await
+        .set_server_stopper(ServerStopper(stopper_tx));
 
     let api = v0::filter(context.clone());
     if explorer_enabled {

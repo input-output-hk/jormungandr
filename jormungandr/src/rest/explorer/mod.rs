@@ -1,10 +1,12 @@
 mod handlers;
 
-use crate::rest::{display_internal_server_error, Context};
+use crate::rest::{display_internal_server_error, ContextLock};
 
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
-pub fn filter(context: Context) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn filter(
+    context: ContextLock,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let with_context = warp::any().map(move || context.clone());
     let root = warp::path!("explorer" / ..);
 

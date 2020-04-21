@@ -16,15 +16,16 @@ use jormungandr_lib::interfaces::NodeState;
 use slog::Logger;
 use tokio02::sync::RwLock;
 
-#[derive(Clone)]
+pub type ContextLock = Arc<RwLock<Context>>;
+
 pub struct Context {
-    full: Arc<RwLock<Option<Arc<FullContext>>>>,
-    server_stopper: Arc<RwLock<Option<ServerStopper>>>,
-    node_state: Arc<RwLock<NodeState>>,
-    logger: Arc<RwLock<Option<Logger>>>,
-    diagnostic: Arc<RwLock<Option<Diagnostic>>>,
-    blockchain: Arc<RwLock<Option<Blockchain>>>,
-    blockchain_tip: Arc<RwLock<Option<Tip>>>,
+    full: Option<FullContext>,
+    server_stopper: Option<ServerStopper>,
+    node_state: NodeState,
+    logger: Option<Logger>,
+    diagnostic: Option<Diagnostic>,
+    blockchain: Option<Blockchain>,
+    blockchain_tip: Option<Tip>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -48,7 +49,7 @@ impl Context {
         Context {
             full: Default::default(),
             server_stopper: Default::default(),
-            node_state: Arc::new(RwLock::new(NodeState::StartingRestServer)),
+            node_state: NodeState::StartingRestServer,
             logger: Default::default(),
             diagnostic: Default::default(),
             blockchain: Default::default(),
@@ -56,80 +57,63 @@ impl Context {
         }
     }
 
-    pub async fn set_full(&self, full_context: FullContext) {
-        *self.full.write().await = Some(Arc::new(full_context));
+    pub fn set_full(&mut self, full_context: FullContext) {
+        self.full = Some(full_context);
     }
 
-    pub async fn try_full(&self) -> Result<Arc<FullContext>, Error> {
-        self.full.read().await.clone().ok_or(Error::FullContext)
+    pub fn try_full(&self) -> Result<&FullContext, Error> {
+        self.full.as_ref().ok_or(Error::FullContext)
     }
 
-    pub async fn set_server_stopper(&self, server_stopper: ServerStopper) {
-        *self.server_stopper.write().await = Some(server_stopper);
+    pub fn set_server_stopper(&mut self, server_stopper: ServerStopper) {
+        self.server_stopper = Some(server_stopper);
     }
 
-    pub async fn server_stopper(&self) -> Result<ServerStopper, Error> {
-        self.server_stopper
-            .read()
-            .await
-            .clone()
-            .ok_or(Error::ServerStopper)
+    pub fn server_stopper(&self) -> Result<&ServerStopper, Error> {
+        self.server_stopper.as_ref().ok_or(Error::ServerStopper)
     }
 
-    pub async fn set_node_state(&self, node_state: NodeState) {
-        *self.node_state.write().await = node_state;
+    pub fn set_node_state(&mut self, node_state: NodeState) {
+        self.node_state = node_state;
     }
 
-    pub async fn node_state(&self) -> NodeState {
-        self.node_state.read().await.clone()
+    pub fn node_state(&self) -> &NodeState {
+        &self.node_state
     }
 
-    pub async fn set_logger(&self, logger: Logger) {
-        *self.logger.write().await = Some(logger);
+    pub fn set_logger(&mut self, logger: Logger) {
+        self.logger = Some(logger);
     }
 
-    pub async fn logger(&self) -> Result<Logger, Error> {
-        self.logger.read().await.clone().ok_or(Error::Logger)
+    pub fn logger(&self) -> Result<&Logger, Error> {
+        self.logger.as_ref().ok_or(Error::Logger)
     }
 
-    pub async fn set_diagnostic_data(&self, diagnostic: Diagnostic) {
-        *self.diagnostic.write().await = Some(diagnostic);
+    pub fn set_diagnostic_data(&mut self, diagnostic: Diagnostic) {
+        self.diagnostic = Some(diagnostic);
     }
 
-    pub async fn get_diagnostic_data(&self) -> Result<Diagnostic, Error> {
-        self.diagnostic
-            .read()
-            .await
-            .clone()
-            .ok_or(Error::Diagnostic)
+    pub fn get_diagnostic_data(&self) -> Result<&Diagnostic, Error> {
+        self.diagnostic.as_ref().ok_or(Error::Diagnostic)
     }
 
-    pub async fn set_blockchain(&self, blockchain: Blockchain) {
-        *self.blockchain.write().await = Some(blockchain)
+    pub fn set_blockchain(&mut self, blockchain: Blockchain) {
+        self.blockchain = Some(blockchain)
     }
 
-    pub async fn blockchain(&self) -> Result<Blockchain, Error> {
-        self.blockchain
-            .read()
-            .await
-            .clone()
-            .ok_or(Error::Blockchain)
+    pub fn blockchain(&self) -> Result<&Blockchain, Error> {
+        self.blockchain.as_ref().ok_or(Error::Blockchain)
     }
 
-    pub async fn set_blockchain_tip(&self, blockchain_tip: Tip) {
-        *self.blockchain_tip.write().await = Some(blockchain_tip)
+    pub fn set_blockchain_tip(&mut self, blockchain_tip: Tip) {
+        self.blockchain_tip = Some(blockchain_tip)
     }
 
-    pub async fn blockchain_tip(&self) -> Result<Tip, Error> {
-        self.blockchain_tip
-            .read()
-            .await
-            .clone()
-            .ok_or(Error::BlockchainTip)
+    pub fn blockchain_tip(&self) -> Result<&Tip, Error> {
+        self.blockchain_tip.as_ref().ok_or(Error::BlockchainTip)
     }
 }
 
-#[derive(Clone)]
 pub struct FullContext {
     pub stats_counter: StatsCounter,
     pub network_task: MessageBox<NetworkMsg>,
