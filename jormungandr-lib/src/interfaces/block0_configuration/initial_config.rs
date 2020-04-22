@@ -222,6 +222,7 @@ impl BlockchainConfiguration {
         let mut total_reward_supply = None;
         let mut reward_parameters = None;
         let mut per_certificate_fees = None;
+        let mut per_vote_certificate_fees = None;
         let mut fees_go_to = None;
         let mut reward_constraints = RewardConstraints::default();
         let mut committees = Vec::new();
@@ -296,6 +297,9 @@ impl BlockchainConfiguration {
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
                     .map(|_| "per_certificate_fees"),
+                ConfigParam::PerVoteCertificateFees(param) => per_vote_certificate_fees
+                    .replace(param)
+                    .map(|_| "per_vote_certificate_fees"),
                 ConfigParam::AddCommitteeId(committee_id) => {
                     committees.push(committee_id.into());
                     None
@@ -311,6 +315,10 @@ impl BlockchainConfiguration {
         if let Some(linear_fees) = &mut linear_fees {
             if let Some(per_certificate_fees) = per_certificate_fees {
                 linear_fees.per_certificate_fees(per_certificate_fees);
+            }
+
+            if let Some(per_vote_certificate_fees) = per_vote_certificate_fees {
+                linear_fees.per_vote_certificate_fees(per_vote_certificate_fees);
             }
         }
 
@@ -392,6 +400,14 @@ impl BlockchainConfiguration {
             ));
         }
 
+        if !crate::interfaces::linear_fee::per_vote_certificate_fee_is_zero(
+            &linear_fees.per_vote_certificate_fees,
+        ) {
+            params.push(ConfigParam::PerVoteCertificateFees(
+                linear_fees.per_vote_certificate_fees,
+            ));
+        }
+
         if let Some(treasury) = treasury {
             params.push(ConfigParam::TreasuryAdd(treasury.into()));
         }
@@ -457,7 +473,7 @@ enum ConsensusVersionDef {
 #[cfg(test)]
 mod test {
     use super::*;
-    use chain_impl_mockchain::fee::PerCertificateFee;
+    use chain_impl_mockchain::fee::{PerCertificateFee, PerVoteCertificateFee};
     use quickcheck::{Arbitrary, Gen};
     use std::num::NonZeroU64;
 
@@ -469,6 +485,8 @@ mod test {
                 NonZeroU64::new(u64::arbitrary(g)),
                 NonZeroU64::new(u64::arbitrary(g)),
                 NonZeroU64::new(u64::arbitrary(g)),
+            ));
+            linear_fees.per_vote_certificate_fees(PerVoteCertificateFee::new(
                 NonZeroU64::new(u64::arbitrary(g)),
                 NonZeroU64::new(u64::arbitrary(g)),
             ));

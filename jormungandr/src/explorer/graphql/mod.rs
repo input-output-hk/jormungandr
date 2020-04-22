@@ -963,6 +963,7 @@ impl Status {
             coefficient,
             certificate,
             per_certificate_fees,
+            per_vote_certificate_fees,
         } = context.db.blockchain_config.fees;
 
         FeeSettings {
@@ -987,6 +988,20 @@ impl Status {
                 "{}",
                 per_certificate_fees
                     .certificate_owner_stake_delegation
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
+            )),
+            certificate_vote_plan: Value(format!(
+                "{}",
+                per_vote_certificate_fees
+                    .certificate_vote_plan
+                    .map(|v| v.get())
+                    .unwrap_or(certificate)
+            )),
+            certificate_vote_cast: Value(format!(
+                "{}",
+                per_vote_certificate_fees
+                    .certificate_vote_cast
                     .map(|v| v.get())
                     .unwrap_or(certificate)
             )),
@@ -1025,6 +1040,8 @@ struct FeeSettings {
     certificate_pool_registration: Value,
     certificate_stake_delegation: Value,
     certificate_owner_stake_delegation: Value,
+    certificate_vote_plan: Value,
+    certificate_vote_cast: Value,
 }
 
 struct Epoch {

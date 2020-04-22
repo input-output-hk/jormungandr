@@ -1,5 +1,5 @@
 use crate::jcli_app::transaction::{staging::Staging, Error};
-use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee};
+use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use std::{num::NonZeroU64, path::PathBuf};
 use structopt::StructOpt;
 
@@ -52,10 +52,13 @@ impl CommonFees {
             self.certificate_stake_delegation.and_then(NonZeroU64::new),
             self.certificate_owner_stake_delegation
                 .and_then(NonZeroU64::new),
+        );
+        let per_vote_certificate_fees = PerVoteCertificateFee::new(
             self.certificate_vote_plan.and_then(NonZeroU64::new),
             self.certificate_vote_cast.and_then(NonZeroU64::new),
         );
         fees.per_certificate_fees(per_certificate_fees);
+        fees.per_vote_certificate_fees(per_vote_certificate_fees);
         fees
     }
 }
