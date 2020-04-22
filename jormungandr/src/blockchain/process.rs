@@ -563,7 +563,6 @@ async fn process_network_blocks(
                 return Err(err);
             }
             None => {
-                latest_block = None;
                 reply.reply_ok(());
                 break candidate;
             }
