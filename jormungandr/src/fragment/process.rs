@@ -7,7 +7,6 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-use futures03::compat::*;
 use tokio02::stream::StreamExt;
 
 pub struct Process {
@@ -30,7 +29,7 @@ impl Process {
         self,
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
-        input: MessageQueue<TransactionMsg>,
+        mut input: MessageQueue<TransactionMsg>,
     ) -> Result<(), ()> {
         let mut pool = self.pool;
 
