@@ -1,11 +1,27 @@
 openapi: 3.0.2
 info:
   title: Generic blockchain node REST API
+  description: Jörmungandr Rest API v0
   version: 0.0.1
+  contact:
+    url: ''
+servers:
+  - url: 'https://localhost'
+tags:
+  - name: account
+  - name: block
+  - name: fragment
+  - name: leaders
+  - name: network
+  - name: rewards
+  - name: stake
+  - name: utils
 paths:
   '/api/v0/account/{account_id}':
     get:
       description: Gets account state
+      tags:
+        - account
       parameters:
         - name: account_id
           in: path
@@ -21,14 +37,25 @@ paths:
             application/json:
               schema:
                 type: object
-                required:
-                  - value
-                  - counter
                 properties:
                   delegation:
-                    description: Hex-encoded stake pool ID this account is delegating to
-                    type: string
-                    pattern: '[0-9a-fA-F]+'
+                    description: Delegation information
+                    type: object
+                    properties:
+                      pools:
+                        description: List of pools the account has delegated to
+                        type: array
+                        items:
+                          description: The first item is always stake pool ID and the second is always the delegation ratio
+                          type: array
+                          items:
+                            oneOf:
+                              - description: Hex-encoded stake pool ID
+                                type: string
+                                pattern: '[0-9a-fA-F]+'
+                              - description: Delegation ratio
+                                type: integer
+                                minimum: 0
                   value:
                     description: Current balance of this account
                     type: integer
@@ -49,22 +76,35 @@ paths:
                         description: the total amount of rewards received for the associated epoch
                         type: integer
                         minimum: 0
-              example: |
-                {
-                  "counter": 1,
-                  "delegation": "c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356",
-                  "value": 990,
-                  "last_rewards":
+                required:
+                  - value
+                  - counter
+              examples:
+                application/json:
+                  value: |
                     {
-                      "epoch": 42,
-                      "reward": 2028
+                      "counter": 1,
+                      "delegation": {
+                        "pools": [
+                          [
+                            "c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356",
+                            1
+                          ]
+                        ]
+                      },
+                      "value": 990,
+                      "last_rewards": {
+                        "epoch": 42,
+                        "reward": 2028
+                      }
                     }
-                }
         '404':
           description: Account with given ID was not found
   '/api/v0/block/{block_id}':
     get:
       description: Gets block
+      tags:
+        - block
       parameters:
         - name: block_id
           in: path
@@ -87,6 +127,8 @@ paths:
   '/api/v0/block/{block_id}/next_id':
     get:
       description: Gets IDs of descendants of block
+      tags:
+        - block
       parameters:
         - name: block_id
           in: path
@@ -119,6 +161,8 @@ paths:
   /api/v0/diagnostic:
     get:
       description: Get system diagnostic information
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -143,6 +187,8 @@ paths:
   /api/v0/fragment/logs:
     get:
       description: Gets logs from node message pool
+      tags:
+        - fragment
       responses:
         '200':
           description: Success
@@ -262,6 +308,8 @@ paths:
   /api/v0/leaders:
     get:
       description: Gets leader IDs
+      tags:
+        - leaders
       responses:
         '200':
           description: Success
@@ -279,6 +327,8 @@ paths:
                 - 5
     post:
       description: Registers new leader
+      tags:
+        - leaders
       requestBody:
         description: Leader secret
         required: true
@@ -344,6 +394,8 @@ paths:
   /api/v0/leaders/logs:
     get:
       description: Gets leader logs
+      tags:
+        - leaders
       responses:
         '200':
           description: Success
@@ -377,10 +429,12 @@ paths:
                       description: Timestamp of when leadership was started
                       type: string
                       format: date-time
+                      nullable: true
                     finished_at_time:
                       description: Timestamp of when leadership was finished
                       type: string
                       format: date-time
+                      nullable: true
                     enclave_leader_id:
                       description: ID of leadership event that produced this log entry
                       type: integer
@@ -412,7 +466,10 @@ paths:
                           properties:
                             InABlock:
                               type: object
-                              required: [chain_length, block, parent]
+                              required:
+                                - chain_length
+                                - block
+                                - parent
                               properties:
                                 block:
                                   description: Block hash that has been created
@@ -426,56 +483,61 @@ paths:
                                   description: Chain length
                                   type: number
                                   minimum: 0
-              example:
-                Pending: |
-                  [
-                    {
-                      "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
-                      "scheduled_at_time": "2019-08-19T23:18:35+00:00",
-                      "scheduled_at_date": "0.3923",
-                      "wake_at_time": null,
-                      "finished_at_time": null,
-                      "enclave_leader_id": 1,
-                      "status": "Pending"
-                    }
-                  ]
-                Block: |
-                  [
-                    {
-                      "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
-                      "scheduled_at_time": "2019-08-19T23:18:35+00:00",
-                      "scheduled_at_date": "0.3923",
-                      "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
-                      "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
-                      "enclave_leader_id": 1,
-                      "status": {
-                        "Block": {
-                          "chain_length": 201910,
-                          "block": "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174",
-                          "parent": "cc72d4ca957b03d7c795596b7fd7b1ff09c649c3e2877c508c0466abc8604832"
+              examples:
+                Pending:
+                  value: |
+                    [
+                      {
+                        "created_at_time": "2019-08-19T12:25:00.41726355+00:00",
+                        "scheduled_at_time": "2019-08-19T23:18:35+00:00",
+                        "scheduled_at_date": "0.3923",
+                        "wake_at_time": null,
+                        "finished_at_time": null,
+                        "enclave_leader_id": 1,
+                        "status": "Pending"
+                      }
+                    ]
+                Block:
+                  value: |
+                    [
+                      {
+                        "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
+                        "scheduled_at_time": "2019-08-19T23:18:35+00:00",
+                        "scheduled_at_date": "0.3923",
+                        "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
+                        "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
+                        "enclave_leader_id": 1,
+                        "status": {
+                          "Block": {
+                            "chain_length": 201910,
+                            "block": "d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174",
+                            "parent": "cc72d4ca957b03d7c795596b7fd7b1ff09c649c3e2877c508c0466abc8604832"
+                          }
                         }
                       }
-                    }
-                  ]
-                Rejected: |
-                  [
-                    {
-                      "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
-                      "scheduled_at_time": "2019-08-19T23:18:35+00:00",
-                      "scheduled_at_date": "0.3923",
-                      "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
-                      "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
-                      "enclave_leader_id": 1,
-                      "status": {
-                        "Rejected": {
-                          "reason": "Missed the deadline to compute the schedule",
+                    ]
+                Rejected:
+                  value: |
+                    [
+                      {
+                        "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
+                        "scheduled_at_time": "2019-08-19T23:18:35+00:00",
+                        "scheduled_at_date": "0.3923",
+                        "wake_at_time": "2019-08-19T23:18:35.001254555+00:00",
+                        "finished_at_time": "2019-08-19T23:19:05.010113333+00:00",
+                        "enclave_leader_id": 1,
+                        "status": {
+                          "Rejected": {
+                            "reason": "Missed the deadline to compute the schedule",
+                          }
                         }
                       }
-                    }
-                  ]
+                    ]
   '/api/v0/leaders/{leader_id}':
     delete:
       description: Deletes leader
+      tags:
+        - leaders
       parameters:
         - name: leader_id
           in: path
@@ -492,6 +554,8 @@ paths:
   /api/v0/message:
     post:
       description: Posts a signed transaction
+      tags:
+        - fragment
       requestBody:
         description: Leader secret
         required: true
@@ -509,6 +573,8 @@ paths:
   /api/v0/network/stats:
     get:
       description: Fetches network stats
+      tags:
+        - network
       responses:
         '200':
           description: Success
@@ -549,23 +615,24 @@ paths:
                       description: Timestamp of last time gossip was received from node if ever
                       type: string
                       format: date-time
-              example: |
-                [
-                  {
-                    "addr": "3.124.55.91:3000",
-                    "nodeId": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
-                    "establishedAt": "2019-10-14T06:24:12.010231281+00:00",
-                    "lastBlockReceived": "2019-10-14T07:54:32.014432772+00:00",
-                    "lastFragmentReceived": "2019-10-14T07:54:33.014432831+00:00",
-                    "lastGossipReceived": "2019-10-14T07:54:34.014432887+00:00"
-                  },
-                  {
-                    "nodeId": "02f1e1d1c1b1a191817161514131211101f0e0d0c0b0a0908070605040302010"
-                  }
-                ]
+              examples:
+                application/json:
+                  value: |
+                    [
+                      {
+                        "addr": "3.124.55.91:3000",
+                        "nodeId": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+                        "establishedAt": "2019-10-14T06:24:12.010231281+00:00",
+                        "lastBlockReceived": "2019-10-14T07:54:32.014432772+00:00",
+                        "lastFragmentReceived": "2019-10-14T07:54:33.014432831+00:00",
+                        "lastGossipReceived": "2019-10-14T07:54:34.014432887+00:00"
+                      }
+                    ]
   /api/v0/node/stats:
     get:
       description: Fetches node stats
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -668,31 +735,35 @@ paths:
                   version:
                     description: Node app version
                     type: string
-              example: |
-                {
-                  "blockRecvCnt": 1102,
-                  "lastBlockContentSize": 484,
-                  "lastBlockDate": "20.29",
-                  "lastBlockFees": 534,
-                  "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
-                  "lastBlockHeight": 202901,
-                  "lastBlockSum": 51604,
-                  "lastBlockTime": "2020-01-30T23:08:22+00:00",
-                  "lastBlockTx": 2,
-                  "lastReceivedBlockTime": "2020-01-30T23:08:04+00:00",
-                  "nodeId": "ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d"
-                  "peerAvailableCnt": 321,
-                  "peerQuarantinedCnt": 123,
-                  "peerTotalCnt": 449
-                  "peerUnreachableCnt": 5,
-                  "state": "Running",
-                  "txRecvCnt": 5440,
-                  "uptime": 20032,
-                  "version": "jormungandr 0.8.9-30d20d2e"
-                }
+              examples:
+                application/json:
+                  value: |
+                    {
+                      "blockRecvCnt": 1102,
+                      "lastBlockContentSize": 484,
+                      "lastBlockDate": "20.29",
+                      "lastBlockFees": 534,
+                      "lastBlockHash": "b9597b45a402451540e6aabb58f2ee4d65c67953b338e04c52c00aa0886bd1f0",
+                      "lastBlockHeight": 202901,
+                      "lastBlockSum": 51604,
+                      "lastBlockTime": "2020-01-30T23:08:22+00:00",
+                      "lastBlockTx": 2,
+                      "lastReceivedBlockTime": "2020-01-30T23:08:04+00:00",
+                      "nodeId": "ad24537cb009bedaebae3d247fecee9e14c57fe942e9bb0d"
+                      "peerAvailableCnt": 321,
+                      "peerQuarantinedCnt": 123,
+                      "peerTotalCnt": 449
+                      "peerUnreachableCnt": 5,
+                      "state": "Running",
+                      "txRecvCnt": 5440,
+                      "uptime": 20032,
+                      "version": "jormungandr 0.8.9-30d20d2e"
+                    }
   /api/v0/settings:
     get:
       description: Gets node settings
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -829,7 +900,6 @@ paths:
                     required:
                       - fixed
                       - ratio
-                      - max
                     properties:
                       fixed:
                         description: What get subtracted as fixed value
@@ -853,53 +923,59 @@ paths:
                         type: integer
                         minimum: 1
                         nullable: true
-              example: |
-                {
-                  "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
-                  "block0Time": "2019-07-09T12:32:51+00:00",
-                  "blockContentMaxSize": 102400,
-                  "consensusVersion": "bft",
-                  "currSlotStartTime": "2019-07-18T22:01:17+00:00",
-                  "fees": {
-                    "certificate": 4,
-                    "per_certificate_fees": {
-                      "certificate_pool_registration": 5,
-                      "certificate_stake_delegation": 3,
-                      "certificate_owner_stake_delegation": 4,
-                    }
-                    "coefficient": 1,
-                    "constant": 2
-                  },
-                  "rewardParams": {
-                      "compoundingRatio": {
-                          "denominator": 1024,
-                          "numerator": 1
+              examples:
+                application/json:
+                  value: |
+                    {
+                      "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
+                      "block0Time": "2019-07-09T12:32:51+00:00",
+                      "blockContentMaxSize": 102400,
+                      "consensusVersion": "bft",
+                      "currSlotStartTime": "2019-07-18T22:01:17+00:00",
+                      "fees": {
+                        "certificate": 4,
+                        "per_certificate_fees": {
+                          "certificate_pool_registration": 5,
+                          "certificate_stake_delegation": 3,
+                          "certificate_owner_stake_delegation": 4,
+                        }
+                        "coefficient": 1,
+                        "constant": 2
                       },
-                      "compoundingType": "Linear",
-                      "epochRate": 100,
-                      "epochStart": 0,
-                      "initialValue": 10000
-                  },
-                  "slotDuration": 10,
-                  "slotsPerEpoch": 60,
-                  "treasuryTax": {
-                    "fixed": 5,
-                    "ratio": {
-                      "numerator": 1
-                      "denominator": 10000,
+                      "rewardParams": {
+                          "compoundingRatio": {
+                              "denominator": 1024,
+                              "numerator": 1
+                          },
+                          "compoundingType": "Linear",
+                          "epochRate": 100,
+                          "epochStart": 0,
+                          "initialValue": 10000
+                      },
+                      "slotDuration": 10,
+                      "slotsPerEpoch": 60,
+                      "treasuryTax": {
+                        "fixed": 5,
+                        "ratio": {
+                          "numerator": 1
+                          "denominator": 10000,
+                        }
+                        "max": 100,
+                      }
                     }
-                    "max": 100,
-                  }
-                }
   /api/v0/shutdown:
     get:
       description: Starts node shutdown procedure
+      tags:
+        - utils
       responses:
         '200':
           description: Success
   /api/v0/stake_pools:
     get:
       description: Gets stake pool IDs
+      tags:
+        - stake
       responses:
         '200':
           description: Success
@@ -917,6 +993,8 @@ paths:
   '/api/v0/rewards/epoch/{epoch}':
     get:
       description: 'returns the rewards history of the given "epoch"'
+      tags:
+        - rewards
       parameters:
         - name: epoch
           in: path
@@ -934,7 +1012,7 @@ paths:
                 items:
                   type: object
                   properties:
-                    stakepools:
+                    stake_pools:
                       type: object
                       additionalProperties:
                         type: array
@@ -960,35 +1038,46 @@ paths:
                       additionalProperties:
                         type: integer
                         minimum: 0
-              example: |
-                [
-                  {
-                    "epoch": 82,
-                    "drawn": 3835616440000,
-                    "fees": 1828810000,
-                    "treasury": 462179124139,
-                    "stake_pools": {
-                      "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
-                        1683091391,
-                        32665712521
-                      ],
-                      "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
-                        47706672,
-                        906426770
-                      ],
-                    },
-                    "accounts": {
-                      "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
-                      "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
-                      "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
-                      "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
-                      "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
-                    }
-                  }
-                ]
+                  required:
+                    - stake_pools
+                    - treasury
+                    - fees
+                    - drawn
+                    - epoch
+                    - accounts
+              examples:
+                application/json:
+                  value: |
+                    [
+                      {
+                        "epoch": 82,
+                        "drawn": 3835616440000,
+                        "fees": 1828810000,
+                        "treasury": 462179124139,
+                        "stake_pools": {
+                          "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+                            1683091391,
+                            32665712521
+                          ],
+                          "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+                            47706672,
+                            906426770
+                          ],
+                        },
+                        "accounts": {
+                          "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
+                          "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+                          "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+                          "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+                          "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                        }
+                      }
+                    ]
   '/api/v0/rewards/history/{length}':
     get:
       description: 'returns the rewards history of the "length" last epoch from tip'
+      tags:
+        - rewards
       parameters:
         - name: length
           in: path
@@ -1006,7 +1095,7 @@ paths:
                 items:
                   type: object
                   properties:
-                    stakepools:
+                    stake_pools:
                       type: object
                       additionalProperties:
                         type: array
@@ -1032,58 +1121,69 @@ paths:
                       additionalProperties:
                         type: integer
                         minimum: 0
-              example: |
-                [
-                  {
-                    "epoch": 82,
-                    "drawn": 3835616440000,
-                    "fees": 1828810000,
-                    "treasury": 462179124139,
-                    "stake_pools": {
-                      "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
-                        1683091391,
-                        32665712521
-                      ],
-                      "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
-                        47706672,
-                        906426770
-                      ],
-                    },
-                    "accounts": {
-                      "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
-                      "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
-                      "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
-                      "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
-                      "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
-                    },
-                    {
-                      "epoch": 81,
-                      "drawn": 3835616440000,
-                      "fees": 1828810000,
-                      "treasury": 462179124139,
-                      "stake_pools": {
-                        "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
-                          1683091391,
-                          32665712521
-                        ],
-                        "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
-                          47706672,
-                          906426770
-                        ],
-                      },
-                      "accounts": {
-                        "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
-                        "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
-                        "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
-                        "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
-                        "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                  required:
+                    - stake_pools
+                    - treasury
+                    - fees
+                    - drawn
+                    - epoch
+                    - accounts
+              examples:
+                application/json:
+                  value: |
+                    [
+                      {
+                        "epoch": 82,
+                        "drawn": 3835616440000,
+                        "fees": 1828810000,
+                        "treasury": 462179124139,
+                        "stake_pools": {
+                          "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+                            1683091391,
+                            32665712521
+                          ],
+                          "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+                            47706672,
+                            906426770
+                          ],
+                        },
+                        "accounts": {
+                          "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
+                          "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+                          "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+                          "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+                          "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                        },
+                        {
+                          "epoch": 81,
+                          "drawn": 3835616440000,
+                          "fees": 1828810000,
+                          "treasury": 462179124139,
+                          "stake_pools": {
+                            "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+                              1683091391,
+                              32665712521
+                            ],
+                            "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+                              47706672,
+                              906426770
+                            ],
+                          },
+                          "accounts": {
+                            "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
+                            "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+                            "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+                            "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+                            "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                          }
+                        }
                       }
-                    }
-                  }
-                ]
+                    ]
   '/api/v0/stake_pool/{pool_id}':
     get:
       description: Gets stake pool details
+      tags:
+        - stake
       parameters:
         - name: pool_id
           in: path
@@ -1162,28 +1262,32 @@ paths:
                   vrfPublicKey:
                     description: Bech32-encoded stake pool VRF key
                     type: string
-              example: |
-                {
-                  "tax": {
-                    "fixed": 5,
-                    "ratio": {
-                      "numerator": 1
-                      "denominator": 10000,
+              examples:
+                application/json:
+                  value: |
+                    {
+                      "tax": {
+                        "fixed": 5,
+                        "ratio": {
+                          "numerator": 1
+                          "denominator": 10000,
+                        }
+                        "max": 100,
+                      },
+                      "rewards": {
+                        "epoch": 42,
+                        "value_taxed": 2901,
+                        "value_for_stakers": 2028
+                      },
+                      "total_stake": 2000000000000,
+                      "kesPublicKey": "kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r",
+                      "vrfPublicKey": "vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l"
                     }
-                    "max": 100,
-                  },
-                  "rewards": {
-                    "epoch": 42,
-                    "value_taxed": 2901,
-                    "value_for_stakers": 2028
-                  },
-                  "total_stake": 2000000000000,
-                  "kesPublicKey": "kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r",
-                  "vrfPublicKey": "vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l"
-                }
   /api/v0/stake:
     get:
       description: Gets stake distribution
+      tags:
+        - stake
       responses:
         '200':
           description: Success
@@ -1230,23 +1334,27 @@ paths:
                         description: 'Total value stored in accounts, but not assigned to any pool'
                         type: integer
                         minimum: 0
-              example: |
-                {
-                  "epoch": 0,
-                  "stake": {
-                    "dangling": 0,
-                    "pools": [
-                      [
-                        "d882fc32c4b4b901cb29dfb4162e070d7650e937abb7bc2947d3a7d48b6c86a6",
-                        2000000000000
-                      ]
-                    ],
-                    "unassigned": 0
-                  }
-                }
-  /api/v0/stake/{epoch}:
+              examples:
+                application/json:
+                  value: |
+                    {
+                      "epoch": 0,
+                      "stake": {
+                        "dangling": 0,
+                        "pools": [
+                          [
+                            "d882fc32c4b4b901cb29dfb4162e070d7650e937abb7bc2947d3a7d48b6c86a6",
+                            2000000000000
+                          ]
+                        ],
+                        "unassigned": 0
+                      }
+                    }
+  '/api/v0/stake/{epoch}':
     get:
       description: Gets stake distribution
+      tags:
+        - stake
       parameters:
         - name: epoch
           in: path
@@ -1300,23 +1408,27 @@ paths:
                         description: 'Total value stored in accounts, but not assigned to any pool'
                         type: integer
                         minimum: 0
-              example: |
-                {
-                  "epoch": 0,
-                  "stake": {
-                    "dangling": 0,
-                    "pools": [
-                      [
-                        "d882fc32c4b4b901cb29dfb4162e070d7650e937abb7bc2947d3a7d48b6c86a6",
-                        2000000000000
-                      ]
-                    ],
-                    "unassigned": 0
-                  }
-                }
+              examples:
+                application/json:
+                  value: |
+                    {
+                      "epoch": 0,
+                      "stake": {
+                        "dangling": 0,
+                        "pools": [
+                          [
+                            "d882fc32c4b4b901cb29dfb4162e070d7650e937abb7bc2947d3a7d48b6c86a6",
+                            2000000000000
+                          ]
+                        ],
+                        "unassigned": 0
+                      }
+                    }
   /api/v0/tip:
     get:
       description: Gets ID of the blockchain tip
+      tags:
+        - utils
       responses:
         '200':
           description: Success
@@ -1330,6 +1442,8 @@ paths:
   '/api/v0/utxo/{fragment_id}/{output_index}':
     get:
       description: Fetches UTxO details
+      tags:
+        - fragment
       parameters:
         - name: fragment_id
           in: path
@@ -1365,16 +1479,20 @@ paths:
                     description: Amount that is held in this UTXO
                     type: integer
                     minimum: 0
-              example: |
-                {
-                  "address": "ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w",
-                  "value": 10000
-                }
+              examples:
+                application/json:
+                  value: |
+                    {
+                      "address": "ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w",
+                      "value": 10000
+                    }
         '404':
           description: Fragment with given ID or its output with given index was not found in the UTxO
   /api/v0/network/p2p/non_public:
     get:
       description: list all the nodes that are connected to ours but that are not publicly reachable
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes that are not publicly reachable
@@ -1567,6 +1685,8 @@ paths:
   /api/v0/network/p2p/available:
     get:
       description: list all the nodes that are available for p2p discovery and events propagation
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
@@ -1760,6 +1880,8 @@ paths:
   /api/v0/network/p2p/quarantined:
     get:
       description: list all the nodes that have been quarantined
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
@@ -1954,6 +2076,8 @@ paths:
   /api/v0/network/p2p/view:
     get:
       description: list all the nodes that are selected for gossiping/peer discovery
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
@@ -1987,6 +2111,8 @@ paths:
               - blocks
               - fragments
       description: list all the nodes that are selected for the given topic
+      tags:
+        - network
       responses:
         '200':
           description: array of nodes info
