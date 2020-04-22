@@ -794,6 +794,7 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
                 Ok(Certificate::PoolUpdate(PoolUpdate::from(c)))
             }
             certificate::Certificate::VotePlan(c) => todo!("Vote plans are not yet supported"),
+            certificate::Certificate::VoteCast(c) => todo!("Vote casts are not yet supported"),
         }
     }
 }

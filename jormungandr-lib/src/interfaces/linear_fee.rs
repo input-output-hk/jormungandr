@@ -15,6 +15,10 @@ pub struct PerCertificateFeeDef {
     pub certificate_stake_delegation: Option<NonZeroU64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub certificate_owner_stake_delegation: Option<NonZeroU64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub certificate_vote_plan: Option<NonZeroU64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub certificate_vote_cast: Option<NonZeroU64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

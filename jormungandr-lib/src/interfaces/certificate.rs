@@ -47,6 +47,9 @@ impl SignedCertificate {
             certificate::SignedCertificate::VotePlan(c, _) => {
                 Certificate(certificate::Certificate::VotePlan(c))
             }
+            certificate::SignedCertificate::VoteCast(c, _) => {
+                Certificate(certificate::Certificate::VoteCast(c))
+            }
         }
     }
 }
@@ -77,6 +80,10 @@ impl property::Serialize for Certificate {
             }
             certificate::Certificate::VotePlan(c) => {
                 writer.write_all(&[6])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::VoteCast(c) => {
+                writer.write_all(&[7])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };
@@ -115,6 +122,10 @@ impl Readable for Certificate {
                 let cert = certificate::VotePlan::read(buf)?;
                 Ok(Certificate(certificate::Certificate::VotePlan(cert)))
             }
+            6 => {
+                let cert = certificate::VoteCast::read(buf)?;
+                Ok(Certificate(certificate::Certificate::VoteCast(cert)))
+            }
             t => Err(ReadError::UnknownTag(t as u32))?,
         }
     }
@@ -150,6 +161,10 @@ impl property::Serialize for SignedCertificate {
             }
             certificate::SignedCertificate::VotePlan(c, ()) => {
                 writer.write_all(&[6])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::SignedCertificate::VoteCast(c, ()) => {
+                writer.write_all(&[7])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };

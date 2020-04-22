@@ -443,6 +443,8 @@ mod test {
                 NonZeroU64::new(u64::arbitrary(g)),
                 NonZeroU64::new(u64::arbitrary(g)),
                 NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
+                NonZeroU64::new(u64::arbitrary(g)),
             ));
 
             BlockchainConfiguration {
