@@ -41,7 +41,7 @@ impl PreferredListLayer {
     ) -> Self {
         Self {
             view_max,
-            peers: peers.iter().map(Clone::clone).collect(),
+            peers: peers.iter().cloned().collect(),
             prng: ChaChaRng::from_seed(seed),
         }
     }
@@ -68,9 +68,10 @@ impl Layer for PreferredListLayer {
         let selected: HashSet<Address> = self
             .peers
             .iter()
+            .cloned()
             .choose_multiple(&mut self.prng, self.view_max)
             .iter()
-            .map(|x| *x.clone())
+            .cloned()
             .collect();
         for node in all_nodes.all_available_nodes() {
             if selected.contains(node.address()) {
