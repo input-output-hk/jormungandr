@@ -4,6 +4,7 @@ mod address;
 mod block0_configuration;
 mod blockdate;
 mod certificate;
+mod committee;
 mod config;
 mod fragment_log;
 mod leadership_log;
@@ -34,6 +35,7 @@ pub use self::certificate::{
     Certificate, CertificateFromBech32Error, CertificateFromStrError, CertificateToBech32Error,
     SignedCertificate, CERTIFICATE_HRP, SIGNED_CERTIFICATE_HRP,
 };
+pub use self::committee::CommitteeIdDef;
 pub use self::config::*;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::leadership_log::{

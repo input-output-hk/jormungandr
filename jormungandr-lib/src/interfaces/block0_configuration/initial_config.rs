@@ -1,8 +1,8 @@
 use crate::{
     interfaces::{
-        ActiveSlotCoefficient, BlockContentMaxSize, ConsensusLeaderId, EpochStabilityDepth,
-        FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, PoolParticipationCapping,
-        RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
+        ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
+        EpochStabilityDepth, FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
+        PoolParticipationCapping, RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -12,6 +12,7 @@ use chain_impl_mockchain::{
     config::{Block0Date, ConfigParam},
     fee::LinearFee,
     fragment::config::ConfigParams,
+    vote::CommitteeId,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -126,6 +127,11 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "RewardConstraints::is_none")]
     pub reward_constraints: RewardConstraints,
+
+    /// the committee members for the voting management
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub committees: Vec<CommitteeIdDef>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -191,6 +197,7 @@ impl BlockchainConfiguration {
             total_reward_supply: None,
             reward_parameters: None,
             reward_constraints: RewardConstraints::default(),
+            committees: Vec::new(),
         }
     }
 
@@ -217,6 +224,7 @@ impl BlockchainConfiguration {
         let mut per_certificate_fees = None;
         let mut fees_go_to = None;
         let mut reward_constraints = RewardConstraints::default();
+        let mut committees = Vec::new();
 
         for param in params.iter().cloned() {
             match param {
@@ -288,8 +296,13 @@ impl BlockchainConfiguration {
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
                     .map(|_| "per_certificate_fees"),
-                ConfigParam::AddCommitteeId(committee_id) => todo!(),
-                ConfigParam::RemoveCommitteeId(committee_id) => todo!(),
+                ConfigParam::AddCommitteeId(committee_id) => {
+                    committees.push(committee_id.into());
+                    None
+                }
+                ConfigParam::RemoveCommitteeId(_committee_id) => {
+                    panic!("attempt to remove a committee in the block0")
+                }
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -324,6 +337,7 @@ impl BlockchainConfiguration {
             total_reward_supply,
             reward_parameters,
             reward_constraints: reward_constraints,
+            committees,
         })
     }
 
@@ -346,6 +360,7 @@ impl BlockchainConfiguration {
             total_reward_supply,
             reward_parameters,
             reward_constraints,
+            committees,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -406,9 +421,18 @@ impl BlockchainConfiguration {
             )));
         }
 
-        consensus_leader_ids
+        let params = consensus_leader_ids
             .into_iter()
             .map(ConfigParam::from)
+            .fold(params, |mut params, cp| {
+                params.push(cp);
+                params
+            });
+
+        committees
+            .into_iter()
+            .map(CommitteeId::from)
+            .map(ConfigParam::AddCommitteeId)
             .fold(params, |mut params, cp| {
                 params.push(cp);
                 params
@@ -475,6 +499,7 @@ mod test {
                 total_reward_supply: Arbitrary::arbitrary(g),
                 reward_parameters: Arbitrary::arbitrary(g),
                 reward_constraints: Arbitrary::arbitrary(g),
+                committees: Arbitrary::arbitrary(g),
             }
         }
     }

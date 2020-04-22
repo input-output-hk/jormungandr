@@ -63,6 +63,7 @@ impl Block0ConfigurationBuilder {
                     epoch_start: 0,
                     epoch_rate: NonZeroU32::new(1).unwrap(),
                 }),
+                committees: Vec::new(),
             },
             initial: vec![],
         }
