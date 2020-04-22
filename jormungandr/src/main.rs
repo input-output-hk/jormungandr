@@ -377,9 +377,7 @@ async fn bootstrap_internal(
     use tokio02::spawn;
 
     if let Some(context) = rest_context.as_ref() {
-        block_on(async {
-            context.set_node_state(NodeState::Bootstrapping)
-        })
+        block_on(async { context.set_node_state(NodeState::Bootstrapping) })
     }
 
     let block0_hash = block0.header.hash();
