@@ -63,7 +63,11 @@ pub struct Process {
 }
 
 impl Process {
-    pub async fn start(mut self, service_info: TokioServiceInfo, mut input: MessageQueue<BlockMsg>) {
+    pub async fn start(
+        mut self,
+        service_info: TokioServiceInfo,
+        mut input: MessageQueue<BlockMsg>,
+    ) {
         self.start_branch_reprocessing(&service_info);
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);

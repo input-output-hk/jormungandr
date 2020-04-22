@@ -25,11 +25,11 @@ pub struct TaskData {
 pub async fn start(
     info: TokioServiceInfo,
     mut task_data: TaskData,
-    input: MessageQueue<ClientMsg>,
+    mut input: MessageQueue<ClientMsg>,
 ) {
-    input
-        .for_each(|message| async { handle_input(&info, &mut task_data, message) })
-        .await;
+    while let Some(input) = input.next().await {
+        handle_input(&info, &mut task_data, input);
+    }
 }
 
 fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: ClientMsg) {
@@ -99,7 +99,7 @@ async fn handle_get_headers_range(
     storage: &Storage,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
-    handle: ReplyStreamHandle<Header>,
+    mut handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
     let res = storage.find_closest_ancestor(checkpoints, to).await;
     match res {
@@ -156,7 +156,7 @@ async fn handle_pull_blocks_to_tip(
     storage: &Storage,
     blockchain_tip: &Tip,
     checkpoints: Vec<HeaderHash>,
-    handle: ReplyStreamHandle<Block>,
+    mut handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
     let tip = blockchain_tip.get_ref().await;
     let tip_hash = tip.hash();
