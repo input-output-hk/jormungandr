@@ -6,8 +6,8 @@ use rand::seq::IteratorRandom;
 use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::borrow::BorrowMut;
+use std::collections::HashSet;
 
 pub struct PreferredListLayer {
     /// the max number of entries to add in the list of the view
