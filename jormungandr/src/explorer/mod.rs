@@ -111,19 +111,20 @@ impl Explorer {
     pub async fn start(&mut self, info: TokioServiceInfo, messages: MessageQueue<ExplorerMsg>) {
         messages
             .for_each(|input| async {
-                let mut explorer_db = self.db.clone();
-                let logger = info.logger().clone();
-
                 match input {
                     ExplorerMsg::NewBlock(block) => {
-                        let fut = explorer_db
-                            .apply_block(block)
-                            .map(move |result| match result {
-                                // XXX: There is no garbage collection now, so the GCRoot is not used
-                                Ok(_gc_root) => Ok(()),
-                                Err(err) => Err(error!(logger, "Explorer error: {}", err)),
-                            });
-                        info.spawn_failable_std("apply block", fut)
+                        let mut explorer_db = self.db.clone();
+                        let logger = info.logger().clone();
+                        info.spawn_failable_std("apply block", async move {
+                            explorer_db
+                                .apply_block(block)
+                                .map(move |result| match result {
+                                    // XXX: There is no garbage collection now, so the GCRoot is not used
+                                    Ok(_gc_root) => Ok(()),
+                                    Err(err) => Err(error!(logger, "Explorer error: {}", err)),
+                                })
+                                .await
+                        });
                     }
                 }
             })
@@ -593,7 +594,7 @@ impl Tip {
     }
 
     async fn compare_and_replace(&self, other: Branch) {
-        let current = self.0.write().await;
+        let mut current = self.0.write().await;
 
         if other.length > (*current).length {
             *current = Branch {
