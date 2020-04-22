@@ -1,9 +1,12 @@
 use super::p2p::Gossip;
 use crate::blockcfg::{Block, Fragment, Header, HeaderId};
+use crate::intercom;
 use chain_core::mempack::{ReadBuf, Readable};
 use chain_core::property::{Deserialize, Serialize};
 use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
+
+use futures03::stream::{self, TryStreamExt};
 
 use std::convert::TryFrom;
 
@@ -38,6 +41,15 @@ pub trait Encode {
     type NetworkData;
 
     fn encode(self) -> Self::NetworkData;
+}
+
+pub type ResponseStream<T: Encode> =
+    stream::MapOk<intercom::ReplyStream<T, Error>, fn(T) -> T::NetworkData>;
+
+pub fn response_stream<T: Encode>(
+    reply_stream: intercom::ReplyStream<T, Error>,
+) -> ResponseStream<T> {
+    reply_stream.map_ok(Encode::encode)
 }
 
 impl<T, N> Decode for Box<[N]>
@@ -109,6 +121,14 @@ impl Encode for HeaderId {
 
     fn encode(self) -> Self::NetworkData {
         net_data::BlockId::try_from(self.as_bytes()).unwrap()
+    }
+}
+
+impl Encode for Block {
+    type NetworkData = net_data::Block;
+
+    fn encode(self) -> Self::NetworkData {
+        net_data::Block::from_bytes(self.serialize_as_vec().unwrap())
     }
 }
 
