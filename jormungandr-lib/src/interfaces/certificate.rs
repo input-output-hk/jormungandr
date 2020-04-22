@@ -122,7 +122,7 @@ impl Readable for Certificate {
                 let cert = certificate::VotePlan::read(buf)?;
                 Ok(Certificate(certificate::Certificate::VotePlan(cert)))
             }
-            6 => {
+            7 => {
                 let cert = certificate::VoteCast::read(buf)?;
                 Ok(Certificate(certificate::Certificate::VoteCast(cert)))
             }
