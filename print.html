@@ -2345,6 +2345,12 @@ blockchain_configuration:
   #    min: 300
   #    max: 1000
 
+  # list of the committee members, they will be used to guarantee the initial
+  # valid operation of the vote as well as privacy.
+  committees:
+    - &quot;7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19&quot;
+    - &quot;f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db&quot;
+
 # Initial state of the ledger. Each item is applied in order of this list
 initial:
   # Initial deposits present in the blockchain
