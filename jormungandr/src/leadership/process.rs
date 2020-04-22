@@ -386,7 +386,7 @@ impl Module {
         let event_logs = entry.log;
 
         let enclave = self.enclave.clone();
-        let sender = self.block_message.clone();
+        let mut sender = self.block_message.clone();
         let pool = self.pool.clone();
 
         let (parent_id, chain_length, ledger, ledger_parameters) = if self.tip_ref.block_date()
