@@ -1,11 +1,8 @@
 pub use jormungandr_lib::interfaces::{PreferredListConfig, TrustedPeer};
-use poldercast::{
-    Address, GossipsBuilder, Layer, NodeProfile, NodeProfileBuilder, Nodes, ViewBuilder,
-};
+use poldercast::{Address, GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
 use rand::seq::IteratorRandom;
-use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
+use rand::{Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
-use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
 use std::collections::HashSet;
 
@@ -65,13 +62,11 @@ impl Layer for PreferredListLayer {
     }
 
     fn view(&mut self, view: &mut ViewBuilder, all_nodes: &mut Nodes) {
-        let selected: HashSet<Address> = self
+        let selected: HashSet<&Address> = self
             .peers
             .iter()
-            .cloned()
             .choose_multiple(&mut self.prng, self.view_max)
-            .iter()
-            .cloned()
+            .into_iter()
             .collect();
         for node in all_nodes.all_available_nodes() {
             if selected.contains(node.address()) {
