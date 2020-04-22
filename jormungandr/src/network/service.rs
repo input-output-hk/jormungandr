@@ -10,7 +10,7 @@ use crate::intercom::{self, BlockMsg, ClientMsg};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
 use chain_network::data::{
-    Block, BlockId, BlockIds, Fragment, FragmentId, FragmentIds, Gossip, Header, Peer, Peers,
+    Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, Header, Peer, Peers,
 };
 use chain_network::error::{self as net_error, Error};
 
@@ -55,15 +55,15 @@ impl Node for NodeService {
     type FragmentService = Self;
     type GossipService = Self;
 
-    fn block_service(&mut self) -> Option<&mut Self::BlockService> {
+    fn block_service(&self) -> Option<&Self::BlockService> {
         Some(self)
     }
 
-    fn fragment_service(&mut self) -> Option<&mut Self::FragmentService> {
+    fn fragment_service(&self) -> Option<&Self::FragmentService> {
         Some(self)
     }
 
-    fn gossip_service(&mut self) -> Option<&mut Self::GossipService> {
+    fn gossip_service(&self) -> Option<&Self::GossipService> {
         Some(self)
     }
 }
@@ -93,7 +93,7 @@ impl BlockService for NodeService {
     type GetHeadersStream = ResponseStream<app_data::Header>;
     type SubscriptionStream = SubscriptionStream<BlockEventSubscription>;
 
-    fn block0(&mut self) -> BlockId {
+    fn block0(&self) -> BlockId {
         BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap()
     }
 
@@ -270,7 +270,7 @@ impl GossipService for NodeService {
         Ok(serve_subscription(outbound))
     }
 
-    async fn peers(&mut self) -> Result<Peers, Error> {
+    async fn peers(&self, limit: u32) -> Result<Peers, Error> {
         let logger = self.logger().new(o!("request" => "Peers"));
         let topology = &self.global_state.topology;
         let view = topology.view(poldercast::Selection::Any).await;
@@ -278,6 +278,9 @@ impl GossipService for NodeService {
         for n in view.peers.into_iter() {
             if let Some(addr) = n.to_socketaddr() {
                 peers.push(Peer { addr });
+                if peers.len() >= limit as usize {
+                    break;
+                }
             }
         }
         if peers.len() == 0 {
