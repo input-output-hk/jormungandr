@@ -79,13 +79,19 @@ async fn send_message<T>(mbox: MessageBox<T>, msg: T, logger: Logger) -> Result<
     })
 }
 
+type SubscriptionStream<S: Stream> = stream::Map<S, fn(S::Item) -> Result<S::Item, Error>>;
+
+fn serve_subscription<S: Stream>(sub: S) -> SubscriptionStream<S> {
+    sub.map(Ok)
+}
+
 #[async_trait]
 impl BlockService for NodeService {
     type PullBlocksToTipStream = ResponseStream<app_data::Block>;
     type GetBlocksStream = ResponseStream<app_data::Block>;
     type PullHeadersStream = ResponseStream<app_data::Header>;
     type GetHeadersStream = ResponseStream<app_data::Header>;
-    type SubscriptionStream = BlockEventSubscription;
+    type SubscriptionStream = SubscriptionStream<BlockEventSubscription>;
 
     fn block0(&mut self) -> BlockId {
         BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap()
@@ -199,14 +205,14 @@ impl BlockService for NodeService {
             .peers
             .subscribe_to_block_events(subscriber)
             .await;
-        Ok(outbound)
+        Ok(serve_subscription(outbound))
     }
 }
 
 #[async_trait]
 impl FragmentService for NodeService {
     type GetFragmentsStream = ResponseStream<app_data::Fragment>;
-    type SubscriptionStream = FragmentSubscription;
+    type SubscriptionStream = SubscriptionStream<FragmentSubscription>;
 
     async fn get_fragments(&self, ids: FragmentIds) -> Result<Self::GetFragmentsStream, Error> {
         Err(net_error::Error::unimplemented())
@@ -233,13 +239,13 @@ impl FragmentService for NodeService {
             .peers
             .subscribe_to_fragments(subscriber)
             .await;
-        Ok(outbound)
+        Ok(serve_subscription(outbound))
     }
 }
 
 #[async_trait]
 impl GossipService for NodeService {
-    type SubscriptionStream = GossipSubscription;
+    type SubscriptionStream = SubscriptionStream<GossipSubscription>;
 
     async fn gossip_subscription(
         &self,
@@ -261,7 +267,7 @@ impl GossipService for NodeService {
             .peers
             .subscribe_to_gossip(subscriber)
             .await;
-        Ok(outbound)
+        Ok(serve_subscription(outbound))
     }
 
     async fn peers(&mut self) -> Result<Peers, Error> {
