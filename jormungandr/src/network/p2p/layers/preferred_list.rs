@@ -1,9 +1,12 @@
 pub use jormungandr_lib::interfaces::{PreferredListConfig, TrustedPeer};
-pub use poldercast::Address;
-use poldercast::{GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
+use poldercast::{
+    Address, GossipsBuilder, Layer, NodeProfile, NodeProfileBuilder, Nodes, ViewBuilder,
+};
+use rand::seq::IteratorRandom;
 use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
 use serde::{Deserialize, Serialize};
+use std::borrow::BorrowMut;
 use std::collections::HashSet;
 
 pub struct PreferredListLayer {
@@ -27,8 +30,8 @@ impl PreferredListLayer {
         let mut seed = [0; 32];
 
         rand::thread_rng().fill(&mut seed);
-
-        Self::new_with_seed(config.view_max.into(), config.peers, seed)
+        let addresses: Vec<Address> = config.peers.iter().map(|p| p.address.clone()).collect();
+        Self::new_with_seed(config.view_max.into(), addresses, seed)
     }
 
     fn new_with_seed(
@@ -38,7 +41,7 @@ impl PreferredListLayer {
     ) -> Self {
         Self {
             view_max,
-            peers,
+            peers: peers.iter().map(Clone::clone).collect(),
             prng: ChaChaRng::from_seed(seed),
         }
     }
@@ -61,13 +64,18 @@ impl Layer for PreferredListLayer {
     ) {
     }
 
-    fn view(&mut self, view: &mut ViewBuilder, _all_nodes: &mut Nodes) {
-        let selected = self.peers.choose_multiple(&mut self.prng, self.view_max);
-
-        for selected in selected {
-            let info = poldercast::NodeInfo::new(selected.id.clone(), selected.address.clone());
-
-            view.add_info(info);
+    fn view(&mut self, view: &mut ViewBuilder, all_nodes: &mut Nodes) {
+        let selected: HashSet<Address> = self
+            .peers
+            .iter()
+            .choose_multiple(&mut self.prng, self.view_max)
+            .iter()
+            .map(|x| *x.clone())
+            .collect();
+        for node in all_nodes.all_available_nodes() {
+            if selected.contains(node.address()) {
+                view.add(node.borrow_mut());
+            }
         }
     }
 }
