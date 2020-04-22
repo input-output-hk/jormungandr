@@ -161,6 +161,7 @@ impl Staging {
                 }
                 Certificate::OwnerStakeDelegation(_) => unreachable!(),
                 Certificate::VotePlan(_) => unreachable!(),
+                Certificate::VoteCast(_) => unreachable!(),
             },
         };
         self.kind = StagingKind::Authed;
@@ -242,6 +243,9 @@ impl Staging {
                     self.finalize_payload(&c, fee_algorithm, output_policy)
                 }
                 Certificate::VotePlan(vp) => {
+                    self.finalize_payload(&vp, fee_algorithm, output_policy)
+                }
+                Certificate::VoteCast(vp) => {
                     self.finalize_payload(&vp, fee_algorithm, output_policy)
                 }
                 Certificate::OwnerStakeDelegation(c) => {
@@ -367,6 +371,9 @@ impl Staging {
                     SignedCertificate::VotePlan(vp, a) => {
                         self.make_fragment(&vp, &a, Fragment::VotePlan)
                     }
+                    SignedCertificate::VoteCast(vp, a) => {
+                        self.make_fragment(&vp, &a, Fragment::VoteCast)
+                    }
                 }
             }
         }
@@ -405,6 +412,9 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
                 }
                 Certificate::VotePlan(cp) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&cp))
+                }
+                Certificate::VoteCast(cp) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&cp))
                 }
             },

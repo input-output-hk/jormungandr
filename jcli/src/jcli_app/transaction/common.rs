@@ -24,6 +24,12 @@ pub struct CommonFees {
     /// fee per owner stake delegation (default: fee-certificate)
     #[structopt(long = "fee-owner-stake-delegation")]
     pub certificate_owner_stake_delegation: Option<u64>,
+    /// fee per vote plan
+    #[structopt(long = "fee-vote-plan")]
+    pub certificate_vote_plan: Option<u64>,
+    /// fee per vote cast
+    #[structopt(long = "fee-vote-cast")]
+    pub certificate_vote_cast: Option<u64>,
 }
 
 #[derive(StructOpt)]
@@ -46,6 +52,8 @@ impl CommonFees {
             self.certificate_stake_delegation.and_then(NonZeroU64::new),
             self.certificate_owner_stake_delegation
                 .and_then(NonZeroU64::new),
+            self.certificate_vote_plan.and_then(NonZeroU64::new),
+            self.certificate_vote_cast.and_then(NonZeroU64::new),
         );
         fees.per_certificate_fees(per_certificate_fees);
         fees
