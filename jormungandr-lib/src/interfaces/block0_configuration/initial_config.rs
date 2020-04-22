@@ -288,6 +288,8 @@ impl BlockchainConfiguration {
                 ConfigParam::PerCertificateFees(param) => per_certificate_fees
                     .replace(param)
                     .map(|_| "per_certificate_fees"),
+                ConfigParam::AddCommitteeId(committee_id) => todo!(),
+                ConfigParam::RemoveCommitteeId(committee_id) => todo!(),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;

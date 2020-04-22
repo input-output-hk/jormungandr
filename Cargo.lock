@@ -438,6 +438,7 @@ dependencies = [
  "chain-storage",
  "chain-time",
  "ed25519-bip32",
+ "hex",
  "imhamt",
  "lazy_static",
  "quickcheck",
