@@ -377,12 +377,7 @@ async fn bootstrap_internal(
     use tokio02::spawn;
 
     if let Some(context) = rest_context.as_ref() {
-        block_on(async {
-            context
-                .write()
-                .await
-                .set_node_state(NodeState::Bootstrapping)
-        })
+        block_on(async { context.set_node_state(NodeState::Bootstrapping) })
     }
 
     let block0_hash = block0.header.hash();
@@ -402,7 +397,6 @@ async fn bootstrap_internal(
 
     block_on(async {
         if let Some(rest_context) = &rest_context {
-            let mut rest_context = rest_context.write().await;
             rest_context.set_blockchain(blockchain.clone());
             rest_context.set_blockchain_tip(blockchain_tip.clone());
         }
