@@ -5,6 +5,7 @@ authors = ["dev@iohk.io"]
 edition = "2018"
 
 [dependencies]
+bawawa = "0.1.5"
 bech32 = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
@@ -20,6 +21,14 @@ rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
+tokio-codec = "0.1"
+futures = "0.1"
+poldercast = "0.11.4"
+sysinfo = "0.14.1"
+os_info = { version = "2.0.0", default-features = false }
+zip = "0.5.5"
+flate2 = "1.0.14"
+tar = "0.4"
 poldercast = "0.13.1"
 hex = "0.4"
 multiaddr = "0.3.1"
