@@ -7,7 +7,7 @@ mod v1;
 
 pub use self::context::{Context, ContextLock, FullContext};
 
-use crate::settings::start::{Rest, Tls};
+use jormungandr_lib::interfaces::{Rest, Tls};
 
 use futures::{channel::mpsc, prelude::*};
 use std::{error::Error, net::SocketAddr, time::Duration};

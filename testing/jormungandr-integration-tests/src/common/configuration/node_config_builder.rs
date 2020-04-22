@@ -45,6 +45,8 @@ impl NodeConfigBuilder {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string())
                     .parse()
                     .unwrap(),
+                tls: None,
+                cors: None,
             },
             p2p: P2p {
                 trusted_peers: vec![],

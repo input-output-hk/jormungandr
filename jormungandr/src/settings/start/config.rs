@@ -3,8 +3,10 @@ use crate::{
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
+pub use jormungandr_lib::interfaces::{Cors, Rest, Tls};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
+use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
 
@@ -83,7 +85,6 @@ pub struct Cors {
     /// If none provided, CORS responses won't be cached
     pub max_age_secs: Option<u64>,
 }
-
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
 pub struct CorsOrigin(String);
 
