@@ -219,6 +219,12 @@ pub fn filter(
         .and_then(handlers::get_diagnostic)
         .boxed();
 
+    let committees = warp::path!("committees")
+        .and(warp::get())
+        .and(with_context.clone())
+        .and_then(handlers::get_committees)
+        .boxed();
+
     let routes = shutdown
         .or(account)
         .or(block)
@@ -235,6 +241,7 @@ pub fn filter(
         .or(rewards)
         .or(utxo)
         .or(diagnostic)
+        .or(committees)
         .boxed();
 
     root.and(routes).recover(handle_rejection).boxed()

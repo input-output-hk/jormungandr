@@ -645,3 +645,16 @@ pub async fn get_network_p2p_view_topic(
         .map(Into::into)
         .collect())
 }
+
+pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .epoch_ledger_parameters()
+        .committees
+        .to_vec()
+        .iter()
+        .map(|cid| cid.to_string())
+        .collect())
+}
