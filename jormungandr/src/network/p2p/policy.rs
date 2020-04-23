@@ -149,8 +149,7 @@ impl poldercast::Policy for Policy {
         } else if node.record().is_clear() {
             // if the record is clear, do nothing, leave the Node in the available nodes
             PolicyReport::None
-        } else if self.quarantine_whitelist.contains(node_address)
-        {
+        } else if self.quarantine_whitelist.contains(node_address) {
             // if the node is whitelisted
             debug!(
                 logger,
