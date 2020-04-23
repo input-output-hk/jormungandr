@@ -1,5 +1,6 @@
 mod account;
 mod block;
+mod committees;
 mod diagnostic;
 mod leaders;
 mod message;
@@ -50,6 +51,8 @@ pub enum V0 {
     Diagnostic(diagnostic::Diagnostic),
     /// Rewards information
     Rewards(rewards::Rewards),
+    /// Committee members list
+    Committees(committees::Committees),
 }
 
 impl V0 {
@@ -70,6 +73,7 @@ impl V0 {
             V0::Utxo(utxo) => utxo.exec(),
             V0::Diagnostic(diagnostic) => diagnostic.exec(),
             V0::Rewards(rewards) => rewards.exec(),
+            V0::Committees(committees) => committees.exec(),
         }
     }
 }
