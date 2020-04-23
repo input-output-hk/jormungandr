@@ -79,14 +79,14 @@ impl Client {
         );
 
         Client {
-            service: inner,
+            inner,
             logger,
             global_state,
             inbound,
             block_solicitations: comms.subscribe_to_block_solicitations(),
             chain_pulls: comms.subscribe_to_chain_pulls(),
             gossip_processor,
-            client_box: builder.channels.client_box,
+            channels: builder.channels,
             incoming_block_announcement: None,
             incoming_solicitation: None,
             incoming_fragment: None,
@@ -95,7 +95,7 @@ impl Client {
 }
 
 struct InboundSubscriptions {
-    //pub node_id: Address,
+    pub node_id: Address,
     pub block_events: BlockSubscription,
     pub fragments: FragmentSubscription,
     pub gossip: GossipSubscription,
