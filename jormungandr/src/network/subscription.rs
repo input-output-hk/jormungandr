@@ -83,7 +83,11 @@ pub async fn process_gossip<S>(
 {
     let processor = GossipProcessor::new(node_id, global_state, logger);
     let res = stream
-        .try_for_each(|item| processor.process_item(item))
+        .try_for_each(|item| async move {
+            processor.start_processing_item(item)?;
+            future::poll_fn(|cx| processor.poll_ready(cx)).await;
+            Ok(())
+        })
         .await;
     if let Err(e) = res {
         debug!(
@@ -162,6 +166,7 @@ pub struct GossipProcessor {
     node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
+    pending_processing: Option<BoxFuture<'static, ()>>,
 }
 
 impl GossipProcessor {
@@ -170,10 +175,19 @@ impl GossipProcessor {
             node_id,
             global_state,
             logger,
+            pending_processing: None,
         }
     }
 
-    pub async fn process_item(&self, gossip: net_data::Gossip) -> Result<(), Error> {
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if let Some(fut) = &mut self.pending_processing {
+            ready!(Pin::new(fut).poll(cx));
+            self.pending_processing = None;
+        }
+        Poll::Ready(())
+    }
+
+    fn start_processing_item(&mut self, gossip: net_data::Gossip) -> Result<(), Error> {
         let nodes = gossip.nodes.decode()?;
         let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
             filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
@@ -182,25 +196,25 @@ impl GossipProcessor {
             debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
         }
         let node_id = self.node_id;
-        future::join(
-            async {
-                let refreshed = self
-                    .global_state
-                    .peers
-                    .refresh_peer_on_gossip(node_id)
-                    .await;
+        let state1 = self.global_state.clone();
+        let state2 = self.global_state.clone();
+        let logger = self.logger.clone();
+        let fut = future::join(
+            async move {
+                let refreshed = state1.peers.refresh_peer_on_gossip(node_id).await;
                 if !refreshed {
                     debug!(
-                        self.logger,
+                        logger,
                         "received gossip from node that is not in the peer map",
                     );
                 }
             },
-            self.global_state
-                .topology
-                .accept_gossips(node_id, nodes.into()),
+            async move {
+                state2.topology.accept_gossips(node_id, nodes.into()).await;
+            },
         )
-        .await;
+        .map(|_| ());
+        self.pending_processing = Some(Box::pin(fut));
         Ok(())
     }
 }
