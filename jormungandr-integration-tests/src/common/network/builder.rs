@@ -75,7 +75,7 @@ impl NetworkBuilder {
             let leader: NodeAlias = alias.into();
             blockchain.add_leader(leader);
         }
-       
+
         for wallet in &self.wallets {
             blockchain.add_wallet(wallet.clone());
         }

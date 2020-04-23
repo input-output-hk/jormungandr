@@ -1,4 +1,6 @@
 use crate::common::jormungandr::{JormungandrProcess, JormungandrRest};
+use chain_impl_mockchain::fee::LinearFee;
+use jormungandr_lib::crypto::hash::Hash;
 pub struct Node {
     jormungandr: JormungandrProcess,
     alias: String,
@@ -43,5 +45,23 @@ impl Node {
 
     pub fn log_stats(&self) {
         println!("{}: {:?}", self.alias(), self.rest().stats().unwrap());
+    }
+
+    pub fn genesis_block_hash(&self) -> Hash {
+        self.jormungandr.genesis_block_hash()
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.jormungandr.fees()
+    }
+
+    pub fn process(&self) -> &JormungandrProcess {
+        &self.jormungandr
+    }
+}
+
+impl Into<JormungandrProcess> for Node {
+    fn into(self) -> JormungandrProcess {
+        self.jormungandr
     }
 }

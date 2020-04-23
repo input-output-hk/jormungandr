@@ -87,7 +87,6 @@ impl Controller {
             .expect(&format!("cannot start {}", alias))
     }
 
-    
     pub fn spawn_as_passive_and_wait(&mut self, alias: &str) -> Node {
         self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Passive)
             .expect(&format!("cannot start {}", alias))
