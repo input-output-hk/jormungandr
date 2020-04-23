@@ -231,7 +231,7 @@ pub struct Leadership {
     pub logs_capacity: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct Topic(pub poldercast::Topic);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
