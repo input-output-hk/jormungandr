@@ -1,15 +1,16 @@
 use crate::common::{
     configuration::{jormungandr_config::JormungandrConfig, SecretModelFactory},
+    data::StakePool,
     file_utils,
     jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
     process_utils,
 };
-use chain_crypto::{AsymmetricKey, Curve25519_2HashDH, Ed25519, SumEd25519_12};
+use chain_crypto::{AsymmetricKey, Ed25519};
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::{Identifier, KeyPair},
-    interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, Ratio, TaxType},
+    interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret},
     wallet::Wallet,
 };
 use rand;
@@ -53,52 +54,13 @@ pub fn create_new_key_pair<K: AsymmetricKey>() -> KeyPair<K> {
     KeyPair::generate(rand::rngs::OsRng)
 }
 
-fn create_stake_pool(owner: &Wallet) -> StakePool {
-    // leader
-    let leader = create_new_key_pair::<Ed25519>();
-
-    // stake pool
-    let pool_vrf = create_new_key_pair::<Curve25519_2HashDH>();
-    let pool_kes = create_new_key_pair::<SumEd25519_12>();
-
-    // note we use the faucet as the owner to this pool
-    let stake_key = owner.signing_key_as_str();
-    let stake_key_pub = owner.identifier().to_bech32_str();
-
-    let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key);
-
-    let jcli_certificate = JCLICertificateWrapper::new();
-
-    let stake_pool_signcert_file = jcli_certificate.assert_new_signed_stake_pool_cert(
-        &pool_kes.identifier().to_bech32_str(),
-        &pool_vrf.identifier().to_bech32_str(),
-        &stake_key_file,
-        0,
-        1,
-        &stake_key_pub,
-        Some(TaxType {
-            fixed: 100.into(),
-            ratio: Ratio::new_checked(1, 10).unwrap(),
-            max_limit: None,
-        }),
-    );
-    StakePool {
-        owner: owner.clone(),
-        leader: leader,
-        pool_vrf: pool_vrf,
-        pool_kes: pool_kes,
-        stake_pool_signcert_file: stake_pool_signcert_file.clone(),
-        stake_pool_id: jcli_certificate.assert_get_stake_pool_id(&stake_pool_signcert_file),
-    }
-}
-
 fn create_stake_pool_owner_delegation_cert(stake_pool: &StakePool) -> String {
-    let stake_key = stake_pool.owner.signing_key_as_str();
-    let stake_key_pub = stake_pool.owner.identifier().to_bech32_str();
+    let stake_key = stake_pool.owner().signing_key_as_str();
+    let stake_key_pub = stake_pool.owner().identifier().to_bech32_str();
     let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key);
 
     JCLICertificateWrapper::new().assert_new_signed_stake_pool_delegation(
-        &stake_pool.stake_pool_id,
+        &stake_pool.id(),
         &stake_key_pub,
         &stake_key_file,
     )
@@ -108,12 +70,12 @@ pub fn start_stake_pool(
     owners: &[Wallet],
     initial_funds: &[Wallet],
     config_builder: &mut ConfigurationBuilder,
-) -> Result<(JormungandrProcess, Vec<String>), StartupError> {
-    let stake_pools: Vec<StakePool> = owners.iter().map(|x| create_stake_pool(x)).collect();
+) -> Result<(JormungandrProcess, Vec<StakePool>), StartupError> {
+    let stake_pools: Vec<StakePool> = owners.iter().map(|x| StakePool::new(x)).collect();
 
     let stake_pool_registration_certs: Vec<String> = stake_pools
         .iter()
-        .map(|x| file_utils::read_file(&x.stake_pool_signcert_file))
+        .map(|x| file_utils::read_file(x.stake_pool_signcert_file()))
         .collect();
     let stake_pool_owner_delegation_certs: Vec<String> = stake_pools
         .iter()
@@ -125,7 +87,7 @@ pub fn start_stake_pool(
 
     let leaders: Vec<ConsensusLeaderId> = stake_pools
         .iter()
-        .map(|x| x.leader.identifier().into())
+        .map(|x| x.leader().identifier().into())
         .collect();
 
     let mut funds: Vec<InitialUTxO> = owners
@@ -156,13 +118,7 @@ pub fn start_stake_pool(
 
     let secrets: Vec<NodeSecret> = stake_pools
         .iter()
-        .map(|x| {
-            SecretModelFactory::genesis(
-                x.pool_kes.signing_key(),
-                x.pool_vrf.signing_key(),
-                &x.stake_pool_id,
-            )
-        })
+        .map(|x| SecretModelFactory::genesis(x.kes().signing_key(), x.vrf().signing_key(), &x.id()))
         .collect();
 
     let secret_model_paths = secrets
@@ -173,15 +129,10 @@ pub fn start_stake_pool(
     config.secret_models = secrets;
     config.secret_model_paths = secret_model_paths;
 
-    let stake_pool_ids: Vec<String> = stake_pools
-        .iter()
-        .map(|x| x.stake_pool_id.clone())
-        .collect();
-
     Starter::new()
         .config(config)
         .start()
-        .map(|process| (process, stake_pool_ids))
+        .map(|process| (process, stake_pools))
 }
 
 pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &JormungandrConfig) {
@@ -202,14 +153,4 @@ pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &Jormung
 
 pub fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
     sleep_till_epoch(1, grace_period, config);
-}
-
-// temporary struct which should be replaced by one from chain-libs or jormungandr-lib
-struct StakePool {
-    pub owner: Wallet,
-    pub leader: KeyPair<Ed25519>,
-    pub pool_vrf: KeyPair<Curve25519_2HashDH>,
-    pub pool_kes: KeyPair<SumEd25519_12>,
-    pub stake_pool_signcert_file: PathBuf,
-    pub stake_pool_id: String,
 }

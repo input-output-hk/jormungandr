@@ -57,7 +57,7 @@ pub struct SigningKey<A: AsymmetricKey>(
 ///
 /// [`SigningKey`]: ./struct.SigningKey.html
 /// [`Identifier`]: ./struct.Identifier.html
-pub struct KeyPair<A: AsymmetricKey>(chain_crypto::KeyPair<A>);
+pub struct KeyPair<A: AsymmetricKey>(pub chain_crypto::KeyPair<A>);
 
 /// signature for the given cryptographic algorithm and associated type
 /// It can be created from a [`SigningKey`] and a value of type `T` and

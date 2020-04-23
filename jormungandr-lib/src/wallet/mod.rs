@@ -4,11 +4,22 @@ pub mod utxo;
 
 use crate::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
-    interfaces::{Address, Value},
+    interfaces::{Address, Initial, Value},
+    testing::{FragmentBuilder, FragmentBuilderError},
 };
-use chain_addr::Discrimination;
-use chain_crypto::Ed25519;
+use chain_impl_mockchain::{
+    fee::FeeAlgorithm,
+    key::EitherEd25519SecretKey,
+    testing::data::{AddressData, AddressDataValue, StakePool, Wallet as WalletLib},
+    transaction::{
+        InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
+        TransactionSignDataHash, Witness,
+    },
+    value::Value as ValueLib,
+};
 
+use chain_addr::Discrimination;
+use chain_crypto::{Ed25519, Signature};
 use rand_core::{CryptoRng, RngCore};
 use thiserror::Error;
 
@@ -20,7 +31,7 @@ pub use chain_impl_mockchain::{
     fragment::Fragment,
     header::HeaderId,
     milli::Milli,
-    transaction::UnspecifiedAccountIdentifier,
+    transaction::{TransactionBindingAuthData, UnspecifiedAccountIdentifier},
 };
 
 #[derive(Error, Debug)]
@@ -31,14 +42,8 @@ pub enum WalletError {
     CannotAddInput,
     #[error("cannot make witness for the transaction")]
     CannotMakeWitness,
-    #[error("cannot compute the transaction's balance")]
-    CannotComputeBalance,
-    #[error("Cannot compute the new fees of {0} for a new input")]
-    CannotAddCostOfExtraInput(u64),
-    #[error("transaction already balanced")]
-    TransactionAlreadyBalanced,
-    #[error("the transaction has {0} value extra than necessary")]
-    TransactionAlreadyExtraValue(Value),
+    #[error("transaction error")]
+    FragmentError(#[from] FragmentBuilderError),
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +95,16 @@ impl Wallet {
         }
     }
 
+    pub fn sign_slice<'a>(
+        &self,
+        data: &[u8],
+    ) -> Signature<TransactionBindingAuthDataPhantom, Ed25519> {
+        match self {
+            Wallet::Account(account) => account.signing_key().as_ref().sign_slice(&data),
+            _ => unimplemented!(),
+        }
+    }
+
     /// Temporary method exposing private key
     pub fn signing_key_as_str(&self) -> String {
         match self {
@@ -116,6 +131,34 @@ impl Wallet {
         }
     }
 
+    pub fn add_input<'a, Extra: Payload>(
+        &self,
+        payload: PayloadSlice<'a, Extra>,
+        iobuilder: &mut InputOutputBuilder,
+        fees: &LinearFee,
+    ) -> Result<(), FragmentBuilderError>
+    where
+        LinearFee: FeeAlgorithm,
+    {
+        match self {
+            Wallet::Account(account) => account.add_input(payload, iobuilder, fees),
+            Wallet::UTxO(_utxo) => unimplemented!(),
+            Wallet::Delegation(_delegation) => unimplemented!(),
+        }
+    }
+
+    pub fn mk_witness(
+        &self,
+        block0_hash: &Hash,
+        signing_data: &TransactionSignDataHash,
+    ) -> Witness {
+        match self {
+            Wallet::Account(account) => account.mk_witness(block0_hash, signing_data),
+            Wallet::UTxO(utxo) => utxo.mk_witness(block0_hash, signing_data),
+            Wallet::Delegation(delegation) => delegation.mk_witness(block0_hash, signing_data),
+        }
+    }
+
     pub fn confirm_transaction(&mut self) {
         match self {
             Wallet::Account(account) => account.increment_counter(),
@@ -130,11 +173,8 @@ impl Wallet {
         }
     }
 
-    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
-        match &self {
-            Wallet::Account(account) => account.delegation_cert_for_block0(pool_id),
-            _ => unimplemented!(),
-        }
+    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> Initial {
+        FragmentBuilder::full_delegation_cert_for_block0(&self, pool_id)
     }
 
     pub fn transaction_to(
@@ -144,9 +184,41 @@ impl Wallet {
         address: Address,
         value: Value,
     ) -> Result<Fragment, WalletError> {
-        match self {
-            Wallet::Account(account) => account.transaction_to(block0_hash, fees, address, value),
-            _ => unimplemented!(),
-        }
+        FragmentBuilder::new(block0_hash, fees)
+            .transaction(&self, address, value)
+            .map_err(|e| WalletError::FragmentError(e))
+    }
+
+    pub fn issue_pool_retire_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        stake_pool: &StakePool,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_retire(vec![&self], stake_pool))
+    }
+}
+
+impl Into<WalletLib> for Wallet {
+    fn into(self) -> WalletLib {
+        let address_data = match self {
+            Wallet::Account(account) => AddressData::new(
+                account.signing_key().as_ref().clone(),
+                Some(account.internal_counter().clone()),
+                account.address(Discrimination::Test).into(),
+            ),
+            Wallet::UTxO(utxo) => AddressData::new(
+                EitherEd25519SecretKey::Normal(utxo.last_signing_key().as_ref().clone()),
+                None,
+                utxo.address(Discrimination::Test).into(),
+            ),
+            Wallet::Delegation(delegation) => AddressData::new(
+                EitherEd25519SecretKey::Normal(delegation.last_signing_key().as_ref().clone()),
+                None,
+                delegation.address(Discrimination::Test).into(),
+            ),
+        };
+        let address_data_value = AddressDataValue::new(address_data, ValueLib(0));
+        WalletLib::from_address_data_value(address_data_value)
     }
 }

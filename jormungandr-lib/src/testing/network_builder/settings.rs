@@ -249,9 +249,7 @@ impl Settings {
                 // and add it to the block0.initial array
                 let delegation_certificate = wallet.delegation_cert_for_block0(stake_pool_id);
 
-                self.block0
-                    .initial
-                    .push(Initial::Cert(delegation_certificate.into()));
+                self.block0.initial.push(delegation_certificate);
             }
         }
     }

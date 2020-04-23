@@ -74,7 +74,6 @@ impl Wallet {
         &self,
         block0_hash: &Hash,
         signing_data: &TransactionSignDataHash,
-        _i: usize,
     ) -> Witness {
         Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, |d| {
             self.last_signing_key().as_ref().sign(d)

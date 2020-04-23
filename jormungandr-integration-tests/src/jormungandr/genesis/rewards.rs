@@ -19,7 +19,7 @@ pub fn collect_reward() {
         startup::create_new_account_address(),
         startup::create_new_account_address(),
     ];
-    let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
+    let (jormungandr, stake_pools) = startup::start_stake_pool(
         &stake_pool_owners,
         &[],
         ConfigurationBuilder::new()
@@ -30,9 +30,9 @@ pub fn collect_reward() {
     .unwrap();
     startup::sleep_till_next_epoch(10, &jormungandr.config);
 
-    let stake_pools_data: Vec<StakePoolStats> = stake_pool_ids
+    let stake_pools_data: Vec<StakePoolStats> = stake_pools
         .iter()
-        .map(|x| jcli_wrapper::assert_rest_get_stake_pool(x, &jormungandr.rest_address()))
+        .map(|x| jcli_wrapper::assert_rest_get_stake_pool(x.id(), &jormungandr.rest_address()))
         .collect();
 
     // at least one stake pool has reward
@@ -66,7 +66,7 @@ pub fn reward_history() {
         startup::create_new_account_address(),
         startup::create_new_account_address(),
     ];
-    let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
+    let (jormungandr, stake_pools) = startup::start_stake_pool(
         &stake_pool_owners,
         &[],
         ConfigurationBuilder::new()
@@ -113,12 +113,12 @@ pub fn reward_history() {
         "reward history is not equal to reward by epoch"
     );
 
-    let stake_pools_data: Vec<(Hash, StakePoolStats)> = stake_pool_ids
+    let stake_pools_data: Vec<(Hash, StakePoolStats)> = stake_pools
         .iter()
         .map(|x| {
             (
-                Hash::from_str(x).unwrap(),
-                jcli_wrapper::assert_rest_get_stake_pool(x, &jormungandr.rest_address()),
+                Hash::from_str(x.id()).unwrap(),
+                jcli_wrapper::assert_rest_get_stake_pool(x.id(), &jormungandr.rest_address()),
             )
         })
         .collect();

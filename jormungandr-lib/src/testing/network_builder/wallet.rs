@@ -1,15 +1,13 @@
 use super::NodeAlias;
 use crate::{
     crypto::hash::Hash,
-    interfaces::{Address, Value},
+    interfaces::{Address, Initial, Value},
     wallet::{
         account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
     },
 };
 use chain_impl_mockchain::{
-    certificate::{PoolId, SignedCertificate},
-    fee::LinearFee,
-    fragment::Fragment,
+    certificate::PoolId, fee::LinearFee, fragment::Fragment,
     transaction::UnspecifiedAccountIdentifier,
 };
 use rand_core::{CryptoRng, RngCore};
@@ -119,7 +117,7 @@ impl Wallet {
         self.inner.stake_key()
     }
 
-    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> SignedCertificate {
+    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> Initial {
         self.inner.delegation_cert_for_block0(pool_id)
     }
 
