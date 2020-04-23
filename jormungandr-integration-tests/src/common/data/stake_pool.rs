@@ -36,7 +36,6 @@ impl StakePool {
             .with_owners(vec![owner.identifier().into_public_key()])
             .with_pool_permissions(PoolPermissions::new(1))
             .with_reward_account(false)
-            .with_serial(0)
             .with_tax_type(TaxType {
                 fixed: ValueLib(100),
                 ratio: RatioLib {
