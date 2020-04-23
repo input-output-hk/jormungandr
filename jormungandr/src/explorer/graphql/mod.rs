@@ -892,13 +892,14 @@ impl Pool {
     pub fn retirement(&self, context: &Context) -> FieldResult<Option<PoolRetirement>> {
         match &self.data {
             Some(data) => Ok(data.retirement.clone().map(PoolRetirement::from)),
-            None => Ok(context
-                .db
-                .get_stake_pool_data(&self.id)
-                .wait()
-                .unwrap()
-                .map(|data| data.retirement.clone())
-                .and_then(|retirement| retirement.map(PoolRetirement::from))),
+            None => Ok(block_on(async {
+                context
+                    .db
+                    .get_stake_pool_data(&self.id)
+                    .await
+                    .map(|data| data.retirement.clone())
+                    .and_then(|retirement| retirement.map(PoolRetirement::from))
+            })),
         }
     }
 }
@@ -1046,19 +1047,23 @@ impl Epoch {
             None => return Ok(None),
         };
 
-        let epoch_lower_bound = block_on(
+        let epoch_lower_bound = block_on(async {
             context
                 .db
                 .get_block(&epoch_data.first_block)
-                .map(|block| u32::from(block.expect("The block to be indexed").chain_length)),
-        );
+                .await
+                .map(|block| u32::from(block.chain_length))
+        })
+        .expect("Epoch lower bound");
 
-        let epoch_upper_bound = block_on(
+        let epoch_upper_bound = block_on(async {
             context
                 .db
                 .get_block(&epoch_data.last_block)
-                .map(|block| u32::from(block.expect("The block to be indexed").chain_length)),
-        );
+                .await
+                .map(|block| u32::from(block.chain_length))
+        })
+        .expect("Epoch upper bound");
 
         let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
             lower_bound: 0,
@@ -1289,12 +1294,10 @@ pub fn create_schema() -> Schema {
 }
 
 fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
-    block_on(
-        context
-            .db
-            .get_latest_block_hash()
-            .and_then(|hash| context.db.get_block(&hash)),
-    )
+    block_on(async {
+        let hash = context.db.get_latest_block_hash().await;
+        context.db.get_block(&hash).await
+    })
     .ok_or_else(|| ErrorKind::InternalError("tip is not in explorer".to_owned()))
     .map_err(Into::into)
 }
