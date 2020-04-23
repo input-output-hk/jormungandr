@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
+use file_diff::diff_files;
 use std::fs::metadata;
-use std::path::Path;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 
 /// Assert input file exists, is actually a file and has more than 0 bytes
 ///
@@ -60,5 +62,23 @@ pub fn assert_file_not_empty<P: AsRef<Path>>(file_name: P) {
         metadata.len() > 0,
         "file '{:?}' is empty",
         file_name.as_ref()
+    );
+}
+
+pub fn are_equal(left: &PathBuf, right: &PathBuf) {
+    let mut file1 = match File::open(left) {
+        Ok(f) => f,
+        Err(e) => panic!("{}", e),
+    };
+    let mut file2 = match File::open(right) {
+        Ok(f) => f,
+        Err(e) => panic!("{}", e),
+    };
+
+    assert!(
+        diff_files(&mut file1, &mut file2),
+        "files are different {:?} vs {:?}",
+        left,
+        right
     );
 }

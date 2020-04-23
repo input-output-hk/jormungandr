@@ -884,6 +884,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "file_diff"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31a7a908b8f32538a2143e59a6e4e2508988832d5d4d6f7c156b3cbc762643a5"
+
+[[package]]
 name = "filetime"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1675,6 +1681,7 @@ dependencies = [
  "chain-time",
  "ed25519-bip32",
  "error-chain",
+ "file_diff",
  "futures 0.1.29",
  "futures-cpupool",
  "galvanic-test",

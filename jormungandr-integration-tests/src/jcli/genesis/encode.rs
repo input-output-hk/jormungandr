@@ -1,11 +1,11 @@
 use crate::common::{
     configuration::{jormungandr_config::JormungandrConfig, Block0ConfigurationBuilder},
-    file_utils, jcli_wrapper,
+    file_assert, file_utils, jcli_wrapper,
     jormungandr::ConfigurationBuilder,
     startup,
 };
 use chain_addr::Discrimination;
-use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee};
+use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use jormungandr_lib::interfaces::{Initial, InitialUTxO, LegacyUTxO};
 use std::num::NonZeroU64;
 #[test]
@@ -127,20 +127,25 @@ pub fn test_genesis_decode_bijection() {
         Some(NonZeroU64::new(1).unwrap()),
         Some(NonZeroU64::new(1).unwrap()),
         Some(NonZeroU64::new(1).unwrap()),
+    ));
+    fee.per_vote_certificate_fees(PerVoteCertificateFee::new(
         Some(NonZeroU64::new(1).unwrap()),
         Some(NonZeroU64::new(1).unwrap()),
     ));
-    let mut config = ConfigurationBuilder::new().with_linear_fees(fee).build();
+    let config = ConfigurationBuilder::new().with_linear_fees(fee).build();
 
-    let input_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
+    let expected_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
+    let actual_yaml_file_path = file_utils::get_path_in_temp("actual_yaml.yaml");
 
-    jcli_wrapper::assert_genesis_decode(&config.genesis_block_path, &input_yaml_file_path);
+    jcli_wrapper::assert_genesis_decode(&config.genesis_block_path, &actual_yaml_file_path);
+    file_assert::are_equal(&expected_yaml_file_path, &actual_yaml_file_path);
 
     let block0_after = file_utils::get_path_in_temp("block0_after.bin");
+    jcli_wrapper::assert_genesis_encode(&actual_yaml_file_path, &block0_after);
 
-    jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &block0_after);
+    file_assert::are_equal(&config.genesis_block_path, &block0_after);
 
     let right_hash = jcli_wrapper::assert_genesis_hash(&block0_after);
 
-    println!("{} vs {}", config.genesis_block_hash, right_hash);
+    assert_eq!(config.genesis_block_hash, right_hash);
 }

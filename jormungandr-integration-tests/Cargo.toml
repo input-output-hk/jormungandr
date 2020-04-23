@@ -19,6 +19,7 @@ chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-storage   = { path = "../chain-deps/chain-storage" }
 chain-storage-sqlite-old = { path = "../chain-deps/chain-storage-sqlite-old" }
 chain-time      = { path = "../chain-deps/chain-time" }
+file_diff = "1.0.0"
 jormungandr-lib = { path = "../jormungandr-lib" }
 rand = "0.7"
 rand_core = "0.5"
