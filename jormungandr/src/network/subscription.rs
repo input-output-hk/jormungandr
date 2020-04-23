@@ -14,6 +14,7 @@ use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
 use jormungandr_lib::interfaces::FragmentOrigin;
 
+use futures03::future::BoxFuture;
 use futures03::prelude::*;
 use futures03::ready;
 use slog::Logger;
@@ -118,6 +119,7 @@ struct FragmentProcessor {
     global_state: GlobalStateR,
     logger: Logger,
     buffered_fragments: Vec<Fragment>,
+    refresh_stat_future: Option<BoxFuture<'static, ()>>,
 }
 
 impl FragmentProcessor {
@@ -133,15 +135,15 @@ impl FragmentProcessor {
             global_state,
             logger,
             buffered_fragments: Vec::new(),
+            refresh_stat_future: None,
         }
     }
 
-    // FIXME: convert to async
-    fn refresh_stat(&self) {
+    fn refresh_stat(&mut self) {
         let refresh_logger = self.logger.clone();
         let state = self.global_state.clone();
         let node_id = self.node_id;
-        self.global_state.spawn(async move {
+        let fut = Box::pin(async move {
             let refreshed = state.peers.refresh_peer_on_fragment(node_id).await;
             if !refreshed {
                 debug!(
@@ -150,6 +152,9 @@ impl FragmentProcessor {
                 );
             }
         });
+        // It's OK to overwrite a pending future because only the latest
+        // timestamp matters.
+        self.refresh_stat_future = Some(fut);
     }
 }
 
@@ -223,6 +228,7 @@ impl Sink<Fragment> for FragmentProcessor {
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
+                self.poll_complete_refresh_stat(cx);
                 return Pin::new(&mut self.mbox).poll_flush(cx).map_err(|e| {
                     error!(
                         self.logger,
@@ -240,6 +246,7 @@ impl Sink<Fragment> for FragmentProcessor {
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
+                ready!(self.poll_complete_refresh_stat(cx));
                 return Pin::new(&mut self.mbox).poll_close(cx).map_err(|e| {
                     warn!(
                         self.logger,
@@ -274,5 +281,13 @@ impl FragmentProcessor {
             })?;
         self.refresh_stat();
         Poll::Ready(Ok(()))
+    }
+
+    fn poll_complete_refresh_stat(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        if let Some(fut) = &mut self.refresh_stat_future {
+            ready!(Pin::new(fut).poll(cx));
+            self.refresh_stat_future = None;
+        }
+        Poll::Ready(())
     }
 }
