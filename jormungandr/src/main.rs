@@ -1,7 +1,6 @@
 // Rustc default type_length_limit is too low for complex futures, which generate deeply nested
 // monomorphized structured with long signatures. This value is enough for current project.
-// TODO change this back to 10000000 when rust 1.43 is out
-#![type_length_limit = "150000000"]
+#![type_length_limit = "10000000"]
 
 #[macro_use]
 extern crate error_chain;
