@@ -461,13 +461,6 @@ name = "chain-storage"
 version = "0.1.0"
 dependencies = [
  "chain-core",
-]
-
-[[package]]
-name = "chain-storage-sqlite-old"
-version = "0.1.0"
-dependencies = [
- "chain-core",
  "rusqlite",
  "thiserror",
 ]
@@ -1610,7 +1603,6 @@ dependencies = [
  "chain-crypto",
  "chain-impl-mockchain",
  "chain-storage",
- "chain-storage-sqlite-old",
  "chain-time",
  "error-chain",
  "futures 0.1.29",
@@ -1671,7 +1663,6 @@ dependencies = [
  "chain-crypto",
  "chain-impl-mockchain",
  "chain-storage",
- "chain-storage-sqlite-old",
  "chain-time",
  "ed25519-bip32",
  "error-chain",
@@ -3158,9 +3149,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.22.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57edf4c4cea4d7e0fab069acb5da9e8e8e5403c78abc81b1f37d83af02148ea5"
+checksum = "64a656821bb6317a84b257737b7934f79c0dbb7eb694710475908280ebad3e64"
 dependencies = [
  "bitflags",
  "fallible-iterator",

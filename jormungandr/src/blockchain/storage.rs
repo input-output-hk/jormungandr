@@ -3,7 +3,7 @@ use crate::{
     intercom::{self, ReplySendError, ReplyStreamHandle03},
     start_up::{NodeStorage, NodeStorageConnection},
 };
-use chain_storage_sqlite_old::{for_path_to_nth_ancestor, BlockInfo};
+use chain_storage::{for_path_to_nth_ancestor, BlockInfo};
 use futures::{Future as Future01, Stream as Stream01};
 use futures03::{prelude::*, ready, stream::FusedStream};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
@@ -23,7 +23,7 @@ const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
 // before priming the pump again.
 const PUMP_PRESSURE_MARGIN: usize = 4;
 
-pub use chain_storage_sqlite_old::Error as StorageError;
+pub use chain_storage::Error as StorageError;
 
 async fn run_blocking_with_connection<F, T, E>(pool: Pool<ConnectionManager>, f: F) -> Result<T, E>
 where

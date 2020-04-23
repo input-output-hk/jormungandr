@@ -26,7 +26,7 @@ use chain_impl_mockchain::{
     transaction::Transaction,
     value::{Value, ValueError},
 };
-use chain_storage_sqlite_old::Error as StorageError;
+use chain_storage::Error as StorageError;
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,

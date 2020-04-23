@@ -1,5 +1,5 @@
 use crate::intercom;
-use chain_storage_sqlite_old::Error as StorageError;
+use chain_storage::Error as StorageError;
 
 error_chain! {
     foreign_links {
