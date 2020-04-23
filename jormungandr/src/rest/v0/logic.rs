@@ -12,7 +12,7 @@ use crate::{
     rest::Context,
     secure::NodeSecret,
 };
-use chain_core::property::{Block as _, Deserialize, Serialize};
+use chain_core::property::{Block as _, Deserialize, FromStr, Serialize};
 use chain_crypto::{
     bech32::Bech32, digest::Error as DigestError, hash::Error as HashError, Blake2b256, PublicKey,
     PublicKeyFromStrError,
@@ -83,7 +83,10 @@ fn parse_block_hash(hex: &str) -> Result<Hash, Error> {
 }
 
 fn parse_fragment_id(id_hex: &str) -> Result<FragmentId, Error> {
-    FragmentId::from_str(id_hex)
+    match FragmentId::from_str(id_hex) {
+        Ok(id) => Ok(id),
+        Err(e) => Err(e.into()),
+    }
 }
 
 pub async fn get_account_state(
