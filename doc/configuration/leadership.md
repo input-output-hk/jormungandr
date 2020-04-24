@@ -1,3 +1,5 @@
+# Leadership
+
 The `leadership` field in your node config file is not mandatory, by default it is set
 as follow:
 

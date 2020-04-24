@@ -11,7 +11,7 @@ You could also find information regarding the [jcli genesis tooling](../jcli/gen
 
 You can generate a documented pre-generated genesis file:
 
-```
+```sh
 jcli genesis init
 ```
 
@@ -30,19 +30,19 @@ There are multiple _parts_ in the genesis file:
 
 ## `blockchain_configuration` options
 
-| option | format | description |
-|:-------|:-------|:------------|
-| `block0_date` | number | the official start time of the blockchain, in seconds since UNIX EPOCH |
-| `discrimination` | string | `production` or `test` |
-| `block0_consensus` | string | `bft` |
-| `slot_duration` | number | the number of seconds between the creation of 2 blocks |
-| `epoch_stability_depth` | number | allowed size of a fork (in number of block) |
-| `consensus_leader_ids` | array | the list of the BFT leader at the beginning of the blockchain |
-| `block_content_max_size` | number | the maximum size of the block content, in bytes. |
-| `linear_fees` | object | linear fee settings, set the fee for transaction and certificate publishing |
+| option                                      | format | description                                                                                                                   |
+| :------------------------------------------ | :----- | :---------------------------------------------------------------------------------------------------------------------------- |
+| `block0_date`                               | number | the official start time of the blockchain, in seconds since UNIX EPOCH                                                        |
+| `discrimination`                            | string | `production` or `test`                                                                                                        |
+| `block0_consensus`                          | string | `bft`                                                                                                                         |
+| `slot_duration`                             | number | the number of seconds between the creation of 2 blocks                                                                        |
+| `epoch_stability_depth`                     | number | allowed size of a fork (in number of block)                                                                                   |
+| `consensus_leader_ids`                      | array  | the list of the BFT leader at the beginning of the blockchain                                                                 |
+| `block_content_max_size`                    | number | the maximum size of the block content (excluding the block header), in bytes.                                                 |
+| `linear_fees`                               | object | linear fee settings, set the fee for transaction and certificate publishing                                                   |
 | `consensus_genesis_praos_active_slot_coeff` | number | genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1] |
-| `kes_update_speed` | number | the speed to update the KES Key in seconds |
-| `slots_per_epoch` | number | number of slots in each epoch |
+| `kes_update_speed`                          | number | the speed to update the KES Key in seconds                                                                                    |
+| `slots_per_epoch`                           | number | number of slots in each epoch                                                                                                 |
 
 _for more information about the BFT leaders in the genesis file, see
 [Starting a BFT Blockchain](./02_starting_bft_blockchain.md)_
@@ -51,11 +51,11 @@ _for more information about the BFT leaders in the genesis file, see
 
 Each entry can be one of 3 variants:
 
-| variant | format | description |
-|:-------|:-------|:------------|
-| `fund` | sequence | initial deposits present in the blockchain (up to 255 outputs per entry) |
-| `cert` | string | initial certificate |
-| `legacy_fund` | sequence | same as `fund`, but with legacy Cardano address format |
+| variant       | format   | description                                                              |
+| :------------ | :------- | :----------------------------------------------------------------------- |
+| `fund`        | sequence | initial deposits present in the blockchain (up to 255 outputs per entry) |
+| `cert`        | string   | initial certificate                                                      |
+| `legacy_fund` | sequence | same as `fund`, but with legacy Cardano address format                   |
 
 Example:
 
@@ -79,9 +79,9 @@ initial:
 
 ### `fund` and `legacy_fund` format
 
-| variant | format | description |
-|:-------|:-------|:------------|
+| variant   | format | description                                                                                                                    |
+| :-------- | :----- | :----------------------------------------------------------------------------------------------------------------------------- |
 | `address` | string | can be a [single address](../jcli/address.md#address-for-utxo) or an [account address](../jcli/address.md#address-for-account) |
-| `value` | number | assigned value |
+| `value`   | number | assigned value                                                                                                                 |
 
 `legacy_fund` differs only in address format, which is legacy Cardano

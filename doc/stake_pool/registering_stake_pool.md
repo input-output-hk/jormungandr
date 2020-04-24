@@ -1,4 +1,4 @@
-# registering stake pool
+# Registering a stake pool
 
 There are multiple components to be aware of when running a stake pool:
 
@@ -21,28 +21,32 @@ To generate your [**VRF**] Key pairs, we will utilise [`jcli`](../jcli/introduct
 [here](../jcli/key.md):
 
 ```sh
-jcli key generate --type=Curve25519_2HashDH > stake_pool_vrf.prv
+jcli key generate --type=Curve25519_2HashDH stake_pool_vrf.prv
 ```
 
 `stake_pool_vrf.prv` file now contains the VRF private key.
 
 ```sh
-cat stake_pool_vrf.prv | jcli key to-public > stake_pool_vrf.pub
+jcli key to-public --input stake_pool_vrf.prv stake_pool_vrf.pub
 ```
+
+`stake_pool_vrf.pub` file now contains the VRF public key.
 
 ### KES key pair
 
 Similar to above:
 
 ```sh
-jcli key generate --type=SumEd25519_12 > stake_pool_kes.prv
+jcli key generate --type=SumEd25519_12 stake_pool_kes.prv
 ```
 
-`stake_pool_kes.prv` now contains your KES private key
+`stake_pool_kes.prv` file now contains the KES private key
 
 ```sh
-cat stake_pool_kes.prv | jcli key to-public > stake_pool_kes.pub
+jcli key to-public --input stake_pool_kes.prv stake_pool_kes.pub
 ```
+
+`stake_pool_kes.pub` file now contains the KES public key
 
 ## Choosing the **Tax** parameters
 
@@ -73,12 +77,12 @@ Before distributing the `10_000` among the delegators, `SP` will take its **Tax*
 
 For example:
 
-|                       | total | fixed| ratio|limit | `SP`  | `O1` | `O2` | for delegators |
-|-----------------------|:-----:|:----:|:----:|:----:|:-----:|:----:|:----:|:--------------:|
-| takes 100%            | 10000 |   0  |  1/1 |   0  | 10000 | 5000 | 5000 |   0            |
-| fixed of 1000         | 10000 | 1000 |  0/1 |   0  |  1000 |  500 |  500 | 9000           |
-| fixed + 10%           |  2000 | 1000 | 1/10 |   0  |  1100 |  550 |  550 |  900           |
-| fixed + 20% up to 150 |  2000 | 1000 |  1/5 |  150 |  1150 |  575 |  575 |  850           |
+|                       | total | fixed | ratio | limit | `SP`  | `O1`  | `O2`  | for delegators |
+| --------------------- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :------------: |
+| takes 100%            | 10000 |   0   |  1/1  |   0   | 10000 | 5000  | 5000  |       0        |
+| fixed of 1000         | 10000 | 1000  |  0/1  |   0   | 1000  |  500  |  500  |      9000      |
+| fixed + 10%           | 2000  | 1000  | 1/10  |   0   | 1100  |  550  |  550  |      900       |
+| fixed + 20% up to 150 | 2000  | 1000  |  1/5  |  150  | 1150  |  575  |  575  |      850       |
 
 ### The options to set
 
@@ -120,7 +124,7 @@ The `--operator` flag is optional.
 And now you can retrieve your stake pool id (`NodeId`):
 
 ```sh
-cat stake_pool.cert | jcli certificate get-stake-pool-id | tee stake_pool.id
+jcli certificate get-stake-pool-id stake_pool.cert
 ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74
 ```
 

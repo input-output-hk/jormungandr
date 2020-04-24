@@ -51,8 +51,8 @@ where:
                                   or print it to the standard output if not defined.
 - `--retirement-time`           - is the number of seconds since the start in order
                                   to make the stake pool retire. `0` means as soon as possible.
-- `--pool-id`                   - hex-encoded stake pool ID. Can be retrieved using  `jcli certificate get-stake-pool-id` command. 
-                                  See [here](../stake_pool/registering_stake_pool.md) for more details. 
+- `--pool-id`                   - hex-encoded stake pool ID. Can be retrieved using  `jcli certificate get-stake-pool-id` command.
+                                  See [here](../stake_pool/registering_stake_pool.md) for more details.
 
 ## Building stake pool delegation certificate
 

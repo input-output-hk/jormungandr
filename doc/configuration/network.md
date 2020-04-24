@@ -1,3 +1,5 @@
+# Node network
+
 There are 2 different network interfaces which are covered by their respective section:
 
 ```yaml
@@ -97,7 +99,7 @@ rest:
   trigger a force reset of the topology layers. The default is to not do
   force the reset. It is recommended to let the protocol handle it.
 - `max_bootstrap_attempts`: (optional) number of times to retry bootstrapping from trusted peers.
-  If not set, default beavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
+  If not set, default behavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
   If set to *0* (zero), the node will skip bootstrap all together -- *even if trusted peers are defined*.
   If the node fails to bootstrap from any of the trusted peers and the number of bootstrap retry attempts is exceeded,
   then the node will continue to run without completing the bootstrap process.

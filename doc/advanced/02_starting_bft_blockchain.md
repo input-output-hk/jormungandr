@@ -57,7 +57,7 @@ more information regarding the [genesis file here](./01_the_genesis_block.md).
 
 ## Creating the block 0
 
-```
+```sh
 jcli genesis encode --input genesis.yaml --output block-0.bin
 ```
 
@@ -70,7 +70,7 @@ Now that the blockchain is initialized, you need to start your node.
 
 Write you private key in a file on your HD:
 
-```
+```sh
 $ cat node_secret.yaml
 bft:
   signing_key: ed25519_sk1hpvne...
@@ -78,7 +78,7 @@ bft:
 
 Configure your Node (config.yml) and run the following command:
 
-```
+```sh
 $ jormungandr --genesis-block block-0.bin \
     --config example.config \
     --secret node_secret.yaml
@@ -118,7 +118,8 @@ p2p:
 ```
 
 8. Start Jörmungandr node :
-```
+
+```sh
 jormungandr --genesis-block block-0.bin --config node.config --secret node_secret.yaml
 ```
 

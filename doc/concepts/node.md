@@ -1,6 +1,5 @@
 # Node organisation
 
-
 ## Secure Enclave
 
 The secure enclave is the component containing the secret cryptographic

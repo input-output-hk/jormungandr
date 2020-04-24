@@ -4,14 +4,14 @@ The node can be configured to work as a explorer. This consumes more resources, 
 
 ## Configuration
 
-There is two ways of enabling the explorer api. It can either be done by passing the `--enable-explorer` flag on the start arguemnts or by the config file: 
+There is two ways of enabling the explorer api. It can either be done by passing the `--enable-explorer` flag on the start arguemnts or by the config file:
 
 ``` yaml
 explorer:
     enabled: true
 ```
 
-#### CORS
+### CORS
 
 For configuring CORS the explorer API, this needs to be done on the REST section of the config, as documented [here](../configuration/network.md).
 
@@ -19,7 +19,7 @@ For configuring CORS the explorer API, this needs to be done on the REST section
 
 A graphql interface can be used to query the explorer data, when enabled, two endpoints are available in the [REST interface](03_rest_api.md): `/explorer/graphql` and `/explorer/graphiql` .
 
-The first is the one that queries are made against, for example: 
+The first is the one that queries are made against, for example:
 
 ``` sh
 curl \

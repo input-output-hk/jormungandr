@@ -12,7 +12,7 @@ You will need:
   to delegate your stake to.
 
 ```sh
-jcli certificate new owner-stake-delegation STAKE_POOL_ID > stake_delegation.cert
+jcli certificate new owner-stake-delegation STAKE_POOL_ID --output stake_delegation.cert
 ```
 
 Note that the certificate is in blaco, there's no account key used for its creation.

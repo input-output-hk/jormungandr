@@ -6,7 +6,7 @@ Glossary:
 * **clock**: general time tracking to know the time in blockchain unit (epoch/slot)
 * **tip**: the current fork that is considered the correct one, related to consensus algorithm.
 
-## Tasks.
+## Tasks
 
 Each node runs several tasks. Task is a process with a clearly defined interface
 that abstracts a particular task.
@@ -105,4 +105,3 @@ validate a couple of things:
 Epoch transition happen when we switch to an epoch to the following one.
 
 ![Blockchain Data structure Transition](./internal_design/blockchain_structure_transition.png "Blockchain Data structure in transition")
-

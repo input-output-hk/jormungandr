@@ -2,7 +2,8 @@
 
 Tooling for working with a genesis file
 
-# Usage
+## Usage
+
 ```sh
 jcli genesis [subcommand]
 ```
@@ -11,7 +12,7 @@ jcli genesis [subcommand]
 
 - decode: Print the YAML file corresponding to an encoded genesis block.
 - encode: Create the genesis block of the blockchain from a given yaml file.
-- hash: Print the block hash of the genesis 
+- hash: Print the block hash of the genesis
 - init: Create a default Genesis file with appropriate documentation to help creating the YAML file
 - help
 
