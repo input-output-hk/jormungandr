@@ -13,9 +13,6 @@ use std::time::Duration;
 pub fn collect_reward_for_15_minutes() {
     let duration_48_hours = Duration::from_secs(900);
 
-    let path = file_utils::get_path_in_temp("rewards_dump");
-    std::env::set_var("JORMUNGANDR_REWARD_DUMP_DIRECTORY", path.to_str().unwrap());
-
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
@@ -85,5 +82,10 @@ pub fn collect_reward_for_15_minutes() {
             return;
         }
         process_utils::sleep(5);
+
+        let _rewards = jormungandr
+            .rest()
+            .reward_history(1)
+            .expect("failed to get last reward");
     }
 }
