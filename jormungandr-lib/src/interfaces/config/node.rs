@@ -12,8 +12,10 @@ const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
 pub struct Rest {
     pub listen: SocketAddr,
     /// Enables TLS and disables plain HTTP if provided
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tls: Option<Tls>,
     /// Enables CORS if provided
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cors: Option<Cors>,
 }
 
