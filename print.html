@@ -1445,7 +1445,7 @@ version: jormungandr 0.8.9-30d20d2e
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 <li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="jcli/rest.html#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
@@ -1477,12 +1477,12 @@ rejected transaction and or when a transaction has been added in a block</p>
 <ul>
 <li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 <li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
-<li>--output-format <format> - see <a href="jcli/rest.html#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 </ul>
 <p>YAML printed on success</p>
 <pre><code class="language-yaml">---
 - fragment_id: 7db6f91f3c92c0aef7b3dd497e9ea275229d2ab4dba6a1b30ce6b32db9c9c3b2 # hex-encoded fragment ID
-  last_updated_at: 	2019-06-02T16:20:26.201000000Z                              # RFC3339 timestamp of last fragment status change
+  last_updated_at: 2019-06-02T16:20:26.201000000Z                               # RFC3339 timestamp of last fragment status change
   received_at: 2019-06-02T16:20:26.201000000Z                                   # RFC3339 timestamp of fragment receivement
   received_from: Network,                                                       # how fragment was received
   status: Pending,                                                              # fragment status
@@ -1919,6 +1919,22 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
     },
   }
 ]
+</code></pre>
+<hr />
+<h2><a class="header" href="#get-committee-members" id="get-committee-members">Get committee members</a></h2>
+<p>Get the list of voting committee members.</p>
+<pre><code class="language-sh">jcli rest v0 committees get &lt;options&gt;
+</code></pre>
+<p>The options are</p>
+<ul>
+<li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
+<li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
+</ul>
+<p>YAML printed on success</p>
+<pre><code class="language-yaml">---
+- 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19 # list of members
+- f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
 </code></pre>
 <h1><a class="header" href="#staking-with-jormungandr" id="staking-with-jormungandr">Staking with jormungandr</a></h1>
 <p>Here we will describe how to:</p>
