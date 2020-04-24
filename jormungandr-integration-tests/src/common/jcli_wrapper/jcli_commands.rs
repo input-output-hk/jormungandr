@@ -28,6 +28,21 @@ pub fn get_genesis_encode_command(
     command
 }
 
+pub fn get_genesis_decode_command(
+    genesis_yaml_file_path: &PathBuf,
+    path_to_output_block: &PathBuf,
+) -> Command {
+    let mut command = get_jcli_command();
+    command
+        .arg("genesis")
+        .arg("decode")
+        .arg("--input")
+        .arg(genesis_yaml_file_path.as_os_str())
+        .arg("--output")
+        .arg(path_to_output_block.as_os_str());
+    command
+}
+
 /// Get genesis hash command.
 ///
 /// # Arguments

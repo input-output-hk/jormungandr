@@ -1,10 +1,13 @@
 use crate::common::{
     configuration::{jormungandr_config::JormungandrConfig, Block0ConfigurationBuilder},
-    file_utils, jcli_wrapper, startup,
+    file_assert, file_utils, jcli_wrapper,
+    jormungandr::ConfigurationBuilder,
+    startup,
 };
 use chain_addr::Discrimination;
+use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use jormungandr_lib::interfaces::{Initial, InitialUTxO, LegacyUTxO};
-
+use std::num::NonZeroU64;
 #[test]
 pub fn test_genesis_block_is_built_from_correct_yaml() {
     startup::build_genesis_block(&Block0ConfigurationBuilder::new().build());
@@ -115,4 +118,34 @@ pub fn test_genesis_with_legacy_funds_is_built_successfully() {
     let input_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block0.bin");
     jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
+}
+
+#[test]
+pub fn test_genesis_decode_bijection() {
+    let mut fee = LinearFee::new(1, 1, 1);
+    fee.per_certificate_fees(PerCertificateFee::new(
+        Some(NonZeroU64::new(1).unwrap()),
+        Some(NonZeroU64::new(1).unwrap()),
+        Some(NonZeroU64::new(1).unwrap()),
+    ));
+    fee.per_vote_certificate_fees(PerVoteCertificateFee::new(
+        Some(NonZeroU64::new(1).unwrap()),
+        Some(NonZeroU64::new(1).unwrap()),
+    ));
+    let config = ConfigurationBuilder::new().with_linear_fees(fee).build();
+
+    let expected_yaml_file_path = startup::serialize_block0_config(&config.block0_configuration);
+    let actual_yaml_file_path = file_utils::get_path_in_temp("actual_yaml.yaml");
+
+    jcli_wrapper::assert_genesis_decode(&config.genesis_block_path, &actual_yaml_file_path);
+    file_assert::are_equal(&expected_yaml_file_path, &actual_yaml_file_path);
+
+    let block0_after = file_utils::get_path_in_temp("block0_after.bin");
+    jcli_wrapper::assert_genesis_encode(&actual_yaml_file_path, &block0_after);
+
+    file_assert::are_equal(&config.genesis_block_path, &block0_after);
+
+    let right_hash = jcli_wrapper::assert_genesis_hash(&block0_after);
+
+    assert_eq!(config.genesis_block_hash, right_hash);
 }

@@ -47,6 +47,17 @@ pub fn assert_genesis_encode(
     file_assert::assert_file_exists_and_not_empty(path_to_output_block);
 }
 
+pub fn assert_genesis_decode(
+    genesis_yaml_file_path: &PathBuf,
+    path_to_output_block: &PathBuf,
+) -> () {
+    let output = process_utils::run_process_and_get_output(
+        jcli_commands::get_genesis_decode_command(&genesis_yaml_file_path, &path_to_output_block),
+    );
+    process_assert::assert_process_exited_successfully(output);
+    file_assert::assert_file_exists_and_not_empty(path_to_output_block);
+}
+
 pub fn assert_genesis_encode_fails(block0_configuration: &Block0Configuration, expected_msg: &str) {
     let input_yaml_file_path = startup::serialize_block0_config(&block0_configuration);
     let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
