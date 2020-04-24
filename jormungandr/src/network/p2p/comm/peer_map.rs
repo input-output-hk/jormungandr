@@ -6,7 +6,6 @@ use crate::network::{
     },
 };
 use linked_hash_map::LinkedHashMap;
-use std::net::SocketAddr;
 
 pub struct PeerMap {
     map: LinkedHashMap<Address, PeerData>,
@@ -15,7 +14,6 @@ pub struct PeerMap {
 
 #[derive(Default)]
 struct PeerData {
-    addr: Option<SocketAddr>,
     comms: PeerComms,
     stats: PeerStats,
     connecting: Option<ConnectHandle>,
@@ -27,9 +25,8 @@ pub enum CommStatus<'a> {
 }
 
 impl PeerData {
-    fn new(comms: PeerComms, addr: SocketAddr) -> Self {
+    fn new(comms: PeerComms) -> Self {
         PeerData {
-            addr: Some(addr),
             comms,
             stats: PeerStats::default(),
             connecting: None,
@@ -114,9 +111,9 @@ impl PeerMap {
         self.ensure_peer(id).server_comms()
     }
 
-    pub fn insert_peer(&mut self, id: Address, comms: PeerComms, addr: SocketAddr) {
+    pub fn insert_peer(&mut self, id: Address, comms: PeerComms) {
         self.evict_if_full();
-        let data = PeerData::new(comms, addr);
+        let data = PeerData::new(comms);
         self.map.insert(id, data);
     }
 
@@ -150,7 +147,7 @@ impl PeerMap {
         self.map
             .iter()
             .map(|(&id, data)| PeerInfo {
-                addr: data.addr,
+                addr: id.to_socketaddr(),
                 stats: data.stats.clone(),
             })
             .collect()
