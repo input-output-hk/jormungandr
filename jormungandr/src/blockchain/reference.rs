@@ -2,6 +2,7 @@ use crate::blockcfg::{
     BlockDate, ChainLength, EpochRewardsInfo, Header, HeaderHash, Leadership, Ledger,
     LedgerParameters,
 };
+use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::multiverse;
 use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
@@ -158,5 +159,9 @@ impl Ref {
     /// in the future, this function will return an error.
     pub fn elapsed(&self) -> Result<Duration, std::time::SystemTimeError> {
         SystemTime::now().duration_since(self.time())
+    }
+
+    pub fn active_vote_plans(&self) -> Vec<VotePlan> {
+        self.ledger.state().active_vote_plans()
     }
 }

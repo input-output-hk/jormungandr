@@ -39,6 +39,7 @@ use jormungandr_lib::{
 
 use std::{convert::Infallible, sync::Arc};
 
+use chain_impl_mockchain::certificate::VotePlan;
 use futures::sync::mpsc::TrySendError;
 use futures03::{compat::*, prelude::*};
 
@@ -657,4 +658,15 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .iter()
         .map(|cid| cid.to_string())
         .collect())
+}
+
+
+
+pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlan>, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .ledger()
+        .active_vote_plans())
 }

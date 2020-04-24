@@ -348,8 +348,7 @@ name = "cardano-legacy-address"
 version = "0.1.1"
 dependencies = [
  "cbor_event",
- "chain-ser",
- "cryptoxide",
+ "cryptoxide 0.1.3",
  "ed25519-bip32",
 ]
 
@@ -392,7 +391,7 @@ dependencies = [
  "cfg-if",
  "chain-core",
  "chain-crypto",
- "cryptoxide",
+ "cryptoxide 0.1.3",
  "quickcheck",
 ]
 
@@ -411,12 +410,12 @@ version = "0.1.0"
 dependencies = [
  "bech32",
  "cfg-if",
- "cryptoxide",
+ "cryptoxide 0.1.3",
  "curve25519-dalek",
  "digest 0.8.1",
  "ed25519-bip32",
  "ed25519-dalek",
- "generic-array 0.14.1",
+ "generic-array 0.13.2",
  "hex",
  "quickcheck",
  "rand_chacha 0.2.2",
@@ -434,10 +433,9 @@ dependencies = [
  "chain-addr",
  "chain-core",
  "chain-crypto",
- "chain-ser",
+ "chain-storage",
  "chain-time",
  "ed25519-bip32",
- "hex",
  "imhamt",
  "lazy_static",
  "quickcheck",
@@ -460,8 +458,6 @@ name = "chain-storage"
 version = "0.1.0"
 dependencies = [
  "chain-core",
- "rusqlite",
- "thiserror",
 ]
 
 [[package]]
@@ -469,8 +465,6 @@ name = "chain-time"
 version = "0.1.0"
 dependencies = [
  "cfg-if",
- "chain-core",
- "chain-ser",
 ]
 
 [[package]]
@@ -702,6 +696,12 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "cryptoxide"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e35f15e1a0699dd988fed910dd78fdc6407f44654cd12589c91fa44ea67d9159"
+
+[[package]]
+name = "cryptoxide"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbb2eda75391be2fa7273d047766e3f7e4a9f6a74df95e58b603b5c43087e91e"
@@ -792,7 +792,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4727ce16fc016d8047462988ced12496aad2bb29b2b55ecf60d29eb5706fc6f"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.2.0",
 ]
 
 [[package]]
@@ -862,18 +862,6 @@ name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
-
-[[package]]
-name = "fallible-iterator"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
-
-[[package]]
-name = "fallible-streaming-iterator"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
 name = "file_diff"
@@ -1097,9 +1085,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.14.1"
+version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d2664c2cf08049036f31015b04c6ac3671379a1d86f52ed2416893f16022deb"
+checksum = "0ed1e761351b56f54eb9dcd0cfaca9fd0daecf93918e1cfc01c8a3d26ee7adcd"
 dependencies = [
  "typenum",
 ]
@@ -1872,17 +1860,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99e85c08494b21a9054e7fe1374a732aeadaff3980b6990b94bfd3a70f690005"
 
 [[package]]
-name = "libsqlite3-sys"
-version = "0.17.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56d90181c2904c287e5390186be820e5ef311a3c62edebb7d6ca3d6a48ce041d"
-dependencies = [
- "cc",
- "pkg-config",
- "vcpkg",
-]
-
-[[package]]
 name = "libsystemd-sys"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1932,15 +1909,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0609345ddee5badacf857d4f547e0e5a2e987db77085c24cd887f73573a04237"
 dependencies = [
  "hashbrown",
-]
-
-[[package]]
-name = "lru-cache"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31e24f1ad8321ca0e8a1e0ac13f23cb668e6f5466c2c57319f6a5cf1cc8e3b1c"
-dependencies = [
- "linked-hash-map",
 ]
 
 [[package]]
@@ -3154,21 +3122,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusqlite"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64a656821bb6317a84b257737b7934f79c0dbb7eb694710475908280ebad3e64"
-dependencies = [
- "bitflags",
- "fallible-iterator",
- "fallible-streaming-iterator",
- "libsqlite3-sys",
- "lru-cache",
- "memchr",
- "time",
-]
-
-[[package]]
 name = "rust-argon2"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3665,15 +3618,15 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.18.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57bd81eb48f4c437cadc685403cad539345bf703d78e63707418431cecd4522b"
+checksum = "530efb820d53b712f4e347916c5e7ed20deb76a4f0457943b3182fb889b06d2c"
 
 [[package]]
 name = "strum_macros"
-version = "0.18.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87c85aa3f8ea653bfd3ddf25f7ee357ee4d204731f6aa9ad04002306f6e2774c"
+checksum = "5e6e163a520367c465f59e0a61a23cfae3b10b6546d78b6f672a382be79f7110"
 dependencies = [
  "heck",
  "proc-macro2 1.0.10",
