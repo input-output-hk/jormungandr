@@ -106,7 +106,7 @@ pub fn reward_history() {
 
     let epoch_reward_info_from_epoch = jormungandr
         .rest()
-        .epoch_reward_history(epoch_reward_info_from_history.clone().epoch().into())
+        .epoch_reward_history(epoch_reward_info_from_history.epoch())
         .unwrap();
     assert_eq!(
         *epoch_reward_info_from_history, epoch_reward_info_from_epoch,
