@@ -10,7 +10,7 @@ pub fn storage_loading_benchmark_from_log(
 ) -> SpeedBenchmarkFinish {
     speed_benchmark_from_log(
         log,
-        name.clone(),
+        name,
         timeout,
         "storing blockchain",
         "Loaded from storage",

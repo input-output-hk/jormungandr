@@ -32,6 +32,7 @@ impl SlotDuration {
     ///
     /// returns `None` if the value is not within the boundaries of
     /// `SlotDuration::MINIMUM` and `SlotDuration::MAXIMUM`.
+    #[allow(clippy::absurd_extreme_comparisons)]
     pub fn new(v: u8) -> Option<Self> {
         if v < MINIMUM_SLOT_DURATION || MAXIMUM_SLOT_DURATION < v {
             None

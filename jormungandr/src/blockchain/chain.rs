@@ -361,10 +361,8 @@ impl Blockchain {
                 // from the state management. Force the node to fall through
                 // reloading the blocks from the storage to allow fast
                 // from storage reload
-                Ok(None)
-            } else {
-                Ok(None)
             }
+            Ok(None)
         } else {
             Ok(maybe_ref)
         }

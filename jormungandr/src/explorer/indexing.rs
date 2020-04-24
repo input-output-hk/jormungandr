@@ -1,5 +1,4 @@
 use super::persistent_sequence::PersistentSequence;
-use imhamt;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 
@@ -11,7 +10,6 @@ use chain_core::property::Fragment as _;
 use chain_impl_mockchain::block::Proof;
 use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration, PoolRetirement};
 use chain_impl_mockchain::key::BftLeaderId;
-use chain_impl_mockchain::leadership::bft;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
 use std::{convert::TryInto, sync::Arc};
@@ -85,21 +83,10 @@ pub struct EpochData {
     pub total_blocks: u32,
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Hash)]
 pub enum ExplorerAddress {
     New(Address),
     Old(OldAddress),
-}
-
-// TODO: derive Hash in legacy address?
-use std::hash::{Hash, Hasher};
-impl Hash for ExplorerAddress {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            ExplorerAddress::New(addr) => addr.hash(state),
-            ExplorerAddress::Old(addr) => addr.as_ref().hash(state),
-        }
-    }
 }
 
 impl ExplorerBlock {
@@ -233,7 +220,7 @@ impl ExplorerBlock {
         let producer = match block.header.proof() {
             Proof::GenesisPraos(_proof) => {
                 // Unwrap is safe in this pattern match
-                BlockProducer::StakePool(block.header.get_stakepool_id().unwrap().clone())
+                BlockProducer::StakePool(block.header.get_stakepool_id().unwrap())
             }
             // TODO: I think there are no accesors for this
             Proof::Bft(_proof) => unimplemented!(),
