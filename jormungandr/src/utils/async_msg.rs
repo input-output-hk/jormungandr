@@ -88,7 +88,7 @@ pub struct SendTask<Msg> {
 impl<Msg> Stream for MessageQueue<Msg> {
     type Item = Msg;
 
-    fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<Msg>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Msg>> {
         Pin::new(&mut self.0).poll_next(cx)
     }
 
