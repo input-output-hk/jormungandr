@@ -150,7 +150,6 @@ impl PeerMap {
         self.map
             .iter()
             .map(|(&id, data)| PeerInfo {
-                id,
                 addr: data.addr,
                 stats: data.stats.clone(),
             })
