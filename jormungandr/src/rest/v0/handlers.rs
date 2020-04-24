@@ -276,24 +276,24 @@ pub async fn get_committees(context: ContextLock) -> Result<impl Reply, Rejectio
 }
 
 #[derive(Serialize)]
-#[serde(remote="chain_impl_mockchain::block::BlockDate")]
+#[serde(remote = "chain_impl_mockchain::block::BlockDate")]
 struct BlockDate {
     pub epoch: u32,
-    pub slot_id: u32
+    pub slot_id: u32,
 }
 
 #[derive(Serialize)]
-#[serde(remote="chain_impl_mockchain::certificate::ExternalProposalId")]
+#[serde(remote = "chain_impl_mockchain::certificate::ExternalProposalId")]
 struct ExternalProposalId {
     #[serde(getter = "chain_impl_mockchain::certificate::ExternalProposalId::to_string")]
-    id: String
+    id: String,
 }
 
 #[derive(Serialize)]
-#[serde(remote="chain_impl_mockchain::certificate::VoteOptions")]
+#[serde(remote = "chain_impl_mockchain::certificate::VoteOptions")]
 struct VoteOptions {
     #[serde(getter = "chain_impl_mockchain::certificate::VoteOptions::as_byte")]
-    num_choices: u8
+    num_choices: u8,
 }
 
 #[derive(Serialize)]
@@ -317,15 +317,15 @@ impl Proposal {
 #[derive(Serialize)]
 struct VotePlan {
     /// the vote start validity
-    #[serde(with="BlockDate")]
+    #[serde(with = "BlockDate")]
     pub vote_start: chain_impl_mockchain::block::BlockDate,
     /// the duration within which it is possible to vote for one of the proposals
     /// of this voting plan.
-    #[serde(with="BlockDate")]
+    #[serde(with = "BlockDate")]
     pub vote_end: chain_impl_mockchain::block::BlockDate,
     /// the committee duration is the time allocated to the committee to open
     /// the ballots and publish the results on chain
-    #[serde(with="BlockDate")]
+    #[serde(with = "BlockDate")]
     pub committee_end: chain_impl_mockchain::block::BlockDate,
     /// the proposals to vote for
     pub proposals: Vec<Proposal>,
@@ -344,14 +344,12 @@ impl VotePlan {
 
 #[derive(Serialize)]
 pub struct VotePlans {
-    plans: Vec<VotePlan>
+    plans: Vec<VotePlan>,
 }
 
 impl VotePlans {
     fn new(plans: Vec<VotePlan>) -> Self {
-        Self {
-            plans
-        }
+        Self { plans }
     }
 }
 
@@ -359,7 +357,11 @@ pub async fn get_active_vote_plans(context: ContextLock) -> Result<impl Reply, R
     let context = context.read().await;
     let vote_plans = logic::get_active_vote_plans(&context).await;
     vote_plans
-        .map(|v| v.iter().map(|p| VotePlan::from_vote_plan(p)).collect::<Vec<VotePlan>>())
+        .map(|v| {
+            v.iter()
+                .map(|p| VotePlan::from_vote_plan(p))
+                .collect::<Vec<VotePlan>>()
+        })
         .map(VotePlans::new)
         .map(|r| warp::reply::json(&r))
         .map_err(warp::reject::custom)

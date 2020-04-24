@@ -660,8 +660,6 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .collect())
 }
 
-
-
 pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlan>, Error> {
     Ok(context
         .blockchain_tip()?
