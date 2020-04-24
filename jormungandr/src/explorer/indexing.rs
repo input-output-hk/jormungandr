@@ -8,7 +8,6 @@ use cardano_legacy_address::Addr as OldAddress;
 use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
-use chain_core::property::LeaderId;
 use chain_impl_mockchain::block::Proof;
 use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration, PoolRetirement};
 use chain_impl_mockchain::key::BftLeaderId;

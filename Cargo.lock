@@ -435,7 +435,6 @@ dependencies = [
  "chain-core",
  "chain-crypto",
  "chain-ser",
- "chain-storage",
  "chain-time",
  "ed25519-bip32",
  "hex",
