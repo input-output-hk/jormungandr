@@ -16,6 +16,7 @@ tags:
   - name: rewards
   - name: stake
   - name: utils
+  - name: vote
 paths:
   '/api/v0/account/{account_id}':
     get:
@@ -2133,3 +2134,27 @@ paths:
                     id:
                       type: string
                       description: the node public id
+  /api/v0/committees:
+    get:
+      description: Get committee members ID
+      operationId: committees
+      tags:
+        - vote
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                description: IDs of committee members
+                uniqueItems: true
+                items:
+                  description: Hex-encoded committee member ID
+                  type: string
+                  pattern: '[0-9a-f]+'
+                  minLength: 64
+                  maxLength: 64
+              example:
+                - f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
+                - 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19

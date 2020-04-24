@@ -266,3 +266,11 @@ pub async fn get_network_p2p_view_topic(
         .map(|r| warp::reply::json(&r))
         .map_err(warp::reject::custom)
 }
+
+pub async fn get_committees(context: ContextLock) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::get_committees(&context)
+        .await
+        .map(|r| warp::reply::json(&r))
+        .map_err(warp::reject::custom)
+}

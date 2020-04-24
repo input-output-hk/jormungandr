@@ -87,7 +87,7 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
@@ -133,14 +133,14 @@ The options are
 
 - -h <node_addr> - see [conventions](#conventions)
 - --debug - see [conventions](#conventions)
-- --output-format <format> - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
 
 YAML printed on success
 
 ```yaml
 ---
 - fragment_id: 7db6f91f3c92c0aef7b3dd497e9ea275229d2ab4dba6a1b30ce6b32db9c9c3b2 # hex-encoded fragment ID
-  last_updated_at: 	2019-06-02T16:20:26.201000000Z                              # RFC3339 timestamp of last fragment status change
+  last_updated_at: 2019-06-02T16:20:26.201000000Z                               # RFC3339 timestamp of last fragment status change
   received_at: 2019-06-02T16:20:26.201000000Z                                   # RFC3339 timestamp of fragment receivement
   received_from: Network,                                                       # how fragment was received
   status: Pending,                                                              # fragment status
@@ -686,4 +686,28 @@ jcli rest v0 rewards history get 2 -h <node_addr>
     },
   }
 ]
+```
+
+---
+
+## Get committee members
+
+Get the list of voting committee members.
+
+```sh
+jcli rest v0 committees get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
+
+YAML printed on success
+
+```yaml
+---
+- 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19 # list of members
+- f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
 ```
