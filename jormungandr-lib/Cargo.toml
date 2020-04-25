@@ -8,8 +8,8 @@ edition = "2018"
 bech32 = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain", features = [ "property-test-api" ] }
-chain-addr      = { path = "../chain-deps/chain-addr", features = [ "property-test-api" ] }
+chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
+chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
 chain-time           = { path = "../chain-deps/chain-time"}
@@ -32,6 +32,8 @@ hex = "0.4"
 [dev-dependencies]
 rand = "0.7"
 quickcheck = "0.9"
+chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain", features = [ "property-test-api" ] }
+chain-addr      = { path = "../chain-deps/chain-addr", features = [ "property-test-api" ] }
 chain-crypto    = { path = "../chain-deps/chain-crypto", features = [ "property-test-api" ] }
 ed25519-bip32 = "0.3"
 serde_yaml = "0.8"
@@ -49,3 +51,7 @@ features = ["blocking", "rustls-tls"]
 [target.'cfg(target_os = "android")'.dependencies.reqwest]
 version = "0.10.4"
 features = ["blocking"]
+
+[features]
+default = []
+property-test-api = [ "chain-impl-mockchain/property-test-api", "chain-addr/property-test-api" ]
