@@ -225,6 +225,7 @@ pub fn nightly_bootstrap() {
         .unwrap();
 }
 
+#[ignore]
 #[test]
 pub fn qa_bootstrap() {
     let testnet_config = TestnetConfig::new_qa();
