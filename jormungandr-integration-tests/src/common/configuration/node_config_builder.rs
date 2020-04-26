@@ -42,8 +42,6 @@ impl NodeConfigBuilder {
         .parse()
         .unwrap();
 
-        let grpc_listen_address = grpc_public_address.clone();
-
         NodeConfigBuilder {
             storage: Some(storage_file),
             log: log,
@@ -56,7 +54,7 @@ impl NodeConfigBuilder {
                 trusted_peers: vec![],
                 public_address: grpc_public_address,
                 public_id: public_id.clone(),
-                listen_address: Some(grpc_listen_address),
+                listen_address: None,
                 max_inbound_connections: None,
                 max_connections: None,
                 topics_of_interest: Some(TopicsOfInterest {

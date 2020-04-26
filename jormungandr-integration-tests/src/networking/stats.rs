@@ -1,7 +1,6 @@
 use crate::common::{
     jcli_wrapper,
     network::{builder, wallet},
-    process_utils,
     transaction_utils::TransactionHash,
 };
 const PASSIVE: &str = "PASSIVE";
@@ -24,7 +23,12 @@ pub fn passive_node_last_block_info() {
     let mut alice = network_controller.wallet("alice").unwrap();
     let bob = network_controller.wallet("bob").unwrap();
 
-    println!("{:?}", passive.rest().stats());
+    let stats_before = passive
+        .rest()
+        .stats()
+        .expect("cannot get stats at beginning")
+        .stats
+        .expect("empty stats");
     for _ in 0..10 {
         let fragment = alice
             .transaction_to(
@@ -42,10 +46,41 @@ pub fn passive_node_last_block_info() {
         );
 
         alice.confirm_transaction();
-
-        process_utils::sleep(30);
-
-        println!("{:?}", leader.rest().stats());
-        println!("{:?}", passive.rest().stats());
     }
+
+    let stats_after = passive
+        .rest()
+        .stats()
+        .expect("cannot get stats at end")
+        .stats
+        .expect("empty stats");
+
+    assert!(
+        stats_before.last_block_content_size == stats_after.last_block_content_size,
+        "last block content size should to be updated"
+    );
+    assert!(
+        stats_before.last_block_date == stats_after.last_block_date,
+        "last block date should to be updated"
+    );
+    assert!(
+        stats_before.last_block_fees == stats_after.last_block_fees,
+        "last block fees size should to be updated"
+    );
+    assert!(
+        stats_before.last_block_hash == stats_after.last_block_hash,
+        "last block hash should to be updated"
+    );
+    assert!(
+        stats_before.last_block_sum == stats_after.last_block_sum,
+        "last block sum should to be updated"
+    );
+    assert!(
+        stats_before.last_block_time == stats_after.last_block_time,
+        "last block time should to be updated"
+    );
+    assert!(
+        stats_before.last_block_tx == stats_after.last_block_tx,
+        "last block tx should to be updated"
+    );
 }

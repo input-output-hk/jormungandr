@@ -51,8 +51,6 @@ impl JormungandrConfig {
         )
         .parse()
         .unwrap();
-
-        self.node_config.p2p.listen_address = Some(self.node_config.p2p.public_address.clone());
     }
 
     pub fn fees(&self) -> LinearFee {
