@@ -8,6 +8,7 @@ use jormungandr_lib::{interfaces::Tls, testing::Openssl};
 pub fn test_rest_tls_config() {
     let openssl = Openssl::new().expect("no openssla installed.");
     let prv_key_file = file_utils::get_path_in_temp("prv.key");
+    let pk8_key_file = file_utils::get_path_in_temp("prv.pk8");
     let csr_cert_file = file_utils::get_path_in_temp("cert.csr");
     let cert_file = file_utils::get_path_in_temp("cert.crt");
 
@@ -20,7 +21,7 @@ pub fn test_rest_tls_config() {
     println!(
         "{}",
         openssl
-            .pkcs8(&prv_key_file, &csr_cert_file)
+            .pkcs8(&prv_key_file, &pk8_key_file)
             .expect("cannot wrap private key in PKC8")
     );
     println!(
@@ -42,7 +43,7 @@ pub fn test_rest_tls_config() {
     let config = ConfigurationBuilder::new()
         .with_rest_tls_config(Tls {
             cert_file: cert_file.as_os_str().to_str().unwrap().to_owned(),
-            priv_key_file: prv_key_file.as_os_str().to_str().unwrap().to_owned(),
+            priv_key_file: pk8_key_file.as_os_str().to_str().unwrap().to_owned(),
         })
         .build();
 
