@@ -69,8 +69,8 @@ impl Wallet {
         self.internal_counter = account::SpendingCounter::from(v + 1);
     }
 
-    pub fn internal_counter(&self) -> &account::SpendingCounter {
-        &self.internal_counter
+    pub fn internal_counter(&self) -> account::SpendingCounter {
+        self.internal_counter
     }
 
     pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {

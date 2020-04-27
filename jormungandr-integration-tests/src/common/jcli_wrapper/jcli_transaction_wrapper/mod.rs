@@ -294,7 +294,7 @@ impl JCLITransactionWrapper {
             Wallet::Account(account) => self.create_witness_from_key(
                 &account.signing_key().to_bech32_str(),
                 &"account",
-                Some((*account.internal_counter()).into()),
+                Some(account.internal_counter().into()),
             ),
             Wallet::UTxO(utxo) => self.create_witness_from_key(
                 &utxo.last_signing_key().to_bech32_str(),
