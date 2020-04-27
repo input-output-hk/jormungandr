@@ -42,7 +42,7 @@ pub trait CoreServices: Send + Sync {
 
 pub struct Watchdog<T: CoreServices> {
     services: T,
-    settings: T::Settings,
+    _settings: T::Settings,
     on_drop_send: oneshot::Sender<()>,
 }
 
@@ -152,7 +152,7 @@ give the absolute path to the file.",
         let watchdog = Watchdog {
             on_drop_send,
             services,
-            settings,
+            _settings: settings,
         };
 
         let rt = tokio::runtime::Builder::new()
