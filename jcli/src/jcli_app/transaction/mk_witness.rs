@@ -86,7 +86,7 @@ impl MkWitness {
                 Witness::new_account(
                     &self.genesis_block_hash,
                     &self.sign_data_hash,
-                    &account_spending_counter,
+                    account_spending_counter,
                     |d| secret_key.sign(d),
                 )
             }
