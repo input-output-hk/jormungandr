@@ -1,4 +1,5 @@
 use serde::Serialize;
+
 #[derive(Serialize)]
 #[serde(remote = "chain_impl_mockchain::block::BlockDate")]
 struct BlockDate {
@@ -14,18 +15,8 @@ struct ExternalProposalId {
 }
 
 #[derive(Serialize)]
-#[serde(remote = "chain_impl_mockchain::certificate::VoteOptions")]
-struct VoteOptions {
-    #[serde(getter = "chain_impl_mockchain::certificate::VoteOptions::as_byte")]
-    num_choices: u8,
-}
-
-#[derive(Serialize)]
-// #[serde(remote="chain_impl_mockchain::certificate::Proposal")]
 pub struct Proposal {
-    // #[serde(with="ExternalProposalId", getter="chain_impl_mockchain::certificate::Proposal::external_id")]
     pub external_id: String,
-    // #[serde(with="VoteOptions", getter="chain_impl_mockchain::certificate::Proposal::options")]
     pub options: u8,
 }
 
