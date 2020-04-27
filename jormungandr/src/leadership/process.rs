@@ -437,14 +437,14 @@ impl Module {
             match event.output {
                 LeaderOutput::None => {
                     let header = hdr_builder
-                        .to_unsigned_header()
+                        .into_unsigned_header()
                         .expect("Valid Header Builder")
                         .generalize();
                     Ok(Some(Block { header, contents }))
                 }
                 LeaderOutput::Bft(leader_id) => {
                     let final_builder = hdr_builder
-                        .to_bft_builder()
+                        .into_bft_builder()
                         .expect("Valid Header Builder")
                         .set_consensus_data(&leader_id);
                     enclave
@@ -467,7 +467,7 @@ impl Module {
                 }
                 LeaderOutput::GenesisPraos(node_id, vrfproof) => {
                     let final_builder = hdr_builder
-                        .to_genesis_praos_builder()
+                        .into_genesis_praos_builder()
                         .expect("Valid Header Builder")
                         .set_consensus_data(&node_id, &vrfproof.into());
                     enclave
