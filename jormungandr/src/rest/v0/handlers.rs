@@ -2,8 +2,10 @@ use crate::{
     rest::{v0::logic, ContextLock},
     secure::NodeSecret,
 };
+use jormungandr_lib::interfaces::{VotePlan, VotePlans};
 use serde::Serialize;
 use warp::{reject::Reject, Rejection, Reply};
+
 impl Reject for logic::Error {}
 
 pub async fn get_account_state(
@@ -274,7 +276,6 @@ pub async fn get_committees(context: ContextLock) -> Result<impl Reply, Rejectio
         .map_err(warp::reject::custom)
 }
 
-use jormungandr_lib::interfaces::{VotePlan, VotePlans};
 pub async fn get_active_vote_plans(context: ContextLock) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
     logic::get_active_vote_plans(&context)
