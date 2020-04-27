@@ -48,29 +48,11 @@ pub async fn process_block_announcements<S>(
 ) where
     S: TryStream<Ok = net_data::Header, Error = Error>,
 {
-    let res = stream
-        .try_for_each(|raw_header| async move {
-            let header = Header::from_slice(raw_header.as_bytes())
-                .map_err(|e| Error::new(Code::InvalidArgument, e))?;
-            mbox.send(BlockMsg::AnnouncedBlock(header, node_id))
-                .await
-                .map_err(|e| handle_mbox_error(e, logger))?;
-            if !global_state.peers.refresh_peer_on_block(node_id).await {
-                debug!(
-                    logger,
-                    "received block from node that is not in the peer map",
-                );
-            }
-            Ok(())
-        })
-        .await;
-    if let Err(e) = res {
-        debug!(
-            logger,
-            "inbound subscription stream failed";
-            "error" => ?e,
-        );
-    }
+    let stream = stream.and_then(|header| async { header.decode() });
+    let sink = BlockAnnouncementProcessor::new(mbox, node_id, global_state, logger);
+    stream.into_stream().forward(sink).await.map_err(|e| {
+        debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
+    });
 }
 
 pub async fn process_gossip<S>(
@@ -114,6 +96,56 @@ pub async fn process_fragments<S>(
     });
 }
 
+#[must_use = "sinks do nothing unless polled"]
+pub struct BlockAnnouncementProcessor {
+    mbox: MessageBox<BlockMsg>,
+    node_id: Address,
+    global_state: GlobalStateR,
+    logger: Logger,
+    pending_processing: PendingProcessing,
+}
+
+impl BlockAnnouncementProcessor {
+    fn new(
+        mbox: MessageBox<BlockMsg>,
+        node_id: Address,
+        global_state: GlobalStateR,
+        logger: Logger,
+    ) -> Self {
+        BlockAnnouncementProcessor {
+            mbox,
+            node_id,
+            global_state,
+            logger,
+            pending_processing: PendingProcessing::default(),
+        }
+    }
+
+    fn refresh_stat(&mut self) {
+        let refresh_logger = self.logger.clone();
+        let state = self.global_state.clone();
+        let node_id = self.node_id.clone();
+        let fut = async move {
+            let refreshed = state.peers.refresh_peer_on_block(node_id).await;
+            if !refreshed {
+                debug!(
+                    refresh_logger,
+                    "received block from node that is not in the peer map",
+                );
+            }
+        };
+        // It's OK to overwrite a pending future because only the latest
+        // timestamp matters.
+        self.pending_processing.start(fut);
+    }
+
+    fn poll_flush_mbox(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        Pin::new(&mut self.mbox)
+            .poll_flush(cx)
+            .map_err(|e| handle_mbox_error(e, self.logger))
+    }
+}
+
 // TODO: replace with a suitable stream combinator once implemented:
 // https://github.com/rust-lang/futures-rs/issues/1919
 #[must_use = "sinks do nothing unless polled"]
@@ -123,7 +155,7 @@ struct FragmentProcessor {
     global_state: GlobalStateR,
     logger: Logger,
     buffered_fragments: Vec<Fragment>,
-    refresh_stat_future: Option<BoxFuture<'static, ()>>,
+    pending_processing: PendingProcessing,
 }
 
 impl FragmentProcessor {
@@ -139,15 +171,15 @@ impl FragmentProcessor {
             global_state,
             logger,
             buffered_fragments: Vec::new(),
-            refresh_stat_future: None,
+            pending_processing: PendingProcessing::default(),
         }
     }
 
     fn refresh_stat(&mut self) {
         let refresh_logger = self.logger.clone();
         let state = self.global_state.clone();
-        let node_id = self.node_id;
-        let fut = Box::pin(async move {
+        let node_id = self.node_id.clone();
+        let fut = async move {
             let refreshed = state.peers.refresh_peer_on_fragment(node_id).await;
             if !refreshed {
                 debug!(
@@ -155,10 +187,10 @@ impl FragmentProcessor {
                     "received fragment from node that is not in the peer map",
                 );
             }
-        });
+        };
         // It's OK to overwrite a pending future because only the latest
         // timestamp matters.
-        self.refresh_stat_future = Some(fut);
+        self.pending_processing.start(fut);
     }
 }
 
@@ -166,7 +198,7 @@ pub struct GossipProcessor {
     node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
-    pending_processing: Option<BoxFuture<'static, ()>>,
+    pending_processing: PendingProcessing,
 }
 
 impl GossipProcessor {
@@ -175,16 +207,12 @@ impl GossipProcessor {
             node_id,
             global_state,
             logger,
-            pending_processing: None,
+            pending_processing: Default::default(),
         }
     }
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Some(fut) = &mut self.pending_processing {
-            ready!(Pin::new(fut).poll(cx));
-            self.pending_processing = None;
-        }
-        Poll::Ready(())
+        self.pending_processing.poll_complete(cx)
     }
 
     fn start_processing_item(&mut self, gossip: net_data::Gossip) -> Result<(), Error> {
@@ -214,8 +242,55 @@ impl GossipProcessor {
             },
         )
         .map(|_| ());
-        self.pending_processing = Some(Box::pin(fut));
+        self.pending_processing.start(fut);
         Ok(())
+    }
+}
+
+impl Sink<Header> for BlockAnnouncementProcessor {
+    type Error = Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        match self.pending_processing.poll_complete(cx) {
+            Poll::Pending => {
+                self.poll_flush_mbox(cx)?;
+                Poll::Pending
+            }
+            Poll::Ready(()) => self
+                .mbox
+                .poll_ready(cx)
+                .map_err(|e| handle_mbox_error(e, self.logger)),
+        }
+    }
+
+    fn start_send(self: Pin<&mut Self>, header: Header) -> Result<(), Error> {
+        self.mbox
+            .start_send(BlockMsg::AnnouncedBlock(header, self.node_id.clone()))
+            .map_err(|e| handle_mbox_error(e, self.logger))?;
+        self.refresh_stat();
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        match self.pending_processing.poll_complete(cx) {
+            Poll::Pending => {
+                self.poll_flush_mbox(cx)?;
+                Poll::Pending
+            }
+            Poll::Ready(()) => self.poll_flush_mbox(cx),
+        }
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        match self.pending_processing.poll_complete(cx) {
+            Poll::Pending => {
+                self.poll_flush_mbox(cx)?;
+                Poll::Pending
+            }
+            Poll::Ready(()) => Pin::new(&mut self.mbox)
+                .poll_close(cx)
+                .map_err(|e| handle_mbox_error(e, self.logger)),
+        }
     }
 }
 
@@ -230,7 +305,7 @@ impl Sink<Fragment> for FragmentProcessor {
         Poll::Ready(Ok(()))
     }
 
-    fn start_send(self: Pin<&mut Self>, fragment: Fragment) -> Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, fragment: Fragment) -> Result<(), Error> {
         assert!(
             self.buffered_fragments.len() < buffer_sizes::inbound::FRAGMENTS,
             "should call `poll_ready` which returns `Poll::Ready(Ok(()))` before `start_send`",
@@ -298,9 +373,22 @@ impl FragmentProcessor {
     }
 
     fn poll_complete_refresh_stat(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
-        if let Some(fut) = &mut self.refresh_stat_future {
+        self.pending_processing.poll_complete(cx)
+    }
+}
+
+#[derive(Default)]
+struct PendingProcessing(Option<BoxFuture<'static, ()>>);
+
+impl PendingProcessing {
+    fn start(&mut self, future: impl Future<Output = ()> + Send + 'static) {
+        self.0 = Some(Box::pin(future));
+    }
+
+    fn poll_complete(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if let Some(fut) = &mut self.0 {
             ready!(Pin::new(fut).poll(cx));
-            self.refresh_stat_future = None;
+            self.0 = None;
         }
         Poll::Ready(())
     }
