@@ -8,13 +8,8 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     io::{stdin, stdout, AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
     stream::StreamExt as _,
-    time::delay_for,
 };
-
-use std::time::Duration;
-use tracing;
 use tracing_subscriber::fmt::Subscriber;
-use tracing_subscriber::EnvFilter;
 
 struct StdinReader {
     state: ServiceState<Self>,
