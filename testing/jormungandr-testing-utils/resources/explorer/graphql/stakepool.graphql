@@ -1,6 +1,14 @@
 query StakePool($id: PoolId!, $first: Int!){ 
     stakePool(id: $id) {
         id,
+        registration {
+            pool {
+                id
+            }
+        },
+        retirement {
+            poolId
+        },
         blocks(first: $first) {
             edges {
                 node {

@@ -197,6 +197,10 @@ impl NodeController {
         self.settings.config.p2p.public_address.clone()
     }
 
+    pub fn explorer(&self) -> Explorer {
+        Explorer::new(self.settings.config.rest.listen.to_string())
+    }
+
     pub fn as_named_process(&self) -> NamedProcess {
         NamedProcess::new(self.alias().to_string(), self.process_id as usize)
     }
@@ -707,6 +711,7 @@ impl Node {
 }
 
 use std::fmt::Display;
+use jormungandr_testing_utils::testing::node::Explorer;
 
 impl ProgressBarController {
     pub fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {
