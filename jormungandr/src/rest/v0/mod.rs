@@ -219,13 +219,13 @@ pub fn filter(
         .and_then(handlers::get_diagnostic)
         .boxed();
 
-    let committees = warp::path!("committees")
+    let committees = warp::path!("vote/active/committees")
         .and(warp::get())
         .and(with_context.clone())
         .and_then(handlers::get_committees)
         .boxed();
 
-    let vote_plans = warp::path!("active_vote_plans")
+    let vote_plans = warp::path!("vote/active/plans")
         .and(warp::get())
         .and(with_context.clone())
         .and_then(handlers::get_active_vote_plans)
