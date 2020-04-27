@@ -101,6 +101,8 @@ jobs:
 
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
+        env:
+          DATE: ${{ env.DATE }}
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
@@ -108,6 +110,8 @@ jobs:
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
+        env:
+          DATE: ${{ env.DATE }}
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
