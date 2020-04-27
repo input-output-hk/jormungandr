@@ -80,7 +80,7 @@ impl Service for StdoutWriter {
                 tracing::error!(%err);
                 break;
             }
-            stdout.write_all("\n".as_bytes()).await.unwrap();
+            stdout.write_all(b"\n").await.unwrap();
             stdout.flush().await.unwrap();
         }
     }
