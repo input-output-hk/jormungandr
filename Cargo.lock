@@ -553,15 +553,16 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6728a28023f207181b193262711102bfbaf47cc9d13bc71d0736607ef8efe88c"
+checksum = "703dd7516d1a3e6483189c8d9a18a9af84877084630875ff9e922c201f9e0209"
 dependencies = [
  "clicolors-control",
  "encode_unicode",
  "lazy_static",
  "libc",
  "regex",
+ "terminal_size",
  "termios",
  "unicode-width",
  "winapi 0.3.8",
@@ -3808,6 +3809,16 @@ dependencies = [
  "kernel32-sys",
  "libc",
  "winapi 0.2.8",
+]
+
+[[package]]
+name = "terminal_size"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "248dbcb93f8697c50b85b0492cf559b94667eb24c26934eae73ae5673175ebf6"
+dependencies = [
+ "libc",
+ "winapi 0.3.8",
 ]
 
 [[package]]
