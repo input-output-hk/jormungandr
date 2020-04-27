@@ -32,14 +32,13 @@ use jormungandr_lib::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
         LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
         SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
-        TransactionOutput,
+        TransactionOutput, VotePlan, VotePlans,
     },
     time::SystemTime,
 };
 
 use std::{convert::Infallible, sync::Arc};
 
-use chain_impl_mockchain::certificate::VotePlan;
 use futures::sync::mpsc::TrySendError;
 use futures03::{compat::*, prelude::*};
 
@@ -660,11 +659,15 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .collect())
 }
 
-pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlan>, Error> {
-    Ok(context
-        .blockchain_tip()?
-        .get_ref()
-        .await
-        .ledger()
-        .active_vote_plans())
+pub async fn get_active_vote_plans(context: &Context) -> Result<VotePlans, Error> {
+    Ok(VotePlans::new(
+        context
+            .blockchain_tip()?
+            .get_ref()
+            .await
+            .active_vote_plans()
+            .iter()
+            .map(|p| VotePlan::from_vote_plan(p))
+            .collect(),
+    ))
 }
