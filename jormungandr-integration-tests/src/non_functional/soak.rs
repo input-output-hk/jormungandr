@@ -69,7 +69,7 @@ pub fn test_blocks_are_being_created_for_48_hours() {
         }
         sender.confirm_transaction();
 
-        benchmark_consumption.snapshot();
+        benchmark_consumption.snapshot().unwrap();
 
         if benchmark_endurance.max_endurance_reached() {
             benchmark_consumption.stop().print();

@@ -1,5 +1,5 @@
 use crate::common::{
-    file_utils, jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils, startup,
+    jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils, startup,
     transaction_utils::TransactionHash,
 };
 
@@ -26,7 +26,7 @@ pub fn collect_reward_for_15_minutes() {
         startup::create_new_account_address(),
         startup::create_new_account_address(),
     ];
-    let (jormungandr, stake_pool_ids) = startup::start_stake_pool(
+    let (jormungandr, _stake_pool_ids) = startup::start_stake_pool(
         &stake_pool_owners,
         &[],
         ConfigurationBuilder::new()
@@ -60,7 +60,7 @@ pub fn collect_reward_for_15_minutes() {
         jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_address());
         sender.confirm_transaction();
 
-        benchmark_consumption.snapshot();
+        benchmark_consumption.snapshot().unwrap();
 
         if benchmark_endurance.max_endurance_reached() {
             benchmark_consumption.stop().print();
@@ -75,7 +75,7 @@ pub fn collect_reward_for_15_minutes() {
             panic!(message.clone());
         }
 
-        benchmark_consumption.snapshot();
+        benchmark_consumption.snapshot().unwrap();
         if benchmark_endurance.max_endurance_reached() {
             benchmark_consumption.stop().print();
             benchmark_endurance.stop().print();
