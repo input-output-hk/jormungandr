@@ -89,7 +89,7 @@ impl Block0Configuration {
             let r: Result<Header, Infallible> = Ok(hdr
                 .set_genesis()
                 .set_date(BlockDate::first())
-                .to_unsigned_header()
+                .into_unsigned_header()
                 .expect("internal error cannot build unsigned block")
                 .generalize());
             r
