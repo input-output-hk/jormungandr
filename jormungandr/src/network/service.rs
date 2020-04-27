@@ -68,7 +68,7 @@ impl Node for NodeService {
     }
 }
 
-async fn send_message<T>(mbox: MessageBox<T>, msg: T, logger: Logger) -> Result<(), Error> {
+async fn send_message<T>(mut mbox: MessageBox<T>, msg: T, logger: Logger) -> Result<(), Error> {
     mbox.send(msg).await.map_err(|e| {
         error!(
             logger,
@@ -188,14 +188,15 @@ impl BlockService for NodeService {
         subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
+        let addr = subscriber.addr();
         let logger = self.subscription_logger(subscriber, "block_events");
-        let subscriber = Address::new(subscriber.addr()).unwrap();
+        let subscriber = Address::new(addr).unwrap();
 
         self.global_state
             .spawn(subscription::process_block_announcements(
                 stream,
                 self.channels.block_box.clone(),
-                subscriber,
+                subscriber.clone(),
                 self.global_state.clone(),
                 logger.new(o!("direction" => "in")),
             ));
@@ -223,13 +224,14 @@ impl FragmentService for NodeService {
         subscriber: Peer,
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
+        let addr = subscriber.addr();
         let logger = self.subscription_logger(subscriber, "fragments");
-        let subscriber = Address::new(subscriber.addr()).unwrap();
+        let subscriber = Address::new(addr).unwrap();
 
         self.global_state.spawn(subscription::process_fragments(
             stream,
             self.channels.transaction_box.clone(),
-            subscriber,
+            subscriber.clone(),
             self.global_state.clone(),
             logger.new(o!("direction" => "in")),
         ));
@@ -252,12 +254,13 @@ impl GossipService for NodeService {
         subscriber: Peer,
         stream: PushStream<Gossip>,
     ) -> Result<Self::SubscriptionStream, Error> {
+        let addr = subscriber.addr();
         let logger = self.subscription_logger(subscriber, "gossip");
-        let subscriber = Address::new(subscriber.addr()).unwrap();
+        let subscriber = Address::new(addr).unwrap();
 
         self.global_state.spawn(subscription::process_gossip(
             stream,
-            subscriber,
+            subscriber.clone(),
             self.global_state.clone(),
             logger.new(o!("direction" => "in")),
         ));
