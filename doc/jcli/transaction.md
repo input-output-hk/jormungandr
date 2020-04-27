@@ -48,10 +48,14 @@ The options are:
 - `--prefix <address-prefix>`       - set the address prefix to use when displaying the addresses (default: ca)
 
 - `--fee-certificate <certificate>` - fee per certificate (default: 0)
-
 - `--fee-coefficient <coefficient>` - fee per every input and output (default: 0)
-
 - `--fee-constant <constant>`       - fee per transaction (default: 0)
+
+- `--fee-owner-stake-delegation <certificate-owner-stake-delegation>` - fee per owner stake delegation (default: fee-certificate)
+- `--fee-pool-registration <certificate-pool-registration>`           - fee per pool registration (default: fee-certificate)
+- `--fee-stake-delegation <certificate-stake-delegation>`             - fee per stake delegation (default: fee-certificate)
+- `--fee-vote-cast <certificate-vote-cast>`                           - fee per vote cast
+- `--fee-vote-plan <certificate-vote-plan>`                           - fee per vote plan
 
 - `--output-format <format>`        - Format of output data. Possible values: json, yaml.
                                       Any other value is treated as a custom format using values from output data structure.
@@ -102,12 +106,12 @@ Let's use the following utxo as input and transfer 50 lovelaces to the destinati
 
 ## Input utxo
 
-| Field                     | Value        |
-| ------------------------- |:------------:|
-| UTXO's transaction ID     | 55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c|
-| UTXO's output index       | 0     |
-| associated address        |  ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu    |
-| associated value          | 100             |
+| Field                 |                              Value                               |
+| --------------------- | :--------------------------------------------------------------: |
+| UTXO's transaction ID | 55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c |
+| UTXO's output index   |                                0                                 |
+| associated address    |  ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu  |
+| associated value      |                               100                                |
 
 ## Destination address
 

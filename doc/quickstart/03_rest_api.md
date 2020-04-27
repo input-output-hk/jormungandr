@@ -1,3 +1,5 @@
+# REST Api
+
 It is possible to query the node via its REST Interface.
 
 In the node configuration, you have set something like:
@@ -15,7 +17,7 @@ This is the REST endpoint to talk to the node, to query blocks or send transacti
 
 It is possible to query the node stats with the following end point:
 
-```
+```sh
 curl http://127.0.0.1:8443/api/v0/node/stats
 ```
 

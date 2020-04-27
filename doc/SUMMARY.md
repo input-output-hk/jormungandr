@@ -29,10 +29,10 @@
   - [Genesis](./jcli/genesis.md)
   - [REST](./jcli/rest.md)
 
-- [staking and stake pool](./stake_pool/introduction.md)
-  - [delegating your stake](./stake_pool/delegating_stake.md)
-  - [registering stake pool](./stake_pool/registering_stake_pool.md)
-  - [retiring stake pool](./stake_pool/retiring_stake_pool.md)
+- [Staking and stake pool](./stake_pool/introduction.md)
+  - [Delegating your stake](./stake_pool/delegating_stake.md)
+  - [Registering stake pool](./stake_pool/registering_stake_pool.md)
+  - [Retiring stake pool](./stake_pool/retiring_stake_pool.md)
 
 - [Advanced](./advanced/introduction.md)
   - [Genesis block](./advanced/01_the_genesis_block.md)

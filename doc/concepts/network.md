@@ -1,3 +1,5 @@
+# Network overview
+
 Jörmungandr network capabilities are split into:
 
 1. the REST API, used for informational queries or control of the node;
@@ -6,7 +8,7 @@ Jörmungandr network capabilities are split into:
 Here we will only review the gRPC API as the REST API is described in another
 chapter: [go to the REST documentation](../quickstart/03_rest_api.md)
 
-# The protocol
+## The protocol
 
 The protocol is based on [`gRPC`] that combines commonly used protocols like HTTP/2 and RPC.
 More precisely, Jörmungandr utilises.
@@ -44,9 +46,9 @@ The peer 2 peer connections are established utilising multiple components:
 ### Multilayered topology
 
 As described in the [Poldercast] paper, our network topology is
-built on multiple layers that allow for granular control of it's behavior. In 
-practice this means a node will have different groups of nodes that it connects to 
-based on different algorithms, each of these groups are a subset of the whole 
+built on multiple layers that allow for granular control of it's behavior. In
+practice this means a node will have different groups of nodes that it connects to
+based on different algorithms, each of these groups are a subset of the whole
 known list of nodes.
 
 In short we have:
@@ -85,7 +87,6 @@ free). These bi-directional connections are used to propagate events such as:
 * Gossiping events, when 2 nodes exchange gossips for peer discovery;
 * Fragment events, when a node wants to propagate a new fragment to other nodes;
 * Block events, when a node wants to propagate a new block creation event
-
 
 ### Security and countermeasures
 
@@ -130,10 +131,10 @@ And it also makes sure that only the nodes of interest are up to date. However
 it is possible for the node to choose, at a convenient time, to policy the whole
 p2p database. This is not enforced by the protocol.
 
-| Disposition | Description |
-|:------------|:------------|
-| available   | Node is available for the p2p topology for view selection and gossips. |
-| quarantined | Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available. |
+| Disposition | Description                                                                                                                                                                             |
+| :---------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| available   | Node is available for the p2p topology for view selection and gossips.                                                                                                                  |
+| quarantined | Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available.     |
 | forgotten   | A node forgotten is simply removed from the whole p2p database. However, if the node is still being gossiped about it will be added back as available and the process will start again. |
 
 [Poldercast]: https://hal.inria.fr/hal-01555561/document

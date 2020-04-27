@@ -1,3 +1,5 @@
+# Mempool
+
 When running an active node (BFT leader or stake pool) it is interesting to be
 able to make choices on how to manage the pending transactions: how long to keep
 them, how to prioritize them etc.

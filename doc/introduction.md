@@ -1,8 +1,8 @@
-# Jormungandr User Guide
+# Jörmungandr User Guide
 
-Welcome to the Jormungandr User Guide.
+Welcome to the Jörmungandr User Guide.
 
-Jormungandr is a node implementation, written in rust, with the
+Jörmungandr is a node implementation, written in rust, with the
 initial aim to support the Ouroboros type of consensus protocol.
 
 A node is a participant of a blockchain network, continuously making,
