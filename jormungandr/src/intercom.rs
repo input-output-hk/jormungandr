@@ -319,8 +319,8 @@ where
         Pin::new(&mut self.receiver)
             .poll_next(cx)
             .map(|maybe_res| match maybe_res {
-                None => None,
                 Some(Ok(item)) => Some(Ok(item)),
+                None => None,
                 Some(Err(e)) => {
                     info!(
                         self.logger,
@@ -329,6 +329,25 @@ where
                     );
                     Some(Err(e.into()))
                 }
+            })
+    }
+}
+
+/// An adapter for outbound client streaming requests
+pub struct UploadStream<T> {
+    inner: ReplyStream<T, Error>,
+}
+
+impl<T> Stream for UploadStream<T> {
+    type Item = T;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<T>> {
+        Pin::new(&mut self.inner)
+            .poll_next(cx)
+            .map(|maybe_res| match maybe_res {
+                Some(Ok(item)) => Some(item),
+                None => None,
+                Some(Err(e)) => None,
             })
     }
 }
@@ -344,6 +363,14 @@ pub fn stream_reply<T, E>(
         _phantom_error: PhantomData,
     };
     (ReplyStreamHandle { sender }, stream)
+}
+
+pub fn upload_stream_reply<T>(
+    buffer: usize,
+    logger: Logger,
+) -> (ReplyStreamHandle<T>, UploadStream<T>) {
+    let (handle, inner) = stream_reply(buffer, logger);
+    (handle, UploadStream { inner })
 }
 
 #[derive(Debug)]
