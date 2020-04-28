@@ -25,6 +25,7 @@ use chain_network::error as net_error;
 
 use futures03::prelude::*;
 use futures03::ready;
+use futures03::stream;
 use slog::Logger;
 
 use std::pin::Pin;
@@ -37,16 +38,16 @@ pub struct Client {
     inner: grpc::Client,
     logger: Logger,
     global_state: GlobalStateR,
-    inbound: InboundSubscriptions,
+    node_id: Address,
+    inbound_block_events: BlockSubscription,
     block_solicitations: OutboundSubscription<BlockIds>,
     chain_pulls: OutboundSubscription<ChainPullRequest>,
     block_sink: BlockAnnouncementProcessor,
-    fragment_sink: FragmentProcessor,
-    gossip_processor: GossipProcessor,
+    fragment_forward: stream::Forward<FragmentSubscription, FragmentProcessor>,
+    gossip_forward: stream::Forward<GossipSubscription, GossipProcessor>,
     client_box: MessageBox<ClientMsg>,
     incoming_block_announcement: Option<net_data::Header>,
     incoming_solicitation: Option<ClientMsg>,
-    incoming_fragment: Option<net_data::Fragment>,
 }
 
 struct ClientBuilder {
@@ -55,10 +56,6 @@ struct ClientBuilder {
 }
 
 impl Client {
-    pub fn remote_node_id(&self) -> Address {
-        self.inbound.node_id
-    }
-
     pub fn logger(&self) -> &Logger {
         &self.logger
     }
@@ -99,16 +96,16 @@ impl Client {
             inner,
             logger,
             global_state,
-            inbound,
+            node_id: inbound.node_id,
+            inbound_block_events: inbound.block_events,
             block_solicitations: comms.subscribe_to_block_solicitations(),
             chain_pulls: comms.subscribe_to_chain_pulls(),
             block_sink,
-            fragment_sink,
-            gossip_processor,
+            fragment_forward: inbound.fragments.forward(fragment_sink),
+            gossip_forward: inbound.gossip.forward(gossip_processor),
             client_box: builder.channels.client_box,
             incoming_block_announcement: None,
             incoming_solicitation: None,
-            incoming_fragment: None,
         }
     }
 }
@@ -198,7 +195,7 @@ impl Client {
             })?;
         }
 
-        let block_events = Pin::new(&mut self.inbound.block_events);
+        let block_events = Pin::new(&mut self.inbound_block_events);
         let maybe_event = ready!(block_events.poll_next(cx));
         let event = match maybe_event {
             Some(Ok(event)) => event,
@@ -404,48 +401,15 @@ impl Client {
     fn process_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
-        // Drive sending of a message to fragment task to completion
-        // before polling more events from the fragment subscription
-        // stream.
-        let fragment_box = &mut self.channels.transaction_box;
-        ready!(fragment_box.poll_ready(cx));
-        if let Some(fragment) = self.incoming_fragment.take() {
-            fragment_box.start_send(fragment).map_err(|e| {
-                error!(
-                    self.logger,
-                    "failed to send fragment for processing";
-                    "reason" => %e,
-                );
-            })?;
-        } else {
-            // Ignoring possible Pending return here: due to the following
-            // try_ready!() invocation, this function cannot return Continue
-            // while no progress has been made.
-            Pin::new(fragment_box).poll_flush(cx).map_err(|e| {
-                error!(
-                    self.logger,
-                    "processing of incoming fragments failed";
-                    "reason" => %e,
-                );
-            })?;
-        }
-
-        let stream = Pin::new(&mut self.inbound.fragments);
-        let maybe_fragment = ready!(stream.poll_next(cx));
-        match maybe_fragment {
-            Some(Ok(fragment)) => {
-                debug_assert!(self.incoming_fragment.is_none());
-                self.incoming_fragment = Some(fragment);
-                Ok(Continue).into()
-            }
-            None => {
+        match ready!(Pin::new(&mut self.fragment_forward).poll(cx)) {
+            Ok(()) => {
                 debug!(self.logger, "fragment subscription ended by the peer");
                 Ok(Disconnect).into()
             }
-            Some(Err(e)) => {
+            Err(e) => {
                 debug!(
                     self.logger,
-                    "fragment stream failure";
+                    "fragment subscription failed";
                     "error" => %e,
                 );
                 Err(()).into()
@@ -456,27 +420,15 @@ impl Client {
     fn process_gossip(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
-        ready!(self.gossip_processor.poll_ready(cx));
-
-        let stream = Pin::new(&mut self.inbound.gossip);
-        let maybe_gossip = ready!(stream.poll_next(cx));
-        match maybe_gossip {
-            Some(Ok(gossip)) => {
-                self.gossip_processor
-                    .start_processing_item(gossip)
-                    .map_err(|e| {
-                        debug!(self.logger, "failed to process gossip"; "error" => ?e);
-                    })?;
-                Ok(Continue).into()
-            }
-            None => {
+        match ready!(Pin::new(&mut self.gossip_forward).poll(cx)) {
+            Ok(()) => {
                 debug!(self.logger, "gossip subscription ended by the peer");
                 Ok(Disconnect).into()
             }
-            Some(Err(e)) => {
+            Err(e) => {
                 debug!(
                     self.logger,
-                    "gossip stream failure";
+                    "gossip subscription failed";
                     "error" => %e,
                 );
                 Err(()).into()
