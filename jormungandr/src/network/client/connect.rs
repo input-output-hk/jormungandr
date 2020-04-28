@@ -66,7 +66,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
     let handle = ConnectHandle { receiver };
     let future = ConnectFuture {
         sender: Some(sender),
-        task: Box::pin(cf),
+        task: cf.boxed(),
     };
     (handle, future)
 }
