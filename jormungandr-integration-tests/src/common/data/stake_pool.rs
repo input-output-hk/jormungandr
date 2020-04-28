@@ -32,7 +32,7 @@ impl StakePool {
 
         let jcli_certificate = JCLICertificateWrapper::new();
 
-        let mut stake_pool = StakePoolBuilder::new()
+        let stake_pool = StakePoolBuilder::new()
             .with_owners(vec![owner.identifier().into_public_key()])
             .with_pool_permissions(PoolPermissions::new(1))
             .with_reward_account(false)

@@ -76,6 +76,10 @@ impl NetworkBuilder {
             blockchain.add_leader(leader);
         }
 
+        for wallet in &self.wallets {
+            blockchain.add_wallet(wallet.clone());
+        }
+
         let settings = Settings::new(nodes, blockchain, &mut random);
         Controller::new(
             &self.title,
@@ -93,7 +97,7 @@ pub fn builder(title: &str) -> NetworkBuilder {
             NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
             SlotDuration::new(2).expect("valid slot duration in seconds"),
             KESUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
-            ActiveSlotCoefficient::new(Milli::from_millis(700))
+            ActiveSlotCoefficient::new(Milli::from_millis(999))
                 .expect("active slot coefficient in millis"),
         )),
         topology_builder: TopologyBuilder::new(),
