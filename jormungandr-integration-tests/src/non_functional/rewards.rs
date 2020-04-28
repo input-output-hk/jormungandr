@@ -60,6 +60,7 @@ pub fn collect_reward_for_15_minutes() {
         jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_address());
         sender.confirm_transaction();
 
+        println!("63");
         benchmark_consumption.snapshot().unwrap();
 
         if benchmark_endurance.max_endurance_reached() {
@@ -68,6 +69,7 @@ pub fn collect_reward_for_15_minutes() {
             return;
         }
 
+        println!("72");
         if let Err(err) = jormungandr.check_no_errors_in_log() {
             let message = format!("{}", err);
             benchmark_endurance.exception(message.clone()).print();
@@ -75,6 +77,7 @@ pub fn collect_reward_for_15_minutes() {
             panic!(message.clone());
         }
 
+        println!("80");
         benchmark_consumption.snapshot().unwrap();
         if benchmark_endurance.max_endurance_reached() {
             benchmark_consumption.stop().print();
@@ -83,6 +86,7 @@ pub fn collect_reward_for_15_minutes() {
         }
         process_utils::sleep(5);
 
+        println!("89");
         let _rewards = jormungandr
             .rest()
             .reward_history(1)
