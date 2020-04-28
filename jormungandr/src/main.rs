@@ -142,8 +142,9 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
             let (explorer_msgbox, explorer_queue) = async_msg::channel(EXPLORER_TASK_QUEUE_LEN);
 
-            let task_msg_box = services
-                .spawn_future_std("explorer", move |info| explorer.start(info, explorer_queue));
+            services.spawn_future_std("explorer", move |info| async move {
+                explorer.start(info, explorer_queue).await
+            });
             Some((explorer_msgbox, context))
         } else {
             None
@@ -322,7 +323,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         storage,
         logger,
         rest_context,
-        services,
+        mut services,
     } = initialized_node;
 
     let BootstrapData {

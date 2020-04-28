@@ -6,7 +6,6 @@ use crate::{
     network::p2p::{layers::PreferredListLayer, Address, Gossips, Policy, PolicyConfig},
     settings::start::network::Configuration,
 };
-use futures03::prelude::*;
 use poldercast::{
     custom_layers,
     poldercast::{Cyclon, Rings, Vicinity},
@@ -96,7 +95,7 @@ impl P2pTopology {
     /// Returns a list of neighbors selected in this turn
     /// to contact for event dissemination.
     pub async fn view(&self, selection: poldercast::Selection) -> View {
-        let topology = self.lock.write().await;
+        let mut topology = self.lock.write().await;
         let peers = topology.view(None, selection).into_iter().collect();
         View {
             self_node: topology.profile().clone(),
@@ -105,24 +104,24 @@ impl P2pTopology {
     }
 
     pub async fn initiate_gossips(&self, with: Address) -> Gossips {
-        let topology = self.lock.write().await;
+        let mut topology = self.lock.write().await;
         topology.initiate_gossips(with).into()
     }
 
     pub async fn accept_gossips(&self, from: Address, gossips: Gossips) {
-        let topology = self.lock.write().await;
+        let mut topology = self.lock.write().await;
         topology.accept_gossips(from, gossips.into())
     }
 
     pub async fn exchange_gossips(&mut self, with: Address, gossips: Gossips) -> Gossips {
-        let topology = self.lock.write().await;
+        let mut topology = self.lock.write().await;
         topology
             .exchange_gossips(with.into(), gossips.into())
             .into()
     }
 
-    pub fn node_address(&self) -> Address {
-        self.node_address
+    pub fn node_address(&self) -> &Address {
+        &self.node_address
     }
 
     pub async fn node(&self) -> NodeProfile {
@@ -131,7 +130,7 @@ impl P2pTopology {
     }
 
     pub async fn force_reset_layers(&self) {
-        let topology = self.lock.write().await;
+        let mut topology = self.lock.write().await;
         topology.force_reset_layers()
     }
 
@@ -175,7 +174,7 @@ impl P2pTopology {
     /// the function returns `None` if the node was not even in the
     /// the topology (not even quarantined).
     pub async fn report_node(&self, address: Address, issue: StrikeReason) -> Option<PolicyReport> {
-        let topology = self.lock.write().await;
+        let mut topology = self.lock.write().await;
         topology.update_node(address, |node| {
             node.record_mut().strike(issue);
         })

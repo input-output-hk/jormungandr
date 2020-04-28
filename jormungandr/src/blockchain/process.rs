@@ -356,7 +356,7 @@ async fn process_and_propagate_new_ref(
     blockchain: &mut Blockchain,
     tip: Tip,
     new_block_ref: Arc<Ref>,
-    network_msg_box: MessageBox<NetworkMsg>,
+    mut network_msg_box: MessageBox<NetworkMsg>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
@@ -403,7 +403,7 @@ async fn process_leadership_block(
     // Track block as new new tip block
     stats_counter.set_tip_block(Arc::new(block.clone()));
 
-    if let Some(msg_box) = explorer_msg_box {
+    if let Some(mut msg_box) = explorer_msg_box {
         msg_box
             .send(ExplorerMsg::NewBlock(block))
             .await
@@ -512,12 +512,12 @@ async fn process_network_blocks(
     stats_counter: StatsCounter,
     logger: Logger,
 ) -> Result<(), Error> {
-    let (stream, reply) = handle.into_stream_and_reply();
+    let (mut stream, reply) = handle.into_stream_and_reply();
     let mut candidate = None;
     let mut latest_block: Option<Arc<Block>> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
-        let (maybe_block, new_stream) = stream.into_future().await;
+        let (maybe_block, stream_tail) = stream.into_future().await;
         match maybe_block {
             Some(block) => {
                 latest_block = Some(Arc::new(block.clone()));
@@ -533,7 +533,7 @@ async fn process_network_blocks(
                 match res {
                     Ok(Some(r)) => {
                         stats_counter.add_block_recv_cnt(1);
-                        stream = new_stream;
+                        stream = stream_tail;
                         candidate = Some(r);
                     }
                     Ok(None) => {
@@ -697,7 +697,7 @@ async fn process_chain_headers(
     blockchain: Blockchain,
     handle: intercom::RequestStreamHandle<Header, ()>,
     mut pull_headers_scheduler: PullHeadersScheduler,
-    network_msg_box: MessageBox<NetworkMsg>,
+    mut network_msg_box: MessageBox<NetworkMsg>,
 ) {
     let (stream, reply) = handle.into_stream_and_reply();
     match candidate::advance_branch(blockchain, stream, logger.clone()).await {

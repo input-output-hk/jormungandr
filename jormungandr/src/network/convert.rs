@@ -40,7 +40,7 @@ pub trait Decode {
 pub trait Encode {
     type NetworkData;
 
-    fn encode(self) -> Self::NetworkData;
+    fn encode(&self) -> Self::NetworkData;
 }
 
 pub type ResponseStream<T: Encode> =
@@ -49,7 +49,7 @@ pub type ResponseStream<T: Encode> =
 pub fn response_stream<T: Encode>(
     reply_stream: intercom::ReplyStream<T, Error>,
 ) -> ResponseStream<T> {
-    reply_stream.map_ok(Encode::encode)
+    reply_stream.map_ok(|item| item.encode())
 }
 
 impl<T, N> Decode for Box<[N]>
@@ -108,18 +108,15 @@ where
 {
     type NetworkData = Box<[N]>;
 
-    fn encode(self) -> Box<[N]> {
-        self.into_iter()
-            .map(Encode::encode)
-            .collect::<Vec<N>>()
-            .into()
+    fn encode(&self) -> Box<[N]> {
+        self.iter().map(Encode::encode).collect::<Vec<N>>().into()
     }
 }
 
 impl Encode for HeaderId {
     type NetworkData = net_data::BlockId;
 
-    fn encode(self) -> Self::NetworkData {
+    fn encode(&self) -> Self::NetworkData {
         net_data::BlockId::try_from(self.as_bytes()).unwrap()
     }
 }
@@ -127,7 +124,7 @@ impl Encode for HeaderId {
 impl Encode for Block {
     type NetworkData = net_data::Block;
 
-    fn encode(self) -> Self::NetworkData {
+    fn encode(&self) -> Self::NetworkData {
         net_data::Block::from_bytes(self.serialize_as_vec().unwrap())
     }
 }
@@ -135,7 +132,7 @@ impl Encode for Block {
 impl Encode for Header {
     type NetworkData = net_data::Header;
 
-    fn encode(self) -> Self::NetworkData {
+    fn encode(&self) -> Self::NetworkData {
         net_data::Header::from_bytes(self.to_raw())
     }
 }
@@ -143,7 +140,7 @@ impl Encode for Header {
 impl Encode for Fragment {
     type NetworkData = net_data::Fragment;
 
-    fn encode(self) -> Self::NetworkData {
+    fn encode(&self) -> Self::NetworkData {
         let bytes = self.serialize_as_vec().unwrap();
         net_data::Fragment::from_bytes(bytes)
     }
@@ -152,7 +149,7 @@ impl Encode for Fragment {
 impl Encode for Gossip {
     type NetworkData = net_data::gossip::Node;
 
-    fn encode(self) -> Self::NetworkData {
+    fn encode(&self) -> Self::NetworkData {
         let bytes = self.serialize_as_vec().unwrap();
         net_data::gossip::Node::from_bytes(bytes)
     }

@@ -68,7 +68,7 @@ pub struct OutboundSubscription<T> {
 impl<T> Stream for OutboundSubscription<T> {
     type Item = T;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<T>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<T>> {
         Pin::new(&mut self.inner).poll_next(cx)
     }
 }
@@ -468,12 +468,12 @@ impl Peers {
     }
 
     pub async fn clear(&self) {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         map.clear()
     }
 
     pub async fn insert_peer(&self, id: Address, comms: PeerComms) {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         map.insert_peer(id, comms)
     }
 
@@ -486,7 +486,7 @@ impl Peers {
         if options.evict_clients != 0 {
             debug!(self.logger, "will evict {} clients", options.evict_clients);
         }
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         map.evict_clients(options.evict_clients);
         let comms = map.add_connecting(id, handle);
         if let Some(header) = options.pending_block_announcement {
@@ -501,24 +501,24 @@ impl Peers {
     }
 
     pub async fn remove_peer(&self, id: Address) -> Option<PeerComms> {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         map.remove_peer(id)
     }
 
     pub async fn subscribe_to_block_events(&self, id: Address) -> BlockEventSubscription {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         let comms = map.server_comms(id);
         comms.subscribe_to_block_events()
     }
 
     pub async fn subscribe_to_fragments(&self, id: Address) -> FragmentSubscription {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         let comms = map.server_comms(id);
         comms.subscribe_to_fragments()
     }
 
     pub async fn subscribe_to_gossip(&self, id: Address) -> GossipSubscription {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         let comms = map.server_comms(id);
         comms.subscribe_to_gossip()
     }
@@ -527,7 +527,7 @@ impl Peers {
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         let unreached_nodes = nodes
             .into_iter()
             .filter(|node| {
@@ -565,7 +565,7 @@ impl Peers {
         debug!(
             self.logger,
             "propagating block";
-            "hash" => %hex::encode(header),
+            "hash" => %hex::encode(&header),
         );
         self.propagate_with(nodes, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_block_announcement(header.clone()),
@@ -602,7 +602,7 @@ impl Peers {
             "sending gossip";
             "node_id" => %target,
         );
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         if let Some(mut entry) = map.entry(target) {
             let res = match entry.update_comm_status() {
                 CommStatus::Established(comms) => comms.try_send_gossip(gossip),
@@ -615,7 +615,7 @@ impl Peers {
                 debug!(
                     self.logger,
                     "gossip propagation to peer failed, unsubscribing peer";
-                    "node_id" => %target,
+                    "node_id" => %entry.address(),
                     "reason" => %e.kind(),
                 );
                 entry.remove();
@@ -628,7 +628,7 @@ impl Peers {
 
     pub async fn refresh_peer_on_block(&self, node_id: Address) -> bool {
         let timestamp = SystemTime::now();
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         match map.refresh_peer(&node_id) {
             Some(stats) => {
                 stats.update_last_block_received(timestamp);
@@ -640,7 +640,7 @@ impl Peers {
 
     pub async fn refresh_peer_on_fragment(&self, node_id: Address) -> bool {
         let timestamp = SystemTime::now();
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         match map.refresh_peer(&node_id) {
             Some(stats) => {
                 stats.update_last_fragment_received(timestamp);
@@ -652,7 +652,7 @@ impl Peers {
 
     pub async fn refresh_peer_on_gossip(&self, node_id: Address) -> bool {
         let timestamp = SystemTime::now();
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         match map.refresh_peer(&node_id) {
             Some(stats) => {
                 stats.update_last_gossip_received(timestamp);
@@ -663,7 +663,7 @@ impl Peers {
     }
 
     pub async fn fetch_blocks(&self, hashes: BlockIds) {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         if let Some((node_id, comms)) = map.next_peer_for_block_fetch() {
             debug!(self.logger, "fetching blocks from {}", node_id);
             comms
@@ -680,7 +680,7 @@ impl Peers {
     }
 
     pub async fn solicit_blocks(&self, node_id: Address, hashes: BlockIds) {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         match map.peer_comms(&node_id) {
             Some(comms) => {
                 debug!(self.logger, "sending block solicitation to {}", node_id;
@@ -708,7 +708,7 @@ impl Peers {
     }
 
     pub async fn pull_headers(&self, node_id: Address, from: BlockIds, to: BlockId) {
-        let map = self.inner().await;
+        let mut map = self.inner().await;
         match map.peer_comms(&node_id) {
             Some(comms) => {
                 debug!(self.logger, "pulling headers";

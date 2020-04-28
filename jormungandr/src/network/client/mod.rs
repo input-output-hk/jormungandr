@@ -74,18 +74,18 @@ impl Client {
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
-            remote_node_id,
+            remote_node_id.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "block_events", "direction" => "in")),
         );
         let fragment_sink = FragmentProcessor::new(
             builder.channels.transaction_box,
-            remote_node_id,
+            remote_node_id.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "fragments", "direction" => "in")),
         );
         let gossip_processor = GossipProcessor::new(
-            remote_node_id,
+            remote_node_id.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "gossip", "direction" => "in")),
         );
@@ -94,7 +94,7 @@ impl Client {
             inner,
             logger,
             global_state,
-            node_id: inbound.node_id,
+            node_id: remote_node_id,
             inbound_block_events: inbound.block_events,
             block_solicitations: comms.subscribe_to_block_solicitations(),
             chain_pulls: comms.subscribe_to_chain_pulls(),
@@ -162,8 +162,8 @@ impl Client {
         // Drive sending of a message to block task to clear the buffered
         // announcement before polling more events from the block subscription
         // stream.
-        let block_sink = Pin::new(&mut self.block_sink);
-        ready!(block_sink.poll_ready(cx));
+        let mut block_sink = Pin::new(&mut self.block_sink);
+        ready!(block_sink.as_mut().poll_ready(cx));
         if let Some(header) = self.incoming_block_announcement.take() {
             block_sink.start_send(header).map_err(|e| {
                 error!(
@@ -176,7 +176,7 @@ impl Client {
             // Ignoring possible Pending return here: due to the following
             // ready!() invocations, this function cannot return Continue
             // while no progress has been made.
-            block_sink.poll_flush(cx).map_err(|e| {
+            block_sink.as_mut().poll_flush(cx).map_err(|e| {
                 error!(
                     self.logger,
                     "processing of incoming block messages failed";
@@ -188,8 +188,8 @@ impl Client {
         // Drive sending of a message to the client request task to clear
         // the buffered solicitation before polling more events from the
         // block subscription stream.
-        let client_box = Pin::new(&mut self.client_box);
-        ready!(client_box.poll_ready(cx));
+        let mut client_box = Pin::new(&mut self.client_box);
+        ready!(client_box.as_mut().poll_ready(cx));
         if let Some(msg) = self.incoming_solicitation.take() {
             client_box.start_send(msg).map_err(|e| {
                 error!(
@@ -202,7 +202,7 @@ impl Client {
             // Ignoring possible Pending return here: due to the following
             // ready!() invocation, this function cannot return Continue
             // while no progress has been made.
-            client_box.poll_flush(cx).map_err(|e| {
+            client_box.as_mut().poll_flush(cx).map_err(|e| {
                 error!(
                     self.logger,
                     "processing of incoming client requests failed";
@@ -259,7 +259,7 @@ impl Client {
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetBlocks(block_ids, reply_handle));
         let stream = stream.map(|res| res.encode());
-        let client = self.inner.clone();
+        let mut client = self.inner.clone();
         let logger = self.logger.clone();
         self.global_state.spawn(async move {
             match client.upload_blocks(stream).await {
@@ -306,7 +306,7 @@ impl Client {
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetHeadersRange(from, to, reply_handle));
         let stream = stream.map(|res| res.encode());
-        let client = self.inner.clone();
+        let mut client = self.inner.clone();
         let logger = self.logger.clone();
         self.global_state.spawn(async move {
             match client.push_headers(stream).await {
@@ -326,7 +326,7 @@ impl Client {
     }
 
     fn pull_headers(&mut self, req: ChainPullRequest) {
-        let block_box = self.block_sink.message_box();
+        let mut block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "PullHeaders"));
         let logger1 = logger.clone();
         let (handle, sink) =
@@ -344,7 +344,7 @@ impl Client {
                 );
             }
         });
-        let client = self.inner.clone();
+        let mut client = self.inner.clone();
         self.global_state.spawn(async move {
             match client.pull_headers(req.from, req.to).await {
                 Err(e) => {
@@ -370,7 +370,7 @@ impl Client {
     }
 
     fn solicit_blocks(&mut self, block_ids: BlockIds) {
-        let block_box = self.block_sink.message_box();
+        let mut block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "GetBlocks"));
         let req_err_logger = logger.clone();
         let res_logger = logger.clone();
@@ -389,7 +389,7 @@ impl Client {
                 );
             }
         });
-        let client = self.inner.clone();
+        let mut client = self.inner.clone();
         self.global_state.spawn(async move {
             match client.get_blocks(block_ids).await {
                 Err(e) => {
@@ -456,7 +456,7 @@ impl Client {
 impl Future for Client {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         use self::ProcessingOutcome::*;
 
         loop {
