@@ -15,13 +15,11 @@ use super::{
     Channels, GlobalStateR,
 };
 use crate::{
-    blockcfg::{Block, Fragment, Header, HeaderHash},
     intercom::{self, BlockMsg, ClientMsg},
     utils::async_msg::MessageBox,
 };
 use chain_network::data as net_data;
 use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
-use chain_network::error as net_error;
 
 use futures03::prelude::*;
 use futures03::ready;
