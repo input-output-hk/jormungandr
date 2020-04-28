@@ -112,6 +112,10 @@ impl BlockAnnouncementProcessor {
         }
     }
 
+    pub fn message_box(&self) -> MessageBox<BlockMsg> {
+        self.mbox.clone()
+    }
+
     fn refresh_stat(&mut self) {
         let refresh_logger = self.logger.clone();
         let state = self.global_state.clone();

@@ -315,99 +315,90 @@ impl Client {
     fn pull_headers(&mut self, req: ChainPullRequest) {
         let block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "PullHeaders"));
-        let req_err_logger = logger.clone();
-        let res_logger = logger.clone();
-        let (handle, sink) = intercom::stream_request::<Header, (), net_error::Error>(
-            buffer_sizes::inbound::HEADERS,
-            logger.clone(),
-        );
+        let logger1 = logger.clone();
+        let (handle, sink) =
+            intercom::stream_request(buffer_sizes::inbound::HEADERS, logger.clone());
         // TODO: make sure that back pressure on the number of requests
-        // in flight, imposed through self.service.poll_ready(),
-        // prevents unlimited spawning of these tasks.
+        // in flight prevents unlimited spawning of these tasks.
         // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(
-            block_box
-                .send(BlockMsg::ChainHeaders(handle))
-                .map_err(move |e| {
-                    error!(
-                        logger,
-                        "failed to enqueue request for processing";
-                        "reason" => %e,
-                    );
-                })
-                .map(|_mbox| ()),
-        );
-        self.global_state.spawn(
-            self.service
-                .pull_headers(&req.from, &req.to)
-                .map_err(move |e| {
+        self.global_state.spawn(async move {
+            let res = block_box.send(BlockMsg::ChainHeaders(handle)).await;
+            if let Err(e) = res {
+                error!(
+                    logger,
+                    "failed to enqueue request for processing";
+                    "reason" => %e,
+                );
+            }
+        });
+        let client = self.inner.clone();
+        self.global_state.spawn(async move {
+            match client.pull_headers(req.from, req.to).await {
+                Err(e) => {
                     info!(
-                        req_err_logger,
+                        logger1,
                         "request failed";
                         "reason" => %e,
                     );
-                })
-                .and_then(move |stream| {
-                    sink.send_all(stream)
-                        .map_err(move |e| {
-                            info!(
-                                res_logger,
-                                "response stream failed";
-                                "reason" => %e,
-                            );
-                        })
-                        .map(|_| ())
-                }),
-        );
+                }
+                Ok(stream) => {
+                    let stream = stream.and_then(|item| async { item.decode() });
+                    let res = stream.forward(sink.sink_err_into()).await;
+                    if let Err(e) = res {
+                        info!(
+                            logger1,
+                            "response stream failed";
+                            "reason" => %e,
+                        );
+                    }
+                }
+            }
+        });
     }
 
-    fn solicit_blocks(&mut self, block_ids: &[HeaderHash]) {
+    fn solicit_blocks(&mut self, block_ids: BlockIds) {
         let block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "GetBlocks"));
         let req_err_logger = logger.clone();
         let res_logger = logger.clone();
-        let (handle, sink) = intercom::stream_request::<Block, (), net_error::Error>(
-            buffer_sizes::inbound::BLOCKS,
-            logger.clone(),
-        );
+        let (handle, sink) =
+            intercom::stream_request(buffer_sizes::inbound::BLOCKS, logger.clone());
         // TODO: make sure that back pressure on the number of requests
-        // in flight, imposed through self.service.poll_ready(),
-        // prevents unlimited spawning of these tasks.
+        // in flight prevents unlimited spawning of these tasks.
         // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(
-            block_box
-                .send(BlockMsg::NetworkBlocks(handle))
-                .map_err(move |e| {
-                    error!(
-                        logger,
-                        "failed to enqueue request for processing";
-                        "reason" => %e,
-                    );
-                })
-                .map(|_mbox| ()),
-        );
-        self.global_state.spawn(
-            self.service
-                .get_blocks(block_ids)
-                .map_err(move |e| {
+        self.global_state.spawn(async move {
+            let res = block_box.send(BlockMsg::NetworkBlocks(handle)).await;
+            if let Err(e) = res {
+                error!(
+                    logger,
+                    "failed to enqueue request for processing";
+                    "reason" => %e,
+                );
+            }
+        });
+        let client = self.inner.clone();
+        self.global_state.spawn(async move {
+            match client.get_blocks(block_ids).await {
+                Err(e) => {
                     info!(
                         req_err_logger,
                         "request failed";
                         "reason" => %e,
                     );
-                })
-                .and_then(move |stream| {
-                    sink.send_all(stream)
-                        .map_err(move |e| {
-                            info!(
-                                res_logger,
-                                "response stream failed";
-                                "reason" => %e,
-                            );
-                        })
-                        .map(|_| ())
-                }),
-        );
+                }
+                Ok(stream) => {
+                    let stream = stream.and_then(|item| async { item.decode() });
+                    let res = stream.forward(sink.sink_err_into()).await;
+                    if let Err(e) = res {
+                        info!(
+                            res_logger,
+                            "response stream failed";
+                            "reason" => %e,
+                        );
+                    }
+                }
+            }
+        });
     }
 
     fn process_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
@@ -513,7 +504,7 @@ impl Future for Client {
             progress.update(Pin::new(&mut self.block_solicitations).poll_next(cx).map(
                 |maybe_item| match maybe_item {
                     Some(block_ids) => {
-                        self.solicit_blocks(&block_ids);
+                        self.solicit_blocks(block_ids);
                         Continue
                     }
                     None => {
