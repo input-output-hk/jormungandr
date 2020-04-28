@@ -249,16 +249,18 @@ pub async fn start(
     ));
 
     // open the port for listening/accepting other peers to connect too
-    let listen = global_state.config.listen();
-    let listener = async {
-        if let Some(listen) = listen {
+    let listen_state = global_state.clone();
+    let listen_channels = channels.clone();
+    let logger = service_info.logger();
+    let listener = async move {
+        if let Some(listen) = listen_state.config.listen() {
             match listen.protocol {
                 Protocol::Grpc => {
-                    grpc::run_listen_socket(&listen, global_state.clone(), channels.clone())
+                    grpc::run_listen_socket(&listen, listen_state, listen_channels)
                         .await
                         .map_err(|e| {
                             error!(
-                            service_info.logger(),
+                            logger,
                             "failed to listen for P2P connections at {}", listen.connection;
                             "reason" => %e);
                         });
@@ -278,19 +280,20 @@ pub async fn start(
     let reset_state = global_state.clone();
 
     if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
-        service_info.run_periodic_std("force reset topology", interval, move || async {
-            reset_state.topology.force_reset_layers().await;
+        service_info.run_periodic_std("force reset topology", interval, move || {
+            let state = reset_state.clone();
+            async move { state.topology.force_reset_layers().await }
         });
     }
 
-    let gossip = time::interval(global_state.config.gossip_interval.clone())
+    let gossip = time::interval(global_state.config.gossip_interval)
         .for_each(move |_| send_gossip(global_state.clone(), channels.clone()));
 
     future::join3(listener, handle_cmds, gossip).await;
 }
 
 async fn handle_network_input(
-    input: MessageQueue<NetworkMsg>,
+    mut input: MessageQueue<NetworkMsg>,
     state: GlobalStateR,
     channels: Channels,
 ) {
@@ -364,7 +367,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
         );
         for node in unreached_nodes {
             let mut options = p2p::comm::ConnectOptions::default();
-            match msg {
+            match &msg {
                 PropagateMsg::Block(header) => {
                     options.pending_block_announcement = Some(header.encode());
                 }
@@ -380,7 +383,6 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
 async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let config = &state.config;
     let topology = &state.topology;
-    let conn_state = state.clone();
     let logger = state.logger().new(o!(log::KEY_SUB_TASK => "start_gossip"));
     let address = config.profile.address().unwrap();
     // inject the trusted peers as initial gossips, this will make the node
@@ -405,20 +407,17 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let peers: Vec<p2p::Address> = view.peers;
     debug!(logger, "sending gossip to {} peers", peers.len());
     for address in peers {
-        let state_prop = state.clone();
-        let state_err = state.clone();
-        let channels_err = channels.clone();
-        let gossips = topology.initiate_gossips(address).await;
-        let propagate_res = state_prop
+        let gossips = topology.initiate_gossips(address.clone()).await;
+        let propagate_res = state
             .peers
-            .propagate_gossip_to(address, Gossip::from(gossips))
+            .propagate_gossip_to(address.clone(), Gossip::from(gossips))
             .await;
         if let Err(gossip) = propagate_res {
             let options = p2p::comm::ConnectOptions {
                 pending_gossip: Some(gossip),
                 ..Default::default()
             };
-            connect_and_propagate(address, state_err, channels_err, options);
+            connect_and_propagate(address, state.clone(), channels.clone(), options);
         }
     }
 }
@@ -433,10 +432,10 @@ async fn send_gossip(state: GlobalStateR, channels: Channels) {
         let state_prop = state.clone();
         let state_err = state.clone();
         let channels_err = channels.clone();
-        let gossips = topology.initiate_gossips(address).await;
+        let gossips = topology.initiate_gossips(address.clone()).await;
         let res = state_prop
             .peers
-            .propagate_gossip_to(address, Gossip::from(gossips))
+            .propagate_gossip_to(address.clone(), Gossip::from(gossips))
             .await;
         if let Err(gossip) = res {
             let options = p2p::comm::ConnectOptions {
@@ -467,7 +466,7 @@ fn connect_and_propagate(
     };
     options.evict_clients = state.num_clients_to_bump();
     assert_ne!(
-        node,
+        &node,
         state.topology.node_address(),
         "topology tells the node to connect to itself"
     );
@@ -475,11 +474,13 @@ fn connect_and_propagate(
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let conn_logger = conn_state.logger().new(o!("address" => node.to_string()));
     info!(conn_logger, "connecting to peer");
-    let (handle, connecting) = client::connect(conn_state, channels.clone());
+    let (handle, connecting) = client::connect(conn_state, channels);
     let spawn_state = state.clone();
-    let conn_err_state = state.clone();
-    let cf = async {
-        state.peers.add_connecting(node, handle, options).await;
+    let cf = async move {
+        state
+            .peers
+            .add_connecting(node.clone(), handle, options)
+            .await;
         match connecting.await {
             Err(e) => {
                 let benign = match e {
@@ -498,10 +499,10 @@ fn connect_and_propagate(
                 };
                 if !benign {
                     future::join(
-                        conn_err_state
+                        state
                             .topology
-                            .report_node(node, StrikeReason::CannotConnect),
-                        conn_err_state.peers.remove_peer(node),
+                            .report_node(node.clone(), StrikeReason::CannotConnect),
+                        state.peers.remove_peer(node.clone()),
                     )
                     .await;
                 }

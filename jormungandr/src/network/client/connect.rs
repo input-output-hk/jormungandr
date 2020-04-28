@@ -28,10 +28,10 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
     let peer = state.peer();
     let builder = ClientBuilder {
         channels,
-        logger: state.logger,
+        logger: state.logger.clone(),
     };
     let cf = async move {
-        let grpc_client = grpc::connect(&peer).await.map_err(ConnectError::Connect)?;
+        let mut grpc_client = grpc::connect(&peer).await.map_err(ConnectError::Connect)?;
         let block0 = grpc_client
             .handshake()
             .await
@@ -40,11 +40,17 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         let block0_hash = HeaderHash::read(&mut buf).map_err(ConnectError::DecodeBlock0)?;
         let expected = state.global.block0_hash;
         match_block0(expected, block0_hash)?;
-        let comms = PeerComms::new();
+        let mut comms = PeerComms::new();
         let (block_sub, fragment_sub, gossip_sub) = future::try_join3(
-            grpc_client.block_subscription(comms.subscribe_to_block_announcements()),
-            grpc_client.fragment_subscription(comms.subscribe_to_fragments()),
-            grpc_client.gossip_subscription(comms.subscribe_to_gossip()),
+            grpc_client
+                .clone()
+                .block_subscription(comms.subscribe_to_block_announcements()),
+            grpc_client
+                .clone()
+                .fragment_subscription(comms.subscribe_to_fragments()),
+            grpc_client
+                .clone()
+                .gossip_subscription(comms.subscribe_to_gossip()),
         )
         .await
         .map_err(ConnectError::Subscription)?;
@@ -131,7 +137,7 @@ pub enum ConnectError {
 impl Future for ConnectFuture {
     type Output = Result<Client, ConnectError>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {
             // First, check if the connection is cancelled
             if let Poll::Ready(()) = self

@@ -60,19 +60,19 @@ impl<Msg> MessageBox<Msg> {
 impl<Msg> Sink<Msg> for MessageBox<Msg> {
     type Error = SendError;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
         self.0.poll_ready(cx)
     }
 
-    fn start_send(self: Pin<&mut Self>, msg: Msg) -> Result<(), SendError> {
+    fn start_send(mut self: Pin<&mut Self>, msg: Msg) -> Result<(), SendError> {
         self.0.start_send(msg)
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
         Pin::new(&mut self.0).poll_flush(cx)
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
         Pin::new(&mut self.0).poll_close(cx)
     }
 }
@@ -88,7 +88,7 @@ pub struct SendTask<Msg> {
 impl<Msg> Stream for MessageQueue<Msg> {
     type Item = Msg;
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Msg>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Msg>> {
         Pin::new(&mut self.0).poll_next(cx)
     }
 

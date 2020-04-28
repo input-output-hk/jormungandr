@@ -134,9 +134,9 @@ impl PeerMap {
 
     pub fn next_peer_for_block_fetch(&mut self) -> Option<(Address, &mut PeerComms)> {
         let mut iter = self.map.iter_mut();
-        while let Some((&id, data)) = iter.next_back() {
+        while let Some((id, data)) = iter.next_back() {
             match data.update_comm_status() {
-                CommStatus::Established(comms) => return Some((id, comms)),
+                CommStatus::Established(comms) => return Some((id.clone(), comms)),
                 CommStatus::Connecting(_) => {}
             }
         }
@@ -146,7 +146,7 @@ impl PeerMap {
     pub fn infos(&self) -> Vec<PeerInfo> {
         self.map
             .iter()
-            .map(|(&id, data)| PeerInfo {
+            .map(|(id, data)| PeerInfo {
                 addr: id.to_socketaddr(),
                 stats: data.stats.clone(),
             })
@@ -176,6 +176,10 @@ pub struct Entry<'a> {
 }
 
 impl<'a> Entry<'a> {
+    pub fn address(&self) -> &Address {
+        self.inner.key()
+    }
+
     pub fn update_comm_status(&mut self) -> CommStatus<'_> {
         self.inner.get_mut().update_comm_status()
     }
