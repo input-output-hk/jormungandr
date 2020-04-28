@@ -2,8 +2,6 @@ use crate::{
     rest::{v0::logic, ContextLock},
     secure::NodeSecret,
 };
-use jormungandr_lib::interfaces::{VotePlan, VotePlans};
-use serde::Serialize;
 use warp::{reject::Reject, Rejection, Reply};
 
 impl Reject for logic::Error {}

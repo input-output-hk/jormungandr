@@ -1,69 +1,89 @@
-use serde::Serialize;
+use crate::crypto::hash::Hash;
+use crate::interfaces::blockdate::BlockDateDef;
+use chain_impl_mockchain::certificate::Proposals;
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 
 #[derive(Serialize)]
-#[serde(remote = "chain_impl_mockchain::block::BlockDate")]
-struct BlockDate {
-    pub epoch: u32,
-    pub slot_id: u32,
+pub enum VoteOptions {
+    OneOf { max_value: u8 }, // where max_value is up to 15
+}
+
+fn get_proposal_hash(proposal: &chain_impl_mockchain::certificate::Proposal) -> Hash {
+    Hash::from(proposal.external_id().clone())
+}
+
+fn get_proposal_vote_options(
+    proposal: &chain_impl_mockchain::certificate::Proposal,
+) -> VoteOptions {
+    VoteOptions::OneOf {
+        max_value: proposal.options().as_byte(),
+    }
 }
 
 #[derive(Serialize)]
-#[serde(remote = "chain_impl_mockchain::certificate::ExternalProposalId")]
-struct ExternalProposalId {
-    #[serde(getter = "chain_impl_mockchain::certificate::ExternalProposalId::to_string")]
-    id: String,
-}
-
-#[derive(Serialize)]
+#[serde(remote = "chain_impl_mockchain::certificate::Proposal")]
 pub struct Proposal {
-    pub external_id: String,
-    pub options: u8,
-}
-
-impl Proposal {
-    fn new(p: &chain_impl_mockchain::certificate::Proposal) -> Self {
-        Self {
-            external_id: p.external_id().to_string(),
-            options: p.options().as_byte(),
-        }
-    }
+    #[serde(getter = "get_proposal_hash")]
+    pub external_id: Hash,
+    #[serde(getter = "get_proposal_vote_options")]
+    pub options: VoteOptions,
 }
 
 #[derive(Serialize)]
+pub struct ProposalSerializableHelper<'a>(
+    #[serde(with = "Proposal")] pub &'a chain_impl_mockchain::certificate::Proposal,
+);
+
+fn serialize_proposals<S>(
+    proposals: &chain_impl_mockchain::certificate::Proposals,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut seq = serializer.serialize_seq(Some(proposals.len()))?;
+    for e in proposals.iter() {
+        seq.serialize_element(&ProposalSerializableHelper(e))?;
+    }
+    seq.end()
+}
+
+#[derive(Serialize)]
+#[serde(remote = "chain_impl_mockchain::certificate::VotePlan")]
 pub struct VotePlan {
-    /// the vote start validity
-    #[serde(with = "BlockDate")]
+    #[serde(
+        with = "BlockDateDef",
+        getter = "chain_impl_mockchain::certificate::VotePlan::vote_start"
+    )]
     pub vote_start: chain_impl_mockchain::block::BlockDate,
-    /// the duration within which it is possible to vote for one of the proposals
-    /// of this voting plan.
-    #[serde(with = "BlockDate")]
-    pub vote_end: chain_impl_mockchain::block::BlockDate,
-    /// the committee duration is the time allocated to the committee to open
-    /// the ballots and publish the results on chain
-    #[serde(with = "BlockDate")]
-    pub committee_end: chain_impl_mockchain::block::BlockDate,
-    /// the proposals to vote for
-    pub proposals: Vec<Proposal>,
-}
 
-impl VotePlan {
-    pub fn from_vote_plan(plan: &chain_impl_mockchain::certificate::VotePlan) -> Self {
-        VotePlan {
-            vote_start: plan.vote_start(),
-            vote_end: plan.vote_end(),
-            committee_end: plan.committee_end(),
-            proposals: plan.proposals().iter().map(Proposal::new).collect(),
-        }
-    }
+    #[serde(
+        with = "BlockDateDef",
+        getter = "chain_impl_mockchain::certificate::VotePlan::vote_end"
+    )]
+    pub vote_end: chain_impl_mockchain::block::BlockDate,
+
+    #[serde(
+        with = "BlockDateDef",
+        getter = "chain_impl_mockchain::certificate::VotePlan::committee_end"
+    )]
+    pub committee_end: chain_impl_mockchain::block::BlockDate,
+
+    #[serde(
+        serialize_with = "serialize_proposals",
+        getter = "chain_impl_mockchain::certificate::VotePlan::proposals"
+    )]
+    pub proposals: chain_impl_mockchain::certificate::Proposals,
 }
 
 #[derive(Serialize)]
-pub struct VotePlans {
-    plans: Vec<VotePlan>,
-}
+pub struct VotePlanSerializableHelper(
+    #[serde(with = "VotePlan")] chain_impl_mockchain::certificate::VotePlan,
+);
 
-impl VotePlans {
-    pub fn new(plans: Vec<VotePlan>) -> Self {
-        Self { plans }
+impl VotePlanSerializableHelper {
+    pub fn new(vote_plan: chain_impl_mockchain::certificate::VotePlan) -> Self {
+        Self(vote_plan)
     }
 }
