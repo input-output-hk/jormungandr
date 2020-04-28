@@ -123,17 +123,35 @@ enum ProcessingOutcome {
     Disconnect,
 }
 
-struct Progress(pub Option<ProcessingOutcome>);
+struct Progress(pub Poll<ProcessingOutcome>);
 
 impl Progress {
-    fn update(&mut self, async_outcome: Poll<ProcessingOutcome>) {
+    fn begin(async_outcome: Poll<Result<ProcessingOutcome, ()>>) -> Self {
         use self::ProcessingOutcome::*;
-        if let Poll::Ready(outcome) = async_outcome {
-            match (self.0, outcome) {
-                (None, outcome) | (Some(Continue), outcome) => {
-                    self.0 = Some(outcome);
+
+        Progress(async_outcome.map(|res| res.unwrap_or(Disconnect)))
+    }
+
+    fn and_proceed_with<F>(&mut self, poll_fn: F)
+    where
+        F: FnOnce() -> Poll<Result<ProcessingOutcome, ()>>,
+    {
+        use self::ProcessingOutcome::*;
+        use Poll::*;
+
+        let async_outcome = match self.0 {
+            Pending | Ready(Continue) => poll_fn(),
+            Ready(Disconnect) => return,
+        };
+
+        if let Ready(outcome) = async_outcome {
+            match outcome {
+                Ok(outcome) => {
+                    self.0 = Ready(outcome);
                 }
-                (Some(Disconnect), _) => {}
+                Err(()) => {
+                    self.0 = Ready(Disconnect);
+                }
             }
         }
     }
@@ -444,46 +462,47 @@ impl Future for Client {
         use self::ProcessingOutcome::*;
 
         loop {
-            let mut progress = Progress(None);
+            let mut progress = Progress::begin(self.process_block_event(cx));
 
-            progress.update(self.process_block_event(cx)?);
-            progress.update(self.process_fragments(cx)?);
-            progress.update(self.process_gossip(cx)?);
+            progress.and_proceed_with(|| self.process_fragments(cx));
+            progress.and_proceed_with(|| self.process_gossip(cx));
 
             // Block solicitations and chain pulls are special:
             // they are handled with client requests on the client side,
             // but on the server side, they are fed into the block event stream.
-            progress.update(Pin::new(&mut self.block_solicitations).poll_next(cx).map(
-                |maybe_item| match maybe_item {
-                    Some(block_ids) => {
-                        self.solicit_blocks(block_ids);
-                        Continue
-                    }
-                    None => {
-                        debug!(self.logger, "outbound block solicitation stream closed");
-                        Disconnect
-                    }
-                },
-            ));
-            progress.update(
+            progress.and_proceed_with(|| {
+                Pin::new(&mut self.block_solicitations)
+                    .poll_next(cx)
+                    .map(|maybe_item| match maybe_item {
+                        Some(block_ids) => {
+                            self.solicit_blocks(block_ids);
+                            Ok(Continue)
+                        }
+                        None => {
+                            debug!(self.logger, "outbound block solicitation stream closed");
+                            Ok(Disconnect)
+                        }
+                    })
+            });
+            progress.and_proceed_with(|| {
                 Pin::new(&mut self.chain_pulls)
                     .poll_next(cx)
                     .map(|maybe_item| match maybe_item {
                         Some(req) => {
                             self.pull_headers(req);
-                            Continue
+                            Ok(Continue)
                         }
                         None => {
                             debug!(self.logger, "outbound header pull stream closed");
-                            Disconnect
+                            Ok(Disconnect)
                         }
-                    }),
-            );
+                    })
+            });
 
             match progress {
-                Progress(None) => return Poll::Pending,
-                Progress(Some(Continue)) => continue,
-                Progress(Some(Disconnect)) => {
+                Progress(Poll::Pending) => return Poll::Pending,
+                Progress(Poll::Ready(Continue)) => continue,
+                Progress(Poll::Ready(Disconnect)) => {
                     info!(self.logger, "disconnecting client");
                     return ().into();
                 }
