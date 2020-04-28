@@ -9,7 +9,6 @@ use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
-use futures::{Future as Future01, Sink as Sink01, Stream as Stream01};
 use futures03::channel::{mpsc, oneshot};
 use futures03::prelude::*;
 use slog::Logger;
@@ -347,7 +346,7 @@ impl<T> Stream for UploadStream<T> {
             .map(|maybe_res| match maybe_res {
                 Some(Ok(item)) => Some(item),
                 None => None,
-                Some(Err(e)) => None,
+                Some(Err(_)) => None,
             })
     }
 }
@@ -415,7 +414,7 @@ impl<T, R> RequestSink<T, R> {
 impl<T, R> Sink<T> for RequestSink<T, R> {
     type Error = Error;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         self.sender.poll_ready(cx).map_err(|e| {
             self.map_send_error(
                 e,
@@ -424,7 +423,7 @@ impl<T, R> Sink<T> for RequestSink<T, R> {
         })
     }
 
-    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Error> {
+    fn start_send(mut self: Pin<&mut Self>, item: T) -> Result<(), Error> {
         self.sender.start_send(item).map_err(|e| {
             self.map_send_error(
                 e,
@@ -433,7 +432,7 @@ impl<T, R> Sink<T> for RequestSink<T, R> {
         })
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         Pin::new(&mut self.sender).poll_flush(cx).map_err(|e| {
             self.map_send_error(
                 e,
@@ -442,7 +441,7 @@ impl<T, R> Sink<T> for RequestSink<T, R> {
         })
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         Pin::new(&mut self.sender).poll_close(cx).map_err(|e| {
             self.map_send_error(
                 e,

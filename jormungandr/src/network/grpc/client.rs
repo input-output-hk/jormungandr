@@ -38,9 +38,9 @@ pub type Client = chain_network::grpc::Client<tonic::transport::Channel>;
 
 pub async fn connect(peer: &Peer) -> Result<Client, ConnectError> {
     assert!(peer.protocol == Protocol::Grpc);
-    let endpoint = destination_endpoint(peer.connection);
-    endpoint.concurrency_limit(concurrency_limits::CLIENT_REQUESTS);
-    endpoint.timeout(peer.timeout);
+    let endpoint = destination_endpoint(peer.connection)
+        .concurrency_limit(concurrency_limits::CLIENT_REQUESTS)
+        .timeout(peer.timeout);
     Client::connect(endpoint).await
 }
 
@@ -61,7 +61,7 @@ pub async fn fetch_block(
     logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     info!(logger, "fetching block {}", hash);
-    let client = connect(peer)
+    let mut client = connect(peer)
         .await
         .map_err(|err| FetchBlockError::Connect { source: err })?;
     let block_id = net_data::BlockId::try_from(hash.as_bytes()).unwrap();

@@ -38,7 +38,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
             let blockchain_tip = task_data.blockchain_tip.clone();
             let fut = async move {
                 let tip = get_block_tip(blockchain_tip).await;
-                let fut = handle.reply_ok(tip);
+                handle.reply_ok(tip);
             };
             let logger = info.logger().new(o!("request" => "GetBlockTip"));
             info.spawn_failable_std(
@@ -59,7 +59,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
             info.timeout_spawn_failable_std(
                 "GetHeaders",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS),
-                handle_get_headers(&storage, ids, handle),
+                handle_get_headers(storage, ids, handle),
             );
         }
         ClientMsg::GetHeadersRange(checkpoints, to, handle) => {
@@ -67,7 +67,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
             info.timeout_spawn_failable_std(
                 "GetHeadersRange",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS_RANGE),
-                handle_get_headers_range(&storage, checkpoints, to, handle),
+                handle_get_headers_range(storage, checkpoints, to, handle),
             );
         }
         ClientMsg::GetBlocks(ids, handle) => {
@@ -75,7 +75,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
             info.timeout_spawn_failable_std(
                 "get blocks",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCKS),
-                handle_get_blocks(&storage, ids, handle),
+                handle_get_blocks(storage, ids, handle),
             );
         }
         ClientMsg::PullBlocksToTip(from, handle) => {
@@ -84,7 +84,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
             info.timeout_spawn_failable_std(
                 "PullBlocksToTip",
                 Duration::from_secs(PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP),
-                handle_pull_blocks_to_tip(&storage, &blockchain_tip, from, handle),
+                handle_pull_blocks_to_tip(storage, blockchain_tip, from, handle),
             );
         }
     }
@@ -96,7 +96,7 @@ async fn get_block_tip(blockchain_tip: Tip) -> Header {
 }
 
 async fn handle_get_headers_range(
-    storage: &Storage,
+    storage: Storage,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
     mut handle: ReplyStreamHandle<Header>,
@@ -114,7 +114,7 @@ async fn handle_get_headers_range(
 }
 
 async fn handle_get_blocks(
-    storage: &Storage,
+    storage: Storage,
     ids: Vec<HeaderHash>,
     handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
@@ -134,7 +134,7 @@ async fn handle_get_blocks(
 }
 
 async fn handle_get_headers(
-    storage: &Storage,
+    storage: Storage,
     ids: Vec<HeaderHash>,
     mut handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
@@ -153,8 +153,8 @@ async fn handle_get_headers(
 }
 
 async fn handle_pull_blocks_to_tip(
-    storage: &Storage,
-    blockchain_tip: &Tip,
+    storage: Storage,
+    blockchain_tip: Tip,
     checkpoints: Vec<HeaderHash>,
     mut handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {

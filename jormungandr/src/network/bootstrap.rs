@@ -58,7 +58,7 @@ pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<
         "getting peers from bootstrap peer {}", peer.connection
     );
 
-    let client = grpc::connect(&peer).await.map_err(Error::Connect)?;
+    let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
     let peers = client
         .peers(MAX_BOOTSTRAP_PEERS)
         .await
@@ -87,15 +87,16 @@ pub async fn bootstrap_from_peer(
 
     let blockchain1 = blockchain.clone();
     let tip1 = tip.clone();
+    let logger1 = logger.clone();
 
     let stream_future = async move {
-        let client = grpc::connect(&peer).await.map_err(|e| Error::Connect(e))?;
+        let mut client = grpc::connect(&peer).await.map_err(|e| Error::Connect(e))?;
 
         let checkpoints = blockchain1.get_checkpoints(tip1.branch()).await;
         let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
 
         info!(
-            logger,
+            logger1,
             "pulling blocks starting from checkpoints: {:?}", checkpoints
         );
 

@@ -30,7 +30,7 @@ fn filter_gossip_node(node: &Gossip, config: &Configuration) -> bool {
     }
 }
 
-fn handle_mbox_error(err: async_msg::SendError, logger: Logger) -> Error {
+fn handle_mbox_error(err: async_msg::SendError, logger: &Logger) -> Error {
     error!(
         logger,
         "failed to send block announcement to the block task";
@@ -137,7 +137,7 @@ impl BlockAnnouncementProcessor {
     fn poll_flush_mbox(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         Pin::new(&mut self.mbox)
             .poll_flush(cx)
-            .map_err(|e| handle_mbox_error(e, self.logger))
+            .map_err(|e| handle_mbox_error(e, &self.logger))
     }
 }
 
@@ -208,47 +208,48 @@ impl GossipProcessor {
 impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     type Error = Error;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                self.poll_flush_mbox(cx)?;
+                self.as_mut().poll_flush_mbox(cx)?;
                 Poll::Pending
             }
             Poll::Ready(()) => self
                 .mbox
                 .poll_ready(cx)
-                .map_err(|e| handle_mbox_error(e, self.logger)),
+                .map_err(|e| handle_mbox_error(e, &self.logger)),
         }
     }
 
-    fn start_send(self: Pin<&mut Self>, raw_header: net_data::Header) -> Result<(), Error> {
+    fn start_send(mut self: Pin<&mut Self>, raw_header: net_data::Header) -> Result<(), Error> {
         let header = raw_header.decode()?;
+        let node_id = self.node_id.clone();
         self.mbox
-            .start_send(BlockMsg::AnnouncedBlock(header, self.node_id.clone()))
-            .map_err(|e| handle_mbox_error(e, self.logger))?;
+            .start_send(BlockMsg::AnnouncedBlock(header, node_id))
+            .map_err(|e| handle_mbox_error(e, &self.logger))?;
         self.refresh_stat();
         Ok(())
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                self.poll_flush_mbox(cx)?;
+                self.as_mut().poll_flush_mbox(cx)?;
                 Poll::Pending
             }
-            Poll::Ready(()) => self.poll_flush_mbox(cx),
+            Poll::Ready(()) => self.as_mut().poll_flush_mbox(cx),
         }
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                self.poll_flush_mbox(cx)?;
+                self.as_mut().poll_flush_mbox(cx)?;
                 Poll::Pending
             }
             Poll::Ready(()) => Pin::new(&mut self.mbox)
                 .poll_close(cx)
-                .map_err(|e| handle_mbox_error(e, self.logger)),
+                .map_err(|e| handle_mbox_error(e, &self.logger)),
         }
     }
 }
@@ -256,7 +257,7 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
 impl Sink<net_data::Fragment> for FragmentProcessor {
     type Error = Error;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         if self.buffered_fragments.len() >= buffer_sizes::inbound::FRAGMENTS {
             ready!(self.poll_send_fragments(cx));
             debug_assert!(self.buffered_fragments.is_empty());
@@ -264,7 +265,7 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
         Poll::Ready(Ok(()))
     }
 
-    fn start_send(self: Pin<&mut Self>, raw_fragment: net_data::Fragment) -> Result<(), Error> {
+    fn start_send(mut self: Pin<&mut Self>, raw_fragment: net_data::Fragment) -> Result<(), Error> {
         assert!(
             self.buffered_fragments.len() < buffer_sizes::inbound::FRAGMENTS,
             "should call `poll_ready` which returns `Poll::Ready(Ok(()))` before `start_send`",
@@ -274,7 +275,7 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
         Ok(())
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
                 self.poll_complete_refresh_stat(cx);
@@ -292,7 +293,7 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
         }
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
                 ready!(self.poll_complete_refresh_stat(cx));
@@ -312,7 +313,7 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
 }
 
 impl FragmentProcessor {
-    fn poll_send_fragments(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_send_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         ready!(self.mbox.poll_ready(cx));
         let fragments = self.buffered_fragments.split_off(0);
         self.mbox
@@ -332,7 +333,7 @@ impl FragmentProcessor {
         Poll::Ready(Ok(()))
     }
 
-    fn poll_complete_refresh_stat(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll_complete_refresh_stat(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         self.pending_processing.poll_complete(cx)
     }
 }
@@ -340,12 +341,12 @@ impl FragmentProcessor {
 impl Sink<net_data::Gossip> for GossipProcessor {
     type Error = Error;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         ready!(self.pending_processing.poll_complete(cx));
         Ok(()).into()
     }
 
-    fn start_send(self: Pin<&mut Self>, gossip: net_data::Gossip) -> Result<(), Error> {
+    fn start_send(mut self: Pin<&mut Self>, gossip: net_data::Gossip) -> Result<(), Error> {
         let nodes = gossip.nodes.decode()?;
         let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
             filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
@@ -353,13 +354,14 @@ impl Sink<net_data::Gossip> for GossipProcessor {
         if filtered_out.len() > 0 {
             debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
         }
-        let node_id = self.node_id;
+        let node_id1 = self.node_id.clone();
+        let node_id2 = self.node_id.clone();
         let state1 = self.global_state.clone();
         let state2 = self.global_state.clone();
         let logger = self.logger.clone();
         let fut = future::join(
             async move {
-                let refreshed = state1.peers.refresh_peer_on_gossip(node_id).await;
+                let refreshed = state1.peers.refresh_peer_on_gossip(node_id1).await;
                 if !refreshed {
                     debug!(
                         logger,
@@ -368,7 +370,7 @@ impl Sink<net_data::Gossip> for GossipProcessor {
                 }
             },
             async move {
-                state2.topology.accept_gossips(node_id, nodes.into()).await;
+                state2.topology.accept_gossips(node_id2, nodes.into()).await;
             },
         )
         .map(|_| ());
@@ -376,12 +378,12 @@ impl Sink<net_data::Gossip> for GossipProcessor {
         Ok(())
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         ready!(self.pending_processing.poll_complete(cx));
         Ok(()).into()
     }
 
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         ready!(self.pending_processing.poll_complete(cx));
         Ok(()).into()
     }
