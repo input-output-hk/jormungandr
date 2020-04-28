@@ -2,7 +2,7 @@ mod connect;
 
 use super::{
     buffer_sizes,
-    convert::Decode,
+    convert::{Decode, Encode},
     grpc::{
         self,
         client::{BlockSubscription, FragmentSubscription, GossipSubscription},
@@ -239,28 +239,29 @@ impl Client {
                 "reason" => %e,
             );
         })?;
-        let (reply_handle, stream) = intercom::stream_reply::<_, net_error::Error>(
+        let (reply_handle, stream) = intercom::upload_stream_reply(
             buffer_sizes::outbound::BLOCKS,
             self.logger.new(o!("solicitation" => "UploadBlocks")),
         );
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetBlocks(block_ids, reply_handle));
-        let done_logger = self.logger.clone();
-        let err_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.inner
-                .upload_blocks(stream)
-                .map(move |_| {
-                    debug!(done_logger, "finished uploading blocks");
-                })
-                .map_err(move |e| {
+        let stream = stream.map(|res| res.encode());
+        let client = self.inner.clone();
+        let logger = self.logger.clone();
+        self.global_state.spawn(async move {
+            match client.upload_blocks(stream).await {
+                Ok(()) => {
+                    debug!(logger, "finished uploading blocks");
+                }
+                Err(e) => {
                     info!(
-                        err_logger,
+                        logger,
                         "UploadBlocks request failed";
                         "error" => ?e,
                     );
-                }),
-        );
+                }
+            }
+        });
         Ok(())
     }
 
@@ -285,28 +286,29 @@ impl Client {
             "checkpoints" => ?from,
             "to" => ?to,
         );
-        let (reply_handle, stream) = intercom::stream_reply::<_, net_error::Error>(
+        let (reply_handle, stream) = intercom::upload_stream_reply(
             buffer_sizes::outbound::HEADERS,
             self.logger.new(o!("solicitation" => "PushHeaders")),
         );
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetHeadersRange(from, to, reply_handle));
-        let done_logger = self.logger.clone();
-        let err_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.inner
-                .push_headers(stream)
-                .map(move |_| {
-                    debug!(done_logger, "finished pushing headers");
-                })
-                .map_err(move |e| {
+        let stream = stream.map(|res| res.encode());
+        let client = self.inner.clone();
+        let logger = self.logger.clone();
+        self.global_state.spawn(async move {
+            match client.push_headers(stream).await {
+                Ok(()) => {
+                    debug!(logger, "finished pushing headers");
+                }
+                Err(e) => {
                     info!(
-                        err_logger,
+                        logger,
                         "PushHeaders request failed";
                         "error" => ?e,
                     );
-                }),
-        );
+                }
+            }
+        });
         Ok(())
     }
 
