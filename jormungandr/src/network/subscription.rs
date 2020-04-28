@@ -388,7 +388,7 @@ struct PendingProcessing(Option<BoxFuture<'static, ()>>);
 
 impl PendingProcessing {
     fn start(&mut self, future: impl Future<Output = ()> + Send + 'static) {
-        self.0 = Some(Box::pin(future));
+        self.0 = Some(future.boxed());
     }
 
     fn poll_complete(&mut self, cx: &mut Context<'_>) -> Poll<()> {
