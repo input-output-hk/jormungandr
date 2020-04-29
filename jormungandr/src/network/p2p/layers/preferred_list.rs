@@ -61,17 +61,11 @@ impl Layer for PreferredListLayer {
     ) {
     }
 
-    fn view(&mut self, view: &mut ViewBuilder, all_nodes: &mut Nodes) {
-        let selected: HashSet<&Address> = self
-            .peers
+    fn view(&mut self, view: &mut ViewBuilder, _all_nodes: &mut Nodes) {
+        self.peers
             .iter()
             .choose_multiple(&mut self.prng, self.view_max)
             .into_iter()
-            .collect();
-        for node in all_nodes.all_available_nodes() {
-            if selected.contains(node.address()) {
-                view.add(node.borrow_mut());
-            }
-        }
+            .for_each(|address| view.add_address(address.clone()));
     }
 }
