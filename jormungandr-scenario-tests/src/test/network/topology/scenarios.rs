@@ -7,7 +7,6 @@ use crate::{
     Context, ScenarioResult,
 };
 use rand_chacha::ChaChaRng;
-use std::time::Duration;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
@@ -661,55 +660,24 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let leader7 =
         controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    leader7.wait_for_bootstrap()?;
-    leader6.wait_for_bootstrap()?;
-    leader5.wait_for_bootstrap()?;
-    leader4.wait_for_bootstrap()?;
-    leader3.wait_for_bootstrap()?;
-    leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
+    leader2.wait_for_bootstrap()?;
+    leader3.wait_for_bootstrap()?;
+    leader4.wait_for_bootstrap()?;
+    leader5.wait_for_bootstrap()?;
+    leader6.wait_for_bootstrap()?;
+    leader7.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("delegated1")?;
     let mut wallet2 = controller.wallet("delegated2")?;
-    let mut wallet3 = controller.wallet("delegated3")?;
-    let mut wallet4 = controller.wallet("delegated4")?;
-    let mut wallet5 = controller.wallet("delegated5")?;
-    let mut wallet6 = controller.wallet("delegated6")?;
-    let mut wallet7 = controller.wallet("delegated7")?;
 
-    for _ in 0..10 {
-        let check1 = controller.wallet_send_to(&mut wallet1, &wallet2, &leader1, 1_000.into())?;
-        let check2 = controller.wallet_send_to(&mut wallet2, &wallet1, &leader2, 1_000.into())?;
-        let check3 = controller.wallet_send_to(&mut wallet3, &wallet4, &leader3, 1_000.into())?;
-        let check4 = controller.wallet_send_to(&mut wallet4, &wallet3, &leader4, 1_000.into())?;
-        let check5 = controller.wallet_send_to(&mut wallet5, &wallet6, &leader5, 1_000.into())?;
-        let check6 = controller.wallet_send_to(&mut wallet6, &wallet1, &leader6, 1_000.into())?;
-        let check7 = controller.wallet_send_to(&mut wallet7, &wallet6, &leader7, 1_000.into())?;
-
-        let status1 = leader1.wait_fragment(Duration::from_secs(2), check1)?;
-        let status2 = leader2.wait_fragment(Duration::from_secs(2), check2)?;
-        let status3 = leader3.wait_fragment(Duration::from_secs(2), check3)?;
-        let status4 = leader4.wait_fragment(Duration::from_secs(2), check4)?;
-        let status5 = leader5.wait_fragment(Duration::from_secs(2), check5)?;
-        let status6 = leader6.wait_fragment(Duration::from_secs(2), check6)?;
-        let status7 = leader7.wait_fragment(Duration::from_secs(2), check7)?;
-
-        utils::assert_is_in_block(status1, &leader1)?;
-        utils::assert_is_in_block(status2, &leader2)?;
-        utils::assert_is_in_block(status3, &leader3)?;
-        utils::assert_is_in_block(status4, &leader4)?;
-        utils::assert_is_in_block(status5, &leader5)?;
-        utils::assert_is_in_block(status6, &leader6)?;
-        utils::assert_is_in_block(status7, &leader7)?;
-
-        wallet1.confirm_transaction();
-        wallet2.confirm_transaction();
-        wallet3.confirm_transaction();
-        wallet4.confirm_transaction();
-        wallet5.confirm_transaction();
-        wallet6.confirm_transaction();
-        wallet7.confirm_transaction();
-    }
+    utils::sending_transactions_to_node_sequentially(
+        40,
+        &mut controller,
+        &mut wallet1,
+        &mut wallet2,
+        &leader1,
+    )?;
 
     let leaders = vec![
         &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
@@ -743,6 +711,8 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     relay1.shutdown()?;
     relay2.shutdown()?;
+
+    core.shutdown()?;
 
     controller.finalize();
     Ok(ScenarioResult::passed())
