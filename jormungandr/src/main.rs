@@ -359,12 +359,12 @@ struct BootstrapData {
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
     explorer_db: Option<explorer::ExplorerDB>,
-    rest_context: Option<rest::Context>,
+    rest_context: Option<rest::ContextLock>,
     settings: Settings,
 }
 
 async fn bootstrap_internal(
-    rest_context: Option<rest::Context>,
+    rest_context: Option<rest::ContextLock>,
     logger: Logger,
     block0: blockcfg::Block,
     storage: blockchain::Storage,
@@ -377,7 +377,12 @@ async fn bootstrap_internal(
     use tokio02::spawn;
 
     if let Some(context) = rest_context.as_ref() {
-        block_on(async { context.set_node_state(NodeState::Bootstrapping) })
+        block_on(async {
+            context
+                .write()
+                .await
+                .set_node_state(NodeState::Bootstrapping)
+        })
     }
 
     let block0_hash = block0.header.hash();
@@ -396,9 +401,10 @@ async fn bootstrap_internal(
     .await?;
 
     block_on(async {
-        if let Some(rest_context) = &rest_context {
-            rest_context.set_blockchain(blockchain.clone());
-            rest_context.set_blockchain_tip(blockchain_tip.clone());
+        if let Some(context) = &rest_context {
+            let mut context = context.write().await;
+            context.set_blockchain(blockchain.clone());
+            context.set_blockchain_tip(blockchain_tip.clone());
         }
     });
 
