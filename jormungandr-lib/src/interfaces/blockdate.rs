@@ -72,6 +72,14 @@ impl<'de> Deserialize<'de> for BlockDate {
     }
 }
 
+/// This type implements serde::{Serialize, Deserialize} for the remote block:BlockDate
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "chain_impl_mockchain::block::BlockDate")]
+pub struct BlockDateDef {
+    pub epoch: u32,
+    pub slot_id: u32,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -2,7 +2,6 @@ use crate::{
     rest::{v0::logic, ContextLock},
     secure::NodeSecret,
 };
-
 use warp::{reject::Reject, Rejection, Reply};
 
 impl Reject for logic::Error {}
@@ -270,6 +269,14 @@ pub async fn get_network_p2p_view_topic(
 pub async fn get_committees(context: ContextLock) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
     logic::get_committees(&context)
+        .await
+        .map(|r| warp::reply::json(&r))
+        .map_err(warp::reject::custom)
+}
+
+pub async fn get_active_vote_plans(context: ContextLock) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::get_active_vote_plans(&context)
         .await
         .map(|r| warp::reply::json(&r))
         .map_err(warp::reject::custom)

@@ -23,7 +23,9 @@ impl Committees {
             debug,
             output_format,
         } = self;
-        let url = addr.with_segments(&["v0", "committees"])?.into_url();
+        let url = addr
+            .with_segments(&["v0", "vote", "active", "committees"])?
+            .into_url();
         let builder = reqwest::blocking::Client::new().get(url);
         let response = RestApiSender::new(builder, &debug).send()?;
         response.ok_response()?;

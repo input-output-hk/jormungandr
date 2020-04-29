@@ -25,6 +25,7 @@ mod transaction_output;
 mod transaction_witness;
 mod utxo_info;
 mod value;
+mod vote;
 
 pub use self::account_identifier::AccountIdentifier;
 pub use self::account_state::AccountState;
@@ -60,3 +61,4 @@ pub use self::transaction_output::TransactionOutput;
 pub use self::transaction_witness::TransactionWitness;
 pub use self::utxo_info::{UTxOInfo, UTxOOutputInfo};
 pub use self::value::{Value, ValueDef};
+pub use self::vote::VotePlanSerializableHelper;

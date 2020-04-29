@@ -20,6 +20,7 @@ use chain_crypto::{
 use chain_impl_mockchain::{
     account::{AccountAlg, Identifier},
     block::Block as ChainBlock,
+    certificate::VotePlan,
     fragment::{Fragment, FragmentId},
     key::Hash,
     leadership::{Leader, LeadershipConsensus},
@@ -32,7 +33,7 @@ use jormungandr_lib::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
         LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
         SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
-        TransactionOutput,
+        TransactionOutput, VotePlanSerializableHelper,
     },
     time::SystemTime,
 };
@@ -656,5 +657,18 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .to_vec()
         .iter()
         .map(|cid| cid.to_string())
+        .collect())
+}
+
+pub async fn get_active_vote_plans(
+    context: &Context,
+) -> Result<Vec<VotePlanSerializableHelper>, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .active_vote_plans()
+        .iter()
+        .map(|vote_plan| VotePlanSerializableHelper::new(vote_plan.clone()))
         .collect())
 }

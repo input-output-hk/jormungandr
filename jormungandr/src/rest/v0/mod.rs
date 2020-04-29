@@ -219,11 +219,21 @@ pub fn filter(
         .and_then(handlers::get_diagnostic)
         .boxed();
 
-    let committees = warp::path!("committees")
-        .and(warp::get())
-        .and(with_context.clone())
-        .and_then(handlers::get_committees)
-        .boxed();
+    let votes = {
+        let root = warp::path!("vote" / "active" / ..);
+        let committees = warp::path!("committees")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_committees)
+            .boxed();
+
+        let vote_plans = warp::path!("plans")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_active_vote_plans)
+            .boxed();
+        root.and(committees.or(vote_plans)).boxed()
+    };
 
     let routes = shutdown
         .or(account)
@@ -241,7 +251,7 @@ pub fn filter(
         .or(rewards)
         .or(utxo)
         .or(diagnostic)
-        .or(committees)
+        .or(votes)
         .boxed();
 
     root.and(routes).recover(handle_rejection).boxed()

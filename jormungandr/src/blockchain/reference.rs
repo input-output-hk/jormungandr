@@ -2,7 +2,7 @@ use crate::blockcfg::{
     BlockDate, ChainLength, EpochRewardsInfo, Header, HeaderHash, Leadership, Ledger,
     LedgerParameters,
 };
-use chain_impl_mockchain::multiverse;
+use chain_impl_mockchain::{certificate::VotePlan, multiverse};
 use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot, TimeFrame,
@@ -158,5 +158,13 @@ impl Ref {
     /// in the future, this function will return an error.
     pub fn elapsed(&self) -> Result<Duration, std::time::SystemTimeError> {
         SystemTime::now().duration_since(self.time())
+    }
+
+    /// clone all active vote plans at this given state
+    ///
+    /// this includes, votes to be voted on, on going votes, votes to be resolved and votes
+    /// to result into a change on the ledger
+    pub fn active_vote_plans(&self) -> Vec<VotePlan> {
+        self.ledger.state().active_vote_plans()
     }
 }
