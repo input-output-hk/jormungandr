@@ -1690,7 +1690,7 @@ dependencies = [
  "hex",
  "humantime",
  "os_info",
- "poldercast 0.13.0",
+ "poldercast 0.13.1",
  "quickcheck",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
