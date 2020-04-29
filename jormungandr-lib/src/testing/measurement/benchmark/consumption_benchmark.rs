@@ -72,8 +72,8 @@ pub struct ConsumptionBenchmarkRun {
 
 impl ConsumptionBenchmarkRun {
     pub fn snapshot(&mut self) -> Result<(), ConsumptionBenchmarkError> {
-        let mut system = sysinfo::System::new_all();
-        system.refresh_all();
+        let mut system = sysinfo::System::new();
+        system.refresh_processes();
 
         let (_, process) = system
             .get_processes()
