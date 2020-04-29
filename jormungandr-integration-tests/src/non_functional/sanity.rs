@@ -1,6 +1,6 @@
 use crate::common::{
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
-    jormungandr::{ConfigurationBuilder, JormungandrProcess},
+    jormungandr::ConfigurationBuilder,
     startup,
 };
 
