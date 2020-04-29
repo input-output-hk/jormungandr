@@ -15,9 +15,11 @@ pub struct StartArguments {
     #[structopt(long = "storage", parse(from_os_str))]
     pub storage: Option<PathBuf>,
 
-    /// Set the node config (in YAML format) to use as general configuration
+    /// Set the node config (in YAML format) to use as general configuration.
+    /// You may provide multiple configuration files. In this case, settings in
+    /// the last file will override settings from all previous files.
     #[structopt(long = "config", parse(from_os_str))]
-    pub node_config: Option<PathBuf>,
+    pub node_config: Vec<PathBuf>,
 
     /// Set the secret node config (in YAML format). Can be given
     /// multiple times.

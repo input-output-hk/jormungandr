@@ -66,7 +66,7 @@ pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
         }]))
         .build();
     Starter::new().config(config).start_fail(
-        r"Error while parsing the node configuration file: log\[0\]\.format: unknown variant",
+        r"Error while parsing the node configuration file: unknown variant `xml`, expected `plain` or `json`",
     );
 }
 

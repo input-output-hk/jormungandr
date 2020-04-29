@@ -49,11 +49,52 @@ pub struct RawSettings {
 
 impl RawSettings {
     pub fn load(command_line: CommandLine) -> Result<Self, Error> {
-        let config = if let Some(node_config) = &command_line.start_arguments.node_config {
-            Some(serde_yaml::from_reader(File::open(node_config)?)?)
-        } else {
-            None
-        };
+        use serde_yaml::{Mapping, Value};
+
+        fn yaml_deep_merge(left: Mapping, mut right: Mapping) -> Mapping {
+            let mut result = Mapping::new();
+            for (key, left) in left.into_iter() {
+                if let Some(right) = right.remove(&key) {
+                    match (left, right) {
+                        (Value::Mapping(left), Value::Mapping(right)) => {
+                            result.insert(key, Value::Mapping(yaml_deep_merge(left, right)))
+                        }
+                        (_, right) => result.insert(key, right),
+                    }
+                } else {
+                    result.insert(key, left)
+                };
+            }
+            result.extend(right.into_iter());
+            result
+        }
+
+        let mut config_iter = command_line
+            .start_arguments
+            .node_config
+            .iter()
+            .map(|filename| {
+                File::open(filename)
+                    .map_err(Error::ConfigIo)
+                    .and_then(|file| {
+                        serde_yaml::from_reader::<_, Mapping>(file).map_err(Error::Config)
+                    })
+            });
+
+        let config = config_iter
+            .next()
+            .map(|init_res| {
+                init_res
+                    .and_then(|init| {
+                        config_iter.try_fold(init, |init, config_res| {
+                            config_res.map(|config| yaml_deep_merge(init, config))
+                        })
+                    })
+                    .map(Value::Mapping)
+                    .and_then(|value| serde_yaml::from_value(value).map_err(Error::Config))
+            })
+            .transpose()?;
+
         Ok(Self {
             command_line,
             config,
