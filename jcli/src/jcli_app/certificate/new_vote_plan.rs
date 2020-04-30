@@ -5,17 +5,6 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-/// vote plan proposal related information
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
-pub struct Proposal {
-    /// proposal id
-    #[structopt(long = "proposal-id")]
-    pub external_proposal_id: certificate::ExternalProposalId,
-    #[structopt(skip = 0b0011)]
-    pub options: u8,
-}
-
 /// create a vote plan certificate
 ///
 /// 3 Block dates need to be provided as well as the proposal id
@@ -34,14 +23,15 @@ pub struct VotePlanRegistration {
     #[structopt(long = "vote-end")]
     pub vote_end: BlockDate,
 
-    /// vommittee end block date
+    /// committee end block date
     ///
     /// It should be provided in the format of `epoch.slot_id`, ex: 0.0
     #[structopt(long = "committee-end")]
     pub committee_end: BlockDate,
 
-    #[structopt(flatten)]
-    pub proposal: Proposal,
+    // list of proposal ids to add to the vote plan certificate
+    #[structopt(long = "proposals-ids")]
+    pub proposals: Vec<certificate::ExternalProposalId>,
 
     /// write the output to the given file or print it to the standard output if not defined
     #[structopt(long = "output")]
@@ -66,10 +56,12 @@ impl VotePlanRegistration {
 
         // build certificate
         let mut proposals = certificate::Proposals::new();
-        proposals.push(certificate::Proposal::new(
-            self.proposal.external_proposal_id,
-            certificate::VoteOptions::new_length(self.proposal.options),
-        ));
+        for proposal_id in self.proposals {
+            proposals.push(certificate::Proposal::new(
+                proposal_id,
+                certificate::VoteOptions::new_length(0b0011),
+            ));
+        }
         let vote_plan = certificate::VotePlan::new(
             self.vote_start,
             self.vote_end,
