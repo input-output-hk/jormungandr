@@ -5,30 +5,46 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+/// vote plan proposal related information
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Proposal {
+    /// proposal id
     #[structopt(long = "proposal-id")]
     pub external_proposal_id: certificate::ExternalProposalId,
     #[structopt(skip = 0b0011)]
     pub options: u8,
 }
 
+/// create a vote plan certificate
+///
+/// 3 Block dates need to be provided as well as the proposal id
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct VotePlanRegistration {
+    /// vote start block date
+    ///
+    /// It should be provided in the format of `epoch.slot_id`, ex: 0.0
     #[structopt(long = "vote-start")]
     pub vote_start: BlockDate,
 
+    /// vote end block date
+    ///
+    /// It should be provided in the format of `epoch.slot_id`, ex: 0.0
     #[structopt(long = "vote-end")]
     pub vote_end: BlockDate,
 
+    /// vommittee end block date
+    ///
+    /// It should be provided in the format of `epoch.slot_id`, ex: 0.0
     #[structopt(long = "committee-end")]
     pub committee_end: BlockDate,
 
+    /// proposal related information
     #[structopt(subcommand)]
     pub proposal: Proposal,
 
+    /// write the output to the given file or print it to the standard output if not defined
     #[structopt(long = "output")]
     pub output: Option<PathBuf>,
 }
