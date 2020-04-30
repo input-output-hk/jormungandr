@@ -68,6 +68,8 @@ pub enum Error {
     TooManyPoolDelegations { actual: usize, max: usize },
     #[error("failed to build pool delegation")]
     InvalidPoolDelegation,
+    #[error("failed to build vote plan")]
+    InvalidVotePlan,
 }
 
 #[derive(StructOpt)]

@@ -35,6 +35,9 @@ pub struct VotePlanRegistration {
 
 impl VotePlanRegistration {
     pub fn exec(self) -> Result<(), Error> {
+        if self.vote_start > self.vote_end || self.vote_end > self.committee_end {
+            return Err(Error::InvalidVotePlan);
+        }
         let mut proposals = certificate::Proposals::new();
         proposals.push(certificate::Proposal::new(
             self.proposal.external_proposal_id,
