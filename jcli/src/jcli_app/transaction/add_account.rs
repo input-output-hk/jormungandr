@@ -32,6 +32,7 @@ impl AddAccount {
             }
             Kind::Single(_) => return Err(Error::AccountAddressSingle),
             Kind::Group(_, _) => return Err(Error::AccountAddressGroup),
+            Kind::Script(_) => return Err(Error::AccountAddressScript),
         };
 
         transaction.add_input(interfaces::TransactionInput {

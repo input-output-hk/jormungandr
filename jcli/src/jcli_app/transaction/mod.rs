@@ -157,6 +157,8 @@ pub enum Error {
     AccountAddressSingle,
     #[error("invalid input account, this is a UTxO address with delegation")]
     AccountAddressGroup,
+    #[error("invalid input account, this is a script address")]
+    AccountAddressScript,
     #[error("transaction finalization failed")]
     TxFinalizationFailed(#[from] chain::transaction::Error),
     #[error("serialization of message to bytes failed")]
