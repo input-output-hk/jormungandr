@@ -40,8 +40,7 @@ pub struct VotePlanRegistration {
     #[structopt(long = "committee-end")]
     pub committee_end: BlockDate,
 
-    /// proposal related information
-    #[structopt(subcommand)]
+    #[structopt(flatten)]
     pub proposal: Proposal,
 
     /// write the output to the given file or print it to the standard output if not defined
@@ -51,9 +50,21 @@ pub struct VotePlanRegistration {
 
 impl VotePlanRegistration {
     pub fn exec(self) -> Result<(), Error> {
-        if self.vote_start > self.vote_end || self.vote_end > self.committee_end {
-            return Err(Error::InvalidVotePlan);
+        // check that the block dates are consecutive
+        if self.vote_start > self.vote_end {
+            return Err(Error::InvalidVotePlanVoteBlockDates {
+                vote_start: self.vote_start.to_string(),
+                vote_end: self.vote_end.to_string(),
+            });
         }
+        if self.vote_end > self.committee_end {
+            return Err(Error::InvalidVotePlanCommitteeBlockDates {
+                vote_end: self.vote_end.to_string(),
+                committee_end: self.committee_end.to_string(),
+            });
+        }
+
+        // build certificate
         let mut proposals = certificate::Proposals::new();
         proposals.push(certificate::Proposal::new(
             self.proposal.external_proposal_id,

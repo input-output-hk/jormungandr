@@ -68,8 +68,16 @@ pub enum Error {
     TooManyPoolDelegations { actual: usize, max: usize },
     #[error("failed to build pool delegation")]
     InvalidPoolDelegation,
-    #[error("failed to build vote plan")]
-    InvalidVotePlan,
+    #[error("BlockDates should be consecutive vote start {vote_start} !< vote end {vote_end}")]
+    InvalidVotePlanVoteBlockDates {
+        vote_start: String,
+        vote_end: String,
+    },
+    #[error("BlockDates should be consecutive vote end {vote_end} !< vote end {committee_end}")]
+    InvalidVotePlanCommitteeBlockDates {
+        vote_end: String,
+        committee_end: String,
+    },
 }
 
 #[derive(StructOpt)]
