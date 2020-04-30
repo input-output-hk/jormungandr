@@ -40,10 +40,6 @@ pub fn duplicated_node_id_test(mut context: Context<ChaChaRng>) -> Result<Scenar
         quarantine_whitelist: None,
     };
 
-    let leader1 =
-        controller.spawn_node(LEADER1, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-    leader1.wait_for_bootstrap()?;
-
     let leader1 = controller.spawn_node_custom(
         controller
             .new_spawn_params(LEADER1)
