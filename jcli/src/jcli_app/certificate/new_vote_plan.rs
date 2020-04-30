@@ -10,7 +10,7 @@ use structopt::StructOpt;
 pub struct Proposal {
     #[structopt(long = "proposal-id")]
     pub external_proposal_id: certificate::ExternalProposalId,
-    #[structopt(default_value = "0b0011")]
+    #[structopt(skip = 0b0011)]
     pub options: u8,
 }
 
