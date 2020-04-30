@@ -112,6 +112,12 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_random_storage(&mut self) -> &mut Self {
+        self.node_config_builder
+            .with_storage(file_utils::get_path_in_temp("storage"));
+        self
+    }
+
     pub fn with_block0_consensus(&mut self, consensus: ConsensusVersion) -> &mut Self {
         self.block0_consensus = consensus;
         self

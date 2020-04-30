@@ -315,6 +315,7 @@ pub fn node_put_itself_in_preffered_layers() {
         .is_ok());
 }
 
+#[ignore]
 #[test]
 pub fn topic_of_interest_influences_node_sync_ability() {
     let fast_client_alias = "FAST_CLIENT";
