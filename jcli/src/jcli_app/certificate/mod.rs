@@ -114,6 +114,8 @@ pub enum NewArgs {
     /// by doing so all remaining stake delegated to this stake pool will
     /// become pending and will need to be re-delegated.
     StakePoolRetirement(new_stake_pool_retirement::StakePoolRetirement),
+    /// create a new vote plan certificate
+    VotePlan(new_vote_plan::VotePlanRegistration),
 }
 
 #[derive(StructOpt)]
@@ -141,6 +143,7 @@ impl NewArgs {
             NewArgs::StakeDelegation(args) => args.exec()?,
             NewArgs::OwnerStakeDelegation(args) => args.exec()?,
             NewArgs::StakePoolRetirement(args) => args.exec()?,
+            NewArgs::VotePlan(args) => args.exec()?,
         }
         Ok(())
     }
