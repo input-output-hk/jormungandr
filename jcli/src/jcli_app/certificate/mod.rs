@@ -12,6 +12,7 @@ mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod new_stake_pool_retirement;
+mod new_vote_plan;
 mod sign;
 mod weighted_pool_ids;
 
