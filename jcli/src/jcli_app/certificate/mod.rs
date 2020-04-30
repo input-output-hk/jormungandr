@@ -68,12 +68,12 @@ pub enum Error {
     TooManyPoolDelegations { actual: usize, max: usize },
     #[error("failed to build pool delegation")]
     InvalidPoolDelegation,
-    #[error("BlockDates should be consecutive vote start {vote_start} !< vote end {vote_end}")]
+    #[error("BlockDates should be consecutive, vote start ({vote_start}) cannot be bigger than vote end ({vote_end})")]
     InvalidVotePlanVoteBlockDates {
         vote_start: String,
         vote_end: String,
     },
-    #[error("BlockDates should be consecutive vote end {vote_end} !< vote end {committee_end}")]
+    #[error("BlockDates should be consecutive, vote end ({vote_end}) cannot be bigger committee end ({committee_end})")]
     InvalidVotePlanCommitteeBlockDates {
         vote_end: String,
         committee_end: String,
