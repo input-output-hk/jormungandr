@@ -3,7 +3,9 @@ use crate::common::{
     process_utils,
 };
 use jormungandr_lib::{
-    interfaces::{Explorer, LayersConfig, PeerRecord, Policy, PreferredListConfig},
+    interfaces::{
+        Explorer, LayersConfig, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest,
+    },
     time::Duration,
 };
 const CLIENT: &str = "CLIENT";
@@ -311,4 +313,65 @@ pub fn node_put_itself_in_preffered_layers() {
             "topology tells the node to connect to itself"
         )
         .is_ok());
+}
+
+#[ignore]
+#[test]
+pub fn topic_of_interest_influences_node_sync_ability() {
+    let fast_client_alias = "FAST_CLIENT";
+    let slow_client_alias = "SLOW_CLIENT";
+
+    let high_topic_of_interests = TopicsOfInterest {
+        messages: "high".to_owned(),
+        blocks: "high".to_owned(),
+    };
+
+    let low_topic_of_interests = TopicsOfInterest {
+        messages: "low".to_owned(),
+        blocks: "low".to_owned(),
+    };
+
+    let mut network_controller = builder("topic_of_interest_influences_node_sync_ability")
+        .star_topology(SERVER, vec![fast_client_alias, slow_client_alias])
+        .initials(vec![
+            wallet("delegated0").with(1_000_000).delegated_to(SERVER),
+            wallet("delegated1")
+                .with(1_000_000)
+                .delegated_to(fast_client_alias),
+            wallet("delegated2")
+                .with(1_000_000)
+                .delegated_to(slow_client_alias),
+        ])
+        .custom_config(vec![
+            params(fast_client_alias).topics_of_interest(high_topic_of_interests),
+            params(slow_client_alias).topics_of_interest(low_topic_of_interests),
+        ])
+        .build()
+        .unwrap();
+
+    let _server = network_controller.spawn_and_wait(SERVER);
+    let fast_client = network_controller.spawn_and_wait(fast_client_alias);
+    let slow_client = network_controller.spawn_and_wait(fast_client_alias);
+
+    process_utils::sleep(30);
+
+    let fast_client_block_recv_cnt = fast_client
+        .rest()
+        .stats()
+        .unwrap()
+        .stats
+        .unwrap()
+        .block_recv_cnt;
+    let slow_client_block_recv_cnt = slow_client
+        .rest()
+        .stats()
+        .unwrap()
+        .stats
+        .unwrap()
+        .block_recv_cnt;
+
+    assert!(
+        fast_client_block_recv_cnt > slow_client_block_recv_cnt,
+        "node with high block topic of interest should have more recieved blocks"
+    );
 }

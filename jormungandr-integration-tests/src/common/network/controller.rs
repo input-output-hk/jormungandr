@@ -92,6 +92,21 @@ impl Controller {
             .expect(&format!("cannot start {}", alias))
     }
 
+    pub fn spawn_node_async(&mut self, alias: &str) -> Result<Node, ControllerError> {
+        let mut spawn_params = SpawnParams::new(alias);
+        spawn_params.leadership_mode(LeadershipMode::Leader);
+        spawn_params.persistence_mode(PersistenceMode::InMemory);
+
+        let config = self.make_config_for(&mut spawn_params).unwrap();
+        Starter::new()
+            .config(config)
+            .from_genesis(spawn_params.get_leadership_mode().clone().into())
+            .role(spawn_params.get_leadership_mode().into())
+            .start_async()
+            .map_err(|e| ControllerError::SpawnError(e))
+            .map(|jormungandr| Node::new(jormungandr, &spawn_params.alias))
+    }
+
     pub fn expect_spawn_failed(
         &mut self,
         spawn_params: &mut SpawnParams,

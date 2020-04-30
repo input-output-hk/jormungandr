@@ -287,18 +287,31 @@ impl Starter {
         }
     }
 
+    fn start_process(&self, config: &JormungandrConfig) -> Child {
+        println!("Starting node with configuration : {:?}", &config);
+        let mut command = self.get_command(config);
+
+        println!("Bootstrapping...");
+
+        command
+            .spawn()
+            .expect("failed to execute 'start jormungandr node'")
+    }
+
+    pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
+        let config = self.build_configuration();
+        Ok(JormungandrProcess::from_config(
+            self.start_process(&config),
+            config,
+        ))
+    }
+
     pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
         let mut config = self.build_configuration();
         let benchmark = self.start_benchmark_run();
         let mut retry_counter = 1;
         loop {
-            let mut command = self.get_command(&config);
-            println!("Starting node with configuration : {:?}", &config);
-            println!("Bootstrapping...");
-
-            let process = command
-                .spawn()
-                .expect("failed to execute 'start jormungandr node'");
+            let process = self.start_process(&config);
 
             match (self.verify_is_up(process, &config), self.on_fail) {
                 (Ok(jormungandr_process), _) => {

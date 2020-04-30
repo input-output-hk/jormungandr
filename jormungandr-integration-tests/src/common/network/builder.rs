@@ -22,12 +22,18 @@ pub struct NetworkBuilder {
 
 impl NetworkBuilder {
     pub fn single_trust_direction(&mut self, client: &str, server: &str) -> &mut Self {
-        let server_node = Node::new(server.to_string());
+        self.star_topology(server, vec![client])
+    }
+
+    pub fn star_topology(&mut self, center: &str, satelites: Vec<&str>) -> &mut Self {
+        let server_node = Node::new(center.to_string());
         self.topology_builder.register_node(server_node);
 
-        let mut client_node = Node::new(client.to_string());
-        client_node.add_trusted_peer(server.to_string());
-        self.topology_builder.register_node(client_node);
+        for satelite in satelites {
+            let mut satelite_node = Node::new(satelite.to_string());
+            satelite_node.add_trusted_peer(center.to_string());
+            self.topology_builder.register_node(satelite_node);
+        }
         self
     }
 
