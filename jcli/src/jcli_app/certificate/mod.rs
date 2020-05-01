@@ -1,4 +1,5 @@
 use crate::jcli_app::utils::{io, key_parser};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
@@ -12,6 +13,7 @@ mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod new_stake_pool_retirement;
+mod new_vote_plan;
 mod sign;
 mod weighted_pool_ids;
 
@@ -67,6 +69,16 @@ pub enum Error {
     TooManyPoolDelegations { actual: usize, max: usize },
     #[error("failed to build pool delegation")]
     InvalidPoolDelegation,
+    #[error("BlockDates should be consecutive, vote start ({vote_start}) cannot be bigger than vote end ({vote_end})")]
+    InvalidVotePlanVoteBlockDates {
+        vote_start: BlockDate,
+        vote_end: BlockDate,
+    },
+    #[error("BlockDates should be consecutive, vote end ({vote_end}) cannot be bigger committee end ({committee_end})")]
+    InvalidVotePlanCommitteeBlockDates {
+        vote_end: BlockDate,
+        committee_end: BlockDate,
+    },
 }
 
 #[derive(StructOpt)]
@@ -111,6 +123,8 @@ pub enum NewArgs {
     /// by doing so all remaining stake delegated to this stake pool will
     /// become pending and will need to be re-delegated.
     StakePoolRetirement(new_stake_pool_retirement::StakePoolRetirement),
+    /// create a new vote plan certificate
+    VotePlan(new_vote_plan::VotePlanRegistration),
 }
 
 #[derive(StructOpt)]
@@ -138,6 +152,7 @@ impl NewArgs {
             NewArgs::StakeDelegation(args) => args.exec()?,
             NewArgs::OwnerStakeDelegation(args) => args.exec()?,
             NewArgs::StakePoolRetirement(args) => args.exec()?,
+            NewArgs::VotePlan(args) => args.exec()?,
         }
         Ok(())
     }
