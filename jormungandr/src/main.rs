@@ -547,7 +547,6 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
-            use std::sync::Arc;
             use tokio02::sync::RwLock;
 
             let mut context = rest::Context::new();
@@ -580,11 +579,11 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         })
     }
 
-    let block0 = services.block_on_task_std("prepare_block_0", |service_info| {
+    let block0 = services.block_on_task_std("prepare_block_0", |_service_info| {
         start_up::prepare_block_0(
             &settings,
             &storage,
-            &service_info.logger(), /* add network to fetch block0 */
+            &init_logger, /* add network to fetch block0 */
         )
     })?;
 
