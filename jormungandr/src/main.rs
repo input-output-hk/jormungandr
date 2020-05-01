@@ -34,8 +34,10 @@ use futures03::{executor::block_on, future::TryFutureExt};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use std::time::Duration;
 use tokio02::signal::ctrl_c;
+
+use std::sync::Arc;
+use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -185,12 +187,21 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
+    // FIXME: reduce state sharing across services
+    let network_state = Arc::new(network::GlobalState::new(
+        bootstrapped_node.block0_hash,
+        bootstrapped_node.settings.network.clone(),
+        topology,
+        stats_counter.clone(),
+        bootstrapped_node
+            .logger
+            .new(o!(crate::log::KEY_TASK => "network")),
+    ));
+
     {
         let fragment_msgbox = fragment_msgbox.clone();
         let block_msgbox = block_msgbox.clone();
-        let block0_hash = bootstrapped_node.block0_hash;
-        let config = bootstrapped_node.settings.network.clone();
-        let stats_counter = stats_counter.clone();
+        let global_state = network_state.clone();
         let channels = network::Channels {
             client_box: client_msgbox,
             transaction_box: fragment_msgbox,
@@ -199,12 +210,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
         services.spawn_future_std("network", move |info| {
             let params = network::TaskParams {
-                config,
-                block0_hash,
+                global_state,
                 input: network_queue,
                 channels,
             };
-            network::start(info, params, topology, stats_counter)
+            network::start(info, params)
         });
     }
 
@@ -255,7 +265,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             transaction_task: fragment_msgbox,
             leadership_logs,
             enclave,
-            p2p: topology,
+            network_state,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
         };
         block_on(async {

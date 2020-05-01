@@ -123,15 +123,15 @@ impl Clone for Channels {
 
 /// Global state shared between all network tasks.
 pub struct GlobalState {
-    pub block0_hash: HeaderHash,
-    pub config: Configuration,
-    pub stats_counter: StatsCounter,
-    pub topology: P2pTopology,
-    pub peers: Peers,
-    pub logger: Logger,
+    block0_hash: HeaderHash,
+    config: Configuration,
+    stats_counter: StatsCounter,
+    topology: P2pTopology,
+    peers: Peers,
+    logger: Logger,
 }
 
-type GlobalStateR = Arc<GlobalState>;
+pub type GlobalStateR = Arc<GlobalState>;
 
 impl GlobalState {
     /// the network global state
@@ -154,8 +154,12 @@ impl GlobalState {
         }
     }
 
-    pub fn logger(&self) -> &Logger {
+    fn logger(&self) -> &Logger {
         &self.logger
+    }
+
+    pub fn topology(&self) -> &P2pTopology {
+        &self.topology
     }
 
     pub fn spawn<F>(&self, f: F)
@@ -223,30 +227,18 @@ impl ConnectionState {
 }
 
 pub struct TaskParams {
-    pub config: Configuration,
-    pub block0_hash: HeaderHash,
+    pub global_state: GlobalStateR,
     pub input: MessageQueue<NetworkMsg>,
     pub channels: Channels,
 }
 
-pub async fn start(
-    service_info: TokioServiceInfo,
-    params: TaskParams,
-    topology: P2pTopology,
-    stats_counter: StatsCounter,
-) {
+pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
     let input = params.input;
     let channels = params.channels;
-    let global_state = Arc::new(GlobalState::new(
-        params.block0_hash,
-        params.config,
-        topology,
-        stats_counter,
-        service_info.logger().clone(),
-    ));
+    let global_state = params.global_state;
 
     // open the port for listening/accepting other peers to connect too
     let listen_state = global_state.clone();

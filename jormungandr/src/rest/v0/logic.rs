@@ -196,7 +196,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
             Ok(())
         })
         .collect::<Result<(), ValueError>>()?;
-    let nodes_count = full_context.p2p.nodes_count().await;
+    let nodes_count = full_context.network_state.topology().nodes_count().await;
     let tip_header = tip.header();
     let stats = &full_context.stats_counter;
     let node_stats = NodeStats {
@@ -559,21 +559,37 @@ pub async fn get_diagnostic(context: &Context) -> Result<Diagnostic, Error> {
 pub async fn get_network_p2p_quarantined(
     context: &Context,
 ) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context.try_full()?.p2p.list_quarantined().await)
+    Ok(context
+        .try_full()?
+        .network_state
+        .topology()
+        .list_quarantined()
+        .await)
 }
 
 pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context.try_full()?.p2p.list_non_public().await)
+    Ok(context
+        .try_full()?
+        .network_state
+        .topology()
+        .list_non_public()
+        .await)
 }
 
 pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context.try_full()?.p2p.list_available().await)
+    Ok(context
+        .try_full()?
+        .network_state
+        .topology()
+        .list_available()
+        .await)
 }
 
 pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<poldercast::Address>, Error> {
     Ok(context
         .try_full()?
-        .p2p
+        .network_state
+        .topology()
         .view(poldercast::Selection::Any)
         .await
         .peers)
@@ -600,7 +616,7 @@ pub async fn get_network_p2p_view_topic(
 
     let topic = parse_topic(topic)?;
     let ctx = context.try_full()?;
-    let view = ctx.p2p.view(topic).await;
+    let view = ctx.network_state.topology().view(topic).await;
     Ok(view.peers)
 }
 
