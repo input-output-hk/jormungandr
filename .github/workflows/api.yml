@@ -1,22 +1,15 @@
 name: API Check
 on:
   push:
-    branches:
-      - master
-    paths:
-      - 'doc/api/*.yaml'
-  pull_request:
-    branches:
-      - master
     paths:
       - 'doc/api/*.yaml'
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: stoplightio/spectral-action@v0.5.5
+      - uses: actions/checkout@v2
+      - uses: stoplightio/spectral-action@v0.6.0
         with:
           file_glob: doc/api/*.yaml
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          spectral_ruleset: 'spectral:oas'
+          spectral_ruleset: ''
