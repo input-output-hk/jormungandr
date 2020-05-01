@@ -1,4 +1,5 @@
 use crate::jcli_app::utils::{io, key_parser};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Write};
@@ -70,13 +71,13 @@ pub enum Error {
     InvalidPoolDelegation,
     #[error("BlockDates should be consecutive, vote start ({vote_start}) cannot be bigger than vote end ({vote_end})")]
     InvalidVotePlanVoteBlockDates {
-        vote_start: String,
-        vote_end: String,
+        vote_start: BlockDate,
+        vote_end: BlockDate,
     },
     #[error("BlockDates should be consecutive, vote end ({vote_end}) cannot be bigger committee end ({committee_end})")]
     InvalidVotePlanCommitteeBlockDates {
-        vote_end: String,
-        committee_end: String,
+        vote_end: BlockDate,
+        committee_end: BlockDate,
     },
 }
 
