@@ -172,7 +172,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_leader_disruption_overlap",
         passive_leader_disruption_overlap,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_overlap",
@@ -187,7 +187,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "point_to_point_disruption",
         point_to_point_disruption,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "custom_network_disruption",
@@ -236,25 +236,25 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "p2p_stats_test",
         p2p_stats_test,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
         "duplicated_node_id_test",
         duplicated_node_id_test,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
         "duplicated_trusted_peer_id_test",
         duplicated_trusted_peer_id_test,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
         "max_connections",
         max_connections,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
