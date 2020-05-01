@@ -1,12 +1,15 @@
 openapi: 3.0.2
+
 info:
   title: Generic blockchain node REST API
   description: Jörmungandr Rest API v0
   version: 0.0.1
   contact:
     url: ''
+
 servers:
   - url: 'https://localhost'
+
 tags:
   - name: account
   - name: block
@@ -17,10 +20,12 @@ tags:
   - name: stake
   - name: utils
   - name: vote
+
 paths:
   '/api/v0/account/{account_id}':
     get:
       description: Gets account state
+      operationId: AccountByID
       tags:
         - account
       parameters:
@@ -30,7 +35,7 @@ paths:
           schema:
             description: Hex-encoded account ID
             type: string
-            pattern: '[0-9a-fA-F]+'
+            pattern: '[0-9a-f]+'
       responses:
         '200':
           description: Success
@@ -49,11 +54,15 @@ paths:
                         items:
                           description: The first item is always stake pool ID and the second is always the delegation ratio
                           type: array
+                          minItems: 2
+                          maxItems: 2
                           items:
                             oneOf:
                               - description: Hex-encoded stake pool ID
                                 type: string
-                                pattern: '[0-9a-fA-F]+'
+                                pattern: '[0-9a-f]+'
+                                minLength: 64
+                                maxLength: 64
                               - description: Delegation ratio
                                 type: integer
                                 minimum: 0
@@ -81,8 +90,8 @@ paths:
                   - value
                   - counter
               examples:
-                application/json:
-                  value: |
+                with_delegation:
+                  value:
                     {
                       "counter": 1,
                       "delegation": {
@@ -93,17 +102,32 @@ paths:
                           ]
                         ]
                       },
-                      "value": 990,
                       "last_rewards": {
                         "epoch": 42,
                         "reward": 2028
-                      }
+                      },
+                      "value": 990
+                    }
+                without_delegation:
+                  value:
+                    {
+                      "counter": 0,
+                      "delegation": {
+                        "pools": []
+                      },
+                      "last_rewards": {
+                        "epoch": 0,
+                        "reward": 0
+                      },
+                      "value": 1000
                     }
         '404':
           description: Account with given ID was not found
+
   '/api/v0/block/{block_id}':
     get:
       description: Gets block
+      operationId: BlockByID
       tags:
         - block
       parameters:
@@ -113,7 +137,7 @@ paths:
           schema:
             description: Hex-encoded block ID
             type: string
-            pattern: '[0-9a-fA-F]+'
+            pattern: '[0-9a-f]+'
       responses:
         '200':
           description: Success
@@ -125,9 +149,11 @@ paths:
                 format: binary
         '400':
           description: Block with given ID was not found
+
   '/api/v0/block/{block_id}/next_id':
     get:
       description: Gets IDs of descendants of block
+      operationId: BlockNextID
       tags:
         - block
       parameters:
@@ -137,7 +163,7 @@ paths:
           schema:
             description: Hex-encoded block ID
             type: string
-            pattern: '[0-9a-fA-F]+'
+            pattern: '[0-9a-f]+'
         - name: count
           in: query
           schema:
@@ -159,9 +185,11 @@ paths:
           description: Block ID malformed
         '404':
           description: Block with given ID was not found in chain of the tip
+
   /api/v0/diagnostic:
     get:
       description: Get system diagnostic information
+      operationId: Diagnostic
       tags:
         - utils
       responses:
@@ -180,14 +208,16 @@ paths:
                     type: integer
               examples:
                 Unix:
-                  value: |
+                  value:
                     {
                       "open_files_limit": 256,
                       "cpu_usage_limit": 9223372036854775807
                     }
+
   /api/v0/fragment/logs:
     get:
       description: Gets logs from node message pool
+      operationId: FragmentLogs
       tags:
         - fragment
       responses:
@@ -209,7 +239,7 @@ paths:
                     fragment_id:
                       description: Hex-encoded fragment ID
                       type: string
-                      pattern: '[0-9a-fA-F]+'
+                      pattern: '[0-9a-f]+'
                     received_from:
                       description: Source of the fragment
                       type: string
@@ -265,7 +295,7 @@ paths:
                                   pattern: '[0-9a-fA-F]+'
               examples:
                 Pending:
-                  value: |
+                  value:
                     [
                       {
                         "fragment_id": "a50a80e0ce6cb8e19d4381dc2a521c1d3ab8a532029131e440548625b2a4d3e8",
@@ -276,7 +306,7 @@ paths:
                       }
                     ]
                 Rejected:
-                  value: |
+                  value:
                     [
                       {
                         "fragment_id": "68b36b0e244ff571d4d01026c149a3986bbd7d7deaabac5e3b994171d9c50856",
@@ -291,7 +321,7 @@ paths:
                       }
                     ]
                 InABlock:
-                  value: |
+                  value:
                     [
                       {
                         "fragment_id": "99e8fbb961e9956cab03779e427b9aad249ddcb4ad7c508f3a80f44091485f01",
@@ -306,9 +336,11 @@ paths:
                         }
                       }
                     ]
+
   /api/v0/leaders:
     get:
       description: Gets leader IDs
+      operationId: Leaders
       tags:
         - leaders
       responses:
@@ -323,11 +355,20 @@ paths:
                   description: ID of the leader
                   type: integer
                   minimum: 0
-              example:
-                - 1
-                - 5
+              examples:
+                "SingleLeader":
+                  value: [
+                    1
+                  ]
+                "MultiLeader":
+                  value: [
+                    1,
+                    2,
+                    3
+                  ]
     post:
       description: Registers new leader
+      operationId: NewLeader
       tags:
         - leaders
       requestBody:
@@ -392,9 +433,11 @@ paths:
                 type: integer
                 minimum: 0
               example: 5
+
   /api/v0/leaders/logs:
     get:
       description: Gets leader logs
+      operationId: LeadersLogs
       tags:
         - leaders
       responses:
@@ -486,7 +529,7 @@ paths:
                                   minimum: 0
               examples:
                 Pending:
-                  value: |
+                  value:
                     [
                       {
                         "created_at_time": "2019-08-19T12:25:00.41726355+00:00",
@@ -499,7 +542,7 @@ paths:
                       }
                     ]
                 Block:
-                  value: |
+                  value:
                     [
                       {
                         "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
@@ -518,7 +561,7 @@ paths:
                       }
                     ]
                 Rejected:
-                  value: |
+                  value:
                     [
                       {
                         "created_at_time": "2019-08-19T12:25:00.417263555+00:00",
@@ -534,9 +577,11 @@ paths:
                         }
                       }
                     ]
+
   '/api/v0/leaders/{leader_id}':
     delete:
       description: Deletes leader
+      operationId: DeleteLeaderByID
       tags:
         - leaders
       parameters:
@@ -552,9 +597,11 @@ paths:
           description: Success
         '404':
           description: Leader with given ID does not exist
+
   /api/v0/message:
     post:
       description: Posts a signed transaction
+      operationId: Message
       tags:
         - fragment
       requestBody:
@@ -571,9 +618,11 @@ paths:
           description: Success
         '400':
           description: Message is malformed
+
   /api/v0/network/stats:
     get:
       description: Fetches network stats
+      operationId: NetworkStats
       tags:
         - network
       responses:
@@ -599,7 +648,7 @@ paths:
                     nodeId:
                       description: Hex-encoded node ID
                       type: string
-                      pattern: '[0-9a-fA-F]+'
+                      pattern: '[0-9a-f]+'
                     establishedAt:
                       description: Timestamp from when the connection was established at
                       type: string
@@ -618,7 +667,7 @@ paths:
                       format: date-time
               examples:
                 application/json:
-                  value: |
+                  value:
                     [
                       {
                         "addr": "3.124.55.91:3000",
@@ -629,9 +678,11 @@ paths:
                         "lastGossipReceived": "2019-10-14T07:54:34.014432887+00:00"
                       }
                     ]
+
   /api/v0/node/stats:
     get:
       description: Fetches node stats
+      operationId: NodeStats
       tags:
         - utils
       responses:
@@ -680,7 +731,7 @@ paths:
                   lastBlockHash:
                     description: "The block hash, it's unique identifier in the blockchain"
                     type: string
-                    pattern: '[0-9a-fA-F]+'
+                    pattern: '[0-9a-f]+'
                   lastBlockHeight:
                     description: 'The block number, in order, since the block0'
                     type: number
@@ -737,7 +788,7 @@ paths:
                     description: Node app version
                     type: string
               examples:
-                application/json:
+                Running:
                   value: |
                     {
                       "blockRecvCnt": 1102,
@@ -760,9 +811,11 @@ paths:
                       "uptime": 20032,
                       "version": "jormungandr 0.8.9-30d20d2e"
                     }
+
   /api/v0/settings:
     get:
       description: Gets node settings
+      operationId: Settings
       tags:
         - utils
       responses:
@@ -787,7 +840,7 @@ paths:
                   block0Hash:
                     description: Hex-encoded hash of block0
                     type: string
-                    pattern: '[0-9a-fA-F]+'
+                    pattern: '[0-9a-f]+'
                   block0Time:
                     description: When block0 was created
                     type: string
@@ -822,22 +875,6 @@ paths:
                         description: Fee per certificate used in witness
                         type: integer
                         minimum: 0
-                      per_certificate_fees:
-                        description: 'Fee per certificate operations, all zero if this object absent'
-                        type: object
-                        properties:
-                          certificate_pool_registration:
-                            description: 'Fee per pool registration, zero if absent'
-                            type: integer
-                            minimum: 1
-                          certificate_stake_delegation:
-                            description: 'Fee per stake delegation, zero if absent'
-                            type: integer
-                            minimum: 1
-                          certificate_owner_stake_delegation:
-                            description: 'Fee per pool owner stake delegation, zero if absent'
-                            type: integer
-                            minimum: 1
                       coefficient:
                         description: Fee per every input and output of transaction
                         type: integer
@@ -846,6 +883,34 @@ paths:
                         description: Base fee per transaction
                         type: integer
                         minimum: 0
+                      per_certificate_fees:
+                        description: 'Fee per pool delegation/registration certificate operations'
+                        type: object
+                        properties:
+                          certificate_pool_registration:
+                            description: 'Fee per pool registration'
+                            type: integer
+                            minimum: 1
+                          certificate_stake_delegation:
+                            description: 'Fee per stake delegation'
+                            type: integer
+                            minimum: 1
+                          certificate_owner_stake_delegation:
+                            description: 'Fee per pool owner stake delegation'
+                            type: integer
+                            minimum: 1
+                      per_vote_certificate_fees:
+                        description: 'Fee per vote certificate operations'
+                        type: object
+                        properties:
+                          certificate_vote_cast:
+                            description: 'Fee per vote cast certificate'
+                            type: integer
+                            minimum: 1
+                          certificate_vote_plan:
+                            description: 'Fee per vote plan certificate'
+                            type: integer
+                            minimum: 1
                   rewardParams:
                     description: Parameters for rewards calculation
                     type: object
@@ -925,23 +990,23 @@ paths:
                         minimum: 1
                         nullable: true
               examples:
-                application/json:
-                  value: |
+                genesis_praos:
+                  value:
                     {
                       "block0Hash": "8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7",
                       "block0Time": "2019-07-09T12:32:51+00:00",
                       "blockContentMaxSize": 102400,
-                      "consensusVersion": "bft",
+                      "consensusVersion": "genesis",
                       "currSlotStartTime": "2019-07-18T22:01:17+00:00",
                       "fees": {
                         "certificate": 4,
+                        "coefficient": 3,
+                        "constant": 2,
                         "per_certificate_fees": {
                           "certificate_pool_registration": 5,
                           "certificate_stake_delegation": 3,
                           "certificate_owner_stake_delegation": 4,
                         }
-                        "coefficient": 1,
-                        "constant": 2
                       },
                       "rewardParams": {
                           "compoundingRatio": {
@@ -958,23 +1023,27 @@ paths:
                       "treasuryTax": {
                         "fixed": 5,
                         "ratio": {
-                          "numerator": 1
+                          "numerator": 1,
                           "denominator": 10000,
-                        }
+                        },
                         "max": 100,
                       }
                     }
+
   /api/v0/shutdown:
     get:
       description: Starts node shutdown procedure
+      operationId: Shutdown
       tags:
         - utils
       responses:
         '200':
           description: Success
+
   /api/v0/stake_pools:
     get:
       description: Gets stake pool IDs
+      operationId: StakePools
       tags:
         - stake
       responses:
@@ -989,11 +1058,17 @@ paths:
                   description: Hex-encoded stake pool ID
                   type: string
                   pattern: '[0-9a-fA-F]+'
-              example:
-                - 5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f
+              examples:
+                pool_list:
+                  value: [
+                    5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f,
+                    c780f14f9782770014d8bcd514b1bc664653d15f73a7158254730c6e1aa9f356
+                  ]
+
   '/api/v0/rewards/epoch/{epoch}':
     get:
       description: 'returns the rewards history of the given "epoch"'
+      operationId: RewardsForEpoch
       tags:
         - rewards
       parameters:
@@ -1047,8 +1122,8 @@ paths:
                     - epoch
                     - accounts
               examples:
-                application/json:
-                  value: |
+                epoch_82:
+                  value:
                     [
                       {
                         "epoch": 82,
@@ -1070,13 +1145,15 @@ paths:
                           "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
                           "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
                           "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
-                          "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                          "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024
                         }
                       }
                     ]
+
   '/api/v0/rewards/history/{length}':
     get:
       description: 'returns the rewards history of the "length" last epoch from tip'
+      operationId: RewardsHistory
       tags:
         - rewards
       parameters:
@@ -1130,8 +1207,8 @@ paths:
                     - epoch
                     - accounts
               examples:
-                application/json:
-                  value: |
+                history2epochs:
+                  value:
                     [
                       {
                         "epoch": 82,
@@ -1153,36 +1230,38 @@ paths:
                           "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
                           "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
                           "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
-                          "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
+                          "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024
+                        }
+                      },
+                      {
+                        "epoch": 81,
+                        "drawn": 3835616440000,
+                        "fees": 1828810000,
+                        "treasury": 462179124139,
+                        "stake_pools": {
+                          "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
+                            1683091391,
+                            32665712521
+                          ],
+                          "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
+                            47706672,
+                            906426770
+                          ],
                         },
-                        {
-                          "epoch": 81,
-                          "drawn": 3835616440000,
-                          "fees": 1828810000,
-                          "treasury": 462179124139,
-                          "stake_pools": {
-                            "0087011b9c626759f19d9d0315a9b42492ba497438c12efc026d664c9f324ecb": [
-                              1683091391,
-                              32665712521
-                            ],
-                            "014bb0d84f40900f6dd85835395bc38da3ab81435d1e6ee27d419d6eeaf7d16a": [
-                              47706672,
-                              906426770
-                            ],
-                          },
-                          "accounts": {
-                            "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
-                            "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
-                            "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
-                            "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
-                            "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024,
-                          }
+                        "accounts": {
+                          "ed25519_pk1qqq6r7r7medu2kdpvdra5kwh8uz9frvftm9lf25shm7ygx9ayvss0nqke9": 427549785,
+                          "ed25519_pk1qqymlwehsztpzhy2k4szkp7j0xk0ra35jyxcpgr9p9q4ngvzzc5q4sh2gm": 24399360,
+                          "ed25519_pk1qq9h62jv6a0mz36xgecjrz9tm8z6ay3vj4d64ashxkgxcyhjewwsvgvelj": 22449169,
+                          "ed25519_pk1qq9l2qrqazk5fp4kt2kvjtsjc32g0ud888um8k2pvms0cw2r0uzsute83u": 1787992,
+                          "ed25519_pk1qqx6h559ee7pa67dm255d0meekt6dmq6857x302wdwrhzv47z9hqucdnt2": 369024
                         }
                       }
                     ]
+
   '/api/v0/stake_pool/{pool_id}':
     get:
       description: Gets stake pool details
+      operationId: StakePoolByID
       tags:
         - stake
       parameters:
@@ -1192,7 +1271,7 @@ paths:
           schema:
             description: Hex-encoded pool ID
             type: string
-            pattern: '[0-9a-fA-F]+'
+            pattern: '[0-9a-f]+'
       responses:
         '200':
           description: Success
@@ -1264,15 +1343,15 @@ paths:
                     description: Bech32-encoded stake pool VRF key
                     type: string
               examples:
-                application/json:
-                  value: |
+                stakepool01:
+                  value:
                     {
                       "tax": {
                         "fixed": 5,
                         "ratio": {
-                          "numerator": 1
+                          "numerator": 1,
                           "denominator": 10000,
-                        }
+                        },
                         "max": 100,
                       },
                       "rewards": {
@@ -1284,9 +1363,11 @@ paths:
                       "kesPublicKey": "kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpusf3p39r",
                       "vrfPublicKey": "vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l"
                     }
+
   /api/v0/stake:
     get:
       description: Gets stake distribution
+      operationId: StakeDistribution
       tags:
         - stake
       responses:
@@ -1336,8 +1417,8 @@ paths:
                         type: integer
                         minimum: 0
               examples:
-                application/json:
-                  value: |
+                stake01:
+                  value:
                     {
                       "epoch": 0,
                       "stake": {
@@ -1351,9 +1432,11 @@ paths:
                         "unassigned": 0
                       }
                     }
+
   '/api/v0/stake/{epoch}':
     get:
       description: Gets stake distribution
+      operationId: StakeForEpoch
       tags:
         - stake
       parameters:
@@ -1410,8 +1493,8 @@ paths:
                         type: integer
                         minimum: 0
               examples:
-                application/json:
-                  value: |
+                stake_epoch0:
+                  value:
                     {
                       "epoch": 0,
                       "stake": {
@@ -1425,9 +1508,11 @@ paths:
                         "unassigned": 0
                       }
                     }
+
   /api/v0/tip:
     get:
       description: Gets ID of the blockchain tip
+      operationId: ChainTip
       tags:
         - utils
       responses:
@@ -1438,11 +1523,13 @@ paths:
               schema:
                 description: Hex-encoded ID of the blockchain tip
                 type: string
-                pattern: '[0-9a-fA-F]+'
+                pattern: '[0-9a-f]+'
               example: 8d94ecfcc9a566f492e6335858db645691f628b012bed4ac2b1338b5690355a7
+
   '/api/v0/utxo/{fragment_id}/{output_index}':
     get:
       description: Fetches UTxO details
+      operationId: UTxO
       tags:
         - fragment
       parameters:
@@ -1481,17 +1568,19 @@ paths:
                     type: integer
                     minimum: 0
               examples:
-                application/json:
-                  value: |
+                UTxO_address:
+                  value:
                     {
                       "address": "ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w",
                       "value": 10000
                     }
         '404':
           description: Fragment with given ID or its output with given index was not found in the UTxO
+
   /api/v0/network/p2p/non_public:
     get:
       description: list all the nodes that are connected to ours but that are not publicly reachable
+      operationId: NonPublicNodes
       tags:
         - network
       responses:
@@ -1683,9 +1772,11 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
+
   /api/v0/network/p2p/available:
     get:
       description: list all the nodes that are available for p2p discovery and events propagation
+      operationId: AvailableNodes
       tags:
         - network
       responses:
@@ -1878,9 +1969,11 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
+
   /api/v0/network/p2p/quarantined:
     get:
       description: list all the nodes that have been quarantined
+      operationId: QuarantinedNodes
       tags:
         - network
       responses:
@@ -2074,9 +2167,11 @@ paths:
                                   type: integer
                                   description: elapsed nanoseconds since unix epoch
                                   minimum: 0
+
   /api/v0/network/p2p/view:
     get:
       description: list all the nodes that are selected for gossiping/peer discovery
+      operationId: NetworkView
       tags:
         - network
       responses:
@@ -2099,8 +2194,11 @@ paths:
                     id:
                       type: string
                       description: the node public id
+
   '/api/v0/network/p2p/view/{topic}':
     get:
+      description: list all the nodes that are selected for the given topic
+      operationId: NetworkViewForTopic
       parameters:
         - in: path
           name: topic
@@ -2111,7 +2209,6 @@ paths:
             enum:
               - blocks
               - fragments
-      description: list all the nodes that are selected for the given topic
       tags:
         - network
       responses:
@@ -2134,10 +2231,11 @@ paths:
                     id:
                       type: string
                       description: the node public id
+
   /api/v0/votes/active/committees:
     get:
       description: Get committee members ID
-      operationId: committees
+      operationId: Committees
       tags:
         - vote
       responses:
@@ -2155,13 +2253,17 @@ paths:
                   pattern: '[0-9a-f]+'
                   minLength: 64
                   maxLength: 64
-              example:
-                - f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
-                - 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19
+              examples:
+                committee:
+                  value: [
+                    f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db,
+                    7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19
+                  ]
+
   /api/v0/votes/active/plans:
     get:
       description: Get active vote plans
-      operationId: vote_plans
+      operationId: ActiveVotePlans
       tags:
         - vote
       responses:
@@ -2171,21 +2273,24 @@ paths:
             application/json:
               schema:
                 type: array
-                description: Vote plans data
+                description: List of Vote Plans with their respective data
                 uniqueItems: true
                 items:
-                  description: Vote plan
+                  description: Vote Plan
                   type: object
                   properties:
                     vote_start:
-                      type: object
-                      description: Vote start BlockDate
+                      type: string
+                      description: Epoch and slot ID of vote start time
+                      pattern: "[0-9]+\\.[0-9]+"
                     vote_end:
-                      type: object
-                      description: Vote end BlockDate
+                      type: string
+                      description: Epoch and slot ID of vote end time
+                      pattern: "[0-9]+\\.[0-9]+"
                     committee_end:
-                      type: object
-                      description: Committee end BlockDate
+                      type: string
+                      description: Epoch and slot ID of committee end time
+                      pattern: "[0-9]+\\.[0-9]+"
                     proposals:
                       type: array
                       description: Active proposals
@@ -2196,9 +2301,18 @@ paths:
                           external_id:
                             type: string
                             description: Hash of external id
+                            pattern: '[0-9a-f]+'
                           options:
                             type: object
                             properties:
                               max_value:
-                                type: int
+                                type: integer
                                 description: Maximum number of options
+                        required:
+                          - external_id
+                          - options
+                  required:
+                    - vote_start
+                    - vote_end
+                    - committee_end
+                    - proposals
