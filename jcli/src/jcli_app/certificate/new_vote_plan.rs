@@ -41,16 +41,16 @@ pub struct VotePlanRegistration {
 impl VotePlanRegistration {
     pub fn exec(self) -> Result<(), Error> {
         // check that the block dates are consecutive
-        if self.vote_start > self.vote_end {
+        if self.vote_start >= self.vote_end {
             return Err(Error::InvalidVotePlanVoteBlockDates {
-                vote_start: self.vote_start.to_string(),
-                vote_end: self.vote_end.to_string(),
+                vote_start: self.vote_start,
+                vote_end: self.vote_end,
             });
         }
-        if self.vote_end > self.committee_end {
+        if self.vote_end >= self.committee_end {
             return Err(Error::InvalidVotePlanCommitteeBlockDates {
-                vote_end: self.vote_end.to_string(),
-                committee_end: self.committee_end.to_string(),
+                vote_end: self.vote_end,
+                committee_end: self.committee_end,
             });
         }
 
