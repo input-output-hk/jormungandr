@@ -79,6 +79,8 @@ pub enum Error {
         vote_end: BlockDate,
         committee_end: BlockDate,
     },
+    #[error("attempted to build vote plan with {actual} proposals, maximum is {max}")]
+    TooManyVotePlanProposals { actual: usize, max: usize },
 }
 
 #[derive(StructOpt)]

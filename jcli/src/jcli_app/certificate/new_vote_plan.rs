@@ -1,7 +1,8 @@
 use crate::jcli_app::certificate::{write_cert, Error};
-use chain_impl_mockchain::block::BlockDate;
-use chain_impl_mockchain::certificate;
-use std::ops::Deref;
+use chain_impl_mockchain::{
+    block::BlockDate,
+    certificate::{Certificate, ExternalProposalId, Proposal, Proposals, VoteOptions, VotePlan},
+};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -29,9 +30,11 @@ pub struct VotePlanRegistration {
     #[structopt(long = "committee-end")]
     pub committee_end: BlockDate,
 
-    // list of proposal ids to add to the vote plan certificate
-    #[structopt(long = "proposals-ids")]
-    pub proposals: Vec<certificate::ExternalProposalId>,
+    /// proposal id to add to the vote plan certificate
+    ///
+    /// There may not be more than 255 proposals per vote plan certificate
+    #[structopt(long = "proposal-id")]
+    pub proposals: Vec<ExternalProposalId>,
 
     /// write the output to the given file or print it to the standard output if not defined
     #[structopt(long = "output")]
@@ -53,22 +56,25 @@ impl VotePlanRegistration {
                 committee_end: self.committee_end,
             });
         }
+        if self.proposals.len() > Proposals::MAX_LEN {
+            return Err(Error::TooManyVotePlanProposals {
+                actual: self.proposals.len(),
+                max: Proposals::MAX_LEN,
+            });
+        }
 
         // build certificate
-        let mut proposals = certificate::Proposals::new();
+        let mut proposals = Proposals::new();
         for proposal_id in self.proposals {
-            proposals.push(certificate::Proposal::new(
-                proposal_id,
-                certificate::VoteOptions::new_length(0b0011),
-            ));
+            let _ = proposals.push(Proposal::new(proposal_id, VoteOptions::new_length(0b0011)));
         }
-        let vote_plan = certificate::VotePlan::new(
+        let vote_plan = VotePlan::new(
             self.vote_start,
             self.vote_end,
             self.committee_end,
-            certificate::Proposals::new(),
+            proposals,
         );
-        let cert = certificate::Certificate::VotePlan(vote_plan);
-        write_cert(self.output.as_ref().map(|x| x.deref()), cert.into())
+        let cert = Certificate::VotePlan(vote_plan);
+        write_cert(self.output.as_deref(), cert.into())
     }
 }
