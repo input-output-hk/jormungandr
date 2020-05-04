@@ -690,12 +690,12 @@ jcli rest v0 rewards history get 2 -h <node_addr>
 
 ---
 
-## Get committee members
+## Get voting committee members
 
 Get the list of voting committee members.
 
 ```sh
-jcli rest v0 committees get <options>
+jcli rest v0 vote active committees get <options>
 ```
 
 The options are
@@ -710,4 +710,42 @@ YAML printed on success
 ---
 - 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19 # list of members
 - f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
+```
+
+## Get active voting plans and proposals
+
+Get the list of active voting plans and proposals.
+
+```sh
+jcli rest v0 vote active plans get <options>
+```
+
+The options are
+
+- -h <node_addr> - see [conventions](#conventions)
+- --debug - see [conventions](#conventions)
+- --output-format \<format\> - see [conventions](#conventions)
+
+YAML printed on success
+
+```yaml
+---
+- committee_end:
+    epoch: 10
+    slot_id: 0
+  proposals:
+    - external_id: adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280
+      options:
+        OneOf:
+          max_value: 3
+    - external_id: 6778d37161c3962fe62c9fa8a31a55bccf6ec2d1ea254a467d8cd994709fc404
+      options:
+        OneOf:
+          max_value: 3
+  vote_end:
+    epoch: 5
+    slot_id: 0
+  vote_start:
+    epoch: 1
+    slot_id: 0
 ```

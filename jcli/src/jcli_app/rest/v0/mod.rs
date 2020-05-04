@@ -1,6 +1,5 @@
 mod account;
 mod block;
-mod committees;
 mod diagnostic;
 mod leaders;
 mod message;
@@ -14,6 +13,7 @@ mod stake_pool;
 mod stake_pools;
 mod tip;
 mod utxo;
+mod vote;
 
 use crate::jcli_app::rest::Error;
 use structopt::StructOpt;
@@ -51,8 +51,8 @@ pub enum V0 {
     Diagnostic(diagnostic::Diagnostic),
     /// Rewards information
     Rewards(rewards::Rewards),
-    /// Committee members list
-    Committees(committees::Committees),
+    /// Vote related operations
+    Vote(vote::Vote),
 }
 
 impl V0 {
@@ -73,7 +73,7 @@ impl V0 {
             V0::Utxo(utxo) => utxo.exec(),
             V0::Diagnostic(diagnostic) => diagnostic.exec(),
             V0::Rewards(rewards) => rewards.exec(),
-            V0::Committees(committees) => committees.exec(),
+            V0::Vote(vote) => vote.exec(),
         }
     }
 }
