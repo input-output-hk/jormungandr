@@ -1,4 +1,5 @@
 use crate::{
+    prepare_command,
     scenario::{
         settings::{Dotifier, PrepareSettings},
         ContextChaCha, ErrorKind, ProgressBarMode, Result,
@@ -184,11 +185,16 @@ impl Controller {
             LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash.clone()),
         };
 
+        let jormungandr = match &params.get_jormungandr() {
+            Some(jormungandr) => prepare_command(jormungandr.clone()),
+            None => self.context.jormungandr().clone(),
+        };
+
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
         let mut node = Node::spawn(
-            &self.context.jormungandr(),
+            &jormungandr,
             &self.context,
             pb,
             &params.get_alias(),
