@@ -280,7 +280,7 @@ impl GossipService for NodeService {
         let mut peers = Vec::new();
         for n in view.peers.into_iter() {
             if let Some(addr) = n.to_socketaddr() {
-                peers.push(Peer { addr });
+                peers.push(addr.into());
                 if peers.len() >= limit as usize {
                     break;
                 }
@@ -289,7 +289,7 @@ impl GossipService for NodeService {
         if peers.len() == 0 {
             // No peers yet, put self as the peer to bootstrap from
             if let Some(addr) = view.self_node.address().and_then(|x| x.to_socketaddr()) {
-                peers.push(Peer { addr });
+                peers.push(addr.into());
             }
         }
         Ok(peers.into_boxed_slice())
