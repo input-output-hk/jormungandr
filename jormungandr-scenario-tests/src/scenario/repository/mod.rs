@@ -187,7 +187,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "point_to_point_disruption",
         point_to_point_disruption,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
     repository.push(Scenario::new(
         "custom_network_disruption",
@@ -242,7 +242,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "duplicated_node_id_test",
         duplicated_node_id_test,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
@@ -254,7 +254,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "max_connections",
         max_connections,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
