@@ -20,7 +20,7 @@ pub struct SpawnParams {
     pub max_connections: Option<u32>,
     pub max_inbound_connections: Option<u32>,
     pub alias: String,
-    pub node_id: Option<poldercast::Id>,
+    pub node_id: Option<poldercast::Address>,
 }
 
 impl SpawnParams {
@@ -69,7 +69,7 @@ impl SpawnParams {
         self
     }
 
-    pub fn node_id(&mut self, node_id: poldercast::Id) -> &mut Self {
+    pub fn node_id(&mut self, node_id: poldercast::Address) -> &mut Self {
         self.node_id = Some(node_id);
         self
     }
@@ -157,7 +157,7 @@ impl SpawnParams {
         }
 
         if let Some(node_id) = &self.node_id {
-            node_config.p2p.public_id = node_id.clone();
+            node_config.p2p.public_address = node_id.clone();
         }
 
         if let Some(max_inbound_connections) = &self.max_inbound_connections {

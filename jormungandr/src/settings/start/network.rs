@@ -1,4 +1,4 @@
-use crate::network::p2p::{layers::LayersConfig, Id, PolicyConfig};
+use crate::network::p2p::{layers::LayersConfig, Address, PolicyConfig};
 use poldercast::NodeProfile;
 use std::{net::SocketAddr, str, time::Duration};
 
@@ -97,14 +97,12 @@ pub struct Configuration {
 #[derive(Clone)]
 pub struct TrustedPeer {
     pub address: poldercast::Address,
-    pub id: Id,
 }
 
 impl From<super::config::TrustedPeer> for TrustedPeer {
     fn from(tp: super::config::TrustedPeer) -> Self {
         TrustedPeer {
-            address: tp.address.0,
-            id: tp.id,
+            address: tp.address,
         }
     }
 }
@@ -142,8 +140,8 @@ impl Listen {
 }
 
 impl Configuration {
-    pub fn public_id(&self) -> Id {
-        (*self.profile.id()).into()
+    pub fn address(&self) -> Option<&Address> {
+        self.profile.address()
     }
 
     /// Returns the listener configuration, if the options defining it

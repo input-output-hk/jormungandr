@@ -1,6 +1,6 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
-    intercom::{self, ReplySendError, ReplyStreamHandle03},
+    intercom::{self, ReplySendError, ReplyStreamHandle},
     start_up::{NodeStorage, NodeStorageConnection},
 };
 use chain_storage::{for_path_to_nth_ancestor, BlockInfo};
@@ -45,7 +45,7 @@ where
 async fn pump_block_sink<T, F>(
     iter: Box<BlockIterState<T, F>>,
     pool: &Pool<ConnectionManager>,
-    sink: &mut ReplyStreamHandle03<T>,
+    sink: &mut ReplyStreamHandle<T>,
 ) -> Result<BlockIteration<T, F>, ReplySendError>
 where
     F: FnMut(Block) -> T,
@@ -259,12 +259,12 @@ impl Storage {
             })
             .await?;
 
-        let (rh, rs) = intercom::stream_reply03(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
+        let (rh, rs) = intercom::stream_reply(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
 
         struct PumpState<F> {
             iter: Box<BlockIterState<Block, F>>,
             pool: Pool<ConnectionManager>,
-            handle: ReplyStreamHandle03<Block>,
+            handle: ReplyStreamHandle<Block>,
         }
         let state = PumpState {
             iter,
@@ -304,7 +304,7 @@ impl Storage {
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        sink: ReplyStreamHandle03<Block>,
+        sink: ReplyStreamHandle<Block>,
     ) -> Result<(), ReplySendError> {
         self.send_branch_with(to, depth, sink, identity).await
     }
@@ -315,7 +315,7 @@ impl Storage {
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        mut sink: ReplyStreamHandle03<T>,
+        mut sink: ReplyStreamHandle<T>,
         transform: F,
     ) -> Result<(), ReplySendError>
     where
@@ -494,7 +494,7 @@ where
     fn fill_sink(
         mut self: Box<Self>,
         store: &mut NodeStorageConnection,
-        sink: &mut ReplyStreamHandle03<T>,
+        sink: &mut ReplyStreamHandle<T>,
     ) -> Result<BlockIteration<T, F>, ReplySendError> {
         if let Some(item) = self.pending_item.take() {
             let is_err = item.is_err();
@@ -557,7 +557,7 @@ where
     fn try_send_item(
         &mut self,
         item: Result<T, intercom::Error>,
-        sink: &mut ReplyStreamHandle03<T>,
+        sink: &mut ReplyStreamHandle<T>,
     ) -> Result<bool, ReplySendError> {
         sink.try_send_item(item).map(|()| true).or_else(|e| {
             if e.is_full() {

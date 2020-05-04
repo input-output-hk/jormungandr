@@ -17,17 +17,17 @@ use crate::blockcfg::{
 };
 use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
-use crate::utils::task::{Input, TokioServiceInfo};
+use crate::utils::async_msg::MessageQueue;
+use crate::utils::task::TokioServiceInfo;
 use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse;
-use futures03::{compat::*, stream::TryStreamExt};
+use futures03::prelude::*;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::prelude::*;
-use tokio::sync::lock::{Lock, LockGuard};
+use tokio02::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Explorer {
@@ -41,7 +41,7 @@ struct Branch {
 }
 
 #[derive(Clone)]
-struct Tip(Lock<Branch>);
+struct Tip(Arc<RwLock<Branch>>);
 
 #[derive(Clone)]
 pub struct ExplorerDB {
@@ -108,34 +108,27 @@ impl Explorer {
         }
     }
 
-    pub fn handle_input(
-        &mut self,
-        info: &TokioServiceInfo,
-        input: Input<ExplorerMsg>,
-    ) -> impl Future<Item = (), Error = ()> {
-        let _logger = info.logger();
-        let bquery = match input {
-            Input::Shutdown => {
-                return future::ok(());
-            }
-            Input::Input(msg) => msg,
-        };
-
-        let mut explorer_db = self.db.clone();
-        let logger = info.logger().clone();
-        match bquery {
-            ExplorerMsg::NewBlock(block) => info.spawn(
-                "apply block",
-                explorer_db
-                    .apply_block(block)
-                    .then(move |result| match result {
-                        // XXX: There is no garbage collection now, so the GCRoot is not used
-                        Ok(_gc_root) => Ok(()),
-                        Err(err) => Err(error!(logger, "Explorer error: {}", err)),
-                    }),
-            ),
-        }
-        future::ok::<(), ()>(())
+    pub async fn start(&mut self, info: TokioServiceInfo, messages: MessageQueue<ExplorerMsg>) {
+        messages
+            .for_each(|input| async {
+                match input {
+                    ExplorerMsg::NewBlock(block) => {
+                        let mut explorer_db = self.db.clone();
+                        let logger = info.logger().clone();
+                        info.spawn_failable_std("apply block", async move {
+                            explorer_db
+                                .apply_block(block)
+                                .map(move |result| match result {
+                                    // XXX: There is no garbage collection now, so the GCRoot is not used
+                                    Ok(_gc_root) => Ok(()),
+                                    Err(err) => Err(error!(logger, "Explorer error: {}", err)),
+                                })
+                                .await
+                        });
+                    }
+                }
+            })
+            .await;
     }
 }
 
@@ -143,15 +136,7 @@ impl ExplorerDB {
     /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
-    pub fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
-        use tokio_compat::runtime;
-
-        let mut rt = runtime::Builder::new()
-            .name_prefix("explorer-bootstrap-worker-")
-            .core_threads(1)
-            .build()
-            .unwrap();
-
+    pub async fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -192,9 +177,9 @@ impl ExplorerDB {
 
         let multiverse = Multiverse::<State>::new();
         let block0_id = block0.id();
-        let initial_state_ref = rt
-            .block_on(multiverse.insert(block0.chain_length(), block0_id, initial_state))
-            .expect("The multiverse to be empty");
+        let initial_state_ref = multiverse
+            .insert(block0.chain_length(), block0_id, initial_state)
+            .await;
 
         let bootstraped_db = ExplorerDB {
             multiverse,
@@ -206,26 +191,25 @@ impl ExplorerDB {
             blockchain: blockchain.clone(),
         };
 
-        rt.block_on_std(async move {
-            let maybe_head = blockchain
-                .storage()
-                .get_tag(MAIN_BRANCH_TAG.to_owned())
-                .await?;
-            let stream = match maybe_head {
-                Some(head) => blockchain.storage().stream_from_to(block0_id, head).await?,
-                None => {
-                    return Err(Error::from(ErrorKind::BootstrapError(
-                        "Couldn't read the HEAD tag from storage".to_owned(),
-                    )))
-                }
-            };
-            stream
-                .map_err(|err| Error::from(err))
-                .try_fold(bootstraped_db, |mut db, block| {
-                    db.apply_block(block).and_then(|_gc_root| Ok(db)).compat()
-                })
-                .await
-        })
+        let maybe_head = blockchain
+            .storage()
+            .get_tag(MAIN_BRANCH_TAG.to_owned())
+            .await?;
+        let stream = match maybe_head {
+            Some(head) => blockchain.storage().stream_from_to(block0_id, head).await?,
+            None => {
+                return Err(Error::from(ErrorKind::BootstrapError(
+                    "Couldn't read the HEAD tag from storage".to_owned(),
+                )))
+            }
+        };
+        stream
+            .map_err(|err| Error::from(err))
+            .try_fold(bootstraped_db, |mut db, block| async move {
+                db.apply_block(block).await?;
+                Ok(db)
+            })
+            .await
     }
 
     /// Try to add a new block to the indexes, this can fail if the parent of the block is
@@ -233,10 +217,7 @@ impl ExplorerDB {
     /// chain length is greater than the current.
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
-    fn apply_block(
-        &mut self,
-        block: Block,
-    ) -> impl Future<Item = multiverse::Ref<State>, Error = Error> {
+    async fn apply_block(&mut self, block: Block) -> Result<multiverse::Ref<State>> {
         let previous_block = block.header.block_parent_hash();
         let chain_length = block.header.chain_length();
         let block_id = block.header.hash();
@@ -244,125 +225,88 @@ impl ExplorerDB {
         let current_tip = self.longest_chain_tip.clone();
         let discrimination = self.blockchain_config.discrimination.clone();
 
-        multiverse
+        let previous_state = multiverse
             .get_ref(previous_block)
-            .map_err(|_: Infallible| unreachable!())
-            .and_then(move |maybe_previous_state| match maybe_previous_state {
-                Some(state_ref) => {
-                    let State {
-                        parent_ref: _,
-                        transactions,
-                        blocks,
-                        addresses,
-                        epochs,
-                        chain_lengths,
-                        stake_pool_data,
-                        stake_pool_blocks,
-                    } = state_ref.state().clone();
+            .await
+            .ok_or_else(|| Error::from(ErrorKind::AncestorNotFound(format!("{}", block.id()))))?;
+        let State {
+            parent_ref: _,
+            transactions,
+            blocks,
+            addresses,
+            epochs,
+            chain_lengths,
+            stake_pool_data,
+            stake_pool_blocks,
+        } = previous_state.state().clone();
 
-                    let explorer_block =
-                        ExplorerBlock::resolve_from(&block, discrimination, &transactions, &blocks);
+        let explorer_block =
+            ExplorerBlock::resolve_from(&block, discrimination, &transactions, &blocks);
+        let (stake_pool_data, stake_pool_blocks) =
+            apply_block_to_stake_pools(stake_pool_data, stake_pool_blocks, &explorer_block);
 
-                    Ok((
-                        state_ref,
-                        apply_block_to_transactions(transactions, &explorer_block)?,
-                        apply_block_to_blocks(blocks, &explorer_block)?,
-                        apply_block_to_addresses(addresses, &explorer_block)?,
-                        apply_block_to_epochs(epochs, &explorer_block),
-                        apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
-                        apply_block_to_stake_pools(
-                            stake_pool_data,
-                            stake_pool_blocks,
-                            &explorer_block,
-                        ),
-                    ))
-                }
-                None => Err(Error::from(ErrorKind::AncestorNotFound(format!(
-                    "{}",
-                    block.id()
-                )))),
-            })
-            .and_then(
-                move |(
-                    parent_ref,
-                    transactions,
-                    blocks,
-                    addresses,
-                    epochs,
-                    chain_lengths,
-                    stake_pools,
-                )| {
-                    let chain_length = chain_length.clone();
-                    let block_id = block_id.clone();
-                    let (stake_pool_data, stake_pool_blocks) = stake_pools;
-                    multiverse
-                        .insert(
-                            chain_length,
-                            block_id,
-                            State {
-                                parent_ref: Some(parent_ref),
-                                transactions,
-                                blocks,
-                                addresses,
-                                epochs,
-                                chain_lengths,
-                                stake_pool_data,
-                                stake_pool_blocks,
-                            },
-                        )
-                        .map_err(|_: Infallible| unreachable!())
-                        .map(move |state_ref| (state_ref, chain_length))
+        let state_ref = multiverse
+            .insert(
+                chain_length,
+                block_id,
+                State {
+                    parent_ref: Some(previous_state),
+                    transactions: apply_block_to_transactions(transactions, &explorer_block)?,
+                    blocks: apply_block_to_blocks(blocks, &explorer_block)?,
+                    addresses: apply_block_to_addresses(addresses, &explorer_block)?,
+                    epochs: apply_block_to_epochs(epochs, &explorer_block),
+                    chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
+                    stake_pool_data,
+                    stake_pool_blocks,
                 },
             )
-            .and_then(move |(state_ref, chain_length)| {
-                current_tip
-                    .compare_and_replace(Branch {
-                        state_ref: state_ref.clone(),
-                        length: chain_length,
-                    })
-                    .map_err(|_: Infallible| unreachable!())
-                    .map(|_| state_ref)
+            .await;
+
+        current_tip
+            .compare_and_replace(Branch {
+                state_ref: state_ref.clone(),
+                length: chain_length,
             })
+            .await;
+
+        Ok(state_ref)
     }
 
-    pub fn get_latest_block_hash(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
-        self.longest_chain_tip.get_block_id()
+    pub async fn get_latest_block_hash(&self) -> HeaderHash {
+        self.longest_chain_tip.get_block_id().await
     }
 
-    pub fn get_block(
-        &self,
-        block_id: &HeaderHash,
-    ) -> impl Future<Item = Option<ExplorerBlock>, Error = Infallible> {
+    pub async fn get_block(&self, block_id: &HeaderHash) -> Option<ExplorerBlock> {
         let block_id = block_id.clone();
         self.with_latest_state(move |state| {
             state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_epoch(
-        &self,
-        epoch: Epoch,
-    ) -> impl Future<Item = Option<EpochData>, Error = Infallible> {
+    pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
         let epoch = epoch.clone();
         self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| e.as_ref().clone()))
+            .await
     }
 
-    pub fn find_block_by_chain_length(
+    pub async fn find_block_by_chain_length(
         &self,
         chain_length: ChainLength,
-    ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
+    ) -> Option<HeaderHash> {
         self.with_latest_state(move |state| {
             state
                 .chain_lengths
                 .lookup(&chain_length)
                 .map(|b| b.as_ref().clone())
         })
+        .await
     }
 
-    pub fn find_block_hash_by_transaction(
+    pub async fn find_block_hash_by_transaction(
         &self,
         transaction_id: &FragmentId,
-    ) -> impl Future<Item = Option<HeaderHash>, Error = Infallible> {
+    ) -> Option<HeaderHash> {
         let transaction_id = transaction_id.clone();
         self.with_latest_state(move |state| {
             state
@@ -370,12 +314,13 @@ impl ExplorerDB {
                 .lookup(&transaction_id)
                 .map(|id| id.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_transactions_by_address(
+    pub async fn get_transactions_by_address(
         &self,
         address: &ExplorerAddress,
-    ) -> impl Future<Item = Option<PersistentSequence<FragmentId>>, Error = Infallible> {
+    ) -> Option<PersistentSequence<FragmentId>> {
         let address = address.clone();
         self.with_latest_state(move |state| {
             state
@@ -383,16 +328,17 @@ impl ExplorerDB {
                 .lookup(&address)
                 .map(|set| set.as_ref().clone())
         })
+        .await
     }
 
     // Get the hashes of all blocks in the range [from, to)
     // the ChainLength is returned to for easy of use in the case where
     // `to` is greater than the max
-    pub fn get_block_hash_range(
+    pub async fn get_block_hash_range(
         &self,
         from: ChainLength,
         to: ChainLength,
-    ) -> impl Future<Item = Vec<(HeaderHash, ChainLength)>, Error = Infallible> {
+    ) -> Vec<(HeaderHash, ChainLength)> {
         let from = u32::from(from);
         let to = u32::from(to);
 
@@ -406,12 +352,13 @@ impl ExplorerDB {
                 })
                 .collect()
         })
+        .await
     }
 
-    pub fn get_stake_pool_blocks(
+    pub async fn get_stake_pool_blocks(
         &self,
         pool: &PoolId,
-    ) -> impl Future<Item = Option<PersistentSequence<HeaderHash>>, Error = Infallible> {
+    ) -> Option<PersistentSequence<HeaderHash>> {
         let pool = pool.clone();
         self.with_latest_state(move |state| {
             state
@@ -419,12 +366,10 @@ impl ExplorerDB {
                 .lookup(&pool)
                 .map(|i| i.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_stake_pool_data(
-        &self,
-        pool: &PoolId,
-    ) -> impl Future<Item = Option<StakePoolData>, Error = Infallible> {
+    pub async fn get_stake_pool_data(&self, pool: &PoolId) -> Option<StakePoolData> {
         let pool = pool.clone();
         self.with_latest_state(move |state| {
             state
@@ -432,11 +377,10 @@ impl ExplorerDB {
                 .lookup(&pool)
                 .map(|i| i.as_ref().clone())
         })
+        .await
     }
 
-    pub fn get_stake_pools(
-        &self,
-    ) -> impl Future<Item = Vec<(PoolId, Arc<StakePoolData>)>, Error = Infallible> {
+    pub async fn get_stake_pools(&self) -> Vec<(PoolId, Arc<StakePoolData>)> {
         self.with_latest_state(move |state| {
             state
                 .stake_pool_data
@@ -444,30 +388,21 @@ impl ExplorerDB {
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect()
         })
+        .await
     }
 
     /// run given function with the longest branch's state
-    fn with_latest_state<T>(
-        &self,
-        f: impl Fn(State) -> T,
-    ) -> impl Future<Item = T, Error = Infallible> {
+    async fn with_latest_state<T>(&self, f: impl Fn(State) -> T) -> T {
         let multiverse = self.multiverse.clone();
-        self.get_latest_block_hash().and_then(move |branch_id| {
-            multiverse.get(branch_id).and_then(move |maybe_state| {
-                let state = maybe_state.expect("the longest chain to be indexed");
-                Ok(f(state))
-            })
-        })
+        let branch_id = self.get_latest_block_hash().await;
+        let maybe_state = multiverse.get(branch_id).await;
+        let state = maybe_state.expect("the longest chain to be indexed");
+        f(state)
     }
 
     fn blockchain(&self) -> &Blockchain {
         &self.blockchain
     }
-}
-
-fn get_lock<L>(lock: &Lock<L>) -> impl Future<Item = LockGuard<L>, Error = Infallible> {
-    let mut lock = (*lock).clone();
-    future::poll_fn(move || Ok(lock.poll_lock()))
 }
 
 fn apply_block_to_transactions(
@@ -655,23 +590,22 @@ impl BlockchainConfig {
 
 impl Tip {
     fn new(branch: Branch) -> Tip {
-        Tip(Lock::new(branch))
+        Tip(Arc::new(RwLock::new(branch)))
     }
 
-    fn compare_and_replace(&self, other: Branch) -> impl Future<Item = (), Error = Infallible> {
-        get_lock(&self.0).and_then(move |mut current| {
-            // Probably a different thing is needed for the == case
-            if other.length > (*current).length {
-                *current = Branch {
-                    state_ref: other.state_ref,
-                    length: other.length,
-                };
-            }
-            Ok(())
-        })
+    async fn compare_and_replace(&self, other: Branch) {
+        let mut current = self.0.write().await;
+
+        if other.length > (*current).length {
+            *current = Branch {
+                state_ref: other.state_ref,
+                length: other.length,
+            };
+        }
     }
 
-    fn get_block_id(&self) -> impl Future<Item = HeaderHash, Error = Infallible> {
-        get_lock(&self.0).map(|guard| *guard.state_ref.id())
+    async fn get_block_id(&self) -> HeaderHash {
+        let guard = self.0.read().await;
+        *guard.state_ref.id()
     }
 }

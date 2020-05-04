@@ -1,20 +1,24 @@
 use super::{
     buffer_sizes,
-    p2p::comm::{BlockEventSubscription, OutboundSubscription},
-    p2p::{Gossip as NodeData, Id},
-    subscription::{
-        self, BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor, Subscription,
-    },
-    Channels, GlobalStateR,
+    convert::{self, Decode, Encode, ResponseStream},
+    p2p::comm::{BlockEventSubscription, FragmentSubscription, GossipSubscription},
+    p2p::Address,
+    subscription, Channels, GlobalStateR,
 };
-use crate::blockcfg::{Block, BlockDate, Fragment, FragmentId, Header, HeaderHash};
-use crate::intercom::{self, BlockMsg, ClientMsg, ReplyStream, RequestFuture, RequestSink};
-use futures::future::{self, FutureResult};
-use futures::prelude::*;
-use network_core::error as core_error;
-use network_core::gossip::{Gossip, PeersResponse};
-use network_core::server::{BlockService, FragmentService, GossipService, Node, P2pService};
+use crate::blockcfg as app_data;
+use crate::intercom::{self, BlockMsg, ClientMsg};
+use crate::utils::async_msg::MessageBox;
+use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
+use chain_network::data::{
+    Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, Header, Peer, Peers,
+};
+use chain_network::error::{self as net_error, Error};
+
+use async_trait::async_trait;
+use futures03::prelude::*;
 use slog::Logger;
+
+use std::convert::TryFrom;
 
 #[derive(Clone)]
 pub struct NodeService {
@@ -39,12 +43,10 @@ impl NodeService {
     }
 }
 
-impl NodeService
-where
-    Self: P2pService,
-{
-    fn subscription_logger(&self, subscriber: <Self as P2pService>::NodeId) -> Logger {
-        self.logger.new(o!("node_id" => subscriber.to_string()))
+impl NodeService {
+    fn subscription_logger(&self, subscriber: Peer, stream_name: &'static str) -> Logger {
+        self.logger
+            .new(o!("peer" => subscriber.to_string(), "stream" => stream_name))
     }
 }
 
@@ -53,259 +55,243 @@ impl Node for NodeService {
     type FragmentService = Self;
     type GossipService = Self;
 
-    fn block_service(&mut self) -> Option<&mut Self::BlockService> {
+    fn block_service(&self) -> Option<&Self::BlockService> {
         Some(self)
     }
 
-    fn fragment_service(&mut self) -> Option<&mut Self::FragmentService> {
+    fn fragment_service(&self) -> Option<&Self::FragmentService> {
         Some(self)
     }
 
-    fn gossip_service(&mut self) -> Option<&mut Self::GossipService> {
+    fn gossip_service(&self) -> Option<&Self::GossipService> {
         Some(self)
     }
 }
 
-impl P2pService for NodeService {
-    type NodeId = Id;
-
-    fn node_id(&self) -> Id {
-        self.global_state.topology.node_id()
-    }
+async fn send_message<T>(mut mbox: MessageBox<T>, msg: T, logger: Logger) -> Result<(), Error> {
+    mbox.send(msg).await.map_err(|e| {
+        error!(
+            logger,
+            "failed to enqueue message for processing";
+            "reason" => %e,
+        );
+        Error::new(net_error::Code::Internal, e)
+    })
 }
 
+type SubscriptionStream<S: Stream> = stream::Map<S, fn(S::Item) -> Result<S::Item, Error>>;
+
+fn serve_subscription<S: Stream>(sub: S) -> SubscriptionStream<S> {
+    sub.map(Ok)
+}
+
+#[async_trait]
 impl BlockService for NodeService {
-    type BlockId = HeaderHash;
-    type BlockDate = BlockDate;
-    type Block = Block;
-    type TipFuture = RequestFuture<ClientMsg, Header, core_error::Error>;
-    type Header = Header;
-    type PullBlocksStream = ReplyStream<Block, core_error::Error>;
-    type PullBlocksFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
-    type PullBlocksToTipFuture = FutureResult<Self::PullBlocksStream, core_error::Error>;
-    type GetBlocksStream = ReplyStream<Block, core_error::Error>;
-    type GetBlocksFuture = FutureResult<Self::GetBlocksStream, core_error::Error>;
-    type PullHeadersStream = ReplyStream<Header, core_error::Error>;
-    type PullHeadersFuture = FutureResult<Self::PullHeadersStream, core_error::Error>;
-    type GetHeadersStream = ReplyStream<Header, core_error::Error>;
-    type GetHeadersFuture = FutureResult<Self::GetHeadersStream, core_error::Error>;
-    type PushHeadersSink = RequestSink<Header, (), core_error::Error>;
-    type UploadBlocksSink = RequestSink<Block, (), core_error::Error>;
-    type BlockSubscription = Subscription<BlockAnnouncementProcessor, BlockEventSubscription>;
-    type BlockSubscriptionFuture = subscription::ServeBlockEvents<BlockAnnouncementProcessor>;
+    type PullBlocksToTipStream = ResponseStream<app_data::Block>;
+    type GetBlocksStream = ResponseStream<app_data::Block>;
+    type PullHeadersStream = ResponseStream<app_data::Header>;
+    type GetHeadersStream = ResponseStream<app_data::Header>;
+    type SubscriptionStream = SubscriptionStream<BlockEventSubscription>;
 
-    fn block0(&mut self) -> HeaderHash {
-        self.global_state.block0_hash
+    fn block0(&self) -> BlockId {
+        BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap()
     }
 
-    fn tip(&mut self) -> Self::TipFuture {
-        intercom::unary_future(
-            self.channels.client_box.clone(),
-            self.logger().new(o!("request" => "Tip")),
-            ClientMsg::GetBlockTip,
-        )
+    async fn tip(&self) -> Result<Header, Error> {
+        let logger = self.logger().new(o!("request" => "Tip"));
+        let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
+        let mbox = self.channels.client_box.clone();
+        send_message(mbox, ClientMsg::GetBlockTip(reply_handle), logger).await?;
+        let header = reply_future.await?;
+        Ok(header.encode())
     }
 
-    fn pull_blocks_to_tip(&mut self, from: &[Self::BlockId]) -> Self::PullBlocksFuture {
+    async fn pull_blocks_to_tip(
+        &self,
+        from: BlockIds,
+    ) -> Result<Self::PullBlocksToTipStream, Error> {
+        let from = from.decode()?;
         let logger = self.logger().new(o!("request" => "PullBlocksToTip"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
         let client_box = self.channels.client_box.clone();
-        // TODO: make sure that a limit on the number of requests in flight
-        // per service connection prevents unlimited spawning of these tasks.
-        // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(
-            client_box.into_send_task(ClientMsg::PullBlocksToTip(from.into(), handle), logger),
-        );
-        future::ok(stream)
+        send_message(client_box, ClientMsg::PullBlocksToTip(from, handle), logger).await?;
+        Ok(convert::response_stream(stream))
     }
 
-    fn get_blocks(&mut self, ids: &[Self::BlockId]) -> Self::GetBlocksFuture {
+    async fn get_blocks(&self, ids: BlockIds) -> Result<Self::GetBlocksStream, Error> {
+        let ids = ids.decode()?;
         let logger = self.logger().new(o!("request" => "GetBlocks"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
         let client_box = self.channels.client_box.clone();
-        // TODO: make sure that a limit on the number of requests in flight
-        // per service connection prevents unlimited spawning of these tasks.
-        // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state
-            .spawn(client_box.into_send_task(ClientMsg::GetBlocks(ids.into(), handle), logger));
-        future::ok(stream)
+        send_message(client_box, ClientMsg::GetBlocks(ids, handle), logger).await?;
+        Ok(convert::response_stream(stream))
     }
 
-    fn get_headers(&mut self, ids: &[Self::BlockId]) -> Self::GetHeadersFuture {
+    async fn get_headers(&self, ids: BlockIds) -> Result<Self::GetHeadersStream, Error> {
+        let ids = ids.decode()?;
         let logger = self.logger().new(o!("request" => "GetHeaders"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
         let client_box = self.channels.client_box.clone();
-        // TODO: make sure that a limit on the number of requests in flight
-        // per service connection prevents unlimited spawning of these tasks.
-        // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state
-            .spawn(client_box.into_send_task(ClientMsg::GetHeaders(ids.into(), handle), logger));
-        future::ok(stream)
+        send_message(client_box, ClientMsg::GetHeaders(ids, handle), logger).await?;
+        Ok(convert::response_stream(stream))
     }
 
-    fn pull_blocks(
-        &mut self,
-        _from: &[Self::BlockId],
-        _to: &Self::BlockId,
-    ) -> Self::PullBlocksFuture {
-        future::err(core_error::Error::unimplemented())
-    }
-
-    fn pull_headers(
-        &mut self,
-        from: &[Self::BlockId],
-        to: &Self::BlockId,
-    ) -> Self::PullHeadersFuture {
+    async fn pull_headers(
+        &self,
+        from: BlockIds,
+        to: BlockId,
+    ) -> Result<Self::PullHeadersStream, Error> {
+        let from = from.decode()?;
+        let to = to.decode()?;
         let logger = self.logger().new(o!("request" => "PullHeaders"));
         let (handle, stream) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
         let client_box = self.channels.client_box.clone();
-        // TODO: make sure that a limit on the number of requests in flight
-        // per service connection prevents unlimited spawning of these tasks.
-        // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(
-            client_box.into_send_task(ClientMsg::GetHeadersRange(from.into(), *to, handle), logger),
-        );
-        future::ok(stream)
+        send_message(
+            client_box,
+            ClientMsg::GetHeadersRange(from, to, handle),
+            logger,
+        )
+        .await?;
+        Ok(convert::response_stream(stream))
     }
 
-    fn pull_headers_to_tip(&mut self, _from: &[Self::BlockId]) -> Self::PullHeadersFuture {
-        future::err(core_error::Error::unimplemented())
-    }
-
-    fn push_headers(&mut self) -> Self::PushHeadersSink {
+    async fn push_headers(&self, stream: PushStream<Header>) -> Result<(), Error> {
         let logger = self.logger.new(o!("request" => "PushHeaders"));
         let (handle, sink) =
             intercom::stream_request(buffer_sizes::inbound::HEADERS, logger.clone());
         let block_box = self.channels.block_box.clone();
-        // TODO: make sure that a limit on the number of requests in flight
-        // per service connection prevents unlimited spawning of these tasks.
-        // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(
-            block_box
-                .send(BlockMsg::ChainHeaders(handle))
-                .map_err(move |e| {
-                    error!(
-                        logger,
-                        "failed to enqueue request for processing";
-                        "reason" => %e,
-                    );
-                })
-                .map(|_mbox| ()),
-        );
-        sink
+        send_message(block_box, BlockMsg::ChainHeaders(handle), logger).await?;
+        stream
+            .and_then(|header| async { header.decode() })
+            .forward(sink.sink_err_into())
+            .await
     }
 
-    fn upload_blocks(&mut self) -> Self::UploadBlocksSink {
+    async fn upload_blocks(&self, stream: PushStream<Block>) -> Result<(), Error> {
         let logger = self.logger.new(o!("request" => "UploadBlocks"));
         let (handle, sink) =
             intercom::stream_request(buffer_sizes::inbound::BLOCKS, logger.clone());
         let block_box = self.channels.block_box.clone();
-        // TODO: make sure that a limit on the number of requests in flight
-        // per service connection prevents unlimited spawning of these tasks.
-        // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(
-            block_box
-                .send(BlockMsg::NetworkBlocks(handle))
-                .map_err(move |e| {
-                    error!(
-                        logger,
-                        "failed to enqueue request for processing";
-                        "reason" => %e,
-                    );
-                })
-                .map(|_mbox| ()),
-        );
-        sink
+        send_message(block_box, BlockMsg::NetworkBlocks(handle), logger).await?;
+        stream
+            .and_then(|block| async { block.decode() })
+            .forward(sink.sink_err_into())
+            .await
     }
 
-    fn block_subscription(&mut self, subscriber: Self::NodeId) -> Self::BlockSubscriptionFuture {
-        let logger = self
-            .subscription_logger(subscriber)
-            .new(o!("stream" => "block_events"));
+    async fn block_subscription(
+        &self,
+        subscriber: Peer,
+        stream: PushStream<Header>,
+    ) -> Result<Self::SubscriptionStream, Error> {
+        let addr = subscriber.addr();
+        let logger = self.subscription_logger(subscriber, "block_events");
+        let subscriber = Address::new(addr).unwrap();
 
-        let sink = BlockAnnouncementProcessor::new(
-            self.channels.block_box.clone(),
-            subscriber,
-            self.global_state.clone(),
-            logger.new(o!("direction" => "in")),
-        );
+        self.global_state
+            .spawn(subscription::process_block_announcements(
+                stream,
+                self.channels.block_box.clone(),
+                subscriber.clone(),
+                self.global_state.clone(),
+                logger.new(o!("direction" => "in")),
+            ));
 
-        subscription::ServeBlockEvents::new(
-            sink,
-            self.global_state.peers.lock_server_comms(subscriber),
-            logger,
-        )
+        let outbound = self
+            .global_state
+            .peers
+            .subscribe_to_block_events(subscriber)
+            .await;
+        Ok(serve_subscription(outbound))
     }
 }
 
+#[async_trait]
 impl FragmentService for NodeService {
-    type Fragment = Fragment;
-    type FragmentId = FragmentId;
-    type GetFragmentsStream = ReplyStream<Self::Fragment, core_error::Error>;
-    type GetFragmentsFuture = FutureResult<Self::GetFragmentsStream, core_error::Error>;
-    type FragmentSubscription = Subscription<FragmentProcessor, OutboundSubscription<Fragment>>;
-    type FragmentSubscriptionFuture = subscription::ServeFragments<FragmentProcessor>;
+    type GetFragmentsStream = ResponseStream<app_data::Fragment>;
+    type SubscriptionStream = SubscriptionStream<FragmentSubscription>;
 
-    fn get_fragments(&mut self, _ids: &[Self::FragmentId]) -> Self::GetFragmentsFuture {
-        future::err(core_error::Error::unimplemented())
+    async fn get_fragments(&self, ids: FragmentIds) -> Result<Self::GetFragmentsStream, Error> {
+        Err(net_error::Error::unimplemented())
     }
 
-    fn fragment_subscription(
-        &mut self,
-        subscriber: Self::NodeId,
-    ) -> Self::FragmentSubscriptionFuture {
-        let logger = self
-            .subscription_logger(subscriber)
-            .new(o!("stream" => "fragments"));
+    async fn fragment_subscription(
+        &self,
+        subscriber: Peer,
+        stream: PushStream<Fragment>,
+    ) -> Result<Self::SubscriptionStream, Error> {
+        let addr = subscriber.addr();
+        let logger = self.subscription_logger(subscriber, "fragments");
+        let subscriber = Address::new(addr).unwrap();
 
-        let sink = FragmentProcessor::new(
+        self.global_state.spawn(subscription::process_fragments(
+            stream,
             self.channels.transaction_box.clone(),
-            subscriber,
+            subscriber.clone(),
             self.global_state.clone(),
             logger.new(o!("direction" => "in")),
-        );
+        ));
 
-        subscription::ServeFragments::new(
-            sink,
-            self.global_state.peers.lock_server_comms(subscriber),
-            logger,
-        )
+        let outbound = self
+            .global_state
+            .peers
+            .subscribe_to_fragments(subscriber)
+            .await;
+        Ok(serve_subscription(outbound))
     }
 }
 
+#[async_trait]
 impl GossipService for NodeService {
-    type Node = NodeData;
-    type GossipSubscription = Subscription<GossipProcessor, OutboundSubscription<Gossip<NodeData>>>;
-    type GossipSubscriptionFuture = subscription::ServeGossip<GossipProcessor>;
-    type PeersFuture = RequestFuture<ClientMsg, PeersResponse, core_error::Error>;
+    type SubscriptionStream = SubscriptionStream<GossipSubscription>;
 
-    fn gossip_subscription(&mut self, subscriber: Self::NodeId) -> Self::GossipSubscriptionFuture {
-        let logger = self
-            .subscription_logger(subscriber)
-            .new(o!("stream" => "gossip"));
+    async fn gossip_subscription(
+        &self,
+        subscriber: Peer,
+        stream: PushStream<Gossip>,
+    ) -> Result<Self::SubscriptionStream, Error> {
+        let addr = subscriber.addr();
+        let logger = self.subscription_logger(subscriber, "gossip");
+        let subscriber = Address::new(addr).unwrap();
 
-        let sink = GossipProcessor::new(
-            subscriber,
+        self.global_state.spawn(subscription::process_gossip(
+            stream,
+            subscriber.clone(),
             self.global_state.clone(),
             logger.new(o!("direction" => "in")),
-        );
+        ));
 
-        subscription::ServeGossip::new(
-            sink,
-            self.global_state.peers.lock_server_comms(subscriber),
-            logger,
-        )
+        let outbound = self
+            .global_state
+            .peers
+            .subscribe_to_gossip(subscriber)
+            .await;
+        Ok(serve_subscription(outbound))
     }
 
-    fn peers(&mut self) -> Self::PeersFuture {
-        intercom::unary_future(
-            self.channels.client_box.clone(),
-            self.logger().new(o!("request" => "Peers")),
-            ClientMsg::GetPeers,
-        )
+    async fn peers(&self, limit: u32) -> Result<Peers, Error> {
+        let logger = self.logger().new(o!("request" => "Peers"));
+        let topology = &self.global_state.topology;
+        let view = topology.view(poldercast::Selection::Any).await;
+        let mut peers = Vec::new();
+        for n in view.peers.into_iter() {
+            if let Some(addr) = n.to_socketaddr() {
+                peers.push(addr.into());
+                if peers.len() >= limit as usize {
+                    break;
+                }
+            }
+        }
+        if peers.len() == 0 {
+            // No peers yet, put self as the peer to bootstrap from
+            if let Some(addr) = view.self_node.address().and_then(|x| x.to_socketaddr()) {
+                peers.push(addr.into());
+            }
+        }
+        Ok(peers.into_boxed_slice())
     }
 }

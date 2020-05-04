@@ -7,7 +7,6 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-use futures03::compat::*;
 use tokio02::stream::StreamExt;
 
 pub struct Process {
@@ -30,13 +29,12 @@ impl Process {
         self,
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
-        input: MessageQueue<TransactionMsg>,
+        mut input: MessageQueue<TransactionMsg>,
     ) -> Result<(), ()> {
         let mut pool = self.pool;
-        let mut input = input.compat();
 
         while let Some(input_result) = input.next().await {
-            match input_result? {
+            match input_result {
                 TransactionMsg::SendTransaction(origin, txs) => {
                     // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
                     // those blocks. one valid tx in a given context, could be invalid in another. for example

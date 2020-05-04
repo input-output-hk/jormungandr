@@ -63,7 +63,6 @@ use chain_time::TimeFrame;
 use slog::Logger;
 use std::sync::Arc;
 use tokio02::stream::StreamExt;
-use tokio_compat::prelude::*;
 
 // derive
 use thiserror::Error;
@@ -317,11 +316,7 @@ impl Blockchain {
         let multiverse = self.ledgers.clone();
         let ref_cache = self.ref_cache.clone();
 
-        let ledger_ref = multiverse
-            .insert(chain_length, header_hash, ledger)
-            .compat()
-            .await
-            .unwrap();
+        let ledger_ref = multiverse.insert(chain_length, header_hash, ledger).await;
         let reference = Ref::new(
             ledger_ref,
             time_frame,

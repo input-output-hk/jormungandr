@@ -2,20 +2,18 @@ use crate::network::{
     client::ConnectHandle,
     p2p::{
         comm::{PeerComms, PeerInfo, PeerStats},
-        Id,
+        Address,
     },
 };
 use linked_hash_map::LinkedHashMap;
-use std::net::SocketAddr;
 
 pub struct PeerMap {
-    map: LinkedHashMap<Id, PeerData>,
+    map: LinkedHashMap<Address, PeerData>,
     capacity: usize,
 }
 
 #[derive(Default)]
 struct PeerData {
-    addr: Option<SocketAddr>,
     comms: PeerComms,
     stats: PeerStats,
     connecting: Option<ConnectHandle>,
@@ -27,9 +25,8 @@ pub enum CommStatus<'a> {
 }
 
 impl PeerData {
-    fn new(comms: PeerComms, addr: SocketAddr) -> Self {
+    fn new(comms: PeerComms) -> Self {
         PeerData {
-            addr: Some(addr),
             comms,
             stats: PeerStats::default(),
             connecting: None,
@@ -79,7 +76,7 @@ impl PeerMap {
         }
     }
 
-    pub fn entry<'a>(&'a mut self, id: Id) -> Option<Entry<'a>> {
+    pub fn entry<'a>(&'a mut self, id: Address) -> Option<Entry<'a>> {
         use linked_hash_map::Entry::*;
 
         match self.map.entry(id) {
@@ -93,40 +90,40 @@ impl PeerMap {
         self.map.clear()
     }
 
-    pub fn refresh_peer(&mut self, id: &Id) -> Option<&mut PeerStats> {
+    pub fn refresh_peer(&mut self, id: &Address) -> Option<&mut PeerStats> {
         self.map.get_refresh(&id).map(|data| &mut data.stats)
     }
 
-    pub fn peer_comms(&mut self, id: &Id) -> Option<&mut PeerComms> {
+    pub fn peer_comms(&mut self, id: &Address) -> Option<&mut PeerComms> {
         self.map
             .get_mut(id)
             .map(|data| data.update_comm_status().comms())
     }
 
-    fn ensure_peer(&mut self, id: Id) -> &mut PeerData {
+    fn ensure_peer(&mut self, id: Address) -> &mut PeerData {
         if !self.map.contains_key(&id) {
             self.evict_if_full();
         }
         self.map.entry(id).or_insert_with(Default::default)
     }
 
-    pub fn server_comms(&mut self, id: Id) -> &mut PeerComms {
+    pub fn server_comms(&mut self, id: Address) -> &mut PeerComms {
         self.ensure_peer(id).server_comms()
     }
 
-    pub fn insert_peer(&mut self, id: Id, comms: PeerComms, addr: SocketAddr) {
+    pub fn insert_peer(&mut self, id: Address, comms: PeerComms) {
         self.evict_if_full();
-        let data = PeerData::new(comms, addr);
+        let data = PeerData::new(comms);
         self.map.insert(id, data);
     }
 
-    pub fn add_connecting(&mut self, id: Id, handle: ConnectHandle) -> &mut PeerComms {
+    pub fn add_connecting(&mut self, id: Address, handle: ConnectHandle) -> &mut PeerComms {
         let data = self.ensure_peer(id);
         data.connecting = Some(handle);
         data.update_comm_status().comms()
     }
 
-    pub fn remove_peer(&mut self, id: Id) -> Option<PeerComms> {
+    pub fn remove_peer(&mut self, id: Address) -> Option<PeerComms> {
         self.map.remove(&id).map(|mut data| {
             // A bit tricky here: use PeerData::update_comm_status for the
             // side effect, then return the up-to-date member.
@@ -135,11 +132,11 @@ impl PeerMap {
         })
     }
 
-    pub fn next_peer_for_block_fetch(&mut self) -> Option<(Id, &mut PeerComms)> {
+    pub fn next_peer_for_block_fetch(&mut self) -> Option<(Address, &mut PeerComms)> {
         let mut iter = self.map.iter_mut();
-        while let Some((&id, data)) = iter.next_back() {
+        while let Some((id, data)) = iter.next_back() {
             match data.update_comm_status() {
-                CommStatus::Established(comms) => return Some((id, comms)),
+                CommStatus::Established(comms) => return Some((id.clone(), comms)),
                 CommStatus::Connecting(_) => {}
             }
         }
@@ -149,9 +146,8 @@ impl PeerMap {
     pub fn infos(&self) -> Vec<PeerInfo> {
         self.map
             .iter()
-            .map(|(&id, data)| PeerInfo {
-                id,
-                addr: data.addr,
+            .map(|(id, data)| PeerInfo {
+                addr: id.to_socketaddr(),
                 stats: data.stats.clone(),
             })
             .collect()
@@ -176,10 +172,14 @@ impl PeerMap {
 }
 
 pub struct Entry<'a> {
-    inner: linked_hash_map::OccupiedEntry<'a, Id, PeerData>,
+    inner: linked_hash_map::OccupiedEntry<'a, Address, PeerData>,
 }
 
 impl<'a> Entry<'a> {
+    pub fn address(&self) -> &Address {
+        self.inner.key()
+    }
+
     pub fn update_comm_status(&mut self) -> CommStatus<'_> {
         self.inner.get_mut().update_comm_status()
     }

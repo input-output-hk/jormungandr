@@ -1,255 +1,28 @@
 use super::{
     buffer_sizes,
-    p2p::comm::{
-        BlockEventSubscription, FragmentSubscription, GossipSubscription, LockServerComms,
-    },
-    p2p::{Gossip as NodeData, Id},
+    convert::Decode,
+    p2p::{Address, Gossip},
     GlobalStateR,
 };
 use crate::{
-    blockcfg::{Fragment, Header},
+    blockcfg::Fragment,
     intercom::{BlockMsg, TransactionMsg},
     settings::start::network::Configuration,
     utils::async_msg::{self, MessageBox},
 };
+use chain_network::data as net_data;
+use chain_network::error::{Code, Error};
 use jormungandr_lib::interfaces::FragmentOrigin;
-use network_core::error as core_error;
-use network_core::gossip::{Gossip, Node as _};
-use network_core::server::request_stream::{MapResponse, ProcessingError};
 
-use futures::future::{self, FutureResult};
-use futures::prelude::*;
+use futures03::future::BoxFuture;
+use futures03::prelude::*;
+use futures03::ready;
 use slog::Logger;
 
-use std::fmt::Debug;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
-#[must_use = "`ServeBlockEvents` needs to be plugged into a service trait implementation"]
-pub struct ServeBlockEvents<In> {
-    inbound: Option<In>,
-    lock: LockServerComms,
-    logger: Logger,
-}
-
-impl<In> ServeBlockEvents<In> {
-    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
-        ServeBlockEvents {
-            inbound: Some(inbound),
-            lock,
-            logger,
-        }
-    }
-}
-
-impl<In> Future for ServeBlockEvents<In> {
-    type Item = Subscription<In, BlockEventSubscription>;
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let polled_outbound = self
-            .lock
-            .poll_subscribe_with(|comms| comms.subscribe_to_block_events());
-        Ok(polled_outbound.map(|outbound| {
-            let inbound = self.inbound.take().expect("future polled after finish");
-            Subscription::new(inbound, outbound, self.logger.clone())
-        }))
-    }
-}
-
-#[must_use = "`ServeGossip` needs to be plugged into a service trait implementation"]
-pub struct ServeFragments<In> {
-    inbound: Option<In>,
-    lock: LockServerComms,
-    logger: Logger,
-}
-
-impl<In> ServeFragments<In> {
-    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
-        ServeFragments {
-            inbound: Some(inbound),
-            lock,
-            logger,
-        }
-    }
-}
-
-impl<In> Future for ServeFragments<In> {
-    type Item = Subscription<In, FragmentSubscription>;
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let polled_outbound = self
-            .lock
-            .poll_subscribe_with(|comms| comms.subscribe_to_fragments());
-        Ok(polled_outbound.map(|outbound| {
-            let inbound = self.inbound.take().expect("future polled after finish");
-            Subscription::new(inbound, outbound, self.logger.clone())
-        }))
-    }
-}
-
-#[must_use = "`ServeGossip` needs to be plugged into a service trait implementation"]
-pub struct ServeGossip<In> {
-    inbound: Option<In>,
-    lock: LockServerComms,
-    logger: Logger,
-}
-
-impl<In> ServeGossip<In> {
-    pub(super) fn new(inbound: In, lock: LockServerComms, logger: Logger) -> Self {
-        ServeGossip {
-            inbound: Some(inbound),
-            lock,
-            logger,
-        }
-    }
-}
-
-impl<In> Future for ServeGossip<In> {
-    type Item = Subscription<In, GossipSubscription>;
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let polled_outbound = self
-            .lock
-            .poll_subscribe_with(|comms| comms.subscribe_to_gossip());
-        Ok(polled_outbound.map(|outbound| {
-            let inbound = self.inbound.take().expect("future polled after finish");
-            Subscription::new(inbound, outbound, self.logger.clone())
-        }))
-    }
-}
-
-#[must_use = "`Subscription` needs to be plugged into a service trait implementation"]
-pub struct Subscription<In, Out> {
-    inbound: In,
-    outbound: Out,
-    logger: Logger,
-}
-
-impl<In, Out> Subscription<In, Out> {
-    pub fn new(inbound: In, outbound: Out, logger: Logger) -> Self {
-        Subscription {
-            inbound,
-            outbound,
-            logger,
-        }
-    }
-}
-
-impl<In, Out> Stream for Subscription<In, Out>
-where
-    Out: Stream<Error = core_error::Error>,
-    Out::Item: Debug,
-{
-    type Item = Out::Item;
-    type Error = core_error::Error;
-
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        match self.outbound.poll() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(Some(item))) => Ok(Some(item).into()),
-            Ok(Async::Ready(None)) => {
-                debug!(
-                    self.logger,
-                    "subscription stream closed";
-                    "direction" => "out",
-                );
-                Ok(None.into())
-            }
-            Err(e) => {
-                debug!(
-                    self.logger,
-                    "subscription stream failed";
-                    "error" => ?e,
-                    "direction" => "out",
-                );
-                Err(e)
-            }
-        }
-    }
-}
-
-impl<In, Out> Sink for Subscription<In, Out>
-where
-    In: Sink<SinkError = core_error::Error>,
-{
-    type SinkItem = In::SinkItem;
-    type SinkError = core_error::Error;
-
-    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
-        // Not logging the item here because start_send might refuse to send it
-        // and it will end up logged redundantly. This won't be a problem with
-        // futures 0.3.
-        self.inbound.start_send(item)
-    }
-
-    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
-        self.inbound.poll_complete().map_err(|err| {
-            debug!(
-                self.logger,
-                "subscription sink failed";
-                "error" => ?err,
-                "direction" => "in",
-            );
-            err
-        })
-    }
-
-    fn close(&mut self) -> Poll<(), Self::SinkError> {
-        match self.inbound.close() {
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(())) => {
-                debug!(
-                    self.logger,
-                    "subscription stream closed";
-                    "direction" => "in",
-                );
-                Ok(Async::Ready(()))
-            }
-            Err(e) => {
-                warn!(
-                    self.logger,
-                    "failed to close processing sink for subscription";
-                    "error" => ?e,
-                    "direction" => "in",
-                );
-                Err(e)
-            }
-        }
-    }
-}
-
-impl<In, Out> MapResponse for Subscription<In, Out> {
-    type Response = ();
-    type ResponseFuture = FutureResult<(), core_error::Error>;
-
-    fn on_stream_termination(&mut self, res: Result<(), ProcessingError>) -> Self::ResponseFuture {
-        match res {
-            Ok(()) => {
-                debug!(
-                    self.logger,
-                    "inbound subscription stream terminated by the peer";
-                    "direction" => "in",
-                );
-                future::ok(())
-            }
-            Err(e) => {
-                debug!(
-                    self.logger,
-                    "inbound subscription stream failed";
-                    "error" => ?e,
-                    "direction" => "in",
-                );
-                future::err(core_error::Error::new(
-                    core_error::Code::Canceled,
-                    "closed due to inbound stream failure",
-                ))
-            }
-        }
-    }
-}
-
-fn filter_gossip_node(node: &NodeData, config: &Configuration) -> bool {
+fn filter_gossip_node(node: &Gossip, config: &Configuration) -> bool {
     if config.allow_private_addresses {
         node.has_valid_address()
     } else {
@@ -257,18 +30,76 @@ fn filter_gossip_node(node: &NodeData, config: &Configuration) -> bool {
     }
 }
 
+fn handle_mbox_error(err: async_msg::SendError, logger: &Logger) -> Error {
+    error!(
+        logger,
+        "failed to send block announcement to the block task";
+        "reason" => %err,
+    );
+    Error::new(Code::Internal, err)
+}
+
+pub async fn process_block_announcements<S>(
+    stream: S,
+    mbox: MessageBox<BlockMsg>,
+    node_id: Address,
+    global_state: GlobalStateR,
+    logger: Logger,
+) where
+    S: TryStream<Ok = net_data::Header, Error = Error>,
+{
+    let sink = BlockAnnouncementProcessor::new(mbox, node_id, global_state, logger.clone());
+    stream.into_stream().forward(sink).await.map_err(|e| {
+        debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
+    });
+}
+
+pub async fn process_gossip<S>(
+    stream: S,
+    node_id: Address,
+    global_state: GlobalStateR,
+    logger: Logger,
+) where
+    S: TryStream<Ok = net_data::Gossip, Error = Error>,
+{
+    let processor = GossipProcessor::new(node_id, global_state, logger.clone());
+    stream.into_stream().forward(processor).await.map_err(|e| {
+        debug!(
+            logger,
+            "processing of inbound gossip failed";
+            "error" => ?e,
+        );
+    });
+}
+
+pub async fn process_fragments<S>(
+    stream: S,
+    mbox: MessageBox<TransactionMsg>,
+    node_id: Address,
+    global_state: GlobalStateR,
+    logger: Logger,
+) where
+    S: TryStream<Ok = net_data::Fragment, Error = Error>,
+{
+    let sink = FragmentProcessor::new(mbox, node_id, global_state, logger.clone());
+    stream.into_stream().forward(sink).await.map_err(|e| {
+        debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
+    });
+}
+
 #[must_use = "sinks do nothing unless polled"]
 pub struct BlockAnnouncementProcessor {
     mbox: MessageBox<BlockMsg>,
-    node_id: Id,
+    node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
+    pending_processing: PendingProcessing,
 }
 
 impl BlockAnnouncementProcessor {
-    pub fn new(
+    pub(super) fn new(
         mbox: MessageBox<BlockMsg>,
-        node_id: Id,
+        node_id: Address,
         global_state: GlobalStateR,
         logger: Logger,
     ) -> Self {
@@ -277,6 +108,7 @@ impl BlockAnnouncementProcessor {
             node_id,
             global_state,
             logger,
+            pending_processing: PendingProcessing::default(),
         }
     }
 
@@ -284,50 +116,45 @@ impl BlockAnnouncementProcessor {
         self.mbox.clone()
     }
 
-    fn mbox_error<T>(&self, err: async_msg::SendError<T>) -> core_error::Error
-    where
-        T: Send + Sync + 'static,
-    {
-        error!(
-            self.logger,
-            "failed to send block announcement to the block task";
-            "reason" => %err,
-        );
-        core_error::Error::new(core_error::Code::Internal, err)
+    fn refresh_stat(&mut self) {
+        let refresh_logger = self.logger.clone();
+        let state = self.global_state.clone();
+        let node_id = self.node_id.clone();
+        let fut = async move {
+            let refreshed = state.peers.refresh_peer_on_block(node_id).await;
+            if !refreshed {
+                debug!(
+                    refresh_logger,
+                    "received block from node that is not in the peer map",
+                );
+            }
+        };
+        // It's OK to overwrite a pending future because only the latest
+        // timestamp matters.
+        self.pending_processing.start(fut);
     }
 
-    fn refresh_stat(&self) {
-        let refresh_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.global_state
-                .peers
-                .refresh_peer_on_block(self.node_id)
-                .and_then(move |refreshed| {
-                    if !refreshed {
-                        debug!(
-                            refresh_logger,
-                            "received block from node that is not in the peer map",
-                        );
-                    }
-                    Ok(())
-                }),
-        );
+    fn poll_flush_mbox(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        Pin::new(&mut self.mbox)
+            .poll_flush(cx)
+            .map_err(|e| handle_mbox_error(e, &self.logger))
     }
 }
 
 #[must_use = "sinks do nothing unless polled"]
 pub struct FragmentProcessor {
     mbox: MessageBox<TransactionMsg>,
-    node_id: Id,
+    node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
     buffered_fragments: Vec<Fragment>,
+    pending_processing: PendingProcessing,
 }
 
 impl FragmentProcessor {
-    pub fn new(
+    pub(super) fn new(
         mbox: MessageBox<TransactionMsg>,
-        node_id: Id,
+        node_id: Address,
         global_state: GlobalStateR,
         logger: Logger,
     ) -> Self {
@@ -337,170 +164,159 @@ impl FragmentProcessor {
             global_state,
             logger,
             buffered_fragments: Vec::new(),
+            pending_processing: PendingProcessing::default(),
         }
     }
 
-    fn refresh_stat(&self) {
+    fn refresh_stat(&mut self) {
         let refresh_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.global_state
-                .peers
-                .refresh_peer_on_fragment(self.node_id)
-                .and_then(move |refreshed| {
-                    if !refreshed {
-                        debug!(
-                            refresh_logger,
-                            "received fragment from node that is not in the peer map",
-                        );
-                    }
-                    Ok(())
-                }),
-        );
+        let state = self.global_state.clone();
+        let node_id = self.node_id.clone();
+        let fut = async move {
+            let refreshed = state.peers.refresh_peer_on_fragment(node_id).await;
+            if !refreshed {
+                debug!(
+                    refresh_logger,
+                    "received fragment from node that is not in the peer map",
+                );
+            }
+        };
+        // It's OK to overwrite a pending future because only the latest
+        // timestamp matters.
+        self.pending_processing.start(fut);
     }
 }
 
 pub struct GossipProcessor {
-    node_id: Id,
+    node_id: Address,
     global_state: GlobalStateR,
     logger: Logger,
+    pending_processing: PendingProcessing,
 }
 
 impl GossipProcessor {
-    pub fn new(node_id: Id, global_state: GlobalStateR, logger: Logger) -> Self {
+    pub(super) fn new(node_id: Address, global_state: GlobalStateR, logger: Logger) -> Self {
         GossipProcessor {
             node_id,
             global_state,
             logger,
+            pending_processing: Default::default(),
         }
-    }
-
-    pub fn process_item(&self, gossip: Gossip<NodeData>) {
-        let (nodes, filtered_out): (Vec<_>, Vec<_>) = gossip.into_nodes().partition(|node| {
-            filter_gossip_node(node, &self.global_state.config)
-                || (node.id() == self.node_id && node.address().is_none())
-        });
-        if filtered_out.len() > 0 {
-            debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
-        }
-        let refresh_logger = self.logger.clone();
-        self.global_state.spawn(
-            self.global_state
-                .peers
-                .refresh_peer_on_gossip(self.node_id)
-                .and_then(move |refreshed| {
-                    if !refreshed {
-                        debug!(
-                            refresh_logger,
-                            "received gossip from node that is not in the peer map",
-                        );
-                    }
-                    Ok(())
-                }),
-        );
-        self.global_state.spawn(
-            self.global_state
-                .topology
-                .accept_gossips(self.node_id, nodes.into()),
-        );
     }
 }
 
-impl Sink for BlockAnnouncementProcessor {
-    type SinkItem = Header;
-    type SinkError = core_error::Error;
+impl Sink<net_data::Header> for BlockAnnouncementProcessor {
+    type Error = Error;
 
-    fn start_send(&mut self, header: Header) -> StartSend<Header, core_error::Error> {
-        let polled_ready = self.mbox.poll_ready().map_err(|e| self.mbox_error(e))?;
-        if polled_ready.is_not_ready() {
-            return Ok(AsyncSink::NotReady(header));
-        }
-        let polled = self
-            .mbox
-            .start_send(BlockMsg::AnnouncedBlock(header, self.node_id))
-            .map_err(|e| self.mbox_error(e))?;
-        match polled {
-            AsyncSink::Ready => {
-                self.refresh_stat();
-                Ok(AsyncSink::Ready)
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        match self.pending_processing.poll_complete(cx) {
+            Poll::Pending => {
+                self.as_mut().poll_flush_mbox(cx)?;
+                Poll::Pending
             }
-            AsyncSink::NotReady(BlockMsg::AnnouncedBlock(header, _)) => {
-                Ok(AsyncSink::NotReady(header))
-            }
-            AsyncSink::NotReady(_) => unreachable!(),
+            Poll::Ready(()) => self
+                .mbox
+                .poll_ready(cx)
+                .map_err(|e| handle_mbox_error(e, &self.logger)),
         }
     }
 
-    fn poll_complete(&mut self) -> Poll<(), core_error::Error> {
-        self.mbox.poll_complete().map_err(|e| {
-            error!(
-                self.logger,
-                "communication channel to the block task failed";
-                "reason" => %e,
-            );
-            core_error::Error::new(core_error::Code::Internal, e)
-        })
+    fn start_send(mut self: Pin<&mut Self>, raw_header: net_data::Header) -> Result<(), Error> {
+        let header = raw_header.decode()?;
+        let node_id = self.node_id.clone();
+        self.mbox
+            .start_send(BlockMsg::AnnouncedBlock(header, node_id))
+            .map_err(|e| handle_mbox_error(e, &self.logger))?;
+        self.refresh_stat();
+        Ok(())
     }
 
-    fn close(&mut self) -> Poll<(), core_error::Error> {
-        self.mbox.close().map_err(|e| {
-            warn!(
-                self.logger,
-                "failed to close communication channel to the block task";
-                "reason" => %e,
-            );
-            core_error::Error::new(core_error::Code::Internal, e)
-        })
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        match self.pending_processing.poll_complete(cx) {
+            Poll::Pending => {
+                self.as_mut().poll_flush_mbox(cx)?;
+                Poll::Pending
+            }
+            Poll::Ready(()) => self.as_mut().poll_flush_mbox(cx),
+        }
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        match self.pending_processing.poll_complete(cx) {
+            Poll::Pending => {
+                self.as_mut().poll_flush_mbox(cx)?;
+                Poll::Pending
+            }
+            Poll::Ready(()) => Pin::new(&mut self.mbox)
+                .poll_close(cx)
+                .map_err(|e| handle_mbox_error(e, &self.logger)),
+        }
     }
 }
 
-impl Sink for FragmentProcessor {
-    type SinkItem = Fragment;
-    type SinkError = core_error::Error;
+impl Sink<net_data::Fragment> for FragmentProcessor {
+    type Error = Error;
 
-    fn start_send(&mut self, fragment: Fragment) -> StartSend<Fragment, core_error::Error> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         if self.buffered_fragments.len() >= buffer_sizes::inbound::FRAGMENTS {
-            return Ok(AsyncSink::NotReady(fragment));
+            ready!(self.poll_send_fragments(cx));
+            debug_assert!(self.buffered_fragments.is_empty());
         }
-        self.buffered_fragments.push(fragment);
-        let async_send = self.try_send_fragments()?;
-        Ok(async_send.map(|()| self.buffered_fragments.pop().unwrap()))
+        Poll::Ready(Ok(()))
     }
 
-    fn poll_complete(&mut self) -> Poll<(), core_error::Error> {
-        if self.buffered_fragments.is_empty() {
-            self.mbox.poll_complete().map_err(|e| {
-                error!(
-                    self.logger,
-                    "communication channel to the fragment task failed";
-                    "reason" => %e,
-                );
-                core_error::Error::new(core_error::Code::Internal, e)
-            })
-        } else {
-            match self.try_send_fragments()? {
-                AsyncSink::Ready => Ok(Async::Ready(())),
-                AsyncSink::NotReady(()) => Ok(Async::NotReady),
+    fn start_send(mut self: Pin<&mut Self>, raw_fragment: net_data::Fragment) -> Result<(), Error> {
+        assert!(
+            self.buffered_fragments.len() < buffer_sizes::inbound::FRAGMENTS,
+            "should call `poll_ready` which returns `Poll::Ready(Ok(()))` before `start_send`",
+        );
+        let fragment = raw_fragment.decode()?;
+        self.buffered_fragments.push(fragment);
+        Ok(())
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        loop {
+            if self.buffered_fragments.is_empty() {
+                self.poll_complete_refresh_stat(cx);
+                return Pin::new(&mut self.mbox).poll_flush(cx).map_err(|e| {
+                    error!(
+                        self.logger,
+                        "communication channel to the fragment task failed";
+                        "reason" => %e,
+                    );
+                    Error::new(Code::Internal, e)
+                });
+            } else {
+                ready!(self.poll_send_fragments(cx));
             }
         }
     }
 
-    fn close(&mut self) -> Poll<(), core_error::Error> {
-        self.mbox.close().map_err(|e| {
-            warn!(
-                self.logger,
-                "failed to close communication channel to the fragment task";
-                "reason" => %e,
-            );
-            core_error::Error::new(core_error::Code::Internal, e)
-        })
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        loop {
+            if self.buffered_fragments.is_empty() {
+                ready!(self.poll_complete_refresh_stat(cx));
+                return Pin::new(&mut self.mbox).poll_close(cx).map_err(|e| {
+                    warn!(
+                        self.logger,
+                        "failed to close communication channel to the fragment task";
+                        "reason" => %e,
+                    );
+                    Error::new(Code::Internal, e)
+                });
+            } else {
+                ready!(self.poll_send_fragments(cx));
+            }
+        }
     }
 }
 
 impl FragmentProcessor {
-    fn try_send_fragments(&mut self) -> Result<AsyncSink<()>, core_error::Error> {
+    fn poll_send_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        ready!(self.mbox.poll_ready(cx));
         let fragments = self.buffered_fragments.split_off(0);
-        let polled = self
-            .mbox
+        self.mbox
             .start_send(TransactionMsg::SendTransaction(
                 FragmentOrigin::Network,
                 fragments,
@@ -511,35 +327,81 @@ impl FragmentProcessor {
                     "failed to send fragments to the fragment task";
                     "reason" => %e,
                 );
-                core_error::Error::new(core_error::Code::Internal, e)
+                Error::new(Code::Internal, e)
             })?;
-        match polled {
-            AsyncSink::Ready => {
-                self.refresh_stat();
-                Ok(AsyncSink::Ready)
-            }
-            AsyncSink::NotReady(TransactionMsg::SendTransaction(_, fragments)) => {
-                self.buffered_fragments = fragments;
-                Ok(AsyncSink::NotReady(()))
-            }
-            AsyncSink::NotReady(_) => unreachable!(),
-        }
+        self.refresh_stat();
+        Poll::Ready(Ok(()))
+    }
+
+    fn poll_complete_refresh_stat(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        self.pending_processing.poll_complete(cx)
     }
 }
 
-impl Sink for GossipProcessor {
-    type SinkItem = Gossip<NodeData>;
-    type SinkError = core_error::Error;
+impl Sink<net_data::Gossip> for GossipProcessor {
+    type Error = Error;
 
-    fn start_send(
-        &mut self,
-        gossip: Gossip<NodeData>,
-    ) -> StartSend<Self::SinkItem, core_error::Error> {
-        self.process_item(gossip);
-        Ok(AsyncSink::Ready)
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        ready!(self.pending_processing.poll_complete(cx));
+        Ok(()).into()
     }
 
-    fn poll_complete(&mut self) -> Poll<(), core_error::Error> {
-        Ok(Async::Ready(()))
+    fn start_send(mut self: Pin<&mut Self>, gossip: net_data::Gossip) -> Result<(), Error> {
+        let nodes = gossip.nodes.decode()?;
+        let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
+            filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
+        });
+        if filtered_out.len() > 0 {
+            debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
+        }
+        let node_id1 = self.node_id.clone();
+        let node_id2 = self.node_id.clone();
+        let state1 = self.global_state.clone();
+        let state2 = self.global_state.clone();
+        let logger = self.logger.clone();
+        let fut = future::join(
+            async move {
+                let refreshed = state1.peers.refresh_peer_on_gossip(node_id1).await;
+                if !refreshed {
+                    debug!(
+                        logger,
+                        "received gossip from node that is not in the peer map",
+                    );
+                }
+            },
+            async move {
+                state2.topology.accept_gossips(node_id2, nodes.into()).await;
+            },
+        )
+        .map(|_| ());
+        self.pending_processing.start(fut);
+        Ok(())
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        ready!(self.pending_processing.poll_complete(cx));
+        Ok(()).into()
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        ready!(self.pending_processing.poll_complete(cx));
+        Ok(()).into()
+    }
+}
+
+#[derive(Default)]
+struct PendingProcessing(Option<BoxFuture<'static, ()>>);
+
+impl PendingProcessing {
+    fn start(&mut self, future: impl Future<Output = ()> + Send + 'static) {
+        self.0 = Some(future.boxed());
+    }
+
+    fn poll_complete(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        if let Some(fut) = &mut self.0 {
+            ready!(Pin::new(fut).poll(cx));
+            self.0 = None;
+        }
+        Poll::Ready(())
     }
 }

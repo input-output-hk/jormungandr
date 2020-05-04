@@ -9,7 +9,6 @@ use crate::{
 };
 use chain_storage::{BlockStore, BlockStoreBuilder, BlockStoreConnection};
 use slog::Logger;
-use tokio_compat::runtime;
 
 pub type NodeStorage = BlockStore<Block>;
 pub type NodeStorageConnection = BlockStoreConnection<Block>;
@@ -114,7 +113,7 @@ async fn fetch_block0_http(
 /// 2. we have the block_0 hash only:
 ///     1. check the storage if we don't have it already there;
 ///     2. check the network nodes we know about
-pub fn prepare_block_0(
+pub async fn prepare_block_0(
     settings: &Settings,
     storage: &Storage,
     logger: &Logger,
@@ -151,13 +150,7 @@ pub fn prepare_block_0(
             Ok(block)
         }
         Block0Info::Hash(block0_id) => {
-            let mut rt = runtime::Builder::new()
-                .name_prefix("prepare-block0-worker-")
-                .core_threads(1)
-                .build()
-                .unwrap();
-
-            let storage_or_http_block0 = rt.block_on_std(async {
+            let storage_or_http_block0 = {
                 if let Some(block0) = storage.get(*block0_id).await.unwrap() {
                     debug!(
                         logger,
@@ -178,13 +171,14 @@ pub fn prepare_block_0(
                     )
                     .await
                 }
-            });
+            };
             // fetch from network:: is moved here since it start a runtime, and
             // runtime cannot be started by a runtime.
             match storage_or_http_block0 {
                 Some(block0) => Ok(block0),
                 None => {
-                    let block0 = network::fetch_block(&settings.network, *block0_id, logger)?;
+                    let block0 =
+                        network::fetch_block(&settings.network, *block0_id, logger).await?;
                     Ok(block0)
                 }
             }
@@ -192,7 +186,7 @@ pub fn prepare_block_0(
     }
 }
 
-pub fn load_blockchain(
+pub async fn load_blockchain(
     block0: Block,
     storage: Storage,
     cache_capacity: usize,
@@ -206,24 +200,21 @@ pub fn load_blockchain(
         rewards_report_all,
     );
 
-    let mut rt = tokio02::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        let main_branch = match blockchain.load_from_block0(block0.clone()).await {
-            Err(error) => match error.kind() {
-                BlockchainError::Block0AlreadyInStorage => {
-                    blockchain.load_from_storage(block0, logger).await
-                }
-                _ => Err(error),
-            },
-            Ok(branch) => Ok(branch),
-        }?;
-        let tip = Tip::new(main_branch);
-        let tip_ref = tip.get_ref().await;
-        info!(
-            logger,
-            "Loaded from storage tip is : {}",
-            tip_ref.header().description()
-        );
-        Ok((blockchain, tip))
-    })
+    let main_branch = match blockchain.load_from_block0(block0.clone()).await {
+        Err(error) => match error.kind() {
+            BlockchainError::Block0AlreadyInStorage => {
+                blockchain.load_from_storage(block0, logger).await
+            }
+            _ => Err(error),
+        },
+        Ok(branch) => Ok(branch),
+    }?;
+    let tip = Tip::new(main_branch);
+    let tip_ref = tip.get_ref().await;
+    info!(
+        logger,
+        "Loaded from storage tip is : {}",
+        tip_ref.header().description()
+    );
+    Ok((blockchain, tip))
 }

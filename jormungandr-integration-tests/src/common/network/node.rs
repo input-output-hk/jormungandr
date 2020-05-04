@@ -26,10 +26,6 @@ impl Node {
         self.jormungandr.assert_no_errors_in_log();
     }
 
-    pub fn public_id(&self) -> poldercast::Id {
-        self.jormungandr.config.node_config.p2p.public_id.clone()
-    }
-
     pub fn address(&self) -> poldercast::Address {
         self.jormungandr
             .config

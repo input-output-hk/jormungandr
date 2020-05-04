@@ -1,17 +1,17 @@
 pub use jormungandr_lib::interfaces::{PreferredListConfig, TrustedPeer};
-pub use poldercast::{Address, Id};
-use poldercast::{GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
-use rand::{seq::SliceRandom as _, Rng as _, SeedableRng};
+use poldercast::{Address, GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
+use rand::seq::IteratorRandom;
+use rand::{Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
-use serde::{Deserialize, Serialize};
+use std::borrow::BorrowMut;
+use std::collections::HashSet;
 
 pub struct PreferredListLayer {
     /// the max number of entries to add in the list of the view
     view_max: usize,
 
     /// the buddy list
-    /// TODO: once we move to poldercast 0.8.13, use `peers: HashSet<Address>`,
-    peers: Vec<TrustedPeer>,
+    peers: HashSet<Address>,
 
     /// a pseudo random number generator, this will help with
     /// testing and reproducing issues.
@@ -27,18 +27,18 @@ impl PreferredListLayer {
         let mut seed = [0; 32];
 
         rand::thread_rng().fill(&mut seed);
-
-        Self::new_with_seed(config.view_max.into(), config.peers, seed)
+        let addresses: Vec<Address> = config.peers.iter().map(|p| p.address.clone()).collect();
+        Self::new_with_seed(config.view_max.into(), addresses, seed)
     }
 
     fn new_with_seed(
         view_max: usize,
-        peers: Vec<TrustedPeer>,
+        peers: Vec<Address>,
         seed: <ChaChaRng as SeedableRng>::Seed,
     ) -> Self {
         Self {
             view_max,
-            peers,
+            peers: peers.iter().cloned().collect(),
             prng: ChaChaRng::from_seed(seed),
         }
     }
@@ -62,12 +62,10 @@ impl Layer for PreferredListLayer {
     }
 
     fn view(&mut self, view: &mut ViewBuilder, _all_nodes: &mut Nodes) {
-        let selected = self.peers.choose_multiple(&mut self.prng, self.view_max);
-
-        for selected in selected {
-            let info = poldercast::NodeInfo::new(selected.id.clone(), selected.address.clone());
-
-            view.add_info(info);
-        }
+        self.peers
+            .iter()
+            .choose_multiple(&mut self.prng, self.view_max)
+            .into_iter()
+            .for_each(|address| view.add_address(address.clone()));
     }
 }

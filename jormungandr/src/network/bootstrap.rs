@@ -1,38 +1,39 @@
-use super::{grpc, BlockConfig};
+use super::grpc;
 use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
 use crate::settings::start::network::Peer;
-use chain_core::property::HasHeader;
-use futures03::compat::*;
-use network_core::client::{BlockService, Client as _, GossipService};
-use network_core::error::Error as NetworkError;
-use network_grpc::client::Connection;
+use chain_core::property::{Deserialize, HasHeader};
+use chain_network::data as net_data;
+use chain_network::error::Error as NetworkError;
+use futures03::{
+    channel::oneshot::Receiver,
+    future::{Either, Shared},
+    prelude::*,
+    stream,
+    task::Poll,
+};
 use slog::Logger;
-use thiserror::Error;
-use tokio::prelude::future::Either;
-use tokio::prelude::*;
-use tokio_compat::runtime::Runtime;
 
 use std::fmt::Debug;
-use std::io;
+use std::pin::Pin;
 use std::sync::Arc;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("runtime initialization failed")]
-    RuntimeInit { source: io::Error },
     #[error("failed to connect to bootstrap peer")]
-    Connect { source: grpc::ConnectError },
+    Connect(#[source] grpc::ConnectError),
     #[error("connection broken")]
-    ClientNotReady { source: NetworkError },
-    #[error("peers not available {source}")]
-    PeersNotAvailable { source: NetworkError },
+    ClientNotReady(#[source] NetworkError),
+    #[error("peers not available")]
+    PeersNotAvailable(#[source] NetworkError),
     #[error("bootstrap pull request failed")]
-    PullRequestFailed { source: NetworkError },
+    PullRequestFailed(#[source] NetworkError),
     #[error("bootstrap pull stream failed")]
-    PullStreamFailed { source: NetworkError },
+    PullStreamFailed(#[source] NetworkError),
+    #[error("decoding of a block failed")]
+    BlockDecodingFailed(#[source] <Block as Deserialize>::Error),
     #[error("block header check failed")]
-    HeaderCheckFailed { source: BlockchainError },
+    HeaderCheckFailed(#[source] BlockchainError),
     #[error(
         "received block {0} is already present, but does not descend from any of the checkpoints"
     )]
@@ -40,94 +41,81 @@ pub enum Error {
     #[error("received block {0} is not connected to the block chain")]
     BlockMissingParent(HeaderHash),
     #[error("failed to fetch checkpoints from storage")]
-    GetCheckpointsFailed { source: BlockchainError },
+    GetCheckpointsFailed(#[source] BlockchainError),
     #[error("failed to apply block to the blockchain")]
-    ApplyBlockFailed { source: BlockchainError },
+    ApplyBlockFailed(#[source] BlockchainError),
     #[error("failed to select the new tip")]
-    ChainSelectionFailed { source: BlockchainError },
+    ChainSelectionFailed(#[source] BlockchainError),
+    #[error("the bootstrap process was interrupted")]
+    Interrupted,
 }
 
-pub fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>, Error> {
+const MAX_BOOTSTRAP_PEERS: u32 = 32;
+
+pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>, Error> {
     info!(
         logger,
         "getting peers from bootstrap peer {}", peer.connection
     );
 
-    let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
-    let bootstrap = grpc::connect(&peer, None, runtime.executor())
-        .map_err(|e| Error::Connect { source: e })
-        .and_then(|client: Connection<BlockConfig>| {
-            client
-                .ready()
-                .map_err(|e| Error::ClientNotReady { source: e })
-        })
-        .and_then(move |mut client| {
-            client
-                .peers()
-                .map_err(|e| Error::PeersNotAvailable { source: e })
-                .and_then(move |peers| {
-                    info!(
-                        logger,
-                        "peer {} : peers known : {}",
-                        peer.connection,
-                        peers.peers.len()
-                    );
-                    let peers = peers
-                        .peers
-                        .iter()
-                        .map(|peer| Peer::new(peer.addr))
-                        .collect();
-                    future::ok(peers)
-                })
-        });
+    let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
+    let peers = client
+        .peers(MAX_BOOTSTRAP_PEERS)
+        .await
+        .map_err(|e| Error::PeersNotAvailable(e))?;
 
-    runtime.block_on(bootstrap)
+    info!(
+        logger,
+        "peer {} : peers known : {}",
+        peer.connection,
+        peers.len()
+    );
+    let peers = peers.iter().map(|peer| Peer::new(peer.addr())).collect();
+    Ok(peers)
 }
 
-pub fn bootstrap_from_peer(
+pub async fn bootstrap_from_peer(
     peer: &Peer,
     blockchain: Blockchain,
     tip: Tip,
+    bootstrap_stopper: Shared<Receiver<()>>,
     logger: Logger,
 ) -> Result<(), Error> {
-    use futures03::future::try_join;
+    use futures03::future::select;
 
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let mut runtime = Runtime::new().map_err(|e| Error::RuntimeInit { source: e })?;
-    let grpc_executor = runtime.executor();
+    let blockchain1 = blockchain.clone();
+    let tip1 = tip.clone();
+    let logger1 = logger.clone();
 
-    runtime.block_on_std(async move {
-        let client = grpc::connect(&peer, None, grpc_executor)
-            .compat()
-            .await
-            .map_err(|e| Error::Connect { source: e })?;
+    let stream_future = async move {
+        let mut client = grpc::connect(&peer).await.map_err(|e| Error::Connect(e))?;
 
-        let (mut client, checkpoints) = try_join(
-            async {
-                client
-                    .ready()
-                    .compat()
-                    .await
-                    .map_err(|e| Error::ClientNotReady { source: e })
-            },
-            async { Ok(blockchain.get_checkpoints(tip.branch()).await) },
-        )
-        .await?;
+        let checkpoints = blockchain1.get_checkpoints(tip1.branch()).await;
+        let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
 
         info!(
-            logger,
+            logger1,
             "pulling blocks starting from checkpoints: {:?}", checkpoints
         );
-        let stream = client
-            .pull_blocks_to_tip(checkpoints.as_slice())
-            .compat()
+
+        client
+            .pull_blocks_to_tip(checkpoints)
             .await
-            .map_err(|e| Error::PullRequestFailed { source: e })?;
-        bootstrap_from_stream(blockchain, tip, stream, logger)
-            .compat()
-            .await
-    })
+            .map_err(|e| Error::PullRequestFailed(e))
+    };
+
+    // process a signal from the stopper if it arrives before the stream is ready
+    match select(stream_future.boxed(), bootstrap_stopper).await {
+        Either::Left((stream_result, bootstrap_stopper)) => {
+            bootstrap_from_stream(blockchain, tip, stream_result?, bootstrap_stopper, logger).await
+        }
+        Either::Right((bootstrap_stopper_result, _)) => match bootstrap_stopper_result {
+            Ok(()) => Err(Error::Interrupted),
+            Err(_) => panic!("failed to wait for SIGINT"),
+        },
+    }
 }
 
 struct BootstrapInfo {
@@ -195,98 +183,106 @@ impl BootstrapInfo {
     }
 }
 
-fn bootstrap_from_stream<S>(
-    blockchain: Blockchain,
+async fn bootstrap_from_stream<S>(
+    mut blockchain: Blockchain,
     branch: Tip,
     stream: S,
+    bootstrap_stopper: Shared<Receiver<()>>,
     logger: Logger,
-) -> impl Future<Item = (), Error = Error>
+) -> Result<(), Error>
 where
-    S: Stream<Item = Block, Error = NetworkError>,
-    S::Error: Debug,
+    S: Stream<Item = Result<net_data::Block, NetworkError>> + Unpin,
 {
+    const PROCESS_LOGGING_DISTANCE: u64 = 2500;
     let block0 = blockchain.block0().clone();
-    let logger2 = logger.clone();
-    let blockchain2 = blockchain.clone();
-    let branch2 = branch.clone();
 
-    stream
-        .skip_while(move |block| Ok(block.header.hash() == block0))
-        .then(|res| Ok(res))
-        .fold(
-            (BootstrapInfo::new(), None),
-            move |(mut bi, parent_tip): (BootstrapInfo, Option<Arc<Ref>>), block_or_err| {
-                match block_or_err {
-                    Ok(block) => {
-                        const PROCESS_LOGGING_DISTANCE: u64 = 2500;
-                        bi.append_block(&block);
-                        if bi.block_received % PROCESS_LOGGING_DISTANCE == 0 {
-                            bi.report(&logger)
-                        }
+    let mut bootstrap_info = BootstrapInfo::new();
+    let mut maybe_parent_tip = None;
 
-                        let fut = handle_block_old(blockchain.clone(), block, logger.clone())
-                            .map(move |aref| (bi, Some(aref)));
-                        Either::A(fut)
-                    }
-                    Err(e) => {
-                        let fut = if let Some(parent_tip) = parent_tip {
-                            Either::A(process_new_ref_old(
-                                logger.clone(),
-                                blockchain.clone(),
-                                branch.clone(),
-                                parent_tip.clone(),
-                            ))
-                        } else {
-                            Either::B(future::ok(()))
-                        }
-                        .then(|_| Err(Error::PullStreamFailed { source: e }));
-                        Either::B(fut)
+    let mut stream = stream.map_err(Error::PullStreamFailed);
+    let mut bootstrap_stopper = bootstrap_stopper.map(|res| match res {
+        Ok(()) => Err(Error::Interrupted),
+        Err(_) => panic!("failed to wait for SIGINT"),
+    });
+
+    // This stream will either end when the block stream is exhausted or when
+    // the cancellation signal arrives. Building such stream allows us to
+    // correctly write all blocks and update the block tip upon the arrival of
+    // the cancellation signal.
+    let mut stream = stream::poll_fn(move |cx| {
+        let bootstrap_stopper = Pin::new(&mut bootstrap_stopper);
+        match bootstrap_stopper.poll(cx) {
+            Poll::Pending => {
+                let stream = Pin::new(&mut stream);
+                stream.poll_next(cx)
+            }
+            Poll::Ready(value) => Poll::Ready(Some(value)),
+        }
+    });
+
+    while let Some(block_result) = stream.next().await {
+        let result = match block_result {
+            Ok(block) => {
+                let block =
+                    Block::deserialize(block.as_bytes()).map_err(Error::BlockDecodingFailed)?;
+
+                if block.header.hash() == block0 {
+                    continue;
+                }
+
+                bootstrap_info.append_block(&block);
+
+                if bootstrap_info.block_received % PROCESS_LOGGING_DISTANCE == 0 {
+                    bootstrap_info.report(&logger);
+                }
+
+                handle_block(&blockchain, block, &logger).await
+            }
+            Err(err) => Err(err),
+        };
+
+        match result {
+            Ok(parent_tip) => {
+                maybe_parent_tip = Some(parent_tip);
+            }
+            Err(err) => {
+                if let Some(parent_tip) = maybe_parent_tip {
+                    if let Err(err) = blockchain::process_new_ref(
+                        &logger,
+                        &mut blockchain,
+                        branch.clone(),
+                        parent_tip.clone(),
+                    )
+                    .await
+                    {
+                        warn!(logger, "couldn't gracefully exit from failed netboot"; "error" => ?err);
                     }
                 }
-            },
-        )
-        .and_then(move |(_, maybe_new_tip)| {
-            if let Some(new_tip) = maybe_new_tip {
-                Either::A(
-                    process_new_ref_old(logger2, blockchain2, branch2, new_tip.clone())
-                        .map_err(|e| Error::ChainSelectionFailed { source: e }),
-                )
-            } else {
-                info!(logger2, "no new blocks in bootstrap stream");
-                Either::B(future::ok(()))
+                return Err(err);
             }
-        })
-}
+        }
+    }
 
-fn process_new_ref_old(
-    logger: Logger,
-    blockchain: Blockchain,
-    tip: Tip,
-    candidate: Arc<Ref>,
-) -> impl Future<Item = (), Error = blockchain::Error> {
-    Compat::new(Box::pin(blockchain::process_new_ref_owned(
-        logger, blockchain, tip, candidate,
-    )))
-}
-
-fn handle_block_old(
-    blockchain: Blockchain,
-    block: Block,
-    logger: Logger,
-) -> impl Future<Item = Arc<Ref>, Error = Error> {
-    Compat::new(Box::pin(handle_block(blockchain, block, logger)))
+    if let Some(parent_tip) = maybe_parent_tip {
+        blockchain::process_new_ref(&logger, &mut blockchain, branch, parent_tip)
+            .await
+            .map_err(|e| Error::ChainSelectionFailed(e))
+    } else {
+        info!(logger, "no new blocks in bootstrap stream");
+        Ok(())
+    }
 }
 
 async fn handle_block(
-    blockchain: Blockchain,
+    blockchain: &Blockchain,
     block: Block,
-    logger: Logger,
+    logger: &Logger,
 ) -> Result<Arc<Ref>, Error> {
     let header = block.header();
     let pre_checked = blockchain
         .pre_check_header(header, true)
         .await
-        .map_err(|e| Error::HeaderCheckFailed { source: e })?;
+        .map_err(|e| Error::HeaderCheckFailed(e))?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent {
             cached_reference: Some(block_ref),
@@ -303,7 +299,7 @@ async fn handle_block(
             let post_checked = blockchain
                 .post_check_header(header, parent_ref, blockchain::CheckHeaderProof::Enabled)
                 .await
-                .map_err(|e| Error::HeaderCheckFailed { source: e })?;
+                .map_err(|e| Error::HeaderCheckFailed(e))?;
 
             debug!(
                 logger,
@@ -314,7 +310,7 @@ async fn handle_block(
             let applied = blockchain
                 .apply_and_store_block(post_checked, block)
                 .await
-                .map_err(|e| Error::ApplyBlockFailed { source: e })?;
+                .map_err(|e| Error::ApplyBlockFailed(e))?;
             Ok(applied.cached_ref())
         }
     }

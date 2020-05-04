@@ -4,7 +4,7 @@ use crate::{
         Ledger, LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, Ref, Tip},
-    intercom::{unary_future, BlockMsg, Error as IntercomError, TransactionMsg},
+    intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
     leadership::{
         enclave::{Enclave, EnclaveError, LeaderEvent},
         LeadershipLogHandle, Logs,
@@ -15,7 +15,7 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot,
 };
-use futures03::{compat::*, future::TryFutureExt, sink::SinkExt};
+use futures03::{future::TryFutureExt, sink::SinkExt};
 use jormungandr_lib::{
     interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
@@ -42,6 +42,9 @@ pub enum LeadershipError {
 
     #[error("fragment selection failed")]
     FragmentSelectionFailed(#[from] IntercomError),
+
+    #[error("Error while connecting to the fragment pool to query fragments for block")]
+    CannotConnectToFragmentPool,
 
     #[error("Cannot send the leadership block to the blockchain module")]
     CannotSendLeadershipBlock,
@@ -383,7 +386,7 @@ impl Module {
         let event_logs = entry.log;
 
         let enclave = self.enclave.clone();
-        let sender = self.block_message.clone();
+        let mut sender = self.block_message.clone();
         let pool = self.pool.clone();
 
         let (parent_id, chain_length, ledger, ledger_parameters) = if self.tip_ref.block_date()
@@ -498,7 +501,6 @@ impl Module {
                     let parent = block.header.block_parent_hash();
                     let chain_length: u32 = block.header.chain_length().into();
                     sender
-                        .sink_compat()
                         .send(BlockMsg::LeadershipBlock(block))
                         .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
                         .await?;
@@ -630,7 +632,7 @@ impl Schedule {
 }
 
 async fn prepare_block(
-    fragment_pool: MessageBox<TransactionMsg>,
+    mut fragment_pool: MessageBox<TransactionMsg>,
     block_date: BlockDate,
     ledger: Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
@@ -638,17 +640,25 @@ async fn prepare_block(
 ) -> Result<Contents, LeadershipError> {
     use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
-    unary_future(fragment_pool, logger, |reply_handle| {
-        TransactionMsg::SelectTransactions {
-            ledger: ledger.as_ref().clone(),
-            block_date,
-            ledger_params: epoch_parameters.as_ref().clone(),
-            selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
-            reply_handle,
-        }
-    })
-    .compat()
-    .await
+    let (reply_handle, reply_future) = unary_reply(logger.clone());
+
+    let msg = TransactionMsg::SelectTransactions {
+        ledger: ledger.as_ref().clone(),
+        block_date,
+        ledger_params: epoch_parameters.as_ref().clone(),
+        selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
+        reply_handle,
+    };
+
+    if fragment_pool.try_send(msg).is_err() {
+        error!(
+            logger,
+            "cannot send query to the fragment pool for some fragments"
+        );
+        Err(LeadershipError::CannotConnectToFragmentPool)
+    } else {
+        reply_future.await.map_err(Into::into)
+    }
 }
 
 fn too_late(now: SystemTime, event_end: SystemTime) -> bool {

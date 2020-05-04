@@ -9,7 +9,7 @@ use crate::{
     blockchain::Checkpoints,
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     log,
-    network::p2p::Id as NodeId,
+    network::p2p::Address,
     stats_counter::StatsCounter,
     utils::{
         async_msg::{self, MessageBox, MessageQueue},
@@ -28,8 +28,8 @@ use slog::Logger;
 
 use std::{sync::Arc, time::Duration};
 
-type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
-type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
+type PullHeadersScheduler = FireForgetScheduler<HeaderHash, Address, Checkpoints>;
+type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, Address, ()>;
 
 const BRANCH_REPROCESSING_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -63,13 +63,15 @@ pub struct Process {
 }
 
 impl Process {
-    pub async fn start(mut self, service_info: TokioServiceInfo, input: MessageQueue<BlockMsg>) {
+    pub async fn start(
+        mut self,
+        service_info: TokioServiceInfo,
+        mut input: MessageQueue<BlockMsg>,
+    ) {
         self.start_branch_reprocessing(&service_info);
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
-        let mut input = input.compat();
-        while let Some(maybe_msg) = input.next().await {
-            let msg = maybe_msg.expect("error when receiving an incoming message");
+        while let Some(msg) = input.next().await {
             self.handle_input(
                 &service_info,
                 msg,
@@ -188,7 +190,7 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let logger = info.logger().clone();
 
-        info.run_periodic_std(
+        info.run_periodic_failable_std(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
             move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
@@ -200,10 +202,14 @@ impl Process {
         let scheduler_logger = info.logger().clone();
         let scheduler_future = FireForgetSchedulerFuture::new(
             &PULL_HEADERS_SCHEDULER_CONFIG,
-            move |to, node_id, from| {
+            move |to, node_address, from| {
                 network_msgbox
                     .clone()
-                    .try_send(NetworkMsg::PullHeaders { node_id, from, to })
+                    .try_send(NetworkMsg::PullHeaders {
+                        node_address,
+                        from,
+                        to,
+                    })
                     .unwrap_or_else(|e| {
                         error!(scheduler_logger, "cannot send PullHeaders request to network";
                         "reason" => e.to_string())
@@ -345,21 +351,12 @@ pub async fn process_new_ref(
     Ok(())
 }
 
-pub async fn process_new_ref_owned(
-    logger: Logger,
-    mut blockchain: Blockchain,
-    tip: Tip,
-    candidate: Arc<Ref>,
-) -> Result<(), Error> {
-    process_new_ref(&logger, &mut blockchain, tip, candidate).await
-}
-
 async fn process_and_propagate_new_ref(
     logger: &Logger,
     blockchain: &mut Blockchain,
     tip: Tip,
     new_block_ref: Arc<Ref>,
-    network_msg_box: MessageBox<NetworkMsg>,
+    mut network_msg_box: MessageBox<NetworkMsg>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
@@ -369,7 +366,6 @@ async fn process_and_propagate_new_ref(
 
     debug!(logger, "propagating block to the network"; "hash" => %hash);
     network_msg_box
-        .sink_compat()
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
         .await
         .map_err(|_| "Cannot propagate block to network".into())
@@ -407,9 +403,8 @@ async fn process_leadership_block(
     // Track block as new new tip block
     stats_counter.set_tip_block(Arc::new(block.clone()));
 
-    if let Some(msg_box) = explorer_msg_box {
+    if let Some(mut msg_box) = explorer_msg_box {
         msg_box
-            .sink_compat()
             .send(ExplorerMsg::NewBlock(block))
             .await
             .map_err(|_| "Cannot propagate block to explorer".to_string())?;
@@ -457,7 +452,7 @@ async fn process_block_announcement(
     blockchain: Blockchain,
     blockchain_tip: Tip,
     header: Header,
-    node_id: NodeId,
+    node_id: Address,
     mut pull_headers_scheduler: PullHeadersScheduler,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     logger: Logger,
@@ -517,17 +512,14 @@ async fn process_network_blocks(
     stats_counter: StatsCounter,
     logger: Logger,
 ) -> Result<(), Error> {
-    let (stream, reply) = handle.into_stream_and_reply();
-    let mut stream = stream
-        .compat()
-        .map_err(|()| Error::from("Error while processing block input stream"));
+    let (mut stream, reply) = handle.into_stream_and_reply();
     let mut candidate = None;
     let mut latest_block: Option<Arc<Block>> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
-        let (maybe_block, new_stream) = stream.into_future().await;
+        let (maybe_block, stream_tail) = stream.into_future().await;
         match maybe_block {
-            Some(Ok(block)) => {
+            Some(block) => {
                 latest_block = Some(Arc::new(block.clone()));
                 let res = process_network_block(
                     &mut blockchain,
@@ -541,7 +533,7 @@ async fn process_network_blocks(
                 match res {
                     Ok(Some(r)) => {
                         stats_counter.add_block_recv_cnt(1);
-                        stream = new_stream;
+                        stream = stream_tail;
                         candidate = Some(r);
                     }
                     Ok(None) => {
@@ -558,9 +550,6 @@ async fn process_network_blocks(
                         break candidate;
                     }
                 }
-            }
-            Some(Err(err)) => {
-                return Err(err);
             }
             None => {
                 reply.reply_ok(());
@@ -708,7 +697,7 @@ async fn process_chain_headers(
     blockchain: Blockchain,
     handle: intercom::RequestStreamHandle<Header, ()>,
     mut pull_headers_scheduler: PullHeadersScheduler,
-    network_msg_box: MessageBox<NetworkMsg>,
+    mut network_msg_box: MessageBox<NetworkMsg>,
 ) {
     let (stream, reply) = handle.into_stream_and_reply();
     match candidate::advance_branch(blockchain, stream, logger.clone()).await {
@@ -732,7 +721,6 @@ async fn process_chain_headers(
                 ()
             } else {
                 network_msg_box
-                    .sink_compat()
                     .send(NetworkMsg::GetBlocks(header_ids))
                     .await
                     .map_err(|_| error!(logger, "cannot request blocks from network"))

@@ -1,5 +1,5 @@
 use crate::{
-    network::p2p::{layers::LayersConfig, topic, Id, PolicyConfig},
+    network::p2p::{layers::LayersConfig, topic, Address, PolicyConfig},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
@@ -7,7 +7,8 @@ use jormungandr_lib::{interfaces::Mempool, time::Duration};
 use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
-use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf};
+
+use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf, str::FromStr};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -95,11 +96,17 @@ pub struct P2pConfig {
     /// all network interfaces.
     pub listen_address: Option<Address>,
 
+    /// keep the public id there and present, but yet make it optional as it is
+    /// no longer needed.
+    ///
+    /// TODO: To remove once we can afford a breaking change in the config
+    #[serde(default, skip)]
     pub public_id: Option<Id>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Option<Vec<TrustedPeer>>,
+
     /// the topic subscriptions
     ///
     /// When connecting to different nodes we will expose these too in order to
@@ -173,7 +180,46 @@ pub struct P2pConfig {
 #[serde(deny_unknown_fields)]
 pub struct TrustedPeer {
     pub address: Address,
-    pub id: Id,
+
+    // KEEP the ID optional, this is no longer needed but removing this will
+    // allow to keep some back compatibility.
+    //
+    // TODO: to remove once we can afford having a config breaking change
+    #[serde(skip, default)]
+    pub id: Option<Id>,
+}
+
+// Lifted from poldercast 0.11 for backward compatibility
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Id([u8; ID_LEN]);
+
+const ID_LEN: usize = 24;
+
+impl Id {
+    fn zero() -> Self {
+        Id([0; ID_LEN])
+    }
+}
+
+impl FromStr for Id {
+    type Err = hex::FromHexError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut v = Self::zero();
+        hex::decode_to_slice(s, &mut v.0)?;
+        Ok(v)
+    }
+}
+
+impl AsRef<[u8]> for Id {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl fmt::Debug for Id {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Id").field(&hex::encode(self)).finish()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -185,10 +231,7 @@ pub struct Leadership {
     pub logs_capacity: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Address(pub poldercast::Address);
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct Topic(pub poldercast::Topic);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -253,57 +296,25 @@ impl std::str::FromStr for TrustedPeer {
         let address = if let Some(address) = split.next() {
             address
                 .parse::<poldercast::Address>()
-                .map(Address)
                 .map_err(|e| e.to_string())?
         } else {
             return Err("Missing address component".to_owned());
         };
 
-        let id = if let Some(id) = split.next() {
-            id.parse::<Id>().map_err(|e| e.to_string())?
+        let optional_id = if let Some(id) = split.next() {
+            let id = id.parse::<Id>().map_err(|e| e.to_string())?;
+            Some(id)
         } else {
-            return Err("Missing id component".to_owned());
+            None
         };
 
-        Ok(TrustedPeer { address, id })
+        Ok(TrustedPeer {
+            address,
+            id: optional_id,
+        })
     }
 }
 
-impl Address {
-    pub fn to_socketaddr(&self) -> Option<SocketAddr> {
-        self.0.to_socketaddr()
-    }
-}
-
-impl std::fmt::Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl Serialize for Address {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{}", self.0))
-    }
-}
-impl Serialize for Topic {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::Error;
-        if self.0 == topic::MESSAGES.into() {
-            serializer.serialize_str("messages")
-        } else if self.0 == topic::BLOCKS.into() {
-            serializer.serialize_str("blocks")
-        } else {
-            Err(S::Error::custom("invalid state... should not happen"))
-        }
-    }
-}
 impl Serialize for InterestLevel {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -314,34 +325,6 @@ impl Serialize for InterestLevel {
             poldercast::InterestLevel::Normal => serializer.serialize_str("normal"),
             poldercast::InterestLevel::High => serializer.serialize_str("high"),
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for Address {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct AddressVisitor;
-        impl<'de> Visitor<'de> for AddressVisitor {
-            type Value = Address;
-
-            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "Multiaddr (example: /ip4/192.168.0.1/tcp/443)")
-            }
-
-            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use serde::de::Unexpected;
-                match v.parse() {
-                    Err(_err) => Err(E::invalid_value(Unexpected::Str(v), &self)),
-                    Ok(addr) => Ok(Address(addr)),
-                }
-            }
-        }
-        deserializer.deserialize_str(AddressVisitor)
     }
 }
 

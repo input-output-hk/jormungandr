@@ -1,10 +1,10 @@
 use jormungandr_lib::time::Duration;
 use lru::LruCache;
-use poldercast::{Address, Id, Node, PolicyReport};
+use poldercast::{Address, Node, PolicyReport};
 use serde::{Deserialize, Serialize};
 use slog::Logger;
 use std::collections::HashSet;
-use std::time::{Duration as StdDuration, Instant};
+use std::time::Duration as StdDuration;
 
 /// default quarantine duration is 10min
 const DEFAULT_QUARANTINE_DURATION: StdDuration = StdDuration::from_secs(10 * 60);
@@ -22,7 +22,7 @@ const DEFAULT_MAX_NUM_QUARANTINE_RECORDS: usize = 24_000;
 pub struct Policy {
     quarantine_duration: StdDuration,
     max_quarantine: StdDuration,
-    records: LruCache<Id, Records>,
+    records: LruCache<Address, Records>,
     quarantine_whitelist: HashSet<Address>,
     logger: Logger,
 }
@@ -62,7 +62,7 @@ impl Policy {
         }
     }
 
-    fn quarantine_duration_for(&mut self, id: Id) -> StdDuration {
+    fn quarantine_duration_for(&mut self, id: Address) -> StdDuration {
         if let Some(r) = self.records.get_mut(&id) {
             r.quarantine_for(self.quarantine_duration, self.max_quarantine)
         } else {
@@ -73,7 +73,7 @@ impl Policy {
         }
     }
 
-    fn update(&mut self, id: Id) {
+    fn update(&mut self, id: Address) {
         if let Some(r) = self.records.get_mut(&id) {
             r.update();
         } else {
@@ -119,13 +119,13 @@ impl Records {
 
 impl poldercast::Policy for Policy {
     fn check(&mut self, node: &mut Node) -> PolicyReport {
-        let id = node.id().to_string();
+        let id = node.address().to_string();
         let logger = self.logger.new(o!("id" => id));
         let node_address = node.address();
         // if the node is already quarantined
         if let Some(since) = node.logs().quarantined() {
             let duration = since.elapsed().unwrap();
-            let quarantine_duration = self.quarantine_duration_for(node.id().clone());
+            let quarantine_duration = self.quarantine_duration_for(node.address().clone());
 
             if duration < quarantine_duration {
                 // the node still need to do some quarantine time
@@ -149,22 +149,18 @@ impl poldercast::Policy for Policy {
         } else if node.record().is_clear() {
             // if the record is clear, do nothing, leave the Node in the available nodes
             PolicyReport::None
-        } else if node_address
-            .as_ref()
-            .map(|address| self.quarantine_whitelist.contains(address))
-            .unwrap_or(false)
-        {
+        } else if self.quarantine_whitelist.contains(node_address) {
             // if the node is whitelisted
             debug!(
                 logger,
                 "node is whitelisted, peer_addr: {}",
-                node_address.unwrap().to_string()
+                node_address.to_string()
             );
             PolicyReport::None
         } else {
             // if the record is not `clear` then we quarantine the block for some time
             debug!(logger, "move node to quarantine");
-            self.update(node.id().clone());
+            self.update(node.address().clone());
             PolicyReport::Quarantine
         }
     }

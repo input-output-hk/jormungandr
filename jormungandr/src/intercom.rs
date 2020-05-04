@@ -3,18 +3,14 @@ use crate::blockcfg::{
 };
 use crate::blockchain::Checkpoints;
 use crate::fragment::selection::FragmentSelectionAlgorithmParams;
-use crate::network::p2p::comm::PeerInfo;
-use crate::network::p2p::Id as NodeId;
-use crate::network::p2p::PeersResponse;
+use crate::network::p2p::{comm::PeerInfo, Address};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
-use futures::sync::mpsc as mpsc01;
-use futures::{Future as Future01, Poll as Poll01, Sink as Sink01, StartSend, Stream as Stream01};
-use futures03::channel::{mpsc, oneshot};
-use futures03::compat::{Compat, CompatSink};
-use futures03::prelude::*;
+use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
-use network_core::error as core_error;
+
+use futures03::channel::{mpsc, oneshot};
+use futures03::prelude::*;
 use slog::Logger;
 use std::{
     error,
@@ -27,7 +23,7 @@ use std::{
 /// The error values passed via intercom messages.
 #[derive(Debug)]
 pub struct Error {
-    code: core_error::Code,
+    code: net_error::Code,
     cause: Box<dyn error::Error + Send + Sync>,
 }
 
@@ -37,7 +33,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Internal,
+            code: net_error::Code::Internal,
             cause: cause.into(),
         }
     }
@@ -47,7 +43,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Aborted,
+            code: net_error::Code::Aborted,
             cause: cause.into(),
         }
     }
@@ -57,7 +53,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::Canceled,
+            code: net_error::Code::Canceled,
             cause: cause.into(),
         }
     }
@@ -67,7 +63,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::FailedPrecondition,
+            code: net_error::Code::FailedPrecondition,
             cause: cause.into(),
         }
     }
@@ -77,7 +73,7 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::InvalidArgument,
+            code: net_error::Code::InvalidArgument,
             cause: cause.into(),
         }
     }
@@ -87,19 +83,19 @@ impl Error {
         T: Into<Box<dyn error::Error + Send + Sync>>,
     {
         Error {
-            code: core_error::Code::NotFound,
+            code: net_error::Code::NotFound,
             cause: cause.into(),
         }
     }
 
     pub fn unimplemented<S: Into<String>>(message: S) -> Self {
         Error {
-            code: core_error::Code::Unimplemented,
+            code: net_error::Code::Unimplemented,
             cause: message.into().into(),
         }
     }
 
-    pub fn code(&self) -> core_error::Code {
+    pub fn code(&self) -> net_error::Code {
         self.code
     }
 }
@@ -107,7 +103,7 @@ impl Error {
 impl From<oneshot::Canceled> for Error {
     fn from(src: oneshot::Canceled) -> Self {
         Error {
-            code: core_error::Code::Unavailable,
+            code: net_error::Code::Unavailable,
             cause: src.into(),
         }
     }
@@ -118,12 +114,12 @@ impl From<chain_storage::Error> for Error {
         use chain_storage::Error::*;
 
         let code = match err {
-            BlockNotFound => core_error::Code::NotFound,
-            CannotIterate => core_error::Code::Internal,
-            BackendError(_) => core_error::Code::Internal,
-            Block0InFuture => core_error::Code::Internal,
-            BlockAlreadyPresent => core_error::Code::Internal,
-            MissingParent => core_error::Code::InvalidArgument,
+            BlockNotFound => net_error::Code::NotFound,
+            CannotIterate => net_error::Code::Internal,
+            BackendError(_) => net_error::Code::Internal,
+            Block0InFuture => net_error::Code::Internal,
+            BlockAlreadyPresent => net_error::Code::Internal,
+            MissingParent => net_error::Code::InvalidArgument,
         };
         Error {
             code,
@@ -132,9 +128,9 @@ impl From<chain_storage::Error> for Error {
     }
 }
 
-impl From<Error> for core_error::Error {
+impl From<Error> for net_error::Error {
     fn from(err: Error) -> Self {
-        core_error::Error::new(err.code(), err.cause)
+        net_error::Error::new(err.code(), err.cause)
     }
 }
 
@@ -170,35 +166,19 @@ impl<T> ReplyHandle<T> {
     pub fn reply_error(self, error: Error) {
         self.reply(Err(error))
     }
-
-    pub fn async_reply<Fut>(self, future: Fut) -> impl Future01<Item = (), Error = ()>
-    where
-        Fut: Future01<Item = T, Error = Error>,
-    {
-        future.then(move |res| {
-            self.reply(res);
-            Ok(())
-        })
-    }
 }
 
-pub struct ReplyFuture03<T, E> {
+pub struct ReplyFuture<T> {
     receiver: oneshot::Receiver<Result<T, Error>>,
     logger: Logger,
-    _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Unpin for ReplyFuture03<T, E> {}
+impl<T> Unpin for ReplyFuture<T> {}
 
-pub type ReplyFuture<T, E> = Compat<ReplyFuture03<T, E>>;
+impl<T> Future for ReplyFuture<T> {
+    type Output = Result<T, Error>;
 
-impl<T, E> Future for ReplyFuture03<T, E>
-where
-    E: From<Error>,
-{
-    type Output = Result<T, E>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, E>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, Error>> {
         Pin::new(&mut self.receiver).poll(cx).map(|res| match res {
             Ok(Ok(item)) => {
                 debug!(self.logger, "request processed");
@@ -206,91 +186,20 @@ where
             }
             Ok(Err(e)) => {
                 info!(self.logger, "error processing request"; "reason" => %e);
-                Err(e.into())
+                Err(e)
             }
             Err(oneshot::Canceled) => {
                 warn!(self.logger, "response canceled by the processing task");
-                Err(Error::from(oneshot::Canceled).into())
+                Err(Error::from(oneshot::Canceled))
             }
         })
     }
 }
 
-fn unary_reply03<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture03<T, E>) {
+pub fn unary_reply<T>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T>) {
     let (sender, receiver) = oneshot::channel();
-    let future = ReplyFuture03 {
-        receiver,
-        logger,
-        _phantom_error: PhantomData,
-    };
+    let future = ReplyFuture { receiver, logger };
     (ReplyHandle { sender }, future)
-}
-
-fn unary_reply<T, E>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T, E>)
-where
-    E: From<Error>,
-{
-    let (handle, future) = unary_reply03(logger);
-    (handle, future.compat())
-}
-
-pub fn unary_future<T, R, E, F>(
-    mbox: MessageBox<T>,
-    logger: Logger,
-    make_msg: F,
-) -> RequestFuture<T, R, E>
-where
-    F: FnOnce(ReplyHandle<R>) -> T,
-    E: From<Error>,
-{
-    let (reply_handle, reply_future) = unary_reply(logger.clone());
-    let msg = make_msg(reply_handle);
-    let send_task = mbox.into_send_task(msg, logger);
-    RequestFuture {
-        state: request_future::State::PendingSend(send_task),
-        reply_future,
-    }
-}
-
-pub struct RequestFuture<T, R, E> {
-    state: request_future::State<T>,
-    reply_future: ReplyFuture<R, E>,
-}
-
-mod request_future {
-    use super::Error;
-    use crate::utils::async_msg::SendTask;
-
-    pub enum State<T> {
-        PendingSend(SendTask<T>),
-        AwaitingReply,
-    }
-
-    pub fn mbox_error() -> Error {
-        Error::failed("failed to enqueue request for processing")
-    }
-}
-
-impl<T, R, E> Future01 for RequestFuture<T, R, E>
-where
-    E: From<Error>,
-{
-    type Item = R;
-    type Error = E;
-
-    fn poll(&mut self) -> Poll01<R, E> {
-        use self::request_future::State;
-
-        loop {
-            match &mut self.state {
-                State::AwaitingReply => return self.reply_future.poll(),
-                State::PendingSend(future) => {
-                    try_ready!(future.poll().map_err(|()| request_future::mbox_error()));
-                    self.state = State::AwaitingReply;
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -339,21 +248,21 @@ impl<T: 'static> error::Error for ReplyTrySendError<T> {
 }
 
 #[derive(Debug)]
-pub struct ReplyStreamHandle03<T> {
+pub struct ReplyStreamHandle<T> {
     sender: mpsc::Sender<Result<T, Error>>,
 }
 
-impl<T> Unpin for ReplyStreamHandle03<T> {}
+impl<T> Unpin for ReplyStreamHandle<T> {}
 
-impl<T> Clone for ReplyStreamHandle03<T> {
+impl<T> Clone for ReplyStreamHandle<T> {
     fn clone(&self) -> Self {
-        ReplyStreamHandle03 {
+        ReplyStreamHandle {
             sender: self.sender.clone(),
         }
     }
 }
 
-impl<T> ReplyStreamHandle03<T> {
+impl<T> ReplyStreamHandle<T> {
     pub fn try_send_item(&mut self, item: Result<T, Error>) -> Result<(), ReplyTrySendError<T>> {
         self.sender.try_send(item).map_err(ReplyTrySendError)
     }
@@ -363,7 +272,7 @@ impl<T> ReplyStreamHandle03<T> {
     }
 }
 
-impl<T> Sink<Result<T, Error>> for ReplyStreamHandle03<T> {
+impl<T> Sink<Result<T, Error>> for ReplyStreamHandle<T> {
     type Error = ReplySendError;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
@@ -391,63 +300,15 @@ impl<T> Sink<Result<T, Error>> for ReplyStreamHandle03<T> {
     }
 }
 
-pub struct ReplyStreamHandle<T>(CompatSink<ReplyStreamHandle03<T>, Result<T, Error>>);
-
-impl<T> ReplyStreamHandle<T> {
-    pub fn async_reply<S>(self, stream: S) -> impl Future01<Item = (), Error = ()>
-    where
-        S: Stream01<Item = T, Error = Error>,
-    {
-        self.0
-            .into_inner()
-            .sender
-            .compat()
-            .send_all(stream.then(Ok))
-            .then(|_| Ok(()))
-    }
-
-    pub fn async_error(self, err: Error) -> impl Future01<Item = (), Error = ()> {
-        self.0
-            .into_inner()
-            .sender
-            .compat()
-            .send(Err(err))
-            .then(|_| Ok(()))
-    }
-
-    pub fn into_03(self) -> ReplyStreamHandle03<T> {
-        self.0.into_inner()
-    }
-}
-
-impl<T> Sink01 for ReplyStreamHandle<T> {
-    type SinkItem = Result<T, Error>;
-    type SinkError = ReplySendError;
-
-    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, ReplySendError> {
-        self.0.start_send(item).map_err(|_| ReplySendError)
-    }
-
-    fn poll_complete(&mut self) -> Poll01<(), ReplySendError> {
-        self.0.poll_complete().map_err(|_| ReplySendError)
-    }
-
-    fn close(&mut self) -> Poll01<(), ReplySendError> {
-        self.0.close().map_err(|_| ReplySendError)
-    }
-}
-
-pub struct ReplyStream03<T, E> {
+pub struct ReplyStream<T, E> {
     receiver: mpsc::Receiver<Result<T, Error>>,
     logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
-impl<T, E> Unpin for ReplyStream03<T, E> {}
+impl<T, E> Unpin for ReplyStream<T, E> {}
 
-pub type ReplyStream<T, E> = Compat<ReplyStream03<T, E>>;
-
-impl<T, E> Stream for ReplyStream03<T, E>
+impl<T, E> Stream for ReplyStream<T, E>
 where
     E: From<Error>,
 {
@@ -457,8 +318,8 @@ where
         Pin::new(&mut self.receiver)
             .poll_next(cx)
             .map(|maybe_res| match maybe_res {
-                None => None,
                 Some(Ok(item)) => Some(Ok(item)),
+                None => None,
                 Some(Err(e)) => {
                     info!(
                         self.logger,
@@ -471,28 +332,44 @@ where
     }
 }
 
-pub fn stream_reply03<T, E>(
-    buffer: usize,
-    logger: Logger,
-) -> (ReplyStreamHandle03<T>, ReplyStream03<T, E>) {
-    let (sender, receiver) = mpsc::channel(buffer);
-    let stream = ReplyStream03 {
-        receiver,
-        logger,
-        _phantom_error: PhantomData,
-    };
-    (ReplyStreamHandle03 { sender }, stream)
+/// An adapter for outbound client streaming requests
+pub struct UploadStream<T> {
+    inner: ReplyStream<T, Error>,
+}
+
+impl<T> Stream for UploadStream<T> {
+    type Item = T;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<T>> {
+        Pin::new(&mut self.inner)
+            .poll_next(cx)
+            .map(|maybe_res| match maybe_res {
+                Some(Ok(item)) => Some(item),
+                None => None,
+                Some(Err(_)) => None,
+            })
+    }
 }
 
 pub fn stream_reply<T, E>(
     buffer: usize,
     logger: Logger,
-) -> (ReplyStreamHandle<T>, ReplyStream<T, E>)
-where
-    E: From<Error>,
-{
-    let (handle, stream) = stream_reply03(buffer, logger);
-    (ReplyStreamHandle(handle.compat()), stream.compat())
+) -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
+    let (sender, receiver) = mpsc::channel(buffer);
+    let stream = ReplyStream {
+        receiver,
+        logger,
+        _phantom_error: PhantomData,
+    };
+    (ReplyStreamHandle { sender }, stream)
+}
+
+pub fn upload_stream_reply<T>(
+    buffer: usize,
+    logger: Logger,
+) -> (ReplyStreamHandle<T>, UploadStream<T>) {
+    let (handle, inner) = stream_reply(buffer, logger);
+    (handle, UploadStream { inner })
 }
 
 #[derive(Debug)]
@@ -501,9 +378,9 @@ pub struct RequestStreamHandle<T, R> {
     reply: ReplyHandle<R>,
 }
 
-pub struct RequestSink<T, R, E> {
+pub struct RequestSink<T, R> {
     sender: MessageBox<T>,
-    reply_future: Option<ReplyFuture<R, E>>,
+    reply_future: Option<ReplyFuture<R>>,
     logger: Logger,
 }
 
@@ -513,38 +390,40 @@ impl<T, R> RequestStreamHandle<T, R> {
     }
 }
 
-impl<T, R, E> RequestSink<T, R, E> {
+impl<T, R> RequestSink<T, R> {
     pub fn logger(&self) -> &Logger {
         &self.logger
     }
 
     // This is for network which implements request_stream::MapResponse
     // for this type.
-    pub fn take_reply_future(&mut self) -> ReplyFuture<R, E> {
+    pub fn take_reply_future(&mut self) -> ReplyFuture<R> {
         self.reply_future
             .take()
             .expect("there can be only one waiting for the reply")
     }
 }
 
-impl<T, R, E> RequestSink<T, R, E>
-where
-    E: From<Error>,
-{
-    fn map_send_error(&self, _e: mpsc01::SendError<T>, msg: &'static str) -> E {
+impl<T, R> RequestSink<T, R> {
+    fn map_send_error(&self, _e: mpsc::SendError, msg: &'static str) -> Error {
         debug!(self.logger, "{}", msg);
         Error::aborted("request stream processing ended before all items were sent").into()
     }
 }
 
-impl<T, R, E> Sink01 for RequestSink<T, R, E>
-where
-    E: From<Error>,
-{
-    type SinkItem = T;
-    type SinkError = E;
+impl<T, R> Sink<T> for RequestSink<T, R> {
+    type Error = Error;
 
-    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+        self.sender.poll_ready(cx).map_err(|e| {
+            self.map_send_error(
+                e,
+                "request stream processing ended before receiving some items",
+            )
+        })
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, item: T) -> Result<(), Error> {
         self.sender.start_send(item).map_err(|e| {
             self.map_send_error(
                 e,
@@ -553,8 +432,8 @@ where
         })
     }
 
-    fn poll_complete(&mut self) -> Poll01<(), Self::SinkError> {
-        self.sender.poll_complete().map_err(|e| {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+        Pin::new(&mut self.sender).poll_flush(cx).map_err(|e| {
             self.map_send_error(
                 e,
                 "request stream processing ended before receiving some items",
@@ -562,8 +441,8 @@ where
         })
     }
 
-    fn close(&mut self) -> Poll01<(), Self::SinkError> {
-        self.sender.close().map_err(|e| {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+        Pin::new(&mut self.sender).poll_close(cx).map_err(|e| {
             self.map_send_error(
                 e,
                 "request stream processing channel did not close gracefully, \
@@ -573,13 +452,10 @@ where
     }
 }
 
-pub fn stream_request<T, R, E>(
+pub fn stream_request<T, R>(
     buffer: usize,
     logger: Logger,
-) -> (RequestStreamHandle<T, R>, RequestSink<T, R, E>)
-where
-    E: From<Error>,
-{
+) -> (RequestStreamHandle<T, R>, RequestSink<T, R>) {
     let (sender, receiver) = async_msg::channel(buffer);
     let (reply, reply_future) = unary_reply(logger.clone());
     let handle = RequestStreamHandle { receiver, reply };
@@ -610,7 +486,6 @@ pub enum TransactionMsg {
 /// Fetching the block headers, the block, the tip
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
-    GetPeers(ReplyHandle<PeersResponse>),
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
     GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
@@ -624,7 +499,6 @@ impl Debug for ClientMsg {
                 .debug_tuple("GetBlockTip")
                 .field(&format_args!("_"))
                 .finish(),
-            ClientMsg::GetPeers(_) => f.debug_tuple("GetPeers").field(&format_args!("_")).finish(),
             ClientMsg::GetHeaders(ids, _) => f
                 .debug_tuple("GetHeaders")
                 .field(ids)
@@ -656,7 +530,7 @@ pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Block),
     /// A untrusted block Header has been received from the network task
-    AnnouncedBlock(Header, NodeId),
+    AnnouncedBlock(Header, Address),
     /// A stream of untrusted blocks has been received from the network task.
     NetworkBlocks(RequestStreamHandle<Block, ()>),
     /// The stream of headers for missing chain blocks has been received
@@ -677,9 +551,9 @@ pub enum PropagateMsg {
 pub enum NetworkMsg {
     Propagate(PropagateMsg),
     GetBlocks(Vec<HeaderHash>),
-    GetNextBlock(NodeId, HeaderHash),
+    GetNextBlock(Address, HeaderHash),
     PullHeaders {
-        node_id: NodeId,
+        node_address: Address,
         from: Checkpoints,
         to: HeaderHash,
     },

@@ -5,7 +5,7 @@ use crate::{
     diagnostic::Diagnostic,
     intercom::{NetworkMsg, TransactionMsg},
     leadership::Logs as LeadershipLogs,
-    network::p2p::P2pTopology,
+    network::GlobalStateR as NetworkStateR,
     rest::ServerStopper,
     secure::enclave::Enclave,
     stats_counter::StatsCounter,
@@ -120,6 +120,6 @@ pub struct FullContext {
     pub transaction_task: MessageBox<TransactionMsg>,
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
-    pub p2p: P2pTopology,
+    pub network_state: NetworkStateR,
     pub explorer: Option<crate::explorer::Explorer>,
 }

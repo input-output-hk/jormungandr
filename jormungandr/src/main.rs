@@ -33,6 +33,9 @@ use futures03::{executor::block_on, future::TryFutureExt};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
+use tokio02::signal::ctrl_c;
+
+use std::sync::Arc;
 use std::time::Duration;
 
 pub mod blockcfg;
@@ -78,6 +81,8 @@ pub struct BootstrappedNode {
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
+const EXPLORER_TASK_QUEUE_LEN: usize = 32;
+const CLIENT_TASK_QUEUE_LEN: usize = 32;
 const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
@@ -96,6 +101,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let (network_msgbox, network_queue) = async_msg::channel(NETWORK_TASK_QUEUE_LEN);
     let (block_msgbox, block_queue) = async_msg::channel(BLOCK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
+    let (client_msgbox, client_queue) = async_msg::channel(CLIENT_TASK_QUEUE_LEN);
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
     let leadership_logs =
@@ -135,10 +141,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             // Context to give to the rest api
             let context = explorer.clone();
 
-            let task_msg_box = services.spawn_future_with_inputs("explorer", move |info, input| {
-                explorer.handle_input(info, input)
+            let (explorer_msgbox, explorer_queue) = async_msg::channel(EXPLORER_TASK_QUEUE_LEN);
+
+            services.spawn_future_std("explorer", move |info| async move {
+                explorer.start(info, explorer_queue).await
             });
-            Some((task_msg_box, context))
+            Some((explorer_msgbox, context))
         } else {
             None
         }
@@ -167,40 +175,45 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let client_task = {
-        let mut task_data = client::TaskData {
+    {
+        let task_data = client::TaskData {
             storage: blockchain.storage().clone(),
             blockchain_tip: blockchain_tip.clone(),
-            topology: topology.clone(),
         };
 
-        services.spawn_future_with_inputs("client-query", move |info, input| {
-            client::handle_input(info, &mut task_data, input)
-        })
-    };
+        services.spawn_future_std("client-query", move |info| {
+            client::start(info, task_data, client_queue)
+        });
+    }
+
+    // FIXME: reduce state sharing across services
+    let network_state = Arc::new(network::GlobalState::new(
+        bootstrapped_node.block0_hash,
+        bootstrapped_node.settings.network.clone(),
+        topology,
+        stats_counter.clone(),
+        bootstrapped_node
+            .logger
+            .new(o!(crate::log::KEY_TASK => "network")),
+    ));
 
     {
-        let client_msgbox = client_task.clone();
         let fragment_msgbox = fragment_msgbox.clone();
         let block_msgbox = block_msgbox.clone();
-        let block0_hash = bootstrapped_node.block0_hash;
-        let config = bootstrapped_node.settings.network.clone();
-        let stats_counter = stats_counter.clone();
+        let global_state = network_state.clone();
         let channels = network::Channels {
             client_box: client_msgbox,
             transaction_box: fragment_msgbox,
             block_box: block_msgbox,
         };
-        let topology = topology.clone();
 
-        services.spawn_future("network", move |info| {
+        services.spawn_future_std("network", move |info| {
             let params = network::TaskParams {
-                config,
-                block0_hash,
+                global_state,
                 input: network_queue,
                 channels,
             };
-            network::start(info, params, topology, stats_counter)
+            network::start(info, params)
         });
     }
 
@@ -251,7 +264,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             transaction_task: fragment_msgbox,
             leadership_logs,
             enclave,
-            p2p: topology,
+            network_state,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
         };
         block_on(async {
@@ -276,6 +289,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             )
         });
     }
+
+    services.spawn_try_future_std("sigint_listener", move |_info| ctrl_c().map_err(|_| ()));
 
     match services.wait_any_finished() {
         Err(err) => {
@@ -310,8 +325,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 /// * download all the existing blocks
 /// * verify all the downloaded blocks
 /// * network / peer discoveries (?)
-///
-///
 fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, start_up::Error> {
     let InitializedNode {
         settings,
@@ -319,8 +332,59 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         storage,
         logger,
         rest_context,
-        services,
+        mut services,
     } = initialized_node;
+
+    let BootstrapData {
+        blockchain,
+        blockchain_tip,
+        block0_hash,
+        explorer_db,
+        rest_context,
+        settings,
+    } = services.block_on_task_std("bootstrap", |info| {
+        bootstrap_internal(
+            rest_context,
+            info.logger().clone(),
+            block0,
+            storage,
+            settings,
+        )
+    })?;
+
+    Ok(BootstrappedNode {
+        settings,
+        block0_hash,
+        blockchain,
+        blockchain_tip,
+        logger,
+        explorer_db,
+        rest_context,
+        services,
+    })
+}
+
+struct BootstrapData {
+    blockchain: Blockchain,
+    blockchain_tip: blockchain::Tip,
+    block0_hash: HeaderHash,
+    explorer_db: Option<explorer::ExplorerDB>,
+    rest_context: Option<rest::ContextLock>,
+    settings: Settings,
+}
+
+async fn bootstrap_internal(
+    rest_context: Option<rest::ContextLock>,
+    logger: Logger,
+    block0: blockcfg::Block,
+    storage: blockchain::Storage,
+    settings: Settings,
+) -> Result<BootstrapData, start_up::Error> {
+    use futures03::{
+        channel::oneshot::channel,
+        future::{select, Either, FutureExt},
+    };
+    use tokio02::spawn;
 
     if let Some(context) = rest_context.as_ref() {
         block_on(async {
@@ -330,8 +394,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
                 .set_node_state(NodeState::Bootstrapping)
         })
     }
-
-    let bootstrap_logger = logger.new(o!(log::KEY_TASK => "bootstrap"));
 
     let block0_hash = block0.header.hash();
 
@@ -344,18 +406,34 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         storage,
         cache_capacity,
         settings.rewards_report_all,
-        &bootstrap_logger,
-    )?;
+        &logger,
+    )
+    .await?;
 
     block_on(async {
-        if let Some(rest_context) = &rest_context {
-            let mut rest_context = rest_context.write().await;
-            rest_context.set_blockchain(blockchain.clone());
-            rest_context.set_blockchain_tip(blockchain_tip.clone());
+        if let Some(context) = &rest_context {
+            let mut context = context.write().await;
+            context.set_blockchain(blockchain.clone());
+            context.set_blockchain_tip(blockchain_tip.clone());
         }
     });
 
     let mut bootstrap_attempt: usize = 0;
+
+    let (shutdown_tx, shutdown_rx) = channel();
+    let shutdown_rx = shutdown_rx.shared();
+
+    spawn(
+        ctrl_c()
+            .map_ok(|()| {
+                shutdown_tx
+                    .send(())
+                    .expect("failed to gracefully stop netboot")
+            })
+            .map_err(|_| panic!("failed to wait for SIGINT"))
+            .boxed(),
+    );
+
     loop {
         bootstrap_attempt += 1;
 
@@ -364,7 +442,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         if let Some(max_bootstrap_attempt) = settings.network.max_bootstrap_attempts {
             if bootstrap_attempt > max_bootstrap_attempt {
                 warn!(
-                    &bootstrap_logger,
+                    &logger,
                     "maximum allowable bootstrap attempts exceeded, continuing..."
                 );
                 break; // maximum bootstrap attempts exceeded, exit loop
@@ -376,39 +454,59 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
             &settings.network,
             blockchain.clone(),
             blockchain_tip.clone(),
-            &bootstrap_logger,
-        )? {
+            shutdown_rx.clone(),
+            &logger,
+        )
+        .await?
+        {
             break; // bootstrap succeeded, exit loop
         }
 
         info!(
-            &bootstrap_logger,
+            &logger,
             "bootstrap attempt #{} failed, trying again in {} seconds...",
             bootstrap_attempt,
             BOOTSTRAP_RETRY_WAIT.as_secs()
         );
+
         // Sleep for a little while before trying again.
-        std::thread::sleep(BOOTSTRAP_RETRY_WAIT);
+        if let Either::Right((result, _)) = select(
+            tokio02::time::delay_for(BOOTSTRAP_RETRY_WAIT),
+            shutdown_rx.clone(),
+        )
+        .await
+        {
+            match result {
+                Ok(()) => return Err(start_up::Error::Interrupted),
+                Err(_) => panic!("failed to wait for SIGINT"),
+            }
+        }
     }
 
     let explorer_db = if settings.explorer {
-        Some(explorer::ExplorerDB::bootstrap(
-            block0_explorer,
-            &blockchain,
-        )?)
+        match select(
+            explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain).boxed(),
+            shutdown_rx,
+        )
+        .await
+        {
+            Either::Left((result, _)) => Some(result?),
+            Either::Right((result, _)) => match result {
+                Ok(()) => return Err(start_up::Error::Interrupted),
+                Err(_) => panic!("failed to wait for SIGINT"),
+            },
+        }
     } else {
         None
     };
 
-    Ok(BootstrappedNode {
-        settings,
+    Ok(BootstrapData {
         block0_hash,
         blockchain,
         blockchain_tip,
-        logger,
         explorer_db,
         rest_context,
-        services,
+        settings,
     })
 }
 
@@ -448,7 +546,6 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
-            use std::sync::Arc;
             use tokio02::sync::RwLock;
 
             let mut context = rest::Context::new();
@@ -481,11 +578,13 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         })
     }
 
-    let block0 = start_up::prepare_block_0(
-        &settings,
-        &storage,
-        &init_logger, /* add network to fetch block0 */
-    )?;
+    let block0 = services.block_on_task_std("prepare_block_0", |_service_info| {
+        start_up::prepare_block_0(
+            &settings,
+            &storage,
+            &init_logger, /* add network to fetch block0 */
+        )
+    })?;
 
     Ok(InitializedNode {
         settings,
