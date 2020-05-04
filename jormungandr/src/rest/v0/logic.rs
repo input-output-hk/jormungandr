@@ -108,7 +108,7 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
     let logger = context.logger()?.new(o!("request" => "message_logs"));
     let (reply_handle, reply_future) = intercom::unary_reply(logger);
     let mut mbox = context.try_full()?.transaction_task.clone();
-    mbox.send(TransactionMsg::GetLogs(reply_handle));
+    mbox.send(TransactionMsg::GetLogs(reply_handle)).await;
     reply_future.await.map_err(Into::into)
 }
 
@@ -422,7 +422,7 @@ pub async fn get_network_stats(context: &Context) -> Result<Vec<PeerStats>, Erro
     let logger = context.logger()?.new(o!("request" => "network_stats"));
     let (reply_handle, reply_future) = intercom::unary_reply(logger);
     let mut mbox = full_context.network_task.clone();
-    mbox.send(NetworkMsg::PeerInfo(reply_handle));
+    mbox.send(NetworkMsg::PeerInfo(reply_handle)).await;
     let peer_stats = reply_future.await?;
     Ok(peer_stats
         .into_iter()
