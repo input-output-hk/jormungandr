@@ -20,7 +20,6 @@ use chain_crypto::{
 use chain_impl_mockchain::{
     account::{AccountAlg, Identifier},
     block::Block as ChainBlock,
-    certificate::VotePlan,
     fragment::{Fragment, FragmentId},
     key::Hash,
     leadership::{Leader, LeadershipConsensus},
