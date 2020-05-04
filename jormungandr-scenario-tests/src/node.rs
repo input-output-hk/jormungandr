@@ -168,10 +168,6 @@ impl NodeController {
         format!("{}/{}", self.base_url(), path)
     }
 
-    pub fn public_id(&self) -> poldercast::Id {
-        self.settings.config.p2p.public_id.clone()
-    }
-
     pub fn address(&self) -> poldercast::Address {
         self.settings.config.p2p.public_address.clone()
     }

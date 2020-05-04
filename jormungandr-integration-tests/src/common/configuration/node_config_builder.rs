@@ -27,7 +27,6 @@ impl NodeConfigBuilder {
     pub fn new() -> NodeConfigBuilder {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
-        let public_id = poldercast::Id::generate(rand::rngs::OsRng);
         let log = Some(Log(vec![LogEntry {
             level: "info".to_string(),
             format: "json".to_string(),
@@ -52,7 +51,6 @@ impl NodeConfigBuilder {
             p2p: P2p {
                 trusted_peers: vec![],
                 public_address: grpc_public_address,
-                public_id: public_id.clone(),
                 listen_address: None,
                 max_inbound_connections: None,
                 max_connections: None,

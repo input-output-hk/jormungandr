@@ -69,10 +69,9 @@ pub fn assert_are_in_network_view(
     let network_view = node.p2p_view()?;
     for peer in peers {
         utils::assert(
-            network_view.iter().any(|info| {
-                info.id == peer.public_id().to_string()
-                    && info.address == peer.address().to_string()
-            }),
+            network_view
+                .iter()
+                .any(|info| info.address == peer.address().to_string()),
             &format!(
                 "{}: Peer {} is not present in network view list",
                 info,

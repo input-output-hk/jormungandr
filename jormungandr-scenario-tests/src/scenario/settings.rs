@@ -219,7 +219,6 @@ impl Prepare for P2p {
     {
         P2p {
             public_address: context.generate_new_grpc_public_address(),
-            public_id: poldercast::Id::generate(context.random().rng_mut()),
             trusted_peers: Vec::new(),
             allow_private_addresses: true,
             listen_address: None,
