@@ -139,6 +139,10 @@ impl SpawnParams {
         self
     }
 
+    pub fn get_jormungandr(&self) -> &Option<PathBuf> {
+        &self.jormungandr
+    }
+
     pub fn override_settings(&self, node_config: &mut NodeConfig) {
         if let Some(topics_of_interest) = &self.topics_of_interest {
             node_config.p2p.topics_of_interest = Some(topics_of_interest.clone());
