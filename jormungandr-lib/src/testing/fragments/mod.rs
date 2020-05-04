@@ -14,7 +14,7 @@ use chain_impl_mockchain::{
     fragment::Fragment,
     testing::{
         data::{StakePool, Wallet as WalletLib},
-        FragmentFactory,
+        scenario::FragmentFactory,
     },
 };
 
