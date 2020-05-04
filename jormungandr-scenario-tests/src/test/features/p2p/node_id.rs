@@ -135,12 +135,8 @@ pub fn duplicated_trusted_peer_id_test(mut context: Context<ChaChaRng>) -> Resul
     super::assert_empty_quarantine(&leader2, info_before)?;
     super::assert_are_in_network_view(&leader2, vec![&leader1], info_before)?;
 
-    let leader3 = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(LEADER3)
-            .no_listen_address()
-            .node_id(leader1.public_id().clone()),
-    )?;
+    let leader3 =
+        controller.spawn_node_custom(controller.new_spawn_params(LEADER3).no_listen_address())?;
     leader3.wait_for_bootstrap()?;
 
     utils::wait(30);
