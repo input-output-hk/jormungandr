@@ -2040,9 +2040,9 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 ]
 </code></pre>
 <hr />
-<h2><a class="header" href="#get-committee-members" id="get-committee-members">Get committee members</a></h2>
+<h2><a class="header" href="#get-voting-committee-members" id="get-voting-committee-members">Get voting committee members</a></h2>
 <p>Get the list of voting committee members.</p>
-<pre><code class="language-sh">jcli rest v0 committees get &lt;options&gt;
+<pre><code class="language-sh">jcli rest v0 vote active committees get &lt;options&gt;
 </code></pre>
 <p>The options are</p>
 <ul>
@@ -2054,6 +2054,37 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 <pre><code class="language-yaml">---
 - 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19 # list of members
 - f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
+</code></pre>
+<h2><a class="header" href="#get-active-voting-plans-and-proposals" id="get-active-voting-plans-and-proposals">Get active voting plans and proposals</a></h2>
+<p>Get the list of active voting plans and proposals.</p>
+<pre><code class="language-sh">jcli rest v0 vote active plans get &lt;options&gt;
+</code></pre>
+<p>The options are</p>
+<ul>
+<li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
+<li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
+<li>--output-format &lt;format&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
+</ul>
+<p>YAML printed on success</p>
+<pre><code class="language-yaml">---
+- committee_end:
+    epoch: 10
+    slot_id: 0
+  proposals:
+    - external_id: adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280
+      options:
+        OneOf:
+          max_value: 3
+    - external_id: 6778d37161c3962fe62c9fa8a31a55bccf6ec2d1ea254a467d8cd994709fc404
+      options:
+        OneOf:
+          max_value: 3
+  vote_end:
+    epoch: 5
+    slot_id: 0
+  vote_start:
+    epoch: 1
+    slot_id: 0
 </code></pre>
 <h1><a class="header" href="#staking-with-jörmungandr" id="staking-with-jörmungandr">Staking with Jörmungandr</a></h1>
 <p>Here we will describe how to:</p>

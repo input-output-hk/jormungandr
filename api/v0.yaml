@@ -2232,7 +2232,7 @@ paths:
                       type: string
                       description: the node public id
 
-  /api/v0/votes/active/committees:
+  /api/v0/vote/active/committees:
     get:
       description: Get committee members ID
       operationId: Committees
@@ -2260,7 +2260,7 @@ paths:
                     7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19
                   ]
 
-  /api/v0/votes/active/plans:
+  /api/v0/vote/active/plans:
     get:
       description: Get active vote plans
       operationId: ActiveVotePlans
@@ -2302,12 +2302,19 @@ paths:
                             type: string
                             description: Hash of external id
                             pattern: '[0-9a-f]+'
+                            minLength: 64
+                            maxLength: 64
                           options:
                             type: object
                             properties:
-                              max_value:
-                                type: integer
-                                description: Maximum number of options
+                              OneOf:
+                                type: object
+                                properties:
+                                  max_value:
+                                    type: integer
+                                    description: Maximum number of options
+                                    minimum: 1
+                                    maximum: 15
                         required:
                           - external_id
                           - options
@@ -2316,3 +2323,39 @@ paths:
                     - vote_end
                     - committee_end
                     - proposals
+              examples:
+                committee:
+                  value: [
+                    {
+                      "committee_end": {
+                        "epoch": 10,
+                        "slot_id": 0
+                      },
+                      "proposals": [
+                        {
+                          "external_id": "adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280",
+                          "options": {
+                            "OneOf": {
+                              "max_value": 3
+                            }
+                          }
+                        },
+                        {
+                          "external_id": "6778d37161c3962fe62c9fa8a31a55bccf6ec2d1ea254a467d8cd994709fc404",
+                          "options": {
+                            "OneOf": {
+                              "max_value": 3
+                            }
+                          }
+                        }
+                      ],
+                      "vote_end": {
+                        "epoch": 5,
+                        "slot_id": 0
+                      },
+                      "vote_start": {
+                        "epoch": 0,
+                        "slot_id": 0
+                      }
+                    }
+                  ]
