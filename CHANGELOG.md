@@ -1,5 +1,71 @@
 # Change Log
 
+## [v0.8.19](https://github.com/input-output-hk/jormungandr/tree/v0.8.19) (2020-05-04)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.18...v0.8.19)
+
+**Implemented enhancements:**
+
+- \[VIT\] REST endpoint to list the committee [\#2070](https://github.com/input-output-hk/jormungandr/issues/2070)
+- JCLI - properly expose vote commands [\#2166](https://github.com/input-output-hk/jormungandr/pull/2166)
+- DOC - api, update specification. Fixed err/warn [\#2162](https://github.com/input-output-hk/jormungandr/pull/2162)
+- add support for script addresses [\#2158](https://github.com/input-output-hk/jormungandr/pull/2158)
+- JCli vote plan certificate [\#2157](https://github.com/input-output-hk/jormungandr/pull/2157)
+- override package version for nightly builds [\#2146](https://github.com/input-output-hk/jormungandr/pull/2146)
+- Expose VotePlans in rest service [\#2135](https://github.com/input-output-hk/jormungandr/pull/2135)
+- DOC - cleanup and updates [\#2132](https://github.com/input-output-hk/jormungandr/pull/2132)
+- Rest - api, /committees - added [\#2122](https://github.com/input-output-hk/jormungandr/pull/2122)
+- Committee block0 [\#2109](https://github.com/input-output-hk/jormungandr/pull/2109)
+- add vote plan and cast per certificate fee [\#2107](https://github.com/input-output-hk/jormungandr/pull/2107)
+- Add compatibility with the updated new certificate for vote plan [\#2096](https://github.com/input-output-hk/jormungandr/pull/2096)
+- Change mutex to std instead of tokio in watchdog intercom [\#2082](https://github.com/input-output-hk/jormungandr/pull/2082)
+- doc - api specification maintenance updates [\#2055](https://github.com/input-output-hk/jormungandr/pull/2055)
+
+**Fixed bugs:**
+
+- Build broken on FreeBSD [\#2126](https://github.com/input-output-hk/jormungandr/issues/2126)
+- Unregistered pools are still listed in the explorer [\#2074](https://github.com/input-output-hk/jormungandr/issues/2074)
+- jormungandr-lib: move sysinfo to dev-dependencies [\#2164](https://github.com/input-output-hk/jormungandr/pull/2164)
+- fix the per vote certificate fee configuration in the block0 [\#2110](https://github.com/input-output-hk/jormungandr/pull/2110)
+- correctly set tip block in stats counter for non-leader nodes [\#2108](https://github.com/input-output-hk/jormungandr/pull/2108)
+- Track retirement in explorer stake pool data [\#2076](https://github.com/input-output-hk/jormungandr/pull/2076)
+
+**Closed issues:**
+
+- Build fails on latest stable Rust 1.43.0 [\#2133](https://github.com/input-output-hk/jormungandr/issues/2133)
+- Nightly version numbers not set in binaries [\#2113](https://github.com/input-output-hk/jormungandr/issues/2113)
+- REST API Swagger documentation points to the wrong URL for specification file [\#2073](https://github.com/input-output-hk/jormungandr/issues/2073)
+- \[VIT\] list active vote plans end points [\#2069](https://github.com/input-output-hk/jormungandr/issues/2069)
+- \[VIT\] genesis block0: commitee [\#2067](https://github.com/input-output-hk/jormungandr/issues/2067)
+- \[VIT\] jcli update the transaction auth certificate command for vote plan certificates [\#2064](https://github.com/input-output-hk/jormungandr/issues/2064)
+
+**Merged pull requests:**
+
+- JCLI - certificate new vote-plan, fix empty plan [\#2163](https://github.com/input-output-hk/jormungandr/pull/2163)
+- GH - actions, update api linter [\#2161](https://github.com/input-output-hk/jormungandr/pull/2161)
+- \[Test\] Test maintenance for scenario tests [\#2154](https://github.com/input-output-hk/jormungandr/pull/2154)
+- Clippy fixes jormungandr watchdog [\#2144](https://github.com/input-output-hk/jormungandr/pull/2144)
+- Chain deps update [\#2143](https://github.com/input-output-hk/jormungandr/pull/2143)
+- chain-deps update [\#2142](https://github.com/input-output-hk/jormungandr/pull/2142)
+- reduce dependency surface [\#2137](https://github.com/input-output-hk/jormungandr/pull/2137)
+- update chain-deps and remove need for LeaderId property in the explorer [\#2134](https://github.com/input-output-hk/jormungandr/pull/2134)
+- \[Test\] ignore qa bootstrap network test [\#2131](https://github.com/input-output-hk/jormungandr/pull/2131)
+- \[Tests\] genesis decode bijection test [\#2125](https://github.com/input-output-hk/jormungandr/pull/2125)
+- \[Test \]Last block update [\#2117](https://github.com/input-output-hk/jormungandr/pull/2117)
+- \[Tests\] Retire pool integration test [\#2097](https://github.com/input-output-hk/jormungandr/pull/2097)
+- udpate all deps [\#2095](https://github.com/input-output-hk/jormungandr/pull/2095)
+- \[Tests\] Settings which allows self reference [\#2087](https://github.com/input-output-hk/jormungandr/pull/2087)
+- Bump sysinfo from 0.12.0 to 0.14.1 [\#2085](https://github.com/input-output-hk/jormungandr/pull/2085)
+- REST API: replace actix with warp [\#2083](https://github.com/input-output-hk/jormungandr/pull/2083)
+- \[Tests\] Add assertion for pool\_id from retirement cert [\#2081](https://github.com/input-output-hk/jormungandr/pull/2081)
+- \[Tests\] Quarantine White-list tests [\#2080](https://github.com/input-output-hk/jormungandr/pull/2080)
+- separate REST Context and methods implementations from Actix [\#2078](https://github.com/input-output-hk/jormungandr/pull/2078)
+- doc - api v0, cleaning [\#2077](https://github.com/input-output-hk/jormungandr/pull/2077)
+- \[Tests\] updated openapi.yaml location. updated error messages [\#2071](https://github.com/input-output-hk/jormungandr/pull/2071)
+- \[Tests\] Implement scenario tests in integration tests [\#2062](https://github.com/input-output-hk/jormungandr/pull/2062)
+- \[Test\] private scenario tests connection limits test cases [\#2047](https://github.com/input-output-hk/jormungandr/pull/2047)
+- Fix version not working for crosscompiled targets [\#2046](https://github.com/input-output-hk/jormungandr/pull/2046)
+
 ## [v0.8.18](https://github.com/input-output-hk/jormungandr/tree/v0.8.18) (2020-04-10)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/nightly...v0.8.18)
