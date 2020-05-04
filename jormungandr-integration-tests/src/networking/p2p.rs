@@ -42,15 +42,8 @@ pub fn assert_record_is_present(
         assert!(
             peer_list.iter().any(|x| {
                 let info = &x.profile.info;
-                println!(
-                    "{} == {} , {} == {}",
-                    info.id,
-                    peer.public_id().to_string(),
-                    info.address,
-                    peer.address().to_string()
-                );
-                info.id == peer.public_id().to_string()
-                    && info.address == peer.address().to_string()
+                println!("{} == {}", info.address, peer.address().to_string());
+                info.address == peer.address().to_string()
             }),
             "{}: Peer {} is not present in {} list",
             info,
@@ -69,8 +62,7 @@ pub fn assert_record_is_not_present(
         assert!(
             !peer_list.iter().any(|x| {
                 let info = &x.profile.info;
-                info.id == peer.public_id().to_string()
-                    && info.address == peer.address().to_string()
+                info.address == peer.address().to_string()
             }),
             "Peer {} is present in {} list, while should not",
             peer.alias(),
