@@ -38,9 +38,6 @@ pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
         address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port)
             .parse()
             .unwrap(),
-        id: "fe3332044877b2034c8632a08f08ee47f3fbea6c64165b3b"
-            .parse()
-            .unwrap(),
     };
 
     ConfigurationBuilder::new()
