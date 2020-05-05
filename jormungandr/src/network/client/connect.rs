@@ -31,7 +31,9 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         logger: state.logger.clone(),
     };
     let cf = async move {
-        let mut grpc_client = grpc::connect(&peer).await.map_err(ConnectError::Connect)?;
+        let mut grpc_client = grpc::connect(&peer)
+            .await
+            .map_err(ConnectError::Transport)?;
         let block0 = grpc_client
             .handshake()
             .await
@@ -112,8 +114,8 @@ pub struct ConnectFuture {
 pub enum ConnectError {
     #[error("connection has been canceled")]
     Canceled,
-    #[error("connection failed")]
-    Connect(#[source] tonic::transport::Error),
+    #[error(transparent)]
+    Transport(tonic::transport::Error),
     #[error("protocol handshake failed: {0}")]
     Handshake(#[source] HandshakeError),
     #[error("failed to decode genesis block in response")]
