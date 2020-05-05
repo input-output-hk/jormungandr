@@ -480,6 +480,10 @@ fn connect_and_propagate(
                         info!(conn_logger, "gRPC connection to peer failed"; "reason" => %e);
                         false
                     }
+                    ConnectError::Handshake(e) => {
+                        info!(conn_logger, "protocol handshake with peer failed"; "reason" => %e);
+                        false
+                    }
                     ConnectError::Canceled => {
                         debug!(conn_logger, "connection to peer has been canceled");
                         true
