@@ -158,16 +158,17 @@ impl Progress {
 impl Client {
     fn process_block_event(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
-
         // Drive sending of a message to block task to clear the buffered
         // announcement before polling more events from the block subscription
         // stream.
+        let logger = self.logger().clone();
         let mut block_sink = Pin::new(&mut self.block_sink);
-        ready!(block_sink.as_mut().poll_ready(cx));
+        ready!(block_sink.as_mut().poll_ready(cx))
+            .map_err(|e| debug!(logger, "failed getting block sink"; "reason" => %e))?;
         if let Some(header) = self.incoming_block_announcement.take() {
             block_sink.start_send(header).map_err(|e| {
                 error!(
-                    self.logger,
+                    logger,
                     "failed to send announced block header for processing";
                     "reason" => %e,
                 );
@@ -178,7 +179,7 @@ impl Client {
             // while no progress has been made.
             block_sink.as_mut().poll_flush(cx).map_err(|e| {
                 error!(
-                    self.logger,
+                    logger,
                     "processing of incoming block messages failed";
                     "reason" => %e,
                 );
@@ -189,11 +190,15 @@ impl Client {
         // the buffered solicitation before polling more events from the
         // block subscription stream.
         let mut client_box = Pin::new(&mut self.client_box);
-        ready!(client_box.as_mut().poll_ready(cx));
+        let logger = &self.logger;
+        ready!(client_box.as_mut().poll_ready(cx)).map_err(|e| {
+            debug!(logger, "error processing block event"; "reason" => %e);
+            ()
+        })?;
         if let Some(msg) = self.incoming_solicitation.take() {
             client_box.start_send(msg).map_err(|e| {
                 error!(
-                    self.logger,
+                    logger,
                     "failed to send client request for processing";
                     "reason" => %e,
                 );

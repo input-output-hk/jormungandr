@@ -39,7 +39,7 @@ use jormungandr_lib::{
 
 use std::sync::Arc;
 
-use futures03::{channel::mpsc::TrySendError, prelude::*};
+use futures03::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -55,6 +55,8 @@ pub enum Error {
     Deserialize(std::io::Error),
     #[error(transparent)]
     TxMsgSendError(#[from] TrySendError<TransactionMsg>),
+    #[error(transparent)]
+    MsgSendError(#[from] SendError),
     #[error("Block value calculation error")]
     Value(#[from] ValueError),
     #[error("Could not find block for tip")]
@@ -105,9 +107,14 @@ pub async fn get_account_state(
 
 pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {
     let logger = context.logger()?.new(o!("request" => "message_logs"));
-    let (reply_handle, reply_future) = intercom::unary_reply(logger);
+    let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
     let mut mbox = context.try_full()?.transaction_task.clone();
-    mbox.send(TransactionMsg::GetLogs(reply_handle)).await;
+    mbox.send(TransactionMsg::GetLogs(reply_handle))
+        .await
+        .map_err(|e| {
+            debug!(&logger, "error getting message logs"; "reason" => %e);
+            Error::MsgSendError(e)
+        })?;
     reply_future.await.map_err(Into::into)
 }
 
@@ -419,9 +426,14 @@ pub async fn get_network_stats(context: &Context) -> Result<Vec<PeerStats>, Erro
     let full_context = context.try_full()?;
 
     let logger = context.logger()?.new(o!("request" => "network_stats"));
-    let (reply_handle, reply_future) = intercom::unary_reply(logger);
+    let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
     let mut mbox = full_context.network_task.clone();
-    mbox.send(NetworkMsg::PeerInfo(reply_handle)).await;
+    mbox.send(NetworkMsg::PeerInfo(reply_handle))
+        .await
+        .map_err(|e| {
+            debug!(&logger, "error getting network stats"; "reason" => %e);
+            Error::MsgSendError(e)
+        })?;
     let peer_stats = reply_future.await?;
     Ok(peer_stats
         .into_iter()
