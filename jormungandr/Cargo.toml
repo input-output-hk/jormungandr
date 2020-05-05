@@ -88,6 +88,7 @@ slog-syslog = "0.12.0"
 
 [features]
 with-bench = []
+codegen-rustfmt = ["chain-network/codegen-rustfmt"]
 integration-test = []
 soak-test = []
 systemd = ["slog-journald"]
