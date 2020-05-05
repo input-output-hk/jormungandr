@@ -250,13 +250,12 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
                 Protocol::Grpc => {
                     grpc::run_listen_socket(&listen, listen_state, listen_channels)
                         .await
-                        .map_err(|e| {
+                        .unwrap_or_else(|e| {
                             error!(
                             logger,
                             "failed to listen for P2P connections at {}", listen.connection;
                             "reason" => %e);
-                        })
-                        .ok();
+                        });
                 }
                 Protocol::Ntt => unimplemented!(),
             }

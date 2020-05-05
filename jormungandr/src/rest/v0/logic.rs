@@ -109,8 +109,7 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
     let mut mbox = context.try_full()?.transaction_task.clone();
     mbox.send(TransactionMsg::GetLogs(reply_handle))
         .await
-        .map_err(|e| debug!(&logger, "error getting message logs"; "reason" => %e))
-        .ok();
+        .unwrap_or_else(|e| debug!(&logger, "error getting message logs"; "reason" => %e));
     reply_future.await.map_err(Into::into)
 }
 
@@ -426,8 +425,7 @@ pub async fn get_network_stats(context: &Context) -> Result<Vec<PeerStats>, Erro
     let mut mbox = full_context.network_task.clone();
     mbox.send(NetworkMsg::PeerInfo(reply_handle))
         .await
-        .map_err(|e| debug!(&logger, "error getting network stats"; "reason" => %e))
-        .ok();
+        .unwrap_or_else(|e| debug!(&logger, "error getting network stats"; "reason" => %e));
     let peer_stats = reply_future.await?;
     Ok(peer_stats
         .into_iter()

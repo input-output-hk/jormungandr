@@ -192,8 +192,7 @@ impl Client {
         let mut client_box = Pin::new(&mut self.client_box);
         let logger = &self.logger;
         ready!(client_box.as_mut().poll_ready(cx))
-            .map_err(|e| debug!(logger, "error processing block event"; "reason" => %e))
-            .ok();
+            .unwrap_or_else(|e| debug!(logger, "error processing block event"; "reason" => %e));
         if let Some(msg) = self.incoming_solicitation.take() {
             client_box.start_send(msg).map_err(|e| {
                 error!(

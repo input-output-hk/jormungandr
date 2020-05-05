@@ -53,10 +53,9 @@ pub async fn process_block_announcements<S>(
         .into_stream()
         .forward(sink)
         .await
-        .map_err(|e| {
+        .unwrap_or_else(|e| {
             debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
-        })
-        .ok();
+        });
 }
 
 pub async fn process_gossip<S>(
@@ -72,14 +71,13 @@ pub async fn process_gossip<S>(
         .into_stream()
         .forward(processor)
         .await
-        .map_err(|e| {
+        .unwrap_or_else(|e| {
             debug!(
                 logger,
                 "processing of inbound gossip failed";
                 "error" => ?e,
             );
-        })
-        .ok();
+        });
 }
 
 pub async fn process_fragments<S>(
@@ -96,10 +94,9 @@ pub async fn process_fragments<S>(
         .into_stream()
         .forward(sink)
         .await
-        .map_err(|e| {
+        .unwrap_or_else(|e| {
             debug!(logger, "processing of inbound subscription stream failed"; "error" => ?e);
-        })
-        .ok();
+        });
 }
 
 #[must_use = "sinks do nothing unless polled"]
@@ -331,8 +328,7 @@ impl FragmentProcessor {
     fn poll_send_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         let logger = &self.logger;
         ready!(self.mbox.poll_ready(cx))
-            .map_err(|e| debug!(logger, "error sending fragment"; "reason" => %e))
-            .ok();
+            .unwrap_or_else(|e| debug!(logger, "error sending fragment"; "reason" => %e));
         let fragments = self.buffered_fragments.split_off(0);
         self.mbox
             .start_send(TransactionMsg::SendTransaction(
