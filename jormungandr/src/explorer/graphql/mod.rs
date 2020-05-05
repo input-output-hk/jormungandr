@@ -16,7 +16,7 @@ use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
 use futures03::executor::block_on;
 pub use juniper::http::GraphQLRequest;
-use juniper::{graphql_union, EmptyMutation, FieldResult, IntoResolvable, RootNode};
+use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -769,8 +769,8 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::PoolUpdate(c) => {
                 Ok(Certificate::PoolUpdate(PoolUpdate::from(c)))
             }
-            certificate::Certificate::VotePlan(c) => todo!("Vote plans are not yet supported"),
-            certificate::Certificate::VoteCast(c) => todo!("Vote casts are not yet supported"),
+            certificate::Certificate::VotePlan(_c) => todo!("Vote plans are not yet supported"),
+            certificate::Certificate::VoteCast(_c) => todo!("Vote casts are not yet supported"),
         }
     }
 }
