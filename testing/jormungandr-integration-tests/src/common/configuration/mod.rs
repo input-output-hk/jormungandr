@@ -69,6 +69,7 @@ fn get_working_directory() -> PathBuf {
 pub fn get_openapi_path() -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.pop();
+    path.pop();
     path.push("doc");
     path.push("api");
     path.push("v0.yaml");
