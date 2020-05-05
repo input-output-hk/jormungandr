@@ -1687,10 +1687,8 @@ dependencies = [
  "chain-time",
  "chrono",
  "ed25519-bip32",
- "flate2",
  "hex",
  "humantime",
- "os_info",
  "poldercast",
  "quickcheck",
  "rand 0.7.3",
@@ -1700,11 +1698,8 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sysinfo",
- "tar",
  "thiserror",
  "typed-bytes",
- "zip",
 ]
 
 [[package]]

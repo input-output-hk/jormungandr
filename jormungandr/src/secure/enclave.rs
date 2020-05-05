@@ -207,25 +207,23 @@ mod tests {
     use super::*;
     use chain_crypto::SecretKey;
     use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
-    use chain_impl_mockchain::testing;
-    use rand_core;
     use tokio02 as tokio;
 
     #[tokio::test]
     async fn enclave_add_different_bft_leaders() {
         let enclave = Enclave::new();
-        let rng = rand_core::OsRng;
+        let mut rng = rand_core::OsRng;
 
         let leader1 = Leader {
             bft_leader: Some(BftLeader {
-                sig_key: SecretKey::generate(rng),
+                sig_key: SecretKey::generate(&mut rng),
             }),
             genesis_leader: None,
         };
 
         let leader2 = Leader {
             bft_leader: Some(BftLeader {
-                sig_key: SecretKey::generate(rng),
+                sig_key: SecretKey::generate(&mut rng),
             }),
             genesis_leader: None,
         };
@@ -273,26 +271,34 @@ mod tests {
         assert_eq!(leaders_data.added_leaders_cache.len(), 1);
     }
 
+    fn mk_pool_id(rng: &mut dyn rand_core::RngCore) -> chain_impl_mockchain::certificate::PoolId {
+        let mut bytes = [0; 32];
+
+        rng.fill_bytes(&mut bytes);
+
+        bytes.into()
+    }
+
     #[tokio::test]
     async fn enclave_add_different_genesis_leaders() {
         let enclave = Enclave::new();
-        let rng = rand_core::OsRng;
+        let mut rng = rand_core::OsRng;
 
         let leader1 = Leader {
             bft_leader: None,
             genesis_leader: Some(GenesisLeader {
-                sig_key: SecretKey::generate(rng),
-                vrf_key: SecretKey::generate(rng),
-                node_id: testing::TestGen::stake_pool().id(),
+                sig_key: SecretKey::generate(&mut rng),
+                vrf_key: SecretKey::generate(&mut rng),
+                node_id: mk_pool_id(&mut rng),
             }),
         };
 
         let leader2 = Leader {
             bft_leader: None,
             genesis_leader: Some(GenesisLeader {
-                sig_key: SecretKey::generate(rng),
-                vrf_key: SecretKey::generate(rng),
-                node_id: testing::TestGen::stake_pool().id(),
+                sig_key: SecretKey::generate(&mut rng),
+                vrf_key: SecretKey::generate(&mut rng),
+                node_id: mk_pool_id(&mut rng),
             }),
         };
 
@@ -312,10 +318,10 @@ mod tests {
     async fn enclave_add_duplicated_genesis_leaders() {
         let enclave = Enclave::new();
 
-        let rng = rand_core::OsRng;
-        let sig_key_1 = SecretKey::generate(rng);
-        let sig_key_2 = SecretKey::generate(rng);
-        let id = testing::TestGen::stake_pool().id();
+        let mut rng = rand_core::OsRng;
+        let sig_key_1 = SecretKey::generate(&mut rng);
+        let sig_key_2 = SecretKey::generate(&mut rng);
+        let id = mk_pool_id(&mut rng);
 
         let leader1 = Leader {
             bft_leader: None,
