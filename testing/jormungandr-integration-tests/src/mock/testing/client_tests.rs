@@ -1,15 +1,15 @@
-use crate::mock::{
-    client, read_into,
-    testing::{setup::bootstrap_node, setup::Config},
-};
-
 use crate::common::{
     jcli_wrapper,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
     transaction_utils::TransactionHash,
 };
+use crate::mock::{
+    client, read_into,
+    testing::{setup::bootstrap_node, setup::Config},
+};
 use chain_core::property::FromStr;
+use chain_core::property::Header as HeaderProp;
 use chain_impl_mockchain::{
     block::{Block, Header},
     chaintypes::ConsensusVersion,
@@ -17,7 +17,7 @@ use chain_impl_mockchain::{
     testing::builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
 };
 use chain_time::{Epoch, TimeEra};
-use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_lib::interfaces::{InitialUTxO, Log};
 
 fn fake_hash() -> Hash {
     Hash::from_str("efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944").unwrap()
@@ -233,7 +233,12 @@ pub fn upload_block_incompatible_protocol() {
         .with_parent(&tip_header)
         .build(&stake_pool, &time_era);
 
-    match client.upload_blocks(block).err().unwrap() {
+    let result = client.upload_blocks(block.clone());
+    assert!(result.is_err(),
+    "upload block with incompatible protocol should result with error expected protocol {:?}, but found block signed with: {:?}",
+    config.block0_configuration.blockchain_configuration.block0_consensus,&block.header.version());
+
+    match result.err().unwrap() {
         client::Error(
             client::ErrorKind::InvalidRequest(grpc::Error::GrpcMessage(grpc_error)),
             _,
@@ -279,7 +284,13 @@ pub fn upload_block_nonexisting_stake_pool() {
         .with_parent(&tip_header)
         .build(&stake_pool, &time_era);
 
-    match client.upload_blocks(block).err().unwrap() {
+    let result = client.upload_blocks(block.clone());
+    assert!(
+        result.is_err(),
+        "upload block for nonexisting stake pool should return error"
+    );
+
+    match result.err().unwrap() {
         client::Error(
             client::ErrorKind::InvalidRequest(grpc::Error::GrpcMessage(grpc_error)),
             _,
