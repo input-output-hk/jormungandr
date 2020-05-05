@@ -255,7 +255,8 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
                             logger,
                             "failed to listen for P2P connections at {}", listen.connection;
                             "reason" => %e);
-                        });
+                        })
+                        .ok();
                 }
                 Protocol::Ntt => unimplemented!(),
             }
