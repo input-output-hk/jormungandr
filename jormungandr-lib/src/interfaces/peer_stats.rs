@@ -16,6 +16,7 @@ pub struct PeerStats {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PeerRecord {
+    pub address: String,
     pub profile: Profile,
     pub record: Record,
     pub logs: Logs,
