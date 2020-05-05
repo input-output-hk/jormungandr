@@ -39,7 +39,7 @@ use jormungandr_lib::{
 
 use std::sync::Arc;
 
-use futures03::{channel::mpsc::TrySendError, prelude::*};
+use futures03::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -55,8 +55,8 @@ pub enum Error {
     Deserialize(std::io::Error),
     #[error(transparent)]
     TxMsgSendError(#[from] TrySendError<TransactionMsg>),
-    #[error("Sending message error")]
-    SendError,
+    #[error(transparent)]
+    MsgSendError(#[from] SendError),
     #[error("Block value calculation error")]
     Value(#[from] ValueError),
     #[error("Could not find block for tip")]
@@ -113,7 +113,7 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
         .await
         .map_err(|e| {
             debug!(&logger, "error getting message logs"; "reason" => %e);
-            Error::SendError
+            Error::MsgSendError(e)
         })?;
     reply_future.await.map_err(Into::into)
 }
@@ -432,7 +432,7 @@ pub async fn get_network_stats(context: &Context) -> Result<Vec<PeerStats>, Erro
         .await
         .map_err(|e| {
             debug!(&logger, "error getting network stats"; "reason" => %e);
-            Error::SendError
+            Error::MsgSendError(e)
         })?;
     let peer_stats = reply_future.await?;
     Ok(peer_stats
