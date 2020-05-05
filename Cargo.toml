@@ -5,10 +5,11 @@ members = [
   "jormungandr-watchdog-derive",
   "jormungandr",
   "jcli",
-  "jormungandr-integration-tests",
-  "jormungandr-scenario-tests",
+  "testing/jormungandr-testing-utils",
+  "testing/jormungandr-integration-tests",
+  "testing/jormungandr-scenario-tests",
 ]
 
 exclude = [
-    "chain-deps",
+  "chain-deps",
 ]
