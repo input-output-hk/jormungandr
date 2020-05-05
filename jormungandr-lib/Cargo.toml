@@ -55,4 +55,3 @@ features = ["blocking"]
 
 [features]
 default = []
-property-test-api = [ "chain-impl-mockchain/property-test-api", "chain-addr/property-test-api", "sysinfo" ]
