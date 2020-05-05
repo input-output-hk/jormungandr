@@ -274,7 +274,6 @@ impl GossipService for NodeService {
     }
 
     async fn peers(&self, limit: u32) -> Result<Peers, Error> {
-        let _logger = self.logger().new(o!("request" => "Peers"));
         let topology = &self.global_state.topology;
         let view = topology.view(poldercast::Selection::Any).await;
         let mut peers = Vec::new();
