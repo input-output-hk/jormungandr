@@ -327,8 +327,10 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
 impl FragmentProcessor {
     fn poll_send_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         let logger = &self.logger;
-        ready!(self.mbox.poll_ready(cx))
-            .unwrap_or_else(|e| debug!(logger, "error sending fragment"; "reason" => %e));
+        ready!(self.mbox.poll_ready(cx)).map_err(|e| {
+            debug!(logger, "error sending fragments for processing"; "reason" => %e);
+            Error::new(Code::Internal, e)
+        })?;
         let fragments = self.buffered_fragments.split_off(0);
         self.mbox
             .start_send(TransactionMsg::SendTransaction(
