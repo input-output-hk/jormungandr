@@ -216,7 +216,7 @@ impl FragmentService for NodeService {
     type GetFragmentsStream = ResponseStream<app_data::Fragment>;
     type SubscriptionStream = SubscriptionStream<FragmentSubscription>;
 
-    async fn get_fragments(&self, ids: FragmentIds) -> Result<Self::GetFragmentsStream, Error> {
+    async fn get_fragments(&self, _ids: FragmentIds) -> Result<Self::GetFragmentsStream, Error> {
         Err(net_error::Error::unimplemented())
     }
 

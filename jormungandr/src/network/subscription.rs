@@ -223,7 +223,10 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                self.as_mut().poll_flush_mbox(cx)?;
+                match self.as_mut().poll_flush_mbox(cx) {
+                    Poll::Ready(res) => res?,
+                    Poll::Pending => (),
+                }
                 Poll::Pending
             }
             Poll::Ready(()) => self
@@ -246,7 +249,10 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                self.as_mut().poll_flush_mbox(cx)?;
+                match self.as_mut().poll_flush_mbox(cx) {
+                    Poll::Ready(res) => res?,
+                    Poll::Pending => (),
+                };
                 Poll::Pending
             }
             Poll::Ready(()) => self.as_mut().poll_flush_mbox(cx),
@@ -256,7 +262,10 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                self.as_mut().poll_flush_mbox(cx)?;
+                match self.as_mut().poll_flush_mbox(cx) {
+                    Poll::Ready(res) => res?,
+                    Poll::Pending => (),
+                };
                 Poll::Pending
             }
             Poll::Ready(()) => Pin::new(&mut self.mbox)
@@ -290,7 +299,7 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
-                self.poll_complete_refresh_stat(cx);
+                ready!(self.poll_complete_refresh_stat(cx));
                 return Pin::new(&mut self.mbox).poll_flush(cx).map_err(|e| {
                     error!(
                         self.logger,

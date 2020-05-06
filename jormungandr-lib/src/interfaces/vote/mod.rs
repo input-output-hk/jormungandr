@@ -1,6 +1,5 @@
 use crate::crypto::hash::Hash;
 use crate::interfaces::blockdate::BlockDateDef;
-use chain_impl_mockchain::certificate::Proposals;
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 

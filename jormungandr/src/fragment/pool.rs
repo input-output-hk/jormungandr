@@ -9,7 +9,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
-use futures03::{compat::*, sink::SinkExt};
+use futures03::sink::SinkExt;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 
