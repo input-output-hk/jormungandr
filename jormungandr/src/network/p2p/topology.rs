@@ -22,8 +22,6 @@ pub struct View {
 /// object holding the P2pTopology of the Node
 pub struct P2pTopology {
     lock: RwLock<Topology>,
-    node_address: Address,
-    logger: Logger,
 }
 
 /// Builder object used to initialize the `P2pTopology`
@@ -74,11 +72,8 @@ impl Builder {
     }
 
     fn build(self) -> P2pTopology {
-        let node_address = self.topology.profile().address().unwrap().clone();
         P2pTopology {
             lock: RwLock::new(self.topology),
-            node_address,
-            logger: self.logger,
         }
     }
 }
@@ -118,10 +113,6 @@ impl P2pTopology {
         topology
             .exchange_gossips(with.into(), gossips.into())
             .into()
-    }
-
-    pub fn node_address(&self) -> &Address {
-        &self.node_address
     }
 
     pub async fn node(&self) -> NodeProfile {
