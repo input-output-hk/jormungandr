@@ -174,17 +174,23 @@ impl Client {
                 );
             })?;
         } else {
-            // Ignoring possible Pending return here: due to the following
-            // ready!() invocations, this function cannot return Continue
-            // while no progress has been made.
             match block_sink.as_mut().poll_flush(cx) {
-                Poll::Ready(Err(e)) => error!(
-                    logger,
-                    "processing of incoming block messages failed";
-                    "reason" => %e,
-                ),
-                _ => (),
-            };
+                Poll::Ready(Err(e)) => {
+                    error!(
+                        logger,
+                        "processing of incoming block messages failed";
+                        "reason" => %e,
+                    );
+                    Err(())
+                }
+                Poll::Pending => {
+                    // Ignoring possible Pending return here: due to the following
+                    // ready!() invocations, this function cannot return Continue
+                    // while no progress has been made.
+                    Ok(())
+                }
+                _ => Ok(()),
+            }?;
         }
 
         // Drive sending of a message to the client request task to clear
@@ -205,9 +211,6 @@ impl Client {
                 );
             })?;
         } else {
-            // Ignoring possible Pending return here: due to the following
-            // ready!() invocation, this function cannot return Continue
-            // while no progress has been made.
             match client_box.as_mut().poll_flush(cx) {
                 Poll::Ready(Err(e)) => {
                     error!(
@@ -215,9 +218,16 @@ impl Client {
                         "processing of incoming client requests failed";
                         "reason" => %e,
                     );
+                    Err(())
                 }
-                _ => (),
-            };
+                Poll::Pending => {
+                    // Ignoring possible Pending return here: due to the following
+                    // ready!() invocation, this function cannot return Continue
+                    // while no progress has been made.
+                    Ok(())
+                }
+                _ => Ok(()),
+            }?;
         }
 
         let block_events = Pin::new(&mut self.inbound_block_events);

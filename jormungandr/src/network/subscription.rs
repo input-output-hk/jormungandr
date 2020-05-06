@@ -299,9 +299,7 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
-                match self.poll_complete_refresh_stat(cx) {
-                    _ => (),
-                };
+                ready!(self.poll_complete_refresh_stat(cx));
                 return Pin::new(&mut self.mbox).poll_flush(cx).map_err(|e| {
                     error!(
                         self.logger,
