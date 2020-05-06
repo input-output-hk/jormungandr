@@ -21,6 +21,7 @@ pub struct Release {
     version: String,
     released_date: SystemTime,
     releases_per_os: HashMap<OsType, AssetDto>,
+    prerelease: bool,
 }
 
 impl Release {
@@ -57,6 +58,10 @@ impl Release {
 
     pub fn version(&self) -> String {
         self.version.clone()
+    }
+
+    pub fn prerelease(&self) -> bool {
+        self.prerelease
     }
 }
 

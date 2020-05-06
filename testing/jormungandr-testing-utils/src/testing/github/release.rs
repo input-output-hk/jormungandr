@@ -8,6 +8,7 @@ pub struct ReleaseDto {
     tag_name: String,
     published_at: SystemTime,
     assets: Vec<AssetDto>,
+    prerelease: bool,
 }
 
 impl Into<Release> for ReleaseDto {
@@ -21,6 +22,7 @@ impl Into<Release> for ReleaseDto {
                 .cloned()
                 .map(|x| (x.os_type(), x))
                 .collect(),
+            prerelease: self.prerelease,
         }
     }
 }
@@ -36,6 +38,10 @@ impl ReleaseDto {
 
     pub fn assets(&self) -> &Vec<AssetDto> {
         &self.assets
+    }
+
+    pub fn prerelease(&self) -> bool {
+        self.prerelease
     }
 }
 
