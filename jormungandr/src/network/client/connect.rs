@@ -42,6 +42,11 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         let block0_hash = HeaderHash::read(&mut buf).map_err(ConnectError::DecodeBlock0)?;
         let expected = state.global.block0_hash;
         match_block0(expected, block0_hash)?;
+        if let Some(address) = state.global.node_address() {
+            if let Some(addr) = address.to_socketaddr() {
+                grpc_client.set_public_peer(addr.into());
+            }
+        }
         let mut comms = PeerComms::new();
         let (block_sub, fragment_sub, gossip_sub) = future::try_join3(
             grpc_client
