@@ -16,6 +16,7 @@ mod subscription;
 use self::convert::Encode;
 use futures03::future;
 use futures03::prelude::*;
+use poldercast::Address;
 use thiserror::Error;
 use tokio02::time;
 
@@ -156,6 +157,10 @@ impl GlobalState {
 
     fn logger(&self) -> &Logger {
         &self.logger
+    }
+
+    pub fn node_address(&self) -> Option<&Address> {
+        self.config.profile.address()
     }
 
     pub fn topology(&self) -> &P2pTopology {
@@ -458,8 +463,8 @@ fn connect_and_propagate(
     };
     options.evict_clients = state.num_clients_to_bump();
     assert_ne!(
-        &node,
-        state.topology.node_address(),
+        Some(&node),
+        state.node_address(),
         "topology tells the node to connect to itself"
     );
     let peer = Peer::new(addr);
