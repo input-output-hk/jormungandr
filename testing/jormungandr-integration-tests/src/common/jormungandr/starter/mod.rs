@@ -1,5 +1,5 @@
 mod commands;
-use commands::JormungandrStarterCommands;
+pub use commands::{get_command, JormungandrStarterCommands};
 
 use super::ConfigurationBuilder;
 use crate::common::{
@@ -16,7 +16,7 @@ use jormungandr_testing_utils::testing::{
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::{
-    process::{Child, Command},
+    process::Child,
     time::{Duration, Instant},
 };
 
@@ -100,7 +100,7 @@ impl RestStartupVerification {
 
 impl StartupVerification for RestStartupVerification {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
@@ -143,12 +143,12 @@ impl LogStartupVerification {
 
 impl StartupVerification for LogStartupVerification {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
     fn if_succeed(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path.clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().clone());
         logger
             .contains_message("genesis block fetched")
             .unwrap_or_else(|_| false)
@@ -160,6 +160,7 @@ pub struct Starter {
     jormungandr_app_path: PathBuf,
     sleep: u64,
     role: Role,
+    alias: String,
     from_genesis: FromGenesis,
     verification_mode: StartupVerificationMode,
     on_fail: OnFail,
@@ -172,6 +173,7 @@ impl Starter {
         Starter {
             timeout: Duration::from_secs(300),
             sleep: 2,
+            alias: "".to_owned(),
             role: Role::Leader,
             from_genesis: FromGenesis::File,
             verification_mode: StartupVerificationMode::Rest,
@@ -180,6 +182,11 @@ impl Starter {
             benchmark: None,
             jormungandr_app_path: get_jormungandr_app(),
         }
+    }
+
+    pub fn alias(&mut self, alias: String) -> &mut Self {
+        self.alias = alias;
+        self
     }
 
     pub fn jormungandr_app(&mut self, path: PathBuf) -> &mut Self {
@@ -261,16 +268,10 @@ impl Starter {
     ) -> Result<(), StartupError> {
         let config = self.build_configuration();
         let start = Instant::now();
-        let mut command = self.get_command(&config);
-        println!("Starting node with configuration : {:?}", &config);
-        println!("Bootstrapping...");
-
-        let _process = command
-            .spawn()
-            .expect("failed to execute 'start jormungandr node'");
+        let _process = self.start_process(&config);
 
         loop {
-            let logger = JormungandrLogger::new(config.log_file_path.clone());
+            let logger = JormungandrLogger::new(config.log_file_path().clone());
             if start.elapsed() > self.timeout {
                 return Err(StartupError::EntryNotFoundInLogs {
                     entry: expected_msg_in_logs.to_string(),
@@ -288,8 +289,22 @@ impl Starter {
     }
 
     fn start_process(&self, config: &JormungandrConfig) -> Child {
-        println!("Starting node with configuration : {:?}", &config);
-        let mut command = self.get_command(config);
+        println!("Starting node");
+        println!(
+            "Blockchain configuration: {:?}",
+            config.block0_configuration()
+        );
+        println!(
+            "Node settings configuration: {}",
+            file_utils::read_file(&config.node_config_path())
+        );
+
+        let mut command = get_command(
+            &config.clone().into(),
+            get_jormungandr_app(),
+            self.role,
+            self.from_genesis,
+        );
 
         println!("Bootstrapping...");
 
@@ -303,6 +318,7 @@ impl Starter {
         Ok(JormungandrProcess::from_config(
             self.start_process(&config),
             config,
+            self.alias.clone(),
         ))
     }
 
@@ -351,7 +367,12 @@ impl Starter {
 
     pub fn start_fail(&mut self, expected_msg: &str) {
         let config = self.build_configuration();
-        let command = self.get_command(&config);
+        let command = get_command(
+            &config.into(),
+            get_jormungandr_app(),
+            self.role,
+            self.from_genesis,
+        );
         process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
     }
 
@@ -378,7 +399,7 @@ impl Starter {
     }
 
     fn custom_errors_found(&self, config: &JormungandrConfig) -> Result<(), StartupError> {
-        let logger = JormungandrLogger::new(config.log_file_path.clone());
+        let logger = JormungandrLogger::new(config.log_file_path().clone());
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         match logger
             .raw_log_contains_any_of(&port_occupied_msgs)
@@ -395,63 +416,43 @@ impl Starter {
         config: &JormungandrConfig,
     ) -> Result<JormungandrProcess, StartupError> {
         let start = Instant::now();
-        let logger = JormungandrLogger::new(config.log_file_path.clone());
+        let logger = JormungandrLogger::new(config.log_file_path().clone());
         loop {
             if start.elapsed() > self.timeout {
                 return Err(StartupError::Timeout {
                     timeout: self.timeout.as_secs(),
-                    log_content: file_utils::read_file(&config.log_file_path),
+                    log_content: file_utils::read_file(config.log_file_path()),
                 });
             }
             if self.if_succeed(config) {
                 println!("jormungandr is up");
-                return Ok(JormungandrProcess::from_config(process, config.clone()));
+                return Ok(JormungandrProcess::from_config(
+                    process,
+                    config.clone(),
+                    self.alias.clone(),
+                ));
             }
             self.custom_errors_found(config)?;
             if self.if_stopped(config) {
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
-                    log_content: file_utils::read_file(&config.log_file_path),
+                    log_content: file_utils::read_file(config.log_file_path()),
                 });
             }
             process_utils::sleep(self.sleep);
-        }
-    }
-
-    fn get_command(&self, config: &JormungandrConfig) -> Command {
-        let commands = JormungandrStarterCommands::from_app(self.jormungandr_app_path.clone());
-        match (self.role, self.from_genesis) {
-            (Role::Passive, _) => commands.as_passive_node(
-                &config.node_config_path,
-                &config.genesis_block_hash,
-                &config.log_file_path,
-                config.rewards_history,
-            ),
-            (Role::Leader, FromGenesis::File) => commands.as_leader_node(
-                &config.node_config_path,
-                &config.genesis_block_path,
-                &config.secret_model_paths,
-                &config.log_file_path,
-                config.rewards_history,
-            ),
-            (Role::Leader, FromGenesis::Hash) => commands.as_leader_node_from_hash(
-                &config.node_config_path,
-                &config.genesis_block_hash,
-                &config.secret_model_paths,
-                &config.log_file_path,
-                config.rewards_history,
-            ),
         }
     }
 }
 
 pub fn restart_jormungandr_node(process: JormungandrProcess, role: Role) -> JormungandrProcess {
     let config = process.config.clone();
+    let alias = process.alias();
     std::mem::drop(process);
 
     Starter::new()
         .config(config)
+        .alias(alias)
         .role(role)
         .start()
         .expect("Jormungandr restart failed")

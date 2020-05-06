@@ -72,7 +72,7 @@ impl JormungandrLogger {
     }
 
     pub fn get_error_indicators() -> Vec<&'static str> {
-        vec!["panicked", "|->"]
+        vec!["panicked", "error"]
     }
 
     pub fn get_log_content(&self) -> String {
