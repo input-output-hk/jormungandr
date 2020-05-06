@@ -43,8 +43,8 @@ pub trait Encode {
     fn encode(&self) -> Self::NetworkData;
 }
 
-pub type ResponseStream<T: Encode> =
-    stream::MapOk<intercom::ReplyStream<T, Error>, fn(T) -> T::NetworkData>;
+pub type ResponseStream<T> =
+    stream::MapOk<intercom::ReplyStream<T, Error>, fn(T) -> <T as Encode>::NetworkData>;
 
 pub fn response_stream<T: Encode>(
     reply_stream: intercom::ReplyStream<T, Error>,

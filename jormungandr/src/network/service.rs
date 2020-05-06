@@ -79,7 +79,8 @@ async fn send_message<T>(mut mbox: MessageBox<T>, msg: T, logger: Logger) -> Res
     })
 }
 
-type SubscriptionStream<S: Stream> = stream::Map<S, fn(S::Item) -> Result<S::Item, Error>>;
+type SubscriptionStream<S> =
+    stream::Map<S, fn(<S as Stream>::Item) -> Result<<S as Stream>::Item, Error>>;
 
 fn serve_subscription<S: Stream>(sub: S) -> SubscriptionStream<S> {
     sub.map(Ok)
