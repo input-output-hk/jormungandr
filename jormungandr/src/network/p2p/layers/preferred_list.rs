@@ -3,7 +3,6 @@ use poldercast::{Address, GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder
 use rand::seq::IteratorRandom;
 use rand::{Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
-use std::borrow::BorrowMut;
 use std::collections::HashSet;
 
 pub struct PreferredListLayer {
