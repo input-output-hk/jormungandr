@@ -87,6 +87,7 @@ nix = "0.17.0"
 slog-syslog = "0.12.0"
 
 [features]
+default = ["codegen-rustfmt"]
 with-bench = []
 codegen-rustfmt = ["chain-network/codegen-rustfmt"]
 integration-test = []
