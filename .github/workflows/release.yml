@@ -76,7 +76,7 @@ jobs:
         with:
           use-cross: ${{ matrix.config.cross }}
           command: rustc
-          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr -- -C target-cpu=${{ matrix.config.target_cpu }} -C lto
+          args: --release --target ${{ matrix.config.target }} -p jormungandr --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.config.target_cpu }} -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1

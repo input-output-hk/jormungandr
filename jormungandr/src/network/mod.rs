@@ -476,8 +476,12 @@ fn connect_and_propagate(
         match connecting.await {
             Err(e) => {
                 let benign = match e {
-                    ConnectError::Connect(e) => {
+                    ConnectError::Transport(e) => {
                         info!(conn_logger, "gRPC connection to peer failed"; "reason" => %e);
+                        false
+                    }
+                    ConnectError::Handshake(e) => {
+                        info!(conn_logger, "protocol handshake with peer failed"; "reason" => %e);
                         false
                     }
                     ConnectError::Canceled => {
@@ -485,7 +489,7 @@ fn connect_and_propagate(
                         true
                     }
                     _ => {
-                        info!(conn_logger, "connection to peer failed"; "reason" => %e);
+                        info!(conn_logger, "connection to peer failed"; "error" => ?e);
                         false
                     }
                 };
