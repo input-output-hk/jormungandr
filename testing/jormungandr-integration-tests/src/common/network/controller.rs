@@ -2,7 +2,7 @@ use crate::common::{
     configuration::jormungandr_config::JormungandrConfig,
     file_utils,
     jormungandr::starter::{Starter, StartupError},
-    network::Node,
+    jormungandr::JormungandrProcess,
 };
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::NodeConfig;
@@ -82,17 +82,17 @@ impl Controller {
         }
     }
 
-    pub fn spawn_and_wait(&mut self, alias: &str) -> Node {
+    pub fn spawn_and_wait(&mut self, alias: &str) -> JormungandrProcess {
         self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Leader)
             .expect(&format!("cannot start {}", alias))
     }
 
-    pub fn spawn_as_passive_and_wait(&mut self, alias: &str) -> Node {
+    pub fn spawn_as_passive_and_wait(&mut self, alias: &str) -> JormungandrProcess {
         self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Passive)
             .expect(&format!("cannot start {}", alias))
     }
 
-    pub fn spawn_node_async(&mut self, alias: &str) -> Result<Node, ControllerError> {
+    pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, ControllerError> {
         let mut spawn_params = SpawnParams::new(alias);
         spawn_params.leadership_mode(LeadershipMode::Leader);
         spawn_params.persistence_mode(PersistenceMode::InMemory);
@@ -100,11 +100,11 @@ impl Controller {
         let config = self.make_config_for(&mut spawn_params).unwrap();
         Starter::new()
             .config(config)
+            .alias(spawn_params.alias.clone())
             .from_genesis(spawn_params.get_leadership_mode().clone().into())
             .role(spawn_params.get_leadership_mode().into())
             .start_async()
             .map_err(|e| ControllerError::SpawnError(e))
-            .map(|jormungandr| Node::new(jormungandr, &spawn_params.alias))
     }
 
     pub fn expect_spawn_failed(
@@ -124,15 +124,15 @@ impl Controller {
     pub fn spawn_custom(
         &mut self,
         spawn_params: &mut SpawnParams,
-    ) -> Result<Node, ControllerError> {
+    ) -> Result<JormungandrProcess, ControllerError> {
         let config = self.make_config_for(spawn_params).unwrap();
         Starter::new()
             .config(config)
+            .alias(spawn_params.alias.clone())
             .from_genesis(spawn_params.get_leadership_mode().clone().into())
             .role(spawn_params.get_leadership_mode().into())
             .start()
             .map_err(|e| ControllerError::SpawnError(e))
-            .map(|jormungandr| Node::new(jormungandr, &spawn_params.alias))
     }
 
     pub fn make_config_for(
@@ -161,17 +161,16 @@ impl Controller {
             node_setting.secrets(),
         )?;
 
-        Ok(JormungandrConfig {
-            genesis_block_path: self.block0_file.as_path().into(),
-            genesis_block_hash: self.block0_hash.to_string(),
-            node_config_path: config_file,
-            secret_model_paths: vec![config_secret],
-            block0_configuration: self.settings.block0.clone(),
-            node_config: node_setting.config.clone(),
-            secret_models: vec![node_setting.secrets().clone()],
-            log_file_path: file_utils::get_path_in_temp("log_file.log"),
-            rewards_history: false,
-        })
+        Ok(JormungandrConfig::new(
+            self.block0_file.as_path().into(),
+            self.block0_hash.to_string(),
+            config_file,
+            vec![config_secret],
+            file_utils::get_path_in_temp("log_file.log"),
+            self.settings.block0.clone(),
+            vec![node_setting.secrets().clone()],
+            false,
+        ))
     }
 
     pub fn spawn_node(
@@ -179,7 +178,7 @@ impl Controller {
         alias: &str,
         persistence_mode: PersistenceMode,
         leadership_mode: LeadershipMode,
-    ) -> Result<Node, ControllerError> {
+    ) -> Result<JormungandrProcess, ControllerError> {
         self.spawn_custom(
             SpawnParams::new(alias)
                 .leadership_mode(leadership_mode)
