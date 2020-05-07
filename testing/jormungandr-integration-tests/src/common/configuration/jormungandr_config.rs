@@ -97,16 +97,16 @@ impl JormungandrConfig {
     }
 
     pub fn refresh_node_dynamic_params(&mut self) {
-        self.regenerate_ports();
-        self.update_node_config();
+        let node_config = self.regenerate_ports();
+        self.update_node_config(node_config);
         self.inner.log_file_path = file_utils::get_path_in_temp("log_file.log");
     }
 
-    pub fn update_node_config(&mut self) {
-        self.inner.node_config_path = NodeConfigBuilder::serialize(&self.node_config());
+    fn update_node_config(&mut self, node_config: NodeConfig) {
+        self.inner.node_config_path = NodeConfigBuilder::serialize(&node_config);
     }
 
-    fn regenerate_ports(&mut self) {
+    fn regenerate_ports(&mut self) -> NodeConfig {
         let mut node_config = self.node_config();
         node_config.rest.listen = format!("127.0.0.1:{}", super::get_available_port().to_string())
             .parse()
@@ -117,6 +117,7 @@ impl JormungandrConfig {
         )
         .parse()
         .unwrap();
+        node_config
     }
 
     pub fn fees(&self) -> LinearFee {
