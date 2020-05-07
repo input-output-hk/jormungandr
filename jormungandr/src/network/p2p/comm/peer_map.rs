@@ -144,10 +144,12 @@ impl PeerMap {
     }
 
     pub fn infos(&self) -> Vec<PeerInfo> {
+        use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
+
         self.map
             .iter()
             .map(|(id, data)| PeerInfo {
-                addr: id.to_socketaddr(),
+                addr: multiaddr_to_socket_addr(id.multi_address()),
                 stats: data.stats.clone(),
             })
             .collect()

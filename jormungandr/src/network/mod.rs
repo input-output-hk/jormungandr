@@ -14,8 +14,8 @@ mod service;
 mod subscription;
 
 use self::convert::Encode;
-use futures::future;
-use futures::prelude::*;
+use futures::{future, prelude::*};
+use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
 use poldercast::Address;
 use thiserror::Error;
 use tokio::time;
@@ -450,7 +450,7 @@ fn connect_and_propagate(
     channels: Channels,
     mut options: p2p::comm::ConnectOptions,
 ) {
-    let addr = match node.to_socketaddr() {
+    let addr = match multiaddr_to_socket_addr(node.multi_address()) {
         Some(addr) => addr,
         None => {
             debug!(
@@ -527,7 +527,7 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
     let mut peers = config
         .trusted_peers
         .iter()
-        .filter_map(|peer| peer.address.to_socketaddr())
+        .filter_map(|peer| multiaddr_to_socket_addr(peer.address.multi_address()))
         .collect::<Vec<_>>();
     let mut rng = rand::thread_rng();
     peers.shuffle(&mut rng);
@@ -577,7 +577,9 @@ async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeer
     let trusted_peers = config
         .trusted_peers
         .iter()
-        .filter_map(|tp| tp.address.to_socketaddr().map(|sa| Peer::new(sa.clone())))
+        .filter_map(|tp| {
+            multiaddr_to_socket_addr(tp.address.multi_address()).map(|sa| Peer::new(sa.clone()))
+        })
         .collect::<Vec<_>>();
     if config.bootstrap_from_trusted_peers {
         let _: usize = peers.add_peers(&trusted_peers);

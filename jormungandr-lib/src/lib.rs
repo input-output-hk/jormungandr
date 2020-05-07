@@ -4,4 +4,5 @@ extern crate quickcheck;
 
 pub mod crypto;
 pub mod interfaces;
+pub mod multiaddr;
 pub mod time;
