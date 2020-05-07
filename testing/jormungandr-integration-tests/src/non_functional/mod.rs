@@ -26,7 +26,8 @@ use crate::common::{
     jormungandr::{JormungandrError, JormungandrProcess},
     process_utils,
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value, wallet::Wallet};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
+use jormungandr_testing_utils::wallet::Wallet;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

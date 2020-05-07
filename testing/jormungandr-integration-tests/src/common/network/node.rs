@@ -29,7 +29,7 @@ impl Node {
     pub fn address(&self) -> poldercast::Address {
         self.jormungandr
             .config
-            .node_config
+            .node_config()
             .p2p
             .public_address
             .clone()
@@ -37,10 +37,6 @@ impl Node {
 
     pub fn shutdown(&self) {
         self.jormungandr.shutdown();
-    }
-
-    pub fn log_stats(&self) {
-        println!("{}: {:?}", self.alias(), self.rest().stats().unwrap());
     }
 
     pub fn genesis_block_hash(&self) -> Hash {

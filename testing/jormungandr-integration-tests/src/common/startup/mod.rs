@@ -126,8 +126,8 @@ pub fn start_stake_pool(
         .map(|x| SecretModelFactory::serialize(&x))
         .collect();
 
-    config.secret_models = secrets;
-    config.secret_model_paths = secret_model_paths;
+    *config.secret_models_mut() = secrets;
+    *config.secret_model_paths_mut() = secret_model_paths;
 
     Starter::new()
         .config(config)
@@ -138,12 +138,12 @@ pub fn start_stake_pool(
 pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &JormungandrConfig) {
     let coeff = epoch_interval * 2;
     let slots_per_epoch: u32 = config
-        .block0_configuration
+        .block0_configuration()
         .blockchain_configuration
         .slots_per_epoch
         .into();
     let slot_duration: u8 = config
-        .block0_configuration
+        .block0_configuration()
         .blockchain_configuration
         .slot_duration
         .into();

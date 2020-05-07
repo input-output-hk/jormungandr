@@ -7,7 +7,9 @@ use crate::common::{
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
-    testing::{benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds},
+};
+use jormungandr_testing_utils::testing::{
+    benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
 };
 use std::{str::FromStr, time::Duration};
 
@@ -35,7 +37,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
 
     loop {
         let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
+            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
                 .assert_add_output(&receiver.address().to_string(), &output_value.into())
                 .assert_finalize()

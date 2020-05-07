@@ -75,7 +75,7 @@ pub fn wrong_protocol() {
 
     let mock_thread = start_mock(
         mock_port,
-        Hash::from_str(&config.genesis_block_hash).unwrap(),
+        Hash::from_str(&config.genesis_block_hash()).unwrap(),
         fake_hash(),
         ProtocolVersion::Bft,
         |logger: &MockLogger| logger.executed_at_least_once(MethodType::Handshake),
@@ -139,7 +139,7 @@ pub fn handshake_ok() {
 
     let mock_thread = start_mock(
         mock_port,
-        Hash::from_str(&config.genesis_block_hash).unwrap(),
+        Hash::from_str(&config.genesis_block_hash()).unwrap(),
         fake_hash(),
         ProtocolVersion::GenesisPraos,
         |logger: &MockLogger| logger.executed_at_least_once(MethodType::Handshake),

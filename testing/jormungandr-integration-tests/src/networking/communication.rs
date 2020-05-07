@@ -25,7 +25,7 @@ pub fn two_nodes_communication() {
 
     let trusted_node_config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![leader_jormungandr.as_trusted_peer()])
-        .with_block_hash(leader_config.genesis_block_hash.clone())
+        .with_block_hash(leader_config.genesis_block_hash().clone())
         .build();
 
     let trusted_jormungandr = Starter::new()
@@ -41,7 +41,7 @@ pub fn two_nodes_communication() {
         &sender,
         &utxo.associated_fund(),
         &reciever,
-        &trusted_node_config.genesis_block_hash,
+        trusted_node_config.genesis_block_hash(),
     );
 
     jcli_wrapper::assert_post_transaction(

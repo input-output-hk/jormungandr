@@ -51,7 +51,7 @@ pub fn do_simple_transaction(
 ) -> UTxOInfo {
     const TX_VALUE: u64 = 50;
     let config = jormungandr.config();
-    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    let mut tx = JCLITransactionWrapper::new_transaction(config.genesis_block_hash());
     let transaction_message = tx
         .assert_add_input_from_utxo(utxo_sender)
         .assert_add_output(&account_receiver.address().to_string(), &TX_VALUE.into())

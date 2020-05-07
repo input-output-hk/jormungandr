@@ -1,7 +1,9 @@
 use crate::common::{
-    network::{builder, params, wallet, Node},
+    jormungandr::process::JormungandrProcess,
+    network::{builder, params, wallet},
     process_utils,
 };
+
 use jormungandr_lib::{
     interfaces::{
         Explorer, LayersConfig, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest,
@@ -11,7 +13,7 @@ use jormungandr_lib::{
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
 
-pub fn assert_empty_quarantine(node: &Node, info: &str) {
+pub fn assert_empty_quarantine(node: &JormungandrProcess, info: &str) {
     let quarantine = node
         .rest()
         .p2p_quarantined()
@@ -24,7 +26,11 @@ pub fn assert_empty_quarantine(node: &Node, info: &str) {
     );
 }
 
-pub fn assert_are_in_quarantine(node: &Node, peers: Vec<&Node>, info: &str) {
+pub fn assert_are_in_quarantine(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
     let available_list = node
         .rest()
         .p2p_quarantined()
@@ -34,7 +40,7 @@ pub fn assert_are_in_quarantine(node: &Node, peers: Vec<&Node>, info: &str) {
 
 pub fn assert_record_is_present(
     peer_list: Vec<PeerRecord>,
-    peers: Vec<&Node>,
+    peers: Vec<&JormungandrProcess>,
     list_name: &str,
     info: &str,
 ) {
@@ -55,7 +61,7 @@ pub fn assert_record_is_present(
 
 pub fn assert_record_is_not_present(
     peer_list: Vec<PeerRecord>,
-    peers: Vec<&Node>,
+    peers: Vec<&JormungandrProcess>,
     list_name: &str,
 ) {
     for peer in peers {
@@ -72,7 +78,7 @@ pub fn assert_record_is_not_present(
 }
 
 pub fn assert_node_stats(
-    node: &Node,
+    node: &JormungandrProcess,
     peer_available_cnt: usize,
     peer_quarantined_cnt: usize,
     peer_total_cnt: usize,

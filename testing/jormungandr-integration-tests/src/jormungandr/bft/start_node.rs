@@ -17,7 +17,7 @@ pub fn test_jormungandr_passive_node_starts_successfully() {
 
     let passive_config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![jormungandr_leader.as_trusted_peer()])
-        .with_block_hash(leader_config.genesis_block_hash)
+        .with_block_hash(leader_config.genesis_block_hash().clone())
         .build();
 
     let jormungandr_passive = Starter::new()
@@ -44,7 +44,8 @@ pub fn test_jormungandr_passive_node_without_trusted_peers_fails_to_start() {
 #[test]
 pub fn test_jormungandr_without_initial_funds_starts_sucessfully() {
     let mut config = ConfigurationBuilder::new().build();
-    config.block0_configuration.initial.clear();
+    let block0_configuration = config.block0_configuration_mut();
+    block0_configuration.initial.clear();
     let _jormungandr = Starter::new().config(config).start().unwrap();
 }
 
@@ -72,7 +73,7 @@ pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
 
 #[test]
 pub fn test_jormungandr_without_logger_starts_successfully() {
-    let mut config = ConfigurationBuilder::new().build();
-    config.node_config.log = None;
+    let config = ConfigurationBuilder::new().build();
+    config.node_config().log = None;
     let _jormungandr = Starter::new().config(config).start().unwrap();
 }

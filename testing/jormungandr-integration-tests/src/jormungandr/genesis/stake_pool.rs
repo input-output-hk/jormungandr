@@ -34,21 +34,21 @@ pub fn create_delegate_retire_stake_pool() {
 
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
-        &config.genesis_block_hash,
+        config.genesis_block_hash(),
         &jormungandr,
         &Default::default(),
     );
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
-        &config.genesis_block_hash,
+        config.genesis_block_hash(),
         &jormungandr,
         &Default::default(),
     );
     retire_stake_pool(
         &stake_pool_id,
         &mut actor_account,
-        &config.genesis_block_hash,
+        config.genesis_block_hash(),
         &jormungandr,
         &Default::default(),
     );
