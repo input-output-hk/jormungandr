@@ -102,6 +102,13 @@ pub struct MemPoolCheck {
 }
 
 impl MemPoolCheck {
+    
+    pub fn new(fragment_id: FragmentId) -> Self {
+        Self {
+            fragment_id: fragment_id
+        }
+    }
+    
     pub fn fragment_id(&self) -> &FragmentId {
         &self.fragment_id
     }
@@ -115,7 +122,7 @@ pub enum Status {
 }
 
 #[derive(Clone)]
-struct ProgressBarController {
+pub struct ProgressBarController {
     progress_bar: ProgressBar,
     prefix: String,
     logging_mode: ProgressBarMode,
@@ -756,7 +763,7 @@ impl Node {
 use std::fmt::Display;
 
 impl ProgressBarController {
-    fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {
+    pub fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {
         ProgressBarController {
             progress_bar,
             prefix,
@@ -764,21 +771,21 @@ impl ProgressBarController {
         }
     }
 
-    fn log_info<M>(&self, msg: M)
+    pub fn log_info<M>(&self, msg: M)
     where
         M: Display,
     {
         self.log(style::info.apply_to("INFO "), msg)
     }
 
-    fn log_err<M>(&self, msg: M)
+    pub fn log_err<M>(&self, msg: M)
     where
         M: Display,
     {
         self.log(style::error.apply_to("ERROR"), style::error.apply_to(msg))
     }
 
-    fn log<L, M>(&self, lvl: L, msg: M)
+    pub fn log<L, M>(&self, lvl: L, msg: M)
     where
         L: Display,
         M: Display,

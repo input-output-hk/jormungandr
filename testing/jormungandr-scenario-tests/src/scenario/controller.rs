@@ -1,11 +1,13 @@
 use crate::{
     prepare_command,
+    legacy::{LegacySettings,LegacyNode,LegacyNodeController},
     scenario::{
         settings::{Dotifier, PrepareSettings},
         ContextChaCha, ErrorKind, ProgressBarMode, Result,
     },
     style, MemPoolCheck, Node, NodeBlock0, NodeController, Wallet,
 };
+use jormungandr_integration_tests::common::legacy::Version;
 use chain_impl_mockchain::header::HeaderId;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::Value;
@@ -167,6 +169,55 @@ impl Controller {
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
         SpawnParams::new(node_alias)
+    }
+
+    pub fn spawn_legacy_node(&mut self, params: &mut SpawnParams, version: &Version) -> Result<LegacyNodeController> {
+        let node_setting = if let Some(node_setting) = self.settings.nodes.get(&params.get_alias())
+        {
+            node_setting
+        } else {
+            bail!(ErrorKind::NodeNotFound(params.get_alias()))
+        };
+
+        let mut node_setting_overriden = node_setting.clone();
+        params.override_settings(&mut node_setting_overriden.config);
+
+        let block0_setting = match params.get_leadership_mode() {
+            LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
+            LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash.clone()),
+        };
+
+        let jormungandr = match &params.get_jormungandr() {
+            Some(jormungandr) => prepare_command(jormungandr.clone()),
+            None => self.context.jormungandr().clone(),
+        };
+
+        let pb = ProgressBar::new_spinner();
+        let pb = self.progress_bar.add(pb);
+
+
+
+        let mut legacy_node_settings = LegacySettings::from_settings(node_setting_overriden,version);
+        
+        println!("settings: {:?}, debug: {:?}", legacy_node_settings,version);
+
+
+        let mut node = LegacyNode::spawn(
+            &jormungandr,
+            &self.context,
+            pb,
+            &params.get_alias(),
+            &mut legacy_node_settings,
+            block0_setting,
+            &self.working_directory,
+            params.get_persistence_mode(),
+        )?;
+        let controller = node.controller();
+
+        self.runtime.executor().spawn(node.capture_logs());
+        self.runtime.executor().spawn(node);
+
+        Ok(controller)
     }
 
     pub fn spawn_node_custom(&mut self, params: &mut SpawnParams) -> Result<NodeController> {
