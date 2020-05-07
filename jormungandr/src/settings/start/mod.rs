@@ -196,7 +196,7 @@ fn generate_network(
     config: &Option<Config>,
     logger: &Logger,
 ) -> Result<network::Configuration, Error> {
-    use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
+    use jormungandr_lib::multiaddr::*;
 
     let (mut p2p, http_fetch_block0_service, skip_bootstrap, bootstrap_from_trusted_peers) =
         if let Some(cfg) = config {
@@ -217,6 +217,30 @@ fn generate_network(
     } else if !command_arguments.trusted_peer.is_empty() {
         p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
+
+    p2p.trusted_peers.as_mut().map(|peers| {
+        *peers = peers.iter().filter_map(|peer| {
+            let address = match multiaddr_resolve_dns(peer.address.multi_address().clone()) {
+                Ok(Some(addr)) => {
+                    info!(logger, "DNS resolved"; "fqdn" => peer.address.multi_address().to_string(), "resolved" => addr.to_string());
+                    addr
+                }
+                Ok(None) => {
+                    warn!(logger, "failed to resolve DNS"; "fqdn" => peer.address.multi_address().to_string());
+                    return None;
+                },
+                Err(e) => {
+                    warn!(logger, "failed to resolve dns"; "fqdn" => peer.address.multi_address().to_string(), "error" => e.to_string());
+                    return None;
+                }
+            };
+            let address = poldercast::Address::from(address);
+            Some(config::TrustedPeer {
+                address,
+                id: peer.id.clone(),
+            })
+        }).collect();
+    });
 
     let mut profile = poldercast::NodeProfileBuilder::new();
 
