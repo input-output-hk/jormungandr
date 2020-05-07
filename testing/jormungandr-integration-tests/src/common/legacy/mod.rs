@@ -10,7 +10,7 @@ mod rest;
 mod starter;
 mod version;
 
-pub use configuration_builder::{LegacyConfigConverter, LegacyConfigConverterError};
+pub use configuration_builder::{LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter};
 pub use jormungandr_configuration::BackwardCompatibleConfig;
 pub use node::BackwardCompatibleJormungandr;
 pub use rest::BackwardCompatibleRest;
