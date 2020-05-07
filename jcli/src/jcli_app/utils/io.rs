@@ -1,7 +1,8 @@
 use serde::de::DeserializeOwned;
-use std::io::{stdin, stdout, BufRead, BufReader, Error, Write};
-use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    io::{stdin, stdout, BufRead, BufReader, Error, Write},
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 
 /// open the given file path as a writable stream, or stdout if no path

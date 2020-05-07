@@ -1,10 +1,10 @@
 use crate::jcli_app::certificate::Error;
 use chain_crypto::Blake2b256;
-use chain_impl_mockchain::account::{DelegationRatio, DelegationType};
-use chain_impl_mockchain::accounting::account::DELEGATION_RATIO_MAX_DECLS;
-use std::convert::TryFrom;
-use std::error::Error as StdError;
-use std::str::FromStr;
+use chain_impl_mockchain::{
+    account::{DelegationRatio, DelegationType},
+    accounting::account::DELEGATION_RATIO_MAX_DECLS,
+};
+use std::{convert::TryFrom, error::Error as StdError, str::FromStr};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

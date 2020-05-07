@@ -1,7 +1,11 @@
 mod v0;
 
-use crate::jcli_app::utils::rest_api::{self, DESERIALIZATION_ERROR_MSG};
-use crate::jcli_app::utils::{host_addr, io::ReadYamlError, output_format};
+use crate::jcli_app::utils::{
+    host_addr,
+    io::ReadYamlError,
+    output_format,
+    rest_api::{self, DESERIALIZATION_ERROR_MSG},
+};
 use hex::FromHexError;
 use structopt::StructOpt;
 use thiserror::Error;

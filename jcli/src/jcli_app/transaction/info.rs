@@ -4,8 +4,7 @@ use crate::jcli_app::{
 };
 use chain_addr::AddressReadable;
 use chain_impl_mockchain::transaction::{Balance, UnspecifiedAccountIdentifier};
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::TransactionInputType;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::TransactionInputType};
 use serde_json::json;
 use std::{io::Write, path::PathBuf};
 use structopt::StructOpt;

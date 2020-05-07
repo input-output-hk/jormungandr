@@ -1,12 +1,14 @@
-use crate::jcli_app::certificate::{weighted_pool_ids::WeightedPoolIds, write_cert, Error};
-use crate::jcli_app::utils::key_parser::parse_pub_key;
+use crate::jcli_app::{
+    certificate::{weighted_pool_ids::WeightedPoolIds, write_cert, Error},
+    utils::key_parser::parse_pub_key,
+};
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::certificate::{Certificate, StakeDelegation as Delegation};
-use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
+use chain_impl_mockchain::{
+    certificate::{Certificate, StakeDelegation as Delegation},
+    transaction::UnspecifiedAccountIdentifier,
+};
 use jormungandr_lib::interfaces::Certificate as CertificateType;
-use std::convert::TryInto;
-use std::ops::Deref;
-use std::path::PathBuf;
+use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -30,9 +32,6 @@ impl StakeDelegation {
             delegation: (&self.pool_ids).try_into()?,
         };
         let cert = Certificate::StakeDelegation(content);
-        write_cert(
-            self.output.as_ref().map(|x| x.deref()),
-            CertificateType(cert),
-        )
+        write_cert(self.output.as_deref(), CertificateType(cert))
     }
 }

@@ -1,5 +1,7 @@
-use crate::jcli_app::transaction::{common, Error};
-use crate::jcli_app::utils::io;
+use crate::jcli_app::{
+    transaction::{common, Error},
+    utils::io,
+};
 use bech32::{self, FromBase32 as _};
 use chain_core::mempack::{ReadBuf, Readable as _};
 use chain_impl_mockchain::transaction::Witness;
@@ -28,7 +30,7 @@ impl AddWitness {
     }
 
     fn witness(&self) -> Result<Witness, Error> {
-        const HRP: &'static str = "witness";
+        const HRP: &str = "witness";
 
         let bech32_str =
             io::read_line(&Some(&self.witness)).map_err(|source| Error::WitnessFileReadFailed {

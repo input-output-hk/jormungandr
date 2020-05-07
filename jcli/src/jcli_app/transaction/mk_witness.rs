@@ -1,5 +1,7 @@
-use crate::jcli_app::transaction::Error;
-use crate::jcli_app::utils::{io, key_parser::read_ed25519_secret_key_from_file};
+use crate::jcli_app::{
+    transaction::Error,
+    utils::{io, key_parser::read_ed25519_secret_key_from_file},
+};
 use bech32::{self, ToBase32 as _};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain::{

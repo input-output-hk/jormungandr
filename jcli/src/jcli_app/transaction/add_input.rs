@@ -1,6 +1,5 @@
 use crate::jcli_app::transaction::{common, Error};
-use chain_impl_mockchain::fragment::FragmentId;
-use chain_impl_mockchain::transaction::TransactionIndex;
+use chain_impl_mockchain::{fragment::FragmentId, transaction::TransactionIndex};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 
@@ -29,7 +28,7 @@ impl AddInput {
 
         transaction.add_input(interfaces::TransactionInput {
             input: interfaces::TransactionInputType::Utxo(self.transaction_id.into(), self.index),
-            value: self.value.into(),
+            value: self.value,
         })?;
 
         self.common.store(&transaction)?;
@@ -66,7 +65,7 @@ mod tests {
             common: CommonTransaction {
                 staging_file: Some(temp_staging_file.clone()),
             },
-            transaction_id: transaction_id,
+            transaction_id,
             index: transaction_index,
             value: value.into(),
         };

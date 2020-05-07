@@ -1,17 +1,20 @@
-use crate::jcli_app::certificate::{read_cert, read_input, write_signed_cert, Error};
-use crate::jcli_app::utils::key_parser::{self, parse_ed25519_secret_key};
-use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::certificate::{
-    Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
-    StakeDelegation,
+use crate::jcli_app::{
+    certificate::{read_cert, read_input, write_signed_cert, Error},
+    utils::key_parser::{self, parse_ed25519_secret_key},
 };
-use chain_impl_mockchain::key::EitherEd25519SecretKey;
-use chain_impl_mockchain::transaction::{
-    AccountBindingSignature, Payload, SetAuthData, SingleAccountBindingSignature, Transaction,
-    TxBuilderState,
+use chain_crypto::{Ed25519, PublicKey};
+use chain_impl_mockchain::{
+    certificate::{
+        Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
+        StakeDelegation,
+    },
+    key::EitherEd25519SecretKey,
+    transaction::{
+        AccountBindingSignature, Payload, SetAuthData, SingleAccountBindingSignature, Transaction,
+        TxBuilderState,
+    },
 };
 use jormungandr_lib::interfaces;
-use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -33,10 +36,9 @@ pub struct Sign {
 
 impl Sign {
     pub fn exec(self) -> Result<(), Error> {
-        let cert: interfaces::Certificate =
-            read_cert(self.input.as_ref().map(|x| x.deref()))?.into();
+        let cert: interfaces::Certificate = read_cert(self.input.as_deref())?;
 
-        if self.signing_keys.len() == 0 {
+        if self.signing_keys.is_empty() {
             return Err(Error::NoSigningKeys);
         }
 
@@ -77,7 +79,7 @@ impl Sign {
             Certificate::VotePlan(_) => return Err(Error::VotePlanDoesntNeedSignature),
             Certificate::VoteCast(_) => return Err(Error::VoteCastDoesntNeedSignature),
         };
-        write_signed_cert(self.output.as_ref().map(|x| x.deref()), signedcert.into())
+        write_signed_cert(self.output.as_deref(), signedcert.into())
     }
 }
 
@@ -100,7 +102,7 @@ pub(crate) fn stake_delegation_account_binding_sign(
         Some(acid) => {
             let pk = private_key.to_public();
             let cert_pk: PublicKey<Ed25519> = acid.into();
-            if &cert_pk != &pk {
+            if cert_pk != pk {
                 return Err(Error::KeyNotFound { index: 0 });
             }
         }

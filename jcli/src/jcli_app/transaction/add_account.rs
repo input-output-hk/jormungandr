@@ -37,7 +37,7 @@ impl AddAccount {
 
         transaction.add_input(interfaces::TransactionInput {
             input: interfaces::TransactionInputType::Account(account_id.into()),
-            value: self.value.into(),
+            value: self.value,
         })?;
 
         self.common.store(&transaction)

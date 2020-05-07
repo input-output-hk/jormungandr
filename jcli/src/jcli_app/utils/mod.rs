@@ -14,6 +14,7 @@ pub use self::host_addr::HostAddr;
 pub use self::open_api_verifier::OpenApiVerifier;
 pub use self::output_format::OutputFormat;
 pub use self::rest_api::{RestApiResponse, RestApiResponseBody, RestApiSender};
+
 use bech32;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -46,7 +47,7 @@ impl Utils {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Utils::Bech32Convert(convert_args) => {
-                convert_prefix(convert_args.from_bech32, convert_args.new_hrp).map_err(|e| e.into())
+                convert_prefix(convert_args.from_bech32, convert_args.new_hrp).map_err(|e| e)
             }
         }
     }
