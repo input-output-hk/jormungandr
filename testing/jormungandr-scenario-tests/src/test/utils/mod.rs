@@ -1,13 +1,12 @@
 mod wait;
 
-pub use wait::SyncWaitParams;
-use chain_impl_mockchain::key::Hash;
 use crate::legacy::LegacyNodeController;
 use crate::{
     node::NodeController,
     scenario::Controller,
     test::{ErrorKind, Result},
 };
+use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::{
     interfaces::{FragmentStatus, NodeState},
     time::Duration as LibsDuration,
@@ -19,6 +18,7 @@ use std::{
     fmt, thread,
     time::{Duration, SystemTime},
 };
+pub use wait::SyncWaitParams;
 
 pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
     let wait_time = sync_wait_params.wait_time();
@@ -144,7 +144,6 @@ pub fn measure_single_transaction_propagation_speed(
     Ok(())
 }
 
-
 pub trait SyncNode {
     fn alias(&self) -> &str;
     fn last_block_height(&self) -> u32;
@@ -160,14 +159,21 @@ impl SyncNode for NodeController {
     }
 
     fn last_block_height(&self) -> u32 {
-        self.stats().unwrap().stats.unwrap().last_block_height.unwrap().parse().unwrap()
+        self.stats()
+            .unwrap()
+            .stats
+            .unwrap()
+            .last_block_height
+            .unwrap()
+            .parse()
+            .unwrap()
     }
-    
+
     fn log_stats(&self) {
         println!("Node: {} -> {:?}", self.alias(), self.stats());
     }
 
-    fn all_blocks_hashes(&self) -> Vec<Hash>{
+    fn all_blocks_hashes(&self) -> Vec<Hash> {
         self.all_blocks_hashes().unwrap()
     }
 
@@ -182,23 +188,27 @@ impl SyncNode for LegacyNodeController {
     }
 
     fn last_block_height(&self) -> u32 {
-        self.stats().unwrap()["lastBlockHeight"].as_str().unwrap().parse().unwrap()
+        self.stats().unwrap()["lastBlockHeight"]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap()
     }
-    
+
     fn log_stats(&self) {
         println!("Node: {} -> {:?}", self.alias(), self.stats());
     }
 
-    fn all_blocks_hashes(&self) -> Vec<Hash>{
+    fn all_blocks_hashes(&self) -> Vec<Hash> {
         self.all_blocks_hashes().unwrap()
     }
 
     fn log_content(&self) -> String {
         self.logger().get_log_content()
     }
-} 
+}
 
-pub fn measure_and_log_sync_time<A: SyncNode +  ?Sized>(
+pub fn measure_and_log_sync_time<A: SyncNode + ?Sized>(
     nodes: Vec<&A>,
     sync_wait: Thresholds<Speed>,
     info: &str,
@@ -291,7 +301,10 @@ pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Resu
     Ok(())
 }
 
-pub fn assert_are_in_sync<A: SyncNode +  ?Sized>(sync_wait: SyncWaitParams, nodes: Vec<&A>) -> Result<()> {
+pub fn assert_are_in_sync<A: SyncNode + ?Sized>(
+    sync_wait: SyncWaitParams,
+    nodes: Vec<&A>,
+) -> Result<()> {
     if nodes.len() < 2 {
         return Ok(());
     }

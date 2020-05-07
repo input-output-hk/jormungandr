@@ -3,6 +3,7 @@ extern crate error_chain;
 #[macro_use(lazy_static)]
 extern crate lazy_static;
 
+pub mod legacy;
 pub mod node;
 mod programs;
 #[macro_use]

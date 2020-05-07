@@ -24,6 +24,7 @@ pub use jormungandr_testing_utils::testing::network_builder::{
 error_chain! {
     links {
         Node(crate::node::Error, crate::node::ErrorKind);
+        LegacyNode(crate::legacy::Error, crate::legacy::ErrorKind);
     }
 
     foreign_links {

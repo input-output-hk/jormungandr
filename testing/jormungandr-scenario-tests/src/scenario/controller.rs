@@ -1,15 +1,15 @@
 use crate::{
+    legacy::{LegacyNode, LegacyNodeController, LegacySettings},
     prepare_command,
-    legacy::{LegacySettings,LegacyNode,LegacyNodeController},
     scenario::{
         settings::{Dotifier, PrepareSettings},
         ContextChaCha, ErrorKind, ProgressBarMode, Result,
     },
     style, MemPoolCheck, Node, NodeBlock0, NodeController, Wallet,
 };
-use jormungandr_integration_tests::common::legacy::Version;
 use chain_impl_mockchain::header::HeaderId;
 use indicatif::{MultiProgress, ProgressBar};
+use jormungandr_integration_tests::common::legacy::Version;
 use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::testing::network_builder::{
     Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
@@ -171,7 +171,11 @@ impl Controller {
         SpawnParams::new(node_alias)
     }
 
-    pub fn spawn_legacy_node(&mut self, params: &mut SpawnParams, version: &Version) -> Result<LegacyNodeController> {
+    pub fn spawn_legacy_node(
+        &mut self,
+        params: &mut SpawnParams,
+        version: &Version,
+    ) -> Result<LegacyNodeController> {
         let node_setting = if let Some(node_setting) = self.settings.nodes.get(&params.get_alias())
         {
             node_setting
@@ -195,12 +199,10 @@ impl Controller {
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
+        let mut legacy_node_settings =
+            LegacySettings::from_settings(node_setting_overriden, version);
 
-
-        let mut legacy_node_settings = LegacySettings::from_settings(node_setting_overriden,version);
-        
-        println!("settings: {:?}, debug: {:?}", legacy_node_settings,version);
-
+        println!("settings: {:?}, debug: {:?}", legacy_node_settings, version);
 
         let mut node = LegacyNode::spawn(
             &jormungandr,

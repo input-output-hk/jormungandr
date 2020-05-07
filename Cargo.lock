@@ -1735,6 +1735,7 @@ dependencies = [
  "slog",
  "structopt",
  "tokio 0.1.22",
+ "yaml-rust",
 ]
 
 [[package]]

@@ -1,5 +1,4 @@
 use std::{cmp::Ordering, fmt, num::ParseIntError, str::FromStr};
-use std::fmt;
 
 #[derive(Eq, Debug, Clone)]
 pub struct Version {

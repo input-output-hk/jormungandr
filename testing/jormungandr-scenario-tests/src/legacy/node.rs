@@ -1,10 +1,9 @@
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
+    legacy::LegacySettings,
+    node::{MemPoolCheck, ProgressBarController, Status},
     style, Context,
-    legacy::{LegacySettings},
-    node::{Status,ProgressBarController,MemPoolCheck},
 };
-use yaml_rust::{YamlLoader,Yaml};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::{
     block::Block,
@@ -18,12 +17,12 @@ use jormungandr_integration_tests::{
     response_to_vec,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord,
-    PeerStats,
+    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats,
 };
 pub use jormungandr_testing_utils::testing::network_builder::{
     LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
 };
+use yaml_rust::{Yaml, YamlLoader};
 
 use rand_core::RngCore;
 use std::{
@@ -33,7 +32,6 @@ use std::{
     time::Duration,
 };
 use tokio::prelude::*;
-
 
 error_chain! {
     foreign_links {
@@ -103,7 +101,6 @@ error_chain! {
         }
     }
 }
-
 
 /// send query to a running node
 #[derive(Clone)]
@@ -370,20 +367,25 @@ impl LegacyNodeController {
                 let status = log.status().clone();
                 match log.status() {
                     Pending => {
-                        self.progress_bar
-                            .log_info(format!("Fragment '{}' is still pending", check.fragment_id()));
+                        self.progress_bar.log_info(format!(
+                            "Fragment '{}' is still pending",
+                            check.fragment_id()
+                        ));
                     }
                     Rejected { reason } => {
                         self.progress_bar.log_info(format!(
                             "Fragment '{}' rejected: {}",
-                            check.fragment_id(), reason
+                            check.fragment_id(),
+                            reason
                         ));
                         return Ok(status);
                     }
                     InABlock { date, block } => {
                         self.progress_bar.log_info(format!(
                             "Fragment '{}' in block: {} ({})",
-                            check.fragment_id(), block, date
+                            check.fragment_id(),
+                            block,
+                            date
                         ));
                         return Ok(status);
                     }

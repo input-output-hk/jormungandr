@@ -2,56 +2,62 @@ use crate::{
     node::{LeadershipMode, PersistenceMode},
     test::{
         non_functional::*,
-        utils::{self, MeasurementReportInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
 };
 use jormungandr_integration_tests::common::legacy::{
-    download_last_n_releases, get_jormungandr_bin,
+    download_last_n_releases, get_jormungandr_bin, Version,
 };
 
 use rand_chacha::ChaChaRng;
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 pub fn legacy_last_5th_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(5);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_release(context, legacy_app, "legacy_last_5th_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_release(context, legacy_app, version, "legacy_last_5th_release")
 }
 
 pub fn legacy_last_4th_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(4);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_release(context, legacy_app, "legacy_last_4th_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_release(context, legacy_app, version, "legacy_last_4th_release")
 }
 
 pub fn legacy_last_3rd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(3);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_release(context, legacy_app, "legacy_last_3rd_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_release(context, legacy_app, version, "legacy_last_3rd_release")
 }
 
 pub fn legacy_last_2nd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(2);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_release(context, legacy_app, "legacy_last_2nd_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_release(context, legacy_app, version, "legacy_last_2nd_release")
 }
 
 pub fn legacy_last_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_release(context, legacy_app, "legacy_last_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_release(context, legacy_app, version, "legacy_last_release")
 }
 
 fn test_legacy_release(
     mut context: Context<ChaChaRng>,
     legacy_app: PathBuf,
+    version: Version,
     name: &str,
 ) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
@@ -84,10 +90,12 @@ fn test_legacy_release(
     let leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader3.wait_for_bootstrap()?;
-    let leader1 = controller.spawn_node_custom(
+    let leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
-            .jormungandr(legacy_app),
+            .persistence_mode(PersistenceMode::Persistent)
+            .jormungandr(legacy_app.clone()),
+        &version,
     )?;
     leader1.wait_for_bootstrap()?;
     let leader2 =
@@ -106,11 +114,16 @@ fn test_legacy_release(
         &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader2,
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![&leader1, &leader2, &leader3, &leader4],
+        vec![
+            &leader1 as &dyn SyncNode,
+            &leader2 as &dyn SyncNode,
+            &leader3 as &dyn SyncNode,
+            &leader4 as &dyn SyncNode,
+        ],
         SyncWaitParams::network_size(4, 2).into(),
         name,
         MeasurementReportInterval::Standard,
@@ -129,40 +142,71 @@ pub fn legacy_disruption_last_5th_release(context: Context<ChaChaRng>) -> Result
     let releases = download_last_n_releases(5);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_disruption_release(context, legacy_app, "legacy_disruption_last_5th_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_disruption_release(
+        context,
+        legacy_app,
+        version,
+        "legacy_disruption_last_5th_release",
+    )
 }
 
 pub fn legacy_disruption_last_4th_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(4);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_disruption_release(context, legacy_app, "legacy_disruption_last_4th_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_disruption_release(
+        context,
+        legacy_app,
+        version,
+        "legacy_disruption_last_4th_release",
+    )
 }
 
 pub fn legacy_disruption_last_3rd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(3);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_disruption_release(context, legacy_app, "legacy_disruption_last_3rd_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_disruption_release(
+        context,
+        legacy_app,
+        version,
+        "legacy_disruption_last_3rd_release",
+    )
 }
 
 pub fn legacy_disruption_last_2nd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(2);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_disruption_release(context, legacy_app, "legacy_disruption_last_2nd_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_disruption_release(
+        context,
+        legacy_app,
+        version,
+        "legacy_disruption_last_2nd_release",
+    )
 }
 
 pub fn legacy_disruption_last_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release);
-    test_legacy_disruption_release(context, legacy_app, "legacy_disruption_last_release")
+    let version = Version::from_str(&last_release.version()).unwrap();
+    test_legacy_disruption_release(
+        context,
+        legacy_app,
+        version,
+        "legacy_disruption_last_release",
+    )
 }
 
 fn test_legacy_disruption_release(
     mut context: Context<ChaChaRng>,
     legacy_app: PathBuf,
+    version: Version,
     name: &str,
 ) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
@@ -193,11 +237,12 @@ fn test_legacy_disruption_release(
 
     controller.monitor_nodes();
 
-    let mut leader1 = controller.spawn_node_custom(
+    let mut leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
             .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
+        &version,
     )?;
     leader1.wait_for_bootstrap()?;
 
@@ -245,11 +290,12 @@ fn test_legacy_disruption_release(
     )?;
 
     leader1.shutdown()?;
-    leader1 = controller.spawn_node_custom(
+    leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
             .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app),
+        &version,
     )?;
     leader1.wait_for_bootstrap()?;
 
@@ -262,7 +308,12 @@ fn test_legacy_disruption_release(
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![&leader1, &leader2, &leader3, &leader4],
+        vec![
+            &leader1 as &dyn SyncNode,
+            &leader2 as &dyn SyncNode,
+            &leader3 as &dyn SyncNode,
+            &leader4 as &dyn SyncNode,
+        ],
         SyncWaitParams::network_size(4, 2).into(),
         name,
         MeasurementReportInterval::Standard,

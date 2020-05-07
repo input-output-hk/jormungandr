@@ -102,13 +102,12 @@ pub struct MemPoolCheck {
 }
 
 impl MemPoolCheck {
-    
     pub fn new(fragment_id: FragmentId) -> Self {
         Self {
-            fragment_id: fragment_id
+            fragment_id: fragment_id,
         }
     }
-    
+
     pub fn fragment_id(&self) -> &FragmentId {
         &self.fragment_id
     }
