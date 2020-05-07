@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
 use crate::common::{
-    configuration::{Block0ConfigurationBuilder, NodeConfigBuilder},
-    file_utils,
+    configuration::NodeConfigBuilder, file_utils, jormungandr::ConfigurationBuilder,
     legacy::BackwardCompatibleConfig,
 };
 use chain_core::mempack;
@@ -196,16 +195,7 @@ impl JormungandrConfig {
 
 impl Default for JormungandrConfig {
     fn default() -> JormungandrConfig {
-        JormungandrConfig::new(
-            PathBuf::from(""),
-            "".to_owned(),
-            PathBuf::from(""),
-            vec![],
-            PathBuf::from(""),
-            Block0ConfigurationBuilder::new().build(),
-            vec![],
-            false,
-        )
+        ConfigurationBuilder::new().build()
     }
 }
 

@@ -91,8 +91,8 @@ pub fn wrong_protocol() {
     server.shutdown();
     assert!(
         server.logger.get_log_entries().any(|x| {
-            x.msg == "connection to peer failed"
-                && x.reason_contains("protocol handshake failed: unsupported protocol version 0")
+            x.msg == "protocol handshake with peer failed"
+                && x.reason_contains("unsupported protocol version 0")
                 && x.peer_addr == peer_addr(mock_port)
                 && x.level == Level::INFO
         }),
@@ -122,7 +122,7 @@ pub fn wrong_genesis_hash() {
     assert!(
         server.logger.get_log_entries().any(|x| {
             x.msg == "connection to peer failed"
-                && x.reason_contains("genesis block hash")
+                && x.error_contains("Block0Mismatch")
                 && x.peer_addr == peer_addr(mock_port)
                 && x.level == Level::INFO
         }),

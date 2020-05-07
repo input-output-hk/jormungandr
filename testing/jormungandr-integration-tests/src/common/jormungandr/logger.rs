@@ -43,6 +43,7 @@ pub struct LogEntry {
     pub task: Option<String>,
     pub hash: Option<String>,
     pub reason: Option<String>,
+    pub error: Option<String>,
     pub peer_addr: Option<String>,
 }
 
@@ -50,6 +51,13 @@ impl LogEntry {
     pub fn reason_contains(&self, reason_part: &str) -> bool {
         match &self.reason {
             Some(reason) => reason.contains(reason_part),
+            None => false,
+        }
+    }
+
+    pub fn error_contains(&self, error_part: &str) -> bool {
+        match &self.error {
+            Some(error) => error.contains(error_part),
             None => false,
         }
     }
