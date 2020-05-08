@@ -104,7 +104,7 @@ impl Process {
 
                 info!(logger, "receiving block from leadership service");
 
-                info.timeout_spawn_failable(
+                info.timeout_spawn_fallible(
                     "process leadership block",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP),
                     process_leadership_block(
@@ -128,7 +128,7 @@ impl Process {
 
                 info!(logger, "received block announcement from network");
 
-                info.timeout_spawn_failable(
+                info.timeout_spawn_fallible(
                     "process block announcement",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT),
                     process_block_announcement(
@@ -148,7 +148,7 @@ impl Process {
                 let logger = info.logger().clone();
                 let get_next_block_scheduler = get_next_block_scheduler.clone();
 
-                info.timeout_spawn_failable(
+                info.timeout_spawn_fallible(
                     "process network blocks",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS),
                     process_network_blocks(
@@ -190,7 +190,7 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let logger = info.logger().clone();
 
-        info.run_periodic_failable(
+        info.run_periodic_fallible(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
             move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
@@ -220,7 +220,7 @@ impl Process {
         let logger = info.logger().clone();
         let future = scheduler_future
             .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
-        info.spawn_failable("pull headers scheduling", future);
+        info.spawn_fallible("pull headers scheduling", future);
         scheduler
     }
 
@@ -245,7 +245,7 @@ impl Process {
         let logger = info.logger().clone();
         let future = scheduler_future
             .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
-        info.spawn_failable("get next block scheduling", future);
+        info.spawn_fallible("get next block scheduling", future);
         scheduler
     }
 }

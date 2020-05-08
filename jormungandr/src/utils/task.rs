@@ -196,7 +196,7 @@ impl TokioServiceInfo {
 
     /// Access the service's handle
     #[inline]
-    pub fn handle(&self) -> &Handle {
+    pub fn runtime_handle(&self) -> &Handle {
         &self.handle
     }
 
@@ -224,7 +224,7 @@ impl TokioServiceInfo {
     }
 
     /// just like spawn but instead log an error on Result::Err
-    pub fn spawn_failable<F, E>(&self, name: &'static str, future: F)
+    pub fn spawn_fallible<F, E>(&self, name: &'static str, future: F)
     where
         F: Send + 'static,
         E: Debug,
@@ -256,7 +256,7 @@ impl TokioServiceInfo {
     }
 
     /// just like spawn_failable but add a timeout
-    pub fn timeout_spawn_failable<F, E>(&self, name: &'static str, timeout: Duration, future: F)
+    pub fn timeout_spawn_fallible<F, E>(&self, name: &'static str, timeout: Duration, future: F)
     where
         F: Send + 'static,
         E: Debug,
@@ -301,7 +301,7 @@ impl TokioServiceInfo {
     // Run the closure with the specified period on the handle
     // and execute the resulting fallible async closure.
     // If the closure returns an Err, log it.
-    pub fn run_periodic_failable<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
+    pub fn run_periodic_fallible<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
     where
         F: FnMut() -> U,
         F: Send + 'static,

@@ -115,7 +115,7 @@ impl Explorer {
                     ExplorerMsg::NewBlock(block) => {
                         let mut explorer_db = self.db.clone();
                         let logger = info.logger().clone();
-                        info.spawn_failable("apply block", async move {
+                        info.spawn_fallible("apply block", async move {
                             explorer_db
                                 .apply_block(block)
                                 .map(move |result| match result {
