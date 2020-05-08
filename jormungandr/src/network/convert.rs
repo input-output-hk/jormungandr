@@ -6,7 +6,7 @@ use chain_core::property::{Deserialize, Serialize};
 use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
 
-use futures03::stream::{self, TryStreamExt};
+use futures::stream::{self, TryStreamExt};
 
 use std::convert::TryFrom;
 

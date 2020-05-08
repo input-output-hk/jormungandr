@@ -39,7 +39,7 @@ use jormungandr_lib::{
 
 use std::sync::Arc;
 
-use futures03::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

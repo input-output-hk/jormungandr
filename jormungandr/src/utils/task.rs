@@ -8,7 +8,7 @@
 use crate::log;
 
 use slog::Logger;
-use tokio_compat::runtime::{self, Runtime, TaskExecutor};
+use tokio::runtime::{Handle, Runtime};
 
 use std::fmt::Debug;
 use std::future::Future;
@@ -41,12 +41,12 @@ pub struct Service {
 
 /// the current future service information
 ///
-/// retrieve the name, the up time, the logger and the executor
+/// retrieve the name, the up time, the logger and the handle
 pub struct TokioServiceInfo {
     name: &'static str,
     up_time: Instant,
     logger: Logger,
-    executor: TaskExecutor,
+    handle: Handle,
 }
 
 pub struct TaskMessageBox<Msg>(Sender<Msg>);
@@ -70,12 +70,12 @@ impl Services {
             logger: logger,
             services: Vec::new(),
             finish_listener: ServiceFinishListener::new(),
-            runtime: runtime::Builder::new().build().unwrap(),
+            runtime: Runtime::new().unwrap(),
         }
     }
 
     /// Spawn the given Future in a new dedicated runtime
-    pub fn spawn_future_std<F, T>(&mut self, name: &'static str, f: F)
+    pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         F: Send + 'static,
@@ -86,17 +86,17 @@ impl Services {
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
 
-        let executor = self.runtime.executor();
+        let handle = self.runtime.handle().clone();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
             logger: logger.clone(),
-            executor,
+            handle,
         };
 
         let finish_notifier = self.finish_listener.notifier();
-        self.runtime.spawn_std(async move {
+        self.runtime.spawn(async move {
             f(future_service_info).await;
             info!(logger, "service finished");
             // send the finish notifier if the service finished with an error.
@@ -112,7 +112,7 @@ impl Services {
     }
 
     /// Spawn the given Future in a new dedicated runtime
-    pub fn spawn_try_future_std<F, T>(&mut self, name: &'static str, f: F)
+    pub fn spawn_try_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         F: Send + 'static,
@@ -123,17 +123,17 @@ impl Services {
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
 
-        let executor = self.runtime.executor();
+        let handle = self.runtime.handle().clone();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
             logger: logger.clone(),
-            executor,
+            handle,
         };
 
         let finish_notifier = self.finish_listener.notifier();
-        self.runtime.spawn_std(async move {
+        self.runtime.spawn(async move {
             let res = f(future_service_info).await;
             let outcome = if res.is_ok() {
                 "successfully"
@@ -160,7 +160,7 @@ impl Services {
     }
 
     // Run the task to completion
-    pub fn block_on_task_std<F, Fut, T>(&mut self, name: &'static str, f: F) -> T
+    pub fn block_on_task<F, Fut, T>(&mut self, name: &'static str, f: F) -> T
     where
         F: FnOnce(TokioServiceInfo) -> Fut,
         Fut: Future<Output = T>,
@@ -169,15 +169,15 @@ impl Services {
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
-        let executor = self.runtime.executor();
+        let handle = self.runtime.handle().clone();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
             logger: logger,
-            executor,
+            handle,
         };
-        self.runtime.block_on_std(f(future_service_info))
+        self.runtime.block_on(f(future_service_info))
     }
 }
 
@@ -194,10 +194,10 @@ impl TokioServiceInfo {
         self.name
     }
 
-    /// Access the service's executor
+    /// Access the service's handle
     #[inline]
-    pub fn executor(&self) -> &TaskExecutor {
-        &self.executor
+    pub fn runtime_handle(&self) -> &Handle {
+        &self.handle
     }
 
     /// access the service's logger
@@ -213,18 +213,18 @@ impl TokioServiceInfo {
         self.logger
     }
 
-    /// spawn a std::future within the service's tokio executor
-    pub fn spawn_std<F>(&self, name: &'static str, future: F)
+    /// spawn a std::future within the service's tokio handle
+    pub fn spawn<F>(&self, name: &'static str, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.executor.spawn_std(future)
+        self.handle.spawn(future);
     }
 
-    /// just like spawn_std but instead log an error on Result::Err
-    pub fn spawn_failable_std<F, E>(&self, name: &'static str, future: F)
+    /// just like spawn but instead log an error on Result::Err
+    pub fn spawn_fallible<F, E>(&self, name: &'static str, future: F)
     where
         F: Send + 'static,
         E: Debug,
@@ -232,31 +232,31 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.executor.spawn_std(async move {
+        self.handle.spawn(async move {
             match future.await {
                 Ok(()) => trace!(logger, "{} finished successfully", name),
                 Err(e) => error!(logger, "{} finished with error", name; "error" => ?e),
             }
-        })
+        });
     }
 
-    /// just like spawn_std but add a timeout
-    pub fn timeout_spawn_std<F>(&self, name: &'static str, timeout: Duration, future: F)
+    /// just like spawn but add a timeout
+    pub fn timeout_spawn<F>(&self, name: &'static str, timeout: Duration, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.executor.spawn_std(async move {
-            match tokio02::time::timeout(timeout, future).await {
+        self.handle.spawn(async move {
+            match tokio::time::timeout(timeout, future).await {
                 Err(_) => error!(logger, "task {} timedout", name),
                 Ok(()) => {}
             };
-        })
+        });
     }
 
-    /// just like spawn_failable_std but add a timeout
-    pub fn timeout_spawn_failable_std<F, E>(&self, name: &'static str, timeout: Duration, future: F)
+    /// just like spawn_failable but add a timeout
+    pub fn timeout_spawn_fallible<F, E>(&self, name: &'static str, timeout: Duration, future: F)
     where
         F: Send + 'static,
         E: Debug,
@@ -264,26 +264,26 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.executor.spawn_std(async move {
-            match tokio02::time::timeout(timeout, future).await {
+        self.handle.spawn(async move {
+            match tokio::time::timeout(timeout, future).await {
                 Err(_) => error!(logger, "task {} timedout", name),
                 Ok(Err(e)) => error!(logger, "task {} finished with error", name; "error" => ?e),
                 Ok(Ok(())) => {}
             };
-        })
+        });
     }
 
-    // Run the closure with the specified period on the executor
+    // Run the closure with the specified period on the handle
     // and execute the resulting closure.
-    pub fn run_periodic_std<F, U>(&self, name: &'static str, period: Duration, mut f: F)
+    pub fn run_periodic<F, U>(&self, name: &'static str, period: Duration, mut f: F)
     where
         F: FnMut() -> U,
         F: Send + 'static,
         U: Future<Output = ()> + Send + 'static,
     {
         let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
-        self.spawn_std(name, async move {
-            let mut interval = tokio02::time::interval(period);
+        self.spawn(name, async move {
+            let mut interval = tokio::time::interval(period);
             loop {
                 let t_now = Instant::now();
                 interval.tick().await;
@@ -298,10 +298,10 @@ impl TokioServiceInfo {
         });
     }
 
-    // Run the closure with the specified period on the executor
+    // Run the closure with the specified period on the handle
     // and execute the resulting fallible async closure.
     // If the closure returns an Err, log it.
-    pub fn run_periodic_failable_std<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
+    pub fn run_periodic_fallible<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
     where
         F: FnMut() -> U,
         F: Send + 'static,
@@ -309,8 +309,8 @@ impl TokioServiceInfo {
         U: Future<Output = Result<(), E>> + Send + 'static,
     {
         let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
-        self.spawn_std(name, async move {
-            let mut interval = tokio02::time::interval(period);
+        self.spawn(name, async move {
+            let mut interval = tokio::time::interval(period);
             loop {
                 let t_now = Instant::now();
                 interval.tick().await;

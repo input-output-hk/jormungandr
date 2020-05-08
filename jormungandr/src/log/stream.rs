@@ -1,9 +1,16 @@
 //! A logging adapter for streams.
 
-use futures::prelude::*;
+use futures::{
+    prelude::*,
+    task::{Context, Poll},
+};
+use pin_project::pin_project;
 use slog::{Level, Logger, Record, RecordStatic};
 
-use std::fmt::{self, Debug, Display};
+use std::{
+    fmt::{self, Debug, Display},
+    pin::Pin,
+};
 
 /// An extension adapter trait to augment streams with logging.
 pub trait Log: Sized {
@@ -57,7 +64,9 @@ impl<S> Log for S where S: Stream {}
 
 /// A stream adapter logging items produced by the wrapped stream.
 #[must_use = "streams do nothing unless polled"]
+#[pin_project]
 pub struct LoggingStream<'a, S, M = &'a str> {
+    #[pin]
     stream: S,
     logger: Logger,
     message: M,
@@ -81,19 +90,19 @@ where
     M: Display,
 {
     type Item = S::Item;
-    type Error = S::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        match try_ready!(self.stream.poll()) {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let inner = self.project();
+        match futures::ready!(inner.stream.poll_next(cx)) {
             Some(item) => {
-                self.logger.log(&Record::new(
-                    &self.record_static,
-                    &format_args!("{}", self.message),
+                inner.logger.log(&Record::new(
+                    &inner.record_static,
+                    &format_args!("{}", inner.message),
                     b!("item" => ?item),
                 ));
-                Ok(Some(item).into())
+                Poll::Ready(Some(item))
             }
-            None => Ok(None.into()),
+            None => Poll::Ready(None),
         }
     }
 }

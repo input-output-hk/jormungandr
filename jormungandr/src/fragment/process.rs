@@ -7,7 +7,7 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-use tokio02::stream::StreamExt;
+use tokio::stream::StreamExt;
 
 pub struct Process {
     pool: Pool,

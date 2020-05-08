@@ -12,7 +12,7 @@ use poldercast::{
     NodeProfile, PolicyReport, StrikeReason, Topology,
 };
 use slog::Logger;
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 pub struct View {
     pub self_node: NodeProfile,

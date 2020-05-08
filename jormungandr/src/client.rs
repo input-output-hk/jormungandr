@@ -5,8 +5,8 @@ use crate::utils::async_msg::MessageQueue;
 use crate::utils::task::TokioServiceInfo;
 use chain_core::property::HasHeader;
 
-use futures03::prelude::*;
-use tokio02::time::timeout;
+use futures::prelude::*;
+use tokio::time::timeout;
 
 use std::time::Duration;
 
@@ -41,7 +41,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
                 handle.reply_ok(tip);
             };
             let logger = info.logger().new(o!("request" => "GetBlockTip"));
-            info.spawn_failable_std(
+            info.spawn_fallible(
                 "get block tip",
                 timeout(Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCK_TIP), fut).map_err(
                     move |e| {
@@ -56,7 +56,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
         }
         ClientMsg::GetHeaders(ids, handle) => {
             let storage = task_data.storage.clone();
-            info.timeout_spawn_failable_std(
+            info.timeout_spawn_fallible(
                 "GetHeaders",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS),
                 handle_get_headers(storage, ids, handle),
@@ -64,7 +64,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
         }
         ClientMsg::GetHeadersRange(checkpoints, to, handle) => {
             let storage = task_data.storage.clone();
-            info.timeout_spawn_failable_std(
+            info.timeout_spawn_fallible(
                 "GetHeadersRange",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS_RANGE),
                 handle_get_headers_range(storage, checkpoints, to, handle),
@@ -72,7 +72,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
         }
         ClientMsg::GetBlocks(ids, handle) => {
             let storage = task_data.storage.clone();
-            info.timeout_spawn_failable_std(
+            info.timeout_spawn_fallible(
                 "get blocks",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCKS),
                 handle_get_blocks(storage, ids, handle),
@@ -81,7 +81,7 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
         ClientMsg::PullBlocksToTip(from, handle) => {
             let storage = task_data.storage.clone();
             let blockchain_tip = task_data.blockchain_tip.clone();
-            info.timeout_spawn_failable_std(
+            info.timeout_spawn_fallible(
                 "PullBlocksToTip",
                 Duration::from_secs(PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP),
                 handle_pull_blocks_to_tip(storage, blockchain_tip, from, handle),

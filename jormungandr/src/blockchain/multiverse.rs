@@ -1,7 +1,7 @@
 use crate::blockcfg::{ChainLength, HeaderHash, Ledger, Multiverse as MultiverseData};
 use chain_impl_mockchain::multiverse;
 use std::sync::Arc;
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 pub struct Multiverse<T> {
     inner: Arc<RwLock<MultiverseData<T>>>,

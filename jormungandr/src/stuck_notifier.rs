@@ -4,7 +4,7 @@ use chain_time::{
     Epoch,
 };
 use std::time::{Duration, SystemTime};
-use tokio02::time::interval;
+use tokio::time::interval;
 
 pub async fn check_last_block_time(
     service_info: TokioServiceInfo,

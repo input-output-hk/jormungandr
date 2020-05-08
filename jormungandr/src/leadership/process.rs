@@ -15,7 +15,7 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot,
 };
-use futures03::{future::TryFutureExt, sink::SinkExt};
+use futures::{future::TryFutureExt, sink::SinkExt};
 use jormungandr_lib::{
     interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
@@ -23,7 +23,7 @@ use jormungandr_lib::{
 use slog::Logger;
 use std::{collections::VecDeque, sync::Arc, time::Instant};
 use thiserror::Error;
-use tokio02::time::{delay_until, timeout_at, Instant as TokioInstant};
+use tokio::time::{delay_until, timeout_at, Instant as TokioInstant};
 
 #[derive(Error, Debug)]
 pub enum LeadershipError {

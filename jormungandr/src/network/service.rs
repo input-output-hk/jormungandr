@@ -15,7 +15,7 @@ use chain_network::data::{
 use chain_network::error::{self as net_error, Error};
 
 use async_trait::async_trait;
-use futures03::prelude::*;
+use futures::prelude::*;
 use slog::Logger;
 
 use std::convert::TryFrom;

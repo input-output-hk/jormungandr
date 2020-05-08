@@ -24,10 +24,10 @@ use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse;
-use futures03::prelude::*;
+use futures::prelude::*;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Explorer {
@@ -115,7 +115,7 @@ impl Explorer {
                     ExplorerMsg::NewBlock(block) => {
                         let mut explorer_db = self.db.clone();
                         let logger = info.logger().clone();
-                        info.spawn_failable_std("apply block", async move {
+                        info.spawn_fallible("apply block", async move {
                             explorer_db
                                 .apply_block(block)
                                 .map(move |result| match result {

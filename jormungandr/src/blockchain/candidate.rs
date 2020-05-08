@@ -5,7 +5,7 @@ use super::{
 use crate::blockcfg::{Header, HeaderHash};
 use crate::utils::async_msg::MessageQueue;
 
-use futures03::{
+use futures::{
     future::poll_fn,
     prelude::*,
     ready,

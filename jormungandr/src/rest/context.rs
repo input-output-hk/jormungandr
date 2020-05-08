@@ -14,7 +14,7 @@ use crate::{
 use jormungandr_lib::interfaces::NodeState;
 
 use slog::Logger;
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 pub type ContextLock = Arc<RwLock<Context>>;
 

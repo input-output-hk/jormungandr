@@ -4,8 +4,6 @@
 
 #[macro_use]
 extern crate error_chain;
-#[macro_use(try_ready)]
-extern crate futures;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -29,11 +27,11 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
-use futures03::{executor::block_on, future::TryFutureExt};
+use futures::{executor::block_on, future::TryFutureExt};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use tokio02::signal::ctrl_c;
+use tokio::signal::ctrl_c;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -124,7 +122,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             network_msgbox.clone(),
         );
 
-        services.spawn_try_future_std("fragment", move |info| {
+        services.spawn_try_future("fragment", move |info| {
             process.start(info, stats_counter, fragment_queue)
         });
     };
@@ -143,7 +141,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
             let (explorer_msgbox, explorer_queue) = async_msg::channel(EXPLORER_TASK_QUEUE_LEN);
 
-            services.spawn_future_std("explorer", move |info| async move {
+            services.spawn_future("explorer", move |info| async move {
                 explorer.start(info, explorer_queue).await
             });
             Some((explorer_msgbox, context))
@@ -161,7 +159,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
-        services.spawn_future_std("block", move |info| {
+        services.spawn_future("block", move |info| {
             let process = blockchain::Process {
                 blockchain,
                 blockchain_tip,
@@ -181,7 +179,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             blockchain_tip: blockchain_tip.clone(),
         };
 
-        services.spawn_future_std("client-query", move |info| {
+        services.spawn_future("client-query", move |info| {
             client::start(info, task_data, client_queue)
         });
     }
@@ -207,7 +205,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             block_box: block_msgbox,
         };
 
-        services.spawn_future_std("network", move |info| {
+        services.spawn_future("network", move |info| {
             let params = network::TaskParams {
                 global_state,
                 input: network_queue,
@@ -239,7 +237,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let enclave = leadership::Enclave::new(enclave.clone());
         let fragment_msgbox = fragment_msgbox.clone();
 
-        services.spawn_try_future_std("leadership", move |info| {
+        services.spawn_try_future("leadership", move |info| {
             let fut = leadership::Module::new(
                 info,
                 leadership_logs,
@@ -281,7 +279,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .no_blockchain_updates_warning_interval
             .clone();
 
-        services.spawn_future_std("stuck_notifier", move |info| {
+        services.spawn_future("stuck_notifier", move |info| {
             stuck_notifier::check_last_block_time(
                 info,
                 blockchain_tip,
@@ -290,7 +288,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    services.spawn_try_future_std("sigint_listener", move |_info| ctrl_c().map_err(|_| ()));
+    services.spawn_try_future("sigint_listener", move |_info| ctrl_c().map_err(|_| ()));
 
     match services.wait_any_finished() {
         Err(err) => {
@@ -342,7 +340,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         settings,
-    } = services.block_on_task_std("bootstrap", |info| {
+    } = services.block_on_task("bootstrap", |info| {
         bootstrap_internal(
             rest_context,
             info.logger().clone(),
@@ -380,11 +378,11 @@ async fn bootstrap_internal(
     storage: blockchain::Storage,
     settings: Settings,
 ) -> Result<BootstrapData, start_up::Error> {
-    use futures03::{
+    use futures::{
         channel::oneshot::channel,
         future::{select, Either, FutureExt},
     };
-    use tokio02::spawn;
+    use tokio::spawn;
 
     if let Some(context) = rest_context.as_ref() {
         block_on(async {
@@ -471,7 +469,7 @@ async fn bootstrap_internal(
 
         // Sleep for a little while before trying again.
         if let Either::Right((result, _)) = select(
-            tokio02::time::delay_for(BOOTSTRAP_RETRY_WAIT),
+            tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT),
             shutdown_rx.clone(),
         )
         .await
@@ -546,7 +544,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
-            use tokio02::sync::RwLock;
+            use tokio::sync::RwLock;
 
             let mut context = rest::Context::new();
             context.set_diagnostic_data(diagnostic);
@@ -556,7 +554,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let service_context = context.clone();
             let explorer = settings.explorer;
             let server_handler = rest::start_rest_server(rest, explorer, context.clone());
-            services.spawn_future_std("rest", move |info| async move {
+            services.spawn_future("rest", move |info| async move {
                 service_context.write().await.set_logger(info.into_logger());
                 server_handler.await
             });
@@ -578,7 +576,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         })
     }
 
-    let block0 = services.block_on_task_std("prepare_block_0", |_service_info| {
+    let block0 = services.block_on_task("prepare_block_0", |_service_info| {
         start_up::prepare_block_0(
             &settings,
             &storage,

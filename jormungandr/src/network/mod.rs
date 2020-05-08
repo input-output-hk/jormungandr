@@ -14,11 +14,11 @@ mod service;
 mod subscription;
 
 use self::convert::Encode;
-use futures03::future;
-use futures03::prelude::*;
+use futures::future;
+use futures::prelude::*;
 use poldercast::Address;
 use thiserror::Error;
-use tokio02::time;
+use tokio::time;
 
 // Constants
 
@@ -65,7 +65,7 @@ use crate::utils::{
     task::TokioServiceInfo,
 };
 use chain_network::data::gossip::Gossip;
-use futures03::{channel::oneshot::Receiver, future::Shared};
+use futures::{channel::oneshot::Receiver, future::Shared};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
@@ -171,7 +171,7 @@ impl GlobalState {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        tokio02::spawn(f);
+        tokio::spawn(f);
     }
 
     fn inc_client_count(&self) {
@@ -267,7 +267,7 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
         }
     };
 
-    service_info.spawn_std(
+    service_info.spawn(
         "gossip",
         start_gossiping(global_state.clone(), channels.clone()),
     );
@@ -277,7 +277,7 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
     let reset_state = global_state.clone();
 
     if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
-        service_info.run_periodic_std("force reset topology", interval, move || {
+        service_info.run_periodic("force reset topology", interval, move || {
             let state = reset_state.clone();
             async move { state.topology.force_reset_layers().await }
         });
@@ -616,7 +616,7 @@ pub async fn bootstrap(
     bootstrap_stopper: Shared<Receiver<()>>,
     logger: &Logger,
 ) -> Result<bool, bootstrap::Error> {
-    use futures03::future::{select, Either, FutureExt};
+    use futures::future::{select, Either, FutureExt};
 
     if config.protocol != Protocol::Grpc {
         unimplemented!()

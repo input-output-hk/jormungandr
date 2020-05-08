@@ -8,10 +8,10 @@ use crate::blockcfg::HeaderHash;
 use chain_core::mempack::{self, ReadBuf, Readable};
 use chain_network::error::{self as net_error, HandshakeError};
 
-use futures03::channel::oneshot;
-use futures03::future::BoxFuture;
-use futures03::prelude::*;
-use futures03::ready;
+use futures::channel::oneshot;
+use futures::future::BoxFuture;
+use futures::prelude::*;
+use futures::ready;
 
 use std::pin::Pin;
 use std::task::{Context, Poll};

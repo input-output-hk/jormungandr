@@ -26,8 +26,7 @@ chain-time      = { path = "../chain-deps/chain-time" }
 cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 error-chain = "0.12"
-futures    = "0.1"
-futures03 = { package = "futures", version = "0.3.4", features = ["compat"] }
+futures = "0.3.4"
 hex = "0.4"
 http = "0.1.16"
 humantime = "2.0"
@@ -53,15 +52,13 @@ slog-scope = "4.1"
 slog-term = "2.4.0"
 structopt = "^0.3"
 thiserror = "1.0.16"
-tokio      = "^0.1.16"
-tokio-compat = "^0.1.5"
-tokio02 = { package = "tokio", version = "0.2.12", features = ["full"]}
-tokio-threadpool = "0.1"
+tokio = { version = "0.2.12", features = ["rt-threaded", "time", "sync", "stream", "signal", "test-util", "blocking"] }
 tonic = "0.2"
 bech32 = "0.7"
 async-trait = "0.1"
 lru = "^0.4.3"
 warp = { version = "0.2.2", features = ["tls"] }
+pin-project = "0.4"
 
 [target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
 version = "0.10.4"

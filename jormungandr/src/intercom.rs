@@ -9,8 +9,8 @@ use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
-use futures03::channel::{mpsc, oneshot};
-use futures03::prelude::*;
+use futures::channel::{mpsc, oneshot};
+use futures::prelude::*;
 use slog::Logger;
 use std::{
     error,

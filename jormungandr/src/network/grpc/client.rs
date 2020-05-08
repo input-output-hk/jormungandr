@@ -6,7 +6,7 @@ use crate::{
 };
 use chain_network::data as net_data;
 use chain_network::error as net_error;
-use futures03::prelude::*;
+use futures::prelude::*;
 use slog::Logger;
 use thiserror::Error;
 use tonic::transport;
