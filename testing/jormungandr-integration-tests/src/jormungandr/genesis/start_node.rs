@@ -81,8 +81,8 @@ pub fn test_genesis_stake_pool_with_utxo_faucet_starts_successfully() {
         &stake_pool_id,
     );
     let secret_file = SecretModelFactory::serialize(&secret);
-    config.secret_models = vec![secret];
-    config.secret_model_paths = vec![secret_file];
+    *config.secret_models_mut() = vec![secret];
+    *config.secret_model_paths_mut() = vec![secret_file];
 
     let _jormungandr = Starter::new().config(config).start().unwrap();
 }

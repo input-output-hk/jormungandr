@@ -33,7 +33,7 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
     let utxo = config.block0_utxo_for_address(&sender);
 
     let mut transaction_wrapper =
-        JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+        JCLITransactionWrapper::new_transaction(&config.genesis_block_hash());
     let transaction_wrapper = transaction_wrapper
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
@@ -68,7 +68,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
     let utxo = config.block0_utxo_for_address(&sender);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
+    let block0_hash = jcli_wrapper::assert_genesis_hash(config.genesis_block_path());
     let first_transaction = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
         &utxo.associated_fund(),
@@ -111,7 +111,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
 
     let utxo = jormungandr.config.block0_utxo_for_address(&sender);
     let transaction_message =
-        JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
+        JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
             .assert_add_input_from_utxo(&utxo)
             .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
             .assert_finalize()
@@ -139,7 +139,7 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
     let rest_addr = jormungandr.rest_address();
     let utxo = config.block0_utxo_for_address(&sender);
 
-    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash());
     let tx_message = tx
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
@@ -173,7 +173,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
 
-    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash())
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &transfer_amount)
         .assert_finalize()
@@ -219,7 +219,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
-    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash())
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &transfer_amount)
@@ -245,7 +245,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
-    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash())
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &transfer_amount)
@@ -271,7 +271,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
-    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash())
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &transfer_amount)
@@ -296,7 +296,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
-    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash())
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &utxo.associated_fund())
@@ -321,7 +321,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash())
         .assert_new_transaction()
         .assert_add_account(&sender.address().to_string(), &transfer_amount)
         .assert_add_output(&receiver.address().to_string(), &transfer_amount)
@@ -346,7 +346,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash())
         .assert_new_transaction()
         .assert_add_account(&sender.address().to_string(), &transfer_amount)
         .assert_add_output(&receiver.address().to_string(), &transfer_amount)
@@ -371,7 +371,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
-    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash)
+    let transaction_message = JCLITransactionWrapper::new(&config.genesis_block_hash())
         .assert_new_transaction()
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &transfer_amount)
@@ -394,7 +394,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
         .build();
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
+    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path());
     let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
@@ -422,7 +422,7 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         }])
         .build();
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path);
+    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path());
     let transaction_message = JCLITransactionWrapper::build_transaction(
         &FAKE_INPUT_TRANSACTION_ID,
         0,
@@ -453,7 +453,7 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
         &sender,
         &utxo.associated_fund(),
         &sender,
-        &config.genesis_block_hash,
+        &config.genesis_block_hash(),
     );
 
     jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
@@ -478,7 +478,7 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
         &receiver,
         &50.into(),
         &sender,
-        &config.genesis_block_hash,
+        &config.genesis_block_hash(),
     );
 
     jcli_wrapper::assert_transaction_rejected(
@@ -503,7 +503,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
-    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash);
+    let mut tx = JCLITransactionWrapper::new_transaction(&config.genesis_block_hash());
     let transaction_message = tx
         .assert_add_input_from_utxo(&utxo)
         .assert_add_output(&receiver.address().to_string(), &50.into())

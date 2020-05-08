@@ -28,7 +28,7 @@ impl Config {
 
 pub fn bootstrap_node() -> (JormungandrProcess, JormungandrConfig) {
     let config = ConfigurationBuilder::new().with_slot_duration(4).build();
-    let server = Starter::new().config(config.clone()).start().unwrap();
+    let server = Starter::new().config(config.clone()).start_async().unwrap();
     thread::sleep(Duration::from_secs(4));
     (server, config)
 }
@@ -49,7 +49,7 @@ pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
 
 pub fn bootstrap_node_with_peer(mock_port: u16) -> (JormungandrProcess, JormungandrConfig) {
     let config = build_configuration(mock_port);
-    let server = Starter::new().config(config.clone()).start().unwrap();
+    let server = Starter::new().config(config.clone()).start_async().unwrap();
     thread::sleep(Duration::from_secs(4));
     (server, config)
 }

@@ -12,7 +12,8 @@ use crate::{
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
-use jormungandr_lib::{interfaces::TrustedPeer, wallet::Wallet};
+use jormungandr_lib::interfaces::TrustedPeer;
+use jormungandr_testing_utils::wallet::Wallet;
 use std::{env, time::Duration};
 
 #[derive(Clone, Debug)]
@@ -89,10 +90,6 @@ impl TestnetConfig {
             trusted_peers.push(TrustedPeer {
                 address: trusted_peer_address
                     .expect("incorrect trusted peer address")
-                    .parse()
-                    .expect("cannot parse trusted peer address"),
-                id: trusted_peer_id
-                    .expect("incorrect trusted peer id")
                     .parse()
                     .expect("cannot parse trusted peer address"),
             });

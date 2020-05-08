@@ -4,8 +4,8 @@ use crate::common::{
     startup,
 };
 
-use jormungandr_lib::{
-    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
+use jormungandr_testing_utils::{
     testing::{
         benchmark_efficiency, benchmark_endurance, EfficiencyBenchmarkDef,
         EfficiencyBenchmarkFinish, Endurance, Thresholds,
@@ -71,13 +71,14 @@ fn send_100_transaction_in_10_packs_for_recievers(
         let transation_messages: Vec<String> = receivers
             .iter()
             .map(|receiver| {
-                let message =
-                    JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
-                        .assert_add_account(&sender.address().to_string(), &output_value.into())
-                        .assert_add_output(&receiver.address().to_string(), &output_value.into())
-                        .assert_finalize()
-                        .seal_with_witness_for_address(&sender)
-                        .assert_to_message();
+                let message = JCLITransactionWrapper::new_transaction(
+                    &jormungandr.config.genesis_block_hash(),
+                )
+                .assert_add_account(&sender.address().to_string(), &output_value.into())
+                .assert_add_output(&receiver.address().to_string(), &output_value.into())
+                .assert_finalize()
+                .seal_with_witness_for_address(&sender)
+                .assert_to_message();
                 sender.confirm_transaction();
                 message
             })
@@ -120,7 +121,7 @@ pub fn test_100_transaction_is_processed_simple() {
 
     for i in 0..transaction_max_count {
         let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
+            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
                 .assert_add_output(&receiver.address().to_string(), &output_value.into())
                 .assert_finalize()
@@ -171,7 +172,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
     loop {
         let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash)
+            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
                 .assert_add_output(&receiver.address().to_string(), &output_value.into())
                 .assert_finalize()

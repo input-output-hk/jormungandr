@@ -3,6 +3,20 @@ use jormungandr_testing_utils::testing::{
     github::{GitHubApi, Release},
 };
 
+mod configuration_builder;
+mod jormungandr_configuration;
+mod node;
+mod rest;
+mod starter;
+mod version;
+
+pub use configuration_builder::{LegacyConfigConverter, LegacyConfigConverterError};
+pub use jormungandr_configuration::BackwardCompatibleConfig;
+pub use node::BackwardCompatibleJormungandr;
+pub use rest::BackwardCompatibleRest;
+pub use starter::Starter;
+pub use version::Version;
+
 use crate::common::file_utils;
 
 use std::path::PathBuf;
@@ -15,6 +29,7 @@ pub fn download_last_n_releases(n: usize) -> Vec<Release> {
         .unwrap()
         .iter()
         .cloned()
+        .filter(|x| !x.prerelease())
         .take(n)
         .collect()
 }

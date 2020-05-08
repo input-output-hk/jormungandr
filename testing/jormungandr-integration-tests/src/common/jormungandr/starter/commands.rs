@@ -1,7 +1,8 @@
+use super::{FromGenesis, Role};
+use crate::common::legacy::BackwardCompatibleConfig;
 use std::fs::File;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-
 pub struct JormungandrStarterCommands {
     jormungandr_app: PathBuf,
 }
@@ -102,5 +103,36 @@ impl JormungandrStarterCommands {
         use std::os::unix::io::{FromRawFd, IntoRawFd};
         let file = File::create(log_file_path).expect("couldn't create log file for jormungandr");
         unsafe { Stdio::from_raw_fd(file.into_raw_fd()) }
+    }
+}
+
+pub fn get_command(
+    config: &BackwardCompatibleConfig,
+    jormungandr_app_path: PathBuf,
+    role: Role,
+    from_genesis: FromGenesis,
+) -> Command {
+    let commands = JormungandrStarterCommands::from_app(jormungandr_app_path);
+    match (role, from_genesis) {
+        (Role::Passive, _) => commands.as_passive_node(
+            &config.node_config_path,
+            &config.genesis_block_hash,
+            &config.log_file_path,
+            config.rewards_history,
+        ),
+        (Role::Leader, FromGenesis::File) => commands.as_leader_node(
+            &config.node_config_path,
+            &config.genesis_block_path,
+            &config.secret_model_paths,
+            &config.log_file_path,
+            config.rewards_history,
+        ),
+        (Role::Leader, FromGenesis::Hash) => commands.as_leader_node_from_hash(
+            &config.node_config_path,
+            &config.genesis_block_hash,
+            &config.secret_model_paths,
+            &config.log_file_path,
+            config.rewards_history,
+        ),
     }
 }

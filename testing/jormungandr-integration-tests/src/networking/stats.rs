@@ -41,7 +41,7 @@ pub fn passive_node_last_block_info() {
             .encode();
         jcli_wrapper::assert_transaction_in_block_with_wait(
             &fragment,
-            leader.process(),
+            &leader,
             &Default::default(),
         );
 

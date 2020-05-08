@@ -215,23 +215,23 @@ impl ConfigurationBuilder {
             .build();
 
         let path_to_output_block = build_genesis_block(&block0_config);
-
-        let mut config = JormungandrConfig::from(block0_config, node_config);
+        let genesis_block_hash = match self.block0_hash {
+            Some(ref value) => value.clone(),
+            None => jcli_wrapper::assert_genesis_hash(&path_to_output_block),
+        };
 
         let secret_model = SecretModelFactory::bft(leader_key_pair.signing_key());
         let secret_model_path = SecretModelFactory::serialize(&secret_model);
 
-        config.rewards_history = self.rewards_history;
-        config.secret_models = vec![secret_model];
-        config.secret_model_paths = vec![secret_model_path];
-        config.genesis_block_path = path_to_output_block.clone();
-        config.node_config_path = node_config_path;
-        config.log_file_path = file_utils::get_path_in_temp("log_file.log");
-
-        config.genesis_block_hash = match self.block0_hash {
-            Some(ref value) => value.clone(),
-            None => jcli_wrapper::assert_genesis_hash(&path_to_output_block),
-        };
-        config
+        JormungandrConfig::new(
+            path_to_output_block.clone(),
+            genesis_block_hash,
+            node_config_path,
+            vec![secret_model_path],
+            file_utils::get_path_in_temp("log_file.log"),
+            block0_config,
+            vec![secret_model],
+            self.rewards_history,
+        )
     }
 }

@@ -3,9 +3,9 @@ use crate::common::{
     transaction_utils::TransactionHash,
 };
 
-use jormungandr_lib::{
-    interfaces::ActiveSlotCoefficient,
-    testing::{benchmark_consumption, benchmark_endurance, ResourcesUsage},
+use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_testing_utils::testing::{
+    benchmark_consumption, benchmark_endurance, ResourcesUsage,
 };
 use std::time::Duration;
 

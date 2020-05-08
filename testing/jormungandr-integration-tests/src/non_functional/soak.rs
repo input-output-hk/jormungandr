@@ -3,10 +3,8 @@ use crate::common::{
     transaction_utils::TransactionHash,
 };
 
-use jormungandr_lib::{
-    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool},
-    testing::{benchmark_consumption, benchmark_endurance},
-};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool};
+use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
 use std::time::Duration;
 
 #[test]
