@@ -8,7 +8,7 @@
 use crate::log;
 
 use slog::Logger;
-use tokio::runtime::{self, Handle, Runtime};
+use tokio::runtime::{Handle, Runtime};
 
 use std::fmt::Debug;
 use std::future::Future;
@@ -70,7 +70,7 @@ impl Services {
             logger: logger,
             services: Vec::new(),
             finish_listener: ServiceFinishListener::new(),
-            runtime: runtime::Builder::new().build().unwrap(),
+            runtime: Runtime::new().unwrap(),
         }
     }
 
