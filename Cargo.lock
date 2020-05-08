@@ -1592,6 +1592,7 @@ dependencies = [
  "linked-hash-map",
  "lru",
  "nix 0.17.0",
+ "pin-project",
  "pin-utils",
  "poldercast",
  "r2d2",

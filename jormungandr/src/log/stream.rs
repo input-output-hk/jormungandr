@@ -4,6 +4,7 @@ use futures::{
     prelude::*,
     task::{Context, Poll},
 };
+use pin_project::pin_project;
 use slog::{Level, Logger, Record, RecordStatic};
 
 use std::{
@@ -63,7 +64,9 @@ impl<S> Log for S where S: Stream {}
 
 /// A stream adapter logging items produced by the wrapped stream.
 #[must_use = "streams do nothing unless polled"]
+#[pin_project]
 pub struct LoggingStream<'a, S, M = &'a str> {
+    #[pin]
     stream: S,
     logger: Logger,
     message: M,
@@ -82,16 +85,15 @@ impl<'a, S: Debug, M: Debug> Debug for LoggingStream<'a, S, M> {
 
 impl<'a, S, M> Stream for LoggingStream<'a, S, M>
 where
-    S: Stream + Unpin,
-    S::Item: Debug + Unpin,
-    M: Display + Unpin,
+    S: Stream,
+    S::Item: Debug,
+    M: Display,
 {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let inner = Pin::into_inner(self);
-        let stream = Pin::new(&mut inner.stream);
-        match futures::ready!(stream.poll_next(cx)) {
+        let inner = self.project();
+        match futures::ready!(inner.stream.poll_next(cx)) {
             Some(item) => {
                 inner.logger.log(&Record::new(
                     &inner.record_static,

@@ -58,6 +58,7 @@ bech32 = "0.7"
 async-trait = "0.1"
 lru = "^0.4.3"
 warp = { version = "0.2.2", features = ["tls"] }
+pin-project = "0.4"
 
 [target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
 version = "0.10.4"
