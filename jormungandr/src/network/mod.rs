@@ -267,7 +267,7 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
         }
     };
 
-    service_info.spawn_std(
+    service_info.spawn(
         "gossip",
         start_gossiping(global_state.clone(), channels.clone()),
     );
@@ -277,7 +277,7 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
     let reset_state = global_state.clone();
 
     if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
-        service_info.run_periodic_std("force reset topology", interval, move || {
+        service_info.run_periodic("force reset topology", interval, move || {
             let state = reset_state.clone();
             async move { state.topology.force_reset_layers().await }
         });

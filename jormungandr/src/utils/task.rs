@@ -75,7 +75,7 @@ impl Services {
     }
 
     /// Spawn the given Future in a new dedicated runtime
-    pub fn spawn_future_std<F, T>(&mut self, name: &'static str, f: F)
+    pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         F: Send + 'static,
@@ -112,7 +112,7 @@ impl Services {
     }
 
     /// Spawn the given Future in a new dedicated runtime
-    pub fn spawn_try_future_std<F, T>(&mut self, name: &'static str, f: F)
+    pub fn spawn_try_future<F, T>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         F: Send + 'static,
@@ -160,7 +160,7 @@ impl Services {
     }
 
     // Run the task to completion
-    pub fn block_on_task_std<F, Fut, T>(&mut self, name: &'static str, f: F) -> T
+    pub fn block_on_task<F, Fut, T>(&mut self, name: &'static str, f: F) -> T
     where
         F: FnOnce(TokioServiceInfo) -> Fut,
         Fut: Future<Output = T>,
@@ -214,7 +214,7 @@ impl TokioServiceInfo {
     }
 
     /// spawn a std::future within the service's tokio handle
-    pub fn spawn_std<F>(&self, name: &'static str, future: F)
+    pub fn spawn<F>(&self, name: &'static str, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -223,8 +223,8 @@ impl TokioServiceInfo {
         self.handle.spawn(future);
     }
 
-    /// just like spawn_std but instead log an error on Result::Err
-    pub fn spawn_failable_std<F, E>(&self, name: &'static str, future: F)
+    /// just like spawn but instead log an error on Result::Err
+    pub fn spawn_failable<F, E>(&self, name: &'static str, future: F)
     where
         F: Send + 'static,
         E: Debug,
@@ -240,8 +240,8 @@ impl TokioServiceInfo {
         });
     }
 
-    /// just like spawn_std but add a timeout
-    pub fn timeout_spawn_std<F>(&self, name: &'static str, timeout: Duration, future: F)
+    /// just like spawn but add a timeout
+    pub fn timeout_spawn<F>(&self, name: &'static str, timeout: Duration, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -255,8 +255,8 @@ impl TokioServiceInfo {
         });
     }
 
-    /// just like spawn_failable_std but add a timeout
-    pub fn timeout_spawn_failable_std<F, E>(&self, name: &'static str, timeout: Duration, future: F)
+    /// just like spawn_failable but add a timeout
+    pub fn timeout_spawn_failable<F, E>(&self, name: &'static str, timeout: Duration, future: F)
     where
         F: Send + 'static,
         E: Debug,
@@ -275,14 +275,14 @@ impl TokioServiceInfo {
 
     // Run the closure with the specified period on the handle
     // and execute the resulting closure.
-    pub fn run_periodic_std<F, U>(&self, name: &'static str, period: Duration, mut f: F)
+    pub fn run_periodic<F, U>(&self, name: &'static str, period: Duration, mut f: F)
     where
         F: FnMut() -> U,
         F: Send + 'static,
         U: Future<Output = ()> + Send + 'static,
     {
         let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
-        self.spawn_std(name, async move {
+        self.spawn(name, async move {
             let mut interval = tokio::time::interval(period);
             loop {
                 let t_now = Instant::now();
@@ -301,7 +301,7 @@ impl TokioServiceInfo {
     // Run the closure with the specified period on the handle
     // and execute the resulting fallible async closure.
     // If the closure returns an Err, log it.
-    pub fn run_periodic_failable_std<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
+    pub fn run_periodic_failable<F, U, E>(&self, name: &'static str, period: Duration, mut f: F)
     where
         F: FnMut() -> U,
         F: Send + 'static,
@@ -309,7 +309,7 @@ impl TokioServiceInfo {
         U: Future<Output = Result<(), E>> + Send + 'static,
     {
         let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
-        self.spawn_std(name, async move {
+        self.spawn(name, async move {
             let mut interval = tokio::time::interval(period);
             loop {
                 let t_now = Instant::now();

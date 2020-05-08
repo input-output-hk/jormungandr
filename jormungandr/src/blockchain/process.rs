@@ -104,7 +104,7 @@ impl Process {
 
                 info!(logger, "receiving block from leadership service");
 
-                info.timeout_spawn_failable_std(
+                info.timeout_spawn_failable(
                     "process leadership block",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP),
                     process_leadership_block(
@@ -128,7 +128,7 @@ impl Process {
 
                 info!(logger, "received block announcement from network");
 
-                info.timeout_spawn_failable_std(
+                info.timeout_spawn_failable(
                     "process block announcement",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT),
                     process_block_announcement(
@@ -148,7 +148,7 @@ impl Process {
                 let logger = info.logger().clone();
                 let get_next_block_scheduler = get_next_block_scheduler.clone();
 
-                info.timeout_spawn_failable_std(
+                info.timeout_spawn_failable(
                     "process network blocks",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS),
                     process_network_blocks(
@@ -170,7 +170,7 @@ impl Process {
                 let logger = info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull"));
                 let pull_headers_scheduler = pull_headers_scheduler.clone();
 
-                info.timeout_spawn_std(
+                info.timeout_spawn(
                     "process network headers",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS),
                     process_chain_headers(
@@ -190,7 +190,7 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let logger = info.logger().clone();
 
-        info.run_periodic_failable_std(
+        info.run_periodic_failable(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
             move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
@@ -220,7 +220,7 @@ impl Process {
         let logger = info.logger().clone();
         let future = scheduler_future
             .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
-        info.spawn_failable_std("pull headers scheduling", future);
+        info.spawn_failable("pull headers scheduling", future);
         scheduler
     }
 
@@ -245,7 +245,7 @@ impl Process {
         let logger = info.logger().clone();
         let future = scheduler_future
             .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
-        info.spawn_failable_std("get next block scheduling", future);
+        info.spawn_failable("get next block scheduling", future);
         scheduler
     }
 }
