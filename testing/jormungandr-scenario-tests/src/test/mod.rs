@@ -16,6 +16,7 @@ error_chain! {
 
     links {
         Node(crate::node::Error, crate::node::ErrorKind);
+        LegacyNode(crate::legacy::Error, crate::legacy::ErrorKind);
         Scenario(crate::scenario::Error, crate::scenario::ErrorKind);
     }
 

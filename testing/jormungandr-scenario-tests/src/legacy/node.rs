@@ -1,4 +1,9 @@
-use crate::{scenario::ProgressBarMode, style, Context};
+/// Specialized node which is supposed to be compatible with 5 last jormungandr releases
+use crate::{
+    legacy::LegacySettings,
+    node::{MemPoolCheck, ProgressBarController, Status},
+    style, Context,
+};
 use bawawa::{Control, Process};
 use chain_impl_mockchain::{
     block::Block,
@@ -12,18 +17,17 @@ use jormungandr_integration_tests::{
     response_to_vec,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, NodeState, NodeStatsDto, PeerRecord,
-    PeerStats,
+    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats,
 };
 pub use jormungandr_testing_utils::testing::network_builder::{
     LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
 };
+use yaml_rust::{Yaml, YamlLoader};
 
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
     path::PathBuf,
-    process::ExitStatus,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -34,6 +38,7 @@ error_chain! {
         Io(std::io::Error);
         Reqwest(reqwest::Error);
         BlockFormatError(chain_core::mempack::ReadError);
+        SerializationError(yaml_rust::scanner::ScanError);
     }
 
     errors {
@@ -97,50 +102,17 @@ error_chain! {
     }
 }
 
-pub struct MemPoolCheck {
-    fragment_id: FragmentId,
-}
-
-impl MemPoolCheck {
-    pub fn new(fragment_id: FragmentId) -> Self {
-        Self {
-            fragment_id: fragment_id,
-        }
-    }
-
-    pub fn fragment_id(&self) -> &FragmentId {
-        &self.fragment_id
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Status {
-    Running,
-    Failure,
-    Exit(ExitStatus),
-}
-
-#[derive(Clone)]
-pub struct ProgressBarController {
-    progress_bar: ProgressBar,
-    prefix: String,
-    logging_mode: ProgressBarMode,
-}
-
 /// send query to a running node
 #[derive(Clone)]
-pub struct NodeController {
+pub struct LegacyNodeController {
     alias: NodeAlias,
     grpc_client: JormungandrClient,
-    settings: NodeSetting,
+    settings: LegacySettings,
     progress_bar: ProgressBarController,
     status: Arc<Mutex<Status>>,
 }
 
-/// Node is going to be used by the `Controller` to monitor the node process
-///
-/// To send queries to the Node, use the `NodeController`
-pub struct Node {
+pub struct LegacyNode {
     alias: NodeAlias,
 
     #[allow(unused)]
@@ -149,7 +121,7 @@ pub struct Node {
     process: Process,
 
     progress_bar: ProgressBarController,
-    node_settings: NodeSetting,
+    node_settings: LegacySettings,
     status: Arc<Mutex<Status>>,
 }
 
@@ -157,7 +129,7 @@ const NODE_CONFIG: &str = "node_config.yaml";
 const NODE_SECRET: &str = "node_secret.yaml";
 const NODE_STORAGE: &str = "storage.db";
 
-impl NodeController {
+impl LegacyNodeController {
     pub fn alias(&self) -> &NodeAlias {
         &self.alias
     }
@@ -235,9 +207,7 @@ impl NodeController {
             ));
         }
 
-        Ok(MemPoolCheck {
-            fragment_id: fragment_id,
-        })
+        Ok(MemPoolCheck::new(fragment_id))
     }
 
     pub fn log(&self, info: &str) {
@@ -392,25 +362,30 @@ impl NodeController {
         for _ in 0..max_try {
             let logs = self.fragment_logs()?;
 
-            if let Some(log) = logs.get(&check.fragment_id) {
+            if let Some(log) = logs.get(&check.fragment_id()) {
                 use jormungandr_lib::interfaces::FragmentStatus::*;
                 let status = log.status().clone();
                 match log.status() {
                     Pending => {
-                        self.progress_bar
-                            .log_info(format!("Fragment '{}' is still pending", check.fragment_id));
+                        self.progress_bar.log_info(format!(
+                            "Fragment '{}' is still pending",
+                            check.fragment_id()
+                        ));
                     }
                     Rejected { reason } => {
                         self.progress_bar.log_info(format!(
                             "Fragment '{}' rejected: {}",
-                            check.fragment_id, reason
+                            check.fragment_id(),
+                            reason
                         ));
                         return Ok(status);
                     }
                     InABlock { date, block } => {
                         self.progress_bar.log_info(format!(
                             "Fragment '{}' in block: {} ({})",
-                            check.fragment_id, block, date
+                            check.fragment_id(),
+                            block,
+                            date
                         ));
                         return Ok(status);
                     }
@@ -418,7 +393,7 @@ impl NodeController {
             } else {
                 bail!(ErrorKind::FragmentNoInMemPoolLogs(
                     self.alias().to_string(),
-                    check.fragment_id.clone(),
+                    check.fragment_id().clone(),
                     self.logger().get_log_content()
                 ))
             }
@@ -426,7 +401,7 @@ impl NodeController {
         }
 
         bail!(ErrorKind::FragmentIsPendingForTooLong(
-            check.fragment_id.clone(),
+            check.fragment_id().clone(),
             Duration::from_secs(duration.as_secs() * max_try),
             self.alias().to_string(),
             self.logger().get_log_content()
@@ -493,11 +468,10 @@ impl NodeController {
         Ok(())
     }
 
-    pub fn stats(&self) -> Result<NodeStatsDto> {
+    pub fn stats(&self) -> Result<Yaml> {
         let stats = self.get("node/stats")?.text()?;
-        let full_stats: NodeStatsDto =
-            serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
-        Ok(full_stats)
+        let docs = YamlLoader::load_from_str(&stats)?;
+        Ok(docs.get(0).unwrap().clone())
     }
 
     pub fn log_stats(&self) {
@@ -512,7 +486,7 @@ impl NodeController {
             let stats = self.stats();
             match stats {
                 Ok(stats) => {
-                    if stats.state == NodeState::Running {
+                    if stats["state"].as_str().unwrap() == "Running" {
                         self.log_stats();
                         return Ok(());
                     }
@@ -555,7 +529,7 @@ impl NodeController {
                 self.settings
                     .config
                     .p2p
-                    .get_listen_address()
+                    .public_address
                     .to_socketaddr()
                     .unwrap()
                     .port(),
@@ -573,7 +547,7 @@ impl NodeController {
     pub fn is_up(&self) -> bool {
         let stats = self.stats();
         match stats {
-            Ok(stats) => stats.state == NodeState::Running,
+            Ok(stats) => stats["state"].as_str().unwrap() == "Running",
             Err(_) => false,
         }
     }
@@ -610,15 +584,15 @@ impl NodeController {
     }
 }
 
-impl Node {
+impl LegacyNode {
     pub fn alias(&self) -> &NodeAlias {
         &self.alias
     }
 
-    pub fn controller(&self) -> NodeController {
-        let p2p_address = format!("{}", self.node_settings.config().p2p.get_listen_address());
+    pub fn controller(&self) -> LegacyNodeController {
+        let p2p_address = format!("{}", self.node_settings.config().p2p.public_address);
 
-        NodeController {
+        LegacyNodeController {
             alias: self.alias().clone(),
             grpc_client: JormungandrClient::from_address(&p2p_address)
                 .expect("cannot setup grpc client"),
@@ -633,7 +607,7 @@ impl Node {
         context: &Context<R>,
         progress_bar: ProgressBar,
         alias: &str,
-        node_settings: &mut NodeSetting,
+        node_settings: &mut LegacySettings,
         block0: NodeBlock0,
         working_dir: &PathBuf,
         peristence_mode: PersistenceMode,
@@ -692,7 +666,7 @@ impl Node {
 
         let process = Process::spawn(command).chain_err(|| ErrorKind::CannotSpawnNode)?;
 
-        let node = Node {
+        let node = LegacyNode {
             alias: alias.into(),
 
             dir,
@@ -759,62 +733,7 @@ impl Node {
     }
 }
 
-use std::fmt::Display;
-
-impl ProgressBarController {
-    pub fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {
-        ProgressBarController {
-            progress_bar,
-            prefix,
-            logging_mode,
-        }
-    }
-
-    pub fn log_info<M>(&self, msg: M)
-    where
-        M: Display,
-    {
-        self.log(style::info.apply_to("INFO "), msg)
-    }
-
-    pub fn log_err<M>(&self, msg: M)
-    where
-        M: Display,
-    {
-        self.log(style::error.apply_to("ERROR"), style::error.apply_to(msg))
-    }
-
-    pub fn log<L, M>(&self, lvl: L, msg: M)
-    where
-        L: Display,
-        M: Display,
-    {
-        match self.logging_mode {
-            ProgressBarMode::Standard => {
-                println!("[{}][{}]: {}", lvl, &self.prefix, msg);
-            }
-            ProgressBarMode::Monitor => {
-                self.progress_bar.println(format!(
-                    "[{}][{}{}]: {}",
-                    lvl,
-                    *style::icons::jormungandr,
-                    style::binary.apply_to(&self.prefix),
-                    msg,
-                ));
-            }
-            ProgressBarMode::None => (),
-        }
-    }
-}
-
-impl std::ops::Deref for ProgressBarController {
-    type Target = ProgressBar;
-    fn deref(&self) -> &Self::Target {
-        &self.progress_bar
-    }
-}
-
-impl Future for Node {
+impl Future for LegacyNode {
     type Item = ();
     type Error = ();
 
@@ -841,7 +760,7 @@ impl Future for Node {
     }
 }
 
-impl Control for Node {
+impl Control for LegacyNode {
     fn command(&self) -> &bawawa::Command {
         &self.process.command()
     }
