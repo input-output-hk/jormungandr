@@ -1615,7 +1615,6 @@ dependencies = [
  "structopt",
  "thiserror",
  "tokio 0.2.20",
- "tokio-compat",
  "tonic",
  "versionisator",
  "warp",
