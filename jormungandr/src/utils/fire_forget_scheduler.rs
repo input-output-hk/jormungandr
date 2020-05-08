@@ -1,14 +1,15 @@
-use futures::{Async, Future, Poll, Stream};
-use std::collections::VecDeque;
-use std::convert::Infallible;
-use std::time::Duration;
+use futures03::{
+    prelude::*,
+    task::{Context, Poll},
+};
+use std::{collections::VecDeque, pin::Pin, time::Duration};
 use thiserror::Error;
-use tokio::sync::mpsc::{
+use tokio02::sync::mpsc::{
     self,
     error::{RecvError, TrySendError},
     Receiver, Sender,
 };
-use tokio::timer::delay_queue::{DelayQueue, Key};
+use tokio02::time::delay_queue::{DelayQueue, Key};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -19,17 +20,14 @@ pub enum Error {
     #[error("command queue closed")]
     CommandQueueClosed,
     #[error("timer error")]
-    Timer(#[from] tokio::timer::Error),
+    Timer(#[from] tokio02::time::Error),
 }
 
 impl<T> From<TrySendError<T>> for Error {
     fn from(error: TrySendError<T>) -> Self {
-        let cause = if error.is_closed() {
-            "channel closed"
-        } else if error.is_full() {
-            "no available capacity"
-        } else {
-            "unknown channel error"
+        let cause = match error {
+            TrySendError::Closed(_) => "channel closed",
+            TrySendError::Full(_) => "no available capacity",
         };
         Error::CommandSend(cause)
     }
@@ -170,25 +168,29 @@ where
 
 impl<TID, WID, Data, Launcher> Future for FireForgetSchedulerFuture<TID, WID, Data, Launcher>
 where
-    TID: Clone + PartialEq,
-    WID: Clone + PartialEq,
-    Launcher: Fn(TID, WID, Data),
+    TID: Clone + PartialEq + Unpin,
+    WID: Clone + PartialEq + Unpin,
+    Data: Unpin,
+    Launcher: Fn(TID, WID, Data) + Unpin,
 {
-    type Item = Infallible;
-    type Error = Error;
+    type Output = Result<(), Error>;
 
-    fn poll(&mut self) -> Poll<Infallible, Error> {
-        while let Async::Ready(command_opt) = self.command_receiver.poll()? {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let inner = Pin::into_inner(self);
+        while let Poll::Ready(command_opt) = Pin::new(&mut inner.command_receiver).poll_next(cx) {
             match command_opt {
-                None => return Err(Error::CommandQueueClosed),
-                Some(Command::Schedule { task }) => self.schedule(task),
-                Some(Command::DeclareCompleted { task }) => self.declare_completed(task),
+                None => return Poll::Ready(Err(Error::CommandQueueClosed)),
+                Some(Command::Schedule { task }) => inner.schedule(task),
+                Some(Command::DeclareCompleted { task }) => inner.declare_completed(task),
             }
         }
-        while let Async::Ready(Some(expired)) = self.timeouts.poll()? {
-            self.declare_timed_out(expired.into_inner());
+        while let Poll::Ready(Some(expired)) = Pin::new(&mut inner.timeouts).poll_next(cx) {
+            match expired {
+                Ok(expired) => inner.declare_timed_out(expired.into_inner()),
+                Err(err) => return Poll::Ready(Err(Error::Timer(err))),
+            }
         }
-        Ok(Async::NotReady)
+        Poll::Pending
     }
 }
 

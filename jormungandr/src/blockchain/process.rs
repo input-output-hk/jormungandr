@@ -23,7 +23,7 @@ use crate::{
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
 
-use futures03::{compat::*, prelude::*};
+use futures03::prelude::*;
 use slog::Logger;
 
 use std::{sync::Arc, time::Duration};
@@ -219,8 +219,6 @@ impl Process {
         let scheduler = scheduler_future.scheduler();
         let logger = info.logger().clone();
         let future = scheduler_future
-            .compat()
-            .map_ok(|never| match never {})
             .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
         info.spawn_failable_std("pull headers scheduling", future);
         scheduler
@@ -246,8 +244,6 @@ impl Process {
         let scheduler = scheduler_future.scheduler();
         let logger = info.logger().clone();
         let future = scheduler_future
-            .compat()
-            .map_ok(|never| match never {})
             .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
         info.spawn_failable_std("get next block scheduling", future);
         scheduler
