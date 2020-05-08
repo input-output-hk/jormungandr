@@ -1,9 +1,15 @@
 //! A logging adapter for streams.
 
-use futures::prelude::*;
+use futures03::{
+    prelude::*,
+    task::{Context, Poll},
+};
 use slog::{Level, Logger, Record, RecordStatic};
 
-use std::fmt::{self, Debug, Display};
+use std::{
+    fmt::{self, Debug, Display},
+    pin::Pin,
+};
 
 /// An extension adapter trait to augment streams with logging.
 pub trait Log: Sized {
@@ -76,24 +82,25 @@ impl<'a, S: Debug, M: Debug> Debug for LoggingStream<'a, S, M> {
 
 impl<'a, S, M> Stream for LoggingStream<'a, S, M>
 where
-    S: Stream,
-    S::Item: Debug,
-    M: Display,
+    S: Stream + Unpin,
+    S::Item: Debug + Unpin,
+    M: Display + Unpin,
 {
     type Item = S::Item;
-    type Error = S::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        match try_ready!(self.stream.poll()) {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let inner = Pin::into_inner(self);
+        let stream = Pin::new(&mut inner.stream);
+        match futures03::ready!(stream.poll_next(cx)) {
             Some(item) => {
-                self.logger.log(&Record::new(
-                    &self.record_static,
-                    &format_args!("{}", self.message),
+                inner.logger.log(&Record::new(
+                    &inner.record_static,
+                    &format_args!("{}", inner.message),
                     b!("item" => ?item),
                 ));
-                Ok(Some(item).into())
+                Poll::Ready(Some(item))
             }
-            None => Ok(None.into()),
+            None => Poll::Ready(None),
         }
     }
 }
