@@ -24,10 +24,10 @@ use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId};
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse;
-use futures03::prelude::*;
+use futures::prelude::*;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Explorer {

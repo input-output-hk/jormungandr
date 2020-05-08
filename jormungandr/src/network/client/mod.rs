@@ -21,9 +21,9 @@ use crate::{
 use chain_network::data as net_data;
 use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
 
-use futures03::prelude::*;
-use futures03::ready;
-use futures03::stream;
+use futures::prelude::*;
+use futures::ready;
+use futures::stream;
 use slog::Logger;
 
 use std::pin::Pin;

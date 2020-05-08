@@ -1,15 +1,15 @@
-use futures03::{
+use futures::{
     prelude::*,
     task::{Context, Poll},
 };
 use std::{collections::VecDeque, pin::Pin, time::Duration};
 use thiserror::Error;
-use tokio02::sync::mpsc::{
+use tokio::sync::mpsc::{
     self,
     error::{RecvError, TrySendError},
     Receiver, Sender,
 };
-use tokio02::time::delay_queue::{DelayQueue, Key};
+use tokio::time::delay_queue::{DelayQueue, Key};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -20,7 +20,7 @@ pub enum Error {
     #[error("command queue closed")]
     CommandQueueClosed,
     #[error("timer error")]
-    Timer(#[from] tokio02::time::Error),
+    Timer(#[from] tokio::time::Error),
 }
 
 impl<T> From<TrySendError<T>> for Error {

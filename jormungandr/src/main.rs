@@ -4,8 +4,6 @@
 
 #[macro_use]
 extern crate error_chain;
-#[macro_use(try_ready)]
-extern crate futures;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -29,11 +27,11 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
-use futures03::{executor::block_on, future::TryFutureExt};
+use futures::{executor::block_on, future::TryFutureExt};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use tokio02::signal::ctrl_c;
+use tokio::signal::ctrl_c;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -380,11 +378,11 @@ async fn bootstrap_internal(
     storage: blockchain::Storage,
     settings: Settings,
 ) -> Result<BootstrapData, start_up::Error> {
-    use futures03::{
+    use futures::{
         channel::oneshot::channel,
         future::{select, Either, FutureExt},
     };
-    use tokio02::spawn;
+    use tokio::spawn;
 
     if let Some(context) = rest_context.as_ref() {
         block_on(async {
@@ -471,7 +469,7 @@ async fn bootstrap_internal(
 
         // Sleep for a little while before trying again.
         if let Either::Right((result, _)) = select(
-            tokio02::time::delay_for(BOOTSTRAP_RETRY_WAIT),
+            tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT),
             shutdown_rx.clone(),
         )
         .await
@@ -546,7 +544,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
-            use tokio02::sync::RwLock;
+            use tokio::sync::RwLock;
 
             let mut context = rest::Context::new();
             context.set_diagnostic_data(diagnostic);

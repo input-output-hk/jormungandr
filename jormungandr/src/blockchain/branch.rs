@@ -1,7 +1,7 @@
 use crate::blockchain::Ref;
-use futures03::stream::{FuturesUnordered, StreamExt};
+use futures::stream::{FuturesUnordered, StreamExt};
 use std::{iter::FromIterator, sync::Arc};
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Branches {

@@ -14,9 +14,9 @@ use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
 use jormungandr_lib::interfaces::FragmentOrigin;
 
-use futures03::future::BoxFuture;
-use futures03::prelude::*;
-use futures03::ready;
+use futures::future::BoxFuture;
+use futures::prelude::*;
+use futures::ready;
 use slog::Logger;
 
 use std::pin::Pin;

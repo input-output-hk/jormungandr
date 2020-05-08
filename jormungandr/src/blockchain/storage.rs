@@ -4,11 +4,11 @@ use crate::{
     start_up::{NodeStorage, NodeStorageConnection},
 };
 use chain_storage::{for_path_to_nth_ancestor, BlockInfo};
-use futures03::{prelude::*, ready, stream::FusedStream};
+use futures::{prelude::*, ready, stream::FusedStream};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use r2d2::{ManageConnection, Pool};
 use slog::Logger;
-use tokio02::task::spawn_blocking;
+use tokio::task::spawn_blocking;
 
 use std::convert::identity;
 use std::error::Error;

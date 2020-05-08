@@ -5,7 +5,7 @@ use crate::settings::start::network::Peer;
 use chain_core::property::{Deserialize, HasHeader};
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
-use futures03::{
+use futures::{
     channel::oneshot::Receiver,
     future::{Either, Shared},
     prelude::*,
@@ -81,7 +81,7 @@ pub async fn bootstrap_from_peer(
     bootstrap_stopper: Shared<Receiver<()>>,
     logger: Logger,
 ) -> Result<(), Error> {
-    use futures03::future::select;
+    use futures::future::select;
 
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 

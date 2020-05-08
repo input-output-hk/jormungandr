@@ -5,10 +5,10 @@ use peer_map::{CommStatus, PeerMap};
 use crate::network::{client::ConnectHandle, p2p::Address};
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
 use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header};
-use futures03::channel::mpsc;
-use futures03::lock::{Mutex, MutexLockFuture};
-use futures03::prelude::*;
-use futures03::stream;
+use futures::channel::mpsc;
+use futures::lock::{Mutex, MutexLockFuture};
+use futures::prelude::*;
+use futures::stream;
 use slog::Logger;
 
 use std::fmt;

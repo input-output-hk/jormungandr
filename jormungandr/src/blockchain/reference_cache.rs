@@ -1,7 +1,7 @@
 use crate::{blockcfg::HeaderHash, blockchain::Ref};
 use lru::LruCache;
 use std::sync::Arc;
-use tokio02::sync::Mutex;
+use tokio::sync::Mutex;
 
 /// object that store the [`Ref`] in a cache. Every time a [`Ref`]
 /// is accessed its TTL will be reset. Once the TTL of [`Ref`] has

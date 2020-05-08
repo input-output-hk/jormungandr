@@ -62,7 +62,7 @@ use chain_storage::Error as StorageError;
 use chain_time::TimeFrame;
 use slog::Logger;
 use std::sync::Arc;
-use tokio02::stream::StreamExt;
+use tokio::stream::StreamExt;
 
 // derive
 use thiserror::Error;

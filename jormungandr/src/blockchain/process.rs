@@ -23,7 +23,7 @@ use crate::{
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
 
-use futures03::prelude::*;
+use futures::prelude::*;
 use slog::Logger;
 
 use std::{sync::Arc, time::Duration};

@@ -1,7 +1,7 @@
 pub use jormungandr_lib::interfaces::LeadershipLogStatus;
 use jormungandr_lib::interfaces::{LeadershipLog, LeadershipLogId};
 use std::sync::Arc;
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 /// all leadership logs, allow for following up on the different entity
 /// of the blockchain

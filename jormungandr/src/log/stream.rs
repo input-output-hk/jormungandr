@@ -1,6 +1,6 @@
 //! A logging adapter for streams.
 
-use futures03::{
+use futures::{
     prelude::*,
     task::{Context, Poll},
 };
@@ -91,7 +91,7 @@ where
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let inner = Pin::into_inner(self);
         let stream = Pin::new(&mut inner.stream);
-        match futures03::ready!(stream.poll_next(cx)) {
+        match futures::ready!(stream.poll_next(cx)) {
             Some(item) => {
                 inner.logger.log(&Record::new(
                     &inner.record_static,

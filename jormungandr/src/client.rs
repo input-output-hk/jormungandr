@@ -5,8 +5,8 @@ use crate::utils::async_msg::MessageQueue;
 use crate::utils::task::TokioServiceInfo;
 use chain_core::property::HasHeader;
 
-use futures03::prelude::*;
-use tokio02::time::timeout;
+use futures::prelude::*;
+use tokio::time::timeout;
 
 use std::time::Duration;
 

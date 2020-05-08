@@ -8,7 +8,7 @@ pub use self::context::{Context, ContextLock, FullContext};
 
 use crate::settings::start::{Rest, Tls};
 
-use futures03::{channel::mpsc, prelude::*};
+use futures::{channel::mpsc, prelude::*};
 use std::{error::Error, net::SocketAddr, time::Duration};
 use warp::Filter;
 

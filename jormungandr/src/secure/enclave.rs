@@ -6,7 +6,7 @@ use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
-use tokio02::sync::RwLock;
+use tokio::sync::RwLock;
 
 #[derive(Default)]
 struct EnclaveLeadersWithCache {
@@ -207,7 +207,6 @@ mod tests {
     use super::*;
     use chain_crypto::SecretKey;
     use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
-    use tokio02 as tokio;
 
     #[tokio::test]
     async fn enclave_add_different_bft_leaders() {

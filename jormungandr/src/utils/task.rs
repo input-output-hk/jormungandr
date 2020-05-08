@@ -248,7 +248,7 @@ impl TokioServiceInfo {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
         self.executor.spawn_std(async move {
-            match tokio02::time::timeout(timeout, future).await {
+            match tokio::time::timeout(timeout, future).await {
                 Err(_) => error!(logger, "task {} timedout", name),
                 Ok(()) => {}
             };
@@ -265,7 +265,7 @@ impl TokioServiceInfo {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
         self.executor.spawn_std(async move {
-            match tokio02::time::timeout(timeout, future).await {
+            match tokio::time::timeout(timeout, future).await {
                 Err(_) => error!(logger, "task {} timedout", name),
                 Ok(Err(e)) => error!(logger, "task {} finished with error", name; "error" => ?e),
                 Ok(Ok(())) => {}
@@ -283,7 +283,7 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
         self.spawn_std(name, async move {
-            let mut interval = tokio02::time::interval(period);
+            let mut interval = tokio::time::interval(period);
             loop {
                 let t_now = Instant::now();
                 interval.tick().await;
@@ -310,7 +310,7 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
         self.spawn_std(name, async move {
-            let mut interval = tokio02::time::interval(period);
+            let mut interval = tokio::time::interval(period);
             loop {
                 let t_now = Instant::now();
                 interval.tick().await;
