@@ -276,9 +276,14 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
                 };
                 Poll::Pending
             }
-            Poll::Ready(()) => Pin::new(&mut self.mbox)
-                .poll_close(cx)
-                .map_err(|e| handle_mbox_error(e, &self.logger)),
+            Poll::Ready(()) => Pin::new(&mut self.mbox).poll_close(cx).map_err(|e| {
+                warn!(
+                    self.logger,
+                    "failed to close communication channel to the block task";
+                    "reason" => %e,
+                );
+                Error::new(Code::Internal, e)
+            }),
         }
     }
 }
