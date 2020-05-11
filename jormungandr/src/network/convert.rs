@@ -141,8 +141,7 @@ impl Encode for Fragment {
     type NetworkData = net_data::Fragment;
 
     fn encode(&self) -> Self::NetworkData {
-        let bytes = self.serialize_as_vec().unwrap();
-        net_data::Fragment::from_bytes(bytes)
+        net_data::Fragment::from_bytes(self.to_raw().as_ref())
     }
 }
 
