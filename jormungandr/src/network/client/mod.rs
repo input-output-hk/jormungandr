@@ -23,7 +23,6 @@ use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
 
 use futures::prelude::*;
 use futures::ready;
-use futures::stream;
 use slog::Logger;
 
 use std::pin::Pin;
@@ -36,16 +35,16 @@ pub struct Client {
     inner: grpc::Client,
     logger: Logger,
     global_state: GlobalStateR,
-    node_id: Address,
-    inbound_block_events: BlockSubscription,
+    inbound: InboundSubscriptions,
     block_solicitations: OutboundSubscription<BlockIds>,
     chain_pulls: OutboundSubscription<ChainPullRequest>,
     block_sink: BlockAnnouncementProcessor,
-    fragment_forward: stream::Forward<FragmentSubscription, FragmentProcessor>,
-    gossip_forward: stream::Forward<GossipSubscription, GossipProcessor>,
+    fragment_sink: FragmentProcessor,
+    gossip_sink: GossipProcessor,
     client_box: MessageBox<ClientMsg>,
     incoming_block_announcement: Option<net_data::Header>,
     incoming_solicitation: Option<ClientMsg>,
+    shutting_down: bool,
 }
 
 struct ClientBuilder {
@@ -67,25 +66,24 @@ impl Client {
         inbound: InboundSubscriptions,
         comms: &mut PeerComms,
     ) -> Self {
-        let remote_node_id = inbound.node_id;
         let logger = builder
             .logger
-            .new(o!("node_id" => remote_node_id.to_string()));
+            .new(o!("node_id" => inbound.node_id.to_string()));
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
-            remote_node_id.clone(),
+            inbound.node_id.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "block_events", "direction" => "in")),
         );
         let fragment_sink = FragmentProcessor::new(
             builder.channels.transaction_box,
-            remote_node_id.clone(),
+            inbound.node_id.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "fragments", "direction" => "in")),
         );
-        let gossip_processor = GossipProcessor::new(
-            remote_node_id.clone(),
+        let gossip_sink = GossipProcessor::new(
+            inbound.node_id.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "gossip", "direction" => "in")),
         );
@@ -94,16 +92,16 @@ impl Client {
             inner,
             logger,
             global_state,
-            node_id: remote_node_id,
-            inbound_block_events: inbound.block_events,
+            inbound,
             block_solicitations: comms.subscribe_to_block_solicitations(),
             chain_pulls: comms.subscribe_to_chain_pulls(),
             block_sink,
-            fragment_forward: inbound.fragments.forward(fragment_sink),
-            gossip_forward: inbound.gossip.forward(gossip_processor),
+            fragment_sink,
+            gossip_sink,
             client_box: builder.channels.client_box,
             incoming_block_announcement: None,
             incoming_solicitation: None,
+            shutting_down: false,
         }
     }
 }
@@ -166,30 +164,17 @@ impl Client {
         ready!(block_sink.as_mut().poll_ready(cx))
             .map_err(|e| debug!(logger, "failed getting block sink"; "reason" => %e))?;
         if let Some(header) = self.incoming_block_announcement.take() {
-            block_sink.start_send(header).map_err(|e| {
-                error!(
-                    logger,
-                    "failed to send announced block header for processing";
-                    "reason" => %e,
-                );
-            })?;
+            block_sink.start_send(header).map_err(|_| ())?;
         } else {
             match block_sink.as_mut().poll_flush(cx) {
-                Poll::Ready(Err(e)) => {
-                    error!(
-                        logger,
-                        "processing of incoming block messages failed";
-                        "reason" => %e,
-                    );
-                    Err(())
-                }
                 Poll::Pending => {
                     // Ignoring possible Pending return here: due to the following
                     // ready!() invocations, this function cannot return Continue
                     // while no progress has been made.
                     Ok(())
                 }
-                _ => Ok(()),
+                Poll::Ready(Ok(())) => Ok(()),
+                Poll::Ready(Err(_)) => Err(()),
             }?;
         }
 
@@ -199,13 +184,16 @@ impl Client {
         let mut client_box = Pin::new(&mut self.client_box);
         let logger = &self.logger;
         ready!(client_box.as_mut().poll_ready(cx)).map_err(|e| {
-            debug!(logger, "error processing block event"; "reason" => %e);
-            ()
+            error!(
+                logger,
+                "processing of incoming client requests failed";
+                "reason" => %e,
+            );
         })?;
         if let Some(msg) = self.incoming_solicitation.take() {
             client_box.start_send(msg).map_err(|e| {
                 error!(
-                    logger,
+                    self.logger,
                     "failed to send client request for processing";
                     "reason" => %e,
                 );
@@ -230,7 +218,7 @@ impl Client {
             }?;
         }
 
-        let block_events = Pin::new(&mut self.inbound_block_events);
+        let block_events = Pin::new(&mut self.inbound.block_events);
         let maybe_event = ready!(block_events.poll_next(cx));
         let event = match maybe_event {
             Some(Ok(event)) => event,
@@ -436,16 +424,32 @@ impl Client {
     fn process_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
-        match ready!(Pin::new(&mut self.fragment_forward).poll(cx)) {
-            Ok(()) => {
+        let mut fragment_sink = Pin::new(&mut self.fragment_sink);
+        ready!(fragment_sink.as_mut().poll_ready(cx)).map_err(|_| ())?;
+
+        match Pin::new(&mut self.inbound.fragments).poll_next(cx) {
+            Poll::Pending => {
+                if let Poll::Ready(Err(_)) = fragment_sink.as_mut().poll_flush(cx) {
+                    return Err(()).into();
+                }
+                Poll::Pending
+            }
+            Poll::Ready(Some(Ok(fragment))) => {
+                fragment_sink
+                    .as_mut()
+                    .start_send(fragment)
+                    .map_err(|_| ())?;
+                Ok(Continue).into()
+            }
+            Poll::Ready(None) => {
                 debug!(self.logger, "fragment subscription ended by the peer");
                 Ok(Disconnect).into()
             }
-            Err(e) => {
+            Poll::Ready(Some(Err(e))) => {
                 debug!(
                     self.logger,
-                    "fragment subscription failed";
-                    "error" => %e,
+                    "fragment subscription stream failure";
+                    "error" => ?e,
                 );
                 Err(()).into()
             }
@@ -455,20 +459,47 @@ impl Client {
     fn process_gossip(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
 
-        match ready!(Pin::new(&mut self.gossip_forward).poll(cx)) {
-            Ok(()) => {
+        let mut gossip_sink = Pin::new(&mut self.gossip_sink);
+        ready!(gossip_sink.as_mut().poll_ready(cx)).map_err(|_| ())?;
+
+        match Pin::new(&mut self.inbound.gossip).poll_next(cx) {
+            Poll::Pending => {
+                if let Poll::Ready(Err(_)) = gossip_sink.as_mut().poll_flush(cx) {
+                    return Err(()).into();
+                }
+                Poll::Pending
+            }
+            Poll::Ready(Some(Ok(gossip))) => {
+                gossip_sink.as_mut().start_send(gossip).map_err(|_| ())?;
+                Ok(Continue).into()
+            }
+            Poll::Ready(None) => {
                 debug!(self.logger, "gossip subscription ended by the peer");
                 Ok(Disconnect).into()
             }
-            Err(e) => {
+            Poll::Ready(Some(Err(e))) => {
                 debug!(
                     self.logger,
-                    "gossip subscription failed";
-                    "error" => %e,
+                    "gossip subscription stream failure";
+                    "error" => ?e,
                 );
                 Err(()).into()
             }
         }
+    }
+
+    fn poll_shut_down(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        ready!(Pin::new(&mut self.block_sink).poll_close(cx)).unwrap_or(());
+        ready!(Pin::new(&mut self.fragment_sink).poll_close(cx)).unwrap_or(());
+        ready!(Pin::new(&mut self.gossip_sink).poll_close(cx)).unwrap_or(());
+        ready!(Pin::new(&mut self.client_box).poll_close(cx)).unwrap_or_else(|e| {
+            warn!(
+                self.logger,
+                "failed to close communication channel to the client task";
+                "reason" => %e,
+            );
+        });
+        Poll::Ready(())
     }
 }
 
@@ -477,6 +508,10 @@ impl Future for Client {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         use self::ProcessingOutcome::*;
+
+        if self.shutting_down {
+            return self.poll_shut_down(cx);
+        }
 
         loop {
             let mut progress = Progress::begin(self.process_block_event(cx));
