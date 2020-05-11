@@ -8,7 +8,6 @@ mod jormungandr_configuration;
 mod node;
 mod rest;
 mod starter;
-mod version;
 
 pub use configuration_builder::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
@@ -17,7 +16,7 @@ pub use jormungandr_configuration::BackwardCompatibleConfig;
 pub use node::BackwardCompatibleJormungandr;
 pub use rest::BackwardCompatibleRest;
 pub use starter::Starter;
-pub use version::Version;
+pub use jormungandr_testing_utils::legacy::Version;
 
 use crate::common::file_utils;
 
