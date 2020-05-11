@@ -329,7 +329,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
     let propagate_res = match &msg {
         PropagateMsg::Block(header) => {
             debug!(state.logger(), "block to propagate"; "hash" => %header.hash());
-            let header = header.clone().encode();
+            let header = header.encode();
             let view = state
                 .topology
                 .view(poldercast::Selection::Topic {
@@ -340,7 +340,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
         }
         PropagateMsg::Fragment(fragment) => {
             debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
-            let fragment = fragment.clone().encode();
+            let fragment = fragment.encode();
             let view = state
                 .topology
                 .view(poldercast::Selection::Topic {
