@@ -19,6 +19,7 @@ use futures::prelude::*;
 use futures::ready;
 use slog::Logger;
 
+use std::error::Error as _;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -237,7 +238,14 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     }
 
     fn start_send(mut self: Pin<&mut Self>, raw_header: net_data::Header) -> Result<(), Error> {
-        let header = raw_header.decode()?;
+        let header = raw_header.decode().map_err(|e| {
+            info!(
+                self.logger,
+                "failed to decode incoming block announcement header";
+                "reason" => %e.source().unwrap(),
+            );
+            e
+        })?;
         let node_id = self.node_id.clone();
         self.mbox
             .start_send(BlockMsg::AnnouncedBlock(header, node_id))
@@ -291,7 +299,14 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
             self.buffered_fragments.len() < buffer_sizes::inbound::FRAGMENTS,
             "should call `poll_ready` which returns `Poll::Ready(Ok(()))` before `start_send`",
         );
-        let fragment = raw_fragment.decode()?;
+        let fragment = raw_fragment.decode().map_err(|e| {
+            info!(
+                self.logger,
+                "failed to decode incoming fragment";
+                "reason" => %e.source().unwrap(),
+            );
+            e
+        })?;
         self.buffered_fragments.push(fragment);
         Ok(())
     }
@@ -372,7 +387,14 @@ impl Sink<net_data::Gossip> for GossipProcessor {
     }
 
     fn start_send(mut self: Pin<&mut Self>, gossip: net_data::Gossip) -> Result<(), Error> {
-        let nodes = gossip.nodes.decode()?;
+        let nodes = gossip.nodes.decode().map_err(|e| {
+            info!(
+                self.logger,
+                "failed to decode incoming gossip";
+                "reason" => %e.source().unwrap(),
+            );
+            e
+        })?;
         let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
             filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
         });
