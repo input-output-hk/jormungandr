@@ -19,14 +19,6 @@ where
     U::read(&mut buf).map_err(|e| Error::new(Code::InvalidArgument, e))
 }
 
-fn read_vec<T, U>(src: &[T]) -> Result<Vec<U>, Error>
-where
-    T: AsRef<[u8]>,
-    U: Readable,
-{
-    src.iter().map(|item| read(item)).collect()
-}
-
 /// Conversion from a chain-network byte container data type
 /// to an application data object.
 pub trait Decode {
@@ -141,8 +133,7 @@ impl Encode for Fragment {
     type NetworkData = net_data::Fragment;
 
     fn encode(&self) -> Self::NetworkData {
-        let bytes = self.serialize_as_vec().unwrap();
-        net_data::Fragment::from_bytes(bytes)
+        net_data::Fragment::from_bytes(self.to_raw().as_ref())
     }
 }
 
