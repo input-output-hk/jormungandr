@@ -5,21 +5,26 @@ use crate::{
         KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration, Value,
     },
     test::{
-        utils::{self, MeasurementReportInterval, SyncWaitParams},
+        utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
         Result,
     },
     Context,
 };
-
-use jormungandr_testing_utils::testing::network_builder::{
-    Blockchain, TopologyBuilder, WalletTemplate,
+use chain_core::property::FromStr;
+use jormungandr_testing_utils::{
+    legacy::Version,
+    testing::network_builder::{Blockchain, TopologyBuilder, WalletTemplate},
 };
+
+use jormungandr_integration_tests::common::legacy::download_last_n_releases;
+use jormungandr_integration_tests::common::legacy::get_jormungandr_bin;
 
 use rand_chacha::ChaChaRng;
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE: &str = "Relay";
 const LEADER_NODE: &str = "Leader";
+const LEGACY_NODE: &str = "Legacy";
 
 fn relay_name(i: u32) -> String {
     format!("{}_{}", RELAY_NODE, i)
@@ -27,6 +32,10 @@ fn relay_name(i: u32) -> String {
 
 fn leader_name(i: u32) -> String {
     format!("{}_{}", LEADER_NODE, i)
+}
+
+fn legacy_name(i: u32) -> String {
+    format!("{}_{}", LEGACY_NODE, i)
 }
 
 fn wallet_name(i: u32) -> String {
@@ -94,6 +103,7 @@ fn prepare_real_scenario(
 pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let relay_nodes_count = 8;
     let leaders_per_relay = 10;
+    let legacy_nodes_count = 10;
 
     let scenario_settings = prepare_real_scenario(
         "Real-Network",
@@ -124,18 +134,38 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         )?);
     }
 
+    let releases = download_last_n_releases(1);
+    let last_release = releases.last().unwrap();
+    let legacy_app = get_jormungandr_bin(last_release);
+    let version = Version::from_str(&last_release.version()).unwrap();
+
+    let mut legacy_leaders = vec![];
+
+    for i in 0..legacy_nodes_count {
+        legacy_leaders.push(
+            controller.spawn_legacy_node(
+                controller
+                    .new_spawn_params(&legacy_name(i + 1))
+                    .persistence_mode(PersistenceMode::Persistent)
+                    .jormungandr(legacy_app.clone()),
+                &version,
+            )?,
+        );
+    }
+
     controller.monitor_nodes();
     core.wait_for_bootstrap()?;
     leaders.last().unwrap().wait_for_bootstrap()?;
 
-    utils::measure_how_many_nodes_are_running(
-        leaders.iter().collect(),
-        "real_network_bootstrap_score",
-    );
+    let mut sync_nodes: Vec<&dyn SyncNode> =
+        leaders.iter().map(|node| node as &dyn SyncNode).collect();
+    sync_nodes.extend(legacy_leaders.iter().map(|node| node as &dyn SyncNode));
+
+    utils::measure_how_many_nodes_are_running(sync_nodes.clone(), "real_network_bootstrap_score");
 
     let leaders_count = leaders.len() as u64;
     utils::measure_and_log_sync_time(
-        leaders.iter().collect(),
+        sync_nodes,
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync",
         MeasurementReportInterval::Long,
