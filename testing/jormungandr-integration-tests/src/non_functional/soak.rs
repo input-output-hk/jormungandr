@@ -7,9 +7,10 @@ use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool
 use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
 use std::time::Duration;
 
+#[cfg(feature = "soak-non-functional")]
 #[test]
 pub fn test_blocks_are_being_created_for_48_hours() {
-    let duration_48_hours = Duration::from_secs(60);
+    let duration_48_hours = Duration::from_secs(172_800);
 
     let mut receiver = startup::create_new_account_address();
     let mut sender = startup::create_new_account_address();
