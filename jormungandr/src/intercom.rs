@@ -378,9 +378,8 @@ pub struct RequestStreamHandle<T, R> {
     reply: ReplyHandle<R>,
 }
 
-pub struct RequestSink<T, R> {
+pub struct RequestSink<T> {
     sender: MessageBox<T>,
-    reply_future: Option<ReplyFuture<R>>,
     logger: Logger,
 }
 
@@ -390,28 +389,20 @@ impl<T, R> RequestStreamHandle<T, R> {
     }
 }
 
-impl<T, R> RequestSink<T, R> {
+impl<T> RequestSink<T> {
     pub fn logger(&self) -> &Logger {
         &self.logger
     }
-
-    // This is for network which implements request_stream::MapResponse
-    // for this type.
-    pub fn take_reply_future(&mut self) -> ReplyFuture<R> {
-        self.reply_future
-            .take()
-            .expect("there can be only one waiting for the reply")
-    }
 }
 
-impl<T, R> RequestSink<T, R> {
+impl<T> RequestSink<T> {
     fn map_send_error(&self, _e: mpsc::SendError, msg: &'static str) -> Error {
         debug!(self.logger, "{}", msg);
         Error::aborted("request stream processing ended before all items were sent").into()
     }
 }
 
-impl<T, R> Sink<T> for RequestSink<T, R> {
+impl<T> Sink<T> for RequestSink<T> {
     type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
@@ -455,16 +446,12 @@ impl<T, R> Sink<T> for RequestSink<T, R> {
 pub fn stream_request<T, R>(
     buffer: usize,
     logger: Logger,
-) -> (RequestStreamHandle<T, R>, RequestSink<T, R>) {
+) -> (RequestStreamHandle<T, R>, RequestSink<T>, ReplyFuture<R>) {
     let (sender, receiver) = async_msg::channel(buffer);
     let (reply, reply_future) = unary_reply(logger.clone());
     let handle = RequestStreamHandle { receiver, reply };
-    let sink = RequestSink {
-        sender,
-        reply_future: Some(reply_future),
-        logger,
-    };
-    (handle, sink)
+    let sink = RequestSink { sender, logger };
+    (handle, sink, reply_future)
 }
 
 /// ...

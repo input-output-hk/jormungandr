@@ -336,7 +336,7 @@ impl Client {
         let mut block_box = self.block_sink.message_box();
         let logger = self.logger.new(o!("request" => "PullHeaders"));
         let logger1 = logger.clone();
-        let (handle, sink) =
+        let (handle, sink, _) =
             intercom::stream_request(buffer_sizes::inbound::HEADERS, logger.clone());
         // TODO: make sure that back pressure on the number of requests
         // in flight prevents unlimited spawning of these tasks.
@@ -381,7 +381,7 @@ impl Client {
         let logger = self.logger.new(o!("request" => "GetBlocks"));
         let req_err_logger = logger.clone();
         let res_logger = logger.clone();
-        let (handle, sink) =
+        let (handle, sink, _) =
             intercom::stream_request(buffer_sizes::inbound::BLOCKS, logger.clone());
         // TODO: make sure that back pressure on the number of requests
         // in flight prevents unlimited spawning of these tasks.
