@@ -220,7 +220,10 @@ impl JormungandrLogger {
     pub fn print_error_and_invalid_logs(&self) {
         let error_lines: Vec<_> = self.get_lines_with_error_and_invalid().collect();
         if !error_lines.is_empty() {
-            println!("Error lines: {:?}", error_lines);
+            println!("Error lines:");
+            for line in error_lines {
+                println!("{}", line);
+            }
         }
     }
 
