@@ -3,6 +3,7 @@ use crate::network::convert::Encode;
 use bincode;
 use chain_core::property;
 use chain_network::data as net_data;
+use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
@@ -21,7 +22,10 @@ impl Gossip {
     }
 
     pub fn has_valid_address(&self) -> bool {
-        let addr = match self.address().and_then(|addr| addr.to_socketaddr()) {
+        let addr = match self
+            .address()
+            .and_then(|addr| multiaddr_to_socket_addr(addr.multi_address()))
+        {
             None => return false,
             Some(addr) => addr,
         };
@@ -62,7 +66,10 @@ impl Gossip {
             return false;
         }
 
-        let addr = match self.address().and_then(|addr| addr.to_socketaddr()) {
+        let addr = match self
+            .address()
+            .and_then(|addr| multiaddr_to_socket_addr(addr.multi_address()))
+        {
             None => return false,
             Some(addr) => addr,
         };

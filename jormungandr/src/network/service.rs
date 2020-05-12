@@ -275,11 +275,13 @@ impl GossipService for NodeService {
     }
 
     async fn peers(&self, limit: u32) -> Result<Peers, Error> {
+        use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
+
         let topology = &self.global_state.topology;
         let view = topology.view(poldercast::Selection::Any).await;
         let mut peers = Vec::new();
         for n in view.peers.into_iter() {
-            if let Some(addr) = n.to_socketaddr() {
+            if let Some(addr) = multiaddr_to_socket_addr(n.multi_address()) {
                 peers.push(addr.into());
                 if peers.len() >= limit as usize {
                     break;
@@ -288,7 +290,11 @@ impl GossipService for NodeService {
         }
         if peers.len() == 0 {
             // No peers yet, put self as the peer to bootstrap from
-            if let Some(addr) = view.self_node.address().and_then(|x| x.to_socketaddr()) {
+            if let Some(addr) = view
+                .self_node
+                .address()
+                .and_then(|x| multiaddr_to_socket_addr(x.multi_address()))
+            {
                 peers.push(addr.into());
             }
         }

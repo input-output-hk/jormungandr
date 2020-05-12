@@ -147,11 +147,13 @@ impl Configuration {
     /// Returns the listener configuration, if the options defining it
     /// were set.
     pub fn listen(&self) -> Option<Listen> {
+        use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
+
         self.listen_address
             .or(self
                 .profile
                 .address()
-                .and_then(|address| address.to_socketaddr()))
+                .and_then(|address| multiaddr_to_socket_addr(address.multi_address())))
             .map(|addr| Listen::new(addr))
     }
 }

@@ -196,6 +196,8 @@ fn generate_network(
     config: &Option<Config>,
     logger: &Logger,
 ) -> Result<network::Configuration, Error> {
+    use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
+
     let (mut p2p, http_fetch_block0_service, skip_bootstrap, bootstrap_from_trusted_peers) =
         if let Some(cfg) = config {
             (
@@ -238,7 +240,7 @@ fn generate_network(
         listen_address: match &p2p.listen_address {
             None => None,
             Some(v) => {
-                if let Some(addr) = v.to_socketaddr() {
+                if let Some(addr) = multiaddr_to_socket_addr(v.multi_address()) {
                     Some(addr)
                 } else {
                     return Err(Error::ListenAddressNotValid);
