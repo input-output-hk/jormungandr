@@ -16,6 +16,7 @@ use chain_network::error::{self as net_error, Error};
 
 use async_trait::async_trait;
 use futures::prelude::*;
+use futures::try_join;
 use slog::Logger;
 
 use std::convert::TryFrom;
@@ -162,26 +163,32 @@ impl BlockService for NodeService {
 
     async fn push_headers(&self, stream: PushStream<Header>) -> Result<(), Error> {
         let logger = self.logger.new(o!("request" => "PushHeaders"));
-        let (handle, sink) =
+        let (handle, sink, reply) =
             intercom::stream_request(buffer_sizes::inbound::HEADERS, logger.clone());
         let block_box = self.channels.block_box.clone();
         send_message(block_box, BlockMsg::ChainHeaders(handle), logger).await?;
-        stream
-            .and_then(|header| async { header.decode() })
-            .forward(sink.sink_err_into())
-            .await
+        try_join!(
+            stream
+                .and_then(|header| async { header.decode() })
+                .forward(sink.sink_err_into()),
+            reply.err_into(),
+        )?;
+        Ok(())
     }
 
     async fn upload_blocks(&self, stream: PushStream<Block>) -> Result<(), Error> {
         let logger = self.logger.new(o!("request" => "UploadBlocks"));
-        let (handle, sink) =
+        let (handle, sink, reply) =
             intercom::stream_request(buffer_sizes::inbound::BLOCKS, logger.clone());
         let block_box = self.channels.block_box.clone();
         send_message(block_box, BlockMsg::NetworkBlocks(handle), logger).await?;
-        stream
-            .and_then(|block| async { block.decode() })
-            .forward(sink.sink_err_into())
-            .await
+        try_join!(
+            stream
+                .and_then(|block| async { block.decode() })
+                .forward(sink.sink_err_into()),
+            reply.err_into(),
+        )?;
+        Ok(())
     }
 
     async fn block_subscription(
