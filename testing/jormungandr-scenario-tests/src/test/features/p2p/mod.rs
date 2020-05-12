@@ -1,9 +1,7 @@
 pub mod connections;
-pub mod node_id;
 pub mod stats;
 
 pub use connections::max_connections;
-pub use node_id::*;
 pub use stats::p2p_stats_test;
 
 use crate::{
