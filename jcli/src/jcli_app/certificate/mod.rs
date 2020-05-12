@@ -10,6 +10,7 @@ use structopt::StructOpt;
 use thiserror::Error;
 
 mod get_stake_pool_id;
+mod get_vote_plan_id;
 mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
@@ -82,6 +83,8 @@ pub enum Error {
     },
     #[error("attempted to build vote plan with {actual} proposals, maximum is {max}")]
     TooManyVotePlanProposals { actual: usize, max: usize },
+    #[error("invalid certificate, expecting a vote plan one")]
+    NotVotePlanCertificate,
 }
 
 #[derive(StructOpt)]
@@ -94,6 +97,8 @@ pub enum Certificate {
     Sign(sign::Sign),
     /// get the stake pool id from the given stake pool registration certificate
     GetStakePoolId(get_stake_pool_id::GetStakePoolId),
+    /// get the vote plan id from the given vote plan certificate
+    GetVotePlanId(get_vote_plan_id::GetVotePlanId),
     /// Print certificate
     Print(PrintArgs),
 }
@@ -176,6 +181,7 @@ impl Certificate {
             Certificate::Sign(args) => args.exec()?,
             Certificate::Print(args) => args.exec()?,
             Certificate::GetStakePoolId(args) => args.exec()?,
+            Certificate::GetVotePlanId(args) => args.exec()?,
         }
 
         Ok(())
