@@ -252,7 +252,7 @@ impl ToPublic {
             Ed25519Extended::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Extended>(&data),
             SumEd25519_12::SECRET_BECH32_HRP => gen_pub_key::<SumEd25519_12>(&data),
             Curve25519_2HashDH::SECRET_BECH32_HRP => gen_pub_key::<Curve25519_2HashDH>(&data),
-            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp: hrp }),
+            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp }),
         }?;
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", pub_key_bech32)?;
@@ -274,7 +274,7 @@ impl ToBytes {
             | Ed25519Extended::SECRET_BECH32_HRP
             | SumEd25519_12::SECRET_BECH32_HRP
             | Curve25519_2HashDH::SECRET_BECH32_HRP => Ok(()),
-            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp: hrp }),
+            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp }),
         }?;
         let bytes = Vec::<u8>::from_base32(&data)?;
         let mut output = self.output_file.open()?;
@@ -309,7 +309,7 @@ impl Sign {
             Ed25519Bip32::SECRET_BECH32_HRP => self.sign::<Ed25519Bip32>(&secret_bytes),
             Ed25519Extended::SECRET_BECH32_HRP => self.sign::<Ed25519Extended>(&secret_bytes),
             SumEd25519_12::SECRET_BECH32_HRP => self.sign::<SumEd25519_12>(&secret_bytes),
-            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp: hrp }),
+            _ => Err(Error::UnknownBech32PrivKeyHrp { hrp }),
         }
     }
 
@@ -335,7 +335,7 @@ impl Verify {
             Ed25519::PUBLIC_BECH32_HRP => self.verify::<Ed25519>(&public_bytes),
             Ed25519Bip32::PUBLIC_BECH32_HRP => self.verify::<Ed25519Bip32>(&public_bytes),
             SumEd25519_12::PUBLIC_BECH32_HRP => self.verify::<SumEd25519_12>(&public_bytes),
-            _ => Err(Error::UnknownBech32PubKeyHrp { hrp: hrp }),
+            _ => Err(Error::UnknownBech32PubKeyHrp { hrp }),
         }
     }
 

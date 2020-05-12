@@ -29,7 +29,7 @@ pub fn parse_pub_key<A: AsymmetricPublicKey>(
     Bech32::try_from_bech32_str(bech32_str)
 }
 
-pub fn read_secret_key_from_file<A: AsymmetricKey, P: AsRef<Path>>(
+pub fn _read_secret_key_from_file<A: AsymmetricKey, P: AsRef<Path>>(
     path: &Option<P>,
 ) -> Result<SecretKey<A>, Error> {
     let bech32_str: String =
@@ -55,7 +55,7 @@ pub fn read_ed25519_secret_key_from_file<P: AsRef<Path>>(
     match SecretKey::try_from_bech32_str(&bech32_str) {
         Ok(sk) => Ok(EitherEd25519SecretKey::Extended(sk)),
         Err(_) => SecretKey::try_from_bech32_str(&bech32_str)
-            .map(|sk| EitherEd25519SecretKey::Normal(sk))
+            .map(EitherEd25519SecretKey::Normal)
             .map_err(|source| Error::SecretKeyFileMalformed {
                 source,
                 path: io::path_to_path_buf(path),
@@ -67,7 +67,7 @@ pub fn parse_ed25519_secret_key(bech32_str: &str) -> Result<EitherEd25519SecretK
     match SecretKey::try_from_bech32_str(&bech32_str) {
         Ok(sk) => Ok(EitherEd25519SecretKey::Extended(sk)),
         Err(_) => SecretKey::try_from_bech32_str(&bech32_str)
-            .map(|sk| EitherEd25519SecretKey::Normal(sk))
+            .map(EitherEd25519SecretKey::Normal)
             .map_err(Error::SecretKeyMalformed),
     }
 }

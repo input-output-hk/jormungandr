@@ -7,8 +7,10 @@ use chain_impl_mockchain::{
 use jormungandr_lib::interfaces::{
     block0_configuration_documented_example, Block0Configuration, Block0ConfigurationError,
 };
-use std::io::{BufRead, Write};
-use std::path::PathBuf;
+use std::{
+    io::{BufRead, Write},
+    path::PathBuf,
+};
 use structopt::StructOpt;
 use thiserror::Error;
 

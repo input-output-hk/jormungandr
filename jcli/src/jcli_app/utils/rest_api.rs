@@ -10,7 +10,7 @@ use serde_json::error::Error as SerdeJsonError;
 use std::{fmt, string::FromUtf8Error};
 use thiserror::Error;
 
-pub const DESERIALIZATION_ERROR_MSG: &'static str = "node returned malformed data";
+pub const DESERIALIZATION_ERROR_MSG: &str = "node returned malformed data";
 
 pub struct RestApiSender<'a> {
     builder: RequestBuilder,
@@ -182,12 +182,11 @@ impl RestApiResponseBody {
     fn new(response: &mut Response) -> Result<Self, Error> {
         let mut data = Vec::with_capacity(response.content_length().unwrap_or(0) as usize);
         response.copy_to(&mut data)?;
-        match is_body_binary(response) {
-            true => Ok(RestApiResponseBody::Binary(data)),
-            false => {
-                let data = String::from_utf8(data)?;
-                Ok(RestApiResponseBody::Text(data))
-            }
+        if is_body_binary(response) {
+            Ok(RestApiResponseBody::Binary(data))
+        } else {
+            let data = String::from_utf8(data)?;
+            Ok(RestApiResponseBody::Text(data))
         }
     }
 

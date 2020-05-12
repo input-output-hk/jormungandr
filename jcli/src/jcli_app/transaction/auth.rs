@@ -1,5 +1,7 @@
-use crate::jcli_app::certificate::read_input;
-use crate::jcli_app::transaction::{common, Error};
+use crate::jcli_app::{
+    certificate::read_input,
+    transaction::{common, Error},
+};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -17,7 +19,7 @@ impl Auth {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
 
-        if self.signing_keys.len() == 0 {
+        if self.signing_keys.is_empty() {
             return Err(Error::NoSigningKeys);
         }
 

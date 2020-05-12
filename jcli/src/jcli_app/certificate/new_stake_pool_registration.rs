@@ -1,5 +1,7 @@
-use crate::jcli_app::certificate::{write_cert, Error};
-use crate::jcli_app::utils::key_parser::parse_pub_key;
+use crate::jcli_app::{
+    certificate::{write_cert, Error},
+    utils::key_parser::parse_pub_key,
+};
 use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{Certificate, PoolPermissions, PoolRegistration},
@@ -8,7 +10,6 @@ use chain_impl_mockchain::{
 };
 use chain_time::DurationSeconds;
 use jormungandr_lib::interfaces::{AccountIdentifier, Ratio, Value};
-use std::ops::Deref;
 use std::{
     num::{NonZeroU64, NonZeroU8},
     path::PathBuf,
@@ -151,6 +152,6 @@ impl StakePoolRegistration {
         };
 
         let cert = Certificate::PoolRegistration(content);
-        write_cert(self.output.as_ref().map(|x| x.deref()), cert.into())
+        write_cert(self.output.as_deref(), cert.into())
     }
 }

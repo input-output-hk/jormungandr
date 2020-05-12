@@ -1,9 +1,7 @@
 use crate::jcli_app::certificate::{weighted_pool_ids::WeightedPoolIds, write_cert, Error};
 use chain_impl_mockchain::certificate::{Certificate, OwnerStakeDelegation as Delegation};
 use jormungandr_lib::interfaces::Certificate as CertificateType;
-use std::convert::TryInto;
-use std::ops::Deref;
-use std::path::PathBuf;
+use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -21,9 +19,6 @@ impl OwnerStakeDelegation {
         let cert = Certificate::OwnerStakeDelegation(Delegation {
             delegation: (&self.pool_ids).try_into()?,
         });
-        write_cert(
-            self.output.as_ref().map(|x| x.deref()),
-            CertificateType(cert),
-        )
+        write_cert(self.output.as_deref(), CertificateType(cert))
     }
 }

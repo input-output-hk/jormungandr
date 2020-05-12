@@ -1,10 +1,11 @@
 use crate::jcli_app::utils::{io, key_parser};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
-use std::fmt::Display;
-use std::io::{BufRead, BufReader, Write};
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::{
+    fmt::Display,
+    io::{BufRead, BufReader, Write},
+    path::{Path, PathBuf},
+};
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -162,7 +163,7 @@ impl NewArgs {
 
 impl PrintArgs {
     pub fn exec(self) -> Result<(), Error> {
-        let cert = read_cert_or_signed_cert(self.input.as_ref().map(|x| x.deref()))?;
+        let cert = read_cert_or_signed_cert(self.input.as_deref())?;
         println!("{:?}", cert);
         Ok(())
     }

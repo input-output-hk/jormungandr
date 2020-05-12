@@ -7,15 +7,12 @@ use openapiv3::{
 };
 use reqwest::{blocking::Request, Method};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::env;
-use std::fs::File;
-use std::io;
+use std::{collections::HashMap, env, fs::File, io};
 use thiserror::Error;
 use valico::json_schema::{SchemaError as ValicoError, Scope, ValidationState};
 
-const BINARY_BODY_MIME: &'static Mime = &mime::APPLICATION_OCTET_STREAM;
-const JSON_BODY_MIME: &'static Mime = &mime::APPLICATION_JSON;
+const BINARY_BODY_MIME: &Mime = &mime::APPLICATION_OCTET_STREAM;
+const JSON_BODY_MIME: &Mime = &mime::APPLICATION_JSON;
 
 pub struct OpenApiVerifier(VerifierMode);
 

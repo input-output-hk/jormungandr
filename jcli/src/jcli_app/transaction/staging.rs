@@ -1,6 +1,8 @@
-use crate::jcli_app::certificate::{pool_owner_sign, stake_delegation_account_binding_sign};
-use crate::jcli_app::transaction::Error;
-use crate::jcli_app::utils::io;
+use crate::jcli_app::{
+    certificate::{pool_owner_sign, stake_delegation_account_binding_sign},
+    transaction::Error,
+    utils::io,
+};
 use chain_addr::Address;
 use chain_impl_mockchain::{
     self as chain,
@@ -205,7 +207,7 @@ impl Staging {
             ios.seal_with_output_policy(pdata.borrow(), fee_algorithm, output_policy)?;
 
         for o in added_outputs {
-            self.add_output(o.clone().into())?;
+            self.add_output(o.clone())?;
         }
 
         self.kind = StagingKind::Finalizing;
@@ -263,7 +265,7 @@ impl Staging {
                             })
                         }
                     };
-                    if self.outputs().is_empty() == false {
+                    if !self.outputs().is_empty() {
                         return Err(Error::TxWithOwnerStakeDelegationHasOutputs);
                     }
                     Ok(balance)

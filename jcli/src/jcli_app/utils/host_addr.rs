@@ -14,7 +14,6 @@ impl HostAddr {
     pub fn with_segments(mut self, segments: &[&str]) -> Result<Self, Error> {
         let result = self.host.path_segments_mut().map(|mut host_segments| {
             host_segments.extend(segments);
-            ()
         });
         match result {
             Ok(_) => Ok(self),
