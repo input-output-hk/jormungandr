@@ -20,6 +20,7 @@ use futures::ready;
 use slog::Logger;
 
 use std::error::Error as _;
+use std::mem;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -176,7 +177,7 @@ impl FragmentProcessor {
             node_id,
             global_state,
             logger,
-            buffered_fragments: Vec::new(),
+            buffered_fragments: Vec::with_capacity(buffer_sizes::inbound::FRAGMENTS),
             pending_processing: PendingProcessing::default(),
         }
     }
@@ -224,10 +225,7 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                match self.as_mut().poll_flush_mbox(cx) {
-                    Poll::Ready(res) => res?,
-                    Poll::Pending => (),
-                }
+                ready!(self.as_mut().poll_flush_mbox(cx))?;
                 Poll::Pending
             }
             Poll::Ready(()) => self
@@ -257,10 +255,7 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                match self.as_mut().poll_flush_mbox(cx) {
-                    Poll::Ready(res) => res?,
-                    Poll::Pending => (),
-                };
+                ready!(self.as_mut().poll_flush_mbox(cx))?;
                 Poll::Pending
             }
             Poll::Ready(()) => self.as_mut().poll_flush_mbox(cx),
@@ -270,10 +265,7 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         match self.pending_processing.poll_complete(cx) {
             Poll::Pending => {
-                match self.as_mut().poll_flush_mbox(cx) {
-                    Poll::Ready(res) => res?,
-                    Poll::Pending => (),
-                };
+                ready!(self.as_mut().poll_flush_mbox(cx))?;
                 Poll::Pending
             }
             Poll::Ready(()) => Pin::new(&mut self.mbox).poll_close(cx).map_err(|e| {
@@ -319,15 +311,13 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         loop {
             if self.buffered_fragments.is_empty() {
-                ready!(self.poll_complete_refresh_stat(cx));
-                return Pin::new(&mut self.mbox).poll_flush(cx).map_err(|e| {
-                    error!(
-                        self.logger,
-                        "communication channel to the fragment task failed";
-                        "reason" => %e,
-                    );
-                    Error::new(Code::Internal, e)
-                });
+                match self.poll_complete_refresh_stat(cx) {
+                    Poll::Pending => {
+                        ready!(self.poll_flush_mbox(cx))?;
+                        return Poll::Pending;
+                    }
+                    Poll::Ready(()) => return self.poll_flush_mbox(cx),
+                }
             } else {
                 ready!(self.poll_send_fragments(cx))?;
             }
@@ -360,7 +350,10 @@ impl FragmentProcessor {
             debug!(logger, "error sending fragments for processing"; "reason" => %e);
             Error::new(Code::Internal, e)
         })?;
-        let fragments = self.buffered_fragments.split_off(0);
+        let fragments = mem::replace(
+            &mut self.buffered_fragments,
+            Vec::with_capacity(buffer_sizes::inbound::FRAGMENTS),
+        );
         self.mbox
             .start_send(TransactionMsg::SendTransaction(
                 FragmentOrigin::Network,
@@ -376,6 +369,17 @@ impl FragmentProcessor {
             })?;
         self.refresh_stat();
         Poll::Ready(Ok(()))
+    }
+
+    fn poll_flush_mbox(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+        Pin::new(&mut self.mbox).poll_flush(cx).map_err(|e| {
+            error!(
+                self.logger,
+                "communication channel to the fragment task failed";
+                "reason" => %e,
+            );
+            Error::new(Code::Internal, e)
+        })
     }
 
     fn poll_complete_refresh_stat(&mut self, cx: &mut Context<'_>) -> Poll<()> {
