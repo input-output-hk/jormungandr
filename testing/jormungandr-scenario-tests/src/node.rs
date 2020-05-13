@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
 };
 use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
-    common::jormungandr::logger::JormungandrLogger,
+    common::jormungandr::{logger::JormungandrLogger, JormungandrRest, RestError},
     mock::{client::JormungandrClient, read_into},
     response_to_vec,
 };
@@ -18,7 +18,6 @@ use jormungandr_lib::interfaces::{
 pub use jormungandr_testing_utils::testing::network_builder::{
     LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
 };
-
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
@@ -34,6 +33,7 @@ error_chain! {
         Io(std::io::Error);
         Reqwest(reqwest::Error);
         BlockFormatError(chain_core::mempack::ReadError);
+        RestError(RestError);
     }
 
     errors {
@@ -131,6 +131,7 @@ pub struct ProgressBarController {
 #[derive(Clone)]
 pub struct NodeController {
     alias: NodeAlias,
+    rest_client: JormungandrRest,
     grpc_client: JormungandrClient,
     settings: NodeSetting,
     progress_bar: ProgressBarController,
@@ -245,12 +246,8 @@ impl NodeController {
     }
 
     pub fn tip(&self) -> Result<HeaderId> {
-        let hash = self.get("tip")?.text()?;
-
-        let hash = hash.parse().chain_err(|| ErrorKind::InvalidHeaderId)?;
-
+        let hash = self.rest_client.tip()?;
         self.progress_bar.log_info(format!("tip '{}'", hash));
-
         Ok(hash)
     }
 
@@ -260,72 +257,38 @@ impl NodeController {
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
-        let response_text = self.get("network/stats")?.text()?;
+        let network_stats = self.rest_client.network_stats()?;
         self.progress_bar
-            .log_info(format!("network/stats: {}", response_text));
-
-        let network_stats: Vec<PeerStats> = if response_text.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
-        };
+            .log_info(format!("network_stats: '{:?}'", network_stats));
         Ok(network_stats)
     }
 
     pub fn p2p_quarantined(&self) -> Result<Vec<PeerRecord>> {
-        let response_text = self.get("network/p2p/quarantined")?.text()?;
-
+        let p2p_quarantined = self.rest_client.p2p_quarantined()?;
         self.progress_bar
-            .log_info(format!("network/p2p_quarantined: {}", response_text));
-
-        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
-        };
-        Ok(network_stats)
+            .log_info(format!("network/p2p_quarantined: {:?}", p2p_quarantined));
+        Ok(p2p_quarantined)
     }
 
     pub fn p2p_non_public(&self) -> Result<Vec<PeerRecord>> {
-        let response_text = self.get("network/p2p/non_public")?.text()?;
-
+        let non_public = self.rest_client.p2p_non_public()?;
         self.progress_bar
-            .log_info(format!("network/non_publicS: {}", response_text));
-
-        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
-        };
-        Ok(network_stats)
+            .log_info(format!("network/p2p/non_public: {:?}", non_public));
+        Ok(non_public)
     }
 
     pub fn p2p_available(&self) -> Result<Vec<PeerRecord>> {
-        let response_text = self.get("network/p2p/available")?.text()?;
-
+        let p2p_available = self.rest_client.p2p_available()?;
         self.progress_bar
-            .log_info(format!("network/available: {}", response_text));
-
-        let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
-        };
-        Ok(network_stats)
+            .log_info(format!("network/p2p/available: {:?}", p2p_available));
+        Ok(p2p_available)
     }
 
     pub fn p2p_view(&self) -> Result<Vec<Info>> {
-        let response_text = self.get("network/p2p/view")?.text()?;
-
+        let p2p_view = self.rest_client.p2p_view()?;
         self.progress_bar
-            .log_info(format!("network/view: {}", response_text));
-
-        let network_stats: Vec<Info> = if response_text.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
-        };
-        Ok(network_stats)
+            .log_info(format!("network/p2p/view: {:?}", p2p_view));
+        Ok(p2p_view)
     }
 
     pub fn all_blocks_hashes(&self) -> Result<Vec<HeaderId>> {
@@ -368,82 +331,16 @@ impl NodeController {
     }
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>> {
-        let logs = self.get("fragment/logs")?.text()?;
-
-        let logs: Vec<FragmentLog> = if logs.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&logs).chain_err(|| ErrorKind::InvalidFragmentLogs)?
-        };
-
+        let logs = self.rest_client.fragment_logs()?;
         self.progress_bar
             .log_info(format!("fragment logs ({})", logs.len()));
-
-        let logs = logs
-            .into_iter()
-            .map(|log| (log.fragment_id().clone().into_hash(), log))
-            .collect();
-
         Ok(logs)
     }
 
-    pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
-        let max_try = 50;
-        for _ in 0..max_try {
-            let logs = self.fragment_logs()?;
-
-            if let Some(log) = logs.get(&check.fragment_id) {
-                use jormungandr_lib::interfaces::FragmentStatus::*;
-                let status = log.status().clone();
-                match log.status() {
-                    Pending => {
-                        self.progress_bar
-                            .log_info(format!("Fragment '{}' is still pending", check.fragment_id));
-                    }
-                    Rejected { reason } => {
-                        self.progress_bar.log_info(format!(
-                            "Fragment '{}' rejected: {}",
-                            check.fragment_id, reason
-                        ));
-                        return Ok(status);
-                    }
-                    InABlock { date, block } => {
-                        self.progress_bar.log_info(format!(
-                            "Fragment '{}' in block: {} ({})",
-                            check.fragment_id, block, date
-                        ));
-                        return Ok(status);
-                    }
-                }
-            } else {
-                bail!(ErrorKind::FragmentNoInMemPoolLogs(
-                    self.alias().to_string(),
-                    check.fragment_id.clone(),
-                    self.logger().get_log_content()
-                ))
-            }
-            std::thread::sleep(duration);
-        }
-
-        bail!(ErrorKind::FragmentIsPendingForTooLong(
-            check.fragment_id.clone(),
-            Duration::from_secs(duration.as_secs() * max_try),
-            self.alias().to_string(),
-            self.logger().get_log_content()
-        ))
-    }
-
     pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>> {
-        let leaders = self.get("leaders")?.text()?;
-        let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&leaders).chain_err(|| ErrorKind::InvalidEnclaveLeaderIds)?
-        };
-
+        let leaders = self.rest_client.leaders()?;
         self.progress_bar
             .log_info(format!("leaders ids ({})", leaders.len()));
-
         Ok(leaders)
     }
 
@@ -493,11 +390,56 @@ impl NodeController {
         Ok(())
     }
 
+    pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
+        let max_try = 50;
+        for _ in 0..max_try {
+            let logs = self.fragment_logs()?;
+
+            if let Some(log) = logs.get(&check.fragment_id) {
+                use jormungandr_lib::interfaces::FragmentStatus::*;
+                let status = log.status().clone();
+                match log.status() {
+                    Pending => {
+                        self.progress_bar
+                            .log_info(format!("Fragment '{}' is still pending", check.fragment_id));
+                    }
+                    Rejected { reason } => {
+                        self.progress_bar.log_info(format!(
+                            "Fragment '{}' rejected: {}",
+                            check.fragment_id, reason
+                        ));
+                        return Ok(status);
+                    }
+                    InABlock { date, block } => {
+                        self.progress_bar.log_info(format!(
+                            "Fragment '{}' in block: {} ({})",
+                            check.fragment_id, block, date
+                        ));
+                        return Ok(status);
+                    }
+                }
+            } else {
+                bail!(ErrorKind::FragmentNoInMemPoolLogs(
+                    self.alias().to_string(),
+                    check.fragment_id.clone(),
+                    self.logger().get_log_content()
+                ))
+            }
+            std::thread::sleep(duration);
+        }
+
+        bail!(ErrorKind::FragmentIsPendingForTooLong(
+            check.fragment_id.clone(),
+            Duration::from_secs(duration.as_secs() * max_try),
+            self.alias().to_string(),
+            self.logger().get_log_content()
+        ))
+    }
+
     pub fn stats(&self) -> Result<NodeStatsDto> {
-        let stats = self.get("node/stats")?.text()?;
-        let full_stats: NodeStatsDto =
-            serde_json::from_str(&stats).chain_err(|| ErrorKind::InvalidNodeStats)?;
-        Ok(full_stats)
+        self.rest_client
+            .stats()
+            .chain_err(|| ErrorKind::InvalidNodeStats)
     }
 
     pub fn log_stats(&self) {
@@ -621,11 +563,13 @@ impl Node {
 
     pub fn controller(&self) -> NodeController {
         let p2p_address = format!("{}", self.node_settings.config().p2p.get_listen_address());
+        let rest_address = format!("{}", self.node_settings.config().rest.listen);
 
         NodeController {
             alias: self.alias().clone(),
             grpc_client: JormungandrClient::from_address(&p2p_address)
                 .expect("cannot setup grpc client"),
+            rest_client: JormungandrRest::from_address(rest_address),
             settings: self.node_settings.clone(),
             status: self.status.clone(),
             progress_bar: self.progress_bar.clone(),

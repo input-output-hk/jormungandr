@@ -8,7 +8,7 @@ pub use benchmark::storage_loading_benchmark_from_log;
 pub use configuration_builder::ConfigurationBuilder;
 pub use logger::{JormungandrLogger, LogEntry};
 pub use process::*;
-pub use rest::JormungandrRest;
+pub use rest::{JormungandrRest, RestError};
 pub use starter::*;
 
 use std::path::PathBuf;
