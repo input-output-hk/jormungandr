@@ -57,8 +57,9 @@ rest:
 ## P2P configuration
 
 - `trusted_peers`: (optional) the list of nodes' [multiaddr][multiaddr] to connect to in order to
-    bootstrap the p2p topology (and bootstrap our local blockchain) with the associated `id` (24 bytes
-    in hexadecimal given by the trusted peers to allow initial connection to it).
+    bootstrap the p2p topology (and bootstrap our local blockchain). Note that you can use a DNS
+    name in the following format: `/dns4/node.example.com/tcp/3000`. Use `dns6` instead of `dns4`
+    if you want the peer to connect with IPv6.
 - `public_address`: [multiaddr][multiaddr] the address to listen from and accept connection
     from. This is the public address that will be distributed to other peers
     of the network that may find interest into participating to the blockchain
