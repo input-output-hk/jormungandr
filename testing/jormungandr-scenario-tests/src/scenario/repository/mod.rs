@@ -270,18 +270,6 @@ fn scenarios_repository() -> Vec<Scenario> {
     ));
 
     repository.push(Scenario::new(
-        "duplicated_node_id_test",
-        duplicated_node_id_test,
-        vec![Tag::Short, Tag::Unstable],
-    ));
-
-    repository.push(Scenario::new(
-        "duplicated_trusted_peer_id_test",
-        duplicated_trusted_peer_id_test,
-        vec![Tag::Short, Tag::Unstable],
-    ));
-
-    repository.push(Scenario::new(
         "max_connections",
         max_connections,
         vec![Tag::Short, Tag::Unstable],
