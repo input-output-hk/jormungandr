@@ -251,10 +251,10 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         "T3004_Mesh",
         &mut context,
         topology [
+            LEADER_4,
             LEADER_1 -> LEADER_4 -> LEADER_5,
             LEADER_2 -> LEADER_1 -> LEADER_3,
             LEADER_3 -> LEADER_1 -> LEADER_4,
-            LEADER_4 -> LEADER_5,
             LEADER_5 -> LEADER_3 -> LEADER_1,
         ]
         blockchain {
@@ -272,10 +272,13 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+
     let leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    leader4.wait_for_bootstrap()?;
+
+    let leader5 =
+        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     let leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     let leader2 =
@@ -284,7 +287,6 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     leader5.wait_for_bootstrap()?;
-    leader4.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
     leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
