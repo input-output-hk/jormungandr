@@ -46,6 +46,7 @@ fn prepare_real_scenario(
     title: &str,
     relay_nodes_count: u32,
     nodes_count_per_relay: u32,
+    legacy_nodes_count_per_relay: u32,
     context: &Context<ChaChaRng>,
 ) -> ControllerBuilder {
     let mut builder = ControllerBuilder::new(title);
@@ -62,15 +63,25 @@ fn prepare_real_scenario(
     }
 
     let mut leader_counter = 1;
+    let mut legacy_nodes_counter = 1;
+
     for i in 0..relay_nodes_count {
+        let relay_name = relay_name(i + 1);
+
         for _ in 0..nodes_count_per_relay {
             let leader_name = leader_name(leader_counter);
             let mut leader_node = Node::new(&leader_name);
 
-            let relay_name = relay_name(i + 1);
-            leader_node.add_trusted_peer(relay_name);
+            leader_node.add_trusted_peer(relay_name.clone());
             topology_builder.register_node(leader_node);
             leader_counter = leader_counter + 1;
+        }
+
+        for _ in 0..nodes_count_per_relay {
+            let mut legacy_node = Node::new(&legacy_name(legacy_nodes_counter));
+            legacy_node.add_trusted_peer(relay_name.clone());
+            topology_builder.register_node(legacy_node);
+            legacy_nodes_counter = legacy_nodes_counter + 1;
         }
     }
 
@@ -95,6 +106,15 @@ fn prepare_real_scenario(
         *wallet.delegate_mut() = Some(leader_name(i).to_owned());
         blockchain.add_wallet(wallet);
     }
+
+    for i in 1..legacy_nodes_counter {
+        let initial_wallet_name = wallet_name(i);
+        let mut wallet =
+            WalletTemplate::new_account(initial_wallet_name.to_owned(), Value(100_000).into());
+        *wallet.delegate_mut() = Some(legacy_name(i).to_owned());
+        blockchain.add_wallet(wallet);
+    }
+
     builder.set_blockchain(blockchain);
     builder.build_settings(&mut context.clone());
     builder
@@ -103,12 +123,13 @@ fn prepare_real_scenario(
 pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let relay_nodes_count = 8;
     let leaders_per_relay = 10;
-    let legacy_nodes_count = 10;
+    let legacies_per_relay = 1;
 
     let scenario_settings = prepare_real_scenario(
         "Real-Network",
         relay_nodes_count,
         leaders_per_relay,
+        legacies_per_relay,
         &mut context,
     );
     let mut controller = scenario_settings.build(context.clone())?;
@@ -141,7 +162,7 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut legacy_leaders = vec![];
 
-    for i in 0..legacy_nodes_count {
+    for i in 0..(relay_nodes_count * legacies_per_relay) {
         legacy_leaders.push(
             controller.spawn_legacy_node(
                 controller
