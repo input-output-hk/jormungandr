@@ -904,7 +904,8 @@ p2p:
 </li>
 <li><code>cors</code>: (optional) CORS configuration, if not provided, CORS is disabled
 <ul>
-<li><code>allowed_origins</code>: (optional) allowed origins, if none provided, echos request origin</li>
+<li><code>allowed_origins</code>: (optional) allowed origins, if none provided, echos request origin, note that
+an origin should include a scheme, for example: <code>http://127.0.0.1:8080</code>.</li>
 <li><code>max_age_secs</code>: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled</li>
 </ul>
 </li>
