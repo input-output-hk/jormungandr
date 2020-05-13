@@ -20,6 +20,7 @@ use futures::ready;
 use slog::Logger;
 
 use std::error::Error as _;
+use std::mem;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -349,7 +350,7 @@ impl FragmentProcessor {
             debug!(logger, "error sending fragments for processing"; "reason" => %e);
             Error::new(Code::Internal, e)
         })?;
-        let fragments = self.buffered_fragments.split_off(0);
+        let fragments = mem::replace(&mut self.buffered_fragments, Vec::new());
         self.mbox
             .start_send(TransactionMsg::SendTransaction(
                 FragmentOrigin::Network,
