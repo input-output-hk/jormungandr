@@ -26,6 +26,12 @@ pub fn filter(
     let block = {
         let root = warp::path!("block" / ..);
 
+        let get_block0 = warp::path!("block0")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_block0)
+            .boxed();
+
         let get = warp::path!(String)
             .and(warp::get())
             .and(with_context.clone())
@@ -39,7 +45,7 @@ pub fn filter(
             .and_then(handlers::get_block_next_id)
             .boxed();
 
-        root.and(get.or(get_next)).boxed()
+        root.and(get.or(get_next).or(get_block0)).boxed()
     };
 
     let fragment = warp::path!("fragment" / "logs")

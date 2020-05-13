@@ -227,6 +227,17 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
     Ok(Some(node_stats))
 }
 
+pub async fn get_block0(context: &Context) -> Result<Option<Vec<u8>>, Error> {
+    let blockchain = context.blockchain()?;
+    let block_id = blockchain.block0().to_owned();
+    blockchain
+        .storage()
+        .get(block_id)
+        .await?
+        .map(|b| b.serialize_as_vec().map_err(Error::Serialize))
+        .transpose()
+}
+
 pub async fn get_block_id(context: &Context, block_id_hex: &str) -> Result<Option<Vec<u8>>, Error> {
     context
         .blockchain()?

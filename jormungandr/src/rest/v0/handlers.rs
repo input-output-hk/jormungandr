@@ -50,6 +50,14 @@ pub async fn get_stats_counter(context: ContextLock) -> Result<impl Reply, Rejec
         .map_err(warp::reject::custom)
 }
 
+pub async fn get_block0(context: ContextLock) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::get_block0(&context)
+        .await
+        .map_err(warp::reject::custom)?
+        .ok_or(warp::reject::not_found())
+}
+
 pub async fn get_block_id(
     block_id_hex: String,
     context: ContextLock,

@@ -124,6 +124,24 @@ paths:
         '404':
           description: Account with given ID was not found
 
+  '/api/v0/block/block0':
+    get:
+      description: Gets block0
+      operationId: Block0
+      tags:
+        - block
+      responses:
+        '200':
+          description: Success
+          content:
+            application/octet-stream:
+              schema:
+                description: Binary blob with block0
+                type: string
+                format: binary
+        '400':
+          description: Block was not found
+
   '/api/v0/block/{block_id}':
     get:
       description: Gets block
