@@ -167,7 +167,8 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             controller.spawn_legacy_node(
                 controller
                     .new_spawn_params(&legacy_name(i + 1))
-                    .persistence_mode(PersistenceMode::Persistent)
+                    .leadership_mode(LeadershipMode::Leader)
+                    .persistence_mode(PersistenceMode::InMemory)
                     .jormungandr(legacy_app.clone()),
                 &version,
             )?,
