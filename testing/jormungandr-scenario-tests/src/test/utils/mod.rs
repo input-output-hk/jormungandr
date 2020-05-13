@@ -7,6 +7,7 @@ use crate::{
     test::{ErrorKind, Result},
 };
 use chain_impl_mockchain::key::Hash;
+use jormungandr_integration_tests::common::jormungandr::JormungandrLogger;
 use jormungandr_lib::{
     interfaces::{FragmentStatus, NodeState},
     time::Duration as LibsDuration,
@@ -14,6 +15,7 @@ use jormungandr_lib::{
 use jormungandr_testing_utils::testing::{
     benchmark_efficiency, benchmark_speed, network_builder::Wallet, Speed, Thresholds,
 };
+
 use std::{
     fmt, thread,
     time::{Duration, SystemTime},
@@ -149,10 +151,10 @@ pub trait SyncNode {
     fn last_block_height(&self) -> u32;
     fn log_stats(&self);
     fn all_blocks_hashes(&self) -> Vec<Hash>;
-    fn log_content(&self) -> String;
+    fn logger(&self) -> JormungandrLogger;
+    fn is_running(&self) -> bool;
 }
 
-//.stats()?.stats.unwrap().
 impl SyncNode for NodeController {
     fn alias(&self) -> &str {
         self.alias()
@@ -177,8 +179,12 @@ impl SyncNode for NodeController {
         self.all_blocks_hashes().unwrap()
     }
 
-    fn log_content(&self) -> String {
-        self.logger().get_log_content()
+    fn is_running(&self) -> bool {
+        self.stats().unwrap().state == NodeState::Running
+    }
+
+    fn logger(&self) -> JormungandrLogger {
+        self.logger()
     }
 }
 
@@ -203,8 +209,12 @@ impl SyncNode for LegacyNodeController {
         self.all_blocks_hashes().unwrap()
     }
 
-    fn log_content(&self) -> String {
-        self.logger().get_log_content()
+    fn logger(&self) -> JormungandrLogger {
+        self.logger()
+    }
+
+    fn is_running(&self) -> bool {
+        self.stats().unwrap()["state"].as_str().unwrap() == "Running"
     }
 }
 
@@ -276,7 +286,7 @@ pub fn assert_is_up(node: &NodeController) -> Result<()> {
         bail!(ErrorKind::AssertionFailed(format!(
             "Node '{}' is not up. Logs: {}",
             node.alias(),
-            node.log_content()
+            node.logger().get_log_content()
         )))
     }
     Ok(())
@@ -295,7 +305,7 @@ pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Resu
             "fragment status sent to node: {} is not in block :({:?}). logs: {}",
             node.alias(),
             status,
-            node.log_content()
+            node.logger().get_log_content()
         )))
     }
     Ok(())
@@ -324,9 +334,9 @@ pub fn assert_are_in_sync<A: SyncNode + ?Sized>(
             &format!("nodes are out of sync (different block hashes) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
                 duration,
                 first_node.alias(),
-                first_node.log_content(),
+                first_node.logger().get_log_content(),
                 node.alias(),
-                node.log_content()),
+                node.logger().get_log_content()),
         )?;
         assert_equals(
             &block_height,
@@ -334,9 +344,9 @@ pub fn assert_are_in_sync<A: SyncNode + ?Sized>(
             &format!("nodes are out of sync (different block height) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
                 duration,
                 first_node.alias(),
-                first_node.log_content(),
+                first_node.logger().get_log_content(),
                 node.alias(),
-                node.log_content()
+                node.logger().get_log_content()
                 ),
         )?;
     }
@@ -378,7 +388,7 @@ pub fn sending_transactions_to_node_sequentially(
     Ok(())
 }
 
-pub fn measure_how_many_nodes_are_running(leaders: Vec<&NodeController>, name: &str) {
+pub fn measure_how_many_nodes_are_running<A: SyncNode + ?Sized>(leaders: Vec<&A>, name: &str) {
     let leaders_nodes_count = leaders.len() as u32;
 
     let mut efficiency_benchmark_run = benchmark_efficiency(name)
@@ -395,12 +405,10 @@ pub fn measure_how_many_nodes_are_running(leaders: Vec<&NodeController>, name: &
 
         leaders_ids.retain(|leader_id| {
             let leader_index_usize = (leader_id - 1) as usize;
-            let leader: &NodeController = leaders.get(leader_index_usize).unwrap();
-            if let Ok(stats) = leader.stats() {
-                if let NodeState::Running = stats.state {
-                    efficiency_benchmark_run.increment();
-                    return false;
-                }
+            let leader: &A = leaders.get(leader_index_usize).unwrap();
+            if leader.is_running() {
+                efficiency_benchmark_run.increment();
+                return false;
             }
             return true;
         });
@@ -415,7 +423,7 @@ pub fn measure_how_many_nodes_are_running(leaders: Vec<&NodeController>, name: &
     efficiency_benchmark_run.stop().print()
 }
 
-fn print_error_for_failed_leaders(leaders_ids: Vec<u32>, leaders: Vec<&NodeController>) {
+fn print_error_for_failed_leaders<A: SyncNode + ?Sized>(leaders_ids: Vec<u32>, leaders: Vec<&A>) {
     if leaders_ids.is_empty() {
         return;
     }
