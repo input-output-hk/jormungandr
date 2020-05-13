@@ -29,7 +29,11 @@ pub struct Profile {
     pub subscriptions: Vec<Subscription>,
 }
 
-pub type Info = String;
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Info {
+    pub address: String,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

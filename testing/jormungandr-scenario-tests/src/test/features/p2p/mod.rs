@@ -69,7 +69,7 @@ pub fn assert_are_in_network_view(
         utils::assert(
             network_view
                 .iter()
-                .any(|info| info.to_string() == peer.address().to_string()),
+                .any(|info| info.address.to_string() == peer.address().to_string()),
             &format!(
                 "{}: Peer {} is not present in network view list",
                 info,
@@ -201,7 +201,7 @@ pub fn assert_record_is_present(
         utils::assert(
             peer_list.iter().any(|x| {
                 let info = &x.profile.info;
-                info.to_string() == peer.address().to_string()
+                info.address.to_string() == peer.address().to_string()
             }),
             &format!(
                 "{}: Peer {} is not present in {} list",
@@ -223,7 +223,7 @@ pub fn assert_record_is_not_present(
         utils::assert(
             !peer_list.iter().any(|x| {
                 let info = &x.profile.info;
-                info.to_string() == peer.address().to_string()
+                info.address.to_string() == peer.address().to_string()
             }),
             &format!(
                 "Peer {} is present in {} list, while should not",
