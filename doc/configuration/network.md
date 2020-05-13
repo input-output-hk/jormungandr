@@ -16,7 +16,8 @@ p2p:
   - `cert_file`: path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
   - `priv_key_file`: path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
 - `cors`: (optional) CORS configuration, if not provided, CORS is disabled
-  - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin
+  - `allowed_origins`: (optional) allowed origins, if none provided, echos request origin, note that
+    an origin should include a scheme, for example: `http://127.0.0.1:8080`.
   - `max_age_secs`: (optional) maximum CORS caching time in seconds, if none provided, caching is disabled
 
 ### Configuring TLS
