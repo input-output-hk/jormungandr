@@ -177,7 +177,7 @@ impl FragmentProcessor {
             node_id,
             global_state,
             logger,
-            buffered_fragments: Vec::new(),
+            buffered_fragments: Vec::with_capacity(buffer_sizes::inbound::FRAGMENTS),
             pending_processing: PendingProcessing::default(),
         }
     }
@@ -350,7 +350,10 @@ impl FragmentProcessor {
             debug!(logger, "error sending fragments for processing"; "reason" => %e);
             Error::new(Code::Internal, e)
         })?;
-        let fragments = mem::replace(&mut self.buffered_fragments, Vec::new());
+        let fragments = mem::replace(
+            &mut self.buffered_fragments,
+            Vec::with_capacity(buffer_sizes::inbound::FRAGMENTS),
+        );
         self.mbox
             .start_send(TransactionMsg::SendTransaction(
                 FragmentOrigin::Network,
