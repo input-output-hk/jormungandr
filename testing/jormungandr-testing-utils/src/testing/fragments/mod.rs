@@ -1,4 +1,7 @@
-use self::{initial_certificates::full_delegation_cert_for_block0, transaction::transaction_to};
+pub use self::{
+    initial_certificates::{signed_delegation_cert, signed_stake_pool_cert},
+    transaction::transaction_to,
+};
 use crate::wallet::Wallet;
 use chain_impl_mockchain::{
     certificate::PoolId,
@@ -63,7 +66,7 @@ impl FragmentBuilder {
     }
 
     pub fn full_delegation_cert_for_block0(wallet: &Wallet, pool_id: PoolId) -> Initial {
-        full_delegation_cert_for_block0(wallet, pool_id)
+        Initial::Cert(signed_delegation_cert(wallet, pool_id).into())
     }
 
     pub fn stake_pool_registration(&self, funder: &Wallet, stake_pool: &StakePool) -> Fragment {

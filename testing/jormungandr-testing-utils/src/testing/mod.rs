@@ -7,7 +7,9 @@ pub mod network_builder;
 mod web;
 
 pub use archive::decompress;
-pub use fragments::{FragmentBuilder, FragmentBuilderError};
+pub use fragments::{
+    signed_delegation_cert, signed_stake_pool_cert, FragmentBuilder, FragmentBuilderError,
+};
 pub use measurement::{
     benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
     EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, EfficiencyBenchmarkRun, Endurance,
