@@ -25,12 +25,13 @@ pub struct JormungandrRest {
 
 impl JormungandrRest {
     pub fn new(config: JormungandrConfig) -> Self {
-        Self::from_address(config.get_node_address())
+        Self::from_address(config.node_config().rest.listen.to_string())
     }
 
     pub fn from_address(address: String) -> Self {
+        let endpoint = format!("http://{}", address);
         Self {
-            inner: legacy::BackwardCompatibleRest::new(address),
+            inner: legacy::BackwardCompatibleRest::new(endpoint),
         }
     }
 

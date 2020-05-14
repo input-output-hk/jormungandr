@@ -30,7 +30,7 @@ impl BackwardCompatibleRest {
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        let request = format!("http://{}/api/v0/{}", self.endpoint, path);
+        let request = format!("{}/api/v0/{}", self.endpoint, path);
         reqwest::blocking::get(&request)
     }
 
