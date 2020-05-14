@@ -2302,9 +2302,9 @@ dependencies = [
 
 [[package]]
 name = "os_info"
-version = "2.0.4"
+version = "2.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cba74c2025096af569ed5daa54051fc97770f406b13491694616e4e45999739c"
+checksum = "ae61f9dcacbe39e64641baaff75d97d61a0e7409a60dc6c7fc83691511afb3fe"
 dependencies = [
  "log 0.4.8",
  "winapi 0.3.8",
