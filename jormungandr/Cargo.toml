@@ -52,7 +52,7 @@ slog-scope = "4.1"
 slog-term = "2.4.0"
 structopt = "^0.3"
 thiserror = "1.0.16"
-tokio = { version = "0.2.12", features = ["rt-threaded", "time", "sync", "stream", "signal", "test-util", "blocking"] }
+tokio = { version = "0.2.21", features = ["rt-threaded", "time", "sync", "stream", "signal", "test-util", "blocking"] }
 tonic = "0.2"
 bech32 = "0.7"
 async-trait = "0.1"
@@ -75,6 +75,7 @@ version = "0.10.4"
 
 [dev-dependencies]
 rand_core = "0.5"
+tokio = { version = "^0.2", features = ["full" ] }
 
 [build-dependencies]
 versionisator = "1.0.2"
