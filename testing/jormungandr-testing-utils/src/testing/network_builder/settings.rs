@@ -2,6 +2,7 @@ use crate::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, Random, Wallet, WalletAlias,
     WalletTemplate, WalletType,
 };
+use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
     certificate::{PoolPermissions, PoolSignature},
@@ -14,8 +15,8 @@ use chain_time::DurationSeconds;
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
-        Bft, Block0Configuration, BlockchainConfiguration, GenesisPraos, Initial, InitialUTxO,
-        NodeConfig, NodeSecret,
+        ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, GenesisPraos,
+        Initial, InitialUTxO, NodeConfig, NodeSecret,
     },
 };
 use rand_core::{CryptoRng, RngCore};
@@ -136,7 +137,7 @@ impl Settings {
         // TODO blockchain_configuration.linear_fees = ;
         blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
         blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
-            *blockchain.consensus_genesis_praos_active_slot_coeff();
+            ActiveSlotCoefficient::MAXIMUM;
     }
 
     fn populate_block0_blockchain_initials<'a, RNG, I>(
@@ -181,60 +182,21 @@ impl Settings {
                         genesis.node_id.clone().into_digest_of()
                     } else {
                         // create and register the stake pool
-                        use chain_impl_mockchain::{
-                            certificate::PoolRegistration, key::GenesisPraosLeader,
-                        };
-                        use rand::{distributions::Standard, Rng as _};
-                        let serial: u128 = rng.rng_mut().sample(Standard);
-                        let kes_signing_key = SigningKey::generate(rng.rng_mut());
-                        let vrf_signing_key = SigningKey::generate(rng.rng_mut());
-                        let owner = chain_crypto::SecretKey::<chain_crypto::Ed25519>::generate(
-                            rng.rng_mut(),
-                        );
-                        let stake_pool_info = PoolRegistration {
-                            serial,
-                            permissions: PoolPermissions::new(1),
-                            start_validity: DurationSeconds(0).into(),
-                            owners: vec![owner.to_public()],
-                            operators: vec![].into(),
-                            rewards: TaxType::zero(),
-                            reward_account: None,
-                            keys: GenesisPraosLeader {
-                                kes_public_key: kes_signing_key.identifier().into_public_key(),
-                                vrf_public_key: vrf_signing_key.identifier().into_public_key(),
-                            },
-                        };
-                        let node_id = stake_pool_info.to_id();
+                        let owner = WalletLib::new_account(&mut rand::rngs::OsRng);
+                        let stake_pool = StakePool::new(&owner);
+                        let node_id = stake_pool.id();
                         node.secret.genesis = Some(GenesisPraos {
-                            sig_key: kes_signing_key,
-                            vrf_key: vrf_signing_key,
+                            sig_key: stake_pool.kes().signing_key(),
+                            vrf_key: stake_pool.vrf().signing_key(),
                             node_id: {
                                 let bytes: [u8; 32] = node_id.clone().into();
                                 bytes.into()
                             },
                         });
 
-                        let txb = TxBuilder::new()
-                            .set_payload(&stake_pool_info)
-                            .set_ios(&[], &[])
-                            .set_witnesses(&[]);
-                        let auth_data = txb.get_auth_data();
-                        let sig0 = SingleAccountBindingSignature::new(&auth_data, |d| {
-                            owner.sign_slice(&d.0)
-                        });
-                        let owner_signed = PoolOwnersSigned {
-                            signatures: vec![(0, sig0)],
-                        };
-
-                        let stake_pool_registration_certificate =
-                            SignedCertificate::PoolRegistration(
-                                stake_pool_info,
-                                PoolSignature::Owners(owner_signed),
-                            );
-
                         self.block0
                             .initial
-                            .push(Initial::Cert(stake_pool_registration_certificate.into()));
+                            .push(Initial::Cert(signed_stake_pool_cert(&stake_pool).into()));
 
                         node_id
                     }

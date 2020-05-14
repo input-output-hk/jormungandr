@@ -1,11 +1,11 @@
-use crate::wallet::Wallet;
+use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{
-    certificate::{PoolId, SignedCertificate, StakeDelegation},
-    transaction::{AccountBindingSignature, TxBuilder},
+    certificate::{PoolId, PoolOwnersSigned, PoolSignature, SignedCertificate, StakeDelegation},
+    transaction::{AccountBindingSignature, SingleAccountBindingSignature, TxBuilder},
 };
 use jormungandr_lib::interfaces::Initial;
 
-pub fn full_delegation_cert_for_block0(wallet: &Wallet, pool_id: PoolId) -> Initial {
+pub fn signed_delegation_cert(wallet: &Wallet, pool_id: PoolId) -> SignedCertificate {
     let stake_delegation = StakeDelegation {
         account_id: wallet.stake_key().unwrap(),
         delegation: chain_impl_mockchain::account::DelegationType::Full(pool_id),
@@ -17,5 +17,21 @@ pub fn full_delegation_cert_for_block0(wallet: &Wallet, pool_id: PoolId) -> Init
     let auth_data = txb.get_auth_data();
 
     let sig = AccountBindingSignature::new_single(&auth_data, |d| wallet.sign_slice(d.0));
-    Initial::Cert(SignedCertificate::StakeDelegation(stake_delegation, sig).into())
+    SignedCertificate::StakeDelegation(stake_delegation, sig)
+}
+
+pub fn signed_stake_pool_cert(stake_pool: &StakePool) -> SignedCertificate {
+    let owner = stake_pool.owner().clone();
+    let txb = TxBuilder::new()
+        .set_payload(&stake_pool.info())
+        .set_ios(&[], &[])
+        .set_witnesses(&[]);
+
+    let auth_data = txb.get_auth_data();
+    let sig0 = SingleAccountBindingSignature::new(&auth_data, |d| owner.sign_slice(d.0));
+    let owner_signed = PoolOwnersSigned {
+        signatures: vec![(0, sig0)],
+    };
+
+    SignedCertificate::PoolRegistration(stake_pool.info(), PoolSignature::Owners(owner_signed))
 }

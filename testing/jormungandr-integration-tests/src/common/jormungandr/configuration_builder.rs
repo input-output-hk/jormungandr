@@ -94,11 +94,9 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_initial_certs(&mut self, certs: Vec<String>) -> &mut Self {
-        self.certs.extend(certs.iter().map(|cert| {
-            let signed_cert: SignedCertificate = SignedCertificate::from_bech32(cert).unwrap();
-            Initial::Cert(signed_cert)
-        }));
+    pub fn with_initial_certs(&mut self, certs: Vec<SignedCertificate>) -> &mut Self {
+        self.certs
+            .extend(certs.iter().map(|cert| Initial::Cert(cert.clone())));
         self
     }
 

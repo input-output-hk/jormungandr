@@ -32,7 +32,12 @@ pub fn collect_reward() {
 
     let stake_pools_data: Vec<StakePoolStats> = stake_pools
         .iter()
-        .map(|x| jcli_wrapper::assert_rest_get_stake_pool(x.id(), &jormungandr.rest_address()))
+        .map(|x| {
+            jcli_wrapper::assert_rest_get_stake_pool(
+                &x.id().to_string(),
+                &jormungandr.rest_address(),
+            )
+        })
         .collect();
 
     // at least one stake pool has reward
@@ -117,8 +122,11 @@ pub fn reward_history() {
         .iter()
         .map(|x| {
             (
-                Hash::from_str(x.id()).unwrap(),
-                jcli_wrapper::assert_rest_get_stake_pool(x.id(), &jormungandr.rest_address()),
+                Hash::from_str(&x.id().to_string()).unwrap(),
+                jcli_wrapper::assert_rest_get_stake_pool(
+                    &x.id().to_string(),
+                    &jormungandr.rest_address(),
+                ),
             )
         })
         .collect();
