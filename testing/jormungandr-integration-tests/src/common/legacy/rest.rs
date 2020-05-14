@@ -1,7 +1,7 @@
 /// Legacy tolerant rest api
 /// This layer returns raw strings without deserialization
 /// in order to assure compatibility and lack of serde errors
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BackwardCompatibleRest {
     endpoint: String,
 }
@@ -30,7 +30,8 @@ impl BackwardCompatibleRest {
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        reqwest::blocking::get(&format!("{}/v0/{}", self.endpoint, path))
+        let request = format!("{}/api/v0/{}", self.endpoint, path);
+        reqwest::blocking::get(&request)
     }
 
     pub fn stake_distribution(&self) -> Result<String, reqwest::Error> {
@@ -74,5 +75,17 @@ impl BackwardCompatibleRest {
 
     pub fn p2p_view(&self) -> Result<String, reqwest::Error> {
         self.get("network/p2p/view")?.text()
+    }
+
+    pub fn tip(&self) -> Result<String, reqwest::Error> {
+        self.get("tip")?.text()
+    }
+
+    pub fn fragment_logs(&self) -> Result<String, reqwest::Error> {
+        self.get("fragment/logs")?.text()
+    }
+
+    pub fn leaders(&self) -> Result<String, reqwest::Error> {
+        self.get("leaders")?.text()
     }
 }

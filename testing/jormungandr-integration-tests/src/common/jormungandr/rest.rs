@@ -1,7 +1,10 @@
 use crate::common::{configuration::jormungandr_config::JormungandrConfig, legacy};
+use chain_impl_mockchain::{fragment::FragmentId, header::HeaderId};
 use jormungandr_lib::interfaces::{
-    EpochRewardsInfo, Info, NodeStatsDto, PeerRecord, PeerStats, StakeDistributionDto,
+    EnclaveLeaderId, EpochRewardsInfo, FragmentLog, Info, NodeStatsDto, PeerRecord, PeerStats,
+    StakeDistributionDto,
 };
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -10,18 +13,25 @@ pub enum RestError {
     CannotDeserialize(#[from] serde_json::Error),
     #[error("could not send reqeuest")]
     RequestError(#[from] reqwest::Error),
+    #[error("hash parse error")]
+    HashParseError(#[from] chain_crypto::hash::Error),
 }
 
 /// Specialized rest api
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JormungandrRest {
     inner: legacy::BackwardCompatibleRest,
 }
 
 impl JormungandrRest {
     pub fn new(config: JormungandrConfig) -> Self {
+        Self::from_address(config.node_config().rest.listen.to_string())
+    }
+
+    pub fn from_address(address: String) -> Self {
+        let endpoint = format!("http://{}", address);
         Self {
-            inner: legacy::BackwardCompatibleRest::new(config.get_node_address()),
+            inner: legacy::BackwardCompatibleRest::new(endpoint),
         }
     }
 
@@ -55,7 +65,8 @@ impl JormungandrRest {
     }
 
     pub fn stats(&self) -> Result<NodeStatsDto, RestError> {
-        serde_json::from_str(&self.inner.stats()?).map_err(|err| RestError::CannotDeserialize(err))
+        let stats = &self.inner.stats()?;
+        serde_json::from_str(stats).map_err(|err| RestError::CannotDeserialize(err))
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>, RestError> {
@@ -81,5 +92,36 @@ impl JormungandrRest {
     pub fn p2p_view(&self) -> Result<Vec<Info>, RestError> {
         serde_json::from_str(&self.inner.p2p_view()?)
             .map_err(|err| RestError::CannotDeserialize(err))
+    }
+
+    pub fn tip(&self) -> Result<HeaderId, RestError> {
+        let tip = self.inner.tip()?;
+        tip.parse().map_err(|err| RestError::HashParseError(err))
+    }
+
+    pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
+        let logs = self.inner.fragment_logs()?;
+        let logs: Vec<FragmentLog> = if logs.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&logs).map_err(|err| RestError::CannotDeserialize(err))?
+        };
+
+        let logs = logs
+            .into_iter()
+            .map(|log| (log.fragment_id().clone().into_hash(), log))
+            .collect();
+
+        Ok(logs)
+    }
+
+    pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>, RestError> {
+        let leaders = self.inner.leaders()?;
+        let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&leaders).map_err(|err| RestError::CannotDeserialize(err))?
+        };
+        Ok(leaders)
     }
 }
