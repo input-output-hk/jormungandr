@@ -35,7 +35,7 @@ pub fn stake_distribution() {
     let transaction_fee: u64 = fee.constant + fee.coefficient * 2;
     let transaction_amount = 1_000;
     let initial_funds_per_account = 1_000_000_000;
-    let stake_pool_id = Hash::from_str(stake_pools.get(0).unwrap().id()).unwrap();
+    let stake_pool_id = Hash::from_str(&stake_pools.get(0).unwrap().id().to_string()).unwrap();
 
     assert_distribution(
         initial_funds_per_account * 2,

@@ -1,6 +1,5 @@
 use crate::common::{
     configuration::{jormungandr_config::JormungandrConfig, SecretModelFactory},
-    data::StakePool,
     file_utils,
     jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
@@ -10,9 +9,15 @@ use chain_crypto::{AsymmetricKey, Ed25519};
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::{
     crypto::key::{Identifier, KeyPair},
-    interfaces::{Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret},
+    interfaces::{
+        Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, SignedCertificate,
+    },
 };
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_testing_utils::{
+    stake_pool::StakePool,
+    testing::{signed_delegation_cert, signed_stake_pool_cert},
+    wallet::Wallet,
+};
 use rand;
 use std::path::PathBuf;
 
@@ -54,18 +59,6 @@ pub fn create_new_key_pair<K: AsymmetricKey>() -> KeyPair<K> {
     KeyPair::generate(rand::rngs::OsRng)
 }
 
-fn create_stake_pool_owner_delegation_cert(stake_pool: &StakePool) -> String {
-    let stake_key = stake_pool.owner().signing_key_as_str();
-    let stake_key_pub = stake_pool.owner().identifier().to_bech32_str();
-    let stake_key_file = file_utils::create_file_in_temp("stake_key.sk", &stake_key);
-
-    JCLICertificateWrapper::new().assert_new_signed_stake_pool_delegation(
-        &stake_pool.id(),
-        &stake_key_pub,
-        &stake_key_file,
-    )
-}
-
 pub fn start_stake_pool(
     owners: &[Wallet],
     initial_funds: &[Wallet],
@@ -73,13 +66,13 @@ pub fn start_stake_pool(
 ) -> Result<(JormungandrProcess, Vec<StakePool>), StartupError> {
     let stake_pools: Vec<StakePool> = owners.iter().map(|x| StakePool::new(x)).collect();
 
-    let stake_pool_registration_certs: Vec<String> = stake_pools
+    let stake_pool_registration_certs: Vec<SignedCertificate> = stake_pools
         .iter()
-        .map(|x| file_utils::read_file(x.stake_pool_signcert_file()))
+        .map(|x| signed_stake_pool_cert(&x).into())
         .collect();
-    let stake_pool_owner_delegation_certs: Vec<String> = stake_pools
+    let stake_pool_owner_delegation_certs: Vec<SignedCertificate> = stake_pools
         .iter()
-        .map(|x| create_stake_pool_owner_delegation_cert(&x))
+        .map(|x| signed_delegation_cert(x.owner(), x.id()).into())
         .collect();
 
     let mut initial_certs = stake_pool_registration_certs.clone();
@@ -118,7 +111,13 @@ pub fn start_stake_pool(
 
     let secrets: Vec<NodeSecret> = stake_pools
         .iter()
-        .map(|x| SecretModelFactory::genesis(x.kes().signing_key(), x.vrf().signing_key(), &x.id()))
+        .map(|x| {
+            SecretModelFactory::genesis(
+                x.kes().signing_key(),
+                x.vrf().signing_key(),
+                &x.id().to_string(),
+            )
+        })
         .collect();
 
     let secret_model_paths = secrets
