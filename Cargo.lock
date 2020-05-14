@@ -3793,11 +3793,13 @@ dependencies = [
  "libc",
  "memchr",
  "mio",
+ "mio-named-pipes",
  "mio-uds",
  "num_cpus",
  "pin-project-lite",
  "signal-hook-registry",
  "slab 0.4.2",
+ "tokio-macros",
  "winapi 0.3.8",
 ]
 
@@ -3871,6 +3873,17 @@ dependencies = [
  "bytes 0.4.12",
  "futures 0.1.29",
  "log 0.4.8",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0c3acc6aa564495a0f2e1d59fab677cd7f81a19994cfc7f3ad0e64301560389"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
