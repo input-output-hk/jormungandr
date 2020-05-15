@@ -5,13 +5,11 @@ use crate::testing::network_builder::{
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
-    certificate::{PoolPermissions, PoolSignature},
     chaintypes::ConsensusVersion,
     fee::LinearFee,
     rewards::TaxType,
     transaction::{SingleAccountBindingSignature, TxBuilder},
 };
-use chain_time::DurationSeconds;
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
@@ -170,9 +168,7 @@ impl Settings {
             self.block0.initial.push(initial_fragment);
 
             if let Some(delegation) = wallet_template.delegate() {
-                use chain_impl_mockchain::certificate::{
-                    PoolId as StakePoolId, PoolOwnersSigned, SignedCertificate,
-                };
+                use chain_impl_mockchain::certificate::PoolId as StakePoolId;
 
                 // 1. retrieve the public data (we may need to create a stake pool
                 //    registration here)

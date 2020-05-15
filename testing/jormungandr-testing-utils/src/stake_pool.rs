@@ -1,5 +1,5 @@
 use crate::wallet::Wallet;
-use chain_crypto::{bech32::Bech32, Curve25519_2HashDH, Ed25519, SumEd25519_12};
+use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{PoolId, PoolPermissions, PoolRegistration},
     rewards::{Ratio as RatioLib, TaxType},
@@ -52,6 +52,10 @@ impl StakePool {
 
     pub fn id(&self) -> PoolId {
         self.inner.id()
+    }
+
+    pub fn info_mut(&mut self) -> &mut PoolRegistration {
+        self.inner.info_mut()
     }
 
     pub fn info(&self) -> PoolRegistration {
