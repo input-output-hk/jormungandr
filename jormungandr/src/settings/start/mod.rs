@@ -119,14 +119,14 @@ impl RawSettings {
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
-    pub fn try_into_settings(self, logger: &Logger) -> Result<Settings, Error> {
+    pub fn try_into(self) -> Result<Settings, Error> {
         let rest = self.rest_config();
         let RawSettings {
             command_line,
             config,
         } = self;
         let command_arguments = &command_line.start_arguments;
-        let network = generate_network(&command_arguments, &config, &logger)?;
+        let network = generate_network(&command_arguments, &config)?;
 
         let storage = match (
             command_arguments.storage.as_ref(),
@@ -141,13 +141,6 @@ impl RawSettings {
         if let Some(secret_files) = config.as_ref().map(|cfg| cfg.secret_files.clone()) {
             secrets.extend(secret_files);
         }
-
-        if secrets.is_empty() {
-            warn!(
-                logger,
-                "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
-            );
-        };
 
         let block_0 = match (
             &command_arguments.block_0_path,
@@ -189,12 +182,41 @@ impl RawSettings {
                 )),
         })
     }
+
+    /// Load the settings
+    /// - from the command arguments
+    /// - from the config
+    ///
+    /// This function will print&exit if anything is not as it should be.
+    pub fn try_into_settings(self, logger: &Logger) -> Result<Settings, Error> {
+        let mut settings = Self::try_into(self)?;
+
+        // TODO: this warnings should be elsewhere in the leader settings
+        if settings.secrets.is_empty() {
+            warn!(
+                logger,
+                "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
+            );
+        };
+
+        // TODO: this warnings should be elsewhere in the network
+        if settings.network.max_inbound_connections > settings.network.max_connections {
+            warn!(
+                logger,
+                "p2p.max_inbound_connections is larger than p2p.max_connections, decreasing from {} to {}",
+                settings.network.max_inbound_connections,
+                settings.network.max_connections
+            );
+            settings.network.max_inbound_connections = settings.network.max_connections;
+        }
+
+        Ok(settings)
+    }
 }
 
 fn generate_network(
     command_arguments: &StartArguments,
     config: &Option<Config>,
-    logger: &Logger,
 ) -> Result<network::Configuration, Error> {
     use jormungandr_lib::multiaddr::{multiaddr_resolve_dns, multiaddr_to_socket_addr};
 
@@ -219,25 +241,31 @@ fn generate_network(
     }
 
     p2p.trusted_peers.as_mut().map(|peers| {
-        *peers = peers.iter().filter_map(|peer| {
-            match multiaddr_resolve_dns(peer.address.multi_address()) {
-                Ok(Some(address)) => {
-                    info!(logger, "DNS resolved"; "fqdn" => peer.address.multi_address().to_string(), "resolved" => address.to_string());
-                    let address = poldercast::Address::from(address);
-                    Some(config::TrustedPeer {
-                        address,
-                        id: peer.id.clone(),
-                    })
+        *peers = peers
+            .iter()
+            .filter_map(|peer| {
+                match multiaddr_resolve_dns(peer.address.multi_address()) {
+                    Ok(Some(address)) => {
+                        // info!(logger, "DNS resolved"; "fqdn" => peer.address.multi_address().to_string(), "resolved" => address.to_string());
+                        let address = poldercast::Address::from(address);
+                        Some(config::TrustedPeer {
+                            address,
+                            id: peer.id.clone(),
+                        })
+                    }
+                    Ok(None) => Some(peer.clone()),
+                    Err(e) => {
+                        // warn!(logger, "failed to resolve dns"; "fqdn" => peer.address.multi_address().to_string(), "error" => e.to_string());
+                        eprintln!(
+                            "failed to resolve dns for {}: {}",
+                            peer.address.multi_address(),
+                            e
+                        );
+                        return None;
+                    }
                 }
-                Ok(None) => {
-                    Some(peer.clone())
-                },
-                Err(e) => {
-                    warn!(logger, "failed to resolve dns"; "fqdn" => peer.address.multi_address().to_string(), "error" => e.to_string());
-                    return None;
-                }
-            }
-        }).collect();
+            })
+            .collect();
     });
 
     let mut profile = poldercast::NodeProfileBuilder::new();
@@ -257,7 +285,7 @@ fn generate_network(
         profile.add_subscription(sub);
     }
 
-    let mut network = network::Configuration {
+    let network = network::Configuration {
         profile: profile.build(),
         listen_address: match &p2p.listen_address {
             None => None,
@@ -298,16 +326,6 @@ fn generate_network(
         bootstrap_from_trusted_peers,
         skip_bootstrap,
     };
-
-    if network.max_inbound_connections > network.max_connections {
-        warn!(
-            logger,
-            "p2p.max_inbound_connections is larger than p2p.max_connections, decreasing from {} to {}",
-            network.max_inbound_connections,
-            network.max_connections
-        );
-        network.max_inbound_connections = network.max_connections;
-    }
 
     Ok(network)
 }

@@ -48,6 +48,7 @@ pub mod log;
 pub mod network;
 pub mod rest;
 pub mod secure;
+pub mod services;
 pub mod settings;
 pub mod start_up;
 pub mod state;
