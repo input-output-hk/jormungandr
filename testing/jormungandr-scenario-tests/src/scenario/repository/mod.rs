@@ -204,7 +204,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "legacy_last_5th_release",
         legacy_last_5th_release,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
@@ -258,7 +258,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "legacy_disruption_last_release",
         legacy_disruption_last_release,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
