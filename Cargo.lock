@@ -44,9 +44,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.30"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2494382e9ba43995f3c56359e518641f450f5c36feeb4632a75cde2ec297c867"
+checksum = "85bb70cc08ec97ca5450e6eba421deeea5f172c0fc61f78b5357b2a8e8be195f"
 
 [[package]]
 name = "arc-swap"
@@ -1211,7 +1211,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "futures-util",
- "http 0.2.1",
+ "http",
  "indexmap",
  "log 0.4.8",
  "slab 0.4.2",
@@ -1239,7 +1239,7 @@ dependencies = [
  "bitflags",
  "bytes 0.5.4",
  "headers-core",
- "http 0.2.1",
+ "http",
  "mime 0.3.16",
  "sha-1",
  "time",
@@ -1251,7 +1251,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7f66481bfee273957b1f20485a4ff3362987f85b2c236580d81b4eb7a326429"
 dependencies = [
- "http 0.2.1",
+ "http",
 ]
 
 [[package]]
@@ -1280,17 +1280,6 @@ checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
 
 [[package]]
 name = "http"
-version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6ccf5ede3a895d8856620237b2f02972c1bbc78d2965ad7fe8838d4a0ed41f0"
-dependencies = [
- "bytes 0.4.12",
- "fnv",
- "itoa",
-]
-
-[[package]]
-name = "http"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d569972648b2c512421b5f2a405ad6ac9666547189d0c5477a3f200f3e02f9"
@@ -1307,7 +1296,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13d5ff830006f7646652e057693569bfe0d51760c0085a071769d142a205111b"
 dependencies = [
  "bytes 0.5.4",
- "http 0.2.1",
+ "http",
 ]
 
 [[package]]
@@ -1355,7 +1344,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http 0.2.1",
+ "http",
  "http-body",
  "httparse",
  "itoa",
@@ -1560,7 +1549,7 @@ dependencies = [
  "error-chain",
  "futures 0.3.5",
  "hex",
- "http 0.1.21",
+ "http",
  "humantime",
  "imhamt",
  "jormungandr-lib",
@@ -1579,7 +1568,7 @@ dependencies = [
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "reqwest",
- "rustls 0.16.0",
+ "rustls 0.17.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -1589,7 +1578,6 @@ dependencies = [
  "slog-gelf",
  "slog-journald",
  "slog-json",
- "slog-scope",
  "slog-syslog",
  "slog-term",
  "structopt",
@@ -1612,7 +1600,6 @@ dependencies = [
  "chain-core",
  "chain-crypto",
  "chain-impl-mockchain",
- "chain-storage",
  "chain-time",
  "ed25519-bip32",
  "error-chain",
@@ -1622,8 +1609,6 @@ dependencies = [
  "galvanic-test",
  "grpc",
  "hex",
- "jcli",
- "jormungandr",
  "jormungandr-lib",
  "jormungandr-testing-utils",
  "lazy_static",
@@ -1644,7 +1629,6 @@ dependencies = [
  "slog",
  "slog-async",
  "slog-json",
- "slog-scope",
  "thiserror",
  "url",
 ]
@@ -1671,7 +1655,6 @@ dependencies = [
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
- "reqwest",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -2987,7 +2970,7 @@ dependencies = [
  "encoding_rs",
  "futures-core",
  "futures-util",
- "http 0.2.1",
+ "http",
  "http-body",
  "hyper",
  "hyper-rustls",
@@ -3419,17 +3402,6 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
- "slog",
-]
-
-[[package]]
-name = "slog-scope"
-version = "4.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c44c89dd8b0ae4537d1ae318353eaf7840b4869c536e31c41e963d1ea523ee6"
-dependencies = [
- "arc-swap",
- "lazy_static",
  "slog",
 ]
 
@@ -4138,7 +4110,7 @@ dependencies = [
  "bytes 0.5.4",
  "futures-core",
  "futures-util",
- "http 0.2.1",
+ "http",
  "http-body",
  "hyper",
  "percent-encoding 2.1.0",
@@ -4348,9 +4320,9 @@ dependencies = [
 
 [[package]]
 name = "tracing"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1721cc8cf7d770cc4257872507180f35a4797272f5962f24c806af9e7faf52ab"
+checksum = "a7c6b59d116d218cb2d990eb06b77b64043e0268ef7323aae63d8b30ae462923"
 dependencies = [
  "cfg-if",
  "log 0.4.8",
@@ -4360,10 +4332,11 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fbad39da2f9af1cae3016339ad7f2c7a9e870f12e8fd04c4fd7ef35b30c0d2b"
+checksum = "99bbad0de3fd923c9c3232ead88510b783e5a4d16a6154adffa3d53308de984c"
 dependencies = [
+ "proc-macro2",
  "quote",
  "syn",
 ]
@@ -4408,7 +4381,7 @@ dependencies = [
  "base64 0.11.0",
  "byteorder",
  "bytes 0.5.4",
- "http 0.2.1",
+ "http",
  "httparse",
  "input_buffer",
  "log 0.4.8",
@@ -4646,7 +4619,7 @@ dependencies = [
  "bytes 0.5.4",
  "futures 0.3.5",
  "headers",
- "http 0.2.1",
+ "http",
  "hyper",
  "log 0.4.8",
  "mime 0.3.16",

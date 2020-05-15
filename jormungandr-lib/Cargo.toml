@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 bech32 = "0.7"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
@@ -34,17 +33,5 @@ chain-crypto    = { path = "../chain-deps/chain-crypto", features = [ "property-
 chain-core    = { path = "../chain-deps/chain-core" }
 ed25519-bip32 = "0.3"
 serde_yaml = "0.8"
-bincode = "1.1"
-
-[target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
-version = "0.10.4"
-default-features = false
-features = ["blocking", "rustls-tls"]
-
-# rustls-native-certs required by rustls-tls does not support Android, so build
-# with OpenSSL.
-# TODO rustls-tls should work on Android when https://github.com/seanmonstar/reqwest/pull/862
-# is merged and released.
-[target.'cfg(target_os = "android")'.dependencies.reqwest]
-version = "0.10.4"
-features = ["blocking"]
+serde_json = "1.0"
+bincode = "1.2"

@@ -12,9 +12,9 @@ Midgard Serpent
 edition = "2018"
 
 [dependencies]
-arc-swap = "0.4.5"
+arc-swap = "^0.4.6"
 juniper = "0.14.2"
-bincode = "1.0.1"
+bincode = "1.2.1"
 bytes = "0.5"
 chain-addr = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
@@ -26,32 +26,31 @@ chain-time      = { path = "../chain-deps/chain-time" }
 cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 error-chain = "0.12"
-futures = "0.3.4"
+futures = "0.3.5"
 hex = "0.4"
-http = "0.1.16"
+http = "0.2.1"
 humantime = "2.0"
 jormungandr-lib = { path = "../jormungandr-lib" }
-lazy_static = "1.3"
+lazy_static = "1.4"
 linked-hash-map = "0.5"
-pin-utils = "0.1.0-alpha.4"
+pin-utils = "0.1.0"
 poldercast = "0.13.1"
 r2d2 = "0.8"
 rand = "0.7"
 rand_chacha = "0.2.2"
-rustls = "0.16.0"
+rustls = "0.17.0"
 serde = "1.0"
 serde_derive = "1.0"
-serde_json = "1.0.50"
+serde_json = "1.0.53"
 serde_yaml = "0.8"
 slog = { version = "^2.5.1", features = [ "max_level_trace", "release_max_level_trace" ] }
 slog-async = "2.5.0"
-slog-gelf = { version = "0.1.0", optional = true }
-slog-journald = { version = "2.0.0", optional = true }
+slog-gelf = { version = "0.1.2", optional = true }
+slog-journald = { version = "2.1.1", optional = true }
 slog-json = "2.3.0"
-slog-scope = "4.1"
-slog-term = "2.4.0"
+slog-term = "2.5.0"
 structopt = "^0.3"
-thiserror = "1.0.16"
+thiserror = "1.0.17"
 tokio = { version = "0.2.21", features = ["rt-threaded", "time", "sync", "stream", "signal", "test-util", "blocking"] }
 tonic = "0.2"
 bech32 = "0.7"
