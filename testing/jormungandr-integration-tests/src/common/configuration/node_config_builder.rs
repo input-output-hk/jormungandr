@@ -28,9 +28,14 @@ impl NodeConfigBuilder {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
         let log = Some(Log(vec![LogEntry {
-            level: "info".to_string(),
+            level: "trace".to_string(),
             format: "json".to_string(),
-            output: LogOutput::Stderr,
+            output: LogOutput::File(
+                file_utils::get_path_in_temp("log.log")
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            ),
         }]));
         let grpc_public_address: poldercast::Address = format!(
             "/ip4/{}/tcp/{}",
