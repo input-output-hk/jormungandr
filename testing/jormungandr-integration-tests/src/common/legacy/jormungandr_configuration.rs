@@ -2,6 +2,7 @@
 
 use crate::common::configuration::get_available_port;
 use crate::common::file_utils;
+use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::interfaces::{Block0Configuration, NodeSecret};
 use jormungandr_testing_utils::legacy::NodeConfig;
 use std::path::PathBuf;
@@ -83,5 +84,11 @@ impl BackwardCompatibleConfig {
             .get(4)
             .expect("cannot extract port from p2p.public_address");
         port_str.parse().unwrap()
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.block0_configuration
+            .blockchain_configuration
+            .linear_fees
     }
 }

@@ -4,6 +4,7 @@ use crate::common::{
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrLogger},
 };
+use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::crypto::hash::Hash;
 use std::{path::PathBuf, process::Child, str::FromStr};
 
@@ -44,6 +45,10 @@ impl BackwardCompatibleJormungandr {
 
     pub fn shutdown(&self) {
         jcli_wrapper::assert_rest_shutdown(&self.config.get_node_address());
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.config.fees()
     }
 
     pub fn assert_no_errors_in_log_with_message(&self, message: &str) {
