@@ -2,13 +2,13 @@ pub use self::{
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert},
     transaction::transaction_to,
 };
-use crate::{wallet::Wallet,stake_pool::StakePool};
+use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{
     certificate::PoolId,
     fee::LinearFee,
     fragment::Fragment,
     testing::{
-        data::{Wallet as WalletLib, StakePool as StakePoolLib},
+        data::{StakePool as StakePoolLib, Wallet as WalletLib},
         scenario::FragmentFactory,
     },
 };
@@ -86,19 +86,26 @@ impl FragmentBuilder {
         self.fragment_factory().delegation_remove(&mut inner_wallet)
     }
 
-    pub fn delegation_to_many(&self, from: &Wallet, distribution: Vec<(&StakePool, u8)>) -> Fragment {
+    pub fn delegation_to_many(
+        &self,
+        from: &Wallet,
+        distribution: Vec<(&StakePool, u8)>,
+    ) -> Fragment {
         let mut inner_wallet = from.clone().into();
-        let inner_stake_pools: Vec<StakePoolLib> = distribution.iter().cloned().map(|(x,_)| {
-            let inner_stake_pool: StakePoolLib = x.clone().into();
-            inner_stake_pool
-        }).collect();
+        let inner_stake_pools: Vec<StakePoolLib> = distribution
+            .iter()
+            .cloned()
+            .map(|(x, _)| {
+                let inner_stake_pool: StakePoolLib = x.clone().into();
+                inner_stake_pool
+            })
+            .collect();
 
+        let mut inner_distribution: Vec<(&StakePoolLib, u8)> = Vec::new();
 
-        let mut inner_distribution: Vec<(&StakePoolLib,u8)> = Vec::new();
-
-        for (inner_stake_pool,(_,factor)) in inner_stake_pools.iter().zip(distribution) {
-            inner_distribution.push((&inner_stake_pool,factor));
-        } 
+        for (inner_stake_pool, (_, factor)) in inner_stake_pools.iter().zip(distribution) {
+            inner_distribution.push((&inner_stake_pool, factor));
+        }
 
         self.fragment_factory()
             .delegation_to_many(&mut inner_wallet, &inner_distribution[..])
@@ -125,7 +132,12 @@ impl FragmentBuilder {
             .stake_pool_retire(&ref_inner_owners[..], &stake_pool.clone().into())
     }
 
-    pub fn stake_pool_update(&self, owners: Vec<&Wallet>, old_stake_pool: &StakePool, new_stake_pool: &StakePool) -> Fragment {
+    pub fn stake_pool_update(
+        &self,
+        owners: Vec<&Wallet>,
+        old_stake_pool: &StakePool,
+        new_stake_pool: &StakePool,
+    ) -> Fragment {
         let inner_owners: Vec<WalletLib> = owners
             .iter()
             .cloned()
@@ -136,7 +148,10 @@ impl FragmentBuilder {
             .collect();
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
-        self.fragment_factory()
-            .stake_pool_update(ref_inner_owners, &old_stake_pool.clone().into(), new_stake_pool.clone().into())
+        self.fragment_factory().stake_pool_update(
+            ref_inner_owners,
+            &old_stake_pool.clone().into(),
+            new_stake_pool.clone().into(),
+        )
     }
 }
