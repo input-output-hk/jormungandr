@@ -381,9 +381,11 @@ pub fn sending_transactions_to_node_sequentially(
         let check = controller.wallet_send_to(&mut wallet1, &wallet2, &node, 1_000.into())?;
         let status = node.wait_fragment(Duration::from_secs(2), check)?;
         assert_is_in_block(status, &node)?;
+        wallet1.confirm_transaction();
         let check = controller.wallet_send_to(&mut wallet2, &wallet1, &node, 1_000.into())?;
         let status = node.wait_fragment(Duration::from_secs(2), check)?;
         assert_is_in_block(status, &node)?;
+        wallet2.confirm_transaction();
     }
     Ok(())
 }
