@@ -5,13 +5,7 @@ use crate::settings::start::network::Peer;
 use chain_core::property::{Deserialize, HasHeader};
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
-use futures::{
-    channel::oneshot::Receiver,
-    future::{Either, Shared},
-    prelude::*,
-    stream,
-    task::Poll,
-};
+use futures::{future::Either, prelude::*, stream, task::Poll};
 use slog::Logger;
 
 use std::fmt::Debug;
@@ -74,13 +68,16 @@ pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<
     Ok(peers)
 }
 
-pub async fn bootstrap_from_peer(
+pub async fn bootstrap_from_peer<S>(
     peer: &Peer,
     blockchain: Blockchain,
     tip: Tip,
-    bootstrap_stopper: Shared<Receiver<()>>,
+    bootstrap_stopper: S,
     logger: Logger,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    S: Future<Output = Result<(), futures::channel::oneshot::Canceled>> + Unpin + Clone,
+{
     use futures::future::select;
 
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
@@ -183,15 +180,16 @@ impl BootstrapInfo {
     }
 }
 
-async fn bootstrap_from_stream<S>(
+async fn bootstrap_from_stream<S, St>(
     mut blockchain: Blockchain,
     branch: Tip,
     stream: S,
-    bootstrap_stopper: Shared<Receiver<()>>,
+    bootstrap_stopper: St,
     logger: Logger,
 ) -> Result<(), Error>
 where
     S: Stream<Item = Result<net_data::Block, NetworkError>> + Unpin,
+    St: Future<Output = Result<(), futures::channel::oneshot::Canceled>> + Unpin + Clone,
 {
     const PROCESS_LOGGING_DISTANCE: u64 = 2500;
     let block0 = blockchain.block0().clone();

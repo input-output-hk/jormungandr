@@ -16,6 +16,8 @@ use jormungandr_lib::interfaces::NodeState;
 use slog::Logger;
 use tokio::sync::RwLock;
 
+use futures::channel::oneshot;
+
 pub type ContextLock = Arc<RwLock<Context>>;
 
 pub struct Context {
@@ -26,6 +28,7 @@ pub struct Context {
     diagnostic: Option<Diagnostic>,
     blockchain: Option<Blockchain>,
     blockchain_tip: Option<Tip>,
+    bootstrap_stopper: Option<oneshot::Sender<()>>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -54,6 +57,7 @@ impl Context {
             diagnostic: Default::default(),
             blockchain: Default::default(),
             blockchain_tip: Default::default(),
+            bootstrap_stopper: Default::default(),
         }
     }
 
@@ -111,6 +115,20 @@ impl Context {
 
     pub fn blockchain_tip(&self) -> Result<&Tip, Error> {
         self.blockchain_tip.as_ref().ok_or(Error::BlockchainTip)
+    }
+
+    pub fn set_bootstrap_stopper(&mut self, bootstrap_stopper: oneshot::Sender<()>) {
+        self.bootstrap_stopper = Some(bootstrap_stopper);
+    }
+
+    pub fn remove_bootstrap_stopper(&mut self) {
+        self.bootstrap_stopper = None;
+    }
+
+    pub fn stop_bootstrap(&mut self) {
+        self.bootstrap_stopper
+            .take()
+            .map(|bootstrap_stopper| bootstrap_stopper.send(()));
     }
 }
 

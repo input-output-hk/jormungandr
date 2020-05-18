@@ -378,10 +378,7 @@ async fn bootstrap_internal(
     storage: blockchain::Storage,
     settings: Settings,
 ) -> Result<BootstrapData, start_up::Error> {
-    use futures::{
-        channel::oneshot::channel,
-        future::{select, Either, FutureExt},
-    };
+    use futures::{channel::oneshot::channel, future::FutureExt};
     use tokio::spawn;
 
     if let Some(context) = rest_context.as_ref() {
@@ -408,19 +405,17 @@ async fn bootstrap_internal(
     )
     .await?;
 
-    block_on(async {
-        if let Some(context) = &rest_context {
-            let mut context = context.write().await;
-            context.set_blockchain(blockchain.clone());
-            context.set_blockchain_tip(blockchain_tip.clone());
-        }
-    });
+    let (rest_shutdown_tx, rest_shutdown_rx) = channel();
+    if let Some(context) = &rest_context {
+        let mut context = context.write().await;
+        context.set_blockchain(blockchain.clone());
+        context.set_blockchain_tip(blockchain_tip.clone());
+        context.set_bootstrap_stopper(rest_shutdown_tx);
+    };
 
     let mut bootstrap_attempt: usize = 0;
 
     let (shutdown_tx, shutdown_rx) = channel();
-    let shutdown_rx = shutdown_rx.shared();
-
     spawn(
         ctrl_c()
             .map_ok(|()| {
@@ -431,6 +426,11 @@ async fn bootstrap_internal(
             .map_err(|_| panic!("failed to wait for SIGINT"))
             .boxed(),
     );
+
+    let bootstrap_stopper =
+        futures::future::select(shutdown_rx.shared(), rest_shutdown_rx.shared())
+            .map(|result| result.into_inner().0)
+            .shared();
 
     loop {
         bootstrap_attempt += 1;
@@ -452,7 +452,7 @@ async fn bootstrap_internal(
             &settings.network,
             blockchain.clone(),
             blockchain_tip.clone(),
-            shutdown_rx.clone(),
+            bootstrap_stopper.clone(),
             &logger,
         )
         .await?
@@ -467,35 +467,32 @@ async fn bootstrap_internal(
             BOOTSTRAP_RETRY_WAIT.as_secs()
         );
 
-        // Sleep for a little while before trying again.
-        if let Either::Right((result, _)) = select(
-            tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT),
-            shutdown_rx.clone(),
-        )
-        .await
-        {
-            match result {
+        futures::select! {
+            _ = tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT).fuse() => {},
+            result = bootstrap_stopper.clone() => match result {
                 Ok(()) => return Err(start_up::Error::Interrupted),
-                Err(_) => panic!("failed to wait for SIGINT"),
-            }
-        }
+                Err(_) => panic!("failed to wait for SIGINT or GET /shutdown"),
+            },
+        };
     }
 
     let explorer_db = if settings.explorer {
-        match select(
-            explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain).boxed(),
-            shutdown_rx,
-        )
-        .await
-        {
-            Either::Left((result, _)) => Some(result?),
-            Either::Right((result, _)) => match result {
+        futures::select! {
+            explorer_result = explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain).fuse() => {
+                Some(explorer_result?)
+            },
+            result = bootstrap_stopper.clone() => match result {
                 Ok(()) => return Err(start_up::Error::Interrupted),
-                Err(_) => panic!("failed to wait for SIGINT"),
+                Err(_) => panic!("failed to wait for SIGINT or GET /shutdown"),
             },
         }
     } else {
         None
+    };
+
+    if let Some(context) = &rest_context {
+        let mut context = context.write().await;
+        context.remove_bootstrap_stopper();
     };
 
     Ok(BootstrapData {
@@ -576,12 +573,37 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         })
     }
 
-    let block0 = services.block_on_task("prepare_block_0", |_service_info| {
-        start_up::prepare_block_0(
+    let block0 = services.block_on_task("prepare_block_0", |_service_info| async {
+        use futures::{channel::oneshot::channel, future::FutureExt};
+
+        let (shutdown_tx, shutdown_rx) = channel();
+
+        if let Some(context) = rest_context.as_ref() {
+            let mut context = context.write().await;
+            context.set_bootstrap_stopper(shutdown_tx);
+        }
+
+        let prepare_block0_fut = start_up::prepare_block_0(
             &settings,
             &storage,
             &init_logger, /* add network to fetch block0 */
         )
+        .map_err(Into::into);
+
+        let result = futures::select! {
+            result = prepare_block0_fut.fuse() => return result,
+            result = shutdown_rx.fuse() => match result {
+                Ok(()) => return Err(start_up::Error::Interrupted),
+                Err(_) => panic!("failed to wait for GET /shutdown"),
+            }
+        };
+
+        if let Some(context) = rest_context.as_ref() {
+            let mut context = context.write().await;
+            context.remove_bootstrap_stopper();
+        }
+
+        result
     })?;
 
     Ok(InitializedNode {
