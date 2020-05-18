@@ -1080,7 +1080,7 @@ dependencies = [
  "pin-utils",
  "proc-macro-hack",
  "proc-macro-nested",
- "slab 0.4.2",
+ "slab",
 ]
 
 [[package]]
@@ -1164,22 +1164,19 @@ dependencies = [
 
 [[package]]
 name = "grpc"
-version = "0.6.2"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2aaf1d741fe6f3413f1f9f71b99f5e4e26776d563475a8a53ce53a73a8534c1d"
+checksum = "2d323dc60117dd4f82bc0ce1b84ec29bbb7e68e64c37a780a492efb6848af550"
 dependencies = [
  "base64 0.9.3",
- "bytes 0.4.12",
- "futures 0.1.29",
- "futures-cpupool",
+ "bytes 0.5.4",
+ "futures 0.3.5",
  "httpbis",
  "log 0.4.8",
- "protobuf",
+ "log-ndc",
  "tls-api",
  "tls-api-stub",
- "tokio-core",
- "tokio-io",
- "tokio-tls-api",
+ "tokio 0.2.21",
 ]
 
 [[package]]
@@ -1214,7 +1211,7 @@ dependencies = [
  "http",
  "indexmap",
  "log 0.4.8",
- "slab 0.4.2",
+ "slab",
  "tokio 0.2.21",
  "tokio-util",
 ]
@@ -1307,22 +1304,19 @@ checksum = "cd179ae861f0c2e53da70d892f5f3029f9594be0c41dc5269cd371691b1dc2f9"
 
 [[package]]
 name = "httpbis"
-version = "0.7.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7689cfa896b2a71da4f16206af167542b75d242b6906313e53857972a92d5614"
+checksum = "58205659384c0ed3340578eb0ef82edaf90083d9a7cc0cf4bb6ae3717a7aab5a"
 dependencies = [
- "bytes 0.4.12",
- "futures 0.1.29",
- "futures-cpupool",
+ "bytes 0.5.4",
+ "futures 0.3.5",
  "log 0.4.8",
+ "log-ndc",
  "net2",
+ "rand 0.5.6",
  "tls-api",
  "tls-api-stub",
- "tokio-core",
- "tokio-io",
- "tokio-timer 0.1.2",
- "tokio-tls-api",
- "tokio-uds 0.1.7",
+ "tokio 0.2.21",
  "unix_socket",
  "void",
 ]
@@ -1852,6 +1846,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "log-ndc"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edb09057c7b58b7d27498b528eaee9a1e661b2974a733fcabbbc3350360bc8bd"
+dependencies = [
+ "log 0.4.8",
+]
+
+[[package]]
 name = "lru"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1963,7 +1966,7 @@ dependencies = [
  "log 0.4.8",
  "miow 0.2.1",
  "net2",
- "slab 0.4.2",
+ "slab",
  "winapi 0.2.8",
 ]
 
@@ -2607,9 +2610,6 @@ name = "protobuf"
 version = "2.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70731852eec72c56d11226c8a5f96ad5058a3dab73647ca5f7ee351e464f2571"
-dependencies = [
- "bytes 0.4.12",
-]
 
 [[package]]
 name = "protobuf-codegen"
@@ -2722,6 +2722,19 @@ dependencies = [
  "libc",
  "rand_core 0.3.1",
  "rdrand",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "rand"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c618c47cd3ebd209790115ab837de41425723956ad3ce2e6a7f09890947cacb9"
+dependencies = [
+ "cloudabi",
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.1",
  "winapi 0.3.8",
 ]
 
@@ -3137,12 +3150,6 @@ dependencies = [
 
 [[package]]
 name = "scoped-tls"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "332ffa32bf586782a3efaeb58f127980944bbc8c4d6913a86107ac2a5ab24b28"
-
-[[package]]
-name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
@@ -3336,12 +3343,6 @@ dependencies = [
  "tempdir",
  "walkdir",
 ]
-
-[[package]]
-name = "slab"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b4fcaed89ab08ef143da37bc52adbcc04d4a69014f4c1208d6b51f0c47bc23"
 
 [[package]]
 name = "slab"
@@ -3710,20 +3711,22 @@ dependencies = [
 
 [[package]]
 name = "tls-api"
-version = "0.1.22"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "049c03787a0595182357fbd487577947f4351b78ce20c3668f6d49f17feb13d1"
+checksum = "4ebb4107c167a4087349fcf08aea4debc358fe69d60fe1df991781842cfe98a3"
 dependencies = [
  "log 0.4.8",
+ "tokio 0.2.21",
 ]
 
 [[package]]
 name = "tls-api-stub"
-version = "0.1.22"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9a0cc8c149724db9de7d73a0e1bc80b1a74f5394f08c6f301e11f9c35fa061e"
+checksum = "6f8ff269def04f25ae84b9aac156a400b92c97018a184036548c91cedaafd783"
 dependencies = [
  "tls-api",
+ "tokio 0.2.21",
  "void",
 ]
 
@@ -3746,9 +3749,9 @@ dependencies = [
  "tokio-sync",
  "tokio-tcp",
  "tokio-threadpool",
- "tokio-timer 0.2.13",
+ "tokio-timer",
  "tokio-udp",
- "tokio-uds 0.2.6",
+ "tokio-uds",
 ]
 
 [[package]]
@@ -3770,7 +3773,7 @@ dependencies = [
  "num_cpus",
  "pin-project-lite",
  "signal-hook-registry",
- "slab 0.4.2",
+ "slab",
  "tokio-macros",
  "winapi 0.3.8",
 ]
@@ -3784,25 +3787,6 @@ dependencies = [
  "bytes 0.4.12",
  "futures 0.1.29",
  "tokio-io",
-]
-
-[[package]]
-name = "tokio-core"
-version = "0.1.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aeeffbbb94209023feaef3c196a41cbcdafa06b4a6f893f68779bb5e53796f71"
-dependencies = [
- "bytes 0.4.12",
- "futures 0.1.29",
- "iovec",
- "log 0.4.8",
- "mio",
- "scoped-tls 0.1.2",
- "tokio 0.1.22",
- "tokio-executor",
- "tokio-io",
- "tokio-reactor",
- "tokio-timer 0.2.13",
 ]
 
 [[package]]
@@ -3890,7 +3874,7 @@ dependencies = [
  "mio",
  "num_cpus",
  "parking_lot 0.9.0",
- "slab 0.4.2",
+ "slab",
  "tokio-executor",
  "tokio-io",
  "tokio-sync",
@@ -3974,18 +3958,8 @@ dependencies = [
  "lazy_static",
  "log 0.4.8",
  "num_cpus",
- "slab 0.4.2",
+ "slab",
  "tokio-executor",
-]
-
-[[package]]
-name = "tokio-timer"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6131e780037787ff1b3f8aad9da83bca02438b72277850dd6ad0d455e0e20efc"
-dependencies = [
- "futures 0.1.29",
- "slab 0.3.0",
 ]
 
 [[package]]
@@ -3996,7 +3970,7 @@ checksum = "93044f2d313c95ff1cb7809ce9a7a05735b012288a888b62d4434fd58c94f296"
 dependencies = [
  "crossbeam-utils 0.7.2",
  "futures 0.1.29",
- "slab 0.4.2",
+ "slab",
  "tokio-executor",
 ]
 
@@ -4008,17 +3982,6 @@ checksum = "9a70f4fcd7b3b24fb194f837560168208f669ca8cb70d0c4b862944452396343"
 dependencies = [
  "native-tls",
  "tokio 0.2.21",
-]
-
-[[package]]
-name = "tokio-tls-api"
-version = "0.1.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68d0e040d5b1f4cfca70ec4f371229886a5de5bb554d272a4a8da73004a7b2c9"
-dependencies = [
- "futures 0.1.29",
- "tls-api",
- "tokio-io",
 ]
 
 [[package]]
@@ -4047,23 +4010,6 @@ dependencies = [
  "tokio-codec",
  "tokio-io",
  "tokio-reactor",
-]
-
-[[package]]
-name = "tokio-uds"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65ae5d255ce739e8537221ed2942e0445f4b3b813daebac1c0050ddaaa3587f9"
-dependencies = [
- "bytes 0.4.12",
- "futures 0.1.29",
- "iovec",
- "libc",
- "log 0.3.9",
- "mio",
- "mio-uds",
- "tokio-core",
- "tokio-io",
 ]
 
 [[package]]
@@ -4169,7 +4115,7 @@ dependencies = [
  "indexmap",
  "pin-project",
  "rand 0.7.3",
- "slab 0.4.2",
+ "slab",
  "tokio 0.2.21",
  "tower-discover",
  "tower-layer",
@@ -4626,7 +4572,7 @@ dependencies = [
  "mime_guess 2.0.3",
  "multipart",
  "pin-project",
- "scoped-tls 1.0.0",
+ "scoped-tls",
  "serde",
  "serde_json",
  "serde_urlencoded",
