@@ -1,3 +1,9 @@
+use crate::common::jormungandr::rest::RestError;
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use jormungandr_lib::interfaces::FragmentLog;
+use jormungandr_testing_utils::testing::MemPoolCheck;
+use std::collections::HashMap;
+
 /// Legacy tolerant rest api
 /// This layer returns raw strings without deserialization
 /// in order to assure compatibility and lack of serde errors
@@ -30,8 +36,12 @@ impl BackwardCompatibleRest {
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        let request = format!("{}/api/v0/{}", self.endpoint, path);
+        let request = self.path(path);
         reqwest::blocking::get(&request)
+    }
+
+    fn path(&self, path: &str) -> String {
+        format!("{}/api/v0/{}", self.endpoint, path)
     }
 
     pub fn stake_distribution(&self) -> Result<String, reqwest::Error> {
@@ -81,11 +91,43 @@ impl BackwardCompatibleRest {
         self.get("tip")?.text()
     }
 
-    pub fn fragment_logs(&self) -> Result<String, reqwest::Error> {
-        self.get("fragment/logs")?.text()
+    pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
+        let logs = self.get("fragment/logs")?.text()?;
+        let logs: Vec<FragmentLog> = if logs.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&logs).map_err(|err| RestError::CannotDeserialize(err))?
+        };
+
+        let logs = logs
+            .into_iter()
+            .map(|log| (log.fragment_id().clone().into_hash(), log))
+            .collect();
+
+        Ok(logs)
     }
 
     pub fn leaders(&self) -> Result<String, reqwest::Error> {
         self.get("leaders")?.text()
+    }
+
+    fn post(
+        &self,
+        path: &str,
+        body: Vec<u8>,
+    ) -> Result<reqwest::blocking::Response, reqwest::Error> {
+        let client = reqwest::blocking::Client::new();
+        client.post(&self.path(path)).body(body).send()
+    }
+
+    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, reqwest::Error> {
+        use chain_core::property::Fragment as _;
+        use chain_core::property::Serialize as _;
+
+        let raw = fragment.serialize_as_vec().unwrap();
+        let fragment_id = fragment.id();
+
+        self.post("message", raw.clone())?;
+        Ok(MemPoolCheck::new(fragment_id))
     }
 }
