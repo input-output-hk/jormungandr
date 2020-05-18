@@ -1,4 +1,5 @@
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
+use chain_crypto::Ed25519Extended;
 
 use chain_crypto::Ed25519Extended;
 
