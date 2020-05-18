@@ -1,7 +1,7 @@
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
     legacy::LegacySettings,
-    node::{MemPoolCheck, ProgressBarController, Status},
+    node::{ProgressBarController, Status},
     style, Context,
 };
 use bawawa::{Control, Process};
@@ -19,8 +19,11 @@ use jormungandr_integration_tests::{
 use jormungandr_lib::interfaces::{
     EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats,
 };
-pub use jormungandr_testing_utils::testing::network_builder::{
-    LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
+pub use jormungandr_testing_utils::testing::{
+    network_builder::{
+        LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
+    },
+    FragmentNode, FragmentNodeError, MemPoolCheck,
 };
 use yaml_rust::{Yaml, YamlLoader};
 

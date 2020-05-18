@@ -5,7 +5,8 @@ use crate::{
     Context,
 };
 use rand_chacha::ChaChaRng;
-use std::{thread, time::Duration};
+
+use jormungandr_testing_utils::testing::FragmentNode;
 
 pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
@@ -104,30 +105,15 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     passive3.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1").unwrap();
-    let wallet2 = controller.wallet("delegated1").unwrap();
+    let mut wallet2 = controller.wallet("delegated1").unwrap();
 
-    for i in 0..10 {
-        let check = controller.wallet_send_to(&mut wallet1, &wallet2, &leader1, 5_000.into())?;
-
-        thread::sleep(Duration::from_secs(1));
-
-        let status = leader1.wait_fragment(Duration::from_secs(2), check);
-
-        if let Ok(status) = status {
-            if status.is_in_a_block() {
-                wallet1.confirm_transaction();
-            } else {
-                return Ok(ScenarioResult::failed(format!(
-                    "transaction no. {} not confirmed",
-                    i
-                )));
-            }
-        } else {
-            return Ok(ScenarioResult::failed(format!(
-                "cannot get status from leader1"
-            )));
-        }
-    }
+    controller.fragment_sender().send_transactions_round_trip(
+        10,
+        &mut wallet1,
+        &mut wallet2,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
+    )?;
 
     leader1.shutdown()?;
     passive1.shutdown()?;
