@@ -5,6 +5,7 @@ use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
     header::HeaderId,
 };
+
 use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
     common::jormungandr::{logger::JormungandrLogger, JormungandrRest, RestError},
@@ -12,11 +13,13 @@ use jormungandr_integration_tests::{
     response_to_vec,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, NodeState, NodeStatsDto, PeerRecord,
-    PeerStats,
+    EnclaveLeaderId, FragmentLog, Info, NodeState, NodeStatsDto, PeerRecord, PeerStats,
 };
-pub use jormungandr_testing_utils::testing::network_builder::{
-    LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
+pub use jormungandr_testing_utils::testing::{
+    network_builder::{
+        LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
+    },
+    FragmentNode, MemPoolCheck,
 };
 use rand_core::RngCore;
 use std::{
@@ -84,32 +87,6 @@ error_chain! {
             description("cannot shutdown node"),
             display("node '{}' failed to shutdown. Message: {}. Log: {}", alias, message, log),
         }
-
-        FragmentNoInMemPoolLogs (alias: String, fragment_id: FragmentId, log: String) {
-            description("cannot find fragment in mempool logs"),
-            display("fragment '{}' not in the mempool of the node '{}'. logs: {}", fragment_id, alias, log),
-        }
-
-        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration, alias: String, log: String) {
-            description("fragment is pending for too long"),
-            display("fragment '{}' is pending for too long ({} s). Node: {}, Logs: {}", fragment_id, duration.as_secs(), alias, log),
-        }
-    }
-}
-
-pub struct MemPoolCheck {
-    fragment_id: FragmentId,
-}
-
-impl MemPoolCheck {
-    pub fn new(fragment_id: FragmentId) -> Self {
-        Self {
-            fragment_id: fragment_id,
-        }
-    }
-
-    pub fn fragment_id(&self) -> &FragmentId {
-        &self.fragment_id
     }
 }
 
@@ -179,25 +156,6 @@ impl NodeController {
         self.settings.config.p2p.public_address.clone()
     }
 
-    fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::blocking::Response> {
-        self.progress_bar.log_info(format!("POST '{}'", path));
-
-        let client = reqwest::blocking::Client::new();
-        let res = client
-            .post(&format!("{}/{}", self.base_url(), path))
-            .body(body)
-            .send();
-
-        match res {
-            Err(err) => {
-                self.progress_bar
-                    .log_err(format!("Failed to send request {}", &err));
-                Err(err.into())
-            }
-            Ok(r) => Ok(r),
-        }
-    }
-
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("GET '{}'", path));
 
@@ -217,28 +175,19 @@ impl NodeController {
 
     pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck> {
         use chain_core::property::Fragment as _;
-        use chain_core::property::Serialize as _;
 
-        let raw = fragment.serialize_as_vec().unwrap();
         let fragment_id = fragment.id();
+        let result = self.rest_client.send_fragment(fragment);
 
-        let response = self.post("message", raw.clone())?;
         self.progress_bar
-            .log_info(format!("Fragment '{}' sent", fragment_id,));
+            .log_info(format!("Fragment '{}' sent", fragment_id));
 
-        let res = response.error_for_status_ref();
-        if let Err(err) = res {
-            self.progress_bar.log_err(format!(
-                "Fragment '{}' ({}) fail to send: {}",
-                hex::encode(&raw),
-                fragment_id,
-                err,
-            ));
+        if let Err(err) = result {
+            self.progress_bar
+                .log_err(format!("Fragment ({}) fail to send: {}", fragment_id, err,));
         }
 
-        Ok(MemPoolCheck {
-            fragment_id: fragment_id,
-        })
+        Ok(MemPoolCheck::new(fragment_id))
     }
 
     pub fn log(&self, info: &str) {
@@ -390,52 +339,6 @@ impl NodeController {
         Ok(())
     }
 
-    pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
-        let max_try = 50;
-        for _ in 0..max_try {
-            let logs = self.fragment_logs()?;
-
-            if let Some(log) = logs.get(&check.fragment_id) {
-                use jormungandr_lib::interfaces::FragmentStatus::*;
-                let status = log.status().clone();
-                match log.status() {
-                    Pending => {
-                        self.progress_bar
-                            .log_info(format!("Fragment '{}' is still pending", check.fragment_id));
-                    }
-                    Rejected { reason } => {
-                        self.progress_bar.log_info(format!(
-                            "Fragment '{}' rejected: {}",
-                            check.fragment_id, reason
-                        ));
-                        return Ok(status);
-                    }
-                    InABlock { date, block } => {
-                        self.progress_bar.log_info(format!(
-                            "Fragment '{}' in block: {} ({})",
-                            check.fragment_id, block, date
-                        ));
-                        return Ok(status);
-                    }
-                }
-            } else {
-                bail!(ErrorKind::FragmentNoInMemPoolLogs(
-                    self.alias().to_string(),
-                    check.fragment_id.clone(),
-                    self.logger().get_log_content()
-                ))
-            }
-            std::thread::sleep(duration);
-        }
-
-        bail!(ErrorKind::FragmentIsPendingForTooLong(
-            check.fragment_id.clone(),
-            Duration::from_secs(duration.as_secs() * max_try),
-            self.alias().to_string(),
-            self.logger().get_log_content()
-        ))
-    }
-
     pub fn stats(&self) -> Result<NodeStatsDto> {
         self.rest_client
             .stats()
@@ -537,6 +440,10 @@ impl NodeController {
                 self.logger().get_log_content()
             ))
         }
+    }
+
+    pub fn progress_bar(&self) -> &ProgressBarController {
+        &self.progress_bar
     }
 
     pub fn logger(&self) -> JormungandrLogger {
