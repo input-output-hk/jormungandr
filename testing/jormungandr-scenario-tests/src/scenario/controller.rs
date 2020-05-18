@@ -5,14 +5,20 @@ use crate::{
         settings::{Dotifier, PrepareSettings},
         ContextChaCha, ErrorKind, ProgressBarMode, Result,
     },
-    style, MemPoolCheck, Node, NodeBlock0, NodeController, Wallet,
+    style, Node, NodeBlock0, NodeController,
 };
 use chain_impl_mockchain::header::HeaderId;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_integration_tests::common::legacy::Version;
-use jormungandr_lib::interfaces::Value;
-use jormungandr_testing_utils::testing::network_builder::{
-    Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::{
+    testing::{
+        network_builder::{
+            Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
+        },
+        FragmentSender,
+    },
+    wallet::Wallet,
 };
 use std::{
     path::{Path, PathBuf},
@@ -161,7 +167,7 @@ impl Controller {
 
     pub fn wallet(&mut self, wallet: &str) -> Result<Wallet> {
         if let Some(wallet) = self.settings.wallets.remove(wallet) {
-            Ok(wallet)
+            Ok(wallet.into())
         } else {
             Err(ErrorKind::WalletNotFound(wallet.to_owned()).into())
         }
@@ -304,19 +310,15 @@ impl Controller {
         }
     }
 
-    pub fn wallet_send_to(
-        &mut self,
-        from: &mut Wallet,
-        to: &Wallet,
-        via: &NodeController,
-        value: Value,
-    ) -> Result<MemPoolCheck> {
-        let block0_hash = &self.block0_hash;
-        let fees = &self.settings.block0.blockchain_configuration.linear_fees;
-        let address = to.address();
-
-        let fragment = from.transaction_to(&block0_hash.clone().into(), fees, address, value)?;
-
-        Ok(via.send_fragment(fragment)?)
+    pub fn fragment_sender(&self) -> FragmentSender {
+        let hash = Hash::from_hash(self.block0_hash.clone());
+        FragmentSender::new(
+            hash,
+            self.settings
+                .block0
+                .blockchain_configuration
+                .linear_fees
+                .clone(),
+        )
     }
 }
