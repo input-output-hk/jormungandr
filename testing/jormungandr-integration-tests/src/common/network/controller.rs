@@ -166,7 +166,6 @@ impl Controller {
             self.block0_hash.to_string(),
             config_file,
             vec![config_secret],
-            file_utils::get_path_in_temp("log_file.log"),
             self.settings.block0.clone(),
             vec![node_setting.secrets().clone()],
             false,

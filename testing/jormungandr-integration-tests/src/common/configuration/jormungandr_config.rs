@@ -23,7 +23,6 @@ impl JormungandrConfig {
         genesis_block_hash: String,
         node_config_path: PathBuf,
         secret_model_paths: Vec<PathBuf>,
-        log_file_path: PathBuf,
         block0_configuration: Block0Configuration,
         secret_models: Vec<NodeSecret>,
         rewards_history: bool,
@@ -34,7 +33,6 @@ impl JormungandrConfig {
                 genesis_block_hash,
                 node_config_path,
                 secret_model_paths,
-                log_file_path,
                 block0_configuration,
                 secret_models,
                 rewards_history,
@@ -66,8 +64,8 @@ impl JormungandrConfig {
         self.inner.rewards_history
     }
 
-    pub fn log_file_path(&self) -> &PathBuf {
-        &self.inner.log_file_path
+    pub fn log_file_path(&self) -> Option<PathBuf> {
+        self.inner.log_file_path()
     }
 
     pub fn secret_model_paths_mut(&mut self) -> &mut Vec<PathBuf> {
@@ -98,7 +96,6 @@ impl JormungandrConfig {
     pub fn refresh_node_dynamic_params(&mut self) {
         let node_config = self.regenerate_ports();
         self.update_node_config(node_config);
-        self.inner.log_file_path = file_utils::get_path_in_temp("log_file.log");
     }
 
     fn update_node_config(&mut self, node_config: NodeConfig) {

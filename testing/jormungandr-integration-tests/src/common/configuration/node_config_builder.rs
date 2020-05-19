@@ -30,7 +30,12 @@ impl NodeConfigBuilder {
         let log = Some(Log(vec![LogEntry {
             level: "info".to_string(),
             format: "json".to_string(),
-            output: LogOutput::Stderr,
+            output: LogOutput::File(
+                file_utils::get_path_in_temp("log.log")
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            ),
         }]));
         let grpc_public_address: poldercast::Address = format!(
             "/ip4/{}/tcp/{}",

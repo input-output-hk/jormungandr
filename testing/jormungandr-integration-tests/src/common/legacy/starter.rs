@@ -234,12 +234,15 @@ impl Starter {
     }
 
     fn if_stopped(&self, config: &BackwardCompatibleConfig) -> bool {
-        let logger = JormungandrLogger::new(config.log_file_path.clone());
+        let log_file_path = config.log_file_path().expect("No log file defined");
+        let logger = JormungandrLogger::new(log_file_path);
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
     fn custom_errors_found(&self, config: &BackwardCompatibleConfig) -> Result<(), StartupError> {
-        let logger = JormungandrLogger::new(config.log_file_path.clone());
+        let log_file_path = config.log_file_path().expect("No log file defined");
+
+        let logger = JormungandrLogger::new(log_file_path);
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         match logger
             .raw_log_contains_any_of(&port_occupied_msgs)
@@ -256,12 +259,14 @@ impl Starter {
         config: &BackwardCompatibleConfig,
     ) -> Result<BackwardCompatibleJormungandr, StartupError> {
         let start = Instant::now();
-        let logger = JormungandrLogger::new(config.log_file_path.clone());
+        let log_file_path = config.log_file_path().expect("No log file defined");
+
+        let logger = JormungandrLogger::new(log_file_path.clone());
         loop {
             if start.elapsed() > self.timeout {
                 return Err(StartupError::Timeout {
                     timeout: self.timeout.as_secs(),
-                    log_content: file_utils::read_file(&config.log_file_path),
+                    log_content: file_utils::read_file(&log_file_path),
                 });
             }
             if self.if_succeed(config) {
@@ -277,7 +282,7 @@ impl Starter {
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
-                    log_content: file_utils::read_file(&config.log_file_path),
+                    log_content: file_utils::read_file(&log_file_path),
                 });
             }
             process_utils::sleep(self.sleep);

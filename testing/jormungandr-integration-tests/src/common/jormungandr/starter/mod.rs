@@ -100,7 +100,7 @@ impl RestStartupVerification {
 
 impl StartupVerification for RestStartupVerification {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap().clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
@@ -143,12 +143,12 @@ impl LogStartupVerification {
 
 impl StartupVerification for LogStartupVerification {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap().clone());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
     fn if_succeed(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap().clone());
         logger
             .contains_message("genesis block fetched")
             .unwrap_or_else(|_| false)
@@ -271,7 +271,7 @@ impl Starter {
         let _process = self.start_process(&config);
 
         loop {
-            let logger = JormungandrLogger::new(config.log_file_path().clone());
+            let logger = JormungandrLogger::new(config.log_file_path().unwrap().clone());
             if start.elapsed() > self.timeout {
                 return Err(StartupError::EntryNotFoundInLogs {
                     entry: expected_msg_in_logs.to_string(),
@@ -315,6 +315,7 @@ impl Starter {
 
     pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
         let config = self.build_configuration();
+        println!("{:?}", config.log_file_path());
         Ok(JormungandrProcess::from_config(
             self.start_process(&config),
             config,
@@ -399,7 +400,11 @@ impl Starter {
     }
 
     fn custom_errors_found(&self, config: &JormungandrConfig) -> Result<(), StartupError> {
-        let logger = JormungandrLogger::new(config.log_file_path().clone());
+        let log_file_path = config
+            .log_file_path()
+            .expect("log file logger has to be defined")
+            .clone();
+        let logger = JormungandrLogger::new(log_file_path);
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         match logger
             .raw_log_contains_any_of(&port_occupied_msgs)
@@ -416,12 +421,16 @@ impl Starter {
         config: &JormungandrConfig,
     ) -> Result<JormungandrProcess, StartupError> {
         let start = Instant::now();
-        let logger = JormungandrLogger::new(config.log_file_path().clone());
+        let log_file_path = config
+            .log_file_path()
+            .expect("log file logger has to be defined")
+            .clone();
+        let logger = JormungandrLogger::new(log_file_path.clone());
         loop {
             if start.elapsed() > self.timeout {
                 return Err(StartupError::Timeout {
                     timeout: self.timeout.as_secs(),
-                    log_content: file_utils::read_file(config.log_file_path()),
+                    log_content: file_utils::read_file(&log_file_path),
                 });
             }
             if self.if_succeed(config) {
@@ -437,7 +446,7 @@ impl Starter {
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
-                    log_content: file_utils::read_file(config.log_file_path()),
+                    log_content: file_utils::read_file(&log_file_path),
                 });
             }
             process_utils::sleep(self.sleep);

@@ -1,7 +1,6 @@
 use crate::common::{
     configuration::{jormungandr_config::JormungandrConfig, SecretModelFactory},
-    file_utils,
-    jcli_wrapper::{self, certificate::wrapper::JCLICertificateWrapper},
+    file_utils, jcli_wrapper,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
     process_utils,
 };

@@ -19,7 +19,7 @@ impl JormungandrStarterCommands {
         config_path: &PathBuf,
         genesis_block_hash: &str,
         secret_paths: &[PathBuf],
-        log_file_path: &PathBuf,
+        log_file_path: Option<PathBuf>,
         reward_history: bool,
     ) -> Command {
         let mut command = Command::new(self.jormungandr_app.as_os_str());
@@ -35,8 +35,12 @@ impl JormungandrStarterCommands {
             .arg("--config")
             .arg(config_path.as_os_str())
             .arg("--genesis-block-hash")
-            .arg(genesis_block_hash)
-            .stderr(Self::get_stdio_from_log_file(&log_file_path));
+            .arg(genesis_block_hash);
+
+        if let Some(log_file) = log_file_path {
+            command.stderr(Self::get_stdio_from_log_file(&log_file));
+        }
+
         println!("Running start jormungandr command: {:?}", &command);
         command
     }
@@ -46,7 +50,7 @@ impl JormungandrStarterCommands {
         config_path: &PathBuf,
         genesis_block_path: &PathBuf,
         secret_paths: &[PathBuf],
-        log_file_path: &PathBuf,
+        log_file_path: Option<PathBuf>,
         reward_history: bool,
     ) -> Command {
         let mut command = Command::new(self.jormungandr_app.as_os_str());
@@ -62,8 +66,12 @@ impl JormungandrStarterCommands {
             .arg("--config")
             .arg(config_path.as_os_str())
             .arg("--genesis-block")
-            .arg(genesis_block_path.as_os_str())
-            .stderr(Self::get_stdio_from_log_file(&log_file_path));
+            .arg(genesis_block_path.as_os_str());
+
+        if let Some(log_file) = log_file_path {
+            command.stderr(Self::get_stdio_from_log_file(&log_file));
+        }
+
         println!("Running start jormungandr command: {:?}", &command);
         command
     }
@@ -72,7 +80,7 @@ impl JormungandrStarterCommands {
         &self,
         config_path: &PathBuf,
         genesis_block_hash: &String,
-        log_file_path: &PathBuf,
+        log_file_path: Option<PathBuf>,
         reward_history: bool,
     ) -> Command {
         let mut command = Command::new(self.jormungandr_app.as_os_str());
@@ -85,8 +93,12 @@ impl JormungandrStarterCommands {
             .arg("--config")
             .arg(config_path.as_os_str())
             .arg("--genesis-block-hash")
-            .arg(&genesis_block_hash)
-            .stderr(Self::get_stdio_from_log_file(&log_file_path));
+            .arg(&genesis_block_hash);
+
+        if let Some(log_file) = log_file_path {
+            command.stderr(Self::get_stdio_from_log_file(&log_file));
+        }
+
         println!("Running start jormungandr command: {:?}", &command);
         command
     }
@@ -117,21 +129,21 @@ pub fn get_command(
         (Role::Passive, _) => commands.as_passive_node(
             &config.node_config_path,
             &config.genesis_block_hash,
-            &config.log_file_path,
+            config.log_file_path(),
             config.rewards_history,
         ),
         (Role::Leader, FromGenesis::File) => commands.as_leader_node(
             &config.node_config_path,
             &config.genesis_block_path,
             &config.secret_model_paths,
-            &config.log_file_path,
+            config.log_file_path(),
             config.rewards_history,
         ),
         (Role::Leader, FromGenesis::Hash) => commands.as_leader_node_from_hash(
             &config.node_config_path,
             &config.genesis_block_hash,
             &config.secret_model_paths,
-            &config.log_file_path,
+            config.log_file_path(),
             config.rewards_history,
         ),
     }

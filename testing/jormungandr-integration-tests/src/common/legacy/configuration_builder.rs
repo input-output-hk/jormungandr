@@ -66,7 +66,6 @@ impl LegacyConfigConverter {
             config.genesis_block_hash().clone(),
             node_config_path,
             config.secret_model_paths().clone(),
-            config.log_file_path().clone(),
             config.block0_configuration().clone(),
             config.secret_models().clone(),
             config.rewards_history(),

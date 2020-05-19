@@ -1,13 +1,6 @@
-use crate::common::{
-    configuration::SecretModelFactory,
-    file_utils,
-    jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
-    jormungandr::{ConfigurationBuilder, Starter},
-    startup,
-};
-use chain_crypto::{Curve25519_2HashDH, Ed25519, Ed25519Extended, SumEd25519_12};
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, InitialUTxO, KESUpdateSpeed};
+use crate::common::{jormungandr::ConfigurationBuilder, startup};
+
+use chain_crypto::Ed25519Extended;
 
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {

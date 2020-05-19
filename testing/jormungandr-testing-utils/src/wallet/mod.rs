@@ -2,11 +2,14 @@ pub mod account;
 pub mod delegation;
 pub mod utxo;
 
-use crate::testing::{FragmentBuilder, FragmentBuilderError};
+use crate::{
+    stake_pool::StakePool,
+    testing::{FragmentBuilder, FragmentBuilderError},
+};
 use chain_impl_mockchain::{
     fee::FeeAlgorithm,
     key::EitherEd25519SecretKey,
-    testing::data::{AddressData, AddressDataValue, StakePool, Wallet as WalletLib},
+    testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},
     transaction::{
         InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
         TransactionSignDataHash, Witness,
@@ -196,6 +199,64 @@ impl Wallet {
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
         Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_retire(vec![&self], stake_pool))
+    }
+
+    pub fn issue_pool_registration_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        stake_pool: &StakePool,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_registration(&self, stake_pool))
+    }
+
+    pub fn issue_pool_update_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        stake_pool: &StakePool,
+        update_stake_pool: &StakePool,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_update(
+            vec![&self],
+            stake_pool,
+            update_stake_pool,
+        ))
+    }
+
+    pub fn issue_full_delegation_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        stake_pool: &StakePool,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).delegation(&self, stake_pool))
+    }
+
+    pub fn issue_owner_delegation_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        stake_pool: &StakePool,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).owner_delegation(&self, stake_pool))
+    }
+
+    pub fn issue_split_delegation_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        distribution: Vec<(&StakePool, u8)>,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).delegation_to_many(&self, distribution))
+    }
+
+    pub fn remove_delegation_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).delegation_remove(&self))
     }
 }
 

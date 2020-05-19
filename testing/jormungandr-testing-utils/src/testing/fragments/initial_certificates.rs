@@ -3,7 +3,6 @@ use chain_impl_mockchain::{
     certificate::{PoolId, PoolOwnersSigned, PoolSignature, SignedCertificate, StakeDelegation},
     transaction::{AccountBindingSignature, SingleAccountBindingSignature, TxBuilder},
 };
-use jormungandr_lib::interfaces::Initial;
 
 pub fn signed_delegation_cert(wallet: &Wallet, pool_id: PoolId) -> SignedCertificate {
     let stake_delegation = StakeDelegation {

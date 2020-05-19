@@ -4,6 +4,7 @@ use crate::common::{
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrLogger},
 };
+use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::crypto::hash::Hash;
 use std::{path::PathBuf, process::Child, str::FromStr};
 
@@ -17,7 +18,12 @@ pub struct BackwardCompatibleJormungandr {
 
 impl BackwardCompatibleJormungandr {
     pub fn from_config(child: Child, config: BackwardCompatibleConfig, alias: String) -> Self {
-        Self::new(child, alias, config.log_file_path.clone(), config)
+        Self::new(
+            child,
+            alias,
+            config.log_file_path().expect("no log file defined").clone(),
+            config,
+        )
     }
 
     pub fn new(
@@ -44,6 +50,10 @@ impl BackwardCompatibleJormungandr {
 
     pub fn shutdown(&self) {
         jcli_wrapper::assert_rest_shutdown(&self.config.get_node_address());
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.config.fees()
     }
 
     pub fn assert_no_errors_in_log_with_message(&self, message: &str) {

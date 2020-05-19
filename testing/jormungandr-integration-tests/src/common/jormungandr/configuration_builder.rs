@@ -226,7 +226,6 @@ impl ConfigurationBuilder {
             genesis_block_hash,
             node_config_path,
             vec![secret_model_path],
-            file_utils::get_path_in_temp("log_file.log"),
             block0_config,
             vec![secret_model],
             self.rewards_history,
