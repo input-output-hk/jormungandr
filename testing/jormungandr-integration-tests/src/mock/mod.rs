@@ -1,10 +1,3 @@
-extern crate base64;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate grpc;
-extern crate hex;
-extern crate protobuf;
-
 #[macro_use]
 pub mod client;
 pub mod convert;

@@ -1,14 +1,8 @@
-extern crate base64;
-extern crate chain_impl_mockchain;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate grpc;
-extern crate hex;
 #[macro_use]
 extern crate jormungandr_integration_tests;
 
 use chain_impl_mockchain as chain;
-use jormungandr_integration_tests::mock::{client::JormungandrClient, read_into};
+use jormungandr_integration_tests::mock::client::JormungandrClient;
 use std::env;
 
 fn main() {

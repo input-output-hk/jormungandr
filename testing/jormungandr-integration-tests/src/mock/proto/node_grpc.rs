@@ -19,179 +19,179 @@
 #![allow(unused_results)]
 
 
-// interface
+// server interface
 
 pub trait Node {
-    fn handshake(&self, o: ::grpc::RequestOptions, p: super::node::HandshakeRequest) -> ::grpc::SingleResponse<super::node::HandshakeResponse>;
+    fn handshake(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::HandshakeRequest>, resp: ::grpc::ServerResponseUnarySink<super::node::HandshakeResponse>) -> ::grpc::Result<()>;
 
-    fn tip(&self, o: ::grpc::RequestOptions, p: super::node::TipRequest) -> ::grpc::SingleResponse<super::node::TipResponse>;
+    fn tip(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::TipRequest>, resp: ::grpc::ServerResponseUnarySink<super::node::TipResponse>) -> ::grpc::Result<()>;
 
-    fn get_blocks(&self, o: ::grpc::RequestOptions, p: super::node::BlockIds) -> ::grpc::StreamingResponse<super::node::Block>;
+    fn peers(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::PeersRequest>, resp: ::grpc::ServerResponseUnarySink<super::node::PeersResponse>) -> ::grpc::Result<()>;
 
-    fn get_headers(&self, o: ::grpc::RequestOptions, p: super::node::BlockIds) -> ::grpc::StreamingResponse<super::node::Header>;
+    fn get_blocks(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::BlockIds>, resp: ::grpc::ServerResponseSink<super::node::Block>) -> ::grpc::Result<()>;
 
-    fn get_fragments(&self, o: ::grpc::RequestOptions, p: super::node::FragmentIds) -> ::grpc::StreamingResponse<super::node::Fragment>;
+    fn get_headers(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::BlockIds>, resp: ::grpc::ServerResponseSink<super::node::Header>) -> ::grpc::Result<()>;
 
-    fn pull_headers(&self, o: ::grpc::RequestOptions, p: super::node::PullHeadersRequest) -> ::grpc::StreamingResponse<super::node::Header>;
+    fn get_fragments(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::FragmentIds>, resp: ::grpc::ServerResponseSink<super::node::Fragment>) -> ::grpc::Result<()>;
 
-    fn pull_blocks_to_tip(&self, o: ::grpc::RequestOptions, p: super::node::PullBlocksToTipRequest) -> ::grpc::StreamingResponse<super::node::Block>;
+    fn pull_headers(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::PullHeadersRequest>, resp: ::grpc::ServerResponseSink<super::node::Header>) -> ::grpc::Result<()>;
 
-    fn push_headers(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Header>) -> ::grpc::SingleResponse<super::node::PushHeadersResponse>;
+    fn pull_blocks_to_tip(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequestSingle<super::node::PullBlocksToTipRequest>, resp: ::grpc::ServerResponseSink<super::node::Block>) -> ::grpc::Result<()>;
 
-    fn upload_blocks(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Block>) -> ::grpc::SingleResponse<super::node::UploadBlocksResponse>;
+    fn push_headers(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequest<super::node::Header>, resp: ::grpc::ServerResponseUnarySink<super::node::PushHeadersResponse>) -> ::grpc::Result<()>;
 
-    fn block_subscription(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Header>) -> ::grpc::StreamingResponse<super::node::BlockEvent>;
+    fn upload_blocks(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequest<super::node::Block>, resp: ::grpc::ServerResponseUnarySink<super::node::UploadBlocksResponse>) -> ::grpc::Result<()>;
 
-    fn content_subscription(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Fragment>) -> ::grpc::StreamingResponse<super::node::Fragment>;
+    fn block_subscription(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequest<super::node::Header>, resp: ::grpc::ServerResponseSink<super::node::BlockEvent>) -> ::grpc::Result<()>;
 
-    fn gossip_subscription(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Gossip>) -> ::grpc::StreamingResponse<super::node::Gossip>;
+    fn fragment_subscription(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequest<super::node::Fragment>, resp: ::grpc::ServerResponseSink<super::node::Fragment>) -> ::grpc::Result<()>;
+
+    fn gossip_subscription(&self, o: ::grpc::ServerHandlerContext, req: ::grpc::ServerRequest<super::node::Gossip>, resp: ::grpc::ServerResponseSink<super::node::Gossip>) -> ::grpc::Result<()>;
 }
 
 // client
 
 pub struct NodeClient {
     grpc_client: ::std::sync::Arc<::grpc::Client>,
-    method_Handshake: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::HandshakeRequest, super::node::HandshakeResponse>>,
-    method_Tip: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::TipRequest, super::node::TipResponse>>,
-    method_GetBlocks: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::BlockIds, super::node::Block>>,
-    method_GetHeaders: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::BlockIds, super::node::Header>>,
-    method_GetFragments: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::FragmentIds, super::node::Fragment>>,
-    method_PullHeaders: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::PullHeadersRequest, super::node::Header>>,
-    method_PullBlocksToTip: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::PullBlocksToTipRequest, super::node::Block>>,
-    method_PushHeaders: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::Header, super::node::PushHeadersResponse>>,
-    method_UploadBlocks: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::Block, super::node::UploadBlocksResponse>>,
-    method_BlockSubscription: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::Header, super::node::BlockEvent>>,
-    method_ContentSubscription: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::Fragment, super::node::Fragment>>,
-    method_GossipSubscription: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::node::Gossip, super::node::Gossip>>,
 }
 
 impl ::grpc::ClientStub for NodeClient {
     fn with_client(grpc_client: ::std::sync::Arc<::grpc::Client>) -> Self {
         NodeClient {
             grpc_client: grpc_client,
-            method_Handshake: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/Handshake".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::Unary,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_Tip: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/Tip".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::Unary,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_GetBlocks: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/GetBlocks".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_GetHeaders: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/GetHeaders".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_GetFragments: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/GetFragments".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_PullHeaders: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/PullHeaders".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_PullBlocksToTip: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/PullBlocksToTip".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_PushHeaders: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/PushHeaders".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::ClientStreaming,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_UploadBlocks: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/UploadBlocks".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::ClientStreaming,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_BlockSubscription: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/BlockSubscription".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::Bidi,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_ContentSubscription: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/ContentSubscription".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::Bidi,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
-            method_GossipSubscription: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                name: "/iohk.chain.node.Node/GossipSubscription".to_string(),
-                streaming: ::grpc::rt::GrpcStreaming::Bidi,
-                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-            }),
         }
     }
 }
 
-impl Node for NodeClient {
-    fn handshake(&self, o: ::grpc::RequestOptions, p: super::node::HandshakeRequest) -> ::grpc::SingleResponse<super::node::HandshakeResponse> {
-        self.grpc_client.call_unary(o, p, self.method_Handshake.clone())
+impl NodeClient {
+    pub fn handshake(&self, o: ::grpc::RequestOptions, req: super::node::HandshakeRequest) -> ::grpc::SingleResponse<super::node::HandshakeResponse> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/Handshake"),
+            streaming: ::grpc::rt::GrpcStreaming::Unary,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_unary(o, req, descriptor)
     }
 
-    fn tip(&self, o: ::grpc::RequestOptions, p: super::node::TipRequest) -> ::grpc::SingleResponse<super::node::TipResponse> {
-        self.grpc_client.call_unary(o, p, self.method_Tip.clone())
+    pub fn tip(&self, o: ::grpc::RequestOptions, req: super::node::TipRequest) -> ::grpc::SingleResponse<super::node::TipResponse> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/Tip"),
+            streaming: ::grpc::rt::GrpcStreaming::Unary,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_unary(o, req, descriptor)
     }
 
-    fn get_blocks(&self, o: ::grpc::RequestOptions, p: super::node::BlockIds) -> ::grpc::StreamingResponse<super::node::Block> {
-        self.grpc_client.call_server_streaming(o, p, self.method_GetBlocks.clone())
+    pub fn peers(&self, o: ::grpc::RequestOptions, req: super::node::PeersRequest) -> ::grpc::SingleResponse<super::node::PeersResponse> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/Peers"),
+            streaming: ::grpc::rt::GrpcStreaming::Unary,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_unary(o, req, descriptor)
     }
 
-    fn get_headers(&self, o: ::grpc::RequestOptions, p: super::node::BlockIds) -> ::grpc::StreamingResponse<super::node::Header> {
-        self.grpc_client.call_server_streaming(o, p, self.method_GetHeaders.clone())
+    pub fn get_blocks(&self, o: ::grpc::RequestOptions, req: super::node::BlockIds) -> ::grpc::StreamingResponse<super::node::Block> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GetBlocks"),
+            streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_server_streaming(o, req, descriptor)
     }
 
-    fn get_fragments(&self, o: ::grpc::RequestOptions, p: super::node::FragmentIds) -> ::grpc::StreamingResponse<super::node::Fragment> {
-        self.grpc_client.call_server_streaming(o, p, self.method_GetFragments.clone())
+    pub fn get_headers(&self, o: ::grpc::RequestOptions, req: super::node::BlockIds) -> ::grpc::StreamingResponse<super::node::Header> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GetHeaders"),
+            streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_server_streaming(o, req, descriptor)
     }
 
-    fn pull_headers(&self, o: ::grpc::RequestOptions, p: super::node::PullHeadersRequest) -> ::grpc::StreamingResponse<super::node::Header> {
-        self.grpc_client.call_server_streaming(o, p, self.method_PullHeaders.clone())
+    pub fn get_fragments(&self, o: ::grpc::RequestOptions, req: super::node::FragmentIds) -> ::grpc::StreamingResponse<super::node::Fragment> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GetFragments"),
+            streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_server_streaming(o, req, descriptor)
     }
 
-    fn pull_blocks_to_tip(&self, o: ::grpc::RequestOptions, p: super::node::PullBlocksToTipRequest) -> ::grpc::StreamingResponse<super::node::Block> {
-        self.grpc_client.call_server_streaming(o, p, self.method_PullBlocksToTip.clone())
+    pub fn pull_headers(&self, o: ::grpc::RequestOptions, req: super::node::PullHeadersRequest) -> ::grpc::StreamingResponse<super::node::Header> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/PullHeaders"),
+            streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_server_streaming(o, req, descriptor)
     }
 
-    fn push_headers(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Header>) -> ::grpc::SingleResponse<super::node::PushHeadersResponse> {
-        self.grpc_client.call_client_streaming(o, p, self.method_PushHeaders.clone())
+    pub fn pull_blocks_to_tip(&self, o: ::grpc::RequestOptions, req: super::node::PullBlocksToTipRequest) -> ::grpc::StreamingResponse<super::node::Block> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/PullBlocksToTip"),
+            streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_server_streaming(o, req, descriptor)
     }
 
-    fn upload_blocks(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Block>) -> ::grpc::SingleResponse<super::node::UploadBlocksResponse> {
-        self.grpc_client.call_client_streaming(o, p, self.method_UploadBlocks.clone())
+    pub fn push_headers(&self, o: ::grpc::RequestOptions) -> impl ::std::future::Future<Output=::grpc::Result<(::grpc::ClientRequestSink<super::node::Header>, ::grpc::SingleResponse<super::node::PushHeadersResponse>)>> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/PushHeaders"),
+            streaming: ::grpc::rt::GrpcStreaming::ClientStreaming,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_client_streaming(o, descriptor)
     }
 
-    fn block_subscription(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Header>) -> ::grpc::StreamingResponse<super::node::BlockEvent> {
-        self.grpc_client.call_bidi(o, p, self.method_BlockSubscription.clone())
+    pub fn upload_blocks(&self, o: ::grpc::RequestOptions) -> impl ::std::future::Future<Output=::grpc::Result<(::grpc::ClientRequestSink<super::node::Block>, ::grpc::SingleResponse<super::node::UploadBlocksResponse>)>> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/UploadBlocks"),
+            streaming: ::grpc::rt::GrpcStreaming::ClientStreaming,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_client_streaming(o, descriptor)
     }
 
-    fn content_subscription(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Fragment>) -> ::grpc::StreamingResponse<super::node::Fragment> {
-        self.grpc_client.call_bidi(o, p, self.method_ContentSubscription.clone())
+    pub fn block_subscription(&self, o: ::grpc::RequestOptions) -> impl ::std::future::Future<Output=::grpc::Result<(::grpc::ClientRequestSink<super::node::Header>, ::grpc::StreamingResponse<super::node::BlockEvent>)>> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/BlockSubscription"),
+            streaming: ::grpc::rt::GrpcStreaming::Bidi,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_bidi(o, descriptor)
     }
 
-    fn gossip_subscription(&self, o: ::grpc::RequestOptions, p: ::grpc::StreamingRequest<super::node::Gossip>) -> ::grpc::StreamingResponse<super::node::Gossip> {
-        self.grpc_client.call_bidi(o, p, self.method_GossipSubscription.clone())
+    pub fn fragment_subscription(&self, o: ::grpc::RequestOptions) -> impl ::std::future::Future<Output=::grpc::Result<(::grpc::ClientRequestSink<super::node::Fragment>, ::grpc::StreamingResponse<super::node::Fragment>)>> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/FragmentSubscription"),
+            streaming: ::grpc::rt::GrpcStreaming::Bidi,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_bidi(o, descriptor)
+    }
+
+    pub fn gossip_subscription(&self, o: ::grpc::RequestOptions) -> impl ::std::future::Future<Output=::grpc::Result<(::grpc::ClientRequestSink<super::node::Gossip>, ::grpc::StreamingResponse<super::node::Gossip>)>> {
+        let descriptor = ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+            name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GossipSubscription"),
+            streaming: ::grpc::rt::GrpcStreaming::Bidi,
+            req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+            resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+        });
+        self.grpc_client.call_bidi(o, descriptor)
     }
 }
 
@@ -206,147 +206,159 @@ impl NodeServer {
         ::grpc::rt::ServerServiceDefinition::new("/iohk.chain.node.Node",
             vec![
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/Handshake".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/Handshake"),
                         streaming: ::grpc::rt::GrpcStreaming::Unary,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerUnary::new(move |o, p| handler_copy.handshake(o, p))
+                        ::grpc::rt::MethodHandlerUnary::new(move |ctx, req, resp| (*handler_copy).handshake(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/Tip".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/Tip"),
                         streaming: ::grpc::rt::GrpcStreaming::Unary,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerUnary::new(move |o, p| handler_copy.tip(o, p))
+                        ::grpc::rt::MethodHandlerUnary::new(move |ctx, req, resp| (*handler_copy).tip(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/GetBlocks".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/Peers"),
+                        streaming: ::grpc::rt::GrpcStreaming::Unary,
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                    }),
+                    {
+                        let handler_copy = handler_arc.clone();
+                        ::grpc::rt::MethodHandlerUnary::new(move |ctx, req, resp| (*handler_copy).peers(ctx, req, resp))
+                    },
+                ),
+                ::grpc::rt::ServerMethod::new(
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GetBlocks"),
                         streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerServerStreaming::new(move |o, p| handler_copy.get_blocks(o, p))
+                        ::grpc::rt::MethodHandlerServerStreaming::new(move |ctx, req, resp| (*handler_copy).get_blocks(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/GetHeaders".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GetHeaders"),
                         streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerServerStreaming::new(move |o, p| handler_copy.get_headers(o, p))
+                        ::grpc::rt::MethodHandlerServerStreaming::new(move |ctx, req, resp| (*handler_copy).get_headers(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/GetFragments".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GetFragments"),
                         streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerServerStreaming::new(move |o, p| handler_copy.get_fragments(o, p))
+                        ::grpc::rt::MethodHandlerServerStreaming::new(move |ctx, req, resp| (*handler_copy).get_fragments(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/PullHeaders".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/PullHeaders"),
                         streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerServerStreaming::new(move |o, p| handler_copy.pull_headers(o, p))
+                        ::grpc::rt::MethodHandlerServerStreaming::new(move |ctx, req, resp| (*handler_copy).pull_headers(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/PullBlocksToTip".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/PullBlocksToTip"),
                         streaming: ::grpc::rt::GrpcStreaming::ServerStreaming,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerServerStreaming::new(move |o, p| handler_copy.pull_blocks_to_tip(o, p))
+                        ::grpc::rt::MethodHandlerServerStreaming::new(move |ctx, req, resp| (*handler_copy).pull_blocks_to_tip(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/PushHeaders".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/PushHeaders"),
                         streaming: ::grpc::rt::GrpcStreaming::ClientStreaming,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerClientStreaming::new(move |o, p| handler_copy.push_headers(o, p))
+                        ::grpc::rt::MethodHandlerClientStreaming::new(move |ctx, req, resp| (*handler_copy).push_headers(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/UploadBlocks".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/UploadBlocks"),
                         streaming: ::grpc::rt::GrpcStreaming::ClientStreaming,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerClientStreaming::new(move |o, p| handler_copy.upload_blocks(o, p))
+                        ::grpc::rt::MethodHandlerClientStreaming::new(move |ctx, req, resp| (*handler_copy).upload_blocks(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/BlockSubscription".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/BlockSubscription"),
                         streaming: ::grpc::rt::GrpcStreaming::Bidi,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerBidi::new(move |o, p| handler_copy.block_subscription(o, p))
+                        ::grpc::rt::MethodHandlerBidi::new(move |ctx, req, resp| (*handler_copy).block_subscription(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/ContentSubscription".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/FragmentSubscription"),
                         streaming: ::grpc::rt::GrpcStreaming::Bidi,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerBidi::new(move |o, p| handler_copy.content_subscription(o, p))
+                        ::grpc::rt::MethodHandlerBidi::new(move |ctx, req, resp| (*handler_copy).fragment_subscription(ctx, req, resp))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(
-                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
-                        name: "/iohk.chain.node.Node/GossipSubscription".to_string(),
+                    ::grpc::rt::ArcOrStatic::Static(&::grpc::rt::MethodDescriptor {
+                        name: ::grpc::rt::StringOrStatic::Static("/iohk.chain.node.Node/GossipSubscription"),
                         streaming: ::grpc::rt::GrpcStreaming::Bidi,
-                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
-                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        req_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
+                        resp_marshaller: ::grpc::rt::ArcOrStatic::Static(&::grpc_protobuf::MarshallerProtobuf),
                     }),
                     {
                         let handler_copy = handler_arc.clone();
-                        ::grpc::rt::MethodHandlerBidi::new(move |o, p| handler_copy.gossip_subscription(o, p))
+                        ::grpc::rt::MethodHandlerBidi::new(move |ctx, req, resp| (*handler_copy).gossip_subscription(ctx, req, resp))
                     },
                 ),
             ],

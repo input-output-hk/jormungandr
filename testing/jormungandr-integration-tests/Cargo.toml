@@ -5,10 +5,10 @@ authors = [ "dev@iohk.io" ]
 edition = "2018"
 
 [dependencies]
-grpc            = "0.8.0"
-protobuf        = "=2.8.2"
-futures         = "~0.1"
-futures-cpupool = "~0.1"
+grpc            = "0.8"
+grpc-protobuf   = "0.8"
+protobuf        = "2.14"
+futures         = "0.3"
 base64 = "0.12"
 bytes = "0.4"
 hex = "0.4.2"
@@ -76,4 +76,5 @@ sanity-non-functional = []
 soak-non-functional = []
 
 [build-dependencies]
-protoc-rust = "2.0"
+protoc-rust = "2.14" # https://github.com/stepancheg/grpc-rust/issues/183
+protoc-rust-grpc = "0.8"
