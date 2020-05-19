@@ -15,7 +15,6 @@ pub struct BackwardCompatibleConfig {
     pub secret_model_paths: Vec<PathBuf>,
     pub block0_configuration: Block0Configuration,
     pub secret_models: Vec<NodeSecret>,
-    pub log_file_path: PathBuf,
     pub rewards_history: bool,
 }
 
@@ -25,7 +24,6 @@ impl BackwardCompatibleConfig {
         genesis_block_hash: String,
         node_config_path: PathBuf,
         secret_model_paths: Vec<PathBuf>,
-        log_file_path: PathBuf,
         block0_configuration: Block0Configuration,
         secret_models: Vec<NodeSecret>,
         rewards_history: bool,
@@ -35,7 +33,6 @@ impl BackwardCompatibleConfig {
             genesis_block_hash,
             node_config_path,
             secret_model_paths,
-            log_file_path,
             block0_configuration,
             secret_models,
             rewards_history,
@@ -47,8 +44,15 @@ impl BackwardCompatibleConfig {
     }
 
     pub fn refresh_node_dynamic_params(&mut self) {
-        self.regenerate_ports();
-        self.log_file_path = file_utils::get_path_in_temp("log_file.log");
+        let mut node_config = self.deserialize_node_config();
+        self.regenerate_ports(&mut node_config);
+        let path = file_utils::get_path_in_temp("log_file.log");
+        node_config
+            .log
+            .as_mut()
+            .unwrap()
+            .update_file_logger_location(path.into_os_string().into_string().unwrap());
+        self.serialize_node_config(node_config);
     }
 
     fn deserialize_node_config(&self) -> NodeConfig {
@@ -61,8 +65,7 @@ impl BackwardCompatibleConfig {
         self.node_config_path = file_utils::create_file_in_temp("node_config.xml", &content);
     }
 
-    fn regenerate_ports(&mut self) {
-        let mut node_config = self.deserialize_node_config();
+    fn regenerate_ports(&self, node_config: &mut NodeConfig) {
         node_config.rest.listen = format!("127.0.0.1:{}", get_available_port().to_string())
             .parse()
             .unwrap();
@@ -70,7 +73,6 @@ impl BackwardCompatibleConfig {
             format!("/ip4/127.0.0.1/tcp/{}", get_available_port().to_string())
                 .parse()
                 .unwrap();
-        self.serialize_node_config(node_config);
     }
 
     pub fn get_p2p_listen_port(&self) -> u16 {
@@ -90,5 +92,10 @@ impl BackwardCompatibleConfig {
         self.block0_configuration
             .blockchain_configuration
             .linear_fees
+    }
+
+    pub fn log_file_path(&self) -> PathBuf {
+        let node_config = self.deserialize_node_config();
+        node_config.log.unwrap().log_file().unwrap()
     }
 }

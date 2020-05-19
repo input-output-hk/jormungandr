@@ -71,7 +71,7 @@ pub fn peer_addr(port: u16) -> Option<String> {
 #[test]
 pub fn wrong_protocol() {
     let mock_port = configuration::get_available_port();
-    let config = build_configuration(mock_port);
+    let (server, config) = bootstrap_node_with_peer(mock_port);
 
     let mock_thread = start_mock(
         mock_port,
@@ -81,7 +81,6 @@ pub fn wrong_protocol() {
         |logger: &MockLogger| logger.executed_at_least_once(MethodType::Handshake),
     );
 
-    let (server, _) = bootstrap_node_with_peer(mock_port);
     assert_eq!(
         mock_thread.join().expect("mock thread error"),
         MockExitCode::Success,
@@ -89,6 +88,7 @@ pub fn wrong_protocol() {
     );
 
     server.shutdown();
+
     assert!(
         server.logger.get_log_entries().any(|x| {
             x.msg == "protocol handshake with peer failed"
@@ -117,7 +117,6 @@ pub fn wrong_genesis_hash() {
         mock_thread.join().expect("mock thread error"),
         MockExitCode::Success
     );
-
     server.shutdown();
     assert!(
         server.logger.get_log_entries().any(|x| {

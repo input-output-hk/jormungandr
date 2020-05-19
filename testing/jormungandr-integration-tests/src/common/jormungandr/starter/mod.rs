@@ -315,6 +315,7 @@ impl Starter {
 
     pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
         let config = self.build_configuration();
+        println!("{:?}", config.log_file_path());
         Ok(JormungandrProcess::from_config(
             self.start_process(&config),
             config,
@@ -421,7 +422,7 @@ impl Starter {
             if start.elapsed() > self.timeout {
                 return Err(StartupError::Timeout {
                     timeout: self.timeout.as_secs(),
-                    log_content: file_utils::read_file(config.log_file_path()),
+                    log_content: file_utils::read_file(&config.log_file_path()),
                 });
             }
             if self.if_succeed(config) {
@@ -437,7 +438,7 @@ impl Starter {
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
-                    log_content: file_utils::read_file(config.log_file_path()),
+                    log_content: file_utils::read_file(&config.log_file_path()),
                 });
             }
             process_utils::sleep(self.sleep);
