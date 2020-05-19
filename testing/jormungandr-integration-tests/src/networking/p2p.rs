@@ -1,6 +1,6 @@
 use crate::common::{
     jormungandr::process::JormungandrProcess,
-    network::{builder, params, wallet},
+    network::{self, params, wallet},
     process_utils,
 };
 
@@ -125,7 +125,7 @@ pub fn assert_node_stats(
 
 #[test]
 pub fn node_whitelist_itself() {
-    let mut network_controller = builder("node_whitelist_itself")
+    let mut network_controller = network::builder()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
@@ -155,7 +155,7 @@ pub fn node_whitelist_itself() {
 
 #[test]
 pub fn node_does_not_quarantine_whitelisted_node() {
-    let mut network_controller = builder("node_whitelist_itself")
+    let mut network_controller = network::builder()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
@@ -196,7 +196,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
 
 #[test]
 pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
-    let mut network_controller = builder("node_whitelist_itself")
+    let mut network_controller = network::builder()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
@@ -253,7 +253,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
 
 #[test]
 pub fn node_trust_itself() {
-    let mut network_controller = builder("node_whitelist_itself")
+    let mut network_controller = network::builder()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
@@ -281,7 +281,7 @@ pub fn node_trust_itself() {
 
 #[test]
 pub fn node_put_itself_in_preffered_layers() {
-    let mut network_controller = builder("node_preffered_list_itself")
+    let mut network_controller = network::builder()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
@@ -329,7 +329,7 @@ pub fn topic_of_interest_influences_node_sync_ability() {
         blocks: "low".to_owned(),
     };
 
-    let mut network_controller = builder("topic_of_interest_influences_node_sync_ability")
+    let mut network_controller = network::builder()
         .star_topology(SERVER, vec![fast_client_alias, slow_client_alias])
         .initials(vec![
             wallet("delegated0").with(1_000_000).delegated_to(SERVER),

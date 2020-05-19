@@ -26,7 +26,7 @@ pub fn test_pool_update() {
         .encode();
 
     jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
-    startup::sleep_till_next_epoch(1, &jormungandr.config);
+    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
 
     let created_blocks_count_after_retire = jormungandr.logger.get_created_blocks_hashes().len();
     assert!(created_blocks_count_after_retire > created_block_count);

@@ -56,7 +56,7 @@ pub fn stake_distribution() {
 
     jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
 
-    startup::sleep_till_next_epoch(10, &jormungandr.config);
+    startup::sleep_till_next_epoch(10, jormungandr.block0_configuration());
 
     let identifier: AccountIdentifier = stake_pool_owner_1.identifier().into();
     let reward: u64 = jormungandr
@@ -71,14 +71,14 @@ pub fn stake_distribution() {
 
     jcli_wrapper::assert_rest_account_get_stats(
         &stake_pool_owner_1.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
 
-    startup::sleep_till_epoch(3, 10, &jormungandr.config);
+    startup::sleep_till_epoch(3, 10, &jormungandr.block0_configuration());
 
     jcli_wrapper::assert_rest_account_get_stats(
         &stake_pool_owner_1.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
 
     assert_distribution(

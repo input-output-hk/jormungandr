@@ -9,7 +9,6 @@ use crate::{
 };
 
 use chain_impl_mockchain::header::HeaderId;
-use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_integration_tests::common::legacy::Version;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
@@ -21,12 +20,17 @@ use jormungandr_testing_utils::{
     },
     wallet::Wallet,
 };
+
+use assert_fs::fixture::ChildPath;
+use assert_fs::prelude::*;
+use indicatif::{MultiProgress, ProgressBar};
+use tokio::prelude::*;
+use tokio::runtime;
+
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::prelude::*;
-use tokio::runtime;
 
 pub struct ControllerBuilder {
     title: String,
@@ -42,7 +46,7 @@ pub struct Controller {
 
     context: ContextChaCha,
 
-    working_directory: PathBuf,
+    working_directory: ChildPath,
 
     block0_file: PathBuf,
     block0_hash: HeaderId,
@@ -93,12 +97,10 @@ impl ControllerBuilder {
     }
 
     pub fn build(self, context: ContextChaCha) -> Result<Controller> {
-        let working_directory = context.working_directory().join(&self.title);
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(&working_directory)?;
+        let working_directory = context.child_directory(&self.title);
+        working_directory.create_dir_all()?;
         if context.generate_documentation() {
-            self.document(&working_directory)?;
+            self.document(working_directory.path())?;
         }
         self.controller_progress.finish_and_clear();
         self.summary();
@@ -143,13 +145,17 @@ impl ControllerBuilder {
 }
 
 impl Controller {
-    fn new(settings: Settings, context: ContextChaCha, working_directory: PathBuf) -> Result<Self> {
+    fn new(
+        settings: Settings,
+        context: ContextChaCha,
+        working_directory: ChildPath,
+    ) -> Result<Self> {
         use chain_core::property::Serialize as _;
 
         let block0 = settings.block0.to_block();
         let block0_hash = block0.header.hash();
 
-        let block0_file = working_directory.join("block0.bin");
+        let block0_file = working_directory.child("block0.bin").path().into();
         let file = std::fs::File::create(&block0_file)?;
         block0.serialize(file)?;
         let progress_bar = Arc::new(MultiProgress::new());
@@ -164,6 +170,10 @@ impl Controller {
             runtime: runtime::Runtime::new()?,
             working_directory,
         })
+    }
+
+    pub fn working_directory(&self) -> &ChildPath {
+        &self.working_directory
     }
 
     pub fn wallet(&mut self, wallet: &str) -> Result<Wallet> {
@@ -218,7 +228,7 @@ impl Controller {
             &params.get_alias(),
             &mut legacy_node_settings,
             block0_setting,
-            &self.working_directory,
+            self.working_directory.path(),
             params.get_persistence_mode(),
         )?;
         let controller = node.controller();
@@ -260,7 +270,7 @@ impl Controller {
             &params.get_alias(),
             &mut node_setting_overriden,
             block0_setting,
-            &self.working_directory,
+            self.working_directory.path(),
             params.get_persistence_mode(),
         )?;
         let controller = node.controller();

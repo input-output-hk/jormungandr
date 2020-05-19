@@ -38,18 +38,18 @@ impl AddInput {
 
 #[cfg(test)]
 mod tests {
-
     use self::common::CommonTransaction;
     use super::*;
     use crate::jcli_app::transaction::staging::Staging;
     use chain_impl_mockchain::{key::Hash, value::Value};
+
+    use assert_fs::NamedTempFile;
     use std::str::FromStr;
 
     #[test]
     pub fn test_input_transaction_is_saved() {
-        let tempfile = mktemp::Temp::new_file().unwrap();
+        let tempfile = NamedTempFile::new("staging").unwrap();
 
-        let temp_staging_file = tempfile.to_path_buf();
         let transaction_id: FragmentId =
             Hash::from_str("c355a02d3b5337ad0e5f5940582675229f25bc03e7feebc3aa929738e1fec35e")
                 .unwrap();
@@ -58,12 +58,12 @@ mod tests {
 
         let staging = Staging::new();
         staging
-            .store(&Some(&temp_staging_file))
+            .store(&Some(tempfile.path()))
             .expect("cannot store staging file");
 
         let add_input = AddInput {
             common: CommonTransaction {
-                staging_file: Some(temp_staging_file.clone()),
+                staging_file: Some(tempfile.path().into()),
             },
             transaction_id,
             index: transaction_index,
@@ -73,7 +73,7 @@ mod tests {
             .exec()
             .expect("error while executing AddInput action");
 
-        let staging = Staging::load(&Some(&temp_staging_file)).unwrap();
+        let staging = Staging::load(&Some(tempfile.path())).unwrap();
 
         assert_eq!(
             staging.inputs().len(),

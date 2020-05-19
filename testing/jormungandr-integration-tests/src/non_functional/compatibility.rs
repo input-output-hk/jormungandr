@@ -26,7 +26,7 @@ fn test_connectivity_between_master_and_legacy_app(jormungandr_bin: PathBuf, ver
         .unwrap();
 
     let trusted_node_config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![leader_jormungandr.as_trusted_peer()])
+        .with_trusted_peers(vec![leader_jormungandr.to_trusted_peer()])
         .with_block_hash(leader_config.genesis_block_hash().clone())
         .build();
 

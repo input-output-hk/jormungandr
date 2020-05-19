@@ -9,7 +9,7 @@ pub fn test_leadership_logs_parent_hash_is_correct() {
 
     process_utils::sleep(5);
 
-    let rest_address = jormungandr.rest_address();
+    let rest_address = jormungandr.rest_uri();
     let leadership_logs = jcli_wrapper::assert_rest_get_leadership_log(&rest_address);
 
     for leadership in leadership_logs.iter().take(10) {

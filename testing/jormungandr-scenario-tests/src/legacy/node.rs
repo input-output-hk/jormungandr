@@ -29,7 +29,7 @@ use yaml_rust::{Yaml, YamlLoader};
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -575,9 +575,9 @@ impl LegacyNodeController {
             .settings
             .config
             .log
-            .clone()
+            .as_ref()
             .unwrap()
-            .log_file()
+            .file_path()
             .unwrap();
         JormungandrLogger::new(log_file)
     }
@@ -612,7 +612,7 @@ impl LegacyNode {
         alias: &str,
         node_settings: &mut LegacySettings,
         block0: NodeBlock0,
-        working_dir: &PathBuf,
+        working_dir: &Path,
         peristence_mode: PersistenceMode,
     ) -> Result<Self> {
         let mut command = jormungandr.clone();

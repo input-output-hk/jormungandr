@@ -2,7 +2,7 @@ use crate::{
     common::{configuration, jormungandr::logger::Level, jormungandr::starter::Starter},
     mock::{
         server::{MethodType, ProtocolVersion},
-        testing::setup::{build_configuration, start_mock, MockExitCode},
+        testing::setup::{start_mock, Fixture, MockExitCode},
     },
 };
 use chain_core::property::FromStr;
@@ -21,8 +21,10 @@ pub fn peer_addr(port: u16) -> Option<String> {
 #[tokio::test]
 #[ignore]
 pub async fn wrong_protocol() {
+    let fixture = Fixture::new();
+
     let mock_port = configuration::get_available_port();
-    let config = build_configuration(mock_port);
+    let config = fixture.build_configuration(mock_port);
 
     let mock_controller = start_mock(
         mock_port,
@@ -49,8 +51,10 @@ pub async fn wrong_protocol() {
 #[tokio::test]
 #[ignore]
 pub async fn wrong_genesis_hash() {
+    let fixture = Fixture::new();
+
     let mock_port = configuration::get_available_port();
-    let config = build_configuration(mock_port);
+    let config = fixture.build_configuration(mock_port);
 
     let mock_controller = start_mock(
         mock_port,
@@ -88,8 +92,10 @@ pub async fn wrong_genesis_hash() {
 #[tokio::test]
 #[ignore]
 pub async fn handshake_ok() {
+    let fixture = Fixture::new();
+
     let mock_port = configuration::get_available_port();
-    let config = build_configuration(mock_port);
+    let config = fixture.build_configuration(mock_port);
 
     let mock_controller = start_mock(
         mock_port,

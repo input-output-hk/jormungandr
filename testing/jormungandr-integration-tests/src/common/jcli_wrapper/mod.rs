@@ -2,8 +2,8 @@
 
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
-    AccountState, Block0Configuration, FragmentLog, FragmentStatus, LeadershipLog, SettingsDto,
-    StakePoolStats, UTxOInfo, UTxOOutputInfo,
+    AccountState, FragmentLog, FragmentStatus, LeadershipLog, SettingsDto, StakePoolStats,
+    UTxOInfo, UTxOOutputInfo,
 };
 pub mod certificate;
 pub mod jcli_commands;
@@ -12,13 +12,16 @@ pub mod jcli_transaction_wrapper;
 pub use jcli_transaction_wrapper::JCLITransactionWrapper;
 
 use super::configuration;
-use super::file_assert;
-use super::file_utils;
 use super::process_assert;
 use super::process_utils::{self, output_extensions::ProcessOutput, Wait};
-use crate::common::{jormungandr::JormungandrProcess, startup};
+use crate::common::jormungandr::JormungandrProcess;
 use chain_addr::Discrimination;
-use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
+
+use assert_fs::prelude::*;
+use assert_fs::{fixture::ChildPath, NamedTempFile};
+use std::collections::BTreeMap;
+use std::path::Path;
+use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -36,32 +39,34 @@ pub enum Error {
     },
 }
 
-pub fn assert_genesis_encode(genesis_yaml_file_path: &PathBuf, path_to_output_block: &PathBuf) {
+pub fn assert_genesis_encode(genesis_yaml_file_path: &Path, output_file: &ChildPath) {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_genesis_encode_command(&genesis_yaml_file_path, &path_to_output_block),
+        jcli_commands::get_genesis_encode_command(genesis_yaml_file_path, output_file.path()),
     );
     process_assert::assert_process_exited_successfully(output);
-    file_assert::assert_file_exists_and_not_empty(path_to_output_block);
+    output_file.assert(crate::predicate::file_exists_and_not_empty());
 }
 
-pub fn assert_genesis_decode(genesis_yaml_file_path: &PathBuf, path_to_output_block: &PathBuf) {
+pub fn assert_genesis_decode(genesis_yaml_file_path: &Path, output_file: &ChildPath) {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_genesis_decode_command(&genesis_yaml_file_path, &path_to_output_block),
+        jcli_commands::get_genesis_decode_command(genesis_yaml_file_path, output_file.path()),
     );
     process_assert::assert_process_exited_successfully(output);
-    file_assert::assert_file_exists_and_not_empty(path_to_output_block);
+    output_file.assert(crate::predicate::file_exists_and_not_empty());
 }
 
-pub fn assert_genesis_encode_fails(block0_configuration: &Block0Configuration, expected_msg: &str) {
-    let input_yaml_file_path = startup::serialize_block0_config(&block0_configuration);
-    let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
+pub fn assert_genesis_encode_fails(
+    genesis_yaml_file_path: &Path,
+    output_file: &ChildPath,
+    expected_msg: &str,
+) {
     process_assert::assert_process_failed_and_matches_message(
-        jcli_commands::get_genesis_encode_command(&input_yaml_file_path, &path_to_output_block),
+        jcli_commands::get_genesis_encode_command(genesis_yaml_file_path, output_file.path()),
         expected_msg,
     );
 }
 
-pub fn assert_genesis_hash(path_to_output_block: &PathBuf) -> String {
+pub fn assert_genesis_hash(path_to_output_block: &Path) -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_genesis_hash_command(&path_to_output_block),
     );
@@ -70,7 +75,7 @@ pub fn assert_genesis_hash(path_to_output_block: &PathBuf) -> String {
     hash
 }
 
-pub fn assert_genesis_hash_fails(path_to_output_block: &PathBuf, expected_msg: &str) {
+pub fn assert_genesis_hash_fails(path_to_output_block: &Path, expected_msg: &str) {
     process_assert::assert_process_failed_and_contains_message(
         jcli_commands::get_genesis_hash_command(&path_to_output_block),
         expected_msg,
@@ -180,8 +185,10 @@ pub fn assert_address_account(public_key: &str, discrimination: Discrimination) 
 }
 
 pub fn assert_post_transaction(transactions_message: &str, host: &str) -> Hash {
+    let transaction_file = NamedTempFile::new("transaction.hash").unwrap();
+    transaction_file.write_str(transactions_message).unwrap();
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_post_transaction_command(&transactions_message, &host),
+        jcli_commands::get_post_transaction_command(transaction_file.path(), host),
     );
     let hash = output.as_hash();
     process_assert::assert_process_exited_successfully(output);
@@ -198,8 +205,8 @@ pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) 
     assert_eq!(
         before + 1,
         after,
-        "Transaction was NOT accepted by node:
-     txRecvCnt counter wasn't incremented after post"
+        "Transaction was NOT accepted by node: \
+        txRecvCnt counter wasn't incremented after post"
     );
 }
 
@@ -212,8 +219,8 @@ pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) {
     let after: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
     assert_eq!(
         before, after,
-        "Transaction was accepted by node while it should not be
-     txRecvCnt counter was incremented after post"
+        "Transaction was accepted by node while it should not be: \
+        txRecvCnt counter was incremented after post"
     );
 }
 
@@ -245,24 +252,36 @@ pub fn assert_key_with_seed_generate(key_type: &str, seed: &str) -> String {
 }
 
 pub fn assert_key_to_public_default(private_key: &str) -> String {
+    let input_file = NamedTempFile::new("key_to_public.input").unwrap();
+    input_file.write_str(private_key).unwrap();
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_key_to_public_command(&private_key),
+        jcli_commands::get_key_to_public_command(input_file.path()),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
     single_line
 }
 
-pub fn assert_key_to_bytes(private_key: &str, path_to_output_file: &PathBuf) {
-    let input_file = file_utils::create_file_in_temp("input_key_to_bytes", &private_key);
+pub fn assert_key_to_public_fails(private_key: &str, expected_msg: &str) {
+    let input_file = NamedTempFile::new("key_to_public.input").unwrap();
+    input_file.write_str(private_key).unwrap();
+    process_assert::assert_process_failed_and_contains_message(
+        jcli_commands::get_key_to_public_command(input_file.path()),
+        expected_msg,
+    );
+}
+
+pub fn assert_key_to_bytes(private_key: &str, path_to_output_file: &Path) {
+    let input_file = NamedTempFile::new("key_to_bytes.input").unwrap();
+    input_file.write_str(private_key).unwrap();
 
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_key_to_bytes_command(&input_file, &path_to_output_file),
+        jcli_commands::get_key_to_bytes_command(input_file.path(), &path_to_output_file),
     );
     process_assert::assert_process_exited_successfully(output);
 }
 
-pub fn assert_key_from_bytes(path_to_input_file: &PathBuf, key_type: &str) -> String {
+pub fn assert_key_from_bytes(path_to_input_file: &Path, key_type: &str) -> String {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_key_from_bytes_command(&path_to_input_file, &key_type),
     );
@@ -271,11 +290,7 @@ pub fn assert_key_from_bytes(path_to_input_file: &PathBuf, key_type: &str) -> St
     single_line
 }
 
-pub fn assert_key_from_bytes_fails(
-    path_to_input_file: &PathBuf,
-    key_type: &str,
-    expected_msg: &str,
-) {
+pub fn assert_key_from_bytes_fails(path_to_input_file: &Path, key_type: &str, expected_msg: &str) {
     process_assert::assert_process_failed_and_contains_message(
         jcli_commands::get_key_from_bytes_command(&path_to_input_file, &key_type),
         expected_msg,
@@ -283,8 +298,8 @@ pub fn assert_key_from_bytes_fails(
 }
 
 pub fn assert_key_to_bytes_fails(
-    input_file: &PathBuf,
-    path_to_output_file: &PathBuf,
+    input_file: &Path,
+    path_to_output_file: &Path,
     expected_msg: &str,
 ) {
     process_assert::assert_process_failed_and_matches_message(
@@ -349,7 +364,7 @@ pub fn assert_transaction_in_block(
     transaction_message: &str,
     jormungandr: &JormungandrProcess,
 ) -> Hash {
-    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_uri());
     let wait: Wait = Default::default();
     wait_until_transaction_processed(fragment_id, jormungandr, &wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, jormungandr);
@@ -361,7 +376,7 @@ pub fn assert_transaction_in_block_with_wait(
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> Hash {
-    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_uri());
     wait_until_transaction_processed(fragment_id, jormungandr, wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, jormungandr);
     fragment_id
@@ -372,7 +387,7 @@ pub fn assert_transaction_rejected(
     jormungandr: &JormungandrProcess,
     expected_reason: &str,
 ) {
-    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
+    let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_uri());
     let wait: Wait = Default::default();
     wait_until_transaction_processed(fragment_id, jormungandr, &wait).unwrap();
     assert_transaction_log_shows_rejected(fragment_id, jormungandr, &expected_reason);
@@ -384,7 +399,7 @@ pub fn wait_until_transaction_processed(
     wait: &Wait,
 ) -> Result<(), Error> {
     process_utils::run_process_until_response_matches(
-        jcli_commands::get_rest_message_log_command(&jormungandr.rest_address()),
+        jcli_commands::get_rest_message_log_command(&jormungandr.rest_uri()),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
@@ -413,17 +428,14 @@ pub fn wait_until_transaction_processed(
         ),
     )
     .map_err(|_| Error::TransactionNotInBlock {
-        message_log: format!(
-            "{:?}",
-            assert_get_rest_message_log(&jormungandr.rest_address())
-        ),
+        message_log: format!("{:?}", assert_get_rest_message_log(&jormungandr.rest_uri())),
         transaction_id: fragment_id,
         log_content: jormungandr.logger.get_log_content(),
     })
 }
 
 pub fn assert_transaction_log_shows_in_block(fragment_id: Hash, jormungandr: &JormungandrProcess) {
-    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_uri());
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => assert!(
             x.is_in_a_block(),
@@ -444,7 +456,7 @@ pub fn assert_transaction_log_shows_rejected(
     jormungandr: &JormungandrProcess,
     expected_msg: &str,
 ) {
-    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_uri());
     match fragments.iter().find(|x| *x.fragment_id() == fragment_id) {
         Some(x) => {
             assert!(
@@ -471,7 +483,7 @@ pub fn send_transactions_and_wait_until_in_block(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), Error> {
     for transactions_message in transactions_messages.iter() {
-        assert_post_transaction(&transactions_message, &jormungandr.rest_address());
+        assert_post_transaction(&transactions_message, &jormungandr.rest_uri());
     }
     wait_until_all_transactions_processed(&jormungandr)?;
     check_all_transaction_log_shows_in_block(&jormungandr)
@@ -481,7 +493,7 @@ pub fn wait_until_all_transactions_processed(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), Error> {
     process_utils::run_process_until_response_matches(
-        jcli_commands::get_rest_message_log_command(&jormungandr.rest_address()),
+        jcli_commands::get_rest_message_log_command(&jormungandr.rest_uri()),
         |output| {
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
@@ -495,10 +507,7 @@ pub fn wait_until_all_transactions_processed(
         "transaction is pending for too long",
     )
     .map_err(|_| Error::TransactionsNotInBlock {
-        message_log: format!(
-            "{:?}",
-            assert_get_rest_message_log(&jormungandr.rest_address())
-        ),
+        message_log: format!("{:?}", assert_get_rest_message_log(&jormungandr.rest_uri())),
         log_content: jormungandr.logger.get_log_content(),
     })
 }
@@ -506,7 +515,7 @@ pub fn wait_until_all_transactions_processed(
 pub fn check_all_transaction_log_shows_in_block(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), Error> {
-    let fragments = assert_get_rest_message_log(&jormungandr.rest_address());
+    let fragments = assert_get_rest_message_log(&jormungandr.rest_uri());
     for fragment in fragments.iter() {
         if !fragment.is_in_a_block() {
             return Err(Error::TransactionNotInBlock {

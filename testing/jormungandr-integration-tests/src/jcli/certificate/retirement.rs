@@ -1,14 +1,15 @@
 use crate::common::{
-    file_utils, jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
-    startup::create_new_key_pair,
+    jcli_wrapper::certificate::wrapper::JCLICertificateWrapper, startup::create_new_key_pair,
 };
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
 };
-use std::str::FromStr;
-
 use jormungandr_lib::interfaces::Certificate;
+
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
+use std::str::FromStr;
 
 #[test]
 pub fn jcli_creates_correct_retirement_certificate() {
@@ -26,15 +27,18 @@ pub fn jcli_creates_correct_retirement_certificate() {
         None,
     );
 
-    let input_file = file_utils::create_file_in_temp("certificate", &certificate);
-    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(&input_file);
+    let temp_dir = TempDir::new().unwrap();
+
+    let input_file = temp_dir.child("certificate");
+    input_file.write_str(&certificate).unwrap();
+    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(input_file.path());
 
     let expected_certificate = certificate_wrapper.assert_new_stake_pool_retirement(&stake_pool_id);
     let actual_certificate = assert_new_stake_pool_retirement(&stake_pool_id);
-    let retirement_cert_file =
-        file_utils::create_file_in_temp("retirement_certificate", &actual_certificate);
+    let retirement_cert_file = temp_dir.child("retirement_certificate");
+    retirement_cert_file.write_str(&actual_certificate).unwrap();
     let stake_pool_id_from_retirement =
-        certificate_wrapper.assert_get_stake_pool_id(&retirement_cert_file);
+        certificate_wrapper.assert_get_stake_pool_id(retirement_cert_file.path());
     assert_eq!(expected_certificate, actual_certificate);
     assert_eq!(stake_pool_id, stake_pool_id_from_retirement);
 }

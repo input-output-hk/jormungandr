@@ -1,5 +1,5 @@
 use super::{Controller, ControllerError};
-use crate::common::{configuration::NodeConfigBuilder, file_utils};
+use crate::common::configuration::NodeConfigBuilder;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::Value;
 use jormungandr_lib::interfaces::{
@@ -10,10 +10,10 @@ use jormungandr_testing_utils::testing::network_builder::{
     WalletAlias, WalletTemplate,
 };
 
+use assert_fs::TempDir;
 use std::collections::HashMap;
 
 pub struct NetworkBuilder {
-    title: String,
     topology_builder: TopologyBuilder,
     blockchain: Option<Blockchain>,
     wallets: Vec<WalletTemplate>,
@@ -48,18 +48,13 @@ impl NetworkBuilder {
     }
 
     pub fn build(&self) -> Result<Controller, ControllerError> {
+        let temp_dir = TempDir::new().unwrap();
         let topology = self.topology_builder.clone().build();
         let mut blockchain = self.blockchain.clone().unwrap();
         let nodes: HashMap<NodeAlias, NodeSetting> = topology
             .into_iter()
             .map(|(alias, template)| {
-                let mut config = NodeConfigBuilder::new().build();
-                if let Some(spawn_params) =
-                    self.configs.clone().iter().find(|x| x.get_alias() == alias)
-                {
-                    spawn_params.override_settings(&mut config);
-                }
-
+                let config = NodeConfigBuilder::new().build();
                 (
                     alias.clone(),
                     NodeSetting {
@@ -87,17 +82,12 @@ impl NetworkBuilder {
         }
 
         let settings = Settings::new(nodes, blockchain, &mut random);
-        Controller::new(
-            &self.title,
-            settings,
-            file_utils::get_path_in_temp(&self.title),
-        )
+        Controller::new(settings, temp_dir)
     }
 }
 
-pub fn builder(title: &str) -> NetworkBuilder {
+pub fn builder() -> NetworkBuilder {
     NetworkBuilder {
-        title: title.to_string(),
         blockchain: Some(Blockchain::new(
             ConsensusVersion::GenesisPraos,
             NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),

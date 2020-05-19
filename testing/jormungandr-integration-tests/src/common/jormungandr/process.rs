@@ -1,38 +1,49 @@
-use super::{logger::JormungandrLogger, JormungandrError, JormungandrRest};
-use crate::common::{
-    configuration::JormungandrConfig,
-    explorer::Explorer,
-    jcli_wrapper,
-    jormungandr::starter::{Starter, StartupError},
-};
+use super::{logger::JormungandrLogger, rest, JormungandrError, JormungandrRest};
+use crate::common::configuration::{JormungandrParams, TestConfig};
+use crate::common::explorer::Explorer;
+use crate::common::jcli_wrapper;
 use chain_impl_mockchain::fee::LinearFee;
-use jormungandr_lib::{crypto::hash::Hash, interfaces::TrustedPeer};
-use std::{path::PathBuf, process::Child, str::FromStr};
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::{Block0Configuration, TrustedPeer};
+use jormungandr_testing_utils::testing::SyncNode;
 
-#[derive(Debug)]
+use assert_fs::TempDir;
+
+use std::net::SocketAddr;
+use std::process::Child;
+use std::str::FromStr;
+
 pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
-    pub config: JormungandrConfig,
+    temp_dir: Option<TempDir>,
     alias: String,
+    p2p_public_address: poldercast::Address,
+    rest_socket_addr: SocketAddr,
+    genesis_block_hash: Hash,
+    block0_configuration: Block0Configuration,
+    fees: LinearFee,
 }
 
 impl JormungandrProcess {
-    pub fn from_config(child: Child, config: JormungandrConfig, alias: String) -> Self {
-        JormungandrProcess::new(child, alias, config.log_file_path().unwrap(), config)
-    }
-
-    pub fn new(
+    pub(crate) fn from_config<Conf: TestConfig>(
         child: Child,
+        params: &JormungandrParams<Conf>,
+        temp_dir: Option<TempDir>,
         alias: String,
-        log_file_path: PathBuf,
-        config: JormungandrConfig,
     ) -> Self {
+        let log_file_path = params.log_file_path();
+        let node_config = params.node_config();
         JormungandrProcess {
             child,
+            temp_dir,
             alias,
             logger: JormungandrLogger::new(log_file_path),
-            config,
+            p2p_public_address: node_config.p2p_public_address(),
+            rest_socket_addr: node_config.rest_socket_addr(),
+            genesis_block_hash: Hash::from_str(params.genesis_block_hash()).unwrap(),
+            block0_configuration: params.block0_configuration().clone(),
+            fees: params.fees(),
         }
     }
 
@@ -41,15 +52,15 @@ impl JormungandrProcess {
     }
 
     pub fn rest(&self) -> JormungandrRest {
-        JormungandrRest::new(self.config.clone())
+        JormungandrRest::new(self.rest_uri())
     }
 
     pub fn shutdown(&self) {
-        jcli_wrapper::assert_rest_shutdown(&self.config.get_node_address());
+        jcli_wrapper::assert_rest_shutdown(&self.rest_uri());
     }
 
     pub fn address(&self) -> poldercast::Address {
-        self.config.node_config().p2p.public_address
+        self.p2p_public_address.clone()
     }
 
     pub fn log_stats(&self) {
@@ -94,20 +105,20 @@ impl JormungandrProcess {
         Ok(())
     }
 
-    pub fn rest_address(&self) -> String {
-        self.config.get_node_address()
+    pub fn rest_uri(&self) -> String {
+        rest::uri_from_socket_addr(self.rest_socket_addr)
     }
 
     pub fn fees(&self) -> LinearFee {
-        self.config.fees()
+        self.fees
     }
 
     pub fn genesis_block_hash(&self) -> Hash {
-        Hash::from_str(&self.config.genesis_block_hash()).unwrap()
+        self.genesis_block_hash
     }
 
-    pub fn config(&self) -> JormungandrConfig {
-        self.config.clone()
+    pub fn block0_configuration(&self) -> &Block0Configuration {
+        &self.block0_configuration
     }
 
     pub fn pid(&self) -> u32 {
@@ -115,29 +126,72 @@ impl JormungandrProcess {
     }
 
     pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.config.node_config().rest.listen.to_string())
+        Explorer::new(self.rest_socket_addr.to_string())
     }
 
-    pub fn as_trusted_peer(&self) -> TrustedPeer {
-        self.config.as_trusted_peer()
-    }
-
-    pub fn launch(&mut self) -> Result<Self, StartupError> {
-        let mut starter = Starter::new();
-        starter.config(self.config());
-        if *self.config().genesis_block_hash() != "" {
-            starter.from_genesis_hash();
+    pub fn to_trusted_peer(&self) -> TrustedPeer {
+        TrustedPeer {
+            address: self.p2p_public_address.clone(),
         }
-        starter.start()
+    }
+
+    pub(super) fn steal_temp_dir(&mut self) -> Option<TempDir> {
+        self.temp_dir.take()
+    }
+
+    pub fn stop(mut self) {
+        match self.child.kill() {
+            Err(e) => println!("Could not kill {}: {}", self.alias, e),
+            Ok(_) => {
+                println!("Successfully killed {}", self.alias);
+            }
+        }
     }
 }
 
 impl Drop for JormungandrProcess {
     fn drop(&mut self) {
+        // There's no kill like overkill
+        let _ = self.child.kill();
+
+        // FIXME: These should be better done in a test harness
+        self.child.wait().unwrap();
         self.logger.print_error_and_invalid_logs();
-        match self.child.kill() {
-            Err(e) => println!("Could not kill {}: {}", self.alias, e),
-            Ok(_) => println!("Successfully killed {}", self.alias),
-        }
+    }
+}
+
+impl SyncNode for JormungandrProcess {
+    fn alias(&self) -> &str {
+        self.alias()
+    }
+
+    fn last_block_height(&self) -> u32 {
+        let docs = self.rest().stats().unwrap();
+        docs.stats
+            .expect("no stats object in response")
+            .last_block_height
+            .expect("last_block_height field is missing")
+            .parse()
+            .unwrap()
+    }
+
+    fn log_stats(&self) {
+        println!("{:?}", self.rest().stats());
+    }
+
+    fn all_blocks_hashes(&self) -> Vec<chain_impl_mockchain::key::Hash> {
+        todo!()
+    }
+
+    fn log_content(&self) -> String {
+        self.logger.get_log_content()
+    }
+
+    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
+        self.logger.get_lines_with_error_and_invalid().collect()
+    }
+
+    fn is_running(&self) -> bool {
+        todo!()
     }
 }

@@ -28,15 +28,12 @@ pub fn collect_reward() {
             .with_slot_duration(3),
     )
     .unwrap();
-    startup::sleep_till_next_epoch(10, &jormungandr.config);
+    startup::sleep_till_next_epoch(10, &jormungandr.block0_configuration());
 
     let stake_pools_data: Vec<StakePoolStats> = stake_pools
         .iter()
         .map(|x| {
-            jcli_wrapper::assert_rest_get_stake_pool(
-                &x.id().to_string(),
-                &jormungandr.rest_address(),
-            )
+            jcli_wrapper::assert_rest_get_stake_pool(&x.id().to_string(), &jormungandr.rest_uri())
         })
         .collect();
 
@@ -104,7 +101,7 @@ pub fn reward_history() {
         "reward per epoch for current epoch in the future should return error"
     );
 
-    startup::sleep_till_next_epoch(10, &jormungandr.config);
+    startup::sleep_till_next_epoch(10, jormungandr.block0_configuration());
 
     let history = jormungandr.rest().reward_history(1).unwrap();
     let epoch_reward_info_from_history = history.get(0).unwrap();
@@ -125,7 +122,7 @@ pub fn reward_history() {
                 Hash::from_str(&x.id().to_string()).unwrap(),
                 jcli_wrapper::assert_rest_get_stake_pool(
                     &x.id().to_string(),
-                    &jormungandr.rest_address(),
+                    &jormungandr.rest_uri(),
                 ),
             )
         })

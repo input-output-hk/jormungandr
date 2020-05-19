@@ -1,8 +1,5 @@
-use super::BackwardCompatibleConfig;
 use super::Version;
-use crate::common::{
-    configuration::JormungandrConfig, file_utils, jormungandr::starter::StartupError,
-};
+use crate::common::configuration::JormungandrParams;
 use jormungandr_lib::interfaces::NodeConfig as NewestNodeConfig;
 use jormungandr_testing_utils::legacy::{NodeConfig, P2p, Rest, TrustedPeer};
 use rand::RngCore;
@@ -13,12 +10,10 @@ use thiserror::Error;
 pub enum LegacyConfigConverterError {
     #[error("unsupported version")]
     UnsupportedVersion(Version),
-    #[error("serialization error")]
-    SpawnError(#[from] StartupError),
 }
 
-fn version_08_19() -> Version {
-    Version::new(8, 19, 0)
+const fn version_0_8_19() -> Version {
+    Version::new(0, 8, 19)
 }
 
 /// Used to build configuration for legacy nodes.
@@ -36,38 +31,33 @@ impl LegacyConfigConverter {
 
     pub fn convert(
         &self,
-        config: JormungandrConfig,
-    ) -> Result<BackwardCompatibleConfig, LegacyConfigConverterError> {
-        if self.version > version_08_19() {
+        params: JormungandrParams<NewestNodeConfig>,
+    ) -> Result<JormungandrParams<NodeConfig>, LegacyConfigConverterError> {
+        if self.version > version_0_8_19() {
             return Err(LegacyConfigConverterError::UnsupportedVersion(
                 self.version.clone(),
             ));
         }
 
         let node_config_converter = LegacyNodeConfigConverter::new(self.version.clone());
-        let node_config = node_config_converter.convert(config.node_config())?;
-        Ok(self.build_configuration_before_08_19(config, node_config))
+        let node_config = node_config_converter.convert(params.node_config())?;
+        Ok(self.build_configuration_before_0_8_19(params, node_config))
     }
 
-    pub fn build_configuration_before_08_19(
+    fn build_configuration_before_0_8_19(
         &self,
-        config: JormungandrConfig,
+        params: JormungandrParams<NewestNodeConfig>,
         backward_compatible_config: NodeConfig,
-    ) -> BackwardCompatibleConfig {
-        let _source = config.node_config();
-
-        let content = serde_yaml::to_string(&backward_compatible_config)
-            .expect("cannot serializer node config before 08.19 version");
-        let node_config_path = file_utils::create_file_in_temp("node_config.xml", &content);
-
-        BackwardCompatibleConfig::new(
-            config.genesis_block_path().clone(),
-            config.genesis_block_hash().clone(),
-            node_config_path,
-            config.secret_model_paths().clone(),
-            config.block0_configuration().clone(),
-            config.secret_models().clone(),
-            config.rewards_history(),
+    ) -> JormungandrParams<NodeConfig> {
+        JormungandrParams::new(
+            backward_compatible_config,
+            params.node_config_path(),
+            params.genesis_block_path(),
+            params.genesis_block_hash(),
+            params.secret_model_paths(),
+            params.block0_configuration().clone(),
+            params.rewards_history(),
+            params.log_file_path(),
         )
     }
 }
@@ -83,14 +73,14 @@ impl LegacyNodeConfigConverter {
 
     pub fn convert(
         &self,
-        source: NewestNodeConfig,
+        source: &NewestNodeConfig,
     ) -> Result<NodeConfig, LegacyConfigConverterError> {
-        if self.version > version_08_19() {
+        if self.version > version_0_8_19() {
             return Err(LegacyConfigConverterError::UnsupportedVersion(
                 self.version.clone(),
             ));
         }
-        Ok(self.build_node_config_before_08_19(source))
+        Ok(self.build_node_config_before_0_8_19(source))
     }
 
     fn generate_legacy_poldercast_id(rng: &mut OsRng) -> String {
@@ -99,7 +89,7 @@ impl LegacyNodeConfigConverter {
         hex::encode(&bytes)
     }
 
-    fn build_node_config_before_08_19(&self, source: NewestNodeConfig) -> NodeConfig {
+    fn build_node_config_before_0_8_19(&self, source: &NewestNodeConfig) -> NodeConfig {
         let mut rng = OsRng;
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p

@@ -157,7 +157,7 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
+    let legacy_app = get_jormungandr_bin(last_release, controller.working_directory());
     let version = Version::from_str(&last_release.version()).unwrap();
 
     let mut legacy_leaders = vec![];

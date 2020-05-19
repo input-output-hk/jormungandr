@@ -1,4 +1,3 @@
-use crate::common::file_utils;
 use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
 use jormungandr_lib::crypto::hash::Hash;
 

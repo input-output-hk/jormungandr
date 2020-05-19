@@ -30,6 +30,7 @@ error_chain! {
 
     foreign_links {
         Wallet(jormungandr_testing_utils::wallet::WalletError);
+        FsFixture(assert_fs::fixture::FixtureError);
         Io(std::io::Error);
         Reqwest(reqwest::Error);
         BlockFormatError(chain_core::mempack::ReadError);

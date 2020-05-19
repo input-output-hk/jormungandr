@@ -8,7 +8,7 @@ use chain_impl_mockchain::{
 use futures::executor::block_on;
 use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
-    common::jormungandr::{logger::JormungandrLogger, JormungandrRest, RestError},
+    common::jormungandr::{logger::JormungandrLogger, rest, JormungandrRest, RestError},
     mock::client::JormungandrClient,
 };
 use jormungandr_lib::interfaces::{
@@ -23,7 +23,7 @@ pub use jormungandr_testing_utils::testing::{
 use rand_core::RngCore;
 use std::{
     collections::HashMap,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::ExitStatus,
     sync::{Arc, Mutex},
     time::Duration,
@@ -450,9 +450,9 @@ impl NodeController {
             .settings
             .config
             .log
-            .clone()
+            .as_ref()
             .unwrap()
-            .log_file()
+            .file_path()
             .unwrap();
         JormungandrLogger::new(log_file)
     }
@@ -469,13 +469,13 @@ impl Node {
 
     pub fn controller(&self) -> NodeController {
         let p2p_address = format!("{}", self.node_settings.config().p2p.get_listen_address());
-        let rest_address = format!("{}", self.node_settings.config().rest.listen);
+        let rest_uri = rest::uri_from_socket_addr(self.node_settings.config().rest.listen);
 
         NodeController {
             alias: self.alias().clone(),
             grpc_client: JormungandrClient::from_address(&p2p_address)
                 .expect("cannot setup grpc client"),
-            rest_client: JormungandrRest::from_address(rest_address),
+            rest_client: JormungandrRest::new(rest_uri),
             settings: self.node_settings.clone(),
             status: self.status.clone(),
             progress_bar: self.progress_bar.clone(),
@@ -489,7 +489,7 @@ impl Node {
         alias: &str,
         node_settings: &mut NodeSetting,
         block0: NodeBlock0,
-        working_dir: &PathBuf,
+        working_dir: &Path,
         peristence_mode: PersistenceMode,
     ) -> Result<Self> {
         let mut command = jormungandr.clone();

@@ -5,6 +5,8 @@ use crate::common::{
 };
 use jormungandr_lib::interfaces::InitialUTxO;
 
+use assert_fs::TempDir;
+
 #[test]
 pub fn test_correct_utxos_are_read_from_node() {
     let sender_utxo_address = startup::create_new_utxo_address();
@@ -21,10 +23,14 @@ pub fn test_correct_utxos_are_read_from_node() {
         },
     ];
 
-    let config = ConfigurationBuilder::new().with_funds(funds).build();
+    let temp_dir = TempDir::new().unwrap();
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(funds)
+        .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let rest_addr = jormungandr.rest_address();
+    let rest_addr = jormungandr.rest_uri();
 
     let sender_block0_utxo = config.block0_utxo_for_address(&sender_utxo_address);
     jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &sender_block0_utxo);

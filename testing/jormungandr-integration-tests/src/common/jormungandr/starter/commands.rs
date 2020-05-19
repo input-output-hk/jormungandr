@@ -1,150 +1,143 @@
 use super::{FromGenesis, Role};
-use crate::common::legacy::BackwardCompatibleConfig;
+use crate::common::configuration::{JormungandrParams, TestConfig};
+
+use serde::Serialize;
 use std::fs::File;
-use std::path::PathBuf;
+use std::iter::FromIterator;
+use std::path::Path;
 use std::process::{Command, Stdio};
-pub struct JormungandrStarterCommands {
-    jormungandr_app: PathBuf,
+
+pub struct CommandBuilder<'a> {
+    bin: &'a Path,
+    config: Option<&'a Path>,
+    genesis_block: GenesisBlockOption<'a>,
+    secrets: Vec<&'a Path>,
+    log_file: Option<&'a Path>,
+    rewards_history: bool,
 }
 
-impl JormungandrStarterCommands {
-    pub fn from_app(app: PathBuf) -> Self {
-        Self {
-            jormungandr_app: app,
+enum GenesisBlockOption<'a> {
+    None,
+    Hash(&'a str),
+    Path(&'a Path),
+}
+
+impl<'a> CommandBuilder<'a> {
+    pub fn new(bin: &'a Path) -> Self {
+        CommandBuilder {
+            bin,
+            config: None,
+            genesis_block: GenesisBlockOption::None,
+            secrets: Vec::new(),
+            log_file: None,
+            rewards_history: false,
         }
     }
 
-    pub fn as_leader_node_from_hash(
-        &self,
-        config_path: &PathBuf,
-        genesis_block_hash: &str,
-        secret_paths: &[PathBuf],
-        log_file_path: Option<PathBuf>,
-        reward_history: bool,
-    ) -> Command {
-        let mut command = Command::new(self.jormungandr_app.as_os_str());
-        for secret_path in secret_paths {
-            command.arg("--secret").arg(secret_path.as_os_str());
+    pub fn config(mut self, path: &'a Path) -> Self {
+        self.config = Some(path);
+        self
+    }
+
+    pub fn genesis_block_hash(mut self, hash: &'a str) -> Self {
+        self.genesis_block = GenesisBlockOption::Hash(hash);
+        self
+    }
+
+    pub fn genesis_block_path(mut self, path: &'a Path) -> Self {
+        self.genesis_block = GenesisBlockOption::Path(path);
+        self
+    }
+
+    pub fn leader_with_secrets<Iter>(mut self, secrets: Iter) -> Self
+    where
+        Iter: IntoIterator<Item = &'a Path>,
+    {
+        self.secrets = Vec::from_iter(secrets);
+        self
+    }
+
+    pub fn stderr_to_log_file(mut self, path: &'a Path) -> Self {
+        self.log_file = Some(path);
+        self
+    }
+
+    pub fn rewards_history(mut self, report: bool) -> Self {
+        self.rewards_history = report;
+        self
+    }
+
+    pub fn command(self) -> Command {
+        let mut command = Command::new(self.bin);
+        for secret_path in self.secrets {
+            command.arg("--secret").arg(secret_path);
         }
 
-        if reward_history {
+        if self.rewards_history {
             command.arg("--rewards-report-all");
         }
 
-        command
-            .arg("--config")
-            .arg(config_path.as_os_str())
-            .arg("--genesis-block-hash")
-            .arg(genesis_block_hash);
+        let config_path = self
+            .config
+            .expect("configuration file path needs to be set");
+        command.arg("--config").arg(config_path);
 
-        if let Some(log_file) = log_file_path {
-            command.stderr(Self::get_stdio_from_log_file(&log_file));
+        match self.genesis_block {
+            GenesisBlockOption::Hash(hash) => {
+                command.arg("--genesis-block-hash").arg(hash);
+            }
+            GenesisBlockOption::Path(path) => {
+                command.arg("--genesis-block").arg(path);
+            }
+            GenesisBlockOption::None => {
+                panic!("one of the genesis block options needs to be specified")
+            }
+        }
+
+        if let Some(log_file) = self.log_file {
+            command.stderr(get_stdio_from_log_file(log_file));
         }
 
         println!("Running start jormungandr command: {:?}", &command);
         command
-    }
-
-    pub fn as_leader_node(
-        &self,
-        config_path: &PathBuf,
-        genesis_block_path: &PathBuf,
-        secret_paths: &[PathBuf],
-        log_file_path: Option<PathBuf>,
-        reward_history: bool,
-    ) -> Command {
-        let mut command = Command::new(self.jormungandr_app.as_os_str());
-        for secret_path in secret_paths {
-            command.arg("--secret").arg(secret_path.as_os_str());
-        }
-
-        if reward_history {
-            command.arg("--rewards-report-all");
-        }
-
-        command
-            .arg("--config")
-            .arg(config_path.as_os_str())
-            .arg("--genesis-block")
-            .arg(genesis_block_path.as_os_str());
-
-        if let Some(log_file) = log_file_path {
-            command.stderr(Self::get_stdio_from_log_file(&log_file));
-        }
-
-        println!("Running start jormungandr command: {:?}", &command);
-        command
-    }
-
-    pub fn as_passive_node(
-        &self,
-        config_path: &PathBuf,
-        genesis_block_hash: &str,
-        log_file_path: Option<PathBuf>,
-        reward_history: bool,
-    ) -> Command {
-        let mut command = Command::new(self.jormungandr_app.as_os_str());
-
-        if reward_history {
-            command.arg("--rewards-report-all");
-        }
-
-        command
-            .arg("--config")
-            .arg(config_path.as_os_str())
-            .arg("--genesis-block-hash")
-            .arg(&genesis_block_hash);
-
-        if let Some(log_file) = log_file_path {
-            command.stderr(Self::get_stdio_from_log_file(&log_file));
-        }
-
-        println!("Running start jormungandr command: {:?}", &command);
-        command
-    }
-
-    #[cfg(windows)]
-    fn get_stdio_from_log_file(log_file_path: &PathBuf) -> std::process::Stdio {
-        use std::os::windows::io::{FromRawHandle, IntoRawHandle};
-        let file = File::create(log_file_path).expect("couldn't create log file for jormungandr");
-        unsafe { Stdio::from_raw_handle(file.into_raw_handle()) }
-    }
-
-    #[cfg(unix)]
-    fn get_stdio_from_log_file(log_file_path: &PathBuf) -> std::process::Stdio {
-        use std::os::unix::io::{FromRawFd, IntoRawFd};
-        let file = File::create(log_file_path).expect("couldn't create log file for jormungandr");
-        unsafe { Stdio::from_raw_fd(file.into_raw_fd()) }
     }
 }
 
-pub fn get_command(
-    config: &BackwardCompatibleConfig,
-    jormungandr_app_path: PathBuf,
+#[cfg(unix)]
+fn get_stdio_from_log_file(log_file_path: &Path) -> std::process::Stdio {
+    use std::os::unix::io::{FromRawFd, IntoRawFd};
+    let file = File::create(log_file_path).expect("couldn't create log file for jormungandr");
+    unsafe { Stdio::from_raw_fd(file.into_raw_fd()) }
+}
+
+#[cfg(windows)]
+fn get_stdio_from_log_file(log_file_path: &Path) -> std::process::Stdio {
+    use std::os::windows::io::{FromRawHandle, IntoRawHandle};
+    let file = File::create(log_file_path).expect("couldn't create log file for jormungandr");
+    unsafe { Stdio::from_raw_handle(file.into_raw_handle()) }
+}
+
+pub fn get_command<Conf: TestConfig + Serialize>(
+    params: &JormungandrParams<Conf>,
+    bin_path: impl AsRef<Path>,
     role: Role,
     from_genesis: FromGenesis,
 ) -> Command {
-    let commands = JormungandrStarterCommands::from_app(jormungandr_app_path);
-    match (role, from_genesis) {
-        (Role::Passive, _) => commands.as_passive_node(
-            &config.node_config_path,
-            &config.genesis_block_hash,
-            config.log_file_path(),
-            config.rewards_history,
-        ),
-        (Role::Leader, FromGenesis::File) => commands.as_leader_node(
-            &config.node_config_path,
-            &config.genesis_block_path,
-            &config.secret_model_paths,
-            config.log_file_path(),
-            config.rewards_history,
-        ),
-        (Role::Leader, FromGenesis::Hash) => commands.as_leader_node_from_hash(
-            &config.node_config_path,
-            &config.genesis_block_hash,
-            &config.secret_model_paths,
-            config.log_file_path(),
-            config.rewards_history,
-        ),
+    let bin_path = bin_path.as_ref();
+    let mut builder = CommandBuilder::new(bin_path)
+        .config(params.node_config_path())
+        .rewards_history(params.rewards_history());
+    if params.node_config().log_file_path().is_none() {
+        builder = builder.stderr_to_log_file(params.log_file_path());
     }
+    let builder = match (role, from_genesis) {
+        (Role::Passive, _) => builder.genesis_block_hash(params.genesis_block_hash()),
+        (Role::Leader, FromGenesis::File) => builder
+            .genesis_block_path(params.genesis_block_path())
+            .leader_with_secrets(params.secret_model_paths()),
+        (Role::Leader, FromGenesis::Hash) => builder
+            .genesis_block_hash(params.genesis_block_hash())
+            .leader_with_secrets(params.secret_model_paths()),
+    };
+    builder.command()
 }

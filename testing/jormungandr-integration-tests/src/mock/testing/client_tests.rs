@@ -6,7 +6,7 @@ use crate::common::{
 };
 use crate::mock::{
     client::MockClientError,
-    testing::{setup::bootstrap_node, setup::Config},
+    testing::setup::{Config, Fixture},
 };
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{
@@ -18,6 +18,8 @@ use chain_impl_mockchain::{
 use chain_time::{Epoch, TimeEra};
 use jormungandr_lib::interfaces::InitialUTxO;
 
+use assert_fs::TempDir;
+
 fn fake_hash() -> Hash {
     Hash::from_str("efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944").unwrap()
 }
@@ -25,7 +27,8 @@ fn fake_hash() -> Hash {
 // L1001 Handshake sanity
 #[tokio::test]
 pub async fn handshake_sanity() {
-    let (_server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let handshake_response = client.handshake().await;
 
@@ -40,7 +43,8 @@ pub async fn handshake_sanity() {
 // L1006 Tip request
 #[tokio::test]
 pub async fn tip_request() {
-    let (server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
 
     let tip_header = client.tip().await;
@@ -52,7 +56,8 @@ pub async fn tip_request() {
 // L1009 GetHeaders correct hash
 #[tokio::test]
 pub async fn get_headers_correct_hash() {
-    let (server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
 
     let block_hashes = server.logger.get_created_blocks_hashes();
@@ -67,7 +72,8 @@ pub async fn get_headers_correct_hash() {
 // L1010 GetHeaders incorrect hash
 #[tokio::test]
 pub async fn get_headers_incorrect_hash() {
-    let (_server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let fake_hash = fake_hash();
     assert_eq!(
@@ -83,7 +89,8 @@ pub async fn get_headers_incorrect_hash() {
 // L1011 GetBlocks correct hash
 #[tokio::test]
 pub async fn get_blocks_correct_hash() {
-    let (_server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
 
     let tip = client.tip().await;
@@ -93,7 +100,8 @@ pub async fn get_blocks_correct_hash() {
 // L1012 GetBlocks incorrect hash
 #[tokio::test]
 pub async fn get_blocks_incorrect_hash() {
-    let (_server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let fake_hash = fake_hash();
     assert_eq!(
@@ -109,7 +117,8 @@ pub async fn get_blocks_incorrect_hash() {
 // L1013 PullBlocksToTip correct hash
 #[tokio::test]
 pub async fn pull_blocks_to_tip_correct_hash() {
-    let (server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let blocks = client
         .pull_blocks_to_tip(Hash::from_str(config.genesis_block_hash()).unwrap())
@@ -125,7 +134,8 @@ pub async fn pull_blocks_to_tip_correct_hash() {
 // L1014 PullBlocksToTip incorrect hash
 #[tokio::test]
 pub async fn pull_blocks_to_tip_incorrect_hash() {
-    let (server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let blocks = client.pull_blocks_to_tip(fake_hash()).await.unwrap();
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
@@ -141,7 +151,8 @@ pub async fn pull_blocks_to_tip_incorrect_hash() {
 // L1018 Pull headers correct hash
 #[tokio::test]
 pub async fn pull_headers_correct_hash() {
-    let (server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let tip_header = client.tip().await;
     let headers = client
@@ -157,7 +168,8 @@ pub async fn pull_headers_correct_hash() {
 // L1019 Pull headers incorrect hash
 #[tokio::test]
 pub async fn pull_headers_incorrect_hash() {
-    let (_server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     assert_eq!(
         MockClientError::InvalidRequest(format!("not found (block not found)")),
@@ -168,7 +180,8 @@ pub async fn pull_headers_incorrect_hash() {
 // L1019A Pull headers empty hash
 #[tokio::test]
 pub async fn pull_headers_empty_start_hash() {
-    let (server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let tip_header = client.tip().await;
     let headers = client.pull_headers(&[], tip_header.hash()).await.unwrap();
@@ -181,7 +194,8 @@ pub async fn pull_headers_empty_start_hash() {
 // L1020 Push headers incorrect header
 #[tokio::test]
 pub async fn push_headers() {
-    let (_server, config) = bootstrap_node();
+    let fixture = Fixture::new();
+    let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let tip_header = client.tip().await;
     let stake_pool = StakePoolBuilder::new().build();
@@ -206,7 +220,11 @@ pub async fn push_headers() {
 // L1020 Push headers incorrect header
 #[tokio::test]
 pub async fn upload_block_incompatible_protocol() {
-    let config = ConfigurationBuilder::new().with_slot_duration(4).build();
+    let temp_dir = TempDir::new().unwrap();
+
+    let config = ConfigurationBuilder::new()
+        .with_slot_duration(4)
+        .build(&temp_dir);
     let _server = Starter::new().config(config.clone()).start().unwrap();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let tip_header = client.tip().await;
@@ -237,10 +255,12 @@ pub async fn upload_block_incompatible_protocol() {
 // L1020 Push headers incorrect header
 #[tokio::test]
 pub async fn upload_block_nonexisting_stake_pool() {
+    let temp_dir = TempDir::new().unwrap();
+
     let config = ConfigurationBuilder::new()
         .with_slot_duration(4)
         .with_block0_consensus(ConsensusVersion::GenesisPraos)
-        .build();
+        .build(&temp_dir);
     let _server = Starter::new().config(config.clone()).start().unwrap();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let tip_header = client.tip().await;
@@ -271,6 +291,8 @@ pub async fn upload_block_nonexisting_stake_pool() {
 // L1020 Get fragments
 #[tokio::test]
 pub async fn get_fragments() {
+    let temp_dir = TempDir::new().unwrap();
+
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
     let output_value = 1u64;
@@ -280,7 +302,7 @@ pub async fn get_fragments() {
             address: sender.address(),
             value: 100.into(),
         }])
-        .build();
+        .build(&temp_dir);
 
     let server = Starter::new().config(config.clone()).start().unwrap();
 

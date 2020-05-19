@@ -1,14 +1,15 @@
 use crate::common::{
     jcli_wrapper,
     jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper,
-    jormungandr::{
-        starter::restart_jormungandr_node, ConfigurationBuilder, JormungandrProcess, Role, Starter,
-    },
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Role, Starter},
     startup,
 };
 
 use jormungandr_lib::interfaces::{AccountState, InitialUTxO, SettingsDto, UTxOInfo};
 use jormungandr_testing_utils::wallet::Wallet;
+
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
 
 #[derive(Clone, Debug, PartialEq)]
 struct LedgerSnapshot {
@@ -32,12 +33,13 @@ fn take_snapshot(
     jormungandr: &JormungandrProcess,
     utxo_info: UTxOInfo,
 ) -> LedgerSnapshot {
-    let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
+    let rest_uri = jormungandr.rest_uri();
+    let settings = jcli_wrapper::assert_get_rest_settings(&rest_uri);
     let account = jcli_wrapper::assert_rest_account_get_stats(
         &account_receiver.address().to_string(),
-        &jormungandr.rest_address(),
+        &rest_uri,
     );
-    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&jormungandr.rest_address(), &utxo_info);
+    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_uri, &utxo_info);
 
     LedgerSnapshot::new(settings, utxo_info, account)
 }
@@ -50,8 +52,8 @@ pub fn do_simple_transaction(
     jormungandr: &JormungandrProcess,
 ) -> UTxOInfo {
     const TX_VALUE: u64 = 50;
-    let config = jormungandr.config();
-    let mut tx = JCLITransactionWrapper::new_transaction(config.genesis_block_hash());
+    let mut tx =
+        JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string());
     let transaction_message = tx
         .assert_add_input_from_utxo(utxo_sender)
         .assert_add_output(&account_receiver.address().to_string(), TX_VALUE.into())
@@ -68,6 +70,8 @@ pub fn do_simple_transaction(
 
 #[test]
 pub fn test_node_recovers_from_node_restart() {
+    let temp_dir = TempDir::new().unwrap();
+
     let sender = startup::create_new_utxo_address();
     let account_receiver = startup::create_new_account_address();
     let utxo_receiver = startup::create_new_utxo_address();
@@ -77,8 +81,8 @@ pub fn test_node_recovers_from_node_restart() {
             address: sender.address(),
             value: 100.into(),
         }])
-        .with_random_storage()
-        .build();
+        .with_storage(&temp_dir.child("storage"))
+        .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo_sender = config.block0_utxo_for_address(&sender);
@@ -91,7 +95,12 @@ pub fn test_node_recovers_from_node_restart() {
         &jormungandr,
     );
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
-    let jormungandr = restart_jormungandr_node(jormungandr, Role::Leader);
+    jormungandr.stop();
+    let jormungandr = Starter::new()
+        .config(config)
+        .role(Role::Leader)
+        .start()
+        .unwrap();
     let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 
     assert_eq!(
@@ -103,6 +112,8 @@ pub fn test_node_recovers_from_node_restart() {
 
 #[test]
 pub fn test_node_recovers_kill_signal() {
+    let temp_dir = TempDir::new().unwrap();
+
     let sender = startup::create_new_utxo_address();
     let account_receiver = startup::create_new_account_address();
     let utxo_receiver = startup::create_new_utxo_address();
@@ -112,8 +123,8 @@ pub fn test_node_recovers_kill_signal() {
             address: sender.address(),
             value: 100.into(),
         }])
-        .with_random_storage()
-        .build();
+        .with_storage(&temp_dir.child("storage"))
+        .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
     let utxo_sender = config.block0_utxo_for_address(&sender);
@@ -126,7 +137,12 @@ pub fn test_node_recovers_kill_signal() {
         &jormungandr,
     );
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
-    let jormungandr = restart_jormungandr_node(jormungandr, Role::Passive);
+    jormungandr.stop();
+    let jormungandr = Starter::new()
+        .config(config)
+        .role(Role::Passive)
+        .start()
+        .unwrap();
     let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 
     assert_eq!(

@@ -21,25 +21,21 @@ mod tests {
 
     use self::common::CommonTransaction;
     use super::*;
+    use assert_fs::prelude::*;
+    use assert_fs::NamedTempFile;
+    use predicates::prelude::*;
 
     #[test]
     pub fn test_staging_file_is_created() {
-        let tempfile = mktemp::Temp::new_file().unwrap();
-
-        let temp_staging_file = tempfile.to_path_buf();
+        let tempfile = NamedTempFile::new("staging").unwrap();
 
         let new = New {
             common: CommonTransaction {
-                staging_file: Some(temp_staging_file.clone()),
+                staging_file: Some(tempfile.path().into()),
             },
         };
         new.exec().expect(" error while executing New action");
 
-        assert_eq!(
-            temp_staging_file.is_file(),
-            true,
-            "staging file {:?} not created",
-            &temp_staging_file
-        );
+        tempfile.assert(predicate::path::is_file());
     }
 }

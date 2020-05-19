@@ -3,9 +3,9 @@ use crate::common::{jcli_wrapper, jormungandr::starter::Starter, process_assert}
 #[test]
 pub fn test_non_empty_hash_is_returned_for_block0() {
     let jormungandr = Starter::new().start().unwrap();
-    let block_id = jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
-    let actual_hash =
-        jcli_wrapper::assert_rest_get_block_by_id(&block_id, &jormungandr.rest_address());
+    let rest_uri = jormungandr.rest_uri();
+    let block_id = jcli_wrapper::assert_rest_get_block_tip(&rest_uri);
+    let actual_hash = jcli_wrapper::assert_rest_get_block_by_id(&block_id, &rest_uri);
 
     assert_ne!(&actual_hash, "", "empty block hash");
 }
@@ -18,7 +18,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
     process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_rest_get_block_command(
             &incorrect_block_id,
-            &jormungandr.rest_address(),
+            &jormungandr.rest_uri(),
         ),
         "node rejected request because of invalid parameters",
     );
@@ -34,7 +34,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
         jcli_wrapper::jcli_commands::get_rest_get_next_block_id_command(
             &incorrect_block_id,
             1,
-            &jormungandr.rest_address(),
+            &jormungandr.rest_uri(),
         ),
         "node rejected request because of invalid parameters",
     );

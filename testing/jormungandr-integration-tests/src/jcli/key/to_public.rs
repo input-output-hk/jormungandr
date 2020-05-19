@@ -1,5 +1,4 @@
 use crate::common::jcli_wrapper;
-use crate::common::process_assert;
 
 #[test]
 pub fn test_key_to_public() {
@@ -10,19 +9,16 @@ pub fn test_key_to_public() {
 
 #[test]
 pub fn test_key_to_public_invalid_key() {
-    let private_key = "ed2551ssss9_sk1357nu8uaxvdekg6uhqmdd0zcd3tjv3qq0p2029uk6pvfxuks5rzstp5ceq";
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_key_to_public_command(&private_key),
+    jcli_wrapper::assert_key_to_public_fails(
+        "ed2551ssss9_sk1357nu8uaxvdekg6uhqmdd0zcd3tjv3qq0p2029uk6pvfxuks5rzstp5ceq",
         "invalid checksum",
     );
 }
 
 #[test]
 pub fn test_key_to_public_invalid_chars_key() {
-    let private_key =
-        "node:: ed2551ssss9_sk1357nu8uaxvdekg6uhqmdd0zcd3tjv3qq0p2029uk6pvfxuks5rzstp5ceq";
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_key_to_public_command(&private_key),
+    jcli_wrapper::assert_key_to_public_fails(
+        "node:: ed2551ssss9_sk1357nu8uaxvdekg6uhqmdd0zcd3tjv3qq0p2029uk6pvfxuks5rzstp5ceq",
         "invalid character",
     );
 }

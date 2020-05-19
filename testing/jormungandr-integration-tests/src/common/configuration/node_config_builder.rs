@@ -1,17 +1,14 @@
 #![allow(dead_code)]
 
-use super::file_utils;
 use std::path::PathBuf;
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, Log, LogEntry, LogOutput, Mempool, NodeConfig, P2p, Policy, Rest,
-        TopicsOfInterest, TrustedPeer,
+        Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };
 
-#[derive(Debug, Clone)]
 pub struct NodeConfigBuilder {
     pub storage: Option<PathBuf>,
     pub log: Option<Log>,
@@ -33,16 +30,6 @@ impl NodeConfigBuilder {
     pub fn new() -> NodeConfigBuilder {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
-        let log = Some(Log(vec![LogEntry {
-            level: "trace".to_string(),
-            format: "json".to_string(),
-            output: LogOutput::File(
-                file_utils::get_path_in_temp("log.log")
-                    .into_os_string()
-                    .into_string()
-                    .unwrap(),
-            ),
-        }]));
         let grpc_public_address: poldercast::Address = format!(
             "/ip4/{}/tcp/{}",
             DEFAULT_HOST,
@@ -53,7 +40,7 @@ impl NodeConfigBuilder {
 
         NodeConfigBuilder {
             storage: None,
-            log,
+            log: None,
             rest: Rest {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string())
                     .parse()
@@ -79,11 +66,6 @@ impl NodeConfigBuilder {
             mempool: Some(Mempool::default()),
             explorer: Explorer { enabled: false },
         }
-    }
-
-    pub fn serialize(node_config: &NodeConfig) -> PathBuf {
-        let content = serde_yaml::to_string(&node_config).expect("Canot serialize node config");
-        file_utils::create_file_in_temp("node.config", &content)
     }
 
     pub fn with_explorer(&mut self) -> &mut Self {
