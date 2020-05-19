@@ -1,5 +1,6 @@
 mod context;
 mod controller;
+mod fragment_node;
 mod progress_bar_mode;
 pub mod repository;
 pub mod settings;

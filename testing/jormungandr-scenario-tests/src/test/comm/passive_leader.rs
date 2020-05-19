@@ -4,6 +4,8 @@ use crate::{
     test::Result,
     Context, ScenarioResult,
 };
+use jormungandr_testing_utils::testing::FragmentNode;
+
 use rand_chacha::ChaChaRng;
 
 const LEADER: &str = "Leader";
@@ -42,12 +44,12 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &passive,
+        &passive as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(
@@ -102,33 +104,35 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    let fragment_sender = controller.fragment_sender();
+
+    fragment_sender.send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &passive,
+        &passive as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     leader.shutdown()?;
 
-    utils::sending_transactions_to_node_sequentially(
+    fragment_sender.send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &passive,
+        &passive as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    utils::sending_transactions_to_node_sequentially(
+    fragment_sender.send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &passive,
+        &passive as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(
@@ -180,12 +184,12 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader,
+        &leader as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(

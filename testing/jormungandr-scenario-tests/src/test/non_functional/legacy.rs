@@ -11,6 +11,8 @@ use jormungandr_integration_tests::common::legacy::{
     download_last_n_releases, get_jormungandr_bin, Version,
 };
 
+use jormungandr_testing_utils::testing::FragmentNode;
+
 use rand_chacha::ChaChaRng;
 use std::{path::PathBuf, str::FromStr};
 
@@ -109,12 +111,12 @@ fn test_legacy_release(
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader2,
+        &leader2 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(
@@ -270,23 +272,23 @@ fn test_legacy_disruption_release(
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader2,
+        &leader2 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     leader4 =
         controller.restart_node(leader4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader3,
+        &leader3 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     leader1.shutdown()?;
@@ -299,12 +301,12 @@ fn test_legacy_disruption_release(
     )?;
     leader1.wait_for_bootstrap()?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader2,
+        &leader2 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(

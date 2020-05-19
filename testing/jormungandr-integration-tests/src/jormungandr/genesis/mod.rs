@@ -1,3 +1,4 @@
+pub mod fragments;
 pub mod leadership;
 pub mod pool_retire;
 pub mod rewards;

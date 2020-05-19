@@ -12,6 +12,8 @@ error_chain! {
 
     foreign_links {
         Wallet(jormungandr_testing_utils::wallet::WalletError);
+        FragmentSender(jormungandr_testing_utils::testing::FragmentSenderError);
+        FragmentVerifier(jormungandr_testing_utils::testing::FragmentVerifierError);
     }
 
     links {

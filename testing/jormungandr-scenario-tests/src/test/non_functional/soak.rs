@@ -1,3 +1,4 @@
+use crate::test::non_functional::*;
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     scenario::repository::ScenarioResult,
@@ -5,10 +6,9 @@ use crate::{
     test::Result,
     Context,
 };
+use jormungandr_testing_utils::testing::{FragmentNode, FragmentVerifier};
 use rand_chacha::ChaChaRng;
 use std::time::{Duration, SystemTime};
-
-use crate::test::non_functional::*;
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";
@@ -102,30 +102,88 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let now = SystemTime::now();
 
+    let fragment_sender = controller.fragment_sender();
+    let fragment_verifier = FragmentVerifier;
+
     loop {
-        let check1 = controller.wallet_send_to(&mut wallet1, &wallet2, &leader1, 1_000.into())?;
-        let check2 = controller.wallet_send_to(&mut wallet2, &wallet1, &leader2, 1_000.into())?;
-        let check3 = controller.wallet_send_to(&mut wallet3, &wallet4, &leader3, 1_000.into())?;
-        let check4 = controller.wallet_send_to(&mut wallet4, &wallet3, &leader4, 1_000.into())?;
-        let check5 = controller.wallet_send_to(&mut wallet5, &wallet6, &leader5, 1_000.into())?;
-        let check6 = controller.wallet_send_to(&mut wallet6, &wallet1, &leader6, 1_000.into())?;
-        let check7 = controller.wallet_send_to(&mut wallet7, &wallet6, &leader7, 1_000.into())?;
+        let check1 = fragment_sender.send_transaction(
+            &mut wallet1,
+            &wallet2,
+            &leader1 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
+        let check2 = fragment_sender.send_transaction(
+            &mut wallet2,
+            &wallet1,
+            &leader2 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
+        let check3 = fragment_sender.send_transaction(
+            &mut wallet3,
+            &wallet4,
+            &leader3 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
+        let check4 = fragment_sender.send_transaction(
+            &mut wallet4,
+            &wallet3,
+            &leader4 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
+        let check5 = fragment_sender.send_transaction(
+            &mut wallet5,
+            &wallet6,
+            &leader5 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
+        let check6 = fragment_sender.send_transaction(
+            &mut wallet6,
+            &wallet1,
+            &leader6 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
+        let check7 = fragment_sender.send_transaction(
+            &mut wallet7,
+            &wallet6,
+            &leader7 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
 
-        let status1 = leader1.wait_fragment(Duration::from_secs(2), check1)?;
-        let status2 = leader2.wait_fragment(Duration::from_secs(2), check2)?;
-        let status3 = leader3.wait_fragment(Duration::from_secs(2), check3)?;
-        let status4 = leader4.wait_fragment(Duration::from_secs(2), check4)?;
-        let status5 = leader5.wait_fragment(Duration::from_secs(2), check5)?;
-        let status6 = leader6.wait_fragment(Duration::from_secs(2), check6)?;
-        let status7 = leader7.wait_fragment(Duration::from_secs(2), check7)?;
-
-        utils::assert_is_in_block(status1, &leader1)?;
-        utils::assert_is_in_block(status2, &leader2)?;
-        utils::assert_is_in_block(status3, &leader3)?;
-        utils::assert_is_in_block(status4, &leader4)?;
-        utils::assert_is_in_block(status5, &leader5)?;
-        utils::assert_is_in_block(status6, &leader6)?;
-        utils::assert_is_in_block(status7, &leader7)?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check1,
+            &leader1 as &dyn FragmentNode,
+        )?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check2,
+            &leader2 as &dyn FragmentNode,
+        )?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check3,
+            &leader3 as &dyn FragmentNode,
+        )?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check4,
+            &leader4 as &dyn FragmentNode,
+        )?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check5,
+            &leader5 as &dyn FragmentNode,
+        )?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check6,
+            &leader6 as &dyn FragmentNode,
+        )?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check7,
+            &leader7 as &dyn FragmentNode,
+        )?;
 
         wallet1.confirm_transaction();
         wallet2.confirm_transaction();

@@ -8,7 +8,6 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::crypto::key::KeyPair;
 use std::num::NonZeroU64;
-use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
 pub struct StakePool {

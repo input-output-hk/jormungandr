@@ -4,9 +4,45 @@ use crate::common::{
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrLogger},
 };
-use chain_impl_mockchain::fee::LinearFee;
-use jormungandr_lib::crypto::hash::Hash;
-use std::{path::PathBuf, process::Child, str::FromStr};
+use chain_impl_mockchain::{
+    fee::LinearFee,
+    fragment::{Fragment, FragmentId},
+};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{BlockDate, FragmentLog},
+};
+use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError, MemPoolCheck};
+use std::{collections::HashMap, path::PathBuf, process::Child, str::FromStr};
+
+impl FragmentNode for BackwardCompatibleJormungandr {
+    fn alias(&self) -> &str {
+        self.alias()
+    }
+    fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
+        //TODO: implement conversion
+        self.rest()
+            .fragment_logs()
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+    fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError> {
+        self.rest()
+            .send_fragment(fragment)
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+    fn log_pending_fragment(&self, fragment_id: FragmentId) {
+        println!("Fragment '{}' is still pending", fragment_id);
+    }
+    fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String) {
+        println!("Fragment '{}' rejected: {}", fragment_id, reason);
+    }
+    fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash) {
+        println!("Fragment '{}' in block: {} ({})", fragment_id, block, date);
+    }
+    fn log_content(&self) -> String {
+        self.logger().get_log_content()
+    }
+}
 
 #[derive(Debug)]
 pub struct BackwardCompatibleJormungandr {
@@ -26,6 +62,10 @@ impl BackwardCompatibleJormungandr {
         )
     }
 
+    pub fn alias(&self) -> &str {
+        self.alias.as_str()
+    }
+
     pub fn new(
         child: Child,
         alias: String,
@@ -40,8 +80,8 @@ impl BackwardCompatibleJormungandr {
         }
     }
 
-    pub fn alias(&self) -> String {
-        self.alias.clone()
+    pub fn logger(&self) -> &JormungandrLogger {
+        &self.logger
     }
 
     pub fn rest(&self) -> BackwardCompatibleRest {

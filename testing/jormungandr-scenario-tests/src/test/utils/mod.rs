@@ -12,12 +12,12 @@ use jormungandr_lib::{
     interfaces::{FragmentStatus, NodeState},
     time::Duration as LibsDuration,
 };
-use jormungandr_testing_utils::testing::{
-    benchmark_efficiency, benchmark_speed, network_builder::Wallet, Speed, Thresholds,
+use jormungandr_testing_utils::{
+    testing::{benchmark_efficiency, benchmark_speed, FragmentNode, Speed, Thresholds},
+    wallet::Wallet,
 };
-
 use std::{
-    fmt, thread,
+    fmt,
     time::{Duration, SystemTime},
 };
 pub use wait::SyncWaitParams;
@@ -29,21 +29,6 @@ pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
 
 pub fn wait(seconds: u64) {
     std::thread::sleep(Duration::from_secs(seconds));
-}
-
-pub fn get_nodes_block_height_summary(nodes: Vec<&NodeController>) -> Vec<String> {
-    nodes
-        .iter()
-        .map({
-            |node| {
-                return format!(
-                    "node '{}' has block height: '{:?}'\n",
-                    node.alias(),
-                    node.stats().unwrap().stats.unwrap().last_block_height
-                );
-            }
-        })
-        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -114,7 +99,12 @@ pub fn measure_single_transaction_propagation_speed(
     report_node_stats_interval: MeasurementReportInterval,
 ) -> Result<()> {
     let node = leaders.iter().next().unwrap();
-    let check = controller.wallet_send_to(&mut wallet1, &wallet2, &node, 1_000.into())?;
+    let check = controller.fragment_sender().send_transaction(
+        &mut wallet1,
+        &wallet2,
+        *node as &dyn FragmentNode,
+        1_000.into(),
+    )?;
     let fragment_id = check.fragment_id().clone();
     let benchmark = benchmark_speed(info.to_owned())
         .with_thresholds(sync_wait)
@@ -281,17 +271,6 @@ pub fn assert_equals<A: fmt::Debug + PartialEq>(left: &A, right: &A, info: &str)
     Ok(())
 }
 
-pub fn assert_is_up(node: &NodeController) -> Result<()> {
-    if !node.is_up() {
-        bail!(ErrorKind::AssertionFailed(format!(
-            "Node '{}' is not up. Logs: {}",
-            node.alias(),
-            node.logger().get_log_content()
-        )))
-    }
-    Ok(())
-}
-
 pub fn assert(statement: bool, info: &str) -> Result<()> {
     if !statement {
         bail!(ErrorKind::AssertionFailed(info.to_string()))
@@ -299,7 +278,7 @@ pub fn assert(statement: bool, info: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn assert_is_in_block(status: FragmentStatus, node: &NodeController) -> Result<()> {
+pub fn assert_is_in_block<A: SyncNode + ?Sized>(status: FragmentStatus, node: &A) -> Result<()> {
     if !status.is_in_a_block() {
         bail!(ErrorKind::AssertionFailed(format!(
             "fragment status sent to node: {} is not in block :({:?}). logs: {}",
@@ -349,43 +328,6 @@ pub fn assert_are_in_sync<A: SyncNode + ?Sized>(
                 node.logger().get_log_content()
                 ),
         )?;
-    }
-    Ok(())
-}
-
-pub fn keep_sending_transaction_dispite_error(
-    n: u32,
-    controller: &mut Controller,
-    mut wallet1: &mut Wallet,
-    wallet2: &Wallet,
-    node: &NodeController,
-) -> Result<()> {
-    for _ in 0..n {
-        let check = controller.wallet_send_to(&mut wallet1, &wallet2, &node, 1_000.into());
-        if let Err(err) = check {
-            println!("ignoring error : {:?}", err);
-        }
-        thread::sleep(Duration::from_secs(1));
-    }
-    Ok(())
-}
-
-pub fn sending_transactions_to_node_sequentially(
-    n: u32,
-    controller: &mut Controller,
-    mut wallet1: &mut Wallet,
-    mut wallet2: &mut Wallet,
-    node: &NodeController,
-) -> Result<()> {
-    for _ in 0..n {
-        let check = controller.wallet_send_to(&mut wallet1, &wallet2, &node, 1_000.into())?;
-        let status = node.wait_fragment(Duration::from_secs(2), check)?;
-        assert_is_in_block(status, &node)?;
-        wallet1.confirm_transaction();
-        let check = controller.wallet_send_to(&mut wallet2, &wallet1, &node, 1_000.into())?;
-        let status = node.wait_fragment(Duration::from_secs(2), check)?;
-        assert_is_in_block(status, &node)?;
-        wallet2.confirm_transaction();
     }
     Ok(())
 }

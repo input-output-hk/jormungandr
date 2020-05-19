@@ -6,6 +6,7 @@ use crate::{
     },
     Context, ScenarioResult,
 };
+use jormungandr_testing_utils::testing::{FragmentNode, FragmentVerifier};
 use rand_chacha::ChaChaRng;
 use std::time::Duration;
 
@@ -47,16 +48,33 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     let mut wallet1 = controller.wallet("delegated2")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
+    let fragment_sender = controller.fragment_sender();
+    let fragment_verifier = FragmentVerifier;
+
     for _ in 0..10 {
-        let check1 = controller.wallet_send_to(&mut wallet1, &wallet2, &leader_1, 1_000.into())?;
+        let check1 = fragment_sender.send_transaction(
+            &mut wallet1,
+            &wallet2,
+            &leader_1 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
+        let check2 = fragment_sender.send_transaction(
+            &mut wallet2,
+            &wallet1,
+            &leader_2 as &dyn FragmentNode,
+            1_000.into(),
+        )?;
 
-        let check2 = controller.wallet_send_to(&mut wallet2, &wallet1, &leader_2, 1_000.into())?;
-
-        let status_1 = leader_1.wait_fragment(Duration::from_secs(2), check1)?;
-        let status_2 = leader_2.wait_fragment(Duration::from_secs(2), check2)?;
-
-        utils::assert_is_in_block(status_1, &leader_1)?;
-        utils::assert_is_in_block(status_2, &leader_2)?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check1,
+            &leader_1 as &dyn FragmentNode,
+        )?;
+        fragment_verifier.wait_and_verify_is_in_block(
+            Duration::from_secs(2),
+            check2,
+            &leader_2 as &dyn FragmentNode,
+        )?;
 
         wallet1.confirm_transaction();
         wallet2.confirm_transaction();

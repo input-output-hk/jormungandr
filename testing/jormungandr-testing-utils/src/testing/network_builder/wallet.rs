@@ -146,3 +146,9 @@ impl Wallet {
         self.inner.transaction_to(block0_hash, fees, address, value)
     }
 }
+
+impl Into<Inner> for Wallet {
+    fn into(self) -> Inner {
+        self.inner
+    }
+}

@@ -1,9 +1,11 @@
 use crate::common::{configuration::jormungandr_config::JormungandrConfig, legacy};
+use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::{fragment::FragmentId, header::HeaderId};
 use jormungandr_lib::interfaces::{
     EnclaveLeaderId, EpochRewardsInfo, FragmentLog, Info, NodeStatsDto, PeerRecord, PeerStats,
     StakeDistributionDto,
 };
+use jormungandr_testing_utils::testing::MemPoolCheck;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -100,19 +102,7 @@ impl JormungandrRest {
     }
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
-        let logs = self.inner.fragment_logs()?;
-        let logs: Vec<FragmentLog> = if logs.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&logs).map_err(|err| RestError::CannotDeserialize(err))?
-        };
-
-        let logs = logs
-            .into_iter()
-            .map(|log| (log.fragment_id().clone().into_hash(), log))
-            .collect();
-
-        Ok(logs)
+        self.inner.fragment_logs()
     }
 
     pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>, RestError> {
@@ -123,5 +113,9 @@ impl JormungandrRest {
             serde_json::from_str(&leaders).map_err(|err| RestError::CannotDeserialize(err))?
         };
         Ok(leaders)
+    }
+
+    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, reqwest::Error> {
+        self.inner.send_fragment(fragment)
     }
 }

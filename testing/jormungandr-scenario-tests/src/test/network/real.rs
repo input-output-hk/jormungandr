@@ -77,7 +77,7 @@ fn prepare_real_scenario(
             leader_counter = leader_counter + 1;
         }
 
-        for _ in 0..nodes_count_per_relay {
+        for _ in 0..legacy_nodes_count_per_relay {
             let mut legacy_node = Node::new(&legacy_name(legacy_nodes_counter));
             legacy_node.add_trusted_peer(relay_name.clone());
             topology_builder.register_node(legacy_node);

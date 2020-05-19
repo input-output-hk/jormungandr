@@ -8,6 +8,7 @@ use crate::{
     },
     Context,
 };
+use jormungandr_testing_utils::testing::FragmentNode;
 use rand_chacha::ChaChaRng;
 
 pub fn passive_leader_disruption_no_overlap(
@@ -351,12 +352,12 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     leader1.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     leader2.shutdown()?;
@@ -565,12 +566,12 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     let mut wallet1 = controller.wallet("delegated1")?;
     let mut wallet3 = controller.wallet("delegated3")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         2,
-        &mut controller,
         &mut wallet1,
         &mut wallet3,
-        &leader2,
+        &leader2 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leader1 = controller.spawn_node(
@@ -580,12 +581,12 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     )?;
     leader1.wait_for_bootstrap()?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         2,
-        &mut controller,
         &mut wallet1,
         &mut wallet3,
-        &leader3,
+        &leader3 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     leader2.shutdown()?;
@@ -597,12 +598,12 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     )?;
     passive.wait_for_bootstrap()?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         2,
-        &mut controller,
         &mut wallet1,
         &mut wallet3,
-        &passive,
+        &passive as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(
@@ -685,33 +686,33 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     leader2 =
         controller.restart_node(leader2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     leader5 =
         controller.restart_node(leader5, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(

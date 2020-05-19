@@ -1,6 +1,9 @@
 pub use self::{
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert},
+    node::{FragmentNode, FragmentNodeError, MemPoolCheck},
+    sender::{FragmentSender, FragmentSenderError},
     transaction::transaction_to,
+    verifier::{FragmentVerifier, FragmentVerifierError},
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{
@@ -19,7 +22,10 @@ use jormungandr_lib::{
 use thiserror::Error;
 
 mod initial_certificates;
+mod node;
+mod sender;
 mod transaction;
+mod verifier;
 
 #[derive(Error, Debug)]
 pub enum FragmentBuilderError {

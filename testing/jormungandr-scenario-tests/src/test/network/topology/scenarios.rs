@@ -6,6 +6,7 @@ use crate::{
     },
     Context, ScenarioResult,
 };
+use jormungandr_testing_utils::testing::FragmentNode;
 use rand_chacha::ChaChaRng;
 
 const LEADER_1: &str = "Leader1";
@@ -62,12 +63,14 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    let fragment_sender = controller.fragment_sender();
+
+    fragment_sender.send_transactions_round_trip(
         10,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leaders = vec![&leader1, &leader2, &leader3, &leader4];
@@ -144,12 +147,12 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leaders = vec![&leader1, &leader2, &leader3, &leader4, &leader5];
@@ -222,12 +225,12 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(
@@ -294,12 +297,12 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leaders = vec![&leader1, &leader2, &leader3, &leader4, &leader5];
@@ -371,12 +374,12 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leaders = vec![&leader1, &leader2, &leader3, &leader4];
@@ -461,12 +464,12 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leaders = vec![&leader1, &leader2, &leader3, &leader4];
@@ -551,12 +554,12 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leaders = vec![
@@ -673,12 +676,12 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("delegated1")?;
     let mut wallet2 = controller.wallet("delegated2")?;
 
-    utils::sending_transactions_to_node_sequentially(
+    controller.fragment_sender().send_transactions_round_trip(
         40,
-        &mut controller,
         &mut wallet1,
         &mut wallet2,
-        &leader1,
+        &leader1 as &dyn FragmentNode,
+        1_000.into(),
     )?;
 
     let leaders = vec![
