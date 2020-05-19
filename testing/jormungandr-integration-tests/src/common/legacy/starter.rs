@@ -259,6 +259,11 @@ impl Starter {
         let logger = JormungandrLogger::new(config.log_file_path.clone());
         loop {
             if start.elapsed() > self.timeout {
+                println!(
+                    "Timeout!: elapsed: '{:?}', waited till: '{:?}' ",
+                    start.elapsed(),
+                    self.timeout
+                );
                 return Err(StartupError::Timeout {
                     timeout: self.timeout.as_secs(),
                     log_content: file_utils::read_file(&config.log_file_path),
