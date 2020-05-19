@@ -4,7 +4,6 @@ use crate::common::{
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrLogger},
 };
-use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
     fee::LinearFee,
     fragment::{Fragment, FragmentId},
@@ -24,7 +23,7 @@ impl FragmentNode for BackwardCompatibleJormungandr {
         //TODO: implement conversion
         self.rest()
             .fragment_logs()
-            .map_err(|e| FragmentNodeError::UnknownError)
+            .map_err(|_| FragmentNodeError::UnknownError)
     }
     fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError> {
         self.rest()

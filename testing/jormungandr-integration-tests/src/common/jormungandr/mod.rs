@@ -18,7 +18,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use thiserror::Error;
 
-use chain_core::property::Fragment as _;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate;
 
@@ -40,16 +39,14 @@ impl FragmentNode for JormungandrProcess {
     }
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
         //TODO: implement conversion
-        println!("{:?}", self.rest().fragment_logs());
         self.rest()
             .fragment_logs()
-            .map_err(|e| FragmentNodeError::UnknownError)
+            .map_err(|_| FragmentNodeError::UnknownError)
     }
     fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError> {
-        println!("Sending fragment: {}", fragment.id());
-        let result = self.rest().send_fragment(fragment);
-        println!("Result: {:?}", result);
-        result.map_err(|_| FragmentNodeError::UnknownError)
+        self.rest()
+            .send_fragment(fragment)
+            .map_err(|_| FragmentNodeError::UnknownError)
     }
     fn log_pending_fragment(&self, fragment_id: FragmentId) {
         println!("Fragment '{}' is still pending", fragment_id);

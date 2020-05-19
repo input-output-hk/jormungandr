@@ -1,8 +1,6 @@
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use chain_crypto::Ed25519Extended;
 
-use chain_crypto::Ed25519Extended;
-
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {
     let faucet = startup::create_new_account_address();
