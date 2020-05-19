@@ -99,8 +99,10 @@ impl FragmentSender {
         for _ in 0..n {
             let check = self.send_transaction(&mut wallet1, &wallet2, node, value.clone())?;
             verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check, node)?;
+            wallet1.confirm_transaction();
             let check = self.send_transaction(&mut wallet2, &wallet1, node, value.clone())?;
             verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check, node)?;
+            wallet2.confirm_transaction();
         }
         Ok(())
     }
