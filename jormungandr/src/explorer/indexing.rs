@@ -222,8 +222,9 @@ impl ExplorerBlock {
                 // Unwrap is safe in this pattern match
                 BlockProducer::StakePool(block.header.get_stakepool_id().unwrap())
             }
-            // TODO: I think there are no accesors for this
-            Proof::Bft(_proof) => unimplemented!(),
+            Proof::Bft(_proof) => {
+                BlockProducer::BftLeader(block.header.get_bft_leader_id().unwrap())
+            }
             Proof::None => BlockProducer::None,
         };
 

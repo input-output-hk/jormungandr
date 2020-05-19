@@ -170,7 +170,7 @@ impl Block {
             .unwrap_or(None)
             .map(|reference| {
                 let ledger = reference.ledger();
-                let treasury_tax = reference.epoch_ledger_parameters().treasury_tax.clone();
+                let treasury_tax = reference.epoch_ledger_parameters().treasury_tax;
                 Treasury {
                     rewards: ledger.remaining_rewards().into(),
                     treasury: ledger.treasury_value().into(),
@@ -189,11 +189,8 @@ struct BftLeader {
     Context = Context,
 )]
 impl BftLeader {
-    // FIXME: Don't use String
-    fn id(&self) -> String {
-        // FIXME: How to print this
-        let id = &self.id;
-        unimplemented!()
+    fn id(&self) -> PublicKey {
+        self.id.as_public_key().into()
     }
 }
 
@@ -211,7 +208,7 @@ graphql_union!(Leader: Context |&self| {
 
 impl From<&ExplorerBlock> for Block {
     fn from(block: &ExplorerBlock) -> Block {
-        Block::from_valid_hash(block.id().clone())
+        Block::from_valid_hash(block.id())
     }
 }
 

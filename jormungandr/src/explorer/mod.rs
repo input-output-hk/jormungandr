@@ -509,7 +509,7 @@ fn apply_block_to_stake_pools(
                 },
             )
             .expect("block to be created by registered stake pool"),
-        indexing::BlockProducer::BftLeader(_) => unimplemented!(),
+        indexing::BlockProducer::BftLeader(_) => blocks,
         indexing::BlockProducer::None => blocks,
     };
 
