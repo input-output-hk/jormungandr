@@ -18,7 +18,12 @@ pub struct BackwardCompatibleJormungandr {
 
 impl BackwardCompatibleJormungandr {
     pub fn from_config(child: Child, config: BackwardCompatibleConfig, alias: String) -> Self {
-        Self::new(child, alias, config.log_file_path().clone(), config)
+        Self::new(
+            child,
+            alias,
+            config.log_file_path().expect("no log file defined").clone(),
+            config,
+        )
     }
 
     pub fn new(

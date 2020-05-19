@@ -64,7 +64,7 @@ impl JormungandrConfig {
         self.inner.rewards_history
     }
 
-    pub fn log_file_path(&self) -> PathBuf {
+    pub fn log_file_path(&self) -> Option<PathBuf> {
         self.inner.log_file_path()
     }
 

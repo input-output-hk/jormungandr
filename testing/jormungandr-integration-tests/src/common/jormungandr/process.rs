@@ -19,7 +19,12 @@ pub struct JormungandrProcess {
 
 impl JormungandrProcess {
     pub fn from_config(child: Child, config: JormungandrConfig, alias: String) -> Self {
-        JormungandrProcess::new(child, alias, config.log_file_path().clone(), config)
+        JormungandrProcess::new(
+            child,
+            alias,
+            config.log_file_path().unwrap().clone(),
+            config,
+        )
     }
 
     pub fn new(

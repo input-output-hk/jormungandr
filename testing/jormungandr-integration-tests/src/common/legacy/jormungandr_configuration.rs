@@ -94,8 +94,8 @@ impl BackwardCompatibleConfig {
             .linear_fees
     }
 
-    pub fn log_file_path(&self) -> PathBuf {
+    pub fn log_file_path(&self) -> Option<PathBuf> {
         let node_config = self.deserialize_node_config();
-        node_config.log.unwrap().log_file().unwrap()
+        node_config.log.unwrap().log_file()
     }
 }
