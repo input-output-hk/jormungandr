@@ -1,20 +1,11 @@
-extern crate base64;
-extern crate chain_impl_mockchain;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate grpc;
-extern crate hex;
-extern crate protobuf;
-
 use crate::mock::{
-    grpc::{ClientStubExt, Metadata},
     proto::{
         node::{
             Block, BlockIds, Fragment, FragmentIds, HandshakeRequest, HandshakeResponse, Header,
             PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
             UploadBlocksResponse,
         },
-        node_grpc::{Node, NodeClient},
+        node_grpc::NodeClient,
     },
     read_into,
 };
@@ -25,16 +16,20 @@ use chain_impl_mockchain::{
     block::{Block as ChainBlock, Header as ChainHeader},
     key::Hash,
 };
+
+use futures::Future;
+use grpc::{ClientRequestSink, ClientStubExt, SingleResponse};
 use protobuf::RepeatedField;
+
+pub use futures::executor::block_on;
 
 #[macro_export]
 macro_rules! response_to_vec {
     ( $e:expr ) => {{
-        $e.into_future()
-            .wait_drop_metadata()
+        $crate::mock::client::block_on($e.into_future().drop_metadata())
             .unwrap()
             .into_iter()
-            .map(|x| read_into(x.get_content()))
+            .map(|x| $crate::mock::read_into(x.get_content()))
             .collect()
     }};
 }
@@ -42,8 +37,7 @@ macro_rules! response_to_vec {
 #[macro_export]
 macro_rules! response_to_err {
     ( $e:expr ) => {{
-        $e.into_future()
-            .wait_drop_metadata()
+        $crate::mock::client::block_on($e.into_future().drop_metadata())
             .err()
             .expect("response is not an error")
     }};
@@ -60,6 +54,21 @@ error_chain! {
         }
 
     }
+}
+
+fn push_one<T, R>(
+    req: impl Future<Output = grpc::Result<(ClientRequestSink<T>, SingleResponse<R>)>>,
+    item: T,
+) -> Result<R>
+where
+    T: Send + 'static,
+    R: Send + 'static,
+{
+    let (mut sink, resp) = block_on(req).unwrap();
+    block_on(sink.wait()).unwrap();
+    sink.send_data(item).unwrap();
+    sink.finish().unwrap();
+    block_on(resp.drop_metadata()).map_err(|err| ErrorKind::InvalidRequest(err).into())
 }
 
 pub struct JormungandrClient {
@@ -128,8 +137,7 @@ impl JormungandrClient {
         let resp = self
             .client
             .handshake(grpc::RequestOptions::new(), HandshakeRequest::new());
-        let (_, handshake_resp, _) = resp.wait().unwrap();
-        handshake_resp
+        block_on(resp.drop_metadata()).unwrap()
     }
 
     pub fn get_genesis_block_hash(&self) -> Hash {
@@ -140,24 +148,17 @@ impl JormungandrClient {
         let resp = self
             .client
             .tip(grpc::RequestOptions::new(), TipRequest::new());
-        let (_, tip, _) = resp.wait().unwrap();
+        let tip = block_on(resp.drop_metadata()).unwrap();
         read_into(&tip.get_block_header())
     }
 
-    pub fn upload_blocks(
-        &self,
-        chain_block: ChainBlock,
-    ) -> Result<(Metadata, UploadBlocksResponse, Metadata)> {
+    pub fn upload_blocks(&self, chain_block: ChainBlock) -> Result<UploadBlocksResponse> {
         let mut bytes = Vec::with_capacity(4096);
         chain_block.serialize(&mut bytes).unwrap();
         let mut block = Block::new();
         block.set_content(bytes);
-        let resp = self.client.upload_blocks(
-            grpc::RequestOptions::new(),
-            grpc::StreamingRequest::single(block),
-        );
-        resp.wait()
-            .map_err(|err| ErrorKind::InvalidRequest(err).into())
+        let req = self.client.upload_blocks(grpc::RequestOptions::new());
+        push_one(req, block)
     }
 
     pub fn pull_blocks_to_tip(&self, from: Hash) -> grpc::StreamingResponse<Block> {
@@ -185,18 +186,11 @@ impl JormungandrClient {
             .pull_headers(grpc::RequestOptions::new(), request)
     }
 
-    pub fn push_header(
-        &self,
-        chain_header: chain::block::Header,
-    ) -> Result<(Metadata, PushHeadersResponse, Metadata)> {
+    pub fn push_header(&self, chain_header: chain::block::Header) -> Result<PushHeadersResponse> {
         let mut header = Header::new();
         header.set_content(chain_header.serialize_as_vec().unwrap());
-        let resp = self.client.push_headers(
-            grpc::RequestOptions::new(),
-            grpc::StreamingRequest::single(header),
-        );
-        resp.wait()
-            .map_err(|err| ErrorKind::InvalidRequest(err).into())
+        let req = self.client.push_headers(grpc::RequestOptions::new());
+        push_one(req, header)
     }
 
     pub fn get_fragments(&self, ids: Vec<Hash>) -> grpc::StreamingResponse<Fragment> {

@@ -1,19 +1,6 @@
-extern crate base64;
-extern crate bytes;
-extern crate futures;
-extern crate futures_cpupool;
-extern crate grpc;
-extern crate hex;
-extern crate protobuf;
-extern crate serde;
-extern crate serde_json;
-extern crate slog;
-extern crate slog_async;
-extern crate slog_json;
-
 use slog::Drain;
 
-use self::serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use std::{
     fs::{File, OpenOptions},
@@ -23,15 +10,11 @@ use std::{
 
 use crate::{
     common::file_utils,
-    mock::{
-        grpc::SingleResponse,
-        proto::{node::*, node_grpc::*},
-    },
+    mock::proto::{node::*, node_grpc::*},
 };
-use bytes::Bytes;
 use chain_impl_mockchain::key::Hash;
-use grpc::{Metadata, MetadataKey, Server};
-use std::{fmt, iter};
+use grpc::{Metadata, Server};
+use std::fmt;
 
 pub fn start(
     port: u16,
@@ -192,143 +175,140 @@ impl JormungandrServerImpl {
 impl Node for JormungandrServerImpl {
     fn handshake(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: HandshakeRequest,
-    ) -> ::grpc::SingleResponse<HandshakeResponse> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<HandshakeRequest>,
+        resp: ::grpc::ServerResponseUnarySink<HandshakeResponse>,
+    ) -> grpc::Result<()> {
         info!(self.log,"Handshake method recieved";"method" => MethodType::Handshake.to_string());
         let mut handshake = HandshakeResponse::new();
 
         handshake.set_version(self.protocol.clone() as u32);
         handshake.set_block0(self.genesis_hash.as_ref().to_vec());
 
-        SingleResponse::completed_with_metadata_and_trailing_metadata(
-            get_metadata(),
-            handshake,
-            get_metadata(),
-        )
+        resp.finish(handshake)
     }
 
     fn tip(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: TipRequest,
-    ) -> ::grpc::SingleResponse<TipResponse> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<TipRequest>,
+        resp: ::grpc::ServerResponseUnarySink<TipResponse>,
+    ) -> grpc::Result<()> {
         info!(self.log,"Tip request recieved";"method" => MethodType::Tip.to_string());
         let mut tip_response = TipResponse::new();
         tip_response.set_block_header(self.tip.as_ref().to_vec());
-        ::grpc::SingleResponse::completed(tip_response)
+        resp.finish(tip_response)
+    }
+
+    fn peers(
+        &self,
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<PeersRequest>,
+        resp: ::grpc::ServerResponseUnarySink<PeersResponse>,
+    ) -> ::grpc::Result<()> {
+        let peers_response = PeersResponse::new();
+        resp.finish(peers_response)
     }
 
     fn get_blocks(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: BlockIds,
-    ) -> ::grpc::StreamingResponse<Block> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<BlockIds>,
+        mut resp: ::grpc::ServerResponseSink<Block>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Get blocks request recieved";"method" => MethodType::GetBlocks.to_string());
-        ::grpc::StreamingResponse::empty()
+        resp.send_trailers(Metadata::default())
     }
 
     fn get_headers(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: BlockIds,
-    ) -> ::grpc::StreamingResponse<Header> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<BlockIds>,
+        mut resp: ::grpc::ServerResponseSink<Header>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Get headers request recieved";"method" => MethodType::GetHeaders.to_string());
-        ::grpc::StreamingResponse::empty()
+        resp.send_trailers(Metadata::default())
     }
 
     fn get_fragments(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: FragmentIds,
-    ) -> ::grpc::StreamingResponse<Fragment> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<FragmentIds>,
+        mut resp: ::grpc::ServerResponseSink<Fragment>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Get fragments request recieved";"method" => MethodType::GetFragments.to_string());
-        ::grpc::StreamingResponse::empty()
+        resp.send_trailers(Metadata::default())
     }
 
     fn pull_headers(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: PullHeadersRequest,
-    ) -> ::grpc::StreamingResponse<Header> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<PullHeadersRequest>,
+        mut resp: ::grpc::ServerResponseSink<Header>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Pull Headers request recieved";"method" => MethodType::PullHeaders.to_string());
-        ::grpc::StreamingResponse::empty()
+        resp.send_trailers(Metadata::default())
     }
 
     fn pull_blocks_to_tip(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: PullBlocksToTipRequest,
-    ) -> ::grpc::StreamingResponse<Block> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequestSingle<PullBlocksToTipRequest>,
+        mut resp: ::grpc::ServerResponseSink<Block>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"PullBlocksToTip request recieved";"method" => MethodType::PullBlocksToTip.to_string());
-        ::grpc::StreamingResponse::completed_with_metadata_and_trailing_metadata(
-            get_metadata(),
-            iter::from_fn(|| None).collect(),
-            get_metadata(),
-        )
+        resp.send_trailers(Metadata::default())
     }
 
     fn push_headers(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: ::grpc::StreamingRequest<Header>,
-    ) -> ::grpc::SingleResponse<PushHeadersResponse> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequest<Header>,
+        resp: ::grpc::ServerResponseUnarySink<PushHeadersResponse>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Push headers method recieved";"method" => MethodType::PushHeaders.to_string());
         let header_response = PushHeadersResponse::new();
-        ::grpc::SingleResponse::completed(header_response)
+        resp.finish(header_response)
     }
 
     fn upload_blocks(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: ::grpc::StreamingRequest<Block>,
-    ) -> ::grpc::SingleResponse<UploadBlocksResponse> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequest<Block>,
+        resp: ::grpc::ServerResponseUnarySink<UploadBlocksResponse>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Upload blocks method recieved";"method" => MethodType::UploadBlocks.to_string());
         let block_response = UploadBlocksResponse::new();
-        ::grpc::SingleResponse::completed(block_response)
+        resp.finish(block_response)
     }
 
     fn block_subscription(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: ::grpc::StreamingRequest<Header>,
-    ) -> ::grpc::StreamingResponse<BlockEvent> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequest<Header>,
+        mut resp: ::grpc::ServerResponseSink<BlockEvent>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Block subscription event recieved";"method" => MethodType::BlockSubscription.to_string());
-        ::grpc::StreamingResponse::completed_with_metadata_and_trailing_metadata(
-            get_metadata(),
-            iter::from_fn(|| None).collect(),
-            get_metadata(),
-        )
+        resp.send_trailers(Metadata::default())
     }
 
-    fn content_subscription(
+    fn fragment_subscription(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: ::grpc::StreamingRequest<Fragment>,
-    ) -> ::grpc::StreamingResponse<Fragment> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequest<Fragment>,
+        mut resp: ::grpc::ServerResponseSink<Fragment>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Content subscription event recieved";"method" => MethodType::ContentSubscription.to_string());
-        ::grpc::StreamingResponse::empty()
+        resp.send_trailers(Metadata::default())
     }
 
     fn gossip_subscription(
         &self,
-        _o: ::grpc::RequestOptions,
-        _p: ::grpc::StreamingRequest<Gossip>,
-    ) -> ::grpc::StreamingResponse<Gossip> {
+        _o: ::grpc::ServerHandlerContext,
+        _req: ::grpc::ServerRequest<Gossip>,
+        mut resp: ::grpc::ServerResponseSink<Gossip>,
+    ) -> ::grpc::Result<()> {
         info!(self.log,"Gossip subscription event recieved";"method" => MethodType::GossipSubscription.to_string());
-        ::grpc::StreamingResponse::completed_with_metadata_and_trailing_metadata(
-            get_metadata(),
-            iter::from_fn(|| None).collect(),
-            get_metadata(),
-        )
+        resp.send_trailers(Metadata::default())
     }
-}
-
-fn get_metadata() -> Metadata {
-    let mut metadata = Metadata::new();
-    metadata.add(
-        MetadataKey::from("node-id-bin"),
-        Bytes::from(&b"6266663338323161373465336631353966333466643463383865633233653664"[..]),
-    );
-    metadata
 }

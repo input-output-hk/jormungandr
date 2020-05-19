@@ -68,6 +68,8 @@ pub fn peer_addr(port: u16) -> Option<String> {
 }
 
 // L1005 Handshake version discrepancy
+// Mock broken: https://github.com/stepancheg/grpc-rust/issues/184
+#[ignore]
 #[test]
 pub fn wrong_protocol() {
     let mock_port = configuration::get_available_port();
@@ -101,6 +103,8 @@ pub fn wrong_protocol() {
 }
 
 // L1004 Handshake hash discrepancy
+// Mock broken: https://github.com/stepancheg/grpc-rust/issues/184
+#[ignore]
 #[test]
 pub fn wrong_genesis_hash() {
     let mock_port = configuration::get_available_port();
