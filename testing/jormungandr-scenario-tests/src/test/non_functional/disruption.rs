@@ -352,7 +352,7 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     leader3.wait_for_bootstrap()?;
 
     utils::sending_transactions_to_node_sequentially(
-        10,
+        40,
         &mut controller,
         &mut wallet1,
         &mut wallet2,
