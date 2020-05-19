@@ -133,7 +133,7 @@ pub fn itn_bootstrap() {
     // start from itn trusted peers
     let jormungandr_from_trusted_peers = Starter::new()
         .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
+        .timeout(Duration::from_secs(96_000))
         .benchmark("passive_node_itn_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
