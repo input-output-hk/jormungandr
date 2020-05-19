@@ -14,6 +14,7 @@ use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType}
 use jormungandr_lib::interfaces::InitialUTxO;
 use std::str::FromStr;
 
+#[ignore]
 #[test]
 pub fn test_legacy_node_all_fragments() {
     let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
