@@ -177,18 +177,6 @@ impl Storage {
         .await
     }
 
-    pub async fn get_with_info(
-        &self,
-        header_hash: HeaderHash,
-    ) -> Result<Option<(Block, BlockInfo<HeaderHash>)>, StorageError> {
-        self.run(move |connection| match connection.get_block(&header_hash) {
-            Err(StorageError::BlockNotFound) => Ok(None),
-            Ok(v) => Ok(Some(v)),
-            Err(e) => Err(e),
-        })
-        .await
-    }
-
     pub async fn block_exists(&self, header_hash: HeaderHash) -> Result<bool, StorageError> {
         self.run(
             move |connection| match connection.block_exists(&header_hash) {
@@ -208,20 +196,6 @@ impl Storage {
             move |connection| match connection.get_blocks_by_chain_length(chain_length) {
                 Err(StorageError::BlockNotFound) => Ok(Vec::new()),
                 Ok(r) => Ok(r.into_iter().map(|(block, _)| block).collect()),
-                Err(e) => Err(e),
-            },
-        )
-        .await
-    }
-
-    pub async fn get_block_infos_by_chain_length(
-        &self,
-        chain_length: u64,
-    ) -> Result<Vec<BlockInfo<HeaderHash>>, StorageError> {
-        self.run(
-            move |connection| match connection.get_block_infos_by_chain_length(chain_length) {
-                Err(StorageError::BlockNotFound) => Ok(Vec::new()),
-                Ok(r) => Ok(r),
                 Err(e) => Err(e),
             },
         )
