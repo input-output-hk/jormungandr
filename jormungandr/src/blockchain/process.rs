@@ -5,7 +5,7 @@ use super::{
     Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::{
-    blockcfg::{Block, FragmentId, Header},
+    blockcfg::{Block, FragmentId, Header, HeaderHash},
     blockchain::Checkpoints,
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
     log,
@@ -18,7 +18,6 @@ use crate::{
         },
         task::TokioServiceInfo,
     },
-    HeaderHash,
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
 use jormungandr_lib::interfaces::FragmentStatus;
