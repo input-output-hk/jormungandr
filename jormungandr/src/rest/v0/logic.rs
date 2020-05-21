@@ -7,6 +7,7 @@
 //   they are 400 or 500.
 
 use crate::{
+    blockchain::StorageError,
     diagnostic::Diagnostic,
     intercom::{self, NetworkMsg, TransactionMsg},
     rest::Context,
@@ -26,7 +27,6 @@ use chain_impl_mockchain::{
     transaction::Transaction,
     value::{Value, ValueError},
 };
-use chain_storage::Error as StorageError;
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
