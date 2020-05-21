@@ -32,7 +32,7 @@ use jormungandr_lib::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
         LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
         SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
-        TransactionOutput, VotePlanSerializableHelper,
+        TransactionOutput, VotePlanWithId,
     },
     time::SystemTime,
 };
@@ -644,15 +644,14 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .collect())
 }
 
-pub async fn get_active_vote_plans(
-    context: &Context,
-) -> Result<Vec<VotePlanSerializableHelper>, Error> {
-    Ok(context
+pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlanWithId>, Error> {
+    let vp = context
         .blockchain_tip()?
         .get_ref()
         .await
         .active_vote_plans()
         .iter()
-        .map(|vote_plan| VotePlanSerializableHelper::new(vote_plan.clone()))
-        .collect())
+        .map(|vote_plan| VotePlanWithId::new(vote_plan))
+        .collect();
+    Ok(vp)
 }
