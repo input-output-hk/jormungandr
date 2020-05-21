@@ -8,7 +8,6 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 extern crate bytes;
 use self::bytes::IntoBuf;
-use chain_core::property::Fragment as fragment_property;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -65,14 +64,15 @@ fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Re
 fn post_message(file: Option<PathBuf>, addr: HostAddr, debug: DebugFlag) -> Result<(), Error> {
     let msg_hex = io::read_line(&file)?;
     let msg_bin = hex::decode(&msg_hex)?;
+    let _fragment = Fragment::deserialize(msg_bin.as_slice().into_buf())
+        .map_err(Error::InputFragmentMalformed)?;
     let url = addr.with_segments(&["v0", "message"])?.into_url();
     let builder = reqwest::blocking::Client::new().post(url);
-    let fragment = Fragment::deserialize(msg_bin.as_slice().into_buf())
-        .map_err(Error::InputFragmentMalformed)?;
     let response = RestApiSender::new(builder, &debug)
         .with_binary_body(msg_bin)
         .send()?;
     response.ok_response()?;
-    println!("{}", fragment.id());
+    let fragment_id = response.body().text();
+    println!("{}", fragment_id.as_ref());
     Ok(())
 }

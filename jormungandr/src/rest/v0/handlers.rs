@@ -33,7 +33,6 @@ pub async fn post_message(
     let context = context.read().await;
     logic::post_message(&context, &message)
         .await
-        .map(|()| warp::reply())
         .map_err(warp::reject::custom)
 }
 

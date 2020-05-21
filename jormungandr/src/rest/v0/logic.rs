@@ -12,7 +12,9 @@ use crate::{
     rest::Context,
     secure::NodeSecret,
 };
-use chain_core::property::{Block as _, Deserialize, FromStr, Serialize};
+use chain_core::property::{
+    Block as _, Deserialize, Fragment as fragment_property, FromStr, Serialize,
+};
 use chain_crypto::{
     bech32::Bech32, digest::Error as DigestError, hash::Error as HashError, Blake2b256, PublicKey,
     PublicKeyFromStrError,
@@ -118,12 +120,12 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
     reply_future.await.map_err(Into::into)
 }
 
-pub async fn post_message(context: &Context, message: &[u8]) -> Result<(), Error> {
+pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, Error> {
     let fragment = Fragment::deserialize(message).map_err(Error::Deserialize)?;
+    let fragment_id = fragment.id().to_string();
     let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
     context.try_full()?.transaction_task.clone().try_send(msg)?;
-
-    Ok(())
+    Ok(fragment_id)
 }
 
 pub async fn get_tip(context: &Context) -> Result<String, Error> {
