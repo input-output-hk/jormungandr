@@ -50,6 +50,7 @@ See Internal documentation for more details: doc/internal_design.md
 */
 
 use super::{branch::Branches, reference_cache::RefCache};
+use crate::blockchain::StorageError;
 use crate::{
     blockcfg::{
         Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderHash,
@@ -58,7 +59,6 @@ use crate::{
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
-use chain_storage::Error as StorageError;
 use chain_time::TimeFrame;
 use slog::Logger;
 use std::sync::Arc;

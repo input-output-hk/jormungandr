@@ -1,5 +1,5 @@
+use crate::blockchain::StorageError;
 use crate::intercom;
-use chain_storage::Error as StorageError;
 
 error_chain! {
     foreign_links {

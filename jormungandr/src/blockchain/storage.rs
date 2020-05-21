@@ -3,15 +3,15 @@ use crate::{
     intercom::{self, ReplySendError, ReplyStreamHandle},
     start_up::{NodeStorage, NodeStorageConnection},
 };
-use chain_storage::{for_path_to_nth_ancestor, BlockInfo};
+use chain_storage::{for_path_to_nth_ancestor, BlockInfo, Error as StorageError};
 use futures::{prelude::*, ready, stream::FusedStream};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use r2d2::{ManageConnection, Pool};
 use slog::Logger;
+use thiserror::Error;
 use tokio::task::spawn_blocking;
 
 use std::convert::identity;
-use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -22,20 +22,48 @@ const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
 // before priming the pump again.
 const PUMP_PRESSURE_MARGIN: usize = 4;
 
-pub use chain_storage::Error as StorageError;
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("block not found")]
+    BlockNotFound,
+    // FIXME: add BlockId
+    #[error("database backend error")]
+    BackendError(#[source] StorageError),
+    #[error("Block already present in DB")]
+    BlockAlreadyPresent,
+    #[error("the parent block is missing for the required write")]
+    MissingParent,
+    #[error("failed to connect to the database")]
+    ConnectionFailed(#[source] r2d2::Error),
+    #[error("cannot iterate between the 2 given blocks")]
+    CannotIterate,
+}
 
-async fn run_blocking_with_connection<F, T, E>(pool: Pool<ConnectionManager>, f: F) -> Result<T, E>
+impl From<StorageError> for Error {
+    fn from(source: StorageError) -> Self {
+        match source {
+            StorageError::BlockNotFound => Error::BlockNotFound,
+            StorageError::BlockAlreadyPresent => Error::BlockAlreadyPresent,
+            StorageError::MissingParent => Error::MissingParent,
+            e => Error::BackendError(e),
+        }
+    }
+}
+
+async fn run_blocking_with_connection<F, T, E, EOut>(
+    pool: Pool<ConnectionManager>,
+    f: F,
+) -> Result<T, EOut>
 where
     F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
     F: Send + 'static,
     T: Send + 'static,
-    E: Error + From<StorageError> + Send + 'static,
+    E: Send + 'static,
+    EOut: Send + From<E> + From<Error> + 'static,
 {
     spawn_blocking(move || {
-        let mut connection = pool
-            .get()
-            .map_err(|e| StorageError::BackendError(e.into()))?;
-        f(&mut connection)
+        let mut connection = pool.get().map_err(|e| Error::ConnectionFailed(e))?;
+        f(&mut connection).map_err(Into::into)
     })
     .await
     .unwrap()
@@ -128,17 +156,9 @@ enum BlockIteration<T, F> {
 #[derive(Debug, thiserror::Error)]
 enum StreamingError {
     #[error("error accessing storage")]
-    Storage(
-        #[from]
-        #[source]
-        StorageError,
-    ),
+    Storage(#[from] Error),
     #[error("failed to send block")]
-    Sending(
-        #[from]
-        #[source]
-        ReplySendError,
-    ),
+    Sending(#[from] ReplySendError),
 }
 
 impl Storage {
@@ -149,26 +169,27 @@ impl Storage {
         Storage { pool, logger }
     }
 
-    async fn run<F, T, E>(&self, f: F) -> Result<T, E>
+    async fn run<F, T, E, EOut>(&self, f: F) -> Result<T, EOut>
     where
         F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
         F: Send + 'static,
         T: Send + 'static,
-        E: Error + From<StorageError> + Send + 'static,
+        E: Send + 'static,
+        EOut: Send + From<E> + From<Error> + 'static,
     {
         run_blocking_with_connection(self.pool.clone(), f).await
     }
 
-    pub async fn get_tag(&self, tag: String) -> Result<Option<HeaderHash>, StorageError> {
+    pub async fn get_tag(&self, tag: String) -> Result<Option<HeaderHash>, Error> {
         self.run(move |connection| connection.get_tag(&tag)).await
     }
 
-    pub async fn put_tag(&self, tag: String, header_hash: HeaderHash) -> Result<(), StorageError> {
+    pub async fn put_tag(&self, tag: String, header_hash: HeaderHash) -> Result<(), Error> {
         self.run(move |connection| connection.put_tag(&tag, &header_hash))
             .await
     }
 
-    pub async fn get(&self, header_hash: HeaderHash) -> Result<Option<Block>, StorageError> {
+    pub async fn get(&self, header_hash: HeaderHash) -> Result<Option<Block>, Error> {
         self.run(move |connection| match connection.get_block(&header_hash) {
             Err(StorageError::BlockNotFound) => Ok(None),
             Ok((block, _block_info)) => Ok(Some(block)),
@@ -177,7 +198,7 @@ impl Storage {
         .await
     }
 
-    pub async fn block_exists(&self, header_hash: HeaderHash) -> Result<bool, StorageError> {
+    pub async fn block_exists(&self, header_hash: HeaderHash) -> Result<bool, Error> {
         self.run(
             move |connection| match connection.block_exists(&header_hash) {
                 Err(StorageError::BlockNotFound) => Ok(false),
@@ -188,10 +209,7 @@ impl Storage {
         .await
     }
 
-    pub async fn get_blocks_by_chain_length(
-        &self,
-        chain_length: u64,
-    ) -> Result<Vec<Block>, StorageError> {
+    pub async fn get_blocks_by_chain_length(&self, chain_length: u64) -> Result<Vec<Block>, Error> {
         self.run(
             move |connection| match connection.get_blocks_by_chain_length(chain_length) {
                 Err(StorageError::BlockNotFound) => Ok(Vec::new()),
@@ -202,7 +220,7 @@ impl Storage {
         .await
     }
 
-    pub async fn put_block(&self, block: Block) -> Result<(), StorageError> {
+    pub async fn put_block(&self, block: Block) -> Result<(), Error> {
         self.run(move |connection| match connection.put_block(&block) {
             Err(StorageError::BlockNotFound) => unreachable!(),
             Err(e) => Err(e),
@@ -220,15 +238,15 @@ impl Storage {
         &self,
         from: HeaderHash,
         to: HeaderHash,
-    ) -> Result<impl Stream<Item = Result<Block, intercom::Error>>, StorageError> {
+    ) -> Result<impl Stream<Item = Result<Block, intercom::Error>>, Error> {
         let iter = self
-            .run(move |connection| match connection.is_ancestor(&from, &to) {
+            .run::<_, _, _, Error>(move |connection| match connection.is_ancestor(&from, &to) {
                 Ok(Some(distance)) => match connection.get_block_info(&to) {
                     Ok(to_info) => Ok(Box::new(BlockIterState::new(to_info, distance, identity))),
-                    Err(e) => Err(e),
+                    Err(e) => Err(e.into()),
                 },
-                Ok(None) => Err(StorageError::CannotIterate),
-                Err(e) => Err(e),
+                Ok(None) => Err(Error::CannotIterate),
+                Err(e) => Err(e.into()),
             })
             .await?;
 
@@ -296,7 +314,7 @@ impl Storage {
         F: Send + 'static,
         T: Send + 'static,
     {
-        let res = self
+        let res: Result<_, Error> = self
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
                     let depth = depth.unwrap_or(to_info.chain_length - 1);
@@ -326,7 +344,7 @@ impl Storage {
         &self,
         checkpoints: Vec<HeaderHash>,
         descendant: HeaderHash,
-    ) -> Result<Option<Ancestor>, StorageError> {
+    ) -> Result<Option<Ancestor>, Error> {
         self.run(move |connection| {
             let mut ancestor = None;
             let mut closest_found = std::u64::MAX;
@@ -497,7 +515,7 @@ where
         Ok(BlockIteration::Break)
     }
 
-    fn get_next_block(&mut self, store: &mut NodeStorageConnection) -> Result<Block, StorageError> {
+    fn get_next_block(&mut self, store: &mut NodeStorageConnection) -> Result<Block, Error> {
         debug_assert!(self.has_next());
         self.cur_length += 1;
 

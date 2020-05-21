@@ -109,11 +109,11 @@ impl From<oneshot::Canceled> for Error {
     }
 }
 
-impl From<chain_storage::Error> for Error {
-    fn from(err: chain_storage::Error) -> Self {
-        use chain_storage::Error::*;
+impl From<crate::blockchain::StorageError> for Error {
+    fn from(err: crate::blockchain::StorageError) -> Self {
+        use crate::blockchain::StorageError::*;
 
-        let code = match err {
+        let code = match &err {
             BlockNotFound => net_error::Code::NotFound,
             CannotIterate => net_error::Code::Internal,
             BackendError(_) => net_error::Code::Internal,

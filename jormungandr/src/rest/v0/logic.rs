@@ -6,6 +6,7 @@
 // - All errors should be processed on the framework  integration side. Usually
 //   they are 400 or 500.
 
+use crate::blockchain::StorageError;
 use crate::{
     diagnostic::Diagnostic,
     intercom::{self, NetworkMsg, TransactionMsg},
@@ -26,7 +27,6 @@ use chain_impl_mockchain::{
     transaction::Transaction,
     value::{Value, ValueError},
 };
-use chain_storage::Error as StorageError;
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
