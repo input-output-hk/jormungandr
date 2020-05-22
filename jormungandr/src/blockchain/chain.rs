@@ -55,10 +55,9 @@ use crate::{
         Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderHash,
         Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
     },
-    blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage},
+    blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage, StorageError},
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
-use chain_storage::Error as StorageError;
 use chain_time::TimeFrame;
 use slog::Logger;
 use std::sync::Arc;

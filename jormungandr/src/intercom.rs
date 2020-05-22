@@ -1,7 +1,7 @@
 use crate::blockcfg::{
     Block, BlockDate, Fragment, FragmentId, Header, HeaderHash, Ledger, LedgerParameters,
 };
-use crate::blockchain::Checkpoints;
+use crate::blockchain::{Checkpoints, StorageError};
 use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 use crate::network::p2p::{comm::PeerInfo, Address};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
@@ -109,17 +109,15 @@ impl From<oneshot::Canceled> for Error {
     }
 }
 
-impl From<chain_storage::Error> for Error {
-    fn from(err: chain_storage::Error) -> Self {
-        use chain_storage::Error::*;
-
-        let code = match err {
-            BlockNotFound => net_error::Code::NotFound,
-            CannotIterate => net_error::Code::Internal,
-            BackendError(_) => net_error::Code::Internal,
-            Block0InFuture => net_error::Code::Internal,
-            BlockAlreadyPresent => net_error::Code::Internal,
-            MissingParent => net_error::Code::InvalidArgument,
+impl From<StorageError> for Error {
+    fn from(err: StorageError) -> Self {
+        let code = match &err {
+            StorageError::BlockNotFound => net_error::Code::NotFound,
+            StorageError::CannotIterate => net_error::Code::Internal,
+            StorageError::BackendError(_) => net_error::Code::Internal,
+            StorageError::BlockAlreadyPresent => net_error::Code::Internal,
+            StorageError::MissingParent => net_error::Code::InvalidArgument,
+            StorageError::ConnectionFailed(_) => net_error::Code::Internal,
         };
         Error {
             code,
