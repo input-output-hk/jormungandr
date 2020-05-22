@@ -1,13 +1,14 @@
+extern crate base64;
+extern crate futures;
+extern crate hex;
+
 #[macro_use]
 pub mod client;
-pub mod convert;
-pub mod proto;
 pub mod server;
 #[cfg(test)]
 pub mod testing;
 
 pub use client::JormungandrClient;
-pub use convert::*;
 pub use server::JormungandrServerImpl;
 
 use chain_core::mempack::{ReadBuf, Readable};

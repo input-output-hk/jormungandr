@@ -5,10 +5,12 @@ authors = [ "dev@iohk.io" ]
 edition = "2018"
 
 [dependencies]
-grpc            = "0.8"
-grpc-protobuf   = "0.8"
-protobuf        = "2.14"
-futures         = "0.3"
+tonic = "0.2"
+prost = "0.6"
+tokio = { version = "0.2", features = ["macros"] }
+futures      = "0.3"
+futures-core = "0.3.5"
+futures-util = "0.3"
 base64 = "0.12"
 bytes = "0.4"
 hex = "0.4.2"

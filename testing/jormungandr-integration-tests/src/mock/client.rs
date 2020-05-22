@@ -1,78 +1,47 @@
-use crate::mock::{
-    proto::{
-        node::{
-            Block, BlockIds, Fragment, FragmentIds, HandshakeRequest, HandshakeResponse, Header,
-            PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
-            UploadBlocksResponse,
-        },
-        node_grpc::NodeClient,
-    },
-    read_into,
+extern crate base64;
+extern crate chain_impl_mockchain;
+extern crate futures;
+extern crate hex;
+
+use crate::mock::read_into;
+
+use node::node_client::NodeClient;
+use node::{
+    node_server::{Node, NodeServer},
+    Block, BlockEvent, BlockIds, Fragment, FragmentIds, Gossip, HandshakeRequest,
+    HandshakeResponse, Header, PeersRequest, PeersResponse, PullBlocksToTipRequest,
+    PullHeadersRequest, PushHeadersResponse, TipRequest, TipResponse, UploadBlocksResponse,
 };
-use chain_core::property::FromStr;
-use chain_core::property::Serialize;
-use chain_impl_mockchain as chain;
+
 use chain_impl_mockchain::{
-    block::{Block as ChainBlock, Header as ChainHeader},
+    block::Block as LibBlock, fragment::Fragment as LibFragment, header::Header as LibHeader,
     key::Hash,
 };
 
-use futures::Future;
-use grpc::{ClientRequestSink, ClientStubExt, SingleResponse};
-use protobuf::RepeatedField;
+use futures_util::stream;
+use std::pin::Pin;
+use tokio::sync::mpsc;
 
-pub use futures::executor::block_on;
-
-#[macro_export]
-macro_rules! response_to_vec {
-    ( $e:expr ) => {{
-        $crate::mock::client::block_on($e.into_future().drop_metadata())
-            .unwrap()
-            .into_iter()
-            .map(|x| $crate::mock::read_into(x.get_content()))
-            .collect()
-    }};
+pub mod node {
+    tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
 }
 
-#[macro_export]
-macro_rules! response_to_err {
-    ( $e:expr ) => {{
-        $crate::mock::client::block_on($e.into_future().drop_metadata())
-            .err()
-            .expect("response is not an error")
-    }};
-}
+use chain_core::property::FromStr;
+use chain_core::property::Serialize;
 
-error_chain! {
-    errors {
-        InvalidRequest (grpc_error: grpc::Error) {
-            display("request failed with message {}", grpc_error),
-        }
+use thiserror::Error;
 
-        InvalidAddressFormat (address: String) {
-            display("could not parse address '{}'. HINT: accepted format example: /ip4/127.0.0.1/tcp/9000", address),
-        }
-
-    }
-}
-
-fn push_one<T, R>(
-    req: impl Future<Output = grpc::Result<(ClientRequestSink<T>, SingleResponse<R>)>>,
-    item: T,
-) -> Result<R>
-where
-    T: Send + 'static,
-    R: Send + 'static,
-{
-    let (mut sink, resp) = block_on(req).unwrap();
-    block_on(sink.wait()).unwrap();
-    sink.send_data(item).unwrap();
-    sink.finish().unwrap();
-    block_on(resp.drop_metadata()).map_err(|err| ErrorKind::InvalidRequest(err).into())
+#[derive(Error, Debug, PartialEq)]
+pub enum MockClientError {
+    #[error("request failed with message {0}")]
+    InvalidRequest(String),
+    #[error(
+        "could not parse address '{0}'. HINT: accepted format example: /ip4/127.0.0.1/tcp/9000"
+    )]
+    InvalidAddressFormat(String),
 }
 
 pub struct JormungandrClient {
-    client: NodeClient,
     host: String,
     port: u16,
 }
@@ -84,120 +53,228 @@ impl Clone for JormungandrClient {
 }
 
 impl JormungandrClient {
-    pub fn from_address(address: &str) -> Result<Self> {
+    pub fn from_address(address: &str) -> Result<Self, MockClientError> {
         let elements: Vec<&str> = address.split("/").collect();
 
         let host = elements.get(2);
         let port = elements.get(4);
 
         if host.is_none() || port.is_none() {
-            return Err(ErrorKind::InvalidAddressFormat(address.to_owned()).into());
+            return Err(MockClientError::InvalidAddressFormat(address.to_owned()).into());
         }
 
         let port: u16 = port
             .unwrap()
             .parse()
-            .map_err(|_err| ErrorKind::InvalidAddressFormat(address.to_owned()))?;
+            .map_err(|_err| MockClientError::InvalidAddressFormat(address.to_owned()))?;
         Ok(Self::new(host.unwrap(), port))
     }
 
     pub fn new(host: &str, port: u16) -> Self {
-        let client_conf = Default::default();
-        let client = NodeClient::new_plain(host, port, client_conf).unwrap();
         Self {
-            client: client,
             host: host.to_owned(),
             port: port,
         }
     }
 
-    pub fn get_blocks(&self, blocks_id: &Vec<Hash>) -> grpc::StreamingResponse<Block> {
-        let block_ids_u8 = blocks_id
+    fn address(&self) -> String {
+        format!("http://{}:{}", self.host, self.port)
+    }
+
+    pub async fn handshake(&self) -> HandshakeResponse {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let request = tonic::Request::new(HandshakeRequest {});
+
+        client.handshake(request).await.unwrap().into_inner()
+    }
+
+    pub async fn tip(&self) -> LibHeader {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let request = tonic::Request::new(TipRequest {});
+        let response = client.tip(request).await.unwrap().into_inner();
+        read_into(&response.block_header)
+    }
+
+    pub async fn headers(&self, block_ids: &[Hash]) -> Result<Vec<LibHeader>, MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+
+        let request = tonic::Request::new(BlockIds {
+            ids: self.hashes_to_bin_vec(block_ids),
+        });
+
+        let response = client
+            .get_headers(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        self.headers_stream_to_vec(response.into_inner()).await
+    }
+
+    fn hashes_to_bin_vec(&self, blocks_id: &[Hash]) -> Vec<Vec<u8>> {
+        blocks_id
             .iter()
-            .map(|x| x.as_ref().iter().cloned().collect())
-            .collect::<Vec<Vec<u8>>>();
-        let mut block_id = BlockIds::new();
-        block_id.set_ids(RepeatedField::from_vec(block_ids_u8));
-        self.client
-            .get_blocks(grpc::RequestOptions::new(), block_id)
+            .map(|x| self.hash_to_bin(x))
+            .collect::<Vec<Vec<u8>>>()
     }
 
-    pub fn get_headers(&self, blocks_id: &Vec<Hash>) -> grpc::StreamingResponse<Header> {
-        let block_ids_u8 = blocks_id
-            .iter()
-            .map(|x| x.as_ref().iter().cloned().collect())
-            .collect::<Vec<Vec<u8>>>();
-        let mut block_id = BlockIds::new();
-        block_id.set_ids(RepeatedField::from_vec(block_ids_u8));
-        self.client
-            .get_headers(grpc::RequestOptions::new(), block_id)
+    fn hash_to_bin(&self, block_id: &Hash) -> Vec<u8> {
+        block_id.as_ref().iter().cloned().collect()
     }
 
-    pub fn handshake(&self) -> HandshakeResponse {
-        let resp = self
-            .client
-            .handshake(grpc::RequestOptions::new(), HandshakeRequest::new());
-        block_on(resp.drop_metadata()).unwrap()
+    pub async fn get_blocks(&self, blocks_id: &[Hash]) -> Result<Vec<LibBlock>, MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+
+        let request = tonic::Request::new(BlockIds {
+            ids: self.hashes_to_bin_vec(blocks_id),
+        });
+
+        let response = client
+            .get_blocks(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        self.block_stream_to_vec(response.into_inner()).await
     }
 
-    pub fn get_genesis_block_hash(&self) -> Hash {
-        Hash::from_str(&hex::encode(self.handshake().block0)).unwrap()
+    pub async fn get_genesis_block_hash(&self) -> Hash {
+        Hash::from_str(&hex::encode(self.handshake().await.block0)).unwrap()
     }
 
-    pub fn get_tip(&self) -> ChainHeader {
-        let resp = self
-            .client
-            .tip(grpc::RequestOptions::new(), TipRequest::new());
-        let tip = block_on(resp.drop_metadata()).unwrap();
-        read_into(&tip.get_block_header())
+    pub async fn pull_blocks_to_tip(&self, from: Hash) -> Result<Vec<LibBlock>, MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+
+        let request = tonic::Request::new(PullBlocksToTipRequest {
+            from: self.hashes_to_bin_vec(&vec![from]),
+        });
+        let response = client
+            .pull_blocks_to_tip(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        self.block_stream_to_vec(response.into_inner()).await
     }
 
-    pub fn upload_blocks(&self, chain_block: ChainBlock) -> Result<UploadBlocksResponse> {
-        let mut bytes = Vec::with_capacity(4096);
-        chain_block.serialize(&mut bytes).unwrap();
-        let mut block = Block::new();
-        block.set_content(bytes);
-        let req = self.client.upload_blocks(grpc::RequestOptions::new());
-        push_one(req, block)
-    }
-
-    pub fn pull_blocks_to_tip(&self, from: Hash) -> grpc::StreamingResponse<Block> {
-        let mut request = PullBlocksToTipRequest::new();
-        request.set_from(RepeatedField::from_vec(vec![from.as_ref().to_vec()]));
-
-        self.client
-            .pull_blocks_to_tip(grpc::RequestOptions::new(), request)
-    }
-
-    pub fn pull_headers(
+    async fn headers_stream_to_vec(
         &self,
-        from: Option<Hash>,
-        to: Option<Hash>,
-    ) -> grpc::StreamingResponse<Header> {
-        let mut request = PullHeadersRequest::new();
-        if let Some(hash) = to {
-            request.set_to(hash.as_ref().to_vec());
+        mut stream: tonic::codec::Streaming<Header>,
+    ) -> Result<Vec<LibHeader>, MockClientError> {
+        let mut headers: Vec<LibHeader> = Vec::new();
+        loop {
+            if let Some(next_message) = stream
+                .message()
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
+            {
+                headers.push(read_into(&next_message.content))
+            }
+            break;
         }
-        if let Some(hash) = from {
-            request.set_from(RepeatedField::from_vec(vec![hash.as_ref().to_vec()]));
-        }
-
-        self.client
-            .pull_headers(grpc::RequestOptions::new(), request)
+        Ok(headers)
     }
 
-    pub fn push_header(&self, chain_header: chain::block::Header) -> Result<PushHeadersResponse> {
-        let mut header = Header::new();
-        header.set_content(chain_header.serialize_as_vec().unwrap());
-        let req = self.client.push_headers(grpc::RequestOptions::new());
-        push_one(req, header)
+    async fn block_stream_to_vec(
+        &self,
+        mut stream: tonic::codec::Streaming<Block>,
+    ) -> Result<Vec<LibBlock>, MockClientError> {
+        let mut blocks: Vec<LibBlock> = Vec::new();
+        loop {
+            if let Some(next_message) = stream
+                .message()
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
+            {
+                blocks.push(read_into(&next_message.content))
+            }
+            break;
+        }
+        Ok(blocks)
     }
 
-    pub fn get_fragments(&self, ids: Vec<Hash>) -> grpc::StreamingResponse<Fragment> {
-        let mut fragment_ids = FragmentIds::new();
-        let encoded_hashes: Vec<Vec<u8>> = ids.iter().map(|hash| hash.as_ref().to_vec()).collect();
-        fragment_ids.set_ids(RepeatedField::from_vec(encoded_hashes));
-        self.client
-            .get_fragments(grpc::RequestOptions::new(), fragment_ids)
+    async fn fragment_stream_to_vec(
+        &self,
+        mut stream: tonic::codec::Streaming<Fragment>,
+    ) -> Result<Vec<LibFragment>, MockClientError> {
+        let mut fragments: Vec<LibFragment> = Vec::new();
+        loop {
+            if let Some(next_message) = stream
+                .message()
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
+            {
+                fragments.push(read_into(&next_message.content))
+            }
+            break;
+        }
+        Ok(fragments)
+    }
+
+    pub async fn pull_headers(
+        &self,
+        from: &[Hash],
+        to: Hash,
+    ) -> Result<Vec<LibHeader>, MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+
+        let mut request = tonic::Request::new(PullHeadersRequest {
+            from: self.hashes_to_bin_vec(from),
+            to: self.hash_to_bin(&to),
+        });
+        let response = client
+            .pull_headers(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        let mut blocks: Vec<LibHeader> = Vec::new();
+        let mut stream = response.into_inner();
+        loop {
+            if let Some(next_message) = stream
+                .message()
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
+            {
+                blocks.push(read_into(&next_message.content))
+            }
+            break;
+        }
+        Ok(blocks)
+    }
+
+    pub async fn upload_blocks(&self, lib_block: LibBlock) -> Result<(), MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+
+        let mut bytes = Vec::with_capacity(4096);
+        lib_block.serialize(&mut bytes).unwrap();
+        let block = Block { content: bytes };
+
+        let request = tonic::Request::new(stream::iter(vec![block]));
+        client
+            .upload_blocks(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        Ok(())
+    }
+
+    pub async fn push_headers(&self, lib_header: LibHeader) -> Result<(), MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+
+        let mut header = Header {
+            content: lib_header.serialize_as_vec().unwrap(),
+        };
+
+        let request = tonic::Request::new(stream::iter(vec![header]));
+        client
+            .push_headers(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        Ok(())
+    }
+
+    pub async fn get_fragments(&self, ids: Vec<Hash>) -> Result<Vec<LibFragment>, MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let request = tonic::Request::new(FragmentIds {
+            ids: self.hashes_to_bin_vec(&ids),
+        });
+
+        let response = client
+            .get_fragments(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        self.fragment_stream_to_vec(response.into_inner()).await
     }
 }
