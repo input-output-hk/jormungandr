@@ -13,7 +13,7 @@ use chain_impl_mockchain::{
     key::Hash,
 };
 
-use futures_util::stream;
+use futures::stream;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 

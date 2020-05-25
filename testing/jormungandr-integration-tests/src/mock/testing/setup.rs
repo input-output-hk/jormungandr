@@ -9,7 +9,7 @@ use crate::mock::{
 };
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::key::Hash;
-use futures_util::future::FutureExt;
+use futures::future::FutureExt;
 use jormungandr_lib::interfaces::TrustedPeer;
 use std::path::PathBuf;
 use std::{
