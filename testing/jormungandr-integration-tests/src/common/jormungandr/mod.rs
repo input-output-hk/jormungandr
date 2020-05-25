@@ -5,9 +5,12 @@ pub mod process;
 pub mod rest;
 pub mod starter;
 pub use benchmark::storage_loading_benchmark_from_log;
+use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::fragment::FragmentId;
 pub use configuration_builder::ConfigurationBuilder;
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::FragmentLog;
 use jormungandr_testing_utils::testing::MemPoolCheck;
 pub use logger::{JormungandrLogger, LogEntry};
@@ -17,9 +20,6 @@ pub use starter::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use thiserror::Error;
-
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::BlockDate;
 
 use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError};
 
@@ -41,12 +41,17 @@ impl FragmentNode for JormungandrProcess {
         //TODO: implement conversion
         self.rest()
             .fragment_logs()
-            .map_err(|_| FragmentNodeError::UnknownError)
+            .map_err(|e| FragmentNodeError::ListFragmentError(e.to_string()))
     }
     fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError> {
-        self.rest()
-            .send_fragment(fragment)
-            .map_err(|_| FragmentNodeError::UnknownError)
+        self.rest().send_fragment(fragment.clone()).map_err(|e| {
+            FragmentNodeError::CannotSendFragment {
+                reason: e.to_string(),
+                alias: self.alias().to_string(),
+                fragment_id: fragment.id(),
+                logs: self.log_content(),
+            }
+        })
     }
     fn log_pending_fragment(&self, fragment_id: FragmentId) {
         println!("Fragment '{}' is still pending", fragment_id);
