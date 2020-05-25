@@ -80,7 +80,7 @@ impl JormungandrLogger {
     }
 
     pub fn get_error_indicators() -> Vec<&'static str> {
-        vec!["panicked", "error"]
+        vec!["panicked"]
     }
 
     pub fn get_log_content(&self) -> String {
@@ -99,9 +99,11 @@ impl JormungandrLogger {
 
     pub fn contains_error(&self) -> Result<bool, LoggerError> {
         self.verify_file_exists()?;
-        Ok(Self::get_error_indicators()
+        let panic_in_logs_found = Self::get_error_indicators()
             .iter()
-            .any(|x| self.get_log_content().contains(x)))
+            .any(|x| self.get_log_content().contains(x));
+
+        Ok(panic_in_logs_found || self.get_lines_with_error().count() > 0)
     }
 
     pub fn print_raw_log(&self) {
