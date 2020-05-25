@@ -8,8 +8,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum FragmentNodeError {
-    #[error("cannot send fragment '{fragment_id}' to node '{alias}' . logs: {logs}")]
+    #[error("cannot send fragment due to '{reason}' to '{fragment_id}' to node '{alias}' . logs: {logs}")]
     CannotSendFragment {
+        reason: String,
         alias: String,
         fragment_id: FragmentId,
         logs: String,
@@ -18,6 +19,8 @@ pub enum FragmentNodeError {
     ReqwestError(#[from] reqwest::Error),
     #[error("unknown error")]
     UnknownError,
+    #[error("cannot list fragments error due to '{0}'")]
+    ListFragmentError(String),
 }
 
 pub trait FragmentNode {
