@@ -145,10 +145,6 @@ pub fn test_all_fragments() {
     stake_pool_info.rewards = TaxType::zero();
 
     // 6. send pool update certificate
-
-    /*
-        Ignoring failed step till resolution
-
     startup::sleep_till_next_epoch(1, &jormungandr.config);
 
     transaction = stake_pool_owner
@@ -163,7 +159,6 @@ pub fn test_all_fragments() {
 
     jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
     stake_pool_owner.confirm_transaction();
-    */
 
     // 7. send pool retire certificate
     transaction = stake_pool_owner
