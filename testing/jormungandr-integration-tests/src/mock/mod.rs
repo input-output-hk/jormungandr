@@ -1,7 +1,3 @@
-extern crate base64;
-extern crate futures;
-extern crate hex;
-
 #[macro_use]
 pub mod client;
 pub mod server;

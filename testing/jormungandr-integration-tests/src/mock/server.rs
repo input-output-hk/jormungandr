@@ -1,16 +1,6 @@
-extern crate base64;
-extern crate bytes;
-extern crate futures;
-extern crate hex;
-extern crate serde;
-extern crate serde_json;
-extern crate slog;
-extern crate slog_async;
-extern crate slog_json;
-
 use slog::Drain;
 
-use self::serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use std::{
     fs::{File, OpenOptions},

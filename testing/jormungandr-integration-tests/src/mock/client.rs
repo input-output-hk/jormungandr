@@ -1,8 +1,3 @@
-extern crate base64;
-extern crate chain_impl_mockchain;
-extern crate futures;
-extern crate hex;
-
 use crate::mock::read_into;
 
 use node::node_client::NodeClient;

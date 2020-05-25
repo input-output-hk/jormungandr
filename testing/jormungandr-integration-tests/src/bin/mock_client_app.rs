@@ -1,8 +1,3 @@
-extern crate base64;
-extern crate chain_impl_mockchain;
-extern crate futures;
-extern crate hex;
-
 use jormungandr_integration_tests::mock::client::JormungandrClient;
 use std::env;
 
