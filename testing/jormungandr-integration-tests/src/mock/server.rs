@@ -86,7 +86,7 @@ impl MockLogger {
         file_utils::read_file(&self.log_file_path)
     }
 
-    fn parse_line_as_entry(&self, line: &String) -> LogEntry {
+    fn parse_line_as_entry(&self, line: &str) -> LogEntry {
         self.try_parse_line_as_entry(line).unwrap_or_else(|error| panic!(
             "Cannot parse log line into json '{}': {}. Please ensure json logger is used for node. Full log content: {}",
             &line,
@@ -95,7 +95,7 @@ impl MockLogger {
         ))
     }
 
-    fn try_parse_line_as_entry(&self, line: &String) -> Result<LogEntry, impl std::error::Error> {
+    fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
         serde_json::from_str(&line)
     }
 
@@ -146,8 +146,7 @@ impl JormungandrServerImpl {
 
         let drain = slog_json::Json::new(file).add_default_keys().build().fuse();
         let drain = slog_async::Async::new(drain).build().fuse();
-        let log = slog::Logger::root(drain, o!());
-        log
+        slog::Logger::root(drain, o!())
     }
 
     pub fn new(

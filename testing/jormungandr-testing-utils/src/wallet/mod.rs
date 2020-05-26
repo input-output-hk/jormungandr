@@ -49,6 +49,7 @@ pub enum WalletError {
     FragmentError(#[from] FragmentBuilderError),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Wallet {
     Account(account::Wallet),
@@ -98,10 +99,7 @@ impl Wallet {
         }
     }
 
-    pub fn sign_slice<'a>(
-        &self,
-        data: &[u8],
-    ) -> Signature<TransactionBindingAuthDataPhantom, Ed25519> {
+    pub fn sign_slice(&self, data: &[u8]) -> Signature<TransactionBindingAuthDataPhantom, Ed25519> {
         match self {
             Wallet::Account(account) => account.signing_key().as_ref().sign_slice(&data),
             _ => unimplemented!(),
@@ -189,7 +187,7 @@ impl Wallet {
     ) -> Result<Fragment, WalletError> {
         FragmentBuilder::new(block0_hash, fees)
             .transaction(&self, address, value)
-            .map_err(|e| WalletError::FragmentError(e))
+            .map_err(WalletError::FragmentError)
     }
 
     pub fn issue_pool_retire_cert(
@@ -265,7 +263,7 @@ impl Into<WalletLib> for Wallet {
         let address_data = match self {
             Wallet::Account(account) => AddressData::new(
                 account.signing_key().as_ref().clone(),
-                Some(account.internal_counter().clone()),
+                Some(account.internal_counter()),
                 account.address(Discrimination::Test).into(),
             ),
             Wallet::UTxO(utxo) => AddressData::new(

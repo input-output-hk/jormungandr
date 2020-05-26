@@ -14,7 +14,7 @@ const DEFAULT_PREFIX: &str = "identifier";
 pub struct AccountIdentifier(transaction::AccountIdentifier);
 
 impl AccountIdentifier {
-    pub fn to_address(self, discrimination: chain_addr::Discrimination, prefix: &str) -> Address {
+    pub fn into_address(self, discrimination: chain_addr::Discrimination, prefix: &str) -> Address {
         let kind = match self.0 {
             transaction::AccountIdentifier::Single(identifier) => {
                 let public_key = identifier.into();
@@ -45,7 +45,7 @@ impl AccountIdentifier {
 impl fmt::Display for AccountIdentifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.clone()
-            .to_address(DEFAULT_DISCRIMINATION, DEFAULT_PREFIX)
+            .into_address(DEFAULT_DISCRIMINATION, DEFAULT_PREFIX)
             .fmt(f)
     }
 }
@@ -102,7 +102,7 @@ impl Serialize for AccountIdentifier {
         S: Serializer,
     {
         self.clone()
-            .to_address(DEFAULT_DISCRIMINATION, DEFAULT_PREFIX)
+            .into_address(DEFAULT_DISCRIMINATION, DEFAULT_PREFIX)
             .serialize(serializer)
     }
 }

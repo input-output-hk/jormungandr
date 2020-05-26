@@ -131,7 +131,7 @@ impl Wallet {
 
     pub fn identifier(&mut self) -> chain_impl_mockchain::account::Identifier {
         match &mut self.inner {
-            Inner::Account(account) => account.identifier().to_inner().into(),
+            Inner::Account(account) => account.identifier().to_inner(),
             _ => unimplemented!(),
         }
     }

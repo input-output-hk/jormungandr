@@ -23,6 +23,12 @@ pub struct NodeConfigBuilder {
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 
+impl Default for NodeConfigBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NodeConfigBuilder {
     pub fn new() -> NodeConfigBuilder {
         let rest_port = super::get_available_port();
@@ -47,7 +53,7 @@ impl NodeConfigBuilder {
 
         NodeConfigBuilder {
             storage: None,
-            log: log,
+            log,
             rest: Rest {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string())
                     .parse()
@@ -77,8 +83,7 @@ impl NodeConfigBuilder {
 
     pub fn serialize(node_config: &NodeConfig) -> PathBuf {
         let content = serde_yaml::to_string(&node_config).expect("Canot serialize node config");
-        let node_config_file_path = file_utils::create_file_in_temp("node.config", &content);
-        node_config_file_path
+        file_utils::create_file_in_temp("node.config", &content)
     }
 
     pub fn with_explorer(&mut self) -> &mut Self {

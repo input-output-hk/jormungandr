@@ -42,7 +42,7 @@ impl Consumption {
     fn median(mut markers: Vec<u32>) -> u32 {
         markers.sort();
         let mid = markers.len() / 2;
-        markers.get(mid).unwrap().clone()
+        *markers.get(mid).unwrap()
     }
 
     pub fn against(&self, thresholds: &Thresholds<Self>) -> Status {

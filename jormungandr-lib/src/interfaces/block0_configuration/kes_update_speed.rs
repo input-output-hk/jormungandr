@@ -158,7 +158,7 @@ mod test {
     #[test]
     #[should_panic]
     fn deserialize_from_invalid_type() {
-        const EXAMPLE: &'static str = "---\ntrue";
+        const EXAMPLE: &str = "---\ntrue";
 
         let _: KESUpdateSpeed = serde_yaml::from_str(EXAMPLE).unwrap();
     }
@@ -194,7 +194,7 @@ mod test {
     #[test]
     fn deserialize_from_duration_str() {
         const VALUE: u32 = 2 * 24 * 3600 + 6 * 3600 + 15 * 60 + 34;
-        const DURATION_STR: &'static str = "---\n2days 6h 15m 34s";
+        const DURATION_STR: &str = "---\n2days 6h 15m 34s";
 
         let decoded: KESUpdateSpeed = serde_yaml::from_str(&DURATION_STR).unwrap();
 

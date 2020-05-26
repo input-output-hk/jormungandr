@@ -33,7 +33,7 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
     process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_rest_get_next_block_id_command(
             &incorrect_block_id,
-            &1,
+            1,
             &jormungandr.rest_address(),
         ),
         "node rejected request because of invalid parameters",

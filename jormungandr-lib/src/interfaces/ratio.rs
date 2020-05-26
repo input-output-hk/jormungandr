@@ -52,7 +52,7 @@ pub enum ParseRatioError {
 impl FromStr for Ratio {
     type Err = ParseRatioError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut split = s.split("/");
+        let mut split = s.split('/');
 
         let numerator = if let Some(numerator) = split.next() {
             numerator.parse::<u64>()?
@@ -143,14 +143,14 @@ mod test {
             Ratio(rewards::Ratio {
                 numerator: Arbitrary::arbitrary(g),
                 denominator: NonZeroU64::new(Arbitrary::arbitrary(g))
-                    .unwrap_or(NonZeroU64::new(1).unwrap()),
+                    .unwrap_or_else(|| NonZeroU64::new(1).unwrap()),
             })
         }
     }
 
     #[test]
     fn value_display_as_u64() {
-        const NUMERATOR: u64 = 928170;
+        const NUMERATOR: u64 = 928_170;
         const DENOMINATOR: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(1291) };
         let ratio = Ratio(rewards::Ratio {
             numerator: NUMERATOR,
@@ -162,7 +162,7 @@ mod test {
 
     #[test]
     fn value_serde_as_u64() {
-        const NUMERATOR: u64 = 928170;
+        const NUMERATOR: u64 = 928_170;
         const DENOMINATOR: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(1291) };
         let ratio = Ratio(rewards::Ratio {
             numerator: NUMERATOR,

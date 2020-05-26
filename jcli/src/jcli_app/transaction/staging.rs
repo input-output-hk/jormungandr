@@ -50,6 +50,12 @@ impl std::fmt::Display for StagingKind {
     }
 }
 
+impl Default for Staging {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Staging {
     pub fn new() -> Self {
         Staging {
@@ -89,7 +95,9 @@ impl Staging {
             return Err(Error::TxKindToAddInputInvalid { kind: self.kind });
         }
 
-        Ok(self.inputs.push(input))
+        self.inputs.push(input);
+
+        Ok(())
     }
 
     pub fn add_output(&mut self, output: Output<Address>) -> Result<(), Error> {
@@ -97,7 +105,9 @@ impl Staging {
             return Err(Error::TxKindToAddOutputInvalid { kind: self.kind });
         }
 
-        Ok(self.outputs.push(output.into()))
+        self.outputs.push(output.into());
+
+        Ok(())
     }
 
     pub fn add_witness(&mut self, witness: chain::transaction::Witness) -> Result<(), Error> {
@@ -112,7 +122,9 @@ impl Staging {
             });
         }
 
-        Ok(self.witnesses.push(witness.into()))
+        self.witnesses.push(witness.into());
+
+        Ok(())
     }
 
     pub fn set_auth(&mut self, keys: &[String]) -> Result<(), Error> {
@@ -172,7 +184,10 @@ impl Staging {
 
     pub fn set_extra(&mut self, extra: chain::certificate::Certificate) -> Result<(), Error> {
         match self.kind {
-            StagingKind::Balancing => Ok(self.extra = Some(extra.into())),
+            StagingKind::Balancing => {
+                self.extra = Some(extra.into());
+                Ok(())
+            }
             kind => Err(Error::TxKindToAddExtraInvalid { kind }),
         }
     }
@@ -191,7 +206,7 @@ impl Staging {
         InputOutputBuilder::new(inputs.iter(), outputs.iter()).unwrap() // TODO better error than unwrap
     }
 
-    fn finalize_payload<'a, P, FA>(
+    fn finalize_payload<P, FA>(
         &mut self,
         payload: &P,
         fee_algorithm: &FA,
@@ -259,7 +274,7 @@ impl Staging {
                                 return Err(Error::TxWithOwnerStakeDelegationHasUtxoInput)
                             }
                         },
-                        inputs @ _ => {
+                        inputs => {
                             return Err(Error::TxWithOwnerStakeDelegationMultiInputs {
                                 inputs: inputs.len(),
                             })
@@ -286,7 +301,9 @@ impl Staging {
             });
         }
 
-        Ok(self.kind = StagingKind::Sealed)
+        self.kind = StagingKind::Sealed;
+
+        Ok(())
     }
 
     pub fn need_auth(&self) -> bool {
@@ -333,10 +350,10 @@ impl Staging {
         match &self.extra_authed {
             None => {
                 if self.kind != StagingKind::Sealed {
-                    Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
+                    return Err(Error::TxKindToGetMessageInvalid { kind: self.kind });
                 }
                 if self.need_auth() {
-                    Err(Error::TxNeedPayloadAuth)?
+                    return Err(Error::TxNeedPayloadAuth);
                 }
                 match &self.extra {
                     None => {
@@ -352,7 +369,7 @@ impl Staging {
             }
             Some(signed_cert) => {
                 if self.kind != StagingKind::Authed {
-                    Err(Error::TxKindToGetMessageInvalid { kind: self.kind })?
+                    return Err(Error::TxKindToGetMessageInvalid { kind: self.kind });
                 }
                 match signed_cert.clone().into() {
                     SignedCertificate::PoolRegistration(c, a) => {
@@ -478,16 +495,16 @@ impl Staging {
     }
 
     pub fn balance(&self, fee_algorithm: &impl FeeAlgorithm) -> Result<Balance, ValueError> {
+        use std::cmp::Ordering::*;
+
         let fees = self.fees(fee_algorithm);
         let inputs = Value::sum(self.inputs().iter().map(|i| i.value.into()))?;
         let outputs = Value::sum(self.outputs().iter().map(|o| (*o.value()).into()))?;
         let z = (outputs + fees)?;
-        if inputs > z {
-            Ok(Balance::Positive((inputs - z)?))
-        } else if inputs < z {
-            Ok(Balance::Negative((z - inputs)?))
-        } else {
-            Ok(Balance::Zero)
+        match inputs.cmp(&z) {
+            Greater => Ok(Balance::Positive((inputs - z)?)),
+            Less => Ok(Balance::Negative((z - inputs)?)),
+            Equal => Ok(Balance::Zero),
         }
     }
 }
@@ -519,7 +536,7 @@ mod tests {
         let incorrect_stage = StagingKind::Finalizing;
 
         let mut staging = Staging::new();
-        staging.kind = incorrect_stage.clone();
+        staging.kind = incorrect_stage;
 
         let mut input_ptr = [0u8; chain::transaction::INPUT_PTR_SIZE];
         input_ptr.clone_from_slice(hash.as_ref());
@@ -529,7 +546,7 @@ mod tests {
         assert!(
             result.is_err(),
             "add_input message should throw exception when adding inputs while in {:?} stage",
-            &incorrect_stage
+            incorrect_stage
         );
     }
 }

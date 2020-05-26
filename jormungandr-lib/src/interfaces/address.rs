@@ -69,12 +69,12 @@ impl<'de> Deserialize<'de> for Address {
         if deserializer.is_human_readable() {
             let s: String = String::deserialize(deserializer)?;
             chain_addr::AddressReadable::from_string_anyprefix(&s)
-                .map_err(|e| serde::de::Error::custom(e))
+                .map_err(serde::de::Error::custom)
                 .map(|a| Address(a.get_prefix(), a.to_address()))
         } else {
             let b: Vec<u8> = Vec::deserialize(deserializer)?;
             chain_addr::Address::from_bytes(&b)
-                .map_err(|e| serde::de::Error::custom(e))
+                .map_err(serde::de::Error::custom)
                 .map(Address::from)
         }
     }
@@ -95,9 +95,10 @@ mod test {
             let pk: chain_crypto::PublicKey<chain_crypto::Ed25519> =
                 kp.identifier().into_public_key();
 
-            let (discrimination, prefix) = match bool::arbitrary(g) {
-                true => (chain_addr::Discrimination::Production, "ca".to_owned()),
-                false => (chain_addr::Discrimination::Test, "ca".to_owned()),
+            let (discrimination, prefix) = if bool::arbitrary(g) {
+                (chain_addr::Discrimination::Production, "ca".to_owned())
+            } else {
+                (chain_addr::Discrimination::Test, "ca".to_owned())
             };
 
             let kind = match u8::arbitrary(g) % 3 {

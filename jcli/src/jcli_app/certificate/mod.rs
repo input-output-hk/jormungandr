@@ -87,6 +87,7 @@ pub enum Error {
     NotVotePlanCertificate,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum Certificate {
@@ -103,6 +104,7 @@ pub enum Certificate {
     Print(PrintArgs),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum NewArgs {

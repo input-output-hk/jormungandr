@@ -54,8 +54,8 @@ pub fn do_simple_transaction(
     let mut tx = JCLITransactionWrapper::new_transaction(config.genesis_block_hash());
     let transaction_message = tx
         .assert_add_input_from_utxo(utxo_sender)
-        .assert_add_output(&account_receiver.address().to_string(), &TX_VALUE.into())
-        .assert_add_output(&utxo_receiver.address().to_string(), &TX_VALUE.into())
+        .assert_add_output(&account_receiver.address().to_string(), TX_VALUE.into())
+        .assert_add_output(&utxo_receiver.address().to_string(), TX_VALUE.into())
         .assert_finalize()
         .seal_with_witness_for_address(&sender)
         .assert_to_message();

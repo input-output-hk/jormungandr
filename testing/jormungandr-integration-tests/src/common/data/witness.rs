@@ -24,12 +24,12 @@ impl Witness {
     ) -> Witness {
         let temp_folder_path = file_utils::get_temp_folder();
         Witness {
-            block_hash: block_hash.clone(),
-            transaction_id: transaction_id.clone(),
+            block_hash: *block_hash,
+            transaction_id: *transaction_id,
             addr_type: addr_type.to_string(),
             private_key_path: Witness::save_witness_key_temp_file(&temp_folder_path, private_key),
             file: Witness::generate_new_random_witness_file_path(&temp_folder_path),
-            spending_account_counter: spending_account_counter,
+            spending_account_counter,
         }
     }
 

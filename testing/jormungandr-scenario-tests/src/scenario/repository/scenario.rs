@@ -12,8 +12,8 @@ impl Scenario {
     pub fn new<S: Into<String>>(name: S, method: ScenarioMethod, tags: Vec<Tag>) -> Self {
         Scenario {
             name: name.into(),
-            method: method,
-            tags: tags,
+            method,
+            tags,
         }
     }
 

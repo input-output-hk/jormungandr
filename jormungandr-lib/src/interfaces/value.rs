@@ -109,7 +109,7 @@ mod test {
 
     #[test]
     fn value_display_as_u64() {
-        const VALUE: u64 = 928170;
+        const VALUE: u64 = 928_170;
         let value = Value(value::Value(VALUE));
 
         assert_eq!(value.to_string(), VALUE.to_string());
@@ -117,7 +117,7 @@ mod test {
 
     #[test]
     fn value_serde_as_u64() {
-        const VALUE: u64 = 928170;
+        const VALUE: u64 = 928_170;
         let value = Value(value::Value(VALUE));
 
         assert_eq!(

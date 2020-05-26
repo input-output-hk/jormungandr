@@ -1,5 +1,4 @@
 use crate::jcli_app::utils::{open_api_verifier, DebugFlag, OpenApiVerifier};
-use hex;
 use reqwest::{
     self,
     blocking::{Client, Request, RequestBuilder, Response},

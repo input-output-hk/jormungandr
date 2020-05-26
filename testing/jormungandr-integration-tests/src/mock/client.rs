@@ -44,7 +44,7 @@ impl Clone for JormungandrClient {
 
 impl JormungandrClient {
     pub fn from_address(address: &str) -> Result<Self, MockClientError> {
-        let elements: Vec<&str> = address.split("/").collect();
+        let elements: Vec<&str> = address.split('/').collect();
 
         let host = elements.get(2);
         let port = elements.get(4);
@@ -63,7 +63,7 @@ impl JormungandrClient {
     pub fn new(host: &str, port: u16) -> Self {
         Self {
             host: host.to_owned(),
-            port: port,
+            port,
         }
     }
 

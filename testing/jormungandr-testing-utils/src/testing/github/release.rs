@@ -15,7 +15,7 @@ impl Into<Release> for ReleaseDto {
     fn into(self) -> Release {
         Release {
             version: self.tag_name.clone(),
-            released_date: self.published_at.clone(),
+            released_date: self.published_at,
             releases_per_os: self
                 .assets
                 .iter()

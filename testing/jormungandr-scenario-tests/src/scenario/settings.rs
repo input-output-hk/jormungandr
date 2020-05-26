@@ -96,15 +96,15 @@ impl Dotifier {
 
     pub(crate) fn dot_node_label(&self, node_settings: &NodeSetting) -> String {
         let bft = if let Some(_bft) = &node_settings.secret.bft {
-            format!("[b]")
+            "[b]"
         } else {
-            "".to_owned()
+            ""
         };
 
         let genesis = if let Some(_genesis) = &node_settings.secret.genesis {
-            format!("[g]")
+            "[g]"
         } else {
-            "".to_owned()
+            ""
         };
         format!(
             "\"{}{}{}{}\"",

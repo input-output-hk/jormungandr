@@ -57,11 +57,11 @@ impl SpawnParams {
     }
 
     pub fn get_leadership_mode(&self) -> LeadershipMode {
-        self.leadership_mode.clone()
+        self.leadership_mode
     }
 
     pub fn get_persistence_mode(&self) -> PersistenceMode {
-        self.persistence_mode.clone()
+        self.persistence_mode
     }
 
     pub fn topics_of_interest(&mut self, topics_of_interest: TopicsOfInterest) -> &mut Self {
@@ -165,11 +165,11 @@ impl SpawnParams {
         }
 
         if let Some(max_inbound_connections) = &self.max_inbound_connections {
-            node_config.p2p.max_inbound_connections = Some(max_inbound_connections.clone());
+            node_config.p2p.max_inbound_connections = Some(*max_inbound_connections);
         }
 
         if let Some(max_connections) = &self.max_connections {
-            node_config.p2p.max_connections = Some(max_connections.clone());
+            node_config.p2p.max_connections = Some(*max_connections);
         }
 
         if let Some(listen_address_option) = &self.listen_address {

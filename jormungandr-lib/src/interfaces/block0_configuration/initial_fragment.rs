@@ -1,5 +1,4 @@
 use crate::interfaces::{Address, OldAddress, SignedCertificate, Value};
-use chain_addr;
 use chain_impl_mockchain::{
     certificate,
     fragment::Fragment,
@@ -9,6 +8,7 @@ use chain_impl_mockchain::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Initial {
@@ -94,7 +94,7 @@ fn try_extend_inits_with_tx<'a>(
 }
 
 fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDeclaration) {
-    if utxo_decl.addrs.len() == 0 {
+    if utxo_decl.addrs.is_empty() {
         panic!("old utxo declaration has no element")
     }
     if utxo_decl.addrs.len() >= 255 {
@@ -125,7 +125,7 @@ impl<'a> From<&'a Initial> for Fragment {
 fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
     let outputs: Vec<_> = v.iter().map(|utxo| utxo.to_output()).collect();
 
-    if outputs.len() == 0 {
+    if outputs.is_empty() {
         panic!("cannot create a singular transaction fragment with 0 output")
     }
     if outputs.len() >= 255 {
@@ -141,7 +141,7 @@ fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
 }
 
 fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
-    if v.len() == 0 {
+    if v.is_empty() {
         panic!("cannot create a singular legacy declaration fragment with 0 declaration")
     }
     if v.len() >= 255 {
@@ -151,7 +151,7 @@ fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
         .iter()
         .map(|utxo| (utxo.address.clone().into(), utxo.value.into()))
         .collect();
-    Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs: addrs })
+    Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs })
 }
 
 fn empty_auth_tx<P: Payload>(payload: &P, payload_auth: &P::Auth) -> Transaction<P> {

@@ -74,10 +74,9 @@ impl Decoder for SlogCodec {
         let line = self.0.decode(buf)?;
 
         if let Some(line) = line {
-            serde_json::from_str(&line)
-                .chain_err(|| ErrorKind::InvalidJSON)
-                .and_then(|map: Map<_, _>| StructuredLog::try_from(map))
-                .map(Some)
+            let map: Map<_, _> =
+                serde_json::from_str(&line).chain_err(|| ErrorKind::InvalidJSON)?;
+            StructuredLog::try_from(map).map(Some)
         } else {
             Ok(None)
         }

@@ -14,6 +14,7 @@ use std::{
 use structopt::StructOpt;
 use thiserror::Error;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("invalid input file path '{path}'")]
@@ -33,7 +34,7 @@ pub enum Error {
     #[error("genesis file corrupted")]
     GenesisFileCorrupted(#[source] serde_yaml::Error),
     #[error("generated block is not a valid genesis block")]
-    GeneratedBlock0Invali(#[from] ledger::Error),
+    GeneratedBlock0Invalid(#[from] ledger::Error),
     #[error("failed to serialize block")]
     BlockSerializationFailed(#[source] std::io::Error),
     #[error("failed to serialize genesis")]

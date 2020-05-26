@@ -33,8 +33,7 @@ pub fn create_folder(folder_path: &str) -> PathBuf {
 }
 
 pub fn create_empty_file_in_temp(file_name: &str) -> PathBuf {
-    let path = create_file_in_temp(&file_name, "");
-    path
+    create_file_in_temp(&file_name, "")
 }
 
 pub fn get_temp_folder() -> PathBuf {
@@ -64,7 +63,7 @@ pub fn create_file_in_temp(file_name: &str, content: &str) -> PathBuf {
 }
 
 /// Creates file with content
-pub fn create_file_with_content(path: &PathBuf, content: &str) -> () {
+pub fn create_file_with_content(path: &PathBuf, content: &str) {
     let mut file = std::fs::File::create(&path).unwrap();
     file.write_all(content.as_bytes())
         .expect(&format!("cannot write to file {:?}", path));
@@ -76,7 +75,7 @@ pub fn read_file(path: &PathBuf) -> String {
 }
 
 fn trim_new_line_at_end(mut content: String) -> String {
-    if content.ends_with("\n") {
+    if content.ends_with('\n') {
         let len = content.len();
         content.truncate(len - 1);
     }

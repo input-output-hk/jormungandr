@@ -230,7 +230,7 @@ impl BlockchainConfiguration {
         for param in params.iter().cloned() {
             match param {
                 ConfigParam::Block0Date(param) => block0_date
-                    .replace(SecondsSinceUnixEpoch::from(SecondsSinceUnixEpoch(param.0)))
+                    .replace(SecondsSinceUnixEpoch(param.0))
                     .map(|_| "block0_date"),
                 ConfigParam::ConsensusVersion(param) => {
                     block0_consensus.replace(param).map(|_| "block0_consensus")
@@ -323,28 +323,29 @@ impl BlockchainConfiguration {
         }
 
         Ok(BlockchainConfiguration {
-            block0_date: block0_date.ok_or(param_missing_error("block0_date"))?,
-            discrimination: discrimination.ok_or(param_missing_error("discrimination"))?,
-            block0_consensus: block0_consensus.ok_or(param_missing_error("block0_consensus"))?,
-            slots_per_epoch: slots_per_epoch.ok_or(param_missing_error("slots_per_epoch"))?,
-            slot_duration: slot_duration.ok_or(param_missing_error("slot_duration"))?,
+            block0_date: block0_date.ok_or_else(|| param_missing_error("block0_date"))?,
+            discrimination: discrimination.ok_or_else(|| param_missing_error("discrimination"))?,
+            block0_consensus: block0_consensus
+                .ok_or_else(|| param_missing_error("block0_consensus"))?,
+            slots_per_epoch: slots_per_epoch
+                .ok_or_else(|| param_missing_error("slots_per_epoch"))?,
+            slot_duration: slot_duration.ok_or_else(|| param_missing_error("slot_duration"))?,
             consensus_genesis_praos_active_slot_coeff: consensus_genesis_praos_active_slot_coeff
-                .ok_or(param_missing_error(
-                    "consensus_genesis_praos_active_slot_coeff",
-                ))?,
-            linear_fees: linear_fees.ok_or(param_missing_error("linear_fees"))?,
-            kes_update_speed: kes_update_speed.ok_or(param_missing_error("kes_update_speed"))?,
+                .ok_or_else(|| param_missing_error("consensus_genesis_praos_active_slot_coeff"))?,
+            linear_fees: linear_fees.ok_or_else(|| param_missing_error("linear_fees"))?,
+            kes_update_speed: kes_update_speed
+                .ok_or_else(|| param_missing_error("kes_update_speed"))?,
             epoch_stability_depth: epoch_stability_depth
-                .ok_or(param_missing_error("epoch_stability_depth"))?,
+                .ok_or_else(|| param_missing_error("epoch_stability_depth"))?,
             consensus_leader_ids,
             block_content_max_size: block_content_max_size
-                .ok_or(param_missing_error("block_content_max_size"))?,
-            fees_go_to: fees_go_to,
+                .ok_or_else(|| param_missing_error("block_content_max_size"))?,
+            fees_go_to,
             treasury,
             treasury_parameters,
             total_reward_supply,
             reward_parameters,
-            reward_constraints: reward_constraints,
+            reward_constraints,
             committees,
         })
     }

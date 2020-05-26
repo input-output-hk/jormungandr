@@ -20,7 +20,7 @@ pub fn test_pool_update() {
         .issue_pool_retire_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            &stake_pool.into(),
+            &stake_pool,
         )
         .unwrap()
         .encode();

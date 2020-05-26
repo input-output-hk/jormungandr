@@ -63,11 +63,11 @@ impl Blockchain {
         &self.consensus_genesis_praos_active_slot_coeff
     }
 
-    pub fn leaders<'a>(&'a self) -> impl Iterator<Item = &'a NodeAlias> {
+    pub fn leaders(&self) -> impl Iterator<Item = &NodeAlias> {
         self.leaders.iter()
     }
 
-    pub fn wallets<'a>(&'a self) -> impl Iterator<Item = &'a WalletTemplate> {
+    pub fn wallets(&self) -> impl Iterator<Item = &WalletTemplate> {
         self.wallets.values()
     }
 }

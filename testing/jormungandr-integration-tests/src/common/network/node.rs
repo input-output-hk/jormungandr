@@ -9,7 +9,7 @@ pub struct Node {
 impl Node {
     pub fn new(jormungandr: JormungandrProcess, alias: &str) -> Self {
         Self {
-            jormungandr: jormungandr,
+            jormungandr,
             alias: alias.to_string(),
         }
     }
@@ -27,12 +27,7 @@ impl Node {
     }
 
     pub fn address(&self) -> poldercast::Address {
-        self.jormungandr
-            .config
-            .node_config()
-            .p2p
-            .public_address
-            .clone()
+        self.jormungandr.config.node_config().p2p.public_address
     }
 
     pub fn shutdown(&self) {

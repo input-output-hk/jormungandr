@@ -47,8 +47,8 @@ pub struct FragmentBuilder {
 impl FragmentBuilder {
     pub fn new(block0_hash: &Hash, fees: &LinearFee) -> Self {
         Self {
-            block0_hash: block0_hash.clone(),
-            fees: fees.clone(),
+            block0_hash: *block0_hash,
+            fees: *fees,
         }
     }
 
@@ -62,13 +62,7 @@ impl FragmentBuilder {
         address: Address,
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
-        transaction_to(
-            &self.block0_hash,
-            &self.fees,
-            &from.clone().into(),
-            address,
-            value,
-        )
+        transaction_to(&self.block0_hash, &self.fees, from, address, value)
     }
 
     pub fn full_delegation_cert_for_block0(wallet: &Wallet, pool_id: PoolId) -> Initial {
@@ -76,20 +70,20 @@ impl FragmentBuilder {
     }
 
     pub fn stake_pool_registration(&self, funder: &Wallet, stake_pool: &StakePool) -> Fragment {
-        let mut inner_wallet = funder.clone().into();
+        let inner_wallet = funder.clone().into();
         self.fragment_factory()
-            .stake_pool_registration(&mut inner_wallet, &stake_pool.clone().into())
+            .stake_pool_registration(&inner_wallet, &stake_pool.clone().into())
     }
 
     pub fn delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
-        let mut inner_wallet = from.clone().into();
+        let inner_wallet = from.clone().into();
         self.fragment_factory()
-            .delegation(&mut inner_wallet, &stake_pool.clone().into())
+            .delegation(&inner_wallet, &stake_pool.clone().into())
     }
 
     pub fn delegation_remove(&self, from: &Wallet) -> Fragment {
-        let mut inner_wallet = from.clone().into();
-        self.fragment_factory().delegation_remove(&mut inner_wallet)
+        let inner_wallet = from.clone().into();
+        self.fragment_factory().delegation_remove(&inner_wallet)
     }
 
     pub fn delegation_to_many(
@@ -97,7 +91,7 @@ impl FragmentBuilder {
         from: &Wallet,
         distribution: Vec<(&StakePool, u8)>,
     ) -> Fragment {
-        let mut inner_wallet = from.clone().into();
+        let inner_wallet = from.clone().into();
         let inner_stake_pools: Vec<StakePoolLib> = distribution
             .iter()
             .cloned()
@@ -114,13 +108,13 @@ impl FragmentBuilder {
         }
 
         self.fragment_factory()
-            .delegation_to_many(&mut inner_wallet, &inner_distribution[..])
+            .delegation_to_many(&inner_wallet, &inner_distribution[..])
     }
 
     pub fn owner_delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
-        let mut inner_wallet = from.clone().into();
+        let inner_wallet = from.clone().into();
         self.fragment_factory()
-            .owner_delegation(&mut inner_wallet, &stake_pool.clone().into())
+            .owner_delegation(&inner_wallet, &stake_pool.clone().into())
     }
 
     pub fn stake_pool_retire(&self, owners: Vec<&Wallet>, stake_pool: &StakePool) -> Fragment {

@@ -21,7 +21,7 @@ pub struct ConsumptionBenchmarkDef {
 impl ConsumptionBenchmarkDef {
     pub fn new(name: String) -> Self {
         ConsumptionBenchmarkDef {
-            name: name,
+            name,
             pid: 0,
             thresholds: None,
         }

@@ -23,7 +23,7 @@ impl FromStr for Version {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         //remove first char
         let version_str = s.chars().next().map(|c| &s[c.len_utf8()..]).unwrap();
-        let mut tokens = version_str.split(".");
+        let mut tokens = version_str.split('.');
         let major: u32 = tokens.next().unwrap().parse().unwrap();
         let minor: u32 = tokens.next().unwrap().parse().unwrap();
         let patch: u32 = tokens.next().unwrap().parse().unwrap();

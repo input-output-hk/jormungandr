@@ -144,7 +144,7 @@ pub fn node_whitelist_itself() {
         .public_address;
     let policy = Policy {
         quarantine_duration: Some(Duration::new(1, 0)),
-        quarantine_whitelist: Some(vec![client_public_address.clone()]),
+        quarantine_whitelist: Some(vec![client_public_address]),
     };
 
     let client = network_controller
@@ -174,7 +174,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         .public_address;
     let policy = Policy {
         quarantine_duration: Some(Duration::new(30, 0)),
-        quarantine_whitelist: Some(vec![server_public_address.clone()]),
+        quarantine_whitelist: Some(vec![server_public_address]),
     };
 
     let client = network_controller
@@ -215,7 +215,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         .public_address;
     let policy = Policy {
         quarantine_duration: Some(Duration::new(1, 0)),
-        quarantine_whitelist: Some(vec![client_public_address.clone()]),
+        quarantine_whitelist: Some(vec![client_public_address]),
     };
 
     let client = network_controller

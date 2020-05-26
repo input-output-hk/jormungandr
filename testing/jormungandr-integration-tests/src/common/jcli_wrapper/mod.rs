@@ -36,10 +36,7 @@ pub enum Error {
     },
 }
 
-pub fn assert_genesis_encode(
-    genesis_yaml_file_path: &PathBuf,
-    path_to_output_block: &PathBuf,
-) -> () {
+pub fn assert_genesis_encode(genesis_yaml_file_path: &PathBuf, path_to_output_block: &PathBuf) {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_genesis_encode_command(&genesis_yaml_file_path, &path_to_output_block),
     );
@@ -47,10 +44,7 @@ pub fn assert_genesis_encode(
     file_assert::assert_file_exists_and_not_empty(path_to_output_block);
 }
 
-pub fn assert_genesis_decode(
-    genesis_yaml_file_path: &PathBuf,
-    path_to_output_block: &PathBuf,
-) -> () {
+pub fn assert_genesis_decode(genesis_yaml_file_path: &PathBuf, path_to_output_block: &PathBuf) {
     let output = process_utils::run_process_and_get_output(
         jcli_commands::get_genesis_decode_command(&genesis_yaml_file_path, &path_to_output_block),
     );
@@ -194,7 +188,7 @@ pub fn assert_post_transaction(transactions_message: &str, host: &str) -> Hash {
     hash
 }
 
-pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) -> () {
+pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) {
     let node_stats = assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
@@ -209,7 +203,7 @@ pub fn assert_transaction_post_accepted(transactions_message: &str, host: &str) 
     );
 }
 
-pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) -> () {
+pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) {
     let node_stats = assert_rest_stats(&host);
     let before: i32 = node_stats.get("txRecvCnt").unwrap().parse().unwrap();
 
@@ -259,7 +253,7 @@ pub fn assert_key_to_public_default(private_key: &str) -> String {
     single_line
 }
 
-pub fn assert_key_to_bytes(private_key: &str, path_to_output_file: &PathBuf) -> () {
+pub fn assert_key_to_bytes(private_key: &str, path_to_output_file: &PathBuf) {
     let input_file = file_utils::create_file_in_temp("input_key_to_bytes", &private_key);
 
     let output = process_utils::run_process_and_get_output(
@@ -342,9 +336,9 @@ pub fn assert_rest_get_block_by_id(block_id: &str, host: &str) -> String {
     single_line
 }
 
-pub fn assert_rest_get_next_block_id(block_id: &str, id_count: &i32, host: &str) -> Hash {
+pub fn assert_rest_get_next_block_id(block_id: &str, id_count: i32, host: &str) -> Hash {
     let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_rest_get_next_block_id_command(&block_id, &id_count, &host),
+        jcli_commands::get_rest_get_next_block_id_command(&block_id, id_count, &host),
     );
     let single_line = output.as_single_line();
     process_assert::assert_process_exited_successfully(output);
@@ -359,7 +353,7 @@ pub fn assert_transaction_in_block(
     let wait: Wait = Default::default();
     wait_until_transaction_processed(fragment_id, jormungandr, &wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, jormungandr);
-    fragment_id.clone()
+    fragment_id
 }
 
 pub fn assert_transaction_in_block_with_wait(
@@ -370,7 +364,7 @@ pub fn assert_transaction_in_block_with_wait(
     let fragment_id = assert_post_transaction(&transaction_message, &jormungandr.rest_address());
     wait_until_transaction_processed(fragment_id, jormungandr, wait).unwrap();
     assert_transaction_log_shows_in_block(fragment_id, jormungandr);
-    fragment_id.clone()
+    fragment_id
 }
 
 pub fn assert_transaction_rejected(
@@ -423,7 +417,7 @@ pub fn wait_until_transaction_processed(
             "{:?}",
             assert_get_rest_message_log(&jormungandr.rest_address())
         ),
-        transaction_id: fragment_id.clone(),
+        transaction_id: fragment_id,
         log_content: jormungandr.logger.get_log_content(),
     })
 }
@@ -473,7 +467,7 @@ pub fn assert_transaction_log_shows_rejected(
 }
 
 pub fn send_transactions_and_wait_until_in_block(
-    transactions_messages: &Vec<String>,
+    transactions_messages: &[String],
     jormungandr: &JormungandrProcess,
 ) -> Result<(), Error> {
     for transactions_message in transactions_messages.iter() {
@@ -492,7 +486,7 @@ pub fn wait_until_all_transactions_processed(
             let content = output.as_lossy_string();
             let fragments: Vec<FragmentLog> =
                 serde_yaml::from_str(&content).expect("Cannot parse fragment logs");
-            let at_least_one_pending = fragments.iter().any(|x| x.is_pending() == true);
+            let at_least_one_pending = fragments.iter().any(|x| x.is_pending());
             !at_least_one_pending
         },
         1,
@@ -517,7 +511,7 @@ pub fn check_all_transaction_log_shows_in_block(
         if !fragment.is_in_a_block() {
             return Err(Error::TransactionNotInBlock {
                 message_log: format!("{:?}", fragments.clone()),
-                transaction_id: fragment.fragment_id().clone(),
+                transaction_id: *fragment.fragment_id(),
                 log_content: jormungandr.logger.get_log_content(),
             });
         }

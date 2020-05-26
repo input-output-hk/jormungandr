@@ -20,7 +20,7 @@ pub fn test_leadership_logs_parent_hash_is_correct() {
         } = leadership.status()
         {
             let actual_block =
-                jcli_wrapper::assert_rest_get_next_block_id(&parent.to_string(), &1, &rest_address);
+                jcli_wrapper::assert_rest_get_next_block_id(&parent.to_string(), 1, &rest_address);
             assert_eq!(actual_block, *block, "wrong parent block");
         }
     }

@@ -525,7 +525,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         }
     };
 
-    let mut controller = scenario_settings.build(context.clone())?;
+    let mut controller = scenario_settings.build(context)?;
 
     let leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
@@ -628,7 +628,7 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         }
     };
 
-    let mut controller = scenario_settings.build(context.clone())?;
+    let mut controller = scenario_settings.build(context)?;
 
     let core =
         controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;

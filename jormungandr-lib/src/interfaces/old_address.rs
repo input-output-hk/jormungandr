@@ -61,7 +61,7 @@ impl<'de> Deserialize<'de> for OldAddress {
     {
         let s: String = String::deserialize(deserializer)?;
         cardano_legacy_address::Addr::from_str(&s)
-            .map_err(|e| serde::de::Error::custom(e))
+            .map_err(serde::de::Error::custom)
             .map(OldAddress)
     }
 }

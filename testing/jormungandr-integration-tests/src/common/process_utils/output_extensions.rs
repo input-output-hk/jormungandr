@@ -15,13 +15,12 @@ pub trait ProcessOutput {
 
 impl ProcessOutput for Output {
     fn as_lossy_string(&self) -> String {
-        let content = String::from_utf8_lossy(&self.stdout).into_owned();
-        content
+        String::from_utf8_lossy(&self.stdout).into_owned()
     }
 
     fn as_single_line(&self) -> String {
         let mut content = self.as_lossy_string();
-        if content.ends_with("\n") {
+        if content.ends_with('\n') {
             let len = content.len();
             content.truncate(len - 1);
         }
@@ -36,13 +35,12 @@ impl ProcessOutput for Output {
     }
 
     fn err_as_lossy_string(&self) -> String {
-        let content = String::from_utf8_lossy(&self.stderr).into_owned();
-        content
+        String::from_utf8_lossy(&self.stderr).into_owned()
     }
 
     fn err_as_single_line(&self) -> String {
         let mut content = self.err_as_lossy_string();
-        if content.ends_with("\n") {
+        if content.ends_with('\n') {
             let len = content.len();
             content.truncate(len - 1);
         }

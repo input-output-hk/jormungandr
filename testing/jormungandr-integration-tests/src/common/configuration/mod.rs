@@ -22,7 +22,7 @@ pub use secret_model_factory::SecretModelFactory;
 
 /// Get jormungandr executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {
-    const JORMUNGANDR_NAME: &'static str = env!("JORMUNGANDR_NAME");
+    const JORMUNGANDR_NAME: &str = env!("JORMUNGANDR_NAME");
     let mut path = get_working_directory();
     path.push(JORMUNGANDR_NAME);
     if cfg!(windows) {
@@ -39,7 +39,7 @@ pub fn get_jormungandr_app() -> PathBuf {
 
 /// Get jcli executable from current environment
 pub fn get_jcli_app() -> PathBuf {
-    const JOR_CLI_NAME: &'static str = env!("JOR_CLI_NAME");
+    const JOR_CLI_NAME: &str = env!("JOR_CLI_NAME");
     let mut path = get_working_directory();
     path.push(JOR_CLI_NAME);
     if cfg!(windows) {
@@ -59,7 +59,7 @@ pub fn get_jcli_app() -> PathBuf {
 /// Current exe directory is ./target/{profile}/deps/{app_name}.exe
 /// Function returns ./target/{profile}
 fn get_working_directory() -> PathBuf {
-    let mut output_directory: PathBuf = std::env::current_exe().unwrap().into();
+    let mut output_directory: PathBuf = std::env::current_exe().unwrap();
 
     output_directory.pop();
     output_directory.pop();

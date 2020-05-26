@@ -37,9 +37,9 @@ pub fn two_nodes_communication() {
     let utxo = leader_config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
-        &utxo.associated_fund(),
+        *utxo.associated_fund(),
         &sender,
-        &utxo.associated_fund(),
+        *utxo.associated_fund(),
         &reciever,
         trusted_node_config.genesis_block_hash(),
     );

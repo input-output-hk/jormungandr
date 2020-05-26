@@ -17,7 +17,7 @@ pub fn stake_distribution() {
     let fee = LinearFee::new(1, 1, 1);
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner_1.clone()],
-        &[sender.clone(), receiver.clone()],
+        &[sender.clone(), receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
@@ -85,7 +85,7 @@ pub fn stake_distribution() {
         initial_funds_per_account * 2 - transaction_fee - transaction_amount,
         0,
         (
-            stake_pool_id.clone(),
+            stake_pool_id,
             initial_funds_per_account + transaction_amount + reward,
         ),
         jormungandr.rest().stake_distribution_at(3).unwrap(),

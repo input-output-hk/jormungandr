@@ -109,7 +109,7 @@ mod test {
 
     #[test]
     fn stake_display_as_u64() {
-        const STAKE: u64 = 928170;
+        const STAKE: u64 = 928_170;
         let stake = Stake(stake::Stake(STAKE));
 
         assert_eq!(stake.to_string(), STAKE.to_string());
@@ -117,7 +117,7 @@ mod test {
 
     #[test]
     fn stake_serde_as_u64() {
-        const STAKE: u64 = 928170;
+        const STAKE: u64 = 928_170;
         let stake = Stake(stake::Stake(STAKE));
 
         assert_eq!(

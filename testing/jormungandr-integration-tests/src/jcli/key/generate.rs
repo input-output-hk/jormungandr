@@ -65,7 +65,7 @@ pub fn test_key_with_too_long_seed_generation() {
     test_key_invalid_seed_length(&too_long_seed);
 }
 
-fn test_key_invalid_seed_length(seed: &str) -> () {
+fn test_key_invalid_seed_length(seed: &str) {
     process_assert::assert_process_failed_and_contains_message(
         jcli_wrapper::jcli_commands::get_key_generate_with_seed_command("Ed25519Extended", &seed),
         "invalid seed length, expected 32 bytes but received",

@@ -174,7 +174,7 @@ impl Default for SecondsSinceUnixEpoch {
 
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        humantime::Duration::from(self.0.clone()).fmt(f)
+        humantime::Duration::from(self.0).fmt(f)
     }
 }
 
@@ -640,14 +640,14 @@ mod test {
 
     #[test]
     fn local_date_time_display_rfc_2822() {
-        let local = LocalDateTime(Local.ymd(2017, 08, 17).and_hms(11, 59, 42));
+        let local = LocalDateTime(Local.ymd(2017, 8, 17).and_hms(11, 59, 42));
 
         assert!(local.to_string().starts_with("Thu, 17 Aug 2017 "));
     }
 
     #[test]
     fn local_date_time_serde_human_readable() {
-        let local = LocalDateTime(Local.ymd(2017, 08, 17).and_hms(11, 59, 42));
+        let local = LocalDateTime(Local.ymd(2017, 8, 17).and_hms(11, 59, 42));
 
         assert!(serde_yaml::to_string(&local)
             .unwrap()
@@ -656,14 +656,14 @@ mod test {
 
     #[test]
     fn duration_display_readable() {
-        let duration = Duration(time::Duration::new(928237, 1129000));
+        let duration = Duration(time::Duration::new(928_237, 1_129_000));
 
         assert_eq!(duration.to_string(), "10days 17h 50m 37s 1ms 129us")
     }
 
     #[test]
     fn duration_serde_human_readable() {
-        let duration = Duration(time::Duration::new(928237, 1129000));
+        let duration = Duration(time::Duration::new(928_237, 1_129_000));
 
         assert_eq!(
             serde_yaml::to_string(&duration).unwrap(),
@@ -684,7 +684,7 @@ mod test {
 
     #[test]
     fn seconds_since_unix_epoch_serde_human_readable() {
-        let duration = SecondsSinceUnixEpoch(9982716);
+        let duration = SecondsSinceUnixEpoch(9_982_716);
 
         assert_eq!(serde_yaml::to_string(&duration).unwrap(), "---\n9982716")
     }

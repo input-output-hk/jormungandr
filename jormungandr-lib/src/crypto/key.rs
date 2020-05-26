@@ -529,7 +529,7 @@ mod test {
     // when we use the Display trait
     #[test]
     fn identifier_display() {
-        const EXPECTED_IDENTIFIER_STR: &'static str =
+        const EXPECTED_IDENTIFIER_STR: &str =
             "ed25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8";
         const IDENTIFIER_BYTES: [u8; 32] = [0x20; 32];
 
@@ -543,7 +543,7 @@ mod test {
     // serde with a human readable output
     #[test]
     fn identifier_serde_human_readable() {
-        const EXPECTED_IDENTIFIER_STR: &'static str =
+        const EXPECTED_IDENTIFIER_STR: &str =
             "---\ned25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8";
         const IDENTIFIER_BYTES: [u8; 32] = [0x20; 32];
 
@@ -559,7 +559,7 @@ mod test {
     // serde with a human readable output
     #[test]
     fn signing_key_serde_human_readable() {
-        const EXPECTED_SIGNING_KEY_STR: &'static str =
+        const EXPECTED_SIGNING_KEY_STR: &str =
             "---\ned25519_sk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsq8j4ww6";
         const SIGNING_KEY_BYTES: [u8; 32] = [0x20; 32];
 
@@ -573,7 +573,7 @@ mod test {
 
     #[test]
     fn signature_display() {
-        const EXPECTED_SIGNATURE_STR: &'static str =
+        const EXPECTED_SIGNATURE_STR: &str =
             "ed25519_sig1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqzlcn38";
         const SIGNATURE_BYTES: [u8; 64] = [0x20; 64];
 
@@ -585,7 +585,7 @@ mod test {
 
     #[test]
     fn signature_serde_human_readable() {
-        const EXPECTED_SIGNATURE_STR: &'static str =
+        const EXPECTED_SIGNATURE_STR: &str =
             "---\ned25519_sig1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqzlcn38";
         const SIGNATURE_BYTES: [u8; 64] = [0x20; 64];
 

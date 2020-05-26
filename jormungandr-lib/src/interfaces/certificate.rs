@@ -126,7 +126,7 @@ impl Readable for Certificate {
                 let cert = certificate::VoteCast::read(buf)?;
                 Ok(Certificate(certificate::Certificate::VoteCast(cert)))
             }
-            t => Err(ReadError::UnknownTag(t as u32))?,
+            t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
 }
@@ -216,7 +216,7 @@ impl Readable for SignedCertificate {
                     (),
                 )))
             }
-            t => Err(ReadError::UnknownTag(t as u32))?,
+            t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
 }
@@ -347,7 +347,7 @@ impl Serialize for Certificate {
 
         let bech32 = self.to_bech32().map_err(S::Error::custom)?;
 
-        bech32.to_string().serialize(serializer)
+        bech32.serialize(serializer)
     }
 }
 
@@ -371,7 +371,7 @@ impl Serialize for SignedCertificate {
         use serde::ser::Error as _;
 
         let bech32 = self.to_bech32().map_err(S::Error::custom)?;
-        bech32.to_string().serialize(serializer)
+        bech32.serialize(serializer)
     }
 }
 

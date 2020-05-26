@@ -41,8 +41,8 @@ impl NodeSetting {
     ) -> Self {
         Self {
             alias,
-            config: config,
-            secret: secret,
+            config,
+            secret,
             node_topology: template,
         }
     }
@@ -75,7 +75,7 @@ impl Settings {
         RNG: RngCore + CryptoRng,
     {
         let mut settings = Settings {
-            nodes: nodes,
+            nodes,
             wallets: HashMap::new(),
             block0: Block0Configuration {
                 blockchain_configuration: BlockchainConfiguration::new(
@@ -155,7 +155,7 @@ impl Settings {
             // TODO add support for sharing fragment with multiple utxos
             let initial_fragment = Initial::Fund(vec![InitialUTxO {
                 address: initial_address,
-                value: (*wallet_template.value()).into(),
+                value: *wallet_template.value(),
             }]);
 
             self.wallets

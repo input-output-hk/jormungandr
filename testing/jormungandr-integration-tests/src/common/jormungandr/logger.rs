@@ -158,28 +158,28 @@ impl JormungandrLogger {
         })
     }
 
-    fn is_error_line(&self, line: &String) -> bool {
-        match self.try_parse_line_as_entry(&line) {
+    fn is_error_line(&self, line: &str) -> bool {
+        match self.try_parse_line_as_entry(line) {
             Ok(entry) => entry.level == Level::ERRO,
             Err(_) => false,
         }
     }
 
-    fn is_warn_line(&self, line: &String) -> bool {
+    fn is_warn_line(&self, line: &str) -> bool {
         match self.try_parse_line_as_entry(&line) {
             Ok(entry) => entry.level == Level::WARN,
             Err(_) => false,
         }
     }
 
-    fn is_error_line_or_invalid(&self, line: &String) -> bool {
+    fn is_error_line_or_invalid(&self, line: &str) -> bool {
         match self.try_parse_line_as_entry(&line) {
             Ok(entry) => entry.level == Level::ERRO,
             Err(_) => true,
         }
     }
 
-    fn try_parse_line_as_entry(&self, line: &String) -> Result<LogEntry, impl std::error::Error> {
+    fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
         serde_json::from_str(&line)
     }
 
@@ -197,11 +197,12 @@ impl JormungandrLogger {
     }
 
     fn verify_file_exists(&self) -> Result<(), LoggerError> {
-        match self.log_file_path.exists() {
-            true => Ok(()),
-            false => Err(LoggerError::LogFileDoesNotExists {
+        if self.log_file_path.exists() {
+            Ok(())
+        } else {
+            Err(LoggerError::LogFileDoesNotExists {
                 log_file: self.log_file_path.to_str().unwrap().to_string(),
-            }),
+            })
         }
     }
 

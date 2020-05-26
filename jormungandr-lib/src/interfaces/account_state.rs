@@ -34,14 +34,14 @@ impl From<account::DelegationType> for DelegationType {
 
 impl From<DelegationType> for account::DelegationType {
     fn from(dt: DelegationType) -> Self {
-        if dt.pools.len() == 0 {
+        if dt.pools.is_empty() {
             account::DelegationType::NonDelegated
         } else if dt.pools.len() == 1 {
             account::DelegationType::Full(dt.pools[0].0.into_digest_of())
         } else {
             let v: u32 = dt.pools.iter().map(|(_, i)| (*i as u32)).sum();
             match v.try_into() {
-                Err(_) => panic!("delegation type pool overflow"),
+                Err(error) => panic!("delegation type pool overflow: {}", error),
                 Ok(parts) => {
                     let ratio = account::DelegationRatio::new(
                         parts,
@@ -127,7 +127,7 @@ impl AccountState {
 impl From<account::LastRewards> for LastRewards {
     fn from(lr: account::LastRewards) -> Self {
         Self {
-            epoch: lr.epoch.into(),
+            epoch: lr.epoch,
             reward: lr.reward.into(),
         }
     }
@@ -136,7 +136,7 @@ impl From<account::LastRewards> for LastRewards {
 impl From<LastRewards> for account::LastRewards {
     fn from(lr: LastRewards) -> Self {
         Self {
-            epoch: lr.epoch.into(),
+            epoch: lr.epoch,
             reward: lr.reward.into(),
         }
     }

@@ -120,7 +120,7 @@ impl Wallet {
             }
         };
 
-        let input = Input::from_account_single(self.identifier().to_inner().into(), value);
+        let input = Input::from_account_single(self.identifier().to_inner(), value);
         iobuilder.add_input(&input).unwrap();
         Ok(())
     }

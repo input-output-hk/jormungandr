@@ -39,7 +39,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
         let transaction =
             JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
-                .assert_add_output(&receiver.address().to_string(), &output_value.into())
+                .assert_add_output(&receiver.address().to_string(), output_value.into())
                 .assert_finalize()
                 .seal_with_witness_for_address(&sender)
                 .assert_to_message();
@@ -47,7 +47,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
         sender.confirm_transaction();
 
         if let Err(err) =
-            super::send_transaction_and_ensure_block_was_produced(&vec![transaction], &jormungandr)
+            super::send_transaction_and_ensure_block_was_produced(&[transaction], &jormungandr)
         {
             let message = format!("{:?}", err);
             finish_test_prematurely(message, benchmark);
@@ -88,14 +88,15 @@ fn check_explorer_and_rest_are_in_sync(
     let explorer = jormungandr.explorer();
     let block = explorer
         .get_last_block()
-        .map_err(|e| NodeStuckError::InternalExplorerError(e))?;
+        .map_err(NodeStuckError::InternalExplorerError)?;
 
-    match block_tip == block.id() {
-        true => Ok(()),
-        false => Err(NodeStuckError::ExplorerTipIsOutOfSync {
+    if block_tip == block.id() {
+        Ok(())
+    } else {
+        Err(NodeStuckError::ExplorerTipIsOutOfSync {
             actual: block.id(),
             expected: block_tip,
             logs: jormungandr.logger.get_log_content(),
-        }),
+        })
     }
 }

@@ -11,7 +11,7 @@ pub struct EfficiencyBenchmarkDef {
 impl EfficiencyBenchmarkDef {
     pub fn new(name: String) -> Self {
         EfficiencyBenchmarkDef {
-            name: name,
+            name,
             thresholds: None,
             max: 0u32.into(),
         }
@@ -57,7 +57,7 @@ pub struct EfficiencyBenchmarkRun {
 
 impl EfficiencyBenchmarkRun {
     pub fn increment(&mut self) -> &mut Self {
-        self.increment_by(1u32.into())
+        self.increment_by(1)
     }
 
     pub fn increment_by(&mut self, increment: u32) -> &mut Self {

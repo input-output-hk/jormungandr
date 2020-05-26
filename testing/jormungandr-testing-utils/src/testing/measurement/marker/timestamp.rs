@@ -7,6 +7,12 @@ use std::{
 #[derive(Clone, Copy)]
 pub struct Timestamp(SystemTime);
 
+impl Default for Timestamp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Timestamp {
     pub fn new() -> Self {
         Timestamp::from(SystemTime::now())

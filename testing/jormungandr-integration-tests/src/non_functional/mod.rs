@@ -57,7 +57,7 @@ pub enum NodeStuckError {
 }
 
 pub fn send_transaction_and_ensure_block_was_produced(
-    transation_messages: &Vec<String>,
+    transation_messages: &[String],
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
     let block_tip_before_transaction =
@@ -65,7 +65,7 @@ pub fn send_transaction_and_ensure_block_was_produced(
     let block_counter_before_transaction = jormungandr.logger.get_created_blocks_counter();
 
     jcli_wrapper::send_transactions_and_wait_until_in_block(&transation_messages, &jormungandr)
-        .map_err(|err| NodeStuckError::InternalJcliError(err))?;
+        .map_err(NodeStuckError::InternalJcliError)?;
 
     let block_tip_after_transaction =
         jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
@@ -73,7 +73,7 @@ pub fn send_transaction_and_ensure_block_was_produced(
 
     if block_tip_before_transaction == block_tip_after_transaction {
         return Err(NodeStuckError::TipIsNotMoving {
-            tip_hash: block_tip_after_transaction.clone(),
+            tip_hash: block_tip_after_transaction,
             logs: jormungandr.logger.get_log_content(),
         });
     }
@@ -94,13 +94,13 @@ pub fn check_transaction_was_processed(
     value: u64,
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
-    send_transaction_and_ensure_block_was_produced(&vec![transaction], &jormungandr)?;
+    send_transaction_and_ensure_block_was_produced(&[transaction], &jormungandr)?;
 
     check_funds_transferred_to(&receiver.address().to_string(), value.into(), &jormungandr)?;
 
     jormungandr
         .check_no_errors_in_log()
-        .map_err(|err| NodeStuckError::InternalJormungandrError(err))
+        .map_err(NodeStuckError::InternalJormungandrError)
 }
 
 pub fn assert_nodes_are_in_sync(nodes: Vec<&JormungandrProcess>) {
@@ -158,8 +158,8 @@ pub fn check_funds_transferred_to(
 
     if *account_state.value() != value {
         return Err(NodeStuckError::FundsNotTransfered {
-            actual: account_state.value().clone(),
-            expected: value.clone(),
+            actual: *account_state.value(),
+            expected: value,
             logs: jormungandr.logger.get_log_content(),
         });
     }

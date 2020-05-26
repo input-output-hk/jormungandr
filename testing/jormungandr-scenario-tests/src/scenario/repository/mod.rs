@@ -35,37 +35,38 @@ impl ScenariosRepository {
         Self {
             repository: scenarios_repository(),
             scenario: scenario.into(),
-            tag: tag,
+            tag,
         }
     }
 
     pub fn run(&self, context: &Context<ChaChaRng>) -> ScenarioSuiteResult {
-        let available_scenarios = self.scenarios_tagged_by(&self.tag);
+        let available_scenarios = self.scenarios_tagged_by(self.tag);
 
-        match self.should_run_all() {
-            true => self.run_all_scenarios(&available_scenarios, &mut context.clone()),
-            false => ScenarioSuiteResult::from_single(self.run_single_scenario(
+        if self.should_run_all() {
+            self.run_all_scenarios(&available_scenarios, &mut context.clone())
+        } else {
+            ScenarioSuiteResult::from_single(self.run_single_scenario(
                 &self.scenario,
                 &available_scenarios,
                 &mut context.clone(),
-            )),
+            ))
         }
     }
 
-    fn scenarios_tagged_by(&self, tag: &Tag) -> Vec<Scenario> {
+    fn scenarios_tagged_by(&self, tag: Tag) -> Vec<Scenario> {
         match tag {
             Tag::All => self.repository.clone(),
             Tag::Unstable => self
                 .repository
                 .iter()
                 .cloned()
-                .filter(|x| x.has_tag(*tag))
+                .filter(|x| x.has_tag(tag))
                 .collect(),
             _ => self
                 .repository
                 .iter()
                 .cloned()
-                .filter(|x| x.has_tag(*tag) && x.no_tag(Tag::Unstable))
+                .filter(|x| x.has_tag(tag) && x.no_tag(Tag::Unstable))
                 .collect(),
         }
     }
@@ -76,7 +77,7 @@ impl ScenariosRepository {
 
     fn run_all_scenarios(
         &self,
-        available_scenarios: &Vec<Scenario>,
+        available_scenarios: &[Scenario],
         mut context: &mut Context<ChaChaRng>,
     ) -> ScenarioSuiteResult {
         let mut suite_result = ScenarioSuiteResult::new();
@@ -93,7 +94,7 @@ impl ScenariosRepository {
     fn run_single_scenario(
         &self,
         scenario_name: &str,
-        scenarios_to_run: &Vec<Scenario>,
+        scenarios_to_run: &[Scenario],
         context: &mut Context<ChaChaRng>,
     ) -> ScenarioResult {
         let scenario = self
@@ -109,7 +110,7 @@ impl ScenariosRepository {
         let scenario_to_run = scenario.method();
 
         println!("Running '{}' scenario", scenario.name());
-        let result = std::panic::catch_unwind(|| return scenario_to_run(context.clone().derive()));
+        let result = std::panic::catch_unwind(|| scenario_to_run(context.clone().derive()));
         let scenario_result = ScenarioResult::from_result(result);
         println!("Scenario '{}' {}", scenario.name(), scenario_result);
         scenario_result

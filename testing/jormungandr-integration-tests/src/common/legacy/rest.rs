@@ -96,7 +96,7 @@ impl BackwardCompatibleRest {
         let logs: Vec<FragmentLog> = if logs.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&logs).map_err(|err| RestError::CannotDeserialize(err))?
+            serde_json::from_str(&logs).map_err(RestError::CannotDeserialize)?
         };
 
         let logs = logs
@@ -127,7 +127,7 @@ impl BackwardCompatibleRest {
         let raw = fragment.serialize_as_vec().unwrap();
         let fragment_id = fragment.id();
 
-        self.post("message", raw.clone())?;
+        self.post("message", raw)?;
         Ok(MemPoolCheck::new(fragment_id))
     }
 }

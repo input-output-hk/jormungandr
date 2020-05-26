@@ -15,7 +15,6 @@ pub use self::open_api_verifier::OpenApiVerifier;
 pub use self::output_format::OutputFormat;
 pub use self::rest_api::{RestApiResponse, RestApiResponseBody, RestApiSender};
 
-use bech32;
 use structopt::StructOpt;
 use thiserror::Error;
 
