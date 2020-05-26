@@ -89,17 +89,21 @@ pub enum ExplorerAddress {
     Old(OldAddress),
 }
 
+pub struct ExplorerBlockBuildingContext<'a> {
+    pub discrimination: Discrimination,
+    pub prev_transactions: &'a Transactions,
+    pub prev_blocks: &'a Blocks,
+}
+
 impl ExplorerBlock {
     /// Map the given `Block` to the `ExplorerBlock`, transforming all the transactions
     /// using the previous state to transform the utxo inputs to the form (Address, Amount)
     /// and mapping the account inputs to addresses with the given discrimination
     /// This function relies on the given block to be validated previously, and will panic
     /// otherwise
-    pub fn resolve_from(
+    pub fn resolve_from<'a>(
         block: &Block,
-        discrimination: Discrimination,
-        prev_transactions: &Transactions,
-        prev_blocks: &Blocks,
+        context: ExplorerBlockBuildingContext<'a>,
     ) -> ExplorerBlock {
         let fragments = block.contents.iter();
         let id = block.id();
@@ -279,15 +283,13 @@ impl ExplorerTransaction {
 
     // TODO: The signature of this got too long, using a builder may be a good idea
     // It's called only from one place, though, so it is not that bothersome
-    pub fn from<'a, T>(
+    pub fn from<'transaction, 'context, T>(
+        context: &'context ExplorerBlockBuildingContext<'context>,
         id: &FragmentId,
-        tx: &TransactionSlice<'a, T>,
-        discrimination: Discrimination,
-        transactions: &Transactions,
-        blocks: &Blocks,
+        tx: &TransactionSlice<'transaction, T>,
         certificate: Option<Certificate>,
         offset_in_block: u32,
-        current_block: &HashMap<FragmentId, ExplorerTransaction>,
+        transactions_in_current_block: &HashMap<FragmentId, ExplorerTransaction>,
     ) -> ExplorerTransaction {
         let outputs = tx.outputs().iter();
         let inputs = tx.inputs().iter();
@@ -310,7 +312,7 @@ impl ExplorerTransaction {
                             .expect("the input to be validated")
                             .into(),
                     );
-                    let address = ExplorerAddress::New(Address(discrimination, kind));
+                    let address = ExplorerAddress::New(Address(context.discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
                 (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
@@ -320,22 +322,24 @@ impl ExplorerTransaction {
                             .try_into()
                             .expect("multisig identifier size doesn't match address kind"),
                     );
-                    let address = ExplorerAddress::New(Address(discrimination, kind));
+                    let address = ExplorerAddress::New(Address(context.discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
                 (InputEnum::UtxoInput(utxo_pointer), _witness) => {
                     let tx = utxo_pointer.transaction_id;
                     let index = utxo_pointer.output_index;
 
-                    let output = transactions
+                    let output = context
+                        .prev_transactions
                         .lookup(&tx)
                         .and_then(|block_id| {
-                            blocks
+                            context
+                                .prev_blocks
                                 .lookup(&block_id)
                                 .map(|block| &block.transactions[&tx].outputs[index as usize])
                         })
                         .or_else(|| {
-                            current_block
+                            transactions_in_current_block
                                 .get(&tx)
                                 .map(|fragment| &fragment.outputs[index as usize])
                         })

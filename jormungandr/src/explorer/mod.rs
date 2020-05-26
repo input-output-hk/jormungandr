@@ -154,9 +154,11 @@ impl ExplorerDB {
 
         let block = ExplorerBlock::resolve_from(
             &block0,
-            blockchain_config.discrimination,
-            &Transactions::new(),
-            &Blocks::new(),
+            indexing::ExplorerBlockBuildingContext {
+                discrimination: blockchain_config.discrimination,
+                prev_transactions: &Transactions::new(),
+                prev_blocks: &Blocks::new(),
+            },
         );
 
         let blocks = apply_block_to_blocks(Blocks::new(), &block)?;
@@ -243,8 +245,14 @@ impl ExplorerDB {
             stake_pool_blocks,
         } = previous_state.state().clone();
 
-        let explorer_block =
-            ExplorerBlock::resolve_from(&block, discrimination, &transactions, &blocks);
+        let explorer_block = ExplorerBlock::resolve_from(
+            &block,
+            indexing::ExplorerBlockBuildingContext {
+                discrimination,
+                prev_transactions: &transactions,
+                prev_blocks: &blocks,
+            },
+        );
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(stake_pool_data, stake_pool_blocks, &explorer_block);
 
