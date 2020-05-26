@@ -158,7 +158,7 @@ pub trait Edge {
     type Node;
     fn new(node: Self::Node, cursor: IndexCursor) -> Self;
 
-    fn cursor<'a>(&'a self) -> &'a IndexCursor;
+    fn cursor(&self) -> &IndexCursor;
 }
 
 pub struct ValidatedPaginationArguments<I> {
@@ -239,7 +239,7 @@ where
         let end_cursor = edges
             .last()
             .map(|e| e.cursor().clone())
-            .or(start_cursor.clone());
+            .or_else(|| start_cursor.clone());
 
         Ok(Connection {
             edges,
@@ -289,7 +289,7 @@ impl Edge for BlockEdge {
         }
     }
 
-    fn cursor<'a>(&'a self) -> &'a IndexCursor {
+    fn cursor(&self) -> &IndexCursor {
         &self.cursor
     }
 }
@@ -300,7 +300,7 @@ impl Edge for PoolEdge {
         PoolEdge { node, cursor }
     }
 
-    fn cursor<'a>(&'a self) -> &'a IndexCursor {
+    fn cursor(&self) -> &IndexCursor {
         &self.cursor
     }
 }
