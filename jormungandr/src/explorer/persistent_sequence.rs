@@ -33,3 +33,9 @@ impl<T> PersistentSequence<T> {
         self.len
     }
 }
+
+impl<T> Default for PersistentSequence<T> {
+    fn default() -> Self {
+        PersistentSequence::new()
+    }
+}
