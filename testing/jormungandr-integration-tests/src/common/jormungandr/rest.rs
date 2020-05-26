@@ -86,7 +86,8 @@ impl JormungandrRest {
         serde_json::from_str(&self.inner.p2p_available()?).map_err(RestError::CannotDeserialize)
     }
 
-    pub fn p2p_view(&self) -> Result<Vec<Info>, RestError> {
+    pub fn p2p_view(&self) -> Result<Vec<String>, RestError> {
+        self.print_response_text(&self.inner.p2p_view()?);
         serde_json::from_str(&self.inner.p2p_view()?).map_err(RestError::CannotDeserialize)
     }
 

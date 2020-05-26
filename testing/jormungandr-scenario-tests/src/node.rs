@@ -235,7 +235,7 @@ impl NodeController {
         Ok(p2p_available)
     }
 
-    pub fn p2p_view(&self) -> Result<Vec<Info>> {
+    pub fn p2p_view(&self) -> Result<Vec<String>> {
         let p2p_view = self.rest_client.p2p_view()?;
         self.progress_bar
             .log_info(format!("network/p2p/view: {:?}", p2p_view));

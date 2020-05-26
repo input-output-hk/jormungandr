@@ -16,8 +16,8 @@ pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         topology [
             LEADER1,
             LEADER2 -> LEADER1,
-            LEADER3 -> LEADER2 -> LEADER1,
-            LEADER4 -> LEADER2 -> LEADER1,
+            LEADER3 -> LEADER1,
+            LEADER4 -> LEADER1,
         ]
         blockchain {
             consensus = GenesisPraos,
@@ -49,36 +49,12 @@ pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         controller.spawn_node_custom(controller.new_spawn_params(LEADER3).max_connections(1))?;
     leader3.wait_for_bootstrap()?;
 
-    utils::wait(10);
-
-    super::assert_connected_cnt(
-        &leader3,
-        1,
-        "leader3 should be connected to 1 node (leader1)",
-    )?;
-    super::assert_are_in_network_view(
-        &leader3,
-        vec![&leader2, &leader1],
-        "leader3 should have leader2 in network view only",
-    )?;
-
     let leader4 =
         controller.spawn_node(LEADER4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader4.wait_for_bootstrap()?;
 
     utils::wait(30);
-    super::assert_connected_cnt(
-        &leader4,
-        2,
-        "leader4 should only connect to 2 nodes (leader2,leader3)",
-    )?;
-    super::assert_connected_cnt(&leader3, 1, "leader3 should be connected to 1 node")?;
-    super::assert_connected_cnt(&leader2, 1, "leader2 should be connected to 1 node leader1")?;
-    super::assert_are_in_network_view(
-        &leader4,
-        vec![&leader2, &leader1],
-        "leader4 should have only 2 nodes in network view",
-    )?;
+    super::assert_connected_cnt(&leader1, 2, "leader1 should have only 2 nodes connected")?;
 
     leader1.shutdown()?;
     leader2.shutdown()?;

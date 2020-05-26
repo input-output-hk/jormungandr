@@ -69,7 +69,7 @@ pub fn assert_are_in_network_view(
         utils::assert(
             network_view
                 .iter()
-                .any(|info| info.address == peer.address().to_string()),
+                .any(|address| address.to_string() == peer.address().to_string()),
             &format!(
                 "{}: Peer {} is not present in network view list",
                 info,
