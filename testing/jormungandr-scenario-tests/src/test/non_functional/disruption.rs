@@ -8,7 +8,6 @@ use crate::{
     },
     Context,
 };
-use jormungandr_testing_utils::testing::FragmentNode;
 use rand_chacha::ChaChaRng;
 
 pub fn passive_leader_disruption_no_overlap(
@@ -356,7 +355,7 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -570,7 +569,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         2,
         &mut wallet1,
         &mut wallet3,
-        &leader2 as &dyn FragmentNode,
+        &leader2,
         1_000.into(),
     )?;
 
@@ -585,7 +584,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         2,
         &mut wallet1,
         &mut wallet3,
-        &leader3 as &dyn FragmentNode,
+        &leader3,
         1_000.into(),
     )?;
 
@@ -602,12 +601,12 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         2,
         &mut wallet1,
         &mut wallet3,
-        &passive as &dyn FragmentNode,
+        &passive,
         1_000.into(),
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![&leader1, &leader2, &leader3, &leader4, &leader5, &passive],
+        vec![&leader1, &leader3, &leader4, &leader5, &passive],
         SyncWaitParams::nodes_restart(5).into(),
         "custom_network_disruption",
         MeasurementReportInterval::Standard,
@@ -617,7 +616,6 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     leader5.shutdown()?;
     leader4.shutdown()?;
     leader3.shutdown()?;
-    leader2.shutdown()?;
     leader1.shutdown()?;
     controller.finalize();
     Ok(ScenarioResult::passed())
@@ -690,7 +688,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         10,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -701,7 +699,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         10,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -711,7 +709,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         10,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 

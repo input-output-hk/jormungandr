@@ -6,7 +6,7 @@ use crate::{
     },
     Context, ScenarioResult,
 };
-use jormungandr_testing_utils::testing::FragmentNode;
+use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use rand_chacha::ChaChaRng;
 
 const LEADER_1: &str = "Leader1";
@@ -151,7 +151,7 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -229,7 +229,7 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -301,7 +301,7 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -378,7 +378,7 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -468,7 +468,7 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -558,7 +558,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 
@@ -676,13 +676,16 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("delegated1")?;
     let mut wallet2 = controller.wallet("delegated2")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        40,
-        &mut wallet1,
-        &mut wallet2,
-        &leader1 as &dyn FragmentNode,
-        1_000.into(),
-    )?;
+    let setup = FragmentSenderSetup {
+        resend_on_error: Some(3),
+        sync_nodes: vec![&core, &relay1, &relay2],
+        ignore_any_errors: false,
+        no_verify: false,
+    };
+
+    controller
+        .fragment_sender_with_setup(setup)
+        .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())?;
 
     let leaders = vec![
         &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,

@@ -6,8 +6,6 @@ use crate::{
 };
 use rand_chacha::ChaChaRng;
 
-use jormungandr_testing_utils::testing::FragmentNode;
-
 pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "simple network example",
@@ -111,7 +109,7 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         10,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 

@@ -4,7 +4,6 @@ use crate::{
     test::Result,
     Context, ScenarioResult,
 };
-use jormungandr_testing_utils::testing::FragmentNode;
 
 use rand_chacha::ChaChaRng;
 
@@ -48,7 +47,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
         10,
         &mut wallet1,
         &mut wallet2,
-        &passive as &dyn FragmentNode,
+        &passive,
         1_000.into(),
     )?;
 
@@ -104,34 +103,32 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    let fragment_sender = controller.fragment_sender();
-
-    fragment_sender.send_transactions_round_trip(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
         &mut wallet1,
         &mut wallet2,
-        &passive as &dyn FragmentNode,
+        &passive,
         1_000.into(),
     )?;
 
     leader.shutdown()?;
 
-    fragment_sender.send_transactions_round_trip(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
         &mut wallet1,
         &mut wallet2,
-        &passive as &dyn FragmentNode,
+        &passive,
         1_000.into(),
     )?;
 
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    fragment_sender.send_transactions_round_trip(
+    controller.fragment_sender().send_transactions_round_trip(
         10,
         &mut wallet1,
         &mut wallet2,
-        &passive as &dyn FragmentNode,
+        &passive,
         1_000.into(),
     )?;
 
@@ -188,7 +185,7 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
         40,
         &mut wallet1,
         &mut wallet2,
-        &leader as &dyn FragmentNode,
+        &leader,
         1_000.into(),
     )?;
 
