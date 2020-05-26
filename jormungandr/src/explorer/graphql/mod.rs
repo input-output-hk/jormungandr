@@ -42,14 +42,13 @@ impl Block {
     }
 
     fn from_valid_hash(hash: HeaderHash) -> Block {
-        Block { hash: hash.clone() }
+        Block { hash }
     }
 
     fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
-        block_on(db.get_block(&self.hash)).ok_or(
-            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
-                .into(),
-        )
+        block_on(db.get_block(&self.hash)).ok_or_else(|| {
+            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned()).into()
+        })
     }
 }
 
@@ -170,7 +169,7 @@ impl Block {
             .unwrap_or(None)
             .map(|reference| {
                 let ledger = reference.ledger();
-                let treasury_tax = reference.epoch_ledger_parameters().treasury_tax.clone();
+                let treasury_tax = reference.epoch_ledger_parameters().treasury_tax;
                 Treasury {
                     rewards: ledger.remaining_rewards().into(),
                     treasury: ledger.treasury_value().into(),
@@ -211,7 +210,7 @@ graphql_union!(Leader: Context |&self| {
 
 impl From<&ExplorerBlock> for Block {
     fn from(block: &ExplorerBlock) -> Block {
-        Block::from_valid_hash(block.id().clone())
+        Block::from_valid_hash(block.id())
     }
 }
 
@@ -252,9 +251,8 @@ struct Transaction {
 
 impl Transaction {
     fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let block_hash = block_on(context.db.find_block_hash_by_transaction(&id)).ok_or(
-            ErrorKind::NotFound(format!("transaction not found: {}", &id,)),
-        )?;
+        let block_hash = block_on(context.db.find_block_hash_by_transaction(&id))
+            .ok_or_else(|| ErrorKind::NotFound(format!("transaction not found: {}", &id,)))?;
 
         Ok(Transaction {
             id,
@@ -280,19 +278,20 @@ impl Transaction {
     }
 
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
-        let block_id = match self.block_hash {
-            Some(block_id) => block_id,
-            None => block_on(context.db.find_block_hash_by_transaction(&self.id)).ok_or(
-                ErrorKind::InternalError("Transaction's block was not found".to_owned()),
-            )?,
-        };
+        let block_id =
+            match self.block_hash {
+                Some(block_id) => block_id,
+                None => block_on(context.db.find_block_hash_by_transaction(&self.id)).ok_or_else(
+                    || ErrorKind::InternalError("Transaction's block was not found".to_owned()),
+                )?,
+            };
 
-        block_on(context.db.get_block(&block_id)).ok_or(
+        block_on(context.db.get_block(&block_id)).ok_or_else(|| {
             ErrorKind::InternalError(
                 "transaction is in explorer but couldn't find its block".to_owned(),
             )
-            .into(),
-        )
+            .into()
+        })
     }
 
     fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
@@ -303,9 +302,11 @@ impl Transaction {
             Ok(block
                 .transactions
                 .get(&self.id)
-                .ok_or(ErrorKind::InternalError(
-                    "transaction was not found in respective block".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    ErrorKind::InternalError(
+                        "transaction was not found in respective block".to_owned(),
+                    )
+                })?
                 .clone())
         }
     }
@@ -401,11 +402,11 @@ struct Address {
 }
 
 impl Address {
-    fn from_bech32(bech32: &String) -> FieldResult<Address> {
+    fn from_bech32(bech32: &str) -> FieldResult<Address> {
         let addr = chain_addr::AddressReadable::from_string_anyprefix(bech32)
             .map(|adr| ExplorerAddress::New(adr.to_address()))
             .or_else(|_| OldAddress::from_str(bech32).map(ExplorerAddress::Old))
-            .map_err(|_| ErrorKind::InvalidAddress(bech32.clone()))?;
+            .map_err(|_| ErrorKind::InvalidAddress(bech32.to_string()))?;
 
         Ok(Address { id: addr })
     }
@@ -446,7 +447,7 @@ impl Address {
         context: &Context,
     ) -> FieldResult<TransactionConnection> {
         let transactions = block_on(context.db.get_transactions_by_address(&self.id))
-            .unwrap_or(PersistentSequence::<FragmentId>::new());
+            .unwrap_or_else(PersistentSequence::<FragmentId>::new);
 
         let boundaries = if transactions.len() > 0 {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
@@ -474,7 +475,7 @@ impl Address {
                     .filter_map(|i| {
                         transactions
                             .get(i)
-                            .map(|h| (TransactionNodeFetchInfo::Id(h.as_ref().clone()), i))
+                            .map(|h| (TransactionNodeFetchInfo::Id(*h.as_ref()), i))
                     })
                     .collect(),
             },
@@ -795,13 +796,13 @@ pub struct Pool {
 }
 
 impl Pool {
-    fn from_string_id(id: &String, db: &ExplorerDB) -> FieldResult<Pool> {
+    fn from_string_id(id: &str, db: &ExplorerDB) -> FieldResult<Pool> {
         let id = certificate::PoolId::from_str(&id)?;
         let blocks = block_on(db.get_stake_pool_blocks(&id))
-            .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+            .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
         let data = block_on(db.get_stake_pool_data(&id))
-            .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+            .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
         Ok(Pool {
             id,
@@ -845,9 +846,9 @@ impl Pool {
     ) -> FieldResult<BlockConnection> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
-            None => block_on(context.db.get_stake_pool_blocks(&self.id)).ok_or(
-                ErrorKind::InternalError("Stake pool in block is not indexed".to_owned()),
-            )?,
+            None => block_on(context.db.get_stake_pool_blocks(&self.id)).ok_or_else(|| {
+                ErrorKind::InternalError("Stake pool in block is not indexed".to_owned())
+            })?,
         };
 
         let bounds = if blocks.len() > 0 {
@@ -875,7 +876,7 @@ impl Pool {
         BlockConnection::new(bounds, pagination_arguments, |range| match range {
             PaginationInterval::Empty => vec![],
             PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                .filter_map(|i| blocks.get(i).map(|h| (h.as_ref().clone(), i)))
+                .filter_map(|i| blocks.get(i).map(|h| (*h.as_ref(), i)))
                 .collect(),
         })
     }
@@ -885,7 +886,7 @@ impl Pool {
             Some(data) => Ok(data.registration.clone().into()),
             None => block_on(context.db.get_stake_pool_data(&self.id))
                 .map(|data| PoolRegistration::from(data.registration))
-                .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
+                .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
         }
     }
 
@@ -1087,7 +1088,7 @@ impl Epoch {
                 (range.upper_bound + epoch_lower_bound + 1).into(),
             ))
             .iter()
-            .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - epoch_lower_bound))
+            .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
             .collect(),
         })
         .map(Some)
@@ -1190,7 +1191,7 @@ impl Query {
                 let b = range.upper_bound.checked_add(1).unwrap().into();
                 block_on(context.db.get_block_hash_range(a, b))
                     .iter_mut()
-                    .map(|(hash, chain_length)| (hash.clone(), u32::from(*chain_length)))
+                    .map(|(hash, chain_length)| (*hash, u32::from(*chain_length)))
                     .collect()
             }
         })
