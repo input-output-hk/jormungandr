@@ -373,7 +373,7 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
     })
 }
 
-pub async fn get_shutdown(context: &mut Context) -> Result<(), Error> {
+pub async fn shutdown(context: &mut Context) -> Result<(), Error> {
     context.stop_bootstrap();
     context.server_stopper()?.stop();
     Ok(())

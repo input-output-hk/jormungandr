@@ -12,9 +12,9 @@ pub fn filter(
     let root = warp::path!("api" / "v0" / ..);
 
     let shutdown = warp::path!("shutdown")
-        .and(warp::get())
+        .and(warp::get().or(warp::post()))
         .and(with_context.clone())
-        .and_then(handlers::get_shutdown)
+        .and_then(|_, context| handlers::shutdown(context))
         .boxed();
 
     let account = warp::path!("account" / String)
