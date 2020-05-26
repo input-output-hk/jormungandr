@@ -113,84 +113,95 @@ impl ExplorerBlock {
             HashMap::<FragmentId, ExplorerTransaction>::new(),
             |mut current_block_txs, (offset, fragment)| {
                 let fragment_id = fragment.id();
+                let offset: u32 = offset.try_into().unwrap();
                 let metx = match fragment {
                     Fragment::Transaction(tx) => {
                         let tx = tx.as_slice();
                         Some(ExplorerTransaction::from(
+                            &context,
                             &fragment_id,
                             &tx,
-                            discrimination,
-                            prev_transactions,
-                            prev_blocks,
                             None,
-                            offset.try_into().unwrap(),
+                            offset,
                             &current_block_txs,
                         ))
                     }
                     Fragment::OwnerStakeDelegation(tx) => {
                         let tx = tx.as_slice();
                         Some(ExplorerTransaction::from(
+                            &context,
                             &fragment_id,
                             &tx,
-                            discrimination,
-                            prev_transactions,
-                            prev_blocks,
                             Some(Certificate::OwnerStakeDelegation(
                                 tx.payload().into_payload(),
                             )),
-                            offset.try_into().unwrap(),
+                            offset,
                             &current_block_txs,
                         ))
                     }
                     Fragment::StakeDelegation(tx) => {
                         let tx = tx.as_slice();
                         Some(ExplorerTransaction::from(
+                            &context,
                             &fragment_id,
                             &tx,
-                            discrimination,
-                            prev_transactions,
-                            prev_blocks,
                             Some(Certificate::StakeDelegation(tx.payload().into_payload())),
-                            offset.try_into().unwrap(),
+                            offset,
                             &current_block_txs,
                         ))
                     }
                     Fragment::PoolRegistration(tx) => {
                         let tx = tx.as_slice();
                         Some(ExplorerTransaction::from(
+                            &context,
                             &fragment_id,
                             &tx,
-                            discrimination,
-                            prev_transactions,
-                            prev_blocks,
                             Some(Certificate::PoolRegistration(tx.payload().into_payload())),
-                            offset.try_into().unwrap(),
+                            offset,
                             &current_block_txs,
                         ))
                     }
                     Fragment::PoolRetirement(tx) => {
                         let tx = tx.as_slice();
                         Some(ExplorerTransaction::from(
+                            &context,
                             &fragment_id,
                             &tx,
-                            discrimination,
-                            prev_transactions,
-                            prev_blocks,
                             Some(Certificate::PoolRetirement(tx.payload().into_payload())),
-                            offset.try_into().unwrap(),
+                            offset,
                             &current_block_txs,
                         ))
                     }
                     Fragment::PoolUpdate(tx) => {
                         let tx = tx.as_slice();
                         Some(ExplorerTransaction::from(
+                            &context,
                             &fragment_id,
                             &tx,
-                            discrimination,
-                            prev_transactions,
-                            prev_blocks,
                             Some(Certificate::PoolUpdate(tx.payload().into_payload())),
-                            offset.try_into().unwrap(),
+                            offset,
+                            &current_block_txs,
+                        ))
+                    }
+                    Fragment::VotePlan(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
+                            &context,
+                            &fragment_id,
+                            &tx,
+                            Some(Certificate::VotePlan(tx.payload().into_payload())),
+                            offset,
+                            &current_block_txs,
+                        ))
+                    }
+                    Fragment::VoteCast(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
+                            &context,
+                            &fragment_id,
+                            &tx,
+                            Some(Certificate::VoteCast(tx.payload().into_payload())),
+                            offset,
                             &current_block_txs,
                         ))
                     }
@@ -208,7 +219,7 @@ impl ExplorerBlock {
                             inputs: vec![],
                             outputs,
                             certificate: None,
-                            offset_in_block: offset.try_into().unwrap(),
+                            offset_in_block: offset,
                         })
                     }
                     _ => None,
