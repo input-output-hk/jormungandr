@@ -1171,9 +1171,9 @@ dependencies = [
 
 [[package]]
 name = "grpc-compiler"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f3ddb4cb9d84fba1a1a0b58c28db52eb38faadaaee17069f0a58fad09e7f732"
+checksum = "28639c0bf54b98edbb908c113b0e24ed8443c921b090eee628cfd4ed28a9cd3d"
 dependencies = [
  "protobuf",
  "protobuf-codegen",
@@ -2658,9 +2658,9 @@ dependencies = [
 
 [[package]]
 name = "protoc-rust-grpc"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbdbf22440a0adca19264d329f5d9aea082da65c62d97584b15d326493b5febd"
+checksum = "8c1e5a81f75b067037e8c5311088f083659591482eeb78083aa95cc4dbf416b3"
 dependencies = [
  "grpc-compiler",
  "protobuf",
