@@ -12,7 +12,7 @@ use jormungandr_integration_tests::{
     mock::client::JormungandrClient,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, Info, NodeState, NodeStatsDto, PeerRecord, PeerStats,
+    EnclaveLeaderId, FragmentLog, NodeState, NodeStatsDto, PeerRecord, PeerStats,
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{

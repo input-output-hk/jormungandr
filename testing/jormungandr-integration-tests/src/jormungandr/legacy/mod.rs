@@ -44,7 +44,11 @@ pub fn test_legacy_node_all_fragments() {
         .start()
         .unwrap();
 
-    let fragment_sender = FragmentSender::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        Default::default(),
+    );
 
     // 1. send simple transaction
     let mut fragment = first_stake_pool_owner
@@ -57,7 +61,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment_and_verify_is_in_block(fragment, &jormungandr as &dyn FragmentNode)
+        .send_fragment(fragment, &jormungandr)
         .unwrap();
     std::thread::sleep(std::time::Duration::from_secs(30));
 
@@ -73,7 +77,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment_and_verify_is_in_block(fragment, &jormungandr as &dyn FragmentNode)
+        .send_fragment(fragment, &jormungandr)
         .unwrap();
     first_stake_pool_owner.confirm_transaction();
 
@@ -89,7 +93,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment_and_verify_is_in_block(fragment, &jormungandr as &dyn FragmentNode)
+        .send_fragment(fragment, &jormungandr)
         .unwrap();
     second_stake_pool_owner.confirm_transaction();
 
@@ -116,7 +120,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment_and_verify_is_in_block(fragment, &jormungandr as &dyn FragmentNode)
+        .send_fragment(fragment, &jormungandr)
         .unwrap();
     first_stake_pool_owner.confirm_transaction();
 
@@ -141,7 +145,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment_and_verify_is_in_block(fragment, &jormungandr as &dyn FragmentNode)
+        .send_fragment(fragment, &jormungandr)
         .unwrap();
 
     let full_delegator_info = jcli_wrapper::assert_rest_account_get_stats(
@@ -164,7 +168,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment_and_verify_is_in_block(fragment, &jormungandr as &dyn FragmentNode)
+        .send_fragment(fragment, &jormungandr)
         .unwrap();
 
     let split_delegator = jcli_wrapper::assert_rest_account_get_stats(
@@ -212,7 +216,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment_and_verify_is_in_block(fragment, &jormungandr as &dyn FragmentNode)
+        .send_fragment(fragment, &jormungandr)
         .unwrap();
 
     let stake_pools_from_rest = jormungandr

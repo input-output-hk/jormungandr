@@ -69,7 +69,7 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         10,
         &mut wallet1,
         &mut wallet2,
-        &leader1 as &dyn FragmentNode,
+        &leader1,
         1_000.into(),
     )?;
 

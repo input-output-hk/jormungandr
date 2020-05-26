@@ -1,8 +1,11 @@
 use super::{BackwardCompatibleConfig, BackwardCompatibleRest};
-use crate::common::{
-    explorer::Explorer,
-    jcli_wrapper,
-    jormungandr::{JormungandrError, JormungandrLogger},
+use crate::{
+    common::{
+        explorer::Explorer,
+        jcli_wrapper,
+        jormungandr::{JormungandrError, JormungandrLogger},
+    },
+    mock::JormungandrClient,
 };
 use chain_impl_mockchain::{
     fee::LinearFee,
@@ -12,8 +15,9 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog},
 };
-use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError, MemPoolCheck};
+use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError, MemPoolCheck, SyncNode};
 use std::{collections::HashMap, path::PathBuf, process::Child, str::FromStr};
+use yaml_rust::YamlLoader;
 
 impl FragmentNode for BackwardCompatibleJormungandr {
     fn alias(&self) -> &str {
@@ -44,11 +48,46 @@ impl FragmentNode for BackwardCompatibleJormungandr {
     }
 }
 
+impl SyncNode for BackwardCompatibleJormungandr {
+    fn alias(&self) -> &str {
+        self.alias()
+    }
+
+    fn last_block_height(&self) -> u32 {
+        let docs = YamlLoader::load_from_str(&self.rest().stats().unwrap()).unwrap();
+        docs.get(0).unwrap()["lastBlockHeight"]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap()
+    }
+
+    fn log_stats(&self) {
+        println!("{:?}", self.rest().stats());
+    }
+
+    fn all_blocks_hashes(&self) -> Vec<chain_impl_mockchain::key::Hash> {
+        todo!()
+    }
+
+    fn log_content(&self) -> String {
+        self.logger().get_log_content()
+    }
+
+    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
+        self.logger().get_lines_with_error_and_invalid().collect()
+    }
+    fn is_running(&self) -> bool {
+        todo!()
+    }
+}
+
 #[derive(Debug)]
 pub struct BackwardCompatibleJormungandr {
     pub child: Child,
     pub logger: JormungandrLogger,
     pub config: BackwardCompatibleConfig,
+    pub grpc_client: JormungandrClient,
     alias: String,
 }
 
@@ -75,7 +114,8 @@ impl BackwardCompatibleJormungandr {
         Self {
             child,
             alias,
-            logger: JormungandrLogger::new(log_file_path),
+            logger: JormungandrLogger::new(log_file_path.clone()),
+            grpc_client: JormungandrClient::from_address(&config.get_node_address()).unwrap(),
             config,
         }
     }
