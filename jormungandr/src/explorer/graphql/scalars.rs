@@ -2,7 +2,6 @@ use super::error::ErrorKind;
 use crate::blockcfg;
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value;
-
 use juniper::{ParseScalarResult, ParseScalarValue};
 use std::convert::{TryFrom, TryInto};
 
