@@ -4,13 +4,14 @@ pub mod github;
 /// Module contains cross project test utils
 mod measurement;
 pub mod network_builder;
+mod sync;
 mod web;
 
 pub use archive::decompress;
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, FragmentBuilder, FragmentBuilderError,
-    FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError, FragmentVerifier,
-    FragmentVerifierError, MemPoolCheck,
+    FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError, FragmentSenderSetup,
+    FragmentVerifier, FragmentVerifierError, MemPoolCheck,
 };
 pub use measurement::{
     benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
@@ -18,4 +19,5 @@ pub use measurement::{
     EnduranceBenchmarkDef, EnduranceBenchmarkFinish, EnduranceBenchmarkRun, ResourcesUsage, Speed,
     SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
 };
+pub use sync::{assure_node_in_sync, SyncNode, SyncNodeError, SyncWaitParams};
 pub use web::download_file;
