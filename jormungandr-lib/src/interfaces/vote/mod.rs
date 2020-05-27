@@ -1,11 +1,10 @@
-use crate::crypto::hash::Hash;
-use crate::interfaces::blockdate::BlockDateDef;
-use serde::ser::SerializeSeq;
-use serde::{Serialize, Serializer};
+use crate::{crypto::hash::Hash, interfaces::blockdate::BlockDateDef};
+use core::ops::Range;
+use serde::{ser::SerializeSeq, Serialize, Serializer};
 
 #[derive(Serialize)]
 pub enum VoteOptions {
-    OneOf { max_value: u8 }, // where max_value is up to 15
+    Range { range: Range<u8> }, // where max_value is up to 15
 }
 
 fn get_proposal_hash(proposal: &chain_impl_mockchain::certificate::Proposal) -> Hash {
@@ -15,8 +14,8 @@ fn get_proposal_hash(proposal: &chain_impl_mockchain::certificate::Proposal) -> 
 fn get_proposal_vote_options(
     proposal: &chain_impl_mockchain::certificate::Proposal,
 ) -> VoteOptions {
-    VoteOptions::OneOf {
-        max_value: proposal.options().as_byte(),
+    VoteOptions::Range {
+        range: proposal.options().choice_range().clone(),
     }
 }
 

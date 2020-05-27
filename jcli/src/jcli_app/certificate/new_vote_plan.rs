@@ -1,7 +1,8 @@
 use crate::jcli_app::certificate::{write_cert, Error};
 use chain_impl_mockchain::{
     block::BlockDate,
-    certificate::{Certificate, ExternalProposalId, Proposal, Proposals, VoteOptions, VotePlan},
+    certificate::{Certificate, ExternalProposalId, Proposal, Proposals, VotePlan},
+    vote::{Options, PayloadType},
 };
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -63,16 +64,20 @@ impl VotePlanRegistration {
             });
         }
 
+        let default_options: Options =
+            Options::new_length(3).expect("Vote Option's range from 0 to 3 (excluded)");
+
         // build certificate
         let mut proposals = Proposals::new();
         for proposal_id in self.proposals {
-            let _ = proposals.push(Proposal::new(proposal_id, VoteOptions::new_length(0b0011)));
+            let _ = proposals.push(Proposal::new(proposal_id, default_options.clone()));
         }
         let vote_plan = VotePlan::new(
             self.vote_start,
             self.vote_end,
             self.committee_end,
             proposals,
+            PayloadType::Public,
         );
         let cert = Certificate::VotePlan(vote_plan);
         write_cert(self.output.as_deref(), cert.into())
