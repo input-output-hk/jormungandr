@@ -3,7 +3,7 @@ use chain_impl_mockchain::certificate;
 use juniper::graphql_union;
 use std::convert::TryFrom;
 
-use super::scalars::{PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
+use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
 use super::{Address, BlockDate, Context, ExplorerAddress, Pool, Proposal, TaxType};
 use juniper::FieldResult;
 
@@ -220,6 +220,10 @@ impl VotePlan {
     /// the ballots and publish the results on chain
     pub fn committee_end(&self) -> BlockDate {
         self.0.committee_end().into()
+    }
+
+    pub fn payload_type(&self) -> PayloadType {
+        self.0.payload_type().into()
     }
 
     /// the proposals to vote for

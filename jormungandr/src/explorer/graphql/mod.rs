@@ -23,8 +23,8 @@ use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PoolId, Slot,
-    Value,
+    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PoolId,
+    PublicKey, Slot, Value, VoteOptionRange,
 };
 
 use crate::explorer::{ExplorerDB, Settings};
@@ -526,7 +526,15 @@ impl Proposal {
     pub fn external_id(&self) -> ExternalProposalId {
         ExternalProposalId(self.0.external_id().to_string())
     }
-    // TODO: options
+
+    /// get the vote options range
+    ///
+    /// this is the available range of choices to make for the given
+    /// proposal. all casted votes for this proposals ought to be in
+    /// within the given range
+    pub fn options(&self) -> VoteOptionRange {
+        self.0.options().clone().into()
+    }
 }
 
 #[derive(Clone)]

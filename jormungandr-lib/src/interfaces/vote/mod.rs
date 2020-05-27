@@ -1,11 +1,10 @@
-use crate::crypto::hash::Hash;
-use crate::interfaces::blockdate::BlockDateDef;
-use serde::ser::SerializeSeq;
-use serde::{Serialize, Serializer};
+use crate::{crypto::hash::Hash, interfaces::blockdate::BlockDateDef};
+use core::ops::Range;
+use serde::{ser::SerializeSeq, Serialize, Serializer};
 
 #[derive(Serialize)]
-pub enum VoteOptions {
-    OneOf { max_value: u8 }, // where max_value is up to 15
+pub struct VoteOptions {
+    range: Range<u8>,
 }
 
 fn get_proposal_hash(proposal: &chain_impl_mockchain::certificate::Proposal) -> Hash {
@@ -15,8 +14,8 @@ fn get_proposal_hash(proposal: &chain_impl_mockchain::certificate::Proposal) -> 
 fn get_proposal_vote_options(
     proposal: &chain_impl_mockchain::certificate::Proposal,
 ) -> VoteOptions {
-    VoteOptions::OneOf {
-        max_value: proposal.options().as_byte(),
+    VoteOptions {
+        range: proposal.options().choice_range().clone(),
     }
 }
 
@@ -33,6 +32,12 @@ pub struct Proposal {
 pub struct ProposalSerializableHelper<'a>(
     #[serde(with = "Proposal")] pub &'a chain_impl_mockchain::certificate::Proposal,
 );
+
+#[derive(Serialize)]
+#[serde(remote = "chain_impl_mockchain::vote::PayloadType")]
+pub enum PayloadTypeDef {
+    Public,
+}
 
 fn serialize_proposals<S>(
     proposals: &chain_impl_mockchain::certificate::Proposals,
@@ -68,6 +73,12 @@ pub struct VotePlan {
         getter = "chain_impl_mockchain::certificate::VotePlan::committee_end"
     )]
     pub committee_end: chain_impl_mockchain::block::BlockDate,
+
+    #[serde(
+        with = "PayloadTypeDef",
+        getter = "chain_impl_mockchain::certificate::VotePlan::payload_type"
+    )]
+    pub payload_type: chain_impl_mockchain::vote::PayloadType,
 
     #[serde(
         serialize_with = "serialize_proposals",
