@@ -1,7 +1,7 @@
 use super::error::ErrorKind;
 use crate::blockcfg;
 use chain_crypto::bech32::Bech32;
-use chain_impl_mockchain::value;
+use chain_impl_mockchain::{value, vote};
 use juniper::{ParseScalarResult, ParseScalarValue};
 use std::convert::{TryFrom, TryInto};
 
@@ -45,6 +45,24 @@ pub struct VotePlanId(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
 pub struct ExternalProposalId(pub String);
+
+#[derive(juniper::GraphQLEnum)]
+pub enum PayloadType {
+    Public,
+}
+
+/// Vote option range
+///
+/// provide a range of available choices for a given proposal. Usual value would
+/// be `[0, 3[` (or `0..3` in rust's range syntax), meaning there are 3 options
+/// available: `0`, `1` and `2`
+#[derive(juniper::GraphQLObject)]
+pub struct VoteOptionRange {
+    /// the start of the vote option range, starting from 0 usually
+    start: i32,
+    /// the exclusive upper bound of the option range. minimal value is 1
+    end: i32,
+}
 
 // u32 should be enough to count blocks and transactions (the only two cases for now)
 #[derive(Clone)]
@@ -155,6 +173,24 @@ impl From<u32> for IndexCursor {
 impl From<chain_impl_mockchain::certificate::VotePlanId> for VotePlanId {
     fn from(id: chain_impl_mockchain::certificate::VotePlanId) -> VotePlanId {
         VotePlanId(id.to_string())
+    }
+}
+
+impl From<vote::PayloadType> for PayloadType {
+    fn from(payload_type: vote::PayloadType) -> Self {
+        match payload_type {
+            vote::PayloadType::Public => Self::Public,
+        }
+    }
+}
+
+impl From<vote::Options> for VoteOptionRange {
+    fn from(options: vote::Options) -> Self {
+        let range = options.choice_range();
+        Self {
+            start: range.start as i32,
+            end: range.end as i32,
+        }
     }
 }
 
