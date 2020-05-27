@@ -396,7 +396,7 @@ impl<T> RequestSink<T> {
 impl<T> RequestSink<T> {
     fn map_send_error(&self, _e: mpsc::SendError, msg: &'static str) -> Error {
         debug!(self.logger, "{}", msg);
-        Error::aborted("request stream processing ended before all items were sent").into()
+        Error::aborted("request stream processing ended before all items were sent")
     }
 }
 

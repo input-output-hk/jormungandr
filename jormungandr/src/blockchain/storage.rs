@@ -62,7 +62,7 @@ where
     EOut: Send + From<E> + From<Error> + 'static,
 {
     spawn_blocking(move || {
-        let mut connection = pool.get().map_err(|e| Error::ConnectionFailed(e))?;
+        let mut connection = pool.get().map_err(Error::ConnectionFailed)?;
         f(&mut connection).map_err(Into::into)
     })
     .await

@@ -4,7 +4,7 @@ use crate::{
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
-use poldercast;
+
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
 
@@ -351,8 +351,8 @@ impl<'de> Deserialize<'de> for Topic {
                 use serde::de::Unexpected;
 
                 match v {
-                    "messages" => Ok(Topic(topic::MESSAGES.into())),
-                    "blocks" => Ok(Topic(topic::BLOCKS.into())),
+                    "messages" => Ok(Topic(topic::MESSAGES)),
+                    "blocks" => Ok(Topic(topic::BLOCKS)),
                     err => Err(E::invalid_value(Unexpected::Str(err), &self)),
                 }
             }

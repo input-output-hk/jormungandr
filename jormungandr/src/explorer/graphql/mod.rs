@@ -96,7 +96,7 @@ impl Block {
         }
         .validate()?;
 
-        let boundaries = if transactions.len() > 0 {
+        let boundaries = if !transactions.is_empty() {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
                 lower_bound: 0u32,
                 upper_bound: transactions
@@ -404,7 +404,7 @@ impl Address {
     fn from_bech32(bech32: &String) -> FieldResult<Address> {
         let addr = chain_addr::AddressReadable::from_string_anyprefix(bech32)
             .map(|adr| ExplorerAddress::New(adr.to_address()))
-            .or_else(|_| OldAddress::from_str(bech32).map(|a| ExplorerAddress::Old(a)))
+            .or_else(|_| OldAddress::from_str(bech32).map(ExplorerAddress::Old))
             .map_err(|_| ErrorKind::InvalidAddress(bech32.clone()))?;
 
         Ok(Address { id: addr })
@@ -474,7 +474,7 @@ impl Address {
                     .filter_map(|i| {
                         transactions
                             .get(i)
-                            .map(|h| (TransactionNodeFetchInfo::Id(h.as_ref().clone()), i.into()))
+                            .map(|h| (TransactionNodeFetchInfo::Id(h.as_ref().clone()), i))
                     })
                     .collect(),
             },
@@ -884,7 +884,7 @@ impl Pool {
         match &self.data {
             Some(data) => Ok(data.registration.clone().into()),
             None => block_on(context.db.get_stake_pool_data(&self.id))
-                .map(|data| PoolRegistration::from(data.registration.clone()))
+                .map(|data| PoolRegistration::from(data.registration))
                 .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
         }
     }
@@ -897,7 +897,7 @@ impl Pool {
                     .db
                     .get_stake_pool_data(&self.id)
                     .await
-                    .map(|data| data.retirement.clone())
+                    .map(|data| data.retirement)
                     .and_then(|retirement| retirement.map(PoolRetirement::from))
             })),
         }
@@ -1016,7 +1016,7 @@ impl Epoch {
     }
 
     fn get_epoch_data(&self, db: &ExplorerDB) -> Option<EpochData> {
-        block_on(db.get_epoch(self.id.into()))
+        block_on(db.get_epoch(self.id))
     }
 }
 
@@ -1231,7 +1231,7 @@ impl Query {
         // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea)
         stake_pools.sort_unstable_by_key(|(id, data)| id.clone());
 
-        let boundaries = if stake_pools.len() > 0 {
+        let boundaries = if !stake_pools.is_empty() {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
                 lower_bound: 0u32,
                 upper_bound: stake_pools
@@ -1256,8 +1256,8 @@ impl Query {
         PoolConnection::new(boundaries, pagination_arguments, |range| match range {
             PaginationInterval::Empty => vec![],
             PaginationInterval::Inclusive(range) => {
-                let from = range.lower_bound.into();
-                let to = range.upper_bound.into();
+                let from = range.lower_bound;
+                let to = range.upper_bound;
 
                 (from..=to)
                     .map(|i: u32| {

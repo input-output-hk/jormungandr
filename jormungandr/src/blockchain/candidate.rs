@@ -164,12 +164,12 @@ where
                     Some(header) => {
                         self.process_header(header)?;
                     }
-                    None => return Poll::Ready(Ok(Outcome::Complete.into())),
+                    None => return Poll::Ready(Ok(Outcome::Complete)),
                 }
             }
             // TODO: bail out when block data are needed due to new epoch.
             if self.new_hashes.len() as u64 >= chunk_sizes::BLOCKS {
-                return Poll::Ready(Ok(Outcome::Incomplete.into()));
+                return Poll::Ready(Ok(Outcome::Incomplete));
             }
         }
     }

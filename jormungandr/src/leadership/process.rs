@@ -118,7 +118,7 @@ impl Module {
             // in the current blockchain settings this can only happen if we started
             // the called this function before the block0 start date time.
 
-            Err(LeadershipError::TooEarlyForTimeFrame { time: now.into() })
+            Err(LeadershipError::TooEarlyForTimeFrame { time: now })
         }
     }
 
@@ -350,7 +350,7 @@ impl Module {
         let deadline = Instant::now() + remaining_time.into();
 
         let logger = logger.new(o!(
-            "event_remaining_time" => jormungandr_lib::time::Duration::from(remaining_time).to_string()
+            "event_remaining_time" => remaining_time.to_string()
         ));
 
         info!(logger, "Leader event started");

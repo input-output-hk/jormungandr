@@ -97,7 +97,7 @@ impl Branch {
 
     pub async fn get_ref(&self) -> Arc<Ref> {
         let guard = self.inner.read().await;
-        guard.reference().clone()
+        guard.reference()
     }
 
     pub async fn update_ref(&mut self, new_ref: Arc<Ref>) -> Arc<Ref> {

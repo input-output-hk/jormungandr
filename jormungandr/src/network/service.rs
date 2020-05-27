@@ -295,7 +295,7 @@ impl GossipService for NodeService {
                 }
             }
         }
-        if peers.len() == 0 {
+        if peers.is_empty() {
             // No peers yet, put self as the peer to bootstrap from
             if let Some(addr) = view
                 .self_node

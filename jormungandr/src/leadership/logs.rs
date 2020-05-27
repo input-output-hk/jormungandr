@@ -64,26 +64,23 @@ impl Logs {
         let id = logs.0.write().await.insert(log);
         Ok(LeadershipLogHandle {
             internal_id: id,
-            logs: logs,
+            logs,
         })
     }
 
     async fn mark_wake(&self, leadership_log_id: LeadershipLogId) {
         let inner = self.0.clone();
-        inner.write().await.mark_wake(&leadership_log_id.into());
+        inner.write().await.mark_wake(&leadership_log_id);
     }
 
     async fn set_status(&self, leadership_log_id: LeadershipLogId, status: LeadershipLogStatus) {
         let inner = self.0.clone();
-        inner
-            .write()
-            .await
-            .set_status(&leadership_log_id.into(), status);
+        inner.write().await.set_status(&leadership_log_id, status);
     }
 
     async fn mark_finished(&self, leadership_log_id: LeadershipLogId) {
         let inner = self.0.clone();
-        inner.write().await.mark_finished(&leadership_log_id.into());
+        inner.write().await.mark_finished(&leadership_log_id);
     }
 
     pub async fn logs(&self) -> Vec<LeadershipLog> {

@@ -204,7 +204,7 @@ impl ExplorerDB {
             }
         };
         stream
-            .map_err(|err| Error::from(err))
+            .map_err(Error::from)
             .try_fold(bootstraped_db, |mut db, block| async move {
                 db.apply_block(block).await?;
                 Ok(db)

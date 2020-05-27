@@ -154,6 +154,6 @@ impl Configuration {
                 .profile
                 .address()
                 .and_then(|address| multiaddr_to_socket_addr(address.multi_address())))
-            .map(|addr| Listen::new(addr))
+            .map(Listen::new)
     }
 }

@@ -110,9 +110,7 @@ impl P2pTopology {
 
     pub async fn exchange_gossips(&mut self, with: Address, gossips: Gossips) -> Gossips {
         let mut topology = self.lock.write().await;
-        topology
-            .exchange_gossips(with.into(), gossips.into())
-            .into()
+        topology.exchange_gossips(with, gossips.into()).into()
     }
 
     pub async fn node(&self) -> NodeProfile {

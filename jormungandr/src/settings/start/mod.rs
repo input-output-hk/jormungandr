@@ -130,7 +130,7 @@ impl RawSettings {
 
         let storage = match (
             command_arguments.storage.as_ref(),
-            config.as_ref().map_or(None, |cfg| cfg.storage.as_ref()),
+            config.as_ref().and_then(|cfg| cfg.storage.as_ref()),
         ) {
             (Some(path), _) => Some(path.clone()),
             (None, Some(path)) => Some(path.clone()),
@@ -211,14 +211,14 @@ fn generate_network(
         };
 
     if p2p.trusted_peers.is_some() {
-        p2p.trusted_peers
-            .as_mut()
-            .map(|peers| peers.extend(command_arguments.trusted_peer.clone()));
+        if let Some(peers) = p2p.trusted_peers.as_mut() {
+            peers.extend(command_arguments.trusted_peer.clone())
+        }
     } else if !command_arguments.trusted_peer.is_empty() {
         p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
 
-    p2p.trusted_peers.as_mut().map(|peers| {
+    if let Some(peers) = p2p.trusted_peers.as_mut() {
         *peers = peers.iter().filter_map(|peer| {
             match multiaddr_resolve_dns(peer.address.multi_address()) {
                 Ok(Some(address)) => {
@@ -234,16 +234,16 @@ fn generate_network(
                 },
                 Err(e) => {
                     warn!(logger, "failed to resolve dns"; "fqdn" => peer.address.multi_address().to_string(), "error" => e.to_string());
-                    return None;
+                    None
                 }
             }
         }).collect();
-    });
+    }
 
     let mut profile = poldercast::NodeProfileBuilder::new();
 
     if let Some(address) = p2p.public_address {
-        profile.address(address.clone());
+        profile.address(address);
     }
 
     for (topic, interest_level) in p2p
@@ -272,7 +272,7 @@ fn generate_network(
         trusted_peers: p2p
             .trusted_peers
             .clone()
-            .unwrap_or(vec![])
+            .unwrap_or_default()
             .into_iter()
             .map(Into::into)
             .collect(),
