@@ -3,8 +3,8 @@ use core::ops::Range;
 use serde::{ser::SerializeSeq, Serialize, Serializer};
 
 #[derive(Serialize)]
-pub enum VoteOptions {
-    Range { range: Range<u8> }, // where max_value is up to 15
+pub struct VoteOptions {
+    range: Range<u8>,
 }
 
 fn get_proposal_hash(proposal: &chain_impl_mockchain::certificate::Proposal) -> Hash {
@@ -14,7 +14,7 @@ fn get_proposal_hash(proposal: &chain_impl_mockchain::certificate::Proposal) -> 
 fn get_proposal_vote_options(
     proposal: &chain_impl_mockchain::certificate::Proposal,
 ) -> VoteOptions {
-    VoteOptions::Range {
+    VoteOptions {
         range: proposal.options().choice_range().clone(),
     }
 }

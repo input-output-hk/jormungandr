@@ -2314,14 +2314,19 @@ paths:
                           options:
                             type: object
                             properties:
-                              OneOf:
+                              range:
                                 type: object
                                 properties:
-                                  max_value:
+                                  start:
                                     type: integer
-                                    description: Maximum number of options
-                                    minimum: 1
+                                    description: starting value of the vote option, starting from 0
+                                    minimum: 0
                                     maximum: 15
+                                  end:
+                                    type: integer
+                                    description: upper bound of the available options, maximum being 16 (not included)
+                                    minimum: 1
+                                    maximum: 16
                         required:
                           - external_id
                           - options
@@ -2342,16 +2347,18 @@ paths:
                         {
                           "external_id": "adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280",
                           "options": {
-                            "OneOf": {
-                              "max_value": 3
+                            "range": {
+                              "start": 0,
+                              "end": 3
                             }
                           }
                         },
                         {
                           "external_id": "6778d37161c3962fe62c9fa8a31a55bccf6ec2d1ea254a467d8cd994709fc404",
                           "options": {
-                            "OneOf": {
-                              "max_value": 3
+                            "range": {
+                              "start": 0,
+                              "end": 3
                             }
                           }
                         }
