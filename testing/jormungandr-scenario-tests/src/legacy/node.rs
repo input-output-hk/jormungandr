@@ -13,8 +13,7 @@ use chain_impl_mockchain::{
 use futures::executor::block_on;
 use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
-    common::jormungandr::logger::JormungandrLogger,
-    mock::{client::JormungandrClient, read_into},
+    common::jormungandr::logger::JormungandrLogger, mock::client::JormungandrClient,
 };
 use jormungandr_lib::interfaces::{
     EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats,

@@ -14,7 +14,7 @@ use crate::{
 };
 use chain_core::property::FromStr;
 use chain_impl_mockchain::key::Hash;
-use futures_util::future::FutureExt;
+use futures::future::FutureExt;
 use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},

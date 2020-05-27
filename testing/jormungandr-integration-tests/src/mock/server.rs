@@ -10,10 +10,9 @@ use std::{
 
 use crate::common::file_utils;
 
-use bytes::Bytes;
-use std::{fmt, iter};
+use std::fmt;
 
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status};
 
 pub use node::{
     node_server::{Node, NodeServer},
@@ -24,12 +23,7 @@ pub use node::{
     },
 };
 
-use std::str::FromStr;
-
-use chain_impl_mockchain::{
-    block::Block as LibBlock, fragment::Fragment as LibFragment, header::Header as LibHeader,
-    key::Hash,
-};
+use chain_impl_mockchain::key::Hash;
 
 use futures::Stream;
 use std::pin::Pin;
@@ -228,7 +222,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<BlockIds>,
     ) -> Result<tonic::Response<Self::GetBlocksStream>, tonic::Status> {
         info!(self.log,"Get blocks request recieved";"method" => MethodType::GetBlocks.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(rx))
     }
     async fn get_headers(
@@ -236,7 +230,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<BlockIds>,
     ) -> Result<tonic::Response<Self::GetHeadersStream>, tonic::Status> {
         info!(self.log,"Get headers request recieved";"method" => MethodType::GetHeaders.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(rx))
     }
     async fn get_fragments(
@@ -244,7 +238,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<FragmentIds>,
     ) -> Result<tonic::Response<Self::GetFragmentsStream>, tonic::Status> {
         info!(self.log,"Get fragments request recieved";"method" => MethodType::GetFragments.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(rx))
     }
     async fn pull_headers(
@@ -252,7 +246,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<PullHeadersRequest>,
     ) -> Result<tonic::Response<Self::PullHeadersStream>, tonic::Status> {
         info!(self.log,"Pull Headers request recieved";"method" => MethodType::PullHeaders.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(rx))
     }
     async fn pull_blocks_to_tip(
@@ -260,7 +254,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<PullBlocksToTipRequest>,
     ) -> Result<tonic::Response<Self::PullBlocksToTipStream>, tonic::Status> {
         info!(self.log,"PullBlocksToTip request recieved";"method" => MethodType::PullBlocksToTip.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(rx))
     }
     async fn push_headers(
@@ -283,7 +277,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<tonic::Streaming<Header>>,
     ) -> Result<tonic::Response<Self::BlockSubscriptionStream>, tonic::Status> {
         info!(self.log,"Block subscription event recieved";"method" => MethodType::BlockSubscription.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(Box::pin(rx)))
     }
 
@@ -292,7 +286,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<tonic::Streaming<Fragment>>,
     ) -> Result<tonic::Response<Self::FragmentSubscriptionStream>, tonic::Status> {
         info!(self.log,"Fragment subscription event recieved";"method" => MethodType::FragmentSubscription.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(Box::pin(rx)))
     }
     async fn gossip_subscription(
@@ -300,7 +294,7 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<tonic::Streaming<Gossip>>,
     ) -> Result<tonic::Response<Self::GossipSubscriptionStream>, tonic::Status> {
         info!(self.log,"Gossip subscription event recieved";"method" => MethodType::GossipSubscription.to_string());
-        let (mut tx, rx) = mpsc::channel(0);
+        let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(Box::pin(rx)))
     }
 }

@@ -1,11 +1,8 @@
 use crate::mock::read_into;
 
-use node::node_client::NodeClient;
 use node::{
-    node_server::{Node, NodeServer},
-    Block, BlockEvent, BlockIds, Fragment, FragmentIds, Gossip, HandshakeRequest,
-    HandshakeResponse, Header, PeersRequest, PeersResponse, PullBlocksToTipRequest,
-    PullHeadersRequest, PushHeadersResponse, TipRequest, TipResponse, UploadBlocksResponse,
+    node_client::NodeClient, Block, BlockIds, Fragment, FragmentIds, HandshakeRequest,
+    HandshakeResponse, Header, PullBlocksToTipRequest, PullHeadersRequest, TipRequest,
 };
 
 use chain_impl_mockchain::{
@@ -14,8 +11,6 @@ use chain_impl_mockchain::{
 };
 
 use futures::stream;
-use std::pin::Pin;
-use tokio::sync::mpsc;
 
 pub mod node {
     tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
@@ -207,7 +202,7 @@ impl JormungandrClient {
     ) -> Result<Vec<LibHeader>, MockClientError> {
         let mut client = NodeClient::connect(self.address()).await.unwrap();
 
-        let mut request = tonic::Request::new(PullHeadersRequest {
+        let request = tonic::Request::new(PullHeadersRequest {
             from: self.hashes_to_bin_vec(from),
             to: self.hash_to_bin(&to),
         });
@@ -248,7 +243,7 @@ impl JormungandrClient {
     pub async fn push_headers(&self, lib_header: LibHeader) -> Result<(), MockClientError> {
         let mut client = NodeClient::connect(self.address()).await.unwrap();
 
-        let mut header = Header {
+        let header = Header {
             content: lib_header.serialize_as_vec().unwrap(),
         };
 
