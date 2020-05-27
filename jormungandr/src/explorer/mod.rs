@@ -121,7 +121,10 @@ impl Explorer {
                                 .map(move |result| match result {
                                     // XXX: There is no garbage collection now, so the GCRoot is not used
                                     Ok(_gc_root) => Ok(()),
-                                    Err(err) => Err(error!(logger, "Explorer error: {}", err)),
+                                    Err(err) => {
+                                        error!(logger, "Explorer error: {}", err);
+                                        Err(())
+                                    }
                                 })
                                 .await
                         });
@@ -151,9 +154,11 @@ impl ExplorerDB {
 
         let block = ExplorerBlock::resolve_from(
             &block0,
-            blockchain_config.discrimination,
-            &Transactions::new(),
-            &Blocks::new(),
+            indexing::ExplorerBlockBuildingContext {
+                discrimination: blockchain_config.discrimination,
+                prev_transactions: &Transactions::new(),
+                prev_blocks: &Blocks::new(),
+            },
         );
 
         let blocks = apply_block_to_blocks(Blocks::new(), &block)?;
@@ -223,7 +228,7 @@ impl ExplorerDB {
         let block_id = block.header.hash();
         let multiverse = self.multiverse.clone();
         let current_tip = self.longest_chain_tip.clone();
-        let discrimination = self.blockchain_config.discrimination.clone();
+        let discrimination = self.blockchain_config.discrimination;
 
         let previous_state = multiverse
             .get_ref(previous_block)
@@ -240,8 +245,14 @@ impl ExplorerDB {
             stake_pool_blocks,
         } = previous_state.state().clone();
 
-        let explorer_block =
-            ExplorerBlock::resolve_from(&block, discrimination, &transactions, &blocks);
+        let explorer_block = ExplorerBlock::resolve_from(
+            &block,
+            indexing::ExplorerBlockBuildingContext {
+                discrimination,
+                prev_transactions: &transactions,
+                prev_blocks: &blocks,
+            },
+        );
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(stake_pool_data, stake_pool_blocks, &explorer_block);
 
@@ -277,7 +288,7 @@ impl ExplorerDB {
     }
 
     pub async fn get_block(&self, block_id: &HeaderHash) -> Option<ExplorerBlock> {
-        let block_id = block_id.clone();
+        let block_id = *block_id;
         self.with_latest_state(move |state| {
             state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
         })
@@ -285,7 +296,6 @@ impl ExplorerDB {
     }
 
     pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
-        let epoch = epoch.clone();
         self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| e.as_ref().clone()))
             .await
     }
@@ -298,7 +308,7 @@ impl ExplorerDB {
             state
                 .chain_lengths
                 .lookup(&chain_length)
-                .map(|b| b.as_ref().clone())
+                .map(|b| *b.as_ref())
         })
         .await
     }
@@ -307,12 +317,11 @@ impl ExplorerDB {
         &self,
         transaction_id: &FragmentId,
     ) -> Option<HeaderHash> {
-        let transaction_id = transaction_id.clone();
         self.with_latest_state(move |state| {
             state
                 .transactions
                 .lookup(&transaction_id)
-                .map(|id| id.as_ref().clone())
+                .map(|id| *id.as_ref())
         })
         .await
     }
@@ -348,7 +357,7 @@ impl ExplorerDB {
                     state
                         .chain_lengths
                         .lookup(&i.into())
-                        .map(|b| (b.as_ref().clone(), i.into()))
+                        .map(|b| (*b.as_ref(), i.into()))
                 })
                 .collect()
         })
@@ -414,7 +423,7 @@ fn apply_block_to_transactions(
 
     for id in ids {
         transactions = transactions
-            .insert(id, Arc::new(block_id.clone()))
+            .insert(id, Arc::new(block_id))
             .map_err(|_| ErrorKind::TransactionAlreadyExists(format!("{}", id)))?;
     }
 
@@ -556,7 +565,7 @@ impl BlockchainConfig {
         let discrimination = params
             .iter()
             .filter_map(|param| match param {
-                ConfigParam::Discrimination(discrimination) => Some(discrimination.clone()),
+                ConfigParam::Discrimination(discrimination) => Some(discrimination),
                 _ => None,
             })
             .next()
@@ -565,7 +574,7 @@ impl BlockchainConfig {
         let consensus_version = params
             .iter()
             .filter_map(|param| match param {
-                ConfigParam::ConsensusVersion(version) => Some(version.clone()),
+                ConfigParam::ConsensusVersion(version) => Some(version),
                 _ => None,
             })
             .next()
@@ -574,16 +583,16 @@ impl BlockchainConfig {
         let fees = params
             .iter()
             .filter_map(|param| match param {
-                ConfigParam::LinearFee(fee) => Some(fee.clone()),
+                ConfigParam::LinearFee(fee) => Some(fee),
                 _ => None,
             })
             .next()
             .expect("fee is not in config params");
 
         BlockchainConfig {
-            discrimination,
-            consensus_version,
-            fees,
+            discrimination: *discrimination,
+            consensus_version: *consensus_version,
+            fees: *fees,
         }
     }
 }

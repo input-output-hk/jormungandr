@@ -1,3 +1,4 @@
+mod certificates;
 mod connections;
 mod error;
 mod scalars;
@@ -12,18 +13,18 @@ use super::indexing::{
 use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
+use certificates::*;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
 use futures::executor::block_on;
 pub use juniper::http::GraphQLRequest;
 use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
-use std::convert::TryFrom;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, IndexCursor, NonZero, PoolId, PublicKey, Slot,
-    TimeOffsetSeconds, Value,
+    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PoolId, Slot,
+    Value,
 };
 
 use crate::explorer::{ExplorerDB, Settings};
@@ -42,14 +43,13 @@ impl Block {
     }
 
     fn from_valid_hash(hash: HeaderHash) -> Block {
-        Block { hash: hash.clone() }
+        Block { hash }
     }
 
     fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
-        block_on(db.get_block(&self.hash)).ok_or(
-            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
-                .into(),
-        )
+        block_on(db.get_block(&self.hash)).ok_or_else(|| {
+            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned()).into()
+        })
     }
 }
 
@@ -249,9 +249,8 @@ struct Transaction {
 
 impl Transaction {
     fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let block_hash = block_on(context.db.find_block_hash_by_transaction(&id)).ok_or(
-            ErrorKind::NotFound(format!("transaction not found: {}", &id,)),
-        )?;
+        let block_hash = block_on(context.db.find_block_hash_by_transaction(&id))
+            .ok_or_else(|| ErrorKind::NotFound(format!("transaction not found: {}", &id,)))?;
 
         Ok(Transaction {
             id,
@@ -277,19 +276,20 @@ impl Transaction {
     }
 
     fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
-        let block_id = match self.block_hash {
-            Some(block_id) => block_id,
-            None => block_on(context.db.find_block_hash_by_transaction(&self.id)).ok_or(
-                ErrorKind::InternalError("Transaction's block was not found".to_owned()),
-            )?,
-        };
+        let block_id =
+            match self.block_hash {
+                Some(block_id) => block_id,
+                None => block_on(context.db.find_block_hash_by_transaction(&self.id)).ok_or_else(
+                    || ErrorKind::InternalError("Transaction's block was not found".to_owned()),
+                )?,
+            };
 
-        block_on(context.db.get_block(&block_id)).ok_or(
+        block_on(context.db.get_block(&block_id)).ok_or_else(|| {
             ErrorKind::InternalError(
                 "transaction is in explorer but couldn't find its block".to_owned(),
             )
-            .into(),
-        )
+            .into()
+        })
     }
 
     fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
@@ -300,9 +300,11 @@ impl Transaction {
             Ok(block
                 .transactions
                 .get(&self.id)
-                .ok_or(ErrorKind::InternalError(
-                    "transaction was not found in respective block".to_owned(),
-                ))?
+                .ok_or_else(|| {
+                    ErrorKind::InternalError(
+                        "transaction was not found in respective block".to_owned(),
+                    )
+                })?
                 .clone())
         }
     }
@@ -348,7 +350,7 @@ impl Transaction {
             .collect())
     }
 
-    pub fn certificate(&self, context: &Context) -> FieldResult<Option<Certificate>> {
+    pub fn certificate(&self, context: &Context) -> FieldResult<Option<certificates::Certificate>> {
         let transaction = self.get_contents(context)?;
         match transaction.certificate {
             Some(c) => Certificate::try_from(c).map(Some).map_err(|e| e.into()),
@@ -398,11 +400,11 @@ struct Address {
 }
 
 impl Address {
-    fn from_bech32(bech32: &String) -> FieldResult<Address> {
+    fn from_bech32(bech32: &str) -> FieldResult<Address> {
         let addr = chain_addr::AddressReadable::from_string_anyprefix(bech32)
             .map(|adr| ExplorerAddress::New(adr.to_address()))
             .or_else(|_| OldAddress::from_str(bech32).map(ExplorerAddress::Old))
-            .map_err(|_| ErrorKind::InvalidAddress(bech32.clone()))?;
+            .map_err(|_| ErrorKind::InvalidAddress(bech32.to_string()))?;
 
         Ok(Address { id: addr })
     }
@@ -443,7 +445,7 @@ impl Address {
         context: &Context,
     ) -> FieldResult<TransactionConnection> {
         let transactions = block_on(context.db.get_transactions_by_address(&self.id))
-            .unwrap_or(PersistentSequence::<FragmentId>::new());
+            .unwrap_or_else(PersistentSequence::<FragmentId>::new);
 
         let boundaries = if transactions.len() > 0 {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
@@ -471,149 +473,12 @@ impl Address {
                     .filter_map(|i| {
                         transactions
                             .get(i)
-                            .map(|h| (TransactionNodeFetchInfo::Id(h.as_ref().clone()), i))
+                            .map(|h| (TransactionNodeFetchInfo::Id(*h.as_ref()), i))
                     })
                     .collect(),
             },
         )
     }
-}
-
-/*--------------------------------------------*/
-/*------------------Certificates-------------*/
-/*------------------------------------------*/
-
-struct StakeDelegation {
-    delegation: certificate::StakeDelegation,
-}
-
-impl From<certificate::StakeDelegation> for StakeDelegation {
-    fn from(delegation: certificate::StakeDelegation) -> StakeDelegation {
-        StakeDelegation { delegation }
-    }
-}
-
-#[juniper::object(
-    Context = Context,
-)]
-impl StakeDelegation {
-    // FIXME: Maybe a new Account type would be better?
-    pub fn account(&self, context: &Context) -> FieldResult<Address> {
-        let discrimination = context.db.blockchain_config.discrimination;
-        self.delegation
-            .account_id
-            .to_single_account()
-            .ok_or(
-                // TODO: Multisig address?
-                ErrorKind::Unimplemented.into(),
-            )
-            .map(|single| {
-                chain_addr::Address(discrimination, chain_addr::Kind::Account(single.into()))
-            })
-            .map(|addr| Address::from(&ExplorerAddress::New(addr)))
-    }
-
-    pub fn pools(&self, context: &Context) -> Vec<Pool> {
-        use chain_impl_mockchain::account::DelegationType;
-        use std::iter::FromIterator as _;
-
-        match self.delegation.get_delegation_type() {
-            DelegationType::NonDelegated => vec![],
-            DelegationType::Full(id) => vec![Pool::from_valid_id(id.clone())],
-            DelegationType::Ratio(delegation_ratio) => Vec::from_iter(
-                delegation_ratio
-                    .pools()
-                    .iter()
-                    .cloned()
-                    .map(|(p, _)| Pool::from_valid_id(p)),
-            ),
-        }
-    }
-}
-
-#[derive(Clone)]
-struct PoolRegistration {
-    registration: certificate::PoolRegistration,
-}
-
-impl From<certificate::PoolRegistration> for PoolRegistration {
-    fn from(registration: certificate::PoolRegistration) -> PoolRegistration {
-        PoolRegistration { registration }
-    }
-}
-
-#[juniper::object(
-    Context = Context,
-)]
-impl PoolRegistration {
-    pub fn pool(&self, context: &Context) -> Pool {
-        Pool::from_valid_id(self.registration.to_id())
-    }
-
-    /// Beginning of validity for this pool, this is used
-    /// to keep track of the period of the expected key and the expiry
-    pub fn start_validity(&self) -> TimeOffsetSeconds {
-        self.registration.start_validity.into()
-    }
-
-    /// Management threshold for owners, this need to be <= #owners and > 0
-    pub fn management_threshold(&self) -> i32 {
-        // XXX: u8 fits in i32, but maybe some kind of custom scalar is better?
-        self.registration.management_threshold().into()
-    }
-
-    /// Owners of this pool
-    pub fn owners(&self) -> Vec<PublicKey> {
-        self.registration
-            .owners
-            .iter()
-            .map(PublicKey::from)
-            .collect()
-    }
-
-    pub fn operators(&self) -> Vec<PublicKey> {
-        self.registration
-            .operators
-            .iter()
-            .map(PublicKey::from)
-            .collect()
-    }
-
-    pub fn rewards(&self) -> TaxType {
-        TaxType(self.registration.rewards)
-    }
-
-    /// Reward account
-    pub fn reward_account(&self, context: &Context) -> Option<Address> {
-        use chain_impl_mockchain::transaction::AccountIdentifier;
-        let discrimination = context.db.blockchain_config.discrimination;
-
-        // FIXME: Move this transformation to a point earlier
-
-        self.registration
-            .reward_account
-            .clone()
-            .map(|acc_id| match acc_id {
-                AccountIdentifier::Single(d) => ExplorerAddress::New(chain_addr::Address(
-                    discrimination,
-                    chain_addr::Kind::Account(d.into()),
-                )),
-                AccountIdentifier::Multi(d) => {
-                    let mut bytes = [0u8; 32];
-                    bytes.copy_from_slice(&d.as_ref()[0..32]);
-                    ExplorerAddress::New(chain_addr::Address(
-                        discrimination,
-                        chain_addr::Kind::Multisig(bytes),
-                    ))
-                }
-            })
-            .map(|explorer_address| Address {
-                id: explorer_address,
-            })
-    }
-
-    // Genesis Praos keys
-    // pub keys: GenesisPraosLeader,
 }
 
 struct TaxType(chain_impl_mockchain::rewards::TaxType);
@@ -652,137 +517,17 @@ impl Ratio {
     }
 }
 
-struct OwnerStakeDelegation {
-    owner_stake_delegation: certificate::OwnerStakeDelegation,
-}
-
-impl From<certificate::OwnerStakeDelegation> for OwnerStakeDelegation {
-    fn from(owner_stake_delegation: certificate::OwnerStakeDelegation) -> OwnerStakeDelegation {
-        OwnerStakeDelegation {
-            owner_stake_delegation,
-        }
-    }
-}
+pub struct Proposal(certificate::Proposal);
 
 #[juniper::object(
     Context = Context,
 )]
-impl OwnerStakeDelegation {
-    fn pools(&self) -> Vec<Pool> {
-        use chain_impl_mockchain::account::DelegationType;
-        use std::iter::FromIterator as _;
-
-        match self.owner_stake_delegation.get_delegation_type() {
-            DelegationType::NonDelegated => vec![],
-            DelegationType::Full(id) => vec![Pool::from_valid_id(id.clone())],
-            DelegationType::Ratio(delegation_ratio) => Vec::from_iter(
-                delegation_ratio
-                    .pools()
-                    .iter()
-                    .cloned()
-                    .map(|(p, _)| Pool::from_valid_id(p)),
-            ),
-        }
+impl Proposal {
+    pub fn external_id(&self) -> ExternalProposalId {
+        ExternalProposalId(self.0.external_id().to_string())
     }
+    // TODO: options
 }
-
-/// Retirement info for a pool
-struct PoolRetirement {
-    pool_retirement: certificate::PoolRetirement,
-}
-
-impl From<certificate::PoolRetirement> for PoolRetirement {
-    fn from(pool_retirement: certificate::PoolRetirement) -> PoolRetirement {
-        PoolRetirement { pool_retirement }
-    }
-}
-
-#[juniper::object(
-    Context = Context,
-)]
-impl PoolRetirement {
-    pub fn pool_id(&self) -> PoolId {
-        PoolId(format!("{}", self.pool_retirement.pool_id))
-    }
-
-    pub fn retirement_time(&self) -> TimeOffsetSeconds {
-        self.pool_retirement.retirement_time.into()
-    }
-}
-
-struct PoolUpdate {
-    pool_update: certificate::PoolUpdate,
-}
-
-impl From<certificate::PoolUpdate> for PoolUpdate {
-    fn from(pool_update: certificate::PoolUpdate) -> PoolUpdate {
-        PoolUpdate { pool_update }
-    }
-}
-
-#[juniper::object(
-    Context = Context,
-)]
-impl PoolUpdate {
-    pub fn pool_id(&self) -> PoolId {
-        PoolId(format!("{}", self.pool_update.pool_id))
-    }
-
-    pub fn start_validity(&self) -> TimeOffsetSeconds {
-        self.pool_update.new_pool_reg.start_validity.into()
-    }
-
-    // TODO: Previous keys?
-    // TODO: Updated keys?
-}
-
-// TODO can we use jormungandr-lib Certificate ?
-enum Certificate {
-    StakeDelegation(StakeDelegation),
-    OwnerStakeDelegation(OwnerStakeDelegation),
-    PoolRegistration(PoolRegistration),
-    PoolRetirement(PoolRetirement),
-    PoolUpdate(PoolUpdate),
-}
-
-impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
-    type Error = error::Error;
-    fn try_from(
-        original: chain_impl_mockchain::certificate::Certificate,
-    ) -> Result<Certificate, Self::Error> {
-        match original {
-            certificate::Certificate::StakeDelegation(c) => {
-                Ok(Certificate::StakeDelegation(StakeDelegation::from(c)))
-            }
-            certificate::Certificate::OwnerStakeDelegation(c) => Ok(
-                Certificate::OwnerStakeDelegation(OwnerStakeDelegation::from(c)),
-            ),
-            certificate::Certificate::PoolRegistration(c) => {
-                Ok(Certificate::PoolRegistration(PoolRegistration::from(c)))
-            }
-            certificate::Certificate::PoolRetirement(c) => {
-                Ok(Certificate::PoolRetirement(PoolRetirement::from(c)))
-            }
-            certificate::Certificate::PoolUpdate(c) => {
-                Ok(Certificate::PoolUpdate(PoolUpdate::from(c)))
-            }
-            certificate::Certificate::VotePlan(_c) => todo!("Vote plans are not yet supported"),
-            certificate::Certificate::VoteCast(_c) => todo!("Vote casts are not yet supported"),
-        }
-    }
-}
-
-graphql_union!(Certificate: Context |&self| {
-    // the left hand side of the `instance_resolvers` match-like structure is the one
-    // that's used to match in the graphql query with the `__typename` field
-    instance_resolvers: |_| {
-        &StakeDelegation => match *self { Certificate::StakeDelegation(ref c) => Some(c), _ => None },
-        &OwnerStakeDelegation => match *self { Certificate::OwnerStakeDelegation(ref c) => Some(c), _ => None },
-        &PoolRegistration => match *self { Certificate::PoolRegistration(ref c) => Some(c), _ => None },
-        &PoolUpdate => match *self { Certificate::PoolUpdate(ref c) => Some(c), _ => None},
-        &PoolRetirement => match *self { Certificate::PoolRetirement(ref c) => Some(c), _ => None}
-    }
-});
 
 #[derive(Clone)]
 pub struct Pool {
@@ -792,13 +537,13 @@ pub struct Pool {
 }
 
 impl Pool {
-    fn from_string_id(id: &String, db: &ExplorerDB) -> FieldResult<Pool> {
+    fn from_string_id(id: &str, db: &ExplorerDB) -> FieldResult<Pool> {
         let id = certificate::PoolId::from_str(&id)?;
         let blocks = block_on(db.get_stake_pool_blocks(&id))
-            .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+            .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
         let data = block_on(db.get_stake_pool_data(&id))
-            .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+            .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
         Ok(Pool {
             id,
@@ -842,9 +587,9 @@ impl Pool {
     ) -> FieldResult<BlockConnection> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
-            None => block_on(context.db.get_stake_pool_blocks(&self.id)).ok_or(
-                ErrorKind::InternalError("Stake pool in block is not indexed".to_owned()),
-            )?,
+            None => block_on(context.db.get_stake_pool_blocks(&self.id)).ok_or_else(|| {
+                ErrorKind::InternalError("Stake pool in block is not indexed".to_owned())
+            })?,
         };
 
         let bounds = if blocks.len() > 0 {
@@ -872,7 +617,7 @@ impl Pool {
         BlockConnection::new(bounds, pagination_arguments, |range| match range {
             PaginationInterval::Empty => vec![],
             PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                .filter_map(|i| blocks.get(i).map(|h| (h.as_ref().clone(), i)))
+                .filter_map(|i| blocks.get(i).map(|h| (*h.as_ref(), i)))
                 .collect(),
         })
     }
@@ -882,7 +627,7 @@ impl Pool {
             Some(data) => Ok(data.registration.clone().into()),
             None => block_on(context.db.get_stake_pool_data(&self.id))
                 .map(|data| PoolRegistration::from(data.registration))
-                .ok_or(ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
+                .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
         }
     }
 
@@ -1084,7 +829,7 @@ impl Epoch {
                 (range.upper_bound + epoch_lower_bound + 1).into(),
             ))
             .iter()
-            .map(|(hash, index)| (hash.clone(), u32::from(index.clone()) - epoch_lower_bound))
+            .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
             .collect(),
         })
         .map(Some)
@@ -1187,7 +932,7 @@ impl Query {
                 let b = range.upper_bound.checked_add(1).unwrap().into();
                 block_on(context.db.get_block_hash_range(a, b))
                     .iter_mut()
-                    .map(|(hash, chain_length)| (hash.clone(), u32::from(*chain_length)))
+                    .map(|(hash, chain_length)| (*hash, u32::from(*chain_length)))
                     .collect()
             }
         })

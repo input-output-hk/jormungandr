@@ -2,7 +2,6 @@ use super::error::ErrorKind;
 use crate::blockcfg;
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value;
-
 use juniper::{ParseScalarResult, ParseScalarValue};
 use std::convert::{TryFrom, TryInto};
 
@@ -40,6 +39,12 @@ pub struct TimeOffsetSeconds(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
 pub struct NonZero(pub String);
+
+#[derive(juniper::GraphQLScalarValue)]
+pub struct VotePlanId(pub String);
+
+#[derive(juniper::GraphQLScalarValue)]
+pub struct ExternalProposalId(pub String);
 
 // u32 should be enough to count blocks and transactions (the only two cases for now)
 #[derive(Clone)]
@@ -144,6 +149,12 @@ impl From<u64> for PoolCount {
 impl From<u32> for IndexCursor {
     fn from(number: u32) -> IndexCursor {
         IndexCursor(number.into())
+    }
+}
+
+impl From<chain_impl_mockchain::certificate::VotePlanId> for VotePlanId {
+    fn from(id: chain_impl_mockchain::certificate::VotePlanId) -> VotePlanId {
+        VotePlanId(id.to_string())
     }
 }
 
