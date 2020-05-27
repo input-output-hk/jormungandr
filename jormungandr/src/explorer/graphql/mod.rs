@@ -23,8 +23,8 @@ use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PoolId, Slot,
-    Value,
+    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PoolId,
+    PublicKey, Slot, Value,
 };
 
 use crate::explorer::{ExplorerDB, Settings};
