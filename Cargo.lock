@@ -1568,6 +1568,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "url",
+ "yaml-rust",
 ]
 
 [[package]]

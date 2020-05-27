@@ -5,14 +5,12 @@ use crate::common::{
     transaction_utils::TransactionHash,
 };
 use crate::mock::{
-    client::{self, MockClientError},
-    read_into,
+    client::MockClientError,
     testing::{setup::bootstrap_node, setup::Config},
 };
 use chain_core::property::FromStr;
-use chain_core::property::Header as HeaderProp;
 use chain_impl_mockchain::{
-    block::{Block, Header},
+    block::Header,
     chaintypes::ConsensusVersion,
     key::Hash,
     testing::builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
@@ -161,7 +159,6 @@ pub async fn pull_headers_correct_hash() {
 pub async fn pull_headers_incorrect_hash() {
     let (_server, config) = bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
-    let tip_header = client.tip().await;
     assert_eq!(
         MockClientError::InvalidRequest(format!("not found (block not found)")),
         client.pull_headers(&[], fake_hash()).await.err().unwrap()
@@ -184,7 +181,7 @@ pub async fn pull_headers_empty_start_hash() {
 // L1020 Push headers incorrect header
 #[tokio::test]
 pub async fn push_headers() {
-    let (server, config) = bootstrap_node();
+    let (_server, config) = bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let tip_header = client.tip().await;
     let stake_pool = StakePoolBuilder::new().build();
@@ -210,7 +207,7 @@ pub async fn push_headers() {
 #[tokio::test]
 pub async fn upload_block_incompatible_protocol() {
     let config = ConfigurationBuilder::new().with_slot_duration(4).build();
-    let server = Starter::new().config(config.clone()).start().unwrap();
+    let _server = Starter::new().config(config.clone()).start().unwrap();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     let tip_header = client.tip().await;
     let stake_pool = StakePoolBuilder::new().build();

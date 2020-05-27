@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::{Speed, Thresholds};
+use crate::testing::{Speed, Thresholds};
 use std::time::Duration;
 
 #[derive(Clone, Debug)]

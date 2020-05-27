@@ -7,6 +7,7 @@ use crate::{
     },
     style, Node, NodeBlock0, NodeController,
 };
+
 use chain_impl_mockchain::header::HeaderId;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_integration_tests::common::legacy::Version;
@@ -16,7 +17,7 @@ use jormungandr_testing_utils::{
         network_builder::{
             Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
         },
-        FragmentSender,
+        FragmentSender, FragmentSenderSetup,
     },
     wallet::Wallet,
 };
@@ -311,10 +312,18 @@ impl Controller {
     }
 
     pub fn fragment_sender(&self) -> FragmentSender {
-        let hash = Hash::from_hash(self.block0_hash);
+        self.fragment_sender_with_setup(Default::default())
+    }
+
+    pub fn fragment_sender_with_setup<'a>(
+        &self,
+        setup: FragmentSenderSetup<'a>,
+    ) -> FragmentSender<'a> {
+        let hash = Hash::from_hash(self.block0_hash.clone());
         FragmentSender::new(
             hash,
             self.settings.block0.blockchain_configuration.linear_fees,
+            setup,
         )
     }
 }

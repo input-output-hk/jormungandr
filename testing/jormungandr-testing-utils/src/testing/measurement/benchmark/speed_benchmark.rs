@@ -70,6 +70,10 @@ impl SpeedBenchmarkRun {
             false
         }
     }
+
+    pub fn definition(&self) -> &SpeedBenchmarkDef {
+        &self.definition
+    }
 }
 
 pub struct SpeedBenchmarkFinish {

@@ -11,7 +11,7 @@ use jormungandr_integration_tests::common::legacy::{
     download_last_n_releases, get_jormungandr_bin, Version,
 };
 
-use jormungandr_testing_utils::testing::FragmentNode;
+use jormungandr_testing_utils::testing::FragmentSenderSetup;
 
 use rand_chacha::ChaChaRng;
 use std::{path::PathBuf, str::FromStr};
@@ -115,7 +115,7 @@ fn test_legacy_release(
         10,
         &mut wallet1,
         &mut wallet2,
-        &leader2 as &dyn FragmentNode,
+        &leader2,
         1_000.into(),
     )?;
 
@@ -272,24 +272,17 @@ fn test_legacy_disruption_release(
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &leader2 as &dyn FragmentNode,
-        1_000.into(),
-    )?;
+    controller
+        .fragment_sender_with_setup(FragmentSenderSetup::RESEND_3_TIMES)
+        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
     leader4 =
         controller.restart_node(leader4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &leader3 as &dyn FragmentNode,
-        1_000.into(),
-    )?;
+    let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]);
+    controller
+        .fragment_sender_with_setup(setup)
+        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
 
     leader1.shutdown()?;
     leader1 = controller.spawn_legacy_node(
@@ -305,7 +298,7 @@ fn test_legacy_disruption_release(
         10,
         &mut wallet1,
         &mut wallet2,
-        &leader2 as &dyn FragmentNode,
+        &leader2,
         1_000.into(),
     )?;
 

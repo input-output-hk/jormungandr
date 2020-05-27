@@ -11,6 +11,7 @@ use chain_impl_mockchain::{
 };
 
 use futures::stream;
+use std::fmt;
 
 pub mod node {
     tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
@@ -39,6 +40,15 @@ pub struct JormungandrClient {
 impl Clone for JormungandrClient {
     fn clone(&self) -> Self {
         JormungandrClient::new(&self.host, self.port)
+    }
+}
+
+impl fmt::Debug for JormungandrClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("JormungandrClient")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .finish()
     }
 }
 

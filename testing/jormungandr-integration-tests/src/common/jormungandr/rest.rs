@@ -2,7 +2,7 @@ use crate::common::{configuration::jormungandr_config::JormungandrConfig, legacy
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::{fragment::FragmentId, header::HeaderId};
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, EpochRewardsInfo, FragmentLog, Info, NodeStatsDto, PeerRecord, PeerStats,
+    EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord, PeerStats,
     StakeDistributionDto,
 };
 use jormungandr_testing_utils::testing::MemPoolCheck;
@@ -86,7 +86,7 @@ impl JormungandrRest {
         serde_json::from_str(&self.inner.p2p_available()?).map_err(RestError::CannotDeserialize)
     }
 
-    pub fn p2p_view(&self) -> Result<Vec<Info>, RestError> {
+    pub fn p2p_view(&self) -> Result<Vec<String>, RestError> {
         serde_json::from_str(&self.inner.p2p_view()?).map_err(RestError::CannotDeserialize)
     }
 

@@ -1,26 +1,24 @@
-mod wait;
-
 use crate::legacy::LegacyNodeController;
 use crate::{
     node::NodeController,
     scenario::Controller,
     test::{ErrorKind, Result},
 };
+pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
+
 use chain_impl_mockchain::key::Hash;
-use jormungandr_integration_tests::common::jormungandr::JormungandrLogger;
 use jormungandr_lib::{
     interfaces::{FragmentStatus, NodeState},
     time::Duration as LibsDuration,
 };
 use jormungandr_testing_utils::{
-    testing::{benchmark_efficiency, benchmark_speed, FragmentNode, Speed, Thresholds},
+    testing::{benchmark_efficiency, benchmark_speed, Speed, Thresholds},
     wallet::Wallet,
 };
 use std::{
     fmt,
     time::{Duration, SystemTime},
 };
-pub use wait::SyncWaitParams;
 
 pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
     let wait_time = sync_wait_params.wait_time();
@@ -102,7 +100,7 @@ pub fn measure_single_transaction_propagation_speed(
     let check = controller.fragment_sender().send_transaction(
         &mut wallet1,
         &wallet2,
-        *node as &dyn FragmentNode,
+        *node,
         1_000.into(),
     )?;
     let fragment_id = check.fragment_id();
@@ -136,15 +134,6 @@ pub fn measure_single_transaction_propagation_speed(
     Ok(())
 }
 
-pub trait SyncNode {
-    fn alias(&self) -> &str;
-    fn last_block_height(&self) -> u32;
-    fn log_stats(&self);
-    fn all_blocks_hashes(&self) -> Vec<Hash>;
-    fn logger(&self) -> JormungandrLogger;
-    fn is_running(&self) -> bool;
-}
-
 impl SyncNode for NodeController {
     fn alias(&self) -> &str {
         self.alias()
@@ -173,8 +162,12 @@ impl SyncNode for NodeController {
         self.stats().unwrap().state == NodeState::Running
     }
 
-    fn logger(&self) -> JormungandrLogger {
-        self.logger()
+    fn log_content(&self) -> String {
+        self.logger().get_log_content()
+    }
+
+    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
+        self.logger().get_lines_with_error_and_invalid().collect()
     }
 }
 
@@ -199,8 +192,12 @@ impl SyncNode for LegacyNodeController {
         self.all_blocks_hashes().unwrap()
     }
 
-    fn logger(&self) -> JormungandrLogger {
-        self.logger()
+    fn log_content(&self) -> String {
+        self.logger().get_log_content()
+    }
+
+    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
+        self.logger().get_lines_with_error_and_invalid().collect()
     }
 
     fn is_running(&self) -> bool {
@@ -284,7 +281,7 @@ pub fn assert_is_in_block<A: SyncNode + ?Sized>(status: FragmentStatus, node: &A
             "fragment status sent to node: {} is not in block :({:?}). logs: {}",
             node.alias(),
             status,
-            node.logger().get_log_content()
+            node.log_content()
         )))
     }
     Ok(())
@@ -313,9 +310,9 @@ pub fn assert_are_in_sync<A: SyncNode + ?Sized>(
             &format!("nodes are out of sync (different block hashes) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
                 duration,
                 first_node.alias(),
-                first_node.logger().get_log_content(),
+                first_node.log_content(),
                 node.alias(),
-                node.logger().get_log_content()),
+                node.log_content()),
         )?;
         assert_equals(
             &block_height,
@@ -323,9 +320,9 @@ pub fn assert_are_in_sync<A: SyncNode + ?Sized>(
             &format!("nodes are out of sync (different block height) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
                 duration,
                 first_node.alias(),
-                first_node.logger().get_log_content(),
+                first_node.log_content(),
                 node.alias(),
-                node.logger().get_log_content()
+                node.log_content()
                 ),
         )?;
     }
@@ -376,7 +373,10 @@ fn print_error_for_failed_leaders<A: SyncNode + ?Sized>(leaders_ids: Vec<u32>, l
     for leader_id in leaders_ids {
         let leader_index_usize = (leader_id - 1) as usize;
         let leader = leaders.get(leader_index_usize).unwrap();
-        let error_lines: Vec<String> = leader.logger().get_lines_with_error_and_invalid().collect();
-        println!("{} - Error Logs: {:?}", leader.alias(), error_lines);
+        println!(
+            "{} - Error Logs: {:?}",
+            leader.alias(),
+            leader.get_lines_with_error_and_invalid()
+        );
     }
 }

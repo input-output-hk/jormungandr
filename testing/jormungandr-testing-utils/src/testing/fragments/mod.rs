@@ -2,6 +2,7 @@ pub use self::{
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     sender::{FragmentSender, FragmentSenderError},
+    setup::FragmentSenderSetup,
     transaction::transaction_to,
     verifier::{FragmentVerifier, FragmentVerifierError},
 };
@@ -24,6 +25,7 @@ use thiserror::Error;
 mod initial_certificates;
 mod node;
 mod sender;
+mod setup;
 mod transaction;
 mod verifier;
 

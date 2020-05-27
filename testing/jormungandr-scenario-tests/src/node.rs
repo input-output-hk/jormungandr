@@ -12,7 +12,7 @@ use jormungandr_integration_tests::{
     mock::client::JormungandrClient,
 };
 use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, Info, NodeState, NodeStatsDto, PeerRecord, PeerStats,
+    EnclaveLeaderId, FragmentLog, NodeState, NodeStatsDto, PeerRecord, PeerStats,
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -235,7 +235,7 @@ impl NodeController {
         Ok(p2p_available)
     }
 
-    pub fn p2p_view(&self) -> Result<Vec<Info>> {
+    pub fn p2p_view(&self) -> Result<Vec<String>> {
         let p2p_view = self.rest_client.p2p_view()?;
         self.progress_bar
             .log_info(format!("network/p2p/view: {:?}", p2p_view));

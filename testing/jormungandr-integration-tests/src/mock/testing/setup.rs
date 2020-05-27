@@ -11,13 +11,11 @@ use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::key::Hash;
 use futures::future::FutureExt;
 use jormungandr_lib::interfaces::TrustedPeer;
-use std::path::PathBuf;
 use std::{
     thread,
     time::{Duration, Instant},
 };
 use tokio::sync::oneshot;
-use tokio::task::JoinHandle;
 use tonic::transport::Server;
 
 const LOCALHOST: &str = "127.0.0.1";
@@ -86,7 +84,7 @@ pub fn start_mock(
     let logger = MockLogger::new(log_file.clone());
     let (shutdown_signal, rx) = oneshot::channel::<()>();
 
-    let join_handle = tokio::spawn(async move {
+    tokio::spawn(async move {
         let addr = format!("127.0.0.1:{}", mock_port);
         let mock = JormungandrServerImpl::new(
             mock_port,

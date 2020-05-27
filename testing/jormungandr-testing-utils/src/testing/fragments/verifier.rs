@@ -29,8 +29,8 @@ pub enum FragmentVerifierError {
         fragment_id: FragmentId,
         logs: String,
     },
-    #[error("fragment verifier error")]
-    FragmentVerifierError(#[from] FragmentNodeError),
+    #[error("fragment node error")]
+    FragmentNodeError(#[from] FragmentNodeError),
 }
 
 pub struct FragmentVerifier;
