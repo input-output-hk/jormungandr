@@ -2298,6 +2298,11 @@ paths:
                       type: string
                       description: Epoch and slot ID of committee end time
                       pattern: "[0-9]+\\.[0-9]+"
+                    payload_type:
+                      type: string
+                      description: the type of payload to expect
+                      enum: ["Public"]
+                      required: true
                     proposals:
                       type: array
                       description: Active proposals

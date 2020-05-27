@@ -33,6 +33,12 @@ pub struct ProposalSerializableHelper<'a>(
     #[serde(with = "Proposal")] pub &'a chain_impl_mockchain::certificate::Proposal,
 );
 
+#[derive(Serialize)]
+#[serde(remote = "chain_impl_mockchain::vote::PayloadType")]
+pub enum PayloadTypeDef {
+    Public,
+}
+
 fn serialize_proposals<S>(
     proposals: &chain_impl_mockchain::certificate::Proposals,
     serializer: S,
@@ -67,6 +73,12 @@ pub struct VotePlan {
         getter = "chain_impl_mockchain::certificate::VotePlan::committee_end"
     )]
     pub committee_end: chain_impl_mockchain::block::BlockDate,
+
+    #[serde(
+        with = "PayloadTypeDef",
+        getter = "chain_impl_mockchain::certificate::VotePlan::payload_type"
+    )]
+    pub payload_type: chain_impl_mockchain::vote::PayloadType,
 
     #[serde(
         serialize_with = "serialize_proposals",
