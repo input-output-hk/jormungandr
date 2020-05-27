@@ -1,26 +1,13 @@
 use crate::{
-    common::{
-        configuration, file_utils, jormungandr::logger::Level, jormungandr::starter::Starter,
-    },
+    common::{configuration, jormungandr::logger::Level, jormungandr::starter::Starter},
     mock::{
-        client::JormungandrClient,
-        server::{
-            self, JormungandrServerImpl, MethodType, MockLogger, NodeServer, ProtocolVersion,
-        },
-        testing::setup::{
-            bootstrap_node_with_peer, build_configuration, start_mock, MockController, MockExitCode,
-        },
+        server::{MethodType, ProtocolVersion},
+        testing::setup::{build_configuration, start_mock, MockExitCode},
     },
 };
 use chain_core::property::FromStr;
 use chain_impl_mockchain::key::Hash;
-use futures::future::FutureExt;
-use std::{
-    thread::{self, JoinHandle},
-    time::{Duration, Instant},
-};
-use tokio::sync::oneshot;
-use tonic::transport::Server;
+use std::time::Duration;
 
 pub fn fake_hash() -> Hash {
     Hash::from_str("efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944").unwrap()

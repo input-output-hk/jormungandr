@@ -4,10 +4,7 @@ use crate::common::{
     legacy::{self, download_last_n_releases, get_jormungandr_bin, Version},
     startup,
 };
-use jormungandr_testing_utils::{
-    stake_pool::StakePool,
-    testing::{FragmentNode, FragmentSender},
-};
+use jormungandr_testing_utils::{stake_pool::StakePool, testing::FragmentSender};
 
 use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
 
