@@ -2302,7 +2302,6 @@ paths:
                       type: string
                       description: the type of payload to expect
                       enum: ["Public"]
-                      required: true
                     proposals:
                       type: array
                       description: Active proposals
@@ -2339,15 +2338,17 @@ paths:
                     - vote_start
                     - vote_end
                     - committee_end
+                    - payload_type
                     - proposals
               examples:
-                committee:
+                voteplan:
                   value: [
                     {
                       "committee_end": {
                         "epoch": 10,
                         "slot_id": 0
                       },
+                      "payload_type": "Public",
                       "proposals": [
                         {
                           "external_id": "adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280",
