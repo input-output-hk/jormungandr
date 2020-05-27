@@ -5,12 +5,11 @@ use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
     header::HeaderId,
 };
-
+use futures::executor::block_on;
 use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
     common::jormungandr::{logger::JormungandrLogger, JormungandrRest, RestError},
-    mock::{client::JormungandrClient, read_into},
-    response_to_vec,
+    mock::client::JormungandrClient,
 };
 use jormungandr_lib::interfaces::{
     EnclaveLeaderId, FragmentLog, Info, NodeState, NodeStatsDto, PeerRecord, PeerStats,
@@ -50,6 +49,10 @@ error_chain! {
 
         InvalidHeaderId {
             description("Invalid header id"),
+        }
+
+        InvalidGrpcCall {
+            description("Invalid grpc call")
         }
 
         InvalidBlock {
@@ -201,8 +204,7 @@ impl NodeController {
     }
 
     pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
-        let response = self.grpc_client.pull_blocks_to_tip(from);
-        Ok(response_to_vec!(response))
+        block_on(self.grpc_client.pull_blocks_to_tip(from)).chain_err(|| ErrorKind::InvalidGrpcCall)
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
@@ -257,7 +259,7 @@ impl NodeController {
     }
 
     pub fn genesis_block_hash(&self) -> Result<HeaderId> {
-        Ok(self.grpc_client.get_genesis_block_hash())
+        Ok(block_on(self.grpc_client.get_genesis_block_hash()))
     }
 
     pub fn block(&self, header_hash: &HeaderId) -> Result<Block> {

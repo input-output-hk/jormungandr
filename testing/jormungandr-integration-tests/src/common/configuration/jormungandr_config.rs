@@ -98,7 +98,7 @@ impl JormungandrConfig {
         self.update_node_config(node_config);
     }
 
-    fn update_node_config(&mut self, node_config: NodeConfig) {
+    pub fn update_node_config(&mut self, node_config: NodeConfig) {
         self.inner.node_config_path = NodeConfigBuilder::serialize(&node_config);
     }
 

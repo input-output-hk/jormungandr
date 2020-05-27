@@ -8,33 +8,29 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{
-    common::file_utils,
-    mock::proto::{node::*, node_grpc::*},
-};
-use chain_impl_mockchain::key::Hash;
-use grpc::{Metadata, Server};
+use crate::common::file_utils;
+
 use std::fmt;
 
-pub fn start(
-    port: u16,
-    genesis_hash: Hash,
-    tip: Hash,
-    version: ProtocolVersion,
-    log_path: PathBuf,
-) -> Server {
-    let mut server = grpc::ServerBuilder::new_plain();
-    server.http.set_port(port);
-    server.add_service(NodeServer::new_service_def(JormungandrServerImpl::new(
-        port,
-        genesis_hash,
-        tip,
-        version,
-        log_path,
-    )));
+use tonic::{Request, Response, Status};
 
-    let server = server.build().expect("server");
-    server
+pub use node::{
+    node_server::{Node, NodeServer},
+    {
+        Block, BlockEvent, BlockIds, Fragment, FragmentIds, Gossip, HandshakeRequest,
+        HandshakeResponse, Header, PeersRequest, PeersResponse, PullBlocksToTipRequest,
+        PullHeadersRequest, PushHeadersResponse, TipRequest, TipResponse, UploadBlocksResponse,
+    },
+};
+
+use chain_impl_mockchain::key::Hash;
+
+use futures::Stream;
+use std::pin::Pin;
+use tokio::sync::mpsc;
+
+pub mod node {
+    tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
 }
 
 #[derive(Debug)]
@@ -51,11 +47,12 @@ pub enum MethodType {
     GetBlocks,
     GetHeaders,
     GetFragments,
+    GetPeers,
     PullHeaders,
     PushHeaders,
     UploadBlocks,
     BlockSubscription,
-    ContentSubscription,
+    FragmentSubscription,
     GossipSubscription,
 }
 
@@ -172,143 +169,132 @@ impl JormungandrServerImpl {
     }
 }
 
+#[tonic::async_trait]
 impl Node for JormungandrServerImpl {
-    fn handshake(
+    type PullBlocksToTipStream = mpsc::Receiver<Result<Block, Status>>;
+    type GetBlocksStream = mpsc::Receiver<Result<Block, Status>>;
+    type PullHeadersStream = mpsc::Receiver<Result<Header, Status>>;
+    type GetHeadersStream = mpsc::Receiver<Result<Header, Status>>;
+    type GetFragmentsStream = mpsc::Receiver<Result<Fragment, Status>>;
+    type BlockSubscriptionStream =
+        Pin<Box<dyn Stream<Item = Result<BlockEvent, Status>> + Send + Sync + 'static>>;
+    type FragmentSubscriptionStream =
+        Pin<Box<dyn Stream<Item = Result<Fragment, Status>> + Send + Sync + 'static>>;
+    type GossipSubscriptionStream =
+        Pin<Box<dyn Stream<Item = Result<Gossip, Status>> + Send + Sync + 'static>>;
+
+    async fn handshake(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<HandshakeRequest>,
-        resp: ::grpc::ServerResponseUnarySink<HandshakeResponse>,
-    ) -> grpc::Result<()> {
+        _request: Request<HandshakeRequest>,
+    ) -> Result<Response<HandshakeResponse>, Status> {
         info!(self.log,"Handshake method recieved";"method" => MethodType::Handshake.to_string());
-        let mut handshake = HandshakeResponse::new();
 
-        handshake.set_version(self.protocol.clone() as u32);
-        handshake.set_block0(self.genesis_hash.as_ref().to_vec());
+        let reply = node::HandshakeResponse {
+            version: self.protocol.clone() as u32,
+            block0: self.genesis_hash.as_ref().to_vec(),
+        };
 
-        resp.finish(handshake)
+        Ok(Response::new(reply))
     }
 
-    fn tip(
+    async fn tip(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<TipRequest>,
-        resp: ::grpc::ServerResponseUnarySink<TipResponse>,
-    ) -> grpc::Result<()> {
+        _request: tonic::Request<TipRequest>,
+    ) -> Result<tonic::Response<TipResponse>, tonic::Status> {
         info!(self.log,"Tip request recieved";"method" => MethodType::Tip.to_string());
-        let mut tip_response = TipResponse::new();
-        tip_response.set_block_header(self.tip.as_ref().to_vec());
-        resp.finish(tip_response)
+
+        let tip_response = TipResponse {
+            block_header: self.tip.as_ref().to_vec(),
+        };
+
+        Ok(Response::new(tip_response))
     }
 
-    fn peers(
+    async fn peers(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<PeersRequest>,
-        resp: ::grpc::ServerResponseUnarySink<PeersResponse>,
-    ) -> ::grpc::Result<()> {
-        let peers_response = PeersResponse::new();
-        resp.finish(peers_response)
+        _request: tonic::Request<PeersRequest>,
+    ) -> Result<tonic::Response<PeersResponse>, tonic::Status> {
+        info!(self.log,"Get peers request recieved";"method" => MethodType::GetPeers.to_string());
+        Ok(Response::new(PeersResponse::default()))
     }
-
-    fn get_blocks(
+    async fn get_blocks(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<BlockIds>,
-        mut resp: ::grpc::ServerResponseSink<Block>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<BlockIds>,
+    ) -> Result<tonic::Response<Self::GetBlocksStream>, tonic::Status> {
         info!(self.log,"Get blocks request recieved";"method" => MethodType::GetBlocks.to_string());
-        resp.send_trailers(Metadata::default())
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(rx))
     }
-
-    fn get_headers(
+    async fn get_headers(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<BlockIds>,
-        mut resp: ::grpc::ServerResponseSink<Header>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<BlockIds>,
+    ) -> Result<tonic::Response<Self::GetHeadersStream>, tonic::Status> {
         info!(self.log,"Get headers request recieved";"method" => MethodType::GetHeaders.to_string());
-        resp.send_trailers(Metadata::default())
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(rx))
     }
-
-    fn get_fragments(
+    async fn get_fragments(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<FragmentIds>,
-        mut resp: ::grpc::ServerResponseSink<Fragment>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<FragmentIds>,
+    ) -> Result<tonic::Response<Self::GetFragmentsStream>, tonic::Status> {
         info!(self.log,"Get fragments request recieved";"method" => MethodType::GetFragments.to_string());
-        resp.send_trailers(Metadata::default())
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(rx))
     }
-
-    fn pull_headers(
+    async fn pull_headers(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<PullHeadersRequest>,
-        mut resp: ::grpc::ServerResponseSink<Header>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<PullHeadersRequest>,
+    ) -> Result<tonic::Response<Self::PullHeadersStream>, tonic::Status> {
         info!(self.log,"Pull Headers request recieved";"method" => MethodType::PullHeaders.to_string());
-        resp.send_trailers(Metadata::default())
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(rx))
     }
-
-    fn pull_blocks_to_tip(
+    async fn pull_blocks_to_tip(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequestSingle<PullBlocksToTipRequest>,
-        mut resp: ::grpc::ServerResponseSink<Block>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<PullBlocksToTipRequest>,
+    ) -> Result<tonic::Response<Self::PullBlocksToTipStream>, tonic::Status> {
         info!(self.log,"PullBlocksToTip request recieved";"method" => MethodType::PullBlocksToTip.to_string());
-        resp.send_trailers(Metadata::default())
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(rx))
     }
-
-    fn push_headers(
+    async fn push_headers(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequest<Header>,
-        resp: ::grpc::ServerResponseUnarySink<PushHeadersResponse>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<tonic::Streaming<Header>>,
+    ) -> Result<tonic::Response<PushHeadersResponse>, tonic::Status> {
         info!(self.log,"Push headers method recieved";"method" => MethodType::PushHeaders.to_string());
-        let header_response = PushHeadersResponse::new();
-        resp.finish(header_response)
+        Ok(Response::new(PushHeadersResponse::default()))
     }
-
-    fn upload_blocks(
+    async fn upload_blocks(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequest<Block>,
-        resp: ::grpc::ServerResponseUnarySink<UploadBlocksResponse>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<tonic::Streaming<Block>>,
+    ) -> Result<tonic::Response<UploadBlocksResponse>, tonic::Status> {
         info!(self.log,"Upload blocks method recieved";"method" => MethodType::UploadBlocks.to_string());
-        let block_response = UploadBlocksResponse::new();
-        resp.finish(block_response)
+        Ok(Response::new(UploadBlocksResponse::default()))
     }
 
-    fn block_subscription(
+    async fn block_subscription(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequest<Header>,
-        mut resp: ::grpc::ServerResponseSink<BlockEvent>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<tonic::Streaming<Header>>,
+    ) -> Result<tonic::Response<Self::BlockSubscriptionStream>, tonic::Status> {
         info!(self.log,"Block subscription event recieved";"method" => MethodType::BlockSubscription.to_string());
-        resp.send_trailers(Metadata::default())
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(Box::pin(rx)))
     }
 
-    fn fragment_subscription(
+    async fn fragment_subscription(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequest<Fragment>,
-        mut resp: ::grpc::ServerResponseSink<Fragment>,
-    ) -> ::grpc::Result<()> {
-        info!(self.log,"Content subscription event recieved";"method" => MethodType::ContentSubscription.to_string());
-        resp.send_trailers(Metadata::default())
+        _request: tonic::Request<tonic::Streaming<Fragment>>,
+    ) -> Result<tonic::Response<Self::FragmentSubscriptionStream>, tonic::Status> {
+        info!(self.log,"Fragment subscription event recieved";"method" => MethodType::FragmentSubscription.to_string());
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(Box::pin(rx)))
     }
-
-    fn gossip_subscription(
+    async fn gossip_subscription(
         &self,
-        _o: ::grpc::ServerHandlerContext,
-        _req: ::grpc::ServerRequest<Gossip>,
-        mut resp: ::grpc::ServerResponseSink<Gossip>,
-    ) -> ::grpc::Result<()> {
+        _request: tonic::Request<tonic::Streaming<Gossip>>,
+    ) -> Result<tonic::Response<Self::GossipSubscriptionStream>, tonic::Status> {
         info!(self.log,"Gossip subscription event recieved";"method" => MethodType::GossipSubscription.to_string());
-        resp.send_trailers(Metadata::default())
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(Box::pin(rx)))
     }
 }

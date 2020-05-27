@@ -5,10 +5,10 @@ authors = [ "dev@iohk.io" ]
 edition = "2018"
 
 [dependencies]
-grpc            = "0.8"
-grpc-protobuf   = "0.8"
-protobuf        = "2.14"
-futures         = "0.3"
+tonic = "0.2"
+prost = "0.6"
+tokio = { version = "0.2", features = ["macros"] }
+futures      = "0.3.5"
 base64 = "0.12"
 bytes = "0.4"
 hex = "0.4.2"
@@ -33,7 +33,6 @@ serde_yaml = "0.8"
 lazy_static = "1.4"
 mktemp = "0.4.0"
 regex = "1.3"
-error-chain = "0.12"
 poldercast = "0.13.1"
 thiserror = "1.0"
 url = "2.1.1"
@@ -76,5 +75,4 @@ sanity-non-functional = []
 soak-non-functional = []
 
 [build-dependencies]
-protoc-rust = "2.14" # https://github.com/stepancheg/grpc-rust/issues/183
-protoc-rust-grpc = "0.8"
+tonic-build = "0.2"

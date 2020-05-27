@@ -1,14 +1,5 @@
 fn main() {
-    // generate grpc mock
-    /*
-    protoc_rust_grpc::Codegen::new()
-        .out_dir("src/mock/proto")
-        .includes(&["../../chain-deps/chain-network/proto"])
-        .inputs(&["../../chain-deps/chain-network/proto/node.proto"])
-        .rust_protobuf(true)
-        .run()
-        .expect("protoc-rust-grpc");
-    */
+    tonic_build::compile_protos("../../chain-deps/chain-network/proto/node.proto").unwrap();
 
     let jor_cli_name = option_env!("JOR_CLI_NAME").unwrap_or("jcli");
     let jormungandr_name = option_env!("JORMUNGANDR_NAME").unwrap_or("jormungandr");
