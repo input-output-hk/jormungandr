@@ -21,8 +21,7 @@ impl SecretModelFactory {
     pub fn serialize(node_secret: &NodeSecret) -> PathBuf {
         let content =
             serde_yaml::to_string(&node_secret).expect("Cannot serialize secret node model");
-        let node_config_file_path = file_utils::create_file_in_temp("node.secret", &content);
-        node_config_file_path
+        file_utils::create_file_in_temp("node.secret", &content)
     }
 
     pub fn empty() -> NodeSecret {
@@ -34,9 +33,7 @@ impl SecretModelFactory {
 
     pub fn bft(signing_key: SigningKey<Ed25519>) -> NodeSecret {
         NodeSecret {
-            bft: Some(Bft {
-                signing_key: signing_key,
-            }),
+            bft: Some(Bft { signing_key }),
             genesis: None,
         }
     }
@@ -50,7 +47,7 @@ impl SecretModelFactory {
             genesis: Some(GenesisPraos {
                 node_id: Hash::from_str(node_id).unwrap(),
                 sig_key: signing_key,
-                vrf_key: vrf_key,
+                vrf_key,
             }),
             bft: None,
         }

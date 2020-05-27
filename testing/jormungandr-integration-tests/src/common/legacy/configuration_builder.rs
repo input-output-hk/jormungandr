@@ -3,7 +3,6 @@ use super::Version;
 use crate::common::{
     configuration::JormungandrConfig, file_utils, jormungandr::starter::StartupError,
 };
-use hex;
 use jormungandr_lib::interfaces::NodeConfig as NewestNodeConfig;
 use jormungandr_testing_utils::legacy::{NodeConfig, P2p, Rest, TrustedPeer};
 use rand::RngCore;
@@ -97,7 +96,7 @@ impl LegacyNodeConfigConverter {
     fn generate_legacy_poldercast_id(rng: &mut OsRng) -> String {
         let mut bytes: [u8; 24] = [0; 24];
         rng.fill_bytes(&mut bytes);
-        hex::encode(&bytes).to_string()
+        hex::encode(&bytes)
     }
 
     fn build_node_config_before_08_19(&self, source: NewestNodeConfig) -> NodeConfig {
@@ -116,10 +115,10 @@ impl LegacyNodeConfigConverter {
             storage: source.storage.clone(),
             log: source.log.clone(),
             rest: Rest {
-                listen: source.rest.listen.clone(),
+                listen: source.rest.listen,
             },
             p2p: P2p {
-                trusted_peers: trusted_peers,
+                trusted_peers,
                 public_address: source.p2p.public_address.clone(),
                 listen_address: None,
                 max_inbound_connections: None,

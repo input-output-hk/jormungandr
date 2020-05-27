@@ -54,7 +54,7 @@ impl FragmentVerifier {
         if !status.is_in_a_block() {
             return Err(FragmentVerifierError::FragmentNotInBlock {
                 alias: node.alias().to_string(),
-                status: status,
+                status,
                 logs: node.log_content(),
             });
         }
@@ -89,7 +89,7 @@ impl FragmentVerifier {
 
         Err(FragmentVerifierError::FragmentNoInMemPoolLogs {
             alias: node.alias().to_string(),
-            fragment_id: check.fragment_id().clone(),
+            fragment_id: *check.fragment_id(),
             logs: node.log_content(),
         })
     }
@@ -104,7 +104,7 @@ impl FragmentVerifier {
         for _ in 0..max_try {
             let status_result = self.fragment_status(check.clone(), node);
 
-            if let Err(_) = status_result {
+            if status_result.is_err() {
                 std::thread::sleep(duration);
                 continue;
             }
@@ -120,7 +120,7 @@ impl FragmentVerifier {
         }
 
         Err(FragmentVerifierError::FragmentIsPendingForTooLong {
-            fragment_id: check.fragment_id().clone(),
+            fragment_id: *check.fragment_id(),
             timeout: Duration::from_secs(duration.as_secs() * max_try),
             alias: node.alias().to_string(),
             logs: node.log_content(),

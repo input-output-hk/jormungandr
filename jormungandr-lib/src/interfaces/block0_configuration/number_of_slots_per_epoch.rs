@@ -146,7 +146,7 @@ mod test {
     #[test]
     #[should_panic]
     fn deserialize_from_invalid_type() {
-        const EXAMPLE: &'static str = "---\n\"928\"";
+        const EXAMPLE: &str = "---\n\"928\"";
 
         let _: NumberOfSlotsPerEpoch = serde_yaml::from_str(EXAMPLE).unwrap();
     }

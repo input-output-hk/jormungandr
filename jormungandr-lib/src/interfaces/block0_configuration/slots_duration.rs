@@ -160,7 +160,7 @@ mod test {
     #[test]
     #[should_panic]
     fn deserialize_from_invalid_type() {
-        const EXAMPLE: &'static str = "---\ntrue";
+        const EXAMPLE: &str = "---\ntrue";
 
         let _: SlotDuration = serde_yaml::from_str(EXAMPLE).unwrap();
     }
@@ -196,7 +196,7 @@ mod test {
     #[test]
     fn deserialize_from_duration_str() {
         const VALUE: u8 = 15;
-        const DURATION_STR: &'static str = "---\n15s";
+        const DURATION_STR: &str = "---\n15s";
 
         let decoded: SlotDuration = serde_yaml::from_str(&DURATION_STR).unwrap();
 

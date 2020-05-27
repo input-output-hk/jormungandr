@@ -55,7 +55,7 @@ impl Pool {
         let count = new_fragments.len();
         let fragment_logs = new_fragments
             .iter()
-            .map(move |fragment| FragmentLog::new(fragment.id().into(), origin))
+            .map(move |fragment| FragmentLog::new(fragment.id(), origin))
             .collect::<Vec<_>>();
         for fragment in new_fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));

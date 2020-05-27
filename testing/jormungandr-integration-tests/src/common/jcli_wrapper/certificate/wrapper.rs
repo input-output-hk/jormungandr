@@ -7,7 +7,7 @@ use crate::common::{
 use jormungandr_lib::interfaces::TaxType;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct JCLICertificateWrapper {
     commands: CertificateCommands,
 }
@@ -64,8 +64,7 @@ impl JCLICertificateWrapper {
         );
         process_assert::assert_process_exited_successfully(output);
         file_assert::assert_file_exists_and_not_empty(&stake_pool_id_file);
-        let certification = file_utils::read_file(&stake_pool_id_file);
-        certification
+        file_utils::read_file(&stake_pool_id_file)
     }
 
     pub fn assert_sign(

@@ -415,10 +415,7 @@ impl NodeController {
 
     fn port_opened(&self, port: u16) -> bool {
         use std::net::TcpListener;
-        match TcpListener::bind(("127.0.0.1", port)) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        TcpListener::bind(("127.0.0.1", port)).is_ok()
     }
 
     pub fn is_up(&self) -> bool {
@@ -434,7 +431,7 @@ impl NodeController {
 
         if result == "" {
             self.progress_bar.log_info("shuting down");
-            return self.wait_for_shutdown();
+            self.wait_for_shutdown()
         } else {
             bail!(ErrorKind::NodeFailedToShutdown(
                 self.alias().to_string(),

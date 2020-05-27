@@ -54,7 +54,7 @@ impl<'de> Deserialize<'de> for CommitteeIdDef {
         let bytes = if deserializer.is_human_readable() {
             let s: String = String::deserialize(deserializer)?;
             let mut bytes = [0; CommitteeId::COMMITTEE_ID_SIZE];
-            hex::decode_to_slice(&s, &mut bytes).map_err(|e| serde::de::Error::custom(e))?;
+            hex::decode_to_slice(&s, &mut bytes).map_err(serde::de::Error::custom)?;
             bytes
         } else {
             let b: Vec<u8> = Vec::deserialize(deserializer)?;

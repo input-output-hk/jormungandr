@@ -8,7 +8,7 @@ use crate::common::configuration;
 
 use chain_impl_mockchain::fee::LinearFee;
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct TransactionCommands {}
 
 impl TransactionCommands {

@@ -16,6 +16,7 @@ const JSON_BODY_MIME: &Mime = &mime::APPLICATION_JSON;
 
 pub struct OpenApiVerifier(VerifierMode);
 
+#[allow(clippy::large_enum_variant)]
 enum VerifierMode {
     AcceptAll,
     Verify(Verifier),
@@ -273,9 +274,10 @@ fn url_segment_matches_path_segment<'a>(
 }
 
 fn path_segment_wildcard_name(path_segment: &str) -> Option<&str> {
-    match path_segment.starts_with('{') && path_segment.ends_with('}') {
-        true => Some(&path_segment[1..path_segment.len() - 1]),
-        false => None,
+    if path_segment.starts_with('{') && path_segment.ends_with('}') {
+        Some(&path_segment[1..path_segment.len() - 1])
+    } else {
+        None
     }
 }
 
@@ -310,7 +312,7 @@ fn find_operation<'a>(path: &'a PathItem, req: &Request) -> Result<&'a Operation
 
 fn verify_request_path(
     mut wildcards: PathWildcardValues,
-    param_refs: &Vec<ReferenceOr<Parameter>>,
+    param_refs: &[ReferenceOr<Parameter>],
 ) -> Result<(), RequestPathError> {
     for param_ref in param_refs {
         let (param_data, style) = match unpack_reference_or(param_ref)? {
@@ -331,10 +333,11 @@ fn verify_request_path(
             }
         })?;
     }
-    let unchecked: Vec<_> = wildcards.keys().map(|key| key.to_string()).collect();
-    match unchecked.is_empty() {
-        true => Ok(()),
-        false => Err(RequestPathError::ParamsUndocumented { names: unchecked }),
+    let unchecked: Vec<_> = wildcards.keys().map(|key| (*key).to_owned()).collect();
+    if !unchecked.is_empty() {
+        Err(RequestPathError::ParamsUndocumented { names: unchecked })
+    } else {
+        Ok(())
     }
 }
 
@@ -351,7 +354,9 @@ fn verify_request_path_value(
     }?;
     let schema = match param_data.format {
         ParameterSchemaOrContent::Schema(ref schema_ref) => unpack_reference_or(schema_ref)?,
-        ParameterSchemaOrContent::Content(_) => Err(RequestPathValueError::ContentUnsupported)?,
+        ParameterSchemaOrContent::Content(_) => {
+            return Err(RequestPathValueError::ContentUnsupported)
+        }
     };
     verify_schema_simple_string(schema, value)?;
     Ok(())
@@ -372,9 +377,10 @@ fn verify_request_body(
 }
 
 fn verify_none_body(body_def: &RequestBody) -> Result<(), RequestBodyError> {
-    match body_def.required {
-        true => Err(RequestBodyError::ExpectedBody),
-        false => Ok(()),
+    if body_def.required {
+        Err(RequestBodyError::ExpectedBody)
+    } else {
+        Ok(())
     }
 }
 
@@ -443,14 +449,14 @@ fn verify_schema_json(schema: &Schema, json: &str) -> Result<(), SchemaError> {
 fn verify_schema_simple_string(schema: &Schema, simple: &str) -> Result<(), SchemaError> {
     let schema_type = match schema.schema_kind {
         SchemaKind::Type(ref schema_type) => schema_type,
-        _ => Err(SchemaError::SchemaNotSpecific)?,
+        _ => return Err(SchemaError::SchemaNotSpecific),
     };
     let value = match schema_type {
         Type::String(_) => Value::String(simple.to_string()),
         Type::Boolean { .. } | Type::Integer(_) | Type::Number(_) => {
             serde_json::from_str(simple).map_err(SchemaError::ValueNotValidPrimitive)?
         }
-        Type::Array(_) | Type::Object(_) => Err(SchemaError::SchemaNotPrimitive)?,
+        Type::Array(_) | Type::Object(_) => return Err(SchemaError::SchemaNotPrimitive),
     };
     validate_schema_value(schema, &value)
 }
@@ -462,9 +468,10 @@ fn validate_schema_value(schema: &Schema, value: &Value) -> Result<(), SchemaErr
     let validator = scope.compile_and_return(schema_value, true)?;
     let report = validator.validate(value);
     if !report.is_strictly_valid() {
-        Err(SchemaError::ValueValidationFailed { report })?
+        Err(SchemaError::ValueValidationFailed { report })
+    } else {
+        Ok(())
     }
-    Ok(())
 }
 
 fn unpack_reference_or_opt<T>(

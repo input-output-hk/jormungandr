@@ -141,7 +141,7 @@ pub fn get_rest_get_block_command(block_id: &str, host: &str) -> Command {
 }
 
 /// Get rest next block id command.
-pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: &i32, host: &str) -> Command {
+pub fn get_rest_get_next_block_id_command(block_id: &str, id_count: i32, host: &str) -> Command {
     let mut command = get_jcli_command();
     command
         .arg("rest")
@@ -245,8 +245,7 @@ pub fn get_post_transaction_command(transaction_hash: &str, host: &str) -> Comma
 /// Get key generate command
 pub fn get_key_generate_command_default() -> Command {
     let default_key_type = "Ed25519Extended";
-    let command = get_key_generate_command(&default_key_type);
-    command
+    get_key_generate_command(&default_key_type)
 }
 
 /// Get key generate command

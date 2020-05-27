@@ -30,6 +30,12 @@ pub struct Block0ConfigurationBuilder {
     pub initial: Vec<Initial>,
 }
 
+impl Default for Block0ConfigurationBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Block0ConfigurationBuilder {
     pub fn new() -> Self {
         Block0ConfigurationBuilder {

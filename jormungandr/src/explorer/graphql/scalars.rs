@@ -2,7 +2,7 @@ use super::error::ErrorKind;
 use crate::blockcfg;
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value;
-use juniper;
+
 use juniper::{ParseScalarResult, ParseScalarValue};
 use std::convert::{TryFrom, TryInto};
 
@@ -160,13 +160,13 @@ impl TryFrom<IndexCursor> for u32 {
 
 impl From<IndexCursor> for u64 {
     fn from(number: IndexCursor) -> u64 {
-        number.0.into()
+        number.0
     }
 }
 
 impl From<u64> for IndexCursor {
     fn from(number: u64) -> IndexCursor {
-        IndexCursor(number.into())
+        IndexCursor(number)
     }
 }
 

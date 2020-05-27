@@ -85,7 +85,7 @@ impl MeasurementReporter {
     }
 
     pub fn increment(&mut self) {
-        self.counter = self.counter + 1;
+        self.counter += 1;
     }
 }
 
@@ -105,7 +105,7 @@ pub fn measure_single_transaction_propagation_speed(
         *node as &dyn FragmentNode,
         1_000.into(),
     )?;
-    let fragment_id = check.fragment_id().clone();
+    let fragment_id = check.fragment_id();
     let benchmark = benchmark_speed(info.to_owned())
         .with_thresholds(sync_wait)
         .start();
@@ -123,7 +123,7 @@ pub fn measure_single_transaction_propagation_speed(
                 println!("Node: {} -> {:?}", leader.alias(), leader.fragment_logs())
             });
 
-            !fragment_logs.iter().any(|(id, _)| *id == fragment_id)
+            !fragment_logs.iter().any(|(id, _)| id == fragment_id)
         });
         report_node_stats.increment();
 
@@ -239,7 +239,7 @@ pub fn measure_and_log_sync_time<A: SyncNode + ?Sized>(
             );
             report_node_stats_counter = 0;
         } else {
-            report_node_stats_counter = report_node_stats_counter + 1;
+            report_node_stats_counter += 1;
         }
 
         let max_block_height = block_heights.iter().cloned().max().unwrap();
@@ -354,7 +354,7 @@ pub fn measure_how_many_nodes_are_running<A: SyncNode + ?Sized>(leaders: Vec<&A>
                 efficiency_benchmark_run.increment();
                 return false;
             }
-            return true;
+            true
         });
 
         if leaders_ids.is_empty() {

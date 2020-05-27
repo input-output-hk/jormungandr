@@ -96,7 +96,7 @@ fn test_legacy_release(
         controller
             .new_spawn_params(LEADER_1)
             .persistence_mode(PersistenceMode::Persistent)
-            .jormungandr(legacy_app.clone()),
+            .jormungandr(legacy_app),
         &version,
     )?;
     leader1.wait_for_bootstrap()?;

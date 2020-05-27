@@ -23,7 +23,7 @@ impl GraphQLClient {
     ) -> Result<reqwest::blocking::Response, GraphQLClientError> {
         println!("running query: {:?}, against: {}", query, self.base_url);
         reqwest::blocking::Client::new()
-            .post(&format!("{}", self.base_url))
+            .post(&self.base_url)
             .json(&query)
             .send()
             .map_err(|e| e.into())

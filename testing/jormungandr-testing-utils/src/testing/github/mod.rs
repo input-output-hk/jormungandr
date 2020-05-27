@@ -3,7 +3,6 @@ mod release;
 use jormungandr_lib::time::SystemTime;
 use os_info::Type as OsType;
 pub use release::{AssetDto, ReleaseDto};
-use reqwest;
 use reqwest::header::USER_AGENT;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -25,11 +24,9 @@ pub struct Release {
 }
 
 impl Release {
-    pub fn get_release_for_os(&self, os_type: &OsType) -> Option<AssetDto> {
-        let compacted_os_type = self.compact_os_types(*os_type);
-        self.releases_per_os()
-            .get(&compacted_os_type)
-            .map(|x| x.clone())
+    pub fn get_release_for_os(&self, os_type: OsType) -> Option<AssetDto> {
+        let compacted_os_type = self.compact_os_types(os_type);
+        self.releases_per_os().get(&compacted_os_type).cloned()
     }
 
     /// narrow linux distribution to linux type
@@ -69,6 +66,12 @@ pub struct GitHubApi {
     base_url: String,
 }
 
+impl Default for GitHubApi {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GitHubApi {
     pub fn new() -> Self {
         Self {
@@ -82,13 +85,13 @@ impl GitHubApi {
             .get(&format!("{}/{}", self.base_url, path))
             .header(USER_AGENT, "request")
             .send()
-            .map_err(|err| GitHubApiError::RequestError(err))
+            .map_err(GitHubApiError::RequestError)
     }
 
     pub fn describe_releases(&self) -> Result<Vec<Release>, GitHubApiError> {
         let response_text = self.get("releases")?.text()?;
-        let releases: Vec<ReleaseDto> = serde_json::from_str(&response_text)
-            .map_err(|err| GitHubApiError::CannotDeserialize(err))?;
+        let releases: Vec<ReleaseDto> =
+            serde_json::from_str(&response_text).map_err(GitHubApiError::CannotDeserialize)?;
         Ok(releases
             .iter()
             .cloned()
@@ -109,7 +112,7 @@ impl GitHubApi {
                 .find(|x| x.version == version)
             {
                 None => None,
-                Some(release) => release.get_release_for_os(&info.os_type()),
+                Some(release) => release.get_release_for_os(info.os_type()),
             },
         )
     }

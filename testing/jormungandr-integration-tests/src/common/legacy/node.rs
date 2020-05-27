@@ -57,7 +57,7 @@ impl BackwardCompatibleJormungandr {
         Self::new(
             child,
             alias,
-            config.log_file_path().expect("no log file defined").clone(),
+            config.log_file_path().expect("no log file defined"),
             config,
         )
     }
@@ -73,10 +73,10 @@ impl BackwardCompatibleJormungandr {
         config: BackwardCompatibleConfig,
     ) -> Self {
         Self {
-            child: child,
-            alias: alias,
-            logger: JormungandrLogger::new(log_file_path.clone()),
-            config: config,
+            child,
+            alias,
+            logger: JormungandrLogger::new(log_file_path),
+            config,
         }
     }
 
@@ -124,11 +124,11 @@ impl BackwardCompatibleJormungandr {
     pub fn check_no_errors_in_log(&self) -> Result<(), JormungandrError> {
         let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
 
-        if error_lines.len() != 0 {
+        if !error_lines.is_empty() {
             return Err(JormungandrError::ErrorInLogs {
                 logs: self.logger.get_log_content(),
                 log_location: self.logger.log_file_path.clone(),
-                error_lines: format!("{:?}", error_lines).to_owned(),
+                error_lines: format!("{:?}", error_lines),
             });
         }
         Ok(())

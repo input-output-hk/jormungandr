@@ -15,7 +15,7 @@ pub struct EnduranceBenchmarkDef {
 impl EnduranceBenchmarkDef {
     pub fn new(name: String) -> Self {
         EnduranceBenchmarkDef {
-            name: name,
+            name,
             thresholds: None,
         }
     }
@@ -67,9 +67,10 @@ impl EnduranceBenchmarkRun {
 
     pub fn max_endurance_reached(&self) -> bool {
         if let Some(thresholds) = &self.definition.thresholds {
-            return self.start_marker.elapsed() > thresholds.max().into();
+            self.start_marker.elapsed() > thresholds.max().into()
+        } else {
+            false
         }
-        return false;
     }
 }
 

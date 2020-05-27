@@ -55,7 +55,7 @@ impl Controller {
         block0.serialize(file)?;
 
         Ok(Controller {
-            settings: settings,
+            settings,
             block0_file,
             block0_hash,
             working_directory,
@@ -66,7 +66,7 @@ impl Controller {
         if let Some(wallet) = self.settings.wallets.remove(wallet) {
             Ok(wallet)
         } else {
-            Err(ControllerError::WalletNotFound(wallet.to_owned()).into())
+            Err(ControllerError::WalletNotFound(wallet.to_owned()))
         }
     }
 
@@ -76,9 +76,9 @@ impl Controller {
 
     fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
         if let Some(node_setting) = self.settings.nodes.get(alias) {
-            return Ok(node_setting);
+            Ok(node_setting)
         } else {
-            return Err(ControllerError::NodeNotFound(alias.to_string()));
+            Err(ControllerError::NodeNotFound(alias.to_string()))
         }
     }
 
@@ -104,7 +104,7 @@ impl Controller {
             .from_genesis(spawn_params.get_leadership_mode().clone().into())
             .role(spawn_params.get_leadership_mode().into())
             .start_async()
-            .map_err(|e| ControllerError::SpawnError(e))
+            .map_err(ControllerError::SpawnError)
     }
 
     pub fn expect_spawn_failed(
@@ -118,7 +118,7 @@ impl Controller {
             .from_genesis(spawn_params.get_leadership_mode().clone().into())
             .role(spawn_params.get_leadership_mode().into())
             .start_with_fail_in_logs(expected_msg)
-            .map_err(|e| ControllerError::SpawnError(e))
+            .map_err(ControllerError::SpawnError)
     }
 
     pub fn spawn_custom(
@@ -132,7 +132,7 @@ impl Controller {
             .from_genesis(spawn_params.get_leadership_mode().clone().into())
             .role(spawn_params.get_leadership_mode().into())
             .start()
-            .map_err(|e| ControllerError::SpawnError(e))
+            .map_err(ControllerError::SpawnError)
     }
 
     pub fn make_config_for(

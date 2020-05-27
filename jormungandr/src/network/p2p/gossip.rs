@@ -1,6 +1,6 @@
 use super::{limits, Address};
 use crate::network::convert::Encode;
-use bincode;
+
 use chain_core::property;
 use chain_network::data as net_data;
 use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;

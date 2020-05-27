@@ -708,7 +708,7 @@ impl Peers {
             Some(comms) => {
                 debug!(self.logger, "pulling headers";
                        "node_id" => %node_id,
-                       "from" => format!("[{}]", from.iter().map(|h| hex::encode(h)).collect::<Vec<_>>().join(", ")),
+                       "from" => format!("[{}]", from.iter().map(hex::encode).collect::<Vec<_>>().join(", ")),
                        "to" => %hex::encode(to));
                 comms
                     .chain_pulls

@@ -26,7 +26,7 @@ pub struct LeaderEvent {
 }
 
 fn get_maximum_id<A>(leaders: &BTreeMap<LeaderId, A>) -> LeaderId {
-    leaders.keys().last().copied().unwrap_or(LeaderId::new())
+    leaders.keys().last().copied().unwrap_or_default()
 }
 
 fn leader_identifier(leader: &Leader) -> String {
@@ -117,7 +117,7 @@ impl Enclave {
         slot: SlotId,
     ) -> Option<LeaderEvent> {
         let leaders = &self.leaders_data.read().await.leaders;
-        if leaders.len() == 0 {
+        if leaders.is_empty() {
             return None;
         }
 
@@ -127,7 +127,7 @@ impl Enclave {
                 Ok(LeaderOutput::None) => None,
                 Ok(leader_output) => Some(LeaderEvent {
                     id: *leader_id,
-                    date: date,
+                    date,
                     output: leader_output,
                 }),
                 Err(_) => {
@@ -145,7 +145,7 @@ impl Enclave {
         nb_slots: u32,
     ) -> Vec<LeaderEvent> {
         let leaders = &self.leaders_data.read().await.leaders;
-        if leaders.len() == 0 {
+        if leaders.is_empty() {
             return vec![];
         }
 
@@ -157,7 +157,7 @@ impl Enclave {
                     Ok(LeaderOutput::None) => (),
                     Ok(leader_output) => output.push(LeaderEvent {
                         id: *id,
-                        date: date,
+                        date,
                         output: leader_output,
                     }),
                     Err(_) => {

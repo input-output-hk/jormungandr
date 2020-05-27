@@ -14,7 +14,7 @@ pub struct SpeedBenchmarkDef {
 impl SpeedBenchmarkDef {
     pub fn new(name: String) -> Self {
         SpeedBenchmarkDef {
-            name: name,
+            name,
             thresholds: None,
         }
     }
@@ -65,9 +65,10 @@ impl SpeedBenchmarkRun {
 
     pub fn timeout_exceeded(&self) -> bool {
         if let Some(thresholds) = &self.definition.thresholds {
-            return self.start_marker.elapsed() > thresholds.max().into();
+            self.start_marker.elapsed() > thresholds.max().into()
+        } else {
+            false
         }
-        return false;
     }
 }
 
@@ -82,10 +83,7 @@ impl SpeedBenchmarkFinish {
     }
 
     pub fn new(definition: SpeedBenchmarkDef, speed: Speed) -> Self {
-        Self {
-            definition: definition,
-            speed: speed,
-        }
+        Self { definition, speed }
     }
 }
 

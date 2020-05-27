@@ -80,8 +80,8 @@ impl Context<ChaChaRng> {
             jormungandr: self.jormungandr().clone(),
             jcli: self.jcli().clone(),
             testing_directory: self.testing_directory.clone(),
-            generate_documentation: self.generate_documentation.clone(),
-            progress_bar_mode: self.progress_bar_mode.clone(),
+            generate_documentation: self.generate_documentation,
+            progress_bar_mode: self.progress_bar_mode,
         }
     }
 

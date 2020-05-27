@@ -43,62 +43,56 @@ impl JormungandrRest {
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<EpochRewardsInfo, RestError> {
         let content = self.inner.epoch_reward_history(epoch)?;
-        serde_json::from_str(&content).map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(&content).map_err(RestError::CannotDeserialize)
     }
 
     pub fn reward_history(&self, length: u32) -> Result<Vec<EpochRewardsInfo>, RestError> {
         serde_json::from_str(&self.inner.reward_history(length)?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+            .map_err(RestError::CannotDeserialize)
     }
 
     pub fn stake_distribution(&self) -> Result<StakeDistributionDto, RestError> {
         serde_json::from_str(&self.inner.stake_distribution()?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+            .map_err(RestError::CannotDeserialize)
     }
 
     pub fn stake_pools(&self) -> Result<Vec<String>, RestError> {
-        serde_json::from_str(&self.inner.stake_pools()?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(&self.inner.stake_pools()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn stake_distribution_at(&self, epoch: u32) -> Result<StakeDistributionDto, RestError> {
         serde_json::from_str(&self.inner.stake_distribution_at(epoch)?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+            .map_err(RestError::CannotDeserialize)
     }
 
     pub fn stats(&self) -> Result<NodeStatsDto, RestError> {
         let stats = &self.inner.stats()?;
-        serde_json::from_str(stats).map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(stats).map_err(RestError::CannotDeserialize)
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>, RestError> {
-        serde_json::from_str(&self.inner.network_stats()?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(&self.inner.network_stats()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn p2p_quarantined(&self) -> Result<Vec<PeerRecord>, RestError> {
-        serde_json::from_str(&self.inner.p2p_quarantined()?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(&self.inner.p2p_quarantined()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn p2p_non_public(&self) -> Result<Vec<PeerRecord>, RestError> {
-        serde_json::from_str(&self.inner.p2p_non_public()?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(&self.inner.p2p_non_public()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn p2p_available(&self) -> Result<Vec<PeerRecord>, RestError> {
-        serde_json::from_str(&self.inner.p2p_available()?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(&self.inner.p2p_available()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn p2p_view(&self) -> Result<Vec<Info>, RestError> {
-        serde_json::from_str(&self.inner.p2p_view()?)
-            .map_err(|err| RestError::CannotDeserialize(err))
+        serde_json::from_str(&self.inner.p2p_view()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn tip(&self) -> Result<HeaderId, RestError> {
         let tip = self.inner.tip()?;
-        tip.parse().map_err(|err| RestError::HashParseError(err))
+        tip.parse().map_err(RestError::HashParseError)
     }
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
@@ -110,7 +104,7 @@ impl JormungandrRest {
         let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&leaders).map_err(|err| RestError::CannotDeserialize(err))?
+            serde_json::from_str(&leaders).map_err(RestError::CannotDeserialize)?
         };
         Ok(leaders)
     }

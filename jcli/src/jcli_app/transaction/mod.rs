@@ -23,6 +23,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum Transaction {

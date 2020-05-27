@@ -74,7 +74,7 @@ pub fn collect_reward_for_15_minutes() {
             let message = format!("{}", err);
             benchmark_endurance.exception(message.clone()).print();
             benchmark_consumption.exception(message.clone()).print();
-            panic!(message.clone());
+            panic!(message);
         }
 
         println!("80");

@@ -19,12 +19,7 @@ pub struct JormungandrProcess {
 
 impl JormungandrProcess {
     pub fn from_config(child: Child, config: JormungandrConfig, alias: String) -> Self {
-        JormungandrProcess::new(
-            child,
-            alias,
-            config.log_file_path().unwrap().clone(),
-            config,
-        )
+        JormungandrProcess::new(child, alias, config.log_file_path().unwrap(), config)
     }
 
     pub fn new(
@@ -34,10 +29,10 @@ impl JormungandrProcess {
         config: JormungandrConfig,
     ) -> Self {
         JormungandrProcess {
-            child: child,
-            alias: alias,
-            logger: JormungandrLogger::new(log_file_path.clone()),
-            config: config,
+            child,
+            alias,
+            logger: JormungandrLogger::new(log_file_path),
+            config,
         }
     }
 
@@ -54,7 +49,7 @@ impl JormungandrProcess {
     }
 
     pub fn address(&self) -> poldercast::Address {
-        self.config.node_config().p2p.public_address.clone()
+        self.config.node_config().p2p.public_address
     }
 
     pub fn log_stats(&self) {
@@ -89,11 +84,11 @@ impl JormungandrProcess {
     pub fn check_no_errors_in_log(&self) -> Result<(), JormungandrError> {
         let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
 
-        if error_lines.len() != 0 {
+        if !error_lines.is_empty() {
             return Err(JormungandrError::ErrorInLogs {
                 logs: self.logger.get_log_content(),
                 log_location: self.logger.log_file_path.clone(),
-                error_lines: format!("{:?}", error_lines).to_owned(),
+                error_lines: format!("{:?}", error_lines),
             });
         }
         Ok(())

@@ -64,7 +64,7 @@ impl NetworkBuilder {
                     alias.clone(),
                     NodeSetting {
                         alias,
-                        config: config,
+                        config,
                         secret: NodeSecret {
                             bft: None,
                             genesis: None,
@@ -77,7 +77,7 @@ impl NetworkBuilder {
         let seed = Seed::generate(rand::rngs::OsRng);
         let mut random = Random::new(seed);
 
-        for (alias, _) in &nodes {
+        for alias in nodes.keys() {
             let leader: NodeAlias = alias.into();
             blockchain.add_leader(leader);
         }

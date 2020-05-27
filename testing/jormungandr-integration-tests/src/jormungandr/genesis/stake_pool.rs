@@ -25,7 +25,7 @@ pub fn create_delegate_retire_stake_pool() {
     let config = ConfigurationBuilder::new()
         .with_linear_fees(LinearFee::new(100, 100, 200))
         .with_funds(vec![InitialUTxO {
-            value: 1000000.into(),
+            value: 1_000_000.into(),
             address: actor_account.address(),
         }])
         .build();
@@ -67,7 +67,7 @@ pub fn create_new_stake_pool(
         file_utils::create_file_in_temp("stake_key.private_key", &account.signing_key_as_str());
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
-    let fees: LinearFee = settings.fees.into();
+    let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let certificate_wrapper = JCLICertificateWrapper::new();
@@ -106,7 +106,7 @@ pub fn create_new_stake_pool(
         "cannot find stake-pool certificate in blockchain"
     );
 
-    stake_pool_id.to_owned()
+    stake_pool_id
 }
 
 pub fn delegate_stake(
@@ -123,7 +123,7 @@ pub fn delegate_stake(
         .assert_new_stake_delegation(&stake_pool_id, &account.identifier().to_bech32_str());
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
-    let fees: LinearFee = settings.fees.into();
+    let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)
@@ -168,7 +168,7 @@ pub fn retire_stake_pool(
     let retirement_cert = certificate_wrapper.assert_new_stake_pool_retirement(&stake_pool_id);
 
     let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
-    let fees: LinearFee = settings.fees.into();
+    let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)

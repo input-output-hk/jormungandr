@@ -2,13 +2,10 @@
 //! asynchronous reading.
 
 use futures::channel::mpsc::{self, Receiver, Sender};
+pub use futures::channel::mpsc::{SendError, TrySendError};
 use futures::prelude::*;
-use slog::Logger;
-
 use std::pin::Pin;
 use std::task::{Context, Poll};
-
-pub use futures::channel::mpsc::{SendError, TrySendError};
 
 /// The output end of an in-memory FIFO channel.
 #[derive(Debug)]
@@ -75,14 +72,6 @@ impl<Msg> Sink<Msg> for MessageBox<Msg> {
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), SendError>> {
         Pin::new(&mut self.0).poll_close(cx)
     }
-}
-
-/// State for asynchronous sending of a message over a `MessageBox`
-/// that can be driven as a standalone task.
-pub struct SendTask<Msg> {
-    mbox: MessageBox<Msg>,
-    pending: Option<Msg>,
-    logger: Logger,
 }
 
 impl<Msg> Stream for MessageQueue<Msg> {

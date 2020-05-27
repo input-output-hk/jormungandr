@@ -379,12 +379,10 @@ impl Blockchain {
                 header,
                 cached_reference: Some(self_ref),
             })
+        } else if let Some(parent_ref) = maybe_parent_ref {
+            Ok(PreCheckedHeader::HeaderWithCache { header, parent_ref })
         } else {
-            if let Some(parent_ref) = maybe_parent_ref {
-                Ok(PreCheckedHeader::HeaderWithCache { header, parent_ref })
-            } else {
-                Ok(PreCheckedHeader::MissingParent { header })
-            }
+            Ok(PreCheckedHeader::MissingParent { header })
         }
     }
 
@@ -748,8 +746,7 @@ impl Blockchain {
                     let duration = block_process_end
                         .duration_since(block_process_start)
                         .unwrap_or(std::time::Duration::from_secs(0));
-                    block_processing = block_processing + duration;
-                    ()
+                    block_processing += duration;
                 }
             }
         }
@@ -820,7 +817,7 @@ pub fn new_epoch_leadership_from(
     Arc<TimeFrame>,
     Option<Arc<Ref>>,
 ) {
-    let parent_ledger_state = parent.ledger().clone();
+    let parent_ledger_state = parent.ledger();
     let parent_epoch_leadership_schedule = parent.epoch_leadership_schedule().clone();
     let parent_epoch_ledger_parameters = parent.epoch_ledger_parameters().clone();
     let parent_epoch_rewards_info = parent.epoch_rewards_info().cloned();
@@ -866,8 +863,8 @@ pub fn new_epoch_leadership_from(
             // available in memory or it is the epoch0 or epoch1
             parent
                 .last_ref_previous_epoch()
-                .map(|r| r.ledger().clone())
-                .unwrap_or(parent_ledger_state.clone())
+                .map(|r| r.ledger())
+                .unwrap_or(parent_ledger_state)
         } else {
             transition_state.clone()
         };

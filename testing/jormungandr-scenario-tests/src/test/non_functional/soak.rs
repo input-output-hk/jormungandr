@@ -47,7 +47,7 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         }
     };
 
-    let mut controller = scenario_settings.build(context.clone())?;
+    let mut controller = scenario_settings.build(context)?;
 
     let core =
         controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;

@@ -154,7 +154,7 @@ impl Controller {
         let progress_bar = Arc::new(MultiProgress::new());
 
         Ok(Controller {
-            settings: settings,
+            settings,
             context,
             block0_file,
             block0_hash,
@@ -194,7 +194,7 @@ impl Controller {
 
         let block0_setting = match params.get_leadership_mode() {
             LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
-            LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash.clone()),
+            LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash),
         };
 
         let jormungandr = match &params.get_jormungandr() {
@@ -241,7 +241,7 @@ impl Controller {
 
         let block0_setting = match params.get_leadership_mode() {
             LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
-            LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash.clone()),
+            LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash),
         };
 
         let jormungandr = match &params.get_jormungandr() {
@@ -311,14 +311,10 @@ impl Controller {
     }
 
     pub fn fragment_sender(&self) -> FragmentSender {
-        let hash = Hash::from_hash(self.block0_hash.clone());
+        let hash = Hash::from_hash(self.block0_hash);
         FragmentSender::new(
             hash,
-            self.settings
-                .block0
-                .blockchain_configuration
-                .linear_fees
-                .clone(),
+            self.settings.block0.blockchain_configuration.linear_fees,
         )
     }
 }

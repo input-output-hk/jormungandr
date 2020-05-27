@@ -407,7 +407,7 @@ impl Sink<net_data::Gossip> for GossipProcessor {
         let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
             filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
         });
-        if filtered_out.len() > 0 {
+        if !filtered_out.is_empty() {
             debug!(self.logger, "nodes dropped from gossip: {:?}", filtered_out);
         }
         let node_id1 = self.node_id.clone();

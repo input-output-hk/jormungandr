@@ -63,8 +63,7 @@ impl FragmentSender {
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let address = to.address();
-        let fragment =
-            from.transaction_to(&self.block0_hash.clone().into(), &self.fees, address, value)?;
+        let fragment = from.transaction_to(&self.block0_hash, &self.fees, address, value)?;
         Ok(via.send_fragment(fragment)?)
     }
 

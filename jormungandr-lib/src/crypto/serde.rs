@@ -165,7 +165,7 @@ where
         )
     }
 
-    fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {
@@ -183,7 +183,7 @@ where
         }
     }
 
-    fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {
@@ -210,7 +210,7 @@ where
         )
     }
 
-    fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {
@@ -228,7 +228,7 @@ where
         }
     }
 
-    fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {
@@ -258,7 +258,7 @@ where
         )
     }
 
-    fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {
@@ -276,7 +276,7 @@ where
         }
     }
 
-    fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {
@@ -299,14 +299,14 @@ impl<'de> Visitor<'de> for HashVisitor {
         write!(fmt, "Expecting a Blake2b256 Hash",)
     }
 
-    fn visit_str<'a, E>(self, v: &'a str) -> Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {
         Blake2b256::from_str(v).map_err(E::custom)
     }
 
-    fn visit_bytes<'a, E>(self, v: &'a [u8]) -> Result<Self::Value, E>
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
     where
         E: DeserializerError,
     {

@@ -134,7 +134,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 .expect("explorer db to be bootstrapped");
 
             let mut explorer =
-                explorer::Explorer::new(explorer_db.clone(), explorer::graphql::create_schema());
+                explorer::Explorer::new(explorer_db, explorer::graphql::create_schema());
 
             // Context to give to the rest api
             let context = explorer.clone();
@@ -232,7 +232,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     {
         let leadership_logs = leadership_logs.clone();
-        let block_msgbox = block_msgbox.clone();
+        let block_msgbox = block_msgbox;
         let blockchain_tip = blockchain_tip.clone();
         let enclave = leadership::Enclave::new(enclave.clone());
         let fragment_msgbox = fragment_msgbox.clone();
@@ -273,7 +273,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     };
 
     {
-        let blockchain_tip = blockchain_tip.clone();
+        let blockchain_tip = blockchain_tip;
         let no_blockchain_updates_warning_interval = bootstrapped_node
             .settings
             .no_blockchain_updates_warning_interval

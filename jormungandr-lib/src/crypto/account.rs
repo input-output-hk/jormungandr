@@ -153,13 +153,13 @@ impl SigningKey {
         let (hrp, _) = bech32::decode(s)?;
 
         let key = match hrp.as_ref() {
-            <Ed25519 as AsymmetricKey>::SECRET_BECH32_HRP => SigningKey(
-                EitherEd25519SecretKey::Normal(SecretKey::try_from_bech32_str(s)?),
-            ),
-            <Ed25519Extended as AsymmetricKey>::SECRET_BECH32_HRP => SigningKey(
-                EitherEd25519SecretKey::Extended(SecretKey::try_from_bech32_str(s)?),
-            ),
-            _ => return Err(SigningKeyParseError::UnexpectedHRP { hrp: hrp }),
+            Ed25519::SECRET_BECH32_HRP => SigningKey(EitherEd25519SecretKey::Normal(
+                SecretKey::try_from_bech32_str(s)?,
+            )),
+            Ed25519Extended::SECRET_BECH32_HRP => SigningKey(EitherEd25519SecretKey::Extended(
+                SecretKey::try_from_bech32_str(s)?,
+            )),
+            _ => return Err(SigningKeyParseError::UnexpectedHRP { hrp }),
         };
 
         Ok(key)
@@ -295,7 +295,7 @@ mod test {
     // when we use the Display trait
     #[test]
     fn identifier_display() {
-        const EXPECTED_IDENTIFIER_STR: &'static str =
+        const EXPECTED_IDENTIFIER_STR: &str =
             "ed25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8";
         const IDENTIFIER_BYTES: [u8; 32] = [0x20; 32];
 
@@ -312,7 +312,7 @@ mod test {
     // serde with a human readable output
     #[test]
     fn identifier_serde_human_readable() {
-        const EXPECTED_IDENTIFIER_STR: &'static str =
+        const EXPECTED_IDENTIFIER_STR: &str =
             "---\ned25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8";
         const IDENTIFIER_BYTES: [u8; 32] = [0x20; 32];
 
@@ -331,7 +331,7 @@ mod test {
     // serde with a human readable output
     #[test]
     fn signing_key_serde_human_readable() {
-        const EXPECTED_SIGNING_KEY_STR: &'static str =
+        const EXPECTED_SIGNING_KEY_STR: &str =
             "---\ned25519e_sk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgq4hu79f";
         const SIGNING_KEY_BYTES: [u8; 64] = [0x20; 64];
 

@@ -15,7 +15,7 @@ pub enum WebError {
 }
 
 pub fn download_file(link: String, output: &Path) -> Result<(), WebError> {
-    let mut resp = reqwest::blocking::get(&link).map_err(|e| WebError::CannotDownloadFile(e))?;
+    let mut resp = reqwest::blocking::get(&link).map_err(WebError::CannotDownloadFile)?;
     let mut out = File::create(output.as_os_str()).map_err(|_| WebError::CannotCreateOutputFile)?;
     io::copy(&mut resp, &mut out)?;
     Ok(())

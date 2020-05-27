@@ -131,8 +131,8 @@ impl Process {
                     "process block announcement",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT),
                     process_block_announcement(
-                        blockchain.clone(),
-                        blockchain_tip.clone(),
+                        blockchain,
+                        blockchain_tip,
                         header,
                         node_id,
                         pull_headers_scheduler.clone(),
@@ -713,7 +713,6 @@ async fn process_chain_headers(
                 );
 
             if header_ids.is_empty() {
-                ()
             } else {
                 network_msg_box
                     .send(NetworkMsg::GetBlocks(header_ids))

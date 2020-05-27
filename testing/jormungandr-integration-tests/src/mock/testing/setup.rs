@@ -31,7 +31,7 @@ impl Config {
     pub fn attach_to_local_node(port: u16) -> Self {
         Self {
             host: String::from(LOCALHOST),
-            port: port,
+            port,
         }
     }
 

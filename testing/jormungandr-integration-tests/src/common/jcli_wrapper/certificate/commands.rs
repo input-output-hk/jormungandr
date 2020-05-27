@@ -7,7 +7,7 @@ use crate::common::configuration;
 
 use jormungandr_lib::interfaces::TaxType;
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct CertificateCommands {}
 
 impl CertificateCommands {

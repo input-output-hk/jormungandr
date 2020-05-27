@@ -55,7 +55,7 @@ async fn fetch_block0_http(
 ) -> Option<Block> {
     use chain_core::property::Deserialize as _;
 
-    if base_services.len() == 0 {
+    if base_services.is_empty() {
         return None;
     }
 
@@ -77,7 +77,7 @@ async fn fetch_block0_http(
         if &got != block0_id {
             return Err(format!("invalid block expecting {} got {}", block0_id, got));
         }
-        return Ok(block);
+        Ok(block)
     }
 
     for base_url in base_services {
@@ -140,7 +140,7 @@ pub async fn prepare_block_0(
                     let got = block.header.id();
                     if &got != expected_hash {
                         return Err(Error::Block0Mismatch {
-                            got: got,
+                            got,
                             expected: expected_hash.clone(),
                         });
                     }

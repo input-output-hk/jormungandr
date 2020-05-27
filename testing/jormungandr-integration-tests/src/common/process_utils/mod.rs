@@ -79,7 +79,7 @@ pub fn run_process_until_exited_successfully(
     command_description: &str,
     error_description: &str,
 ) {
-    let mut attempts = max_attempts.clone();
+    let mut attempts = max_attempts;
 
     loop {
         if command
@@ -101,11 +101,11 @@ pub fn run_process_until_exited_successfully(
             "non-zero status with message(). {}. waiting {} s and trying again ({} of {})",
             command_description,
             &timeout,
-            &max_attempts - &attempts + 1,
-            &max_attempts
+            max_attempts - attempts + 1,
+            max_attempts
         );
 
-        attempts = attempts - 1;
+        attempts -= 1;
         self::sleep(timeout);
     }
 
@@ -162,7 +162,7 @@ pub fn run_process_until_response_matches<F: Fn(Output) -> bool>(
             &sleep_between_attempt, &attempts, &max_attempts
         );
 
-        attempts = attempts + 1;
+        attempts += 1;
         thread::sleep(sleep_between_attempt_duration);
     }
 }

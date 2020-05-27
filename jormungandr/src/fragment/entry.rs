@@ -40,9 +40,9 @@ impl PoolEntry {
         let fragment_fee = Value::zero();
 
         PoolEntry {
-            fragment_ref: fragment_ref,
-            fragment_fee: fragment_fee,
-            fragment_size: fragment_size,
+            fragment_ref,
+            fragment_fee,
+            fragment_size,
             received_at: SystemTime::now(),
 
             // when this entry is added in the pool, it has no

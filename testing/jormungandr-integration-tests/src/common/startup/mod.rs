@@ -17,7 +17,6 @@ use jormungandr_testing_utils::{
     testing::{signed_delegation_cert, signed_stake_pool_cert},
     wallet::Wallet,
 };
-use rand;
 use std::path::PathBuf;
 
 pub fn build_genesis_block(block0_config: &Block0Configuration) -> PathBuf {
@@ -30,8 +29,7 @@ pub fn build_genesis_block(block0_config: &Block0Configuration) -> PathBuf {
 
 pub fn serialize_block0_config(block0_config: &Block0Configuration) -> PathBuf {
     let content = serde_yaml::to_string(&block0_config).unwrap();
-    let input_yaml_file_path = file_utils::create_file_in_temp("genesis.yaml", &content);
-    input_yaml_file_path
+    file_utils::create_file_in_temp("genesis.yaml", &content)
 }
 
 pub fn create_new_utxo_address() -> Wallet {
@@ -74,7 +72,7 @@ pub fn start_stake_pool(
         .map(|x| signed_delegation_cert(x.owner(), x.id()).into())
         .collect();
 
-    let mut initial_certs = stake_pool_registration_certs.clone();
+    let mut initial_certs = stake_pool_registration_certs;
     initial_certs.extend(stake_pool_owner_delegation_certs.iter().cloned());
 
     let leaders: Vec<ConsensusLeaderId> = stake_pools

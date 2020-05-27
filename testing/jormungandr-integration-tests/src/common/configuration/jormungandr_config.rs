@@ -121,12 +121,11 @@ impl JormungandrConfig {
             .block0_configuration
             .blockchain_configuration
             .linear_fees
-            .clone()
     }
 
     pub fn get_p2p_listen_port(&self) -> u16 {
         let address = self.node_config().p2p.get_listen_address().to_string();
-        let tokens: Vec<&str> = address.split("/").collect();
+        let tokens: Vec<&str> = address.split('/').collect();
         let port_str = tokens
             .get(4)
             .expect("cannot extract port from p2p.public_address");

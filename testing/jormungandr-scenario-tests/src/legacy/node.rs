@@ -399,7 +399,7 @@ impl LegacyNodeController {
             } else {
                 bail!(ErrorKind::FragmentNoInMemPoolLogs(
                     self.alias().to_string(),
-                    check.fragment_id().clone(),
+                    *check.fragment_id(),
                     self.logger().get_log_content()
                 ))
             }
@@ -407,7 +407,7 @@ impl LegacyNodeController {
         }
 
         bail!(ErrorKind::FragmentIsPendingForTooLong(
-            check.fragment_id().clone(),
+            *check.fragment_id(),
             Duration::from_secs(duration.as_secs() * max_try),
             self.alias().to_string(),
             self.logger().get_log_content()
@@ -544,10 +544,7 @@ impl LegacyNodeController {
 
     fn port_opened(&self, port: u16) -> bool {
         use std::net::TcpListener;
-        match TcpListener::bind(("127.0.0.1", port)) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        TcpListener::bind(("127.0.0.1", port)).is_ok()
     }
 
     pub fn is_up(&self) -> bool {
@@ -563,7 +560,7 @@ impl LegacyNodeController {
 
         if result == "" {
             self.progress_bar.log_info("shuting down");
-            return self.wait_for_shutdown();
+            self.wait_for_shutdown()
         } else {
             bail!(ErrorKind::NodeFailedToShutdown(
                 self.alias().to_string(),

@@ -100,7 +100,7 @@ impl RestStartupVerification {
 
 impl StartupVerification for RestStartupVerification {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap().clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
@@ -143,12 +143,12 @@ impl LogStartupVerification {
 
 impl StartupVerification for LogStartupVerification {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap().clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
     fn if_succeed(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap().clone());
+        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap());
         logger
             .contains_message("genesis block fetched")
             .unwrap_or_else(|_| false)
@@ -166,6 +166,12 @@ pub struct Starter {
     on_fail: OnFail,
     config: Option<JormungandrConfig>,
     benchmark: Option<SpeedBenchmarkDef>,
+}
+
+impl Default for Starter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Starter {
@@ -356,7 +362,7 @@ impl Starter {
                         "Jormungandr failed to start due to error {}. Retrying... ",
                         err
                     );
-                    retry_counter = retry_counter - 1;
+                    retry_counter -= 1;
                 }
             }
 
@@ -402,16 +408,16 @@ impl Starter {
     fn custom_errors_found(&self, config: &JormungandrConfig) -> Result<(), StartupError> {
         let log_file_path = config
             .log_file_path()
-            .expect("log file logger has to be defined")
-            .clone();
+            .expect("log file logger has to be defined");
         let logger = JormungandrLogger::new(log_file_path);
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
-        match logger
+        if logger
             .raw_log_contains_any_of(&port_occupied_msgs)
             .unwrap_or_else(|_| false)
         {
-            true => Err(StartupError::PortAlreadyInUse),
-            false => Ok(()),
+            Err(StartupError::PortAlreadyInUse)
+        } else {
+            Ok(())
         }
     }
 
@@ -423,8 +429,7 @@ impl Starter {
         let start = Instant::now();
         let log_file_path = config
             .log_file_path()
-            .expect("log file logger has to be defined")
-            .clone();
+            .expect("log file logger has to be defined");
         let logger = JormungandrLogger::new(log_file_path.clone());
         loop {
             if start.elapsed() > self.timeout {
@@ -456,7 +461,7 @@ impl Starter {
 
 pub fn restart_jormungandr_node(process: JormungandrProcess, role: Role) -> JormungandrProcess {
     let config = process.config.clone();
-    let alias = process.alias().to_string().clone();
+    let alias = process.alias().to_string();
     std::mem::drop(process);
 
     Starter::new()

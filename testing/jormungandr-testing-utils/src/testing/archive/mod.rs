@@ -37,7 +37,7 @@ pub fn decompress(input: &Path, output: &Path) -> Result<(), DecompressError> {
                 .map_err(|_| DecompressError::UnpackError)?;
             let outpath = output.join(file.sanitized_name());
             let mut outfile =
-                File::create(&outpath).map_err(|e| DecompressError::CannotWriteOutputFile(e))?;
+                File::create(&outpath).map_err(DecompressError::CannotWriteOutputFile)?;
             io::copy(&mut file, &mut outfile)?;
         }
         return Ok(());

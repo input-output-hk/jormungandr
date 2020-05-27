@@ -62,7 +62,7 @@ pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<
     let peers = client
         .peers(MAX_BOOTSTRAP_PEERS)
         .await
-        .map_err(|e| Error::PeersNotAvailable(e))?;
+        .map_err(Error::PeersNotAvailable)?;
 
     info!(
         logger,
@@ -90,7 +90,7 @@ pub async fn bootstrap_from_peer(
     let logger1 = logger.clone();
 
     let stream_future = async move {
-        let mut client = grpc::connect(&peer).await.map_err(|e| Error::Connect(e))?;
+        let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
 
         let checkpoints = blockchain1.get_checkpoints(tip1.branch()).await;
         let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
@@ -103,7 +103,7 @@ pub async fn bootstrap_from_peer(
         client
             .pull_blocks_to_tip(checkpoints)
             .await
-            .map_err(|e| Error::PullRequestFailed(e))
+            .map_err(Error::PullRequestFailed)
     };
 
     // process a signal from the stopper if it arrives before the stream is ready
@@ -151,7 +151,7 @@ impl BootstrapInfo {
             if n > 1_000_000.0 {
                 format!("{:.2}mb", n / (1024 * 1024) as f64)
             } else if n > 1_000.0 {
-                format!("{:.2}kb", n / 1024 as f64)
+                format!("{:.2}kb", n / 1024_f64)
             } else {
                 format!("{:.2}b", n)
             }
@@ -266,7 +266,7 @@ where
     if let Some(parent_tip) = maybe_parent_tip {
         blockchain::process_new_ref(&logger, &mut blockchain, branch, parent_tip)
             .await
-            .map_err(|e| Error::ChainSelectionFailed(e))
+            .map_err(Error::ChainSelectionFailed)
     } else {
         info!(logger, "no new blocks in bootstrap stream");
         Ok(())
@@ -282,7 +282,7 @@ async fn handle_block(
     let pre_checked = blockchain
         .pre_check_header(header, true)
         .await
-        .map_err(|e| Error::HeaderCheckFailed(e))?;
+        .map_err(Error::HeaderCheckFailed)?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent {
             cached_reference: Some(block_ref),
@@ -299,7 +299,7 @@ async fn handle_block(
             let post_checked = blockchain
                 .post_check_header(header, parent_ref, blockchain::CheckHeaderProof::Enabled)
                 .await
-                .map_err(|e| Error::HeaderCheckFailed(e))?;
+                .map_err(Error::HeaderCheckFailed)?;
 
             debug!(
                 logger,
@@ -310,7 +310,7 @@ async fn handle_block(
             let applied = blockchain
                 .apply_and_store_block(post_checked, block)
                 .await
-                .map_err(|e| Error::ApplyBlockFailed(e))?;
+                .map_err(Error::ApplyBlockFailed)?;
             Ok(applied.cached_ref())
         }
     }

@@ -35,7 +35,7 @@ impl Node {
         self.trusted_peers.push(peer.into())
     }
 
-    pub fn trusted_peers<'a>(&'a self) -> impl Iterator<Item = &'a NodeAlias> {
+    pub fn trusted_peers(&self) -> impl Iterator<Item = &NodeAlias> {
         self.trusted_peers.iter()
     }
 }
@@ -53,7 +53,7 @@ impl Topology {
         self.nodes.into_iter()
     }
 
-    pub fn aliases<'a>(&'a self) -> impl Iterator<Item = &'a NodeAlias> {
+    pub fn aliases(&self) -> impl Iterator<Item = &NodeAlias> {
         self.nodes.keys()
     }
 
@@ -93,5 +93,11 @@ impl TopologyBuilder {
         }
 
         Topology { nodes: self.nodes }
+    }
+}
+
+impl Default for TopologyBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

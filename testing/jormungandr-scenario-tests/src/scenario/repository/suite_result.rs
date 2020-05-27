@@ -1,6 +1,6 @@
 use crate::scenario::repository::ScenarioResult;
 
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct ScenarioSuiteResult {
     results: Vec<ScenarioResult>,
 }
@@ -28,10 +28,11 @@ impl ScenarioSuiteResult {
         self.results.iter().filter(|x| x.is_failed()).count()
     }
 
-    fn result_as_string(&self) -> String {
-        match self.is_failed() {
-            true => "failed".to_owned(),
-            false => "ok".to_owned(),
+    fn result_as_string(&self) -> &'static str {
+        if self.is_failed() {
+            "failed"
+        } else {
+            "ok"
         }
     }
 

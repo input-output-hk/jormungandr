@@ -135,7 +135,7 @@ mod test {
     // when we use the Display trait
     #[test]
     fn hash_display() {
-        const EXPECTED_HASH_STR: &'static str =
+        const EXPECTED_HASH_STR: &str =
             "2020202020202020202020202020202020202020202020202020202020202020";
         const HASH_BYTES: [u8; 32] = [0x20; 32];
 
@@ -148,7 +148,7 @@ mod test {
     // serde with a human readable output
     #[test]
     fn hash_serde_human_readable() {
-        const EXPECTED_HASH_STR: &'static str =
+        const EXPECTED_HASH_STR: &str =
             "---\n\"2020202020202020202020202020202020202020202020202020202020202020\"";
         const HASH_BYTES: [u8; 32] = [0x20; 32];
 

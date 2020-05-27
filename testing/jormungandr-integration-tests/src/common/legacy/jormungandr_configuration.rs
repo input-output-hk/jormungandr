@@ -81,7 +81,7 @@ impl BackwardCompatibleConfig {
             .p2p
             .public_address
             .to_string();
-        let tokens: Vec<&str> = address.split("/").collect();
+        let tokens: Vec<&str> = address.split('/').collect();
         let port_str = tokens
             .get(4)
             .expect("cannot extract port from p2p.public_address");

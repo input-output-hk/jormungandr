@@ -63,11 +63,11 @@ impl Starter {
             role: Role::Leader,
             from_genesis: FromGenesis::File,
             on_fail: OnFail::RetryUnlimitedOnPortOccupied,
-            version: version,
+            version,
             alias: "".to_owned(),
             config: None,
             benchmark: None,
-            jormungandr_app_path: jormungandr_app_path,
+            jormungandr_app_path,
         }
     }
 
@@ -198,7 +198,7 @@ impl Starter {
                         "Jormungandr failed to start due to error {}. Retrying... ",
                         err
                     );
-                    retry_counter = retry_counter - 1;
+                    retry_counter -= 1;
                 }
             }
 
@@ -244,12 +244,13 @@ impl Starter {
 
         let logger = JormungandrLogger::new(log_file_path);
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
-        match logger
+        if logger
             .raw_log_contains_any_of(&port_occupied_msgs)
             .unwrap_or_else(|_| false)
         {
-            true => Err(StartupError::PortAlreadyInUse),
-            false => Ok(()),
+            Err(StartupError::PortAlreadyInUse)
+        } else {
+            Ok(())
         }
     }
 

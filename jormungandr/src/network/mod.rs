@@ -386,13 +386,13 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     // gossip with them at least at the beginning
     topology
         .accept_gossips(
-            address.clone().into(),
+            address.clone(),
             config
                 .trusted_peers
                 .iter()
                 .map(|tp| {
                     let mut builder = poldercast::NodeProfileBuilder::new();
-                    builder.address(tp.address.clone().into());
+                    builder.address(tp.address.clone());
                     builder.build()
                 })
                 .map(p2p::Gossip::from)

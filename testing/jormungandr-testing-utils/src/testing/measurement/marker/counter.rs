@@ -1,6 +1,6 @@
 use std::ops::{Add, Div, Sub};
 
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct Counter(u32);
 
 impl Counter {

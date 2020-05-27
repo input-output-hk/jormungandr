@@ -79,7 +79,7 @@ impl JormungandrStarterCommands {
     pub fn as_passive_node(
         &self,
         config_path: &PathBuf,
-        genesis_block_hash: &String,
+        genesis_block_hash: &str,
         log_file_path: Option<PathBuf>,
         reward_history: bool,
     ) -> Command {

@@ -29,6 +29,7 @@ pub struct JCli {
     command: Option<JCliCommand>,
 }
 
+#[allow(clippy::large_enum_variant)]
 /// Jormungandr CLI toolkit
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]

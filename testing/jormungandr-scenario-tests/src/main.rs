@@ -80,7 +80,7 @@ fn main() {
     let testing_directory = command_args.testing_directory;
     let generate_documentation = command_args.generate_documentation;
 
-    let mut context = Context::new(
+    let context = Context::new(
         seed,
         jormungandr,
         jcli,
@@ -91,13 +91,14 @@ fn main() {
 
     introduction(&context);
     let scenarios_repo = ScenariosRepository::new(command_args.scenario, command_args.tag);
-    let scenario_suite_result = scenarios_repo.run(&mut context);
+    let scenario_suite_result = scenarios_repo.run(&context);
     println!("{}", scenario_suite_result.result_string());
 
-    if command_args.set_exit_code == true {
-        std::process::exit(match scenario_suite_result.is_failed() {
-            true => 1,
-            false => 0,
+    if command_args.set_exit_code {
+        std::process::exit(if scenario_suite_result.is_failed() {
+            1
+        } else {
+            0
         });
     }
 }

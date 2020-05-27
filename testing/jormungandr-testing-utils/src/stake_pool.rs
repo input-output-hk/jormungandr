@@ -36,7 +36,7 @@ impl StakePool {
 
         StakePool {
             owner: owner.clone(),
-            leader: leader,
+            leader,
             inner: stake_pool,
         }
     }

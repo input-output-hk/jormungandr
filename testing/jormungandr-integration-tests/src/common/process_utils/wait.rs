@@ -39,6 +39,12 @@ pub struct WaitBuilder {
     attempts: u64,
 }
 
+impl Default for WaitBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WaitBuilder {
     pub fn new() -> Self {
         WaitBuilder {

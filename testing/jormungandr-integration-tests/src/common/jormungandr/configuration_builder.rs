@@ -33,6 +33,12 @@ pub struct ConfigurationBuilder {
     rewards_history: bool,
 }
 
+impl Default for ConfigurationBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfigurationBuilder {
     pub fn new() -> Self {
         ConfigurationBuilder {
@@ -90,7 +96,7 @@ impl ConfigurationBuilder {
         &mut self,
         consensus_leader_ids: Vec<ConsensusLeaderId>,
     ) -> &mut Self {
-        self.consensus_leader_ids = consensus_leader_ids.clone();
+        self.consensus_leader_ids = consensus_leader_ids;
         self
     }
 
@@ -178,14 +184,13 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_block_hash(&mut self, block0_hash: String) -> &mut Self {
-        self.block0_hash = Some(block0_hash.clone());
+        self.block0_hash = Some(block0_hash);
         self
     }
 
     pub fn serialize(block0_configuration: &Block0Configuration) -> PathBuf {
         let content = serde_yaml::to_string(&block0_configuration).unwrap();
-        let input_yaml_file_path = file_utils::create_file_in_temp("genesis.yaml", &content);
-        input_yaml_file_path
+        file_utils::create_file_in_temp("genesis.yaml", &content)
     }
 
     pub fn build(&self) -> JormungandrConfig {
@@ -222,7 +227,7 @@ impl ConfigurationBuilder {
         let secret_model_path = SecretModelFactory::serialize(&secret_model);
 
         JormungandrConfig::new(
-            path_to_output_block.clone(),
+            path_to_output_block,
             genesis_block_hash,
             node_config_path,
             vec![secret_model_path],

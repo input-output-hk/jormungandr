@@ -85,7 +85,7 @@ impl From<[u8; 32]> for Wallet {
     fn from(seed: [u8; 32]) -> Self {
         let mut wallet = Wallet {
             signing_keys: Vec::new(),
-            seed: seed.clone(),
+            seed,
             rng: ChaChaRng::from_seed(seed),
             utxos: Vec::new(),
         };

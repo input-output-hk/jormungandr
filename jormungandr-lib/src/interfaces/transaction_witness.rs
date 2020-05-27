@@ -13,7 +13,7 @@ pub enum TransactionWitnessFromStrError {
     Invalid(#[from] chain_core::mempack::ReadError),
 }
 
-const HRP: &'static str = "witness";
+const HRP: &str = "witness";
 
 /// a transaction witness
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,15 +93,11 @@ impl Serialize for TransactionWitness {
         use chain_core::property::Serialize as _;
         use serde::ser::Error as _;
 
-        let bytes = self
-            .as_ref()
-            .serialize_as_vec()
-            .map_err(|err| S::Error::custom(err))?;
+        let bytes = self.as_ref().serialize_as_vec().map_err(S::Error::custom)?;
 
         if serializer.is_human_readable() {
             use bech32::ToBase32 as _;
-            let bech32 =
-                bech32::encode(HRP, bytes.to_base32()).map_err(|err| S::Error::custom(err))?;
+            let bech32 = bech32::encode(HRP, bytes.to_base32()).map_err(S::Error::custom)?;
             serializer.serialize_str(&bech32)
         } else {
             serializer.serialize_bytes(&bytes)

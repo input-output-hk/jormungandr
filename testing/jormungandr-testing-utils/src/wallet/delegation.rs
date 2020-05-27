@@ -43,7 +43,7 @@ impl Wallet {
         let key = SigningKey::generate(&mut self.rng);
         self.signing_keys.push(key);
         self.delegations.push(delegation);
-        self.signing_keys.get(self.signing_keys.len() - 1).unwrap()
+        self.signing_keys.last().unwrap()
     }
 
     pub fn delegation(&self, i: usize) -> &AccountIdentifier {
@@ -94,7 +94,7 @@ impl From<[u8; 32]> for Wallet {
     fn from(seed: [u8; 32]) -> Self {
         Wallet {
             signing_keys: Vec::new(),
-            seed: seed.clone(),
+            seed,
             rng: ChaChaRng::from_seed(seed),
             delegations: Vec::new(),
         }

@@ -183,7 +183,7 @@ mod test {
     #[test]
     #[should_panic]
     fn deserialize_from_invalid_type() {
-        const EXAMPLE: &'static str = "---\ntrue";
+        const EXAMPLE: &str = "---\ntrue";
 
         let _: ActiveSlotCoefficient = serde_yaml::from_str(EXAMPLE).unwrap();
     }
@@ -229,7 +229,7 @@ mod test {
     #[test]
     fn deserialize_from_str() {
         const VALUE: Milli = Milli::from_millis(220);
-        const ACTIVE_SLOT_STR: &'static str = "---\n\"0.220\"";
+        const ACTIVE_SLOT_STR: &str = "---\n\"0.220\"";
 
         let decoded: ActiveSlotCoefficient = serde_yaml::from_str(&ACTIVE_SLOT_STR).unwrap();
 

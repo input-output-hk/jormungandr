@@ -20,7 +20,7 @@ impl<T: PartialOrd + Clone> Thresholds<T> {
                 (Status::Yellow, yellow),
                 (Status::Red, red),
             ],
-            max: max,
+            max,
         }
     }
 

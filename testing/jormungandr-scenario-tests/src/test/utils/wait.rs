@@ -35,7 +35,7 @@ impl SyncWaitParams {
 
     pub fn nodes_restart(no_of_nodes: u64) -> Self {
         Self::WithDisruption {
-            no_of_nodes: no_of_nodes,
+            no_of_nodes,
             restart_coeff: 30,
         }
     }
@@ -49,7 +49,7 @@ impl SyncWaitParams {
             Self::WithDisruption {
                 no_of_nodes,
                 restart_coeff,
-            } => return *no_of_nodes * restart_coeff * 2,
+            } => *no_of_nodes * restart_coeff * 2,
             Self::ZeroWait => 0,
         }
     }

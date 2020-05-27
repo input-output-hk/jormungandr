@@ -2,9 +2,9 @@
 //! in the block0 configuration.
 
 /// default active slot coefficient in milli `0.100`
-pub const DEFAULT_ACTIVE_SLOT_COEFFICIENT: u64 = 0_100;
+pub const DEFAULT_ACTIVE_SLOT_COEFFICIENT: u64 = 100;
 /// minimum active slot coefficient in milli `0.001`
-pub const MINIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 0_001;
+pub const MINIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 1;
 /// maximum active slot coefficient in milli `1.000`
 pub const MAXIMUM_ACTIVE_SLOT_COEFFICIENT: u64 = 1_000;
 

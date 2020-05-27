@@ -97,7 +97,7 @@ mod test {
                     ratio: Ratio::arbitrary(g),
                     epoch_start: Epoch::arbitrary(g),
                     epoch_rate: NonZeroU32::new(Arbitrary::arbitrary(g))
-                        .unwrap_or(NonZeroU32::new(1).unwrap()),
+                        .unwrap_or_else(|| NonZeroU32::new(1).unwrap()),
                 }
             } else {
                 Self::Halving {
@@ -105,7 +105,7 @@ mod test {
                     ratio: Ratio::arbitrary(g),
                     epoch_start: Epoch::arbitrary(g),
                     epoch_rate: NonZeroU32::new(Arbitrary::arbitrary(g))
-                        .unwrap_or(NonZeroU32::new(1).unwrap()),
+                        .unwrap_or_else(|| NonZeroU32::new(1).unwrap()),
                 }
             }
         }

@@ -67,7 +67,7 @@ impl Services {
     /// create a new set of services
     pub fn new(logger: Logger) -> Self {
         Services {
-            logger: logger,
+            logger,
             services: Vec::new(),
             finish_listener: ServiceFinishListener::new(),
             runtime: Runtime::new().unwrap(),
@@ -174,7 +174,7 @@ impl Services {
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
-            logger: logger,
+            logger,
             handle,
         };
         self.runtime.block_on(f(future_service_info))

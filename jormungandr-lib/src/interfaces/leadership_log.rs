@@ -2,7 +2,9 @@ use crate::{crypto::hash::Hash, interfaces::BlockDate, time::SystemTime};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[derive(
+    Default, Debug, Deserialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize,
+)]
 #[serde(transparent)]
 pub struct EnclaveLeaderId(u32);
 

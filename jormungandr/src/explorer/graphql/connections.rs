@@ -324,15 +324,13 @@ where
         Some(cursor) => max(cursor + 1, lower_bound),
         // If `after` is not set, start from the beginning
         None => lower_bound,
-    }
-    .into();
+    };
 
     let mut to: u64 = match pagination_arguments.before {
         Some(cursor) => min(cursor - 1, upper_bound),
         // If `before` is not set, start from the beginning
         None => upper_bound,
-    }
-    .into();
+    };
 
     // Move `to` enough values to make the result have `first` blocks
     if let Some(first) = pagination_arguments.first {
@@ -366,10 +364,10 @@ impl<I> PaginationArguments<I> {
             .first
             .map(|signed| -> FieldResult<u32> {
                 if signed < 0 {
-                    return Err(ErrorKind::ArgumentError(
-                        "first argument should be positive".to_owned(),
+                    Err(
+                        ErrorKind::ArgumentError("first argument should be positive".to_owned())
+                            .into(),
                     )
-                    .into());
                 } else {
                     Ok(u32::try_from(signed).unwrap())
                 }
@@ -380,10 +378,10 @@ impl<I> PaginationArguments<I> {
             .last
             .map(|signed| -> FieldResult<u32> {
                 if signed < 0 {
-                    return Err(ErrorKind::ArgumentError(
-                        "last argument should be positive".to_owned(),
+                    Err(
+                        ErrorKind::ArgumentError("last argument should be positive".to_owned())
+                            .into(),
                     )
-                    .into());
                 } else {
                     Ok(u32::try_from(signed).unwrap())
                 }

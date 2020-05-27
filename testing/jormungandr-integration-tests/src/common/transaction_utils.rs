@@ -8,6 +8,6 @@ pub trait TransactionHash {
 impl TransactionHash for Fragment {
     fn encode(&self) -> String {
         let bytes = self.serialize_as_vec().unwrap();
-        hex::encode(&bytes).to_owned()
+        hex::encode(&bytes)
     }
 }

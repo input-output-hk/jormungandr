@@ -74,14 +74,14 @@ fn prepare_real_scenario(
 
             leader_node.add_trusted_peer(relay_name.clone());
             topology_builder.register_node(leader_node);
-            leader_counter = leader_counter + 1;
+            leader_counter += 1;
         }
 
         for _ in 0..legacy_nodes_count_per_relay {
             let mut legacy_node = Node::new(&legacy_name(legacy_nodes_counter));
             legacy_node.add_trusted_peer(relay_name.clone());
             topology_builder.register_node(legacy_node);
-            legacy_nodes_counter = legacy_nodes_counter + 1;
+            legacy_nodes_counter += 1;
         }
     }
 
@@ -120,7 +120,7 @@ fn prepare_real_scenario(
     builder
 }
 
-pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let relay_nodes_count = 8;
     let leaders_per_relay = 10;
     let legacies_per_relay = 1;
@@ -130,9 +130,9 @@ pub fn real_network(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         relay_nodes_count,
         leaders_per_relay,
         legacies_per_relay,
-        &mut context,
+        &context,
     );
-    let mut controller = scenario_settings.build(context.clone())?;
+    let mut controller = scenario_settings.build(context)?;
 
     let core =
         controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
