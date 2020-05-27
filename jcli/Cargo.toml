@@ -31,7 +31,7 @@ chain-crypto    = { path = "../chain-deps/chain-crypto" }
 chain-time    = { path = "../chain-deps/chain-time" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.5.6"
-openapiv3 = "0.3.0"
+openapiv3 = "0.3.2"
 valico = "3.2.0"
 ed25519-bip32 = "0.3"
 thiserror = "1.0"
