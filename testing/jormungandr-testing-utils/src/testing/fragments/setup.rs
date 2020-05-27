@@ -10,14 +10,14 @@ pub struct FragmentSenderSetup<'a> {
 impl<'a> FragmentSenderSetup<'a> {
     pub const NO_VERIFY: FragmentSenderSetup<'a> = FragmentSenderSetup {
         resend_on_error: None,
-        sync_nodes: vec![],
+        sync_nodes: Vec::new(),
         ignore_any_errors: false,
         no_verify: true,
     };
 
     pub const RESEND_3_TIMES: FragmentSenderSetup<'a> = FragmentSenderSetup {
         resend_on_error: Some(3),
-        sync_nodes: vec![],
+        sync_nodes: Vec::new(),
         ignore_any_errors: false,
         no_verify: false,
     };
