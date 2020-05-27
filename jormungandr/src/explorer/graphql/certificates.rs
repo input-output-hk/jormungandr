@@ -29,6 +29,10 @@ pub struct PoolRetirement(certificate::PoolRetirement);
 
 pub struct PoolUpdate(certificate::PoolUpdate);
 
+pub struct VotePlan(certificate::VotePlan);
+
+pub struct VoteCast(certificate::VoteCast);
+
 graphql_union!(Certificate: Context |&self| {
     // the left hand side of the `instance_resolvers` match-like pub structure is the one
     // that's used to match in the graphql query with the `__typename` field
@@ -197,6 +201,46 @@ impl PoolUpdate {
     // TODO: Updated keys?
 }
 
+#[juniper::object(
+    Context = Context,
+)]
+impl VotePlan {
+    /// the vote start validity
+    pub fn vote_start(&self) -> BlockDate {
+        self.0.vote_start().into()
+    }
+
+    /// the duration within which it is possible to vote for one of the proposals
+    /// of this voting plan.
+    pub fn vote_end(&self) -> BlockDate {
+        self.0.vote_end().into()
+    }
+
+    /// the committee duration is the time allocated to the committee to open
+    /// the ballots and publish the results on chain
+    pub fn committee_end(&self) -> BlockDate {
+        self.0.committee_end().into()
+    }
+
+    /// the proposals to vote for
+    pub fn proposals(&self) -> Vec<Proposal> {
+        self.0.proposals().iter().cloned().map(Proposal).collect()
+    }
+}
+
+#[juniper::object(
+    Context = Context,
+)]
+impl VoteCast {
+    pub fn vote_plan(&self) -> VotePlanId {
+        self.0.vote_plan().clone().into()
+    }
+
+    pub fn proposal_index(&self) -> i32 {
+        self.0.proposal_index() as i32
+    }
+}
+
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/
@@ -253,5 +297,17 @@ impl From<certificate::PoolRetirement> for PoolRetirement {
 impl From<certificate::PoolUpdate> for PoolUpdate {
     fn from(pool_update: certificate::PoolUpdate) -> PoolUpdate {
         PoolUpdate(pool_update)
+    }
+}
+
+impl From<certificate::VotePlan> for VotePlan {
+    fn from(vote_plan: certificate::VotePlan) -> VotePlan {
+        VotePlan(vote_plan)
+    }
+}
+
+impl From<certificate::VoteCast> for VoteCast {
+    fn from(vote_cast: certificate::VoteCast) -> VoteCast {
+        VoteCast(vote_cast)
     }
 }
