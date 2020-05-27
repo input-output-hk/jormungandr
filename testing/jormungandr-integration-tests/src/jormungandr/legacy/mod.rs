@@ -44,7 +44,7 @@ pub fn test_legacy_node_all_fragments() {
         .legacy(version)
         .config(config)
         .start()
-        .unwrap();
+        .expect("cannot start legacy jormungandr");
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -60,11 +60,11 @@ pub fn test_legacy_node_all_fragments() {
             second_stake_pool_owner.address(),
             1_000.into(),
         )
-        .unwrap();
+        .expect("cannot crate fragment from transaction between first and second pool owner");
 
     fragment_sender
         .send_fragment(fragment, &jormungandr)
-        .unwrap();
+        .expect("fragment send error for transaction between first and second pool owner");
     std::thread::sleep(std::time::Duration::from_secs(30));
 
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
@@ -76,27 +76,27 @@ pub fn test_legacy_node_all_fragments() {
             &jormungandr.fees(),
             &first_stake_pool,
         )
-        .unwrap();
+        .expect("cannot create pool registration fragment for first stake pool owner");
 
     fragment_sender
         .send_fragment(fragment, &jormungandr)
-        .unwrap();
+        .expect("error while sending registration certificate for first stake pool owner");
     first_stake_pool_owner.confirm_transaction();
 
     let second_stake_pool = StakePool::new(&second_stake_pool_owner);
 
     // 2b). send pool registration certificate
-    fragment = first_stake_pool_owner
+    fragment = second_stake_pool_owner
         .issue_pool_registration_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
             &second_stake_pool,
         )
-        .unwrap();
+        .expect("cannot create pool registration fragment for second stake owner");
 
     fragment_sender
         .send_fragment(fragment, &jormungandr)
-        .unwrap();
+        .expect("error while sending registration certificate for second stake pool owner");
     second_stake_pool_owner.confirm_transaction();
 
     let stake_pools_from_rest = jormungandr
@@ -123,7 +123,7 @@ pub fn test_legacy_node_all_fragments() {
 
     fragment_sender
         .send_fragment(fragment, &jormungandr)
-        .unwrap();
+        .expect("error while sending owner delegation cert");
     first_stake_pool_owner.confirm_transaction();
 
     let stake_pool_owner_info = jcli_wrapper::assert_rest_account_get_stats(
@@ -144,7 +144,7 @@ pub fn test_legacy_node_all_fragments() {
             &jormungandr.fees(),
             &first_stake_pool,
         )
-        .unwrap();
+        .expect("error while sending full delegation certificate");
 
     fragment_sender
         .send_fragment(fragment, &jormungandr)
@@ -167,7 +167,7 @@ pub fn test_legacy_node_all_fragments() {
             &jormungandr.fees(),
             vec![(&first_stake_pool, 1u8), (&second_stake_pool, 1u8)],
         )
-        .unwrap();
+        .expect("error while sending split delegation certificate");
 
     fragment_sender
         .send_fragment(fragment, &jormungandr)
@@ -215,7 +215,7 @@ pub fn test_legacy_node_all_fragments() {
             &jormungandr.fees(),
             &first_stake_pool,
         )
-        .unwrap();
+        .expect("error while sending stake pool retirement certificate");
 
     fragment_sender
         .send_fragment(fragment, &jormungandr)

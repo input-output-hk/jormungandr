@@ -29,6 +29,8 @@ pub enum Level {
     WARN,
     INFO,
     ERRO,
+    TRCE,
+    DEBG,
 }
 
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
