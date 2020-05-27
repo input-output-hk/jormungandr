@@ -520,11 +520,16 @@ impl Ratio {
     }
 }
 
+pub struct Proposal(certificate::Proposal);
 
 #[juniper::object(
     Context = Context,
 )]
+impl Proposal {
+    pub fn external_id(&self) -> ExternalProposalId {
+        ExternalProposalId(self.0.external_id().to_string())
     }
+    // TODO: options
 }
 
 #[derive(Clone)]
