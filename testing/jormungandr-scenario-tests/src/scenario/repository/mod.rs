@@ -110,6 +110,7 @@ impl ScenariosRepository {
         let scenario_to_run = scenario.method();
 
         println!("Running '{}' scenario", scenario.name());
+
         let result = std::panic::catch_unwind(|| scenario_to_run(context.clone().derive()));
         let scenario_result = ScenarioResult::from_result(result);
         println!("Scenario '{}' {}", scenario.name(), scenario_result);
@@ -138,7 +139,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "leader_restart",
         leader_restart,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "passive_node_is_updated",
@@ -193,7 +194,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "custom_network_disruption",
         custom_network_disruption,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
@@ -273,7 +274,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "max_connections",
         max_connections,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
