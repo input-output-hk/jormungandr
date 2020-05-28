@@ -111,6 +111,9 @@ pub struct VotePlanWithId {
     #[serde(with = "BlockDateDef")]
     pub committee_end: chain_impl_mockchain::block::BlockDate,
 
+    #[serde(with = "PayloadTypeDef")]
+    pub payload_type: chain_impl_mockchain::vote::PayloadType,
+
     #[serde(serialize_with = "serialize_proposals_index")]
     pub proposals: chain_impl_mockchain::certificate::Proposals,
 }
@@ -122,6 +125,7 @@ impl VotePlanWithId {
             vote_start: vote_plan.vote_start(),
             vote_end: vote_plan.vote_end(),
             committee_end: vote_plan.committee_end(),
+            payload_type: vote_plan.payload_type(),
             proposals: vote_plan.proposals().clone(),
         }
     }
