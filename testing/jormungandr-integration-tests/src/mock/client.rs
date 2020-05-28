@@ -9,7 +9,6 @@ use chain_impl_mockchain::{
     block::Block as LibBlock, fragment::Fragment as LibFragment, header::Header as LibHeader,
     key::Hash,
 };
-
 use futures::stream;
 use std::fmt;
 
@@ -156,15 +155,12 @@ impl JormungandrClient {
         mut stream: tonic::codec::Streaming<Header>,
     ) -> Result<Vec<LibHeader>, MockClientError> {
         let mut headers: Vec<LibHeader> = Vec::new();
-        loop {
-            if let Some(next_message) = stream
-                .message()
-                .await
-                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
-            {
-                headers.push(read_into(&next_message.content))
-            }
-            break;
+        while let Some(next_message) = stream
+            .message()
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
+        {
+            headers.push(read_into(&next_message.content));
         }
         Ok(headers)
     }
@@ -174,15 +170,12 @@ impl JormungandrClient {
         mut stream: tonic::codec::Streaming<Block>,
     ) -> Result<Vec<LibBlock>, MockClientError> {
         let mut blocks: Vec<LibBlock> = Vec::new();
-        loop {
-            if let Some(next_message) = stream
-                .message()
-                .await
-                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
-            {
-                blocks.push(read_into(&next_message.content))
-            }
-            break;
+        while let Some(next_message) = stream
+            .message()
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
+        {
+            blocks.push(read_into(&next_message.content));
         }
         Ok(blocks)
     }
@@ -192,15 +185,12 @@ impl JormungandrClient {
         mut stream: tonic::codec::Streaming<Fragment>,
     ) -> Result<Vec<LibFragment>, MockClientError> {
         let mut fragments: Vec<LibFragment> = Vec::new();
-        loop {
-            if let Some(next_message) = stream
-                .message()
-                .await
-                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
-            {
-                fragments.push(read_into(&next_message.content))
-            }
-            break;
+        while let Some(next_message) = stream
+            .message()
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
+        {
+            fragments.push(read_into(&next_message.content));
         }
         Ok(fragments)
     }
@@ -220,19 +210,8 @@ impl JormungandrClient {
             .pull_headers(request)
             .await
             .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
-        let mut blocks: Vec<LibHeader> = Vec::new();
-        let mut stream = response.into_inner();
-        loop {
-            if let Some(next_message) = stream
-                .message()
-                .await
-                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?
-            {
-                blocks.push(read_into(&next_message.content))
-            }
-            break;
-        }
-        Ok(blocks)
+        let stream = response.into_inner();
+        self.headers_stream_to_vec(stream).await
     }
 
     pub async fn upload_blocks(&self, lib_block: LibBlock) -> Result<(), MockClientError> {
