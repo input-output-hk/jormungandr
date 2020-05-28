@@ -399,6 +399,8 @@ fn verify_binary_media_type(body_def: &RequestBody) -> Result<(), RequestMediaTy
         format: VariantOrUnknownOrEmpty::Item(StringFormat::Binary),
         pattern: None,
         enumeration: vec![],
+        min_length: None,
+        max_length: None,
     }));
     if schema.schema_kind != valid_schema_kind {
         return Err(RequestMediaTypeError::SchemaBinaryInvalid);
