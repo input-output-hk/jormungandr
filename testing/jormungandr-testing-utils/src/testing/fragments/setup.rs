@@ -11,7 +11,7 @@ impl<'a> FragmentSenderSetup<'a> {
     pub const NO_VERIFY: FragmentSenderSetup<'a> = FragmentSenderSetup {
         resend_on_error: None,
         sync_nodes: Vec::new(),
-        ignore_any_errors: false,
+        ignore_any_errors: true,
         no_verify: true,
     };
 
@@ -25,7 +25,7 @@ impl<'a> FragmentSenderSetup<'a> {
     pub fn resend_3_times_and_sync_with(sync_nodes: Vec<&'a dyn SyncNode>) -> Self {
         Self {
             resend_on_error: Some(3),
-            sync_nodes: sync_nodes,
+            sync_nodes,
             ignore_any_errors: false,
             no_verify: false,
         }

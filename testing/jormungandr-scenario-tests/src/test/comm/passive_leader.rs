@@ -5,6 +5,7 @@ use crate::{
     Context, ScenarioResult,
 };
 
+use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use rand_chacha::ChaChaRng;
 
 const LEADER: &str = "Leader";
@@ -113,24 +114,17 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 
     leader.shutdown()?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &passive,
-        1_000.into(),
-    )?;
+    controller
+        .fragment_sender_with_setup(FragmentSenderSetup::NO_VERIFY)
+        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
 
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    leader.wait_for_bootstrap()?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &passive,
-        1_000.into(),
-    )?;
+    controller
+        .fragment_sender_with_setup(FragmentSenderSetup::RESEND_3_TIMES)
+        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
         vec![&passive, &leader],

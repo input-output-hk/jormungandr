@@ -105,7 +105,7 @@ impl<'a> FragmentSender<'a> {
         match verifier.wait_fragment(Duration::from_secs(2), check.clone(), node)? {
             FragmentStatus::Rejected { reason } => Err(FragmentSenderError::FragmentNotInBlock {
                 alias: FragmentNode::alias(node).to_string(),
-                reason: reason,
+                reason,
                 logs: FragmentNode::log_content(node),
             }),
             FragmentStatus::InABlock { .. } => Ok(()),

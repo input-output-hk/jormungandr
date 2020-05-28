@@ -71,6 +71,8 @@ struct CommandArgs {
 fn main() {
     let command_args = CommandArgs::from_args();
 
+    std::env::set_var("RUST_BACKTRACE", "full");
+
     let jormungandr = prepare_command(command_args.jormungandr);
     let jcli = prepare_command(command_args.jcli);
     let progress_bar_mode = command_args.progress_bar_mode;
