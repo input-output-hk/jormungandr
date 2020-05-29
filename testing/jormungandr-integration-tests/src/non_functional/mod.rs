@@ -61,14 +61,14 @@ pub fn send_transaction_and_ensure_block_was_produced(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
     let block_tip_before_transaction =
-        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
+        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_uri());
     let block_counter_before_transaction = jormungandr.logger.get_created_blocks_counter();
 
     jcli_wrapper::send_transactions_and_wait_until_in_block(&transation_messages, &jormungandr)
         .map_err(NodeStuckError::InternalJcliError)?;
 
     let block_tip_after_transaction =
-        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_address());
+        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_uri());
     let block_counter_after_transaction = jormungandr.logger.get_created_blocks_counter();
 
     if block_tip_before_transaction == block_tip_after_transaction {
@@ -154,7 +154,7 @@ pub fn check_funds_transferred_to(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
     let account_state =
-        jcli_wrapper::assert_rest_account_get_stats(address, &jormungandr.rest_address());
+        jcli_wrapper::assert_rest_account_get_stats(address, &jormungandr.rest_uri());
 
     if *account_state.value() != value {
         return Err(NodeStuckError::FundsNotTransfered {
