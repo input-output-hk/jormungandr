@@ -25,7 +25,7 @@ chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
 poldercast = "0.13.1"
-sysinfo = { version = "0.14.1" }
+sysinfo = { version = "0.14.4" }
 os_info = { version = "2.0.6", default-features = false }
 zip = "0.5.5"
 flate2 = "1.0.14"
