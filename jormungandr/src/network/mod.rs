@@ -462,11 +462,10 @@ fn connect_and_propagate(
         }
     };
     options.evict_clients = state.num_clients_to_bump();
-    assert_ne!(
-        Some(&node),
-        state.node_address(),
-        "topology tells the node to connect to itself"
-    );
+    if Some(&node) == state.node_address() {
+        error!(state.logger(), "topology tells the node to connect to itself, ignoring"; "address" => %node);
+        return;
+    }
     let peer = Peer::new(addr);
     let conn_state = ConnectionState::new(state.clone(), &peer);
     let conn_logger = conn_state.logger().new(o!("address" => node.to_string()));
