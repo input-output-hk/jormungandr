@@ -52,14 +52,14 @@ pub fn test_blocks_are_being_created_for_48_hours() {
 
         let wait: Wait = Wait::new(Duration::from_secs(10), 10);
         let fragment_id =
-            jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_address());
+            jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_uri());
         if let Err(err) =
             jcli_wrapper::wait_until_transaction_processed(fragment_id, &jormungandr, &wait)
         {
             let message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
                 err,
                 fragment_id,
-                jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_address()),
+                jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_uri()),
                 jormungandr.logger.get_log_content()
             );
             benchmark_endurance.exception(message.clone()).print();

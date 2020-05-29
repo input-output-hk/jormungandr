@@ -1,13 +1,14 @@
 use crate::common::{
     jormungandr::{ConfigurationBuilder, Starter},
-    legacy::{self, download_last_n_releases, get_jormungandr_bin, Version},
+    legacy::{download_last_n_releases, Version},
     startup,
     transaction_utils::TransactionHash,
 };
+use assert_fs::TempDir;
 use jormungandr_lib::interfaces::InitialUTxO;
-use std::{path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
-fn test_connectivity_between_master_and_legacy_app(jormungandr_bin: PathBuf, version: String) {
+fn test_connectivity_between_master_and_legacy_app(version: String, temp_dir: &TempDir) {
     println!("Testing version: {}", version);
 
     let mut sender = startup::create_new_account_address();
@@ -18,7 +19,7 @@ fn test_connectivity_between_master_and_legacy_app(jormungandr_bin: PathBuf, ver
             address: sender.address(),
             value: 100.into(),
         }])
-        .build();
+        .build(temp_dir);
 
     let leader_jormungandr = Starter::new()
         .config(leader_config.clone())
@@ -28,14 +29,16 @@ fn test_connectivity_between_master_and_legacy_app(jormungandr_bin: PathBuf, ver
     let trusted_node_config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![leader_jormungandr.to_trusted_peer()])
         .with_block_hash(leader_config.genesis_block_hash().clone())
-        .build();
+        .build(temp_dir);
 
-    let trusted_jormungandr =
-        legacy::Starter::new(Version::from_str(&version).unwrap(), jormungandr_bin)
-            .config(trusted_node_config)
-            .passive()
-            .start()
-            .unwrap();
+    let version = Version::from_str(&version).unwrap();
+
+    let trusted_jormungandr = Starter::new()
+        .config(trusted_node_config)
+        .legacy(version)
+        .passive()
+        .start()
+        .unwrap();
 
     let new_transaction = sender
         .transaction_to(
@@ -66,8 +69,8 @@ fn test_connectivity_between_master_and_legacy_app(jormungandr_bin: PathBuf, ver
 
 #[test]
 pub fn test_compability() {
+    let temp_dir = TempDir::new().unwrap();
     for release in download_last_n_releases(5) {
-        let jormungandr = get_jormungandr_bin(&release);
-        test_connectivity_between_master_and_legacy_app(jormungandr, release.version());
+        test_connectivity_between_master_and_legacy_app(release.version(), &temp_dir);
     }
 }

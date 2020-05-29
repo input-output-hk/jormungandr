@@ -72,7 +72,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
             .iter()
             .map(|receiver| {
                 let message = JCLITransactionWrapper::new_transaction(
-                    &jormungandr.config.genesis_block_hash(),
+                    &jormungandr.genesis_block_hash().to_string(),
                 )
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
                 .assert_add_output(&receiver.address().to_string(), output_value.into())
@@ -121,7 +121,7 @@ pub fn test_100_transaction_is_processed_simple() {
 
     for i in 0..transaction_max_count {
         let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
+            JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string())
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
                 .assert_add_output(&receiver.address().to_string(), output_value.into())
                 .assert_finalize()
@@ -172,7 +172,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
     loop {
         let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
+            JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string())
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
                 .assert_add_output(&receiver.address().to_string(), output_value.into())
                 .assert_finalize()

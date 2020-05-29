@@ -37,7 +37,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
 
     loop {
         let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.config.genesis_block_hash())
+            JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string())
                 .assert_add_account(&sender.address().to_string(), &output_value.into())
                 .assert_add_output(&receiver.address().to_string(), output_value.into())
                 .assert_finalize()
@@ -81,7 +81,7 @@ fn check_explorer_and_rest_are_in_sync(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
     let block_tip = Hash::from_str(&jcli_wrapper::assert_rest_get_block_tip(
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     ))
     .unwrap();
 

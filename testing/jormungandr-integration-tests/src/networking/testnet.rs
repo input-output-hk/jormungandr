@@ -8,11 +8,12 @@ use crate::{
             storage_loading_benchmark_from_log, ConfigurationBuilder, JormungandrProcess, Starter,
             StartupVerificationMode,
         },
-        legacy::{self, download_last_n_releases, get_jormungandr_bin, Version},
+        legacy::{download_last_n_releases, get_jormungandr_bin, Version},
         process_utils::WaitBuilder,
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
+use assert_fs::TempDir;
 use jormungandr_lib::interfaces::TrustedPeer;
 use jormungandr_testing_utils::wallet::Wallet;
 use std::{env, path::PathBuf, time::Duration};
@@ -98,13 +99,13 @@ impl TestnetConfig {
         trusted_peers
     }
 
-    pub fn make_config(&self) -> JormungandrParams {
+    pub fn make_config(&self, temp_dir: &TempDir) -> JormungandrParams {
         ConfigurationBuilder::new()
             .with_block_hash(self.block0_hash.to_string())
             .with_trusted_peers(self.trusted_peers.clone())
             .with_public_address(format!("/ip4/{}/tcp/{}", self.public_ip, self.public_port))
             .with_listen_address(format!("/ip4/0.0.0.0/tcp/{}", self.listen_port))
-            .build()
+            .build(temp_dir)
     }
 
     pub fn block0_hash(&self) -> String {
@@ -120,15 +121,16 @@ fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> 
     let actor_account = Wallet::from_existing_account(&private_key, None);
     let account_state = jcli_wrapper::assert_rest_account_get_stats(
         &actor_account.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     Wallet::from_existing_account(&private_key, Some(account_state.counter()))
 }
 
 #[test]
 pub fn itn_bootstrap() {
+    let temp_dir = TempDir::new().unwrap();
     let testnet_config = TestnetConfig::new_itn();
-    let mut jormungandr_config = testnet_config.make_config();
+    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
 
     // start from itn trusted peers
     let jormungandr_from_trusted_peers = Starter::new()
@@ -141,7 +143,7 @@ pub fn itn_bootstrap() {
         .unwrap();
     jormungandr_from_trusted_peers.shutdown();
 
-    jormungandr_config.refresh_node_dynamic_params();
+    jormungandr_config.refresh_instance_params();
 
     // start from storage
     let loading_from_storage_timeout = Duration::from_secs(12_000);
@@ -163,7 +165,7 @@ pub fn itn_bootstrap() {
     let config = ConfigurationBuilder::new()
         .with_block_hash(testnet_config.block0_hash())
         .with_trusted_peers(vec![jormungandr_from_storage.to_trusted_peer()])
-        .build();
+        .build(&temp_dir);
 
     let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
@@ -175,25 +177,27 @@ pub fn itn_bootstrap() {
         .unwrap();
 }
 
-fn get_legacy_app() -> (PathBuf, Version) {
+fn get_legacy_app(temp_dir: &TempDir) -> (PathBuf, Version) {
     let releases = download_last_n_releases(1);
     let last_release = releases.iter().next().unwrap();
-    let jormungandr = get_jormungandr_bin(&last_release);
+    let jormungandr = get_jormungandr_bin(&last_release, temp_dir);
     let version: Version = last_release.version().parse().unwrap();
     (jormungandr, version)
 }
 
 #[test]
 pub fn nightly_bootstrap_legacy() {
-    let (jormungandr, version) = get_legacy_app();
+    let temp_dir = TempDir::new().unwrap();
+    let (_, version) = get_legacy_app(&temp_dir);
 
     let testnet_config = TestnetConfig::new_nightly();
-    let mut legacy_jormungandr_config = testnet_config.make_config();
+    let mut legacy_jormungandr_config = testnet_config.make_config(&temp_dir);
 
     // bootstrap node as legacy node
-    let legacy_jormungandr = legacy::Starter::new(version.clone(), jormungandr.clone())
+    let legacy_jormungandr = Starter::new()
         .config(legacy_jormungandr_config.clone())
         .timeout(Duration::from_secs(48_000))
+        .legacy(version.clone())
         .benchmark("legacy node bootstrap from trusted peers")
         .passive()
         .start()
@@ -201,8 +205,8 @@ pub fn nightly_bootstrap_legacy() {
 
     let config = ConfigurationBuilder::new()
         .with_block_hash(testnet_config.block0_hash())
-        .with_trusted_peers(vec![legacy_jormungandr_config.as_trusted_peer()])
-        .build();
+        .with_trusted_peers(vec![legacy_jormungandr.to_trusted_peer()])
+        .build(&temp_dir);
 
     // bootstrap latest node from legacy node peer
     let new_jormungandr_from_local_trusted_peer = Starter::new()
@@ -218,7 +222,7 @@ pub fn nightly_bootstrap_legacy() {
     legacy_jormungandr.shutdown();
 
     // test node upgrade from old data
-    legacy_jormungandr_config.refresh_node_dynamic_params();
+    legacy_jormungandr_config.refresh_instance_params();
 
     let latest_jormungandr = Starter::new()
         .config(legacy_jormungandr_config.clone())
@@ -232,11 +236,12 @@ pub fn nightly_bootstrap_legacy() {
     latest_jormungandr.shutdown();
 
     // test rollback
-    legacy_jormungandr_config.refresh_node_dynamic_params();
+    legacy_jormungandr_config.refresh_instance_params();
 
-    let rollback_jormungandr = legacy::Starter::new(version, jormungandr)
+    let rollback_jormungandr = Starter::new()
         .config(legacy_jormungandr_config.clone())
         .timeout(Duration::from_secs(48_000))
+        .legacy(version)
         .benchmark("legacy node bootstrap from new data")
         .passive()
         .start()
@@ -245,8 +250,9 @@ pub fn nightly_bootstrap_legacy() {
 
 #[test]
 pub fn nightly_bootstrap() {
+    let temp_dir = TempDir::new().unwrap();
     let testnet_config = TestnetConfig::new_nightly();
-    let mut jormungandr_config = testnet_config.make_config();
+    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
 
     let _jormungandr = Starter::new()
         .config(jormungandr_config.clone())
@@ -257,7 +263,7 @@ pub fn nightly_bootstrap() {
         .start()
         .unwrap();
 
-    jormungandr_config.refresh_node_dynamic_params();
+    jormungandr_config.refresh_instance_params();
 
     // start from storage
     let loading_from_storage_timeout = Duration::from_secs(24_000);
@@ -279,7 +285,7 @@ pub fn nightly_bootstrap() {
     let config = ConfigurationBuilder::new()
         .with_block_hash(testnet_config.block0_hash())
         .with_trusted_peers(vec![jormungandr_from_storage.to_trusted_peer()])
-        .build();
+        .build(&temp_dir);
 
     let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
@@ -294,11 +300,12 @@ pub fn nightly_bootstrap() {
 #[ignore]
 #[test]
 pub fn qa_bootstrap() {
+    let temp_dir = TempDir::new().unwrap();
     let testnet_config = TestnetConfig::new_qa();
-    let mut jormungandr_config = testnet_config.make_config();
+    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
 
     let _jormungandr = Starter::new()
-        .config(testnet_config.make_config())
+        .config(testnet_config.make_config(&temp_dir))
         .timeout(Duration::from_secs(48_000))
         .benchmark("passive_node_qa_bootstrap")
         .passive()
@@ -306,7 +313,7 @@ pub fn qa_bootstrap() {
         .start()
         .unwrap();
 
-    jormungandr_config.refresh_node_dynamic_params();
+    jormungandr_config.refresh_instance_params();
 
     // start from storage
     let loading_from_storage_timeout = Duration::from_secs(24_000);
@@ -328,7 +335,7 @@ pub fn qa_bootstrap() {
     let config = ConfigurationBuilder::new()
         .with_block_hash(testnet_config.block0_hash())
         .with_trusted_peers(vec![jormungandr_from_storage.to_trusted_peer()])
-        .build();
+        .build(&temp_dir);
 
     let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
@@ -343,11 +350,12 @@ pub fn qa_bootstrap() {
 #[test]
 #[ignore]
 pub fn e2e_stake_pool() {
+    let temp_dir = TempDir::new().unwrap();
     let testnet_config = TestnetConfig::new_qa();
     let block0_hash = testnet_config.block0_hash();
 
     let jormungandr = Starter::new()
-        .config(testnet_config.make_config())
+        .config(testnet_config.make_config(&temp_dir))
         .timeout(Duration::from_secs(8000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)

@@ -57,7 +57,7 @@ pub fn collect_reward_for_15_minutes() {
             .unwrap()
             .encode();
 
-        jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_address());
+        jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_uri());
         sender.confirm_transaction();
 
         println!("63");
