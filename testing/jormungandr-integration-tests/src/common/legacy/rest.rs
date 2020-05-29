@@ -1,6 +1,6 @@
 use crate::common::jormungandr::rest::RestError;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::FragmentLog;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use jormungandr_testing_utils::testing::MemPoolCheck;
 use std::collections::HashMap;
 
@@ -87,8 +87,9 @@ impl BackwardCompatibleRest {
         self.get("network/p2p/view")?.text()
     }
 
-    pub fn tip(&self) -> Result<String, reqwest::Error> {
-        self.get("tip")?.text()
+    pub fn tip(&self) -> Result<Hash, RestError> {
+        let tip = self.get("tip")?.text()?;
+        tip.parse().map_err(RestError::HashParseError)
     }
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {

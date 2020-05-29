@@ -1,9 +1,11 @@
 use crate::common::legacy;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::{fragment::FragmentId, header::HeaderId};
-use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord, PeerStats,
-    StakeDistributionDto,
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{
+        EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord, PeerStats,
+        StakeDistributionDto,
+    },
 };
 use jormungandr_testing_utils::testing::MemPoolCheck;
 use std::collections::HashMap;
@@ -90,9 +92,8 @@ impl JormungandrRest {
         serde_json::from_str(&self.inner.p2p_view()?).map_err(RestError::CannotDeserialize)
     }
 
-    pub fn tip(&self) -> Result<HeaderId, RestError> {
-        let tip = self.inner.tip()?;
-        tip.parse().map_err(RestError::HashParseError)
+    pub fn tip(&self) -> Result<Hash, RestError> {
+        self.inner.tip()
     }
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {

@@ -179,8 +179,8 @@ impl SyncNode for JormungandrProcess {
         println!("{:?}", self.rest().stats());
     }
 
-    fn all_blocks_hashes(&self) -> Vec<chain_impl_mockchain::key::Hash> {
-        todo!()
+    fn tip(&self) -> Hash {
+        self.rest().tip().expect("cannot get tip from rest")
     }
 
     fn log_content(&self) -> String {
