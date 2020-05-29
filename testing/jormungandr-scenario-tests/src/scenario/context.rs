@@ -1,8 +1,10 @@
+use assert_fs::fixture::{ChildPath, PathChild};
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
 use rand_chacha::ChaChaRng;
 use rand_core::RngCore;
 use std::{
     net::SocketAddr,
-    ops::Deref,
     path::{Path, PathBuf},
     sync::{
         atomic::{self, AtomicU16},
@@ -17,14 +19,14 @@ pub type ContextChaCha = Context<ChaChaRng>;
 
 #[derive(Clone)]
 enum TestingDirectory {
-    Temp(Arc<mktemp::Temp>),
+    Temp(Arc<TempDir>),
     User(PathBuf),
 }
 
 /// scenario context with all the details to setup the necessary port number
 /// a pseudo random number generator (and its original seed).
 #[derive(Clone)]
-pub struct Context<RNG: RngCore + Sized> {
+pub struct Context<RNG: RngCore + Sized = ChaChaRng> {
     rng: Random<RNG>,
 
     jormungandr: bawawa::Command,
@@ -52,7 +54,7 @@ impl Context<ChaChaRng> {
         let testing_directory = if let Some(testing_directory) = testing_directory {
             TestingDirectory::User(testing_directory)
         } else {
-            TestingDirectory::Temp(Arc::new(mktemp::Temp::new_dir().unwrap()))
+            TestingDirectory::Temp(Arc::new(TempDir::new().unwrap()))
         };
 
         Context {
@@ -85,10 +87,6 @@ impl Context<ChaChaRng> {
         }
     }
 
-    pub(super) fn working_directory(&self) -> &Path {
-        &self.testing_directory
-    }
-
     pub(super) fn generate_documentation(&self) -> bool {
         self.generate_documentation
     }
@@ -97,6 +95,16 @@ impl Context<ChaChaRng> {
 impl<RNG: RngCore> Context<RNG> {
     pub fn jormungandr(&self) -> &bawawa::Command {
         &self.jormungandr
+    }
+
+    pub(super) fn working_directory(&self) -> &Path {
+        self.testing_directory.path()
+    }
+
+    pub fn child_directory(&self, path: impl AsRef<Path>) -> ChildPath {
+        let child = self.testing_directory.child(path);
+        child.create_dir_all().unwrap();
+        child
     }
 
     pub fn jcli(&self) -> &bawawa::Command {
@@ -141,12 +149,23 @@ impl<RNG: RngCore> Context<RNG> {
     }
 }
 
-impl Deref for TestingDirectory {
-    type Target = Path;
-    fn deref(&self) -> &Self::Target {
+impl TestingDirectory {
+    pub fn path(&self) -> &Path {
         match self {
-            TestingDirectory::User(ref path) => path.deref(),
-            TestingDirectory::Temp(ref path) => path.deref(),
+            TestingDirectory::User(path_buf) => path_buf,
+            TestingDirectory::Temp(temp_dir) => temp_dir.path(),
+        }
+    }
+}
+
+impl PathChild for TestingDirectory {
+    fn child<P>(&self, path: P) -> ChildPath
+    where
+        P: AsRef<Path>,
+    {
+        match self {
+            TestingDirectory::User(dir_path) => ChildPath::new(dir_path.join(path)),
+            TestingDirectory::Temp(temp_dir) => temp_dir.child(path),
         }
     }
 }

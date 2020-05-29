@@ -1,21 +1,24 @@
 use crate::common::{
     jcli_wrapper,
-    jormungandr::ConfigurationBuilder,
-    legacy::{self, download_last_n_releases, get_jormungandr_bin, Version},
+    jormungandr::{ConfigurationBuilder, Starter},
+    legacy::{download_last_n_releases, get_jormungandr_bin, Version},
     startup,
 };
+use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_testing_utils::{stake_pool::StakePool, testing::FragmentSender};
 
 use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
 
-use jormungandr_lib::interfaces::InitialUTxO;
+use assert_fs::TempDir;
 use std::str::FromStr;
 
 #[ignore]
 #[test]
 pub fn test_legacy_node_all_fragments() {
+    let temp_dir = TempDir::new().unwrap();
+
     let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
-    let jormungandr = get_jormungandr_bin(&legacy_release);
+    let jormungandr = get_jormungandr_bin(&legacy_release, &temp_dir);
     let version = Version::from_str(&legacy_release.version()).unwrap();
 
     let mut first_stake_pool_owner = startup::create_new_account_address();
@@ -34,9 +37,11 @@ pub fn test_legacy_node_all_fragments() {
                 value: 1_000_000.into(),
             },
         ])
-        .build();
+        .build(&temp_dir);
 
-    let jormungandr = legacy::Starter::new(version, jormungandr)
+    let jormungandr = Starter::new()
+        .jormungandr_app(jormungandr)
+        .legacy(version)
         .config(config)
         .start()
         .unwrap();
@@ -123,7 +128,7 @@ pub fn test_legacy_node_all_fragments() {
 
     let stake_pool_owner_info = jcli_wrapper::assert_rest_account_get_stats(
         &first_stake_pool_owner.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let stake_pool_owner_delegation: DelegationType =
         stake_pool_owner_info.delegation().clone().into();
@@ -147,7 +152,7 @@ pub fn test_legacy_node_all_fragments() {
 
     let full_delegator_info = jcli_wrapper::assert_rest_account_get_stats(
         &full_delegator.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let full_delegator_delegation: DelegationType = full_delegator_info.delegation().clone().into();
     assert_eq!(
@@ -170,7 +175,7 @@ pub fn test_legacy_node_all_fragments() {
 
     let split_delegator = jcli_wrapper::assert_rest_account_get_stats(
         &split_delegator.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let delegation_ratio = DelegationRatio::new(
         2,

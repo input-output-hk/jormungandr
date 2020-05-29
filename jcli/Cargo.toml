@@ -55,8 +55,9 @@ version = "0.10.4"
 features = ["blocking"]
 
 [dev-dependencies]
+assert_fs = "1.0"
+predicates = "1.0"
 maplit = "1.0.2"
-mktemp = "0.4.0"
 
 [build-dependencies]
 versionisator = "1.0.2"

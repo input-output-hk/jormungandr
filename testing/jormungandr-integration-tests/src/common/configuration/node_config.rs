@@ -1,8 +1,17 @@
-use crate::common::configuration::TestConfig;
-use jormungandr_testing_utils::legacy::NodeConfig;
+use jormungandr_lib::interfaces::NodeConfig;
 
 use std::net::SocketAddr;
 use std::path::Path;
+
+/// Abstracts over different versions of the node configuration.
+pub trait TestConfig {
+    fn log_file_path(&self) -> Option<&Path>;
+    fn p2p_listen_address(&self) -> poldercast::Address;
+    fn p2p_public_address(&self) -> poldercast::Address;
+    fn set_p2p_public_address(&mut self, address: poldercast::Address);
+    fn rest_socket_addr(&self) -> SocketAddr;
+    fn set_rest_socket_addr(&mut self, addr: SocketAddr);
+}
 
 impl TestConfig for NodeConfig {
     fn log_file_path(&self) -> Option<&Path> {
@@ -10,11 +19,7 @@ impl TestConfig for NodeConfig {
     }
 
     fn p2p_listen_address(&self) -> poldercast::Address {
-        if let Some(address) = &self.p2p.listen_address {
-            address.clone()
-        } else {
-            self.p2p.public_address.clone()
-        }
+        self.p2p.get_listen_address()
     }
 
     fn p2p_public_address(&self) -> poldercast::Address {

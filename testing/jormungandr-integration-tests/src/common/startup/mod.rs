@@ -1,6 +1,6 @@
 use crate::common::{
-    configuration::{jormungandr_config::JormungandrConfig, SecretModelFactory},
-    file_utils, jcli_wrapper,
+    configuration::SecretModelFactory,
+    jcli_wrapper,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
     process_utils,
 };
@@ -17,19 +17,26 @@ use jormungandr_testing_utils::{
     testing::{signed_delegation_cert, signed_stake_pool_cert},
     wallet::Wallet,
 };
+
+use assert_fs::fixture::{ChildPath, PathChild, TempDir};
+use assert_fs::prelude::*;
 use std::path::PathBuf;
 
-pub fn build_genesis_block(block0_config: &Block0Configuration) -> PathBuf {
-    let input_yaml_file_path = serialize_block0_config(&block0_config);
-    let path_to_output_block = file_utils::get_path_in_temp("block-0.bin");
-    jcli_wrapper::assert_genesis_encode(&input_yaml_file_path, &path_to_output_block);
+pub fn build_genesis_block(
+    block0_config: &Block0Configuration,
+    temp_dir: &impl PathChild,
+) -> PathBuf {
+    let config_file = temp_dir.child("genesis.yaml");
+    write_block0_config(&block0_config, &config_file);
+    let output_block_file = temp_dir.child("block-0.bin");
+    jcli_wrapper::assert_genesis_encode(config_file.path(), &output_block_file);
 
-    path_to_output_block
+    output_block_file.path().into()
 }
 
-pub fn serialize_block0_config(block0_config: &Block0Configuration) -> PathBuf {
+pub fn write_block0_config(block0_config: &Block0Configuration, output_file: &ChildPath) {
     let content = serde_yaml::to_string(&block0_config).unwrap();
-    file_utils::create_file_in_temp("genesis.yaml", &content)
+    output_file.write_str(&content).unwrap();
 }
 
 pub fn create_new_utxo_address() -> Wallet {
@@ -98,13 +105,7 @@ pub fn start_stake_pool(
 
     funds.extend(funds_non_owners);
 
-    let mut config = config_builder
-        .with_block0_consensus(ConsensusVersion::GenesisPraos)
-        .with_consensus_leaders_ids(leaders)
-        .with_funds(funds)
-        .with_explorer()
-        .with_initial_certs(initial_certs)
-        .build();
+    let temp_dir = TempDir::new()?;
 
     let secrets: Vec<NodeSecret> = stake_pools
         .iter()
@@ -117,36 +118,30 @@ pub fn start_stake_pool(
         })
         .collect();
 
-    let secret_model_paths = secrets
-        .iter()
-        .map(|x| SecretModelFactory::serialize(&x))
-        .collect();
-
-    *config.secret_models_mut() = secrets;
-    *config.secret_model_paths_mut() = secret_model_paths;
+    let config = config_builder
+        .with_block0_consensus(ConsensusVersion::GenesisPraos)
+        .with_consensus_leaders_ids(leaders)
+        .with_funds(funds)
+        .with_explorer()
+        .with_initial_certs(initial_certs)
+        .with_secrets(secrets)
+        .build(&temp_dir);
 
     Starter::new()
+        .temp_dir(temp_dir)
         .config(config)
         .start()
         .map(|process| (process, stake_pools))
 }
 
-pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &JormungandrConfig) {
+pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &Block0Configuration) {
     let coeff = epoch_interval * 2;
-    let slots_per_epoch: u32 = config
-        .block0_configuration()
-        .blockchain_configuration
-        .slots_per_epoch
-        .into();
-    let slot_duration: u8 = config
-        .block0_configuration()
-        .blockchain_configuration
-        .slot_duration
-        .into();
+    let slots_per_epoch: u32 = config.blockchain_configuration.slots_per_epoch.into();
+    let slot_duration: u8 = config.blockchain_configuration.slot_duration.into();
     let wait_time = ((slots_per_epoch * (slot_duration as u32)) * coeff) + grace_period;
     process_utils::sleep(wait_time.into());
 }
 
-pub fn sleep_till_next_epoch(grace_period: u32, config: &JormungandrConfig) {
+pub fn sleep_till_next_epoch(grace_period: u32, config: &Block0Configuration) {
     sleep_till_epoch(1, grace_period, config);
 }

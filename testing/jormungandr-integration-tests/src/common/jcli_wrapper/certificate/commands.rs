@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 use crate::common::configuration;
@@ -82,36 +82,32 @@ impl CertificateCommands {
         command
     }
 
-    pub fn get_stake_pool_id_command(
-        &self,
-        input_file: &PathBuf,
-        output_file: &PathBuf,
-    ) -> Command {
+    pub fn get_stake_pool_id_command(&self, input_file: &Path, output_file: &Path) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command
             .arg("certificate")
             .arg("get-stake-pool-id")
-            .arg(&input_file)
-            .arg(&output_file);
+            .arg(input_file)
+            .arg(output_file);
         command
     }
 
     pub fn get_sign_command(
         &self,
-        signing_key: &PathBuf,
-        input_file: &PathBuf,
-        output_file: &PathBuf,
+        signing_key: &Path,
+        input_file: &Path,
+        output_file: &Path,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command
             .arg("certificate")
             .arg("sign")
             .arg("--key")
-            .arg(&signing_key.as_os_str())
+            .arg(signing_key)
             .arg("--certificate")
-            .arg(&input_file.as_os_str())
+            .arg(input_file)
             .arg("--output")
-            .arg(&output_file.as_os_str());
+            .arg(output_file);
         command
     }
 }

@@ -1,9 +1,11 @@
 use crate::common::{
-    file_assert, file_utils, jcli_wrapper::certificate::wrapper::JCLICertificateWrapper,
-    startup::create_new_key_pair,
+    jcli_wrapper::certificate::wrapper::JCLICertificateWrapper, startup::create_new_key_pair,
 };
 
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
+
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
 
 #[test]
 pub fn test_create_and_sign_new_stake_delegation() {
@@ -21,18 +23,27 @@ pub fn test_create_and_sign_new_stake_delegation() {
         None,
     );
 
-    let input_file = file_utils::create_file_in_temp("certificate", &certificate);
-    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(&input_file);
+    let temp_dir = TempDir::new().unwrap();
+
+    let input_file = temp_dir.child("certificate");
+    input_file.write_str(&certificate).unwrap();
+    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(input_file.path());
     let certificate = certificate_wrapper
         .assert_new_stake_delegation(&stake_pool_id, &owner.identifier().to_bech32_str());
 
     assert_ne!(certificate, "", "delegation cert is empty");
 
-    let signed_cert = file_utils::get_path_in_temp("signed_cert");
-    let owner_private_key_file =
-        file_utils::create_file_in_temp("owner.private", &owner.signing_key().to_bech32_str());
+    let signed_cert = temp_dir.child("signed_cert");
+    let owner_private_key_file = temp_dir.child("owner.private");
+    owner_private_key_file
+        .write_str(&owner.signing_key().to_bech32_str())
+        .unwrap();
 
-    certificate_wrapper.assert_sign(&owner_private_key_file, &input_file, &signed_cert);
+    certificate_wrapper.assert_sign(
+        owner_private_key_file.path(),
+        input_file.path(),
+        signed_cert.path(),
+    );
 
-    file_assert::assert_file_exists_and_not_empty(&signed_cert);
+    signed_cert.assert(crate::predicate::file_exists_and_not_empty());
 }

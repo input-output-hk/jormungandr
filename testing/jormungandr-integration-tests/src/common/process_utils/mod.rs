@@ -27,6 +27,7 @@ pub enum ProcessError {
 /// * `command` - Command which will be invoked
 ///
 pub fn run_process_and_get_output(mut command: Command) -> Output {
+    // FIXME: switch to something like assert_cmd to wait with a timeout
     println!("Running command: {:?}", &command);
     let content = command
         .stdout(Stdio::piped())

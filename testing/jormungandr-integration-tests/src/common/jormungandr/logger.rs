@@ -75,8 +75,10 @@ impl Into<Timestamp> for LogEntry {
 }
 
 impl JormungandrLogger {
-    pub fn new(log_file_path: PathBuf) -> Self {
-        JormungandrLogger { log_file_path }
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        JormungandrLogger {
+            log_file_path: path.into(),
+        }
     }
 
     pub fn get_error_indicators() -> Vec<&'static str> {

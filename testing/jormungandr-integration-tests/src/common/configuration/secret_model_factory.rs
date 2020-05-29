@@ -1,9 +1,3 @@
-#![allow(dead_code)]
-
-use crate::common::file_utils;
-use std::option::Option;
-use std::path::PathBuf;
-
 use chain_core::property::FromStr;
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use jormungandr_lib::{
@@ -11,19 +5,22 @@ use jormungandr_lib::{
     interfaces::{Bft, GenesisPraos, NodeSecret},
 };
 
+use assert_fs::fixture::ChildPath;
+use assert_fs::prelude::*;
+use std::option::Option;
+
 #[derive(Debug, Clone)]
 pub struct SecretModelFactory {
     pub bft: Option<Bft>,
     pub genesis: Option<GenesisPraos>,
 }
 
-impl SecretModelFactory {
-    pub fn serialize(node_secret: &NodeSecret) -> PathBuf {
-        let content =
-            serde_yaml::to_string(&node_secret).expect("Cannot serialize secret node model");
-        file_utils::create_file_in_temp("node.secret", &content)
-    }
+pub fn write_secret(node_secret: &NodeSecret, output_file: &ChildPath) {
+    let content = serde_yaml::to_string(&node_secret).expect("Cannot serialize secret node model");
+    output_file.write_str(&content).unwrap();
+}
 
+impl SecretModelFactory {
     pub fn empty() -> NodeSecret {
         NodeSecret {
             bft: None,

@@ -107,7 +107,7 @@ impl Wallet {
     }
 
     /// Temporary method exposing private key
-    pub fn signing_key_as_str(&self) -> String {
+    pub fn signing_key_to_string(&self) -> String {
         match self {
             Wallet::Account(account) => account.signing_key().to_bech32_str(),
             Wallet::UTxO(utxo) => utxo.last_signing_key().to_bech32_str(),

@@ -1,6 +1,5 @@
 use crate::common::{
-    file_utils, jcli_wrapper, jormungandr::ConfigurationBuilder, startup,
-    transaction_utils::TransactionHash,
+    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use jormungandr_testing_utils::stake_pool::StakePool;
 
@@ -9,8 +8,13 @@ use chain_impl_mockchain::{
     rewards::TaxType,
 };
 
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
+
 #[test]
 pub fn test_all_fragments() {
+    let temp_dir = TempDir::new().unwrap();
+
     let mut faucet = startup::create_new_account_address();
     let mut stake_pool_owner = startup::create_new_account_address();
     let mut full_delegator = startup::create_new_account_address();
@@ -21,7 +25,7 @@ pub fn test_all_fragments() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[faucet.clone()],
         &[full_delegator.clone(), split_delegator.clone()],
-        &mut ConfigurationBuilder::new().with_storage(file_utils::get_path_in_temp("storage")),
+        &mut ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
     )
     .unwrap();
 
@@ -78,7 +82,7 @@ pub fn test_all_fragments() {
 
     let stake_pool_owner_info = jcli_wrapper::assert_rest_account_get_stats(
         &stake_pool_owner.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let stake_pool_owner_delegation: DelegationType =
         stake_pool_owner_info.delegation().clone().into();
@@ -101,7 +105,7 @@ pub fn test_all_fragments() {
 
     let full_delegator_info = jcli_wrapper::assert_rest_account_get_stats(
         &full_delegator.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let full_delegator_delegation: DelegationType = full_delegator_info.delegation().clone().into();
     assert_eq!(
@@ -123,7 +127,7 @@ pub fn test_all_fragments() {
 
     let split_delegator = jcli_wrapper::assert_rest_account_get_stats(
         &split_delegator.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let delegation_ratio = DelegationRatio::new(
         2,

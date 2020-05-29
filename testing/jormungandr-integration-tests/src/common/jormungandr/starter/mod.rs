@@ -1,18 +1,24 @@
 mod commands;
-pub use commands::{get_command, JormungandrStarterCommands};
+pub use commands::{get_command, CommandBuilder};
 
 use super::ConfigurationBuilder;
 use crate::common::{
-    configuration::{get_jormungandr_app, jormungandr_config::JormungandrConfig},
+    configuration::{get_jormungandr_app, jormungandr_config::JormungandrParams, TestConfig},
     file_utils,
     jcli_wrapper::jcli_commands,
     jormungandr::{logger::JormungandrLogger, process::JormungandrProcess},
+    legacy::{self, LegacyConfigConverter, LegacyConfigConverterError},
     process_assert,
     process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
+use jormungandr_lib::interfaces::NodeConfig;
 use jormungandr_testing_utils::testing::{
     network_builder::LeadershipMode, SpeedBenchmarkDef, SpeedBenchmarkRun,
 };
+
+use assert_fs::{fixture::FixtureError, TempDir};
+use serde::Serialize;
+use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::{
@@ -26,6 +32,10 @@ use thiserror::Error;
 pub enum StartupError {
     #[error("could not start jormungandr due to process issue")]
     JormungandrNotLaunched(#[from] ProcessError),
+    #[error("error setting up temporary filesystem fixture")]
+    FsFixture(#[from] FixtureError),
+    #[error("failed to convert jormungandr configuration to a legacy version")]
+    LegacyConfigConversion(#[from] LegacyConfigConverterError),
     #[error("node wasn't properly bootstrap after {timeout} s. Log file: {log_content}")]
     Timeout { timeout: u64, log_content: String },
     #[error("error(s) in log detected: {log_content}")]
@@ -82,30 +92,30 @@ impl From<LeadershipMode> for FromGenesis {
     }
 }
 
-pub trait StartupVerification {
+trait StartupVerification {
     fn if_stopped(&self) -> bool;
     fn if_succeed(&self) -> bool;
 }
 
 #[derive(Clone, Debug)]
-pub struct RestStartupVerification {
-    config: JormungandrConfig,
+struct RestStartupVerification<'a, Conf> {
+    config: &'a JormungandrParams<Conf>,
 }
 
-impl RestStartupVerification {
-    pub fn new(config: JormungandrConfig) -> Self {
+impl<'a, Conf> RestStartupVerification<'a, Conf> {
+    pub fn new(config: &'a JormungandrParams<Conf>) -> Self {
         RestStartupVerification { config }
     }
 }
 
-impl StartupVerification for RestStartupVerification {
+impl<'a, Conf: TestConfig> StartupVerification for RestStartupVerification<'a, Conf> {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap());
+        let logger = JormungandrLogger::new(self.config.log_file_path());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
     fn if_succeed(&self) -> bool {
-        let output = jcli_commands::get_rest_stats_command(&self.config.get_node_address())
+        let output = jcli_commands::get_rest_stats_command(&self.config.rest_uri())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -131,24 +141,24 @@ impl StartupVerification for RestStartupVerification {
 }
 
 #[derive(Clone, Debug)]
-pub struct LogStartupVerification {
-    config: JormungandrConfig,
+struct LogStartupVerification<'a, Conf> {
+    config: &'a JormungandrParams<Conf>,
 }
 
-impl LogStartupVerification {
-    pub fn new(config: JormungandrConfig) -> Self {
+impl<'a, Conf> LogStartupVerification<'a, Conf> {
+    pub fn new(config: &'a JormungandrParams<Conf>) -> Self {
         LogStartupVerification { config }
     }
 }
 
-impl StartupVerification for LogStartupVerification {
+impl<'a, Conf: TestConfig> StartupVerification for LogStartupVerification<'a, Conf> {
     fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap());
+        let logger = JormungandrLogger::new(self.config.log_file_path());
         logger.contains_error().unwrap_or_else(|_| false)
     }
 
     fn if_succeed(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path().unwrap());
+        let logger = JormungandrLogger::new(self.config.log_file_path());
         logger
             .contains_message("genesis block fetched")
             .unwrap_or_else(|_| false)
@@ -164,7 +174,9 @@ pub struct Starter {
     from_genesis: FromGenesis,
     verification_mode: StartupVerificationMode,
     on_fail: OnFail,
-    config: Option<JormungandrConfig>,
+    temp_dir: Option<TempDir>,
+    legacy: Option<legacy::Version>,
+    config: Option<JormungandrParams>,
     benchmark: Option<SpeedBenchmarkDef>,
 }
 
@@ -184,6 +196,8 @@ impl Starter {
             from_genesis: FromGenesis::File,
             verification_mode: StartupVerificationMode::Rest,
             on_fail: OnFail::RetryUnlimitedOnPortOccupied,
+            temp_dir: None,
+            legacy: None,
             config: None,
             benchmark: None,
             jormungandr_app_path: get_jormungandr_app(),
@@ -243,16 +257,33 @@ impl Starter {
         self
     }
 
-    pub fn config(&mut self, config: JormungandrConfig) -> &mut Self {
+    pub fn legacy(&mut self, version: legacy::Version) -> &mut Self {
+        self.legacy = Some(version);
+        self
+    }
+
+    pub fn config(&mut self, config: JormungandrParams) -> &mut Self {
         self.config = Some(config);
         self
     }
 
-    fn build_configuration(&mut self) -> JormungandrConfig {
-        if self.config.is_none() {
-            self.config = Some(ConfigurationBuilder::new().build());
+    pub fn temp_dir(&mut self, temp_dir: TempDir) -> &mut Self {
+        self.temp_dir = Some(temp_dir);
+        self
+    }
+
+    fn build_configuration(
+        &mut self,
+    ) -> Result<(JormungandrParams, Option<TempDir>), StartupError> {
+        let optional_temp_dir = self.temp_dir.take();
+        match &self.config {
+            Some(params) => Ok((params.clone(), optional_temp_dir)),
+            None => {
+                let temp_dir = optional_temp_dir.map_or_else(|| TempDir::new(), Ok)?;
+                let params = ConfigurationBuilder::new().build(&temp_dir);
+                Ok((params, Some(temp_dir)))
+            }
         }
-        self.config.as_ref().unwrap().clone()
     }
 
     pub fn start_benchmark_run(&self) -> Option<SpeedBenchmarkRun> {
@@ -272,19 +303,103 @@ impl Starter {
         &mut self,
         expected_msg_in_logs: &str,
     ) -> Result<(), StartupError> {
-        let config = self.build_configuration();
+        let (params, temp_dir) = self.build_configuration()?;
+        if let Some(version) = self.legacy {
+            ConfiguredStarter::legacy(self, version, params, temp_dir)?
+                .start_with_fail_in_logs(expected_msg_in_logs)
+        } else {
+            ConfiguredStarter::new(self, params, temp_dir)
+                .start_with_fail_in_logs(expected_msg_in_logs)
+        }
+    }
+
+    pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
+        let (params, temp_dir) = self.build_configuration()?;
+        if let Some(version) = self.legacy {
+            ConfiguredStarter::legacy(self, version, params, temp_dir)?.start_async()
+        } else {
+            ConfiguredStarter::new(self, params, temp_dir).start_async()
+        }
+    }
+
+    pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
+        let (params, temp_dir) = self.build_configuration()?;
+        let benchmark = self.start_benchmark_run();
+        let process = if let Some(version) = self.legacy {
+            ConfiguredStarter::legacy(self, version, params, temp_dir)?.start()?
+        } else {
+            ConfiguredStarter::new(self, params, temp_dir).start()?
+        };
+        self.finish_benchmark(benchmark);
+        Ok(process)
+    }
+
+    pub fn start_fail(&mut self, expected_msg: &str) {
+        let (params, temp_dir) = self.build_configuration().unwrap();
+        if let Some(version) = self.legacy {
+            ConfiguredStarter::legacy(self, version, params, temp_dir)
+                .unwrap()
+                .start_fail(expected_msg)
+        } else {
+            ConfiguredStarter::new(self, params, temp_dir).start_fail(expected_msg)
+        }
+    }
+}
+
+struct ConfiguredStarter<'a, Conf> {
+    starter: &'a Starter,
+    params: JormungandrParams<Conf>,
+    temp_dir: Option<TempDir>,
+}
+
+impl<'a> ConfiguredStarter<'a, NodeConfig> {
+    fn new(
+        starter: &'a Starter,
+        params: JormungandrParams<NodeConfig>,
+        temp_dir: Option<TempDir>,
+    ) -> Self {
+        ConfiguredStarter {
+            starter,
+            params,
+            temp_dir,
+        }
+    }
+}
+
+impl<'a> ConfiguredStarter<'a, legacy::NodeConfig> {
+    fn legacy(
+        starter: &'a Starter,
+        version: legacy::Version,
+        params: JormungandrParams<NodeConfig>,
+        temp_dir: Option<TempDir>,
+    ) -> Result<Self, StartupError> {
+        let params = LegacyConfigConverter::new(version).convert(params)?;
+        Ok(ConfiguredStarter {
+            starter,
+            temp_dir,
+            params,
+        })
+    }
+}
+
+impl<'a, Conf> ConfiguredStarter<'a, Conf>
+where
+    Conf: TestConfig + Serialize + Debug,
+{
+    fn start_with_fail_in_logs(self, expected_msg_in_logs: &str) -> Result<(), StartupError> {
         let start = Instant::now();
-        let _process = self.start_process(&config);
+        let _process = self.start_process();
 
         loop {
-            let logger = JormungandrLogger::new(config.log_file_path().unwrap().clone());
-            if start.elapsed() > self.timeout {
+            let log_file_path = self.params.log_file_path();
+            let logger = JormungandrLogger::new(log_file_path);
+            if start.elapsed() > self.starter.timeout {
                 return Err(StartupError::EntryNotFoundInLogs {
                     entry: expected_msg_in_logs.to_string(),
                     log_content: logger.get_log_content(),
                 });
             }
-            process_utils::sleep(self.sleep);
+            process_utils::sleep(self.starter.sleep);
             if logger
                 .raw_log_contains_any_of(&[expected_msg_in_logs])
                 .unwrap_or_else(|_| false)
@@ -294,22 +409,22 @@ impl Starter {
         }
     }
 
-    fn start_process(&self, config: &JormungandrConfig) -> Child {
+    fn start_process(&self) -> Child {
         println!("Starting node");
         println!(
-            "Blockchain configuration: {:?}",
-            config.block0_configuration()
+            "Log file: {}",
+            self.params.log_file_path().to_string_lossy()
         );
-        println!(
-            "Node settings configuration: {}",
-            file_utils::read_file(&config.node_config_path())
-        );
+        println!("Blockchain configuration:");
+        println!("{:#?}", self.params.block0_configuration());
+        println!("Node settings configuration:");
+        println!("{:#?}", self.params.node_config());
 
         let mut command = get_command(
-            &config.clone().into(),
+            &self.params,
             get_jormungandr_app(),
-            self.role,
-            self.from_genesis,
+            self.starter.role,
+            self.starter.from_genesis,
         );
 
         println!("Bootstrapping...");
@@ -319,27 +434,29 @@ impl Starter {
             .expect("failed to execute 'start jormungandr node'")
     }
 
-    pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
-        let config = self.build_configuration();
-        println!("{:?}", config.log_file_path());
+    fn start_async(self) -> Result<JormungandrProcess, StartupError> {
         Ok(JormungandrProcess::from_config(
-            self.start_process(&config),
-            config,
-            self.alias.clone(),
+            self.start_process(),
+            &self.params,
+            self.temp_dir,
+            self.starter.alias.clone(),
         ))
     }
 
-    pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
-        let mut config = self.build_configuration();
-        let benchmark = self.start_benchmark_run();
+    fn start(mut self) -> Result<JormungandrProcess, StartupError> {
         let mut retry_counter = 1;
         loop {
-            let process = self.start_process(&config);
+            let process = self.start_process();
+            let mut jormungandr = JormungandrProcess::from_config(
+                process,
+                &self.params,
+                self.temp_dir.take(),
+                self.starter.alias.clone(),
+            );
 
-            match (self.verify_is_up(process, &config), self.on_fail) {
-                (Ok(jormungandr_process), _) => {
-                    self.finish_benchmark(benchmark);
-                    return Ok(jormungandr_process);
+            match (self.verify_is_up(), self.starter.on_fail) {
+                (Ok(()), _) => {
+                    return Ok(jormungandr);
                 }
 
                 (
@@ -349,7 +466,15 @@ impl Starter {
                     println!(
                         "Port already in use error detected. Retrying with different port... "
                     );
-                    config.refresh_node_dynamic_params();
+                    self.params.refresh_instance_params();
+                    let path = self.params.log_file_path();
+                    std::fs::remove_file(path).unwrap_or_else(|e| {
+                        println!(
+                            "Failed to remove log file {}: {}",
+                            path.to_string_lossy(),
+                            e
+                        );
+                    })
                 }
                 (Err(err), OnFail::Panic) => {
                     panic!(format!(
@@ -369,46 +494,41 @@ impl Starter {
             if retry_counter < 0 {
                 panic!("Jormungandr node cannot start due despite retry attempts. see logs for more details");
             }
+
+            self.temp_dir = jormungandr.steal_temp_dir();
         }
     }
 
-    pub fn start_fail(&mut self, expected_msg: &str) {
-        let config = self.build_configuration();
+    fn start_fail(self, expected_msg: &str) {
         let command = get_command(
-            &config.into(),
+            &self.params,
             get_jormungandr_app(),
-            self.role,
-            self.from_genesis,
+            self.starter.role,
+            self.starter.from_genesis,
         );
         process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
     }
 
-    fn if_succeed(&self, config: &JormungandrConfig) -> bool {
-        match self.verification_mode {
+    fn if_succeed(&self) -> bool {
+        match self.starter.verification_mode {
             StartupVerificationMode::Rest => {
-                RestStartupVerification::new(config.clone()).if_succeed()
+                RestStartupVerification::new(&self.params).if_succeed()
             }
-            StartupVerificationMode::Log => {
-                LogStartupVerification::new(config.clone()).if_succeed()
-            }
+            StartupVerificationMode::Log => LogStartupVerification::new(&self.params).if_succeed(),
         }
     }
 
-    fn if_stopped(&self, config: &JormungandrConfig) -> bool {
-        match self.verification_mode {
+    fn if_stopped(&self) -> bool {
+        match self.starter.verification_mode {
             StartupVerificationMode::Rest => {
-                RestStartupVerification::new(config.clone()).if_stopped()
+                RestStartupVerification::new(&self.params).if_stopped()
             }
-            StartupVerificationMode::Log => {
-                LogStartupVerification::new(config.clone()).if_stopped()
-            }
+            StartupVerificationMode::Log => LogStartupVerification::new(&self.params).if_stopped(),
         }
     }
 
-    fn custom_errors_found(&self, config: &JormungandrConfig) -> Result<(), StartupError> {
-        let log_file_path = config
-            .log_file_path()
-            .expect("log file logger has to be defined");
+    fn custom_errors_found(&self) -> Result<(), StartupError> {
+        let log_file_path = self.params.log_file_path();
         let logger = JormungandrLogger::new(log_file_path);
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         if logger
@@ -421,53 +541,30 @@ impl Starter {
         }
     }
 
-    fn verify_is_up(
-        &self,
-        process: Child,
-        config: &JormungandrConfig,
-    ) -> Result<JormungandrProcess, StartupError> {
+    fn verify_is_up(&self) -> Result<(), StartupError> {
         let start = Instant::now();
-        let log_file_path = config
-            .log_file_path()
-            .expect("log file logger has to be defined");
+        let log_file_path = self.params.log_file_path();
         let logger = JormungandrLogger::new(log_file_path.clone());
         loop {
-            if start.elapsed() > self.timeout {
+            if start.elapsed() > self.starter.timeout {
                 return Err(StartupError::Timeout {
-                    timeout: self.timeout.as_secs(),
+                    timeout: self.starter.timeout.as_secs(),
                     log_content: file_utils::read_file(&log_file_path),
                 });
             }
-            if self.if_succeed(config) {
+            if self.if_succeed() {
                 println!("jormungandr is up");
-                return Ok(JormungandrProcess::from_config(
-                    process,
-                    config.clone(),
-                    self.alias.clone(),
-                ));
+                return Ok(());
             }
-            self.custom_errors_found(config)?;
-            if self.if_stopped(config) {
+            self.custom_errors_found()?;
+            if self.if_stopped() {
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
                     log_content: file_utils::read_file(&log_file_path),
                 });
             }
-            process_utils::sleep(self.sleep);
+            process_utils::sleep(self.starter.sleep);
         }
     }
-}
-
-pub fn restart_jormungandr_node(process: JormungandrProcess, role: Role) -> JormungandrProcess {
-    let config = process.config.clone();
-    let alias = process.alias().to_string();
-    std::mem::drop(process);
-
-    Starter::new()
-        .config(config)
-        .alias(alias)
-        .role(role)
-        .start()
-        .expect("Jormungandr restart failed")
 }

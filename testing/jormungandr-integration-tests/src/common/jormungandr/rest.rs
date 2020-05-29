@@ -1,4 +1,4 @@
-use crate::common::{configuration::jormungandr_config::JormungandrConfig, legacy};
+use crate::common::legacy;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::{fragment::FragmentId, header::HeaderId};
 use jormungandr_lib::interfaces::{
@@ -7,6 +7,7 @@ use jormungandr_lib::interfaces::{
 };
 use jormungandr_testing_utils::testing::MemPoolCheck;
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -19,6 +20,10 @@ pub enum RestError {
     HashParseError(#[from] chain_crypto::hash::Error),
 }
 
+pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
+    format!("http://{}/api", addr)
+}
+
 /// Specialized rest api
 #[derive(Debug, Clone)]
 pub struct JormungandrRest {
@@ -26,14 +31,9 @@ pub struct JormungandrRest {
 }
 
 impl JormungandrRest {
-    pub fn new(config: JormungandrConfig) -> Self {
-        Self::from_address(config.node_config().rest.listen.to_string())
-    }
-
-    pub fn from_address(address: String) -> Self {
-        let endpoint = format!("http://{}", address);
+    pub fn new(uri: String) -> Self {
         Self {
-            inner: legacy::BackwardCompatibleRest::new(endpoint),
+            inner: legacy::BackwardCompatibleRest::new(uri),
         }
     }
 

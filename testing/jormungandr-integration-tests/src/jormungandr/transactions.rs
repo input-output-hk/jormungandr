@@ -28,11 +28,11 @@ pub fn accounts_funds_are_updated_after_transaction() {
 
     let sender_account_state_before = jcli_wrapper::assert_rest_account_get_stats(
         &sender.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let receiever_account_state_before = jcli_wrapper::assert_rest_account_get_stats(
         &receiver.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
 
     let sender_value_before = sender_account_state_before.value();
@@ -53,11 +53,11 @@ pub fn accounts_funds_are_updated_after_transaction() {
 
     let sender_account_state = jcli_wrapper::assert_rest_account_get_stats(
         &sender.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
     let receiver_account_state = jcli_wrapper::assert_rest_account_get_stats(
         &receiver.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
 
     let sender_value_before_u64: u64 = sender_value_before.clone().into();

@@ -27,7 +27,7 @@ impl Node {
     }
 
     pub fn address(&self) -> poldercast::Address {
-        self.jormungandr.config.node_config().p2p.public_address
+        self.jormungandr.address()
     }
 
     pub fn shutdown(&self) {

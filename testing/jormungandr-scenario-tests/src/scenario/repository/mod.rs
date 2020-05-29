@@ -15,7 +15,7 @@ use crate::{
         features::{leader_promotion::*, p2p::*},
         network::real::real_network,
         network::topology::scenarios::*,
-        non_functional::{disruption::*, legacy::*, soak::*},
+        non_functional::{disruption::*, legacy, soak::*},
         Result,
     },
     Context,
@@ -203,63 +203,73 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short],
     ));
 
+    // TODO: Try to make ScenarioMethod a boxed closure
+    // so that we could do this:
+    //  for n in (1..=5).rev() {
+    //      repository.push(Scenario::new(
+    //          legacy::last_nth_release_title(n),
+    //          |ctx| legacy::last_nth_release(ctx, n),
+    //          vec![Tag::Short],
+    //      ));
+    //  }
+
     repository.push(Scenario::new(
-        "legacy_last_5th_release",
-        legacy_last_5th_release,
+        legacy::last_nth_release_title(5),
+        |ctx| legacy::last_nth_release(ctx, 5),
         vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
-        "legacy_last_4th_release",
-        legacy_last_4th_release,
+        legacy::last_nth_release_title(4),
+        |ctx| legacy::last_nth_release(ctx, 4),
         vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
-        "legacy_last_3rd_release",
-        legacy_last_3rd_release,
+        legacy::last_nth_release_title(3),
+        |ctx| legacy::last_nth_release(ctx, 3),
         vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
-        "legacy_last_2nd_release",
-        legacy_last_2nd_release,
+        legacy::last_nth_release_title(2),
+        |ctx| legacy::last_nth_release(ctx, 2),
         vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
-        "legacy_last_release",
-        legacy_last_release,
+        legacy::last_nth_release_title(1),
+        |ctx| legacy::last_nth_release(ctx, 1),
         vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
-        "legacy_disruption_last_5th_release",
-        legacy_disruption_last_5th_release,
+        legacy::disruption_last_nth_release_title(5),
+        |ctx| legacy::disruption_last_nth_release(ctx, 5),
         vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
-        "legacy_disruption_last_4th_release",
-        legacy_disruption_last_4th_release,
+        legacy::disruption_last_nth_release_title(4),
+        |ctx| legacy::disruption_last_nth_release(ctx, 4),
         vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
-        "legacy_disruption_last_3rd_release",
-        legacy_disruption_last_3rd_release,
+        legacy::disruption_last_nth_release_title(3),
+        |ctx| legacy::disruption_last_nth_release(ctx, 3),
         vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
-        "legacy_disruption_last_2nd_release",
-        legacy_disruption_last_2nd_release,
+        legacy::disruption_last_nth_release_title(2),
+        |ctx| legacy::disruption_last_nth_release(ctx, 2),
         vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
-        "legacy_disruption_last_release",
-        legacy_disruption_last_release,
+        legacy::disruption_last_nth_release_title(1),
+        |ctx| legacy::disruption_last_nth_release(ctx, 1),
         vec![Tag::Short, Tag::Unstable],
     ));
 

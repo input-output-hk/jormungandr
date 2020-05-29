@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
     io::{BufRead, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use crate::common::file_utils;
@@ -78,8 +78,10 @@ pub struct LogEntry {
 }
 
 impl MockLogger {
-    pub fn new(log_file_path: PathBuf) -> Self {
-        MockLogger { log_file_path }
+    pub fn new(log_file_path: impl Into<PathBuf>) -> Self {
+        MockLogger {
+            log_file_path: log_file_path.into(),
+        }
     }
 
     pub fn get_log_content(&self) -> String {
@@ -136,7 +138,7 @@ pub struct JormungandrServerImpl {
 }
 
 impl JormungandrServerImpl {
-    fn init_logger(log_path: PathBuf) -> slog::Logger {
+    fn init_logger(log_path: impl AsRef<Path>) -> slog::Logger {
         let file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -154,7 +156,7 @@ impl JormungandrServerImpl {
         genesis_hash: Hash,
         tip: Hash,
         protocol: ProtocolVersion,
-        log_path: PathBuf,
+        log_path: impl AsRef<Path>,
     ) -> Self {
         let log = JormungandrServerImpl::init_logger(log_path);
         info!(log, "{}", format!("mock node started on port {}", port); "method" => MethodType::Init.to_string());

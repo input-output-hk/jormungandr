@@ -1,5 +1,4 @@
 use crate::common::{
-    file_utils,
     jcli_wrapper::{
         self, certificate::wrapper::JCLICertificateWrapper,
         jcli_transaction_wrapper::JCLITransactionWrapper,
@@ -16,10 +15,15 @@ use jormungandr_lib::{
     interfaces::{InitialUTxO, Ratio, TaxType, Value},
 };
 use jormungandr_testing_utils::wallet::Wallet;
+
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
 use std::str::FromStr;
 
 #[test]
 pub fn create_delegate_retire_stake_pool() {
+    let temp_dir = TempDir::new().unwrap();
+
     let mut actor_account = startup::create_new_account_address();
 
     let config = ConfigurationBuilder::new()
@@ -28,7 +32,7 @@ pub fn create_delegate_retire_stake_pool() {
             value: 1_000_000.into(),
             address: actor_account.address(),
         }])
-        .build();
+        .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
@@ -60,13 +64,17 @@ pub fn create_new_stake_pool(
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> String {
+    let temp_dir = TempDir::new().unwrap();
+
     let kes = startup::create_new_key_pair::<Curve25519_2HashDH>();
     let vrf = startup::create_new_key_pair::<SumEd25519_12>();
 
-    let owner_stake_key =
-        file_utils::create_file_in_temp("stake_key.private_key", &account.signing_key_as_str());
+    let owner_stake_key = temp_dir.child("stake_key.private_key");
+    owner_stake_key
+        .write_str(&account.signing_key_to_string())
+        .unwrap();
 
-    let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
+    let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_uri());
     let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
@@ -84,25 +92,27 @@ pub fn create_new_stake_pool(
             max_limit: None,
         }),
     );
-    let stake_pool_certificate_file =
-        file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_certificate);
+    let stake_pool_certificate_file = temp_dir.child("stake_pool.cert");
+    stake_pool_certificate_file
+        .write_str(&stake_pool_certificate)
+        .unwrap();
 
     let transaction = JCLITransactionWrapper::new_transaction(genesis_block_hash)
         .assert_add_account(&account.address().to_string(), &fee_value)
         .assert_add_certificate(&stake_pool_certificate)
         .assert_finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
-        .assert_add_auth(&owner_stake_key)
+        .assert_add_auth(owner_stake_key.path())
         .assert_to_message();
 
     account.confirm_transaction();
     jcli_wrapper::assert_transaction_in_block_with_wait(&transaction, &jormungandr, wait);
 
-    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(&stake_pool_certificate_file);
+    let stake_pool_id =
+        certificate_wrapper.assert_get_stake_pool_id(stake_pool_certificate_file.path());
 
     assert!(
-        jcli_wrapper::assert_rest_get_stake_pools(&jormungandr.rest_address())
-            .contains(&stake_pool_id),
+        jcli_wrapper::assert_rest_get_stake_pools(&jormungandr.rest_uri()).contains(&stake_pool_id),
         "cannot find stake-pool certificate in blockchain"
     );
 
@@ -116,13 +126,17 @@ pub fn delegate_stake(
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
-    let owner_stake_key =
-        file_utils::create_file_in_temp("stake_key.private_key", &account.signing_key_as_str());
+    let temp_dir = TempDir::new().unwrap();
+
+    let owner_stake_key = temp_dir.child("stake_key.private_key");
+    owner_stake_key
+        .write_str(&account.signing_key_to_string())
+        .unwrap();
     let certificate_wrapper = JCLICertificateWrapper::new();
     let stake_pool_delegation = certificate_wrapper
         .assert_new_stake_delegation(&stake_pool_id, &account.identifier().to_bech32_str());
 
-    let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
+    let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_uri());
     let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
@@ -131,7 +145,7 @@ pub fn delegate_stake(
         .assert_add_certificate(&stake_pool_delegation)
         .assert_finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
-        .assert_add_auth(&owner_stake_key)
+        .assert_add_auth(owner_stake_key.path())
         .assert_to_message();
 
     account.confirm_transaction();
@@ -139,7 +153,7 @@ pub fn delegate_stake(
 
     let account_state_after_delegation = jcli_wrapper::assert_rest_account_get_stats(
         &account.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
 
     let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
@@ -160,14 +174,18 @@ pub fn retire_stake_pool(
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
-    let owner_private_key =
-        file_utils::create_file_in_temp("stake_key.private_key", &account.signing_key_as_str());
+    let temp_dir = TempDir::new().unwrap();
+
+    let owner_stake_key = temp_dir.child("stake_key.private_key");
+    owner_stake_key
+        .write_str(&account.signing_key_to_string())
+        .unwrap();
 
     let certificate_wrapper = JCLICertificateWrapper::new();
 
     let retirement_cert = certificate_wrapper.assert_new_stake_pool_retirement(&stake_pool_id);
 
-    let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_address());
+    let settings = jcli_wrapper::assert_get_rest_settings(&jormungandr.rest_uri());
     let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
 
@@ -176,7 +194,7 @@ pub fn retire_stake_pool(
         .assert_add_certificate(&retirement_cert)
         .assert_finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(&account)
-        .assert_add_auth(&owner_private_key)
+        .assert_add_auth(owner_stake_key.path())
         .assert_to_message();
 
     account.confirm_transaction();
@@ -184,7 +202,7 @@ pub fn retire_stake_pool(
 
     let account_state_after_stake_pool_retire = jcli_wrapper::assert_rest_account_get_stats(
         &account.address().to_string(),
-        &jormungandr.rest_address(),
+        &jormungandr.rest_uri(),
     );
 
     let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
@@ -199,7 +217,7 @@ pub fn retire_stake_pool(
     );
 
     assert!(
-        !jcli_wrapper::assert_rest_get_stake_pools(&jormungandr.rest_address())
+        !jcli_wrapper::assert_rest_get_stake_pools(&jormungandr.rest_uri())
             .contains(&stake_pool_id.to_owned()),
         "stake pool should not be listed among active stake pools"
     );

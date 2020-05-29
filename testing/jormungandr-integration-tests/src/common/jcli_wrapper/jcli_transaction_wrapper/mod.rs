@@ -4,7 +4,6 @@ pub mod jcli_transaction_commands;
 
 use self::jcli_transaction_commands::TransactionCommands;
 use crate::common::data::witness::Witness;
-use crate::common::file_utils;
 use crate::common::jcli_wrapper;
 use crate::common::process_assert;
 use crate::common::process_utils;
@@ -16,22 +15,34 @@ use jormungandr_lib::{
     interfaces::{LegacyUTxO, UTxOInfo, Value},
 };
 use jormungandr_testing_utils::wallet::Wallet;
-use std::path::PathBuf;
 
-#[derive(Debug)]
+use assert_fs::fixture::ChildPath;
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
+use std::path::{Path, PathBuf};
+
 pub struct JCLITransactionWrapper {
-    pub staging_file_path: PathBuf,
+    staging_dir: TempDir,
     commands: TransactionCommands,
     pub genesis_hash: Hash,
 }
 
 impl JCLITransactionWrapper {
     pub fn new(genesis_hash: &str) -> Self {
+        let staging_dir = TempDir::new().unwrap();
         JCLITransactionWrapper {
-            staging_file_path: PathBuf::from(""),
+            staging_dir,
             commands: TransactionCommands::new(),
             genesis_hash: Hash::from_hex(genesis_hash).unwrap(),
         }
+    }
+
+    fn staging_file(&self) -> ChildPath {
+        self.staging_dir.child("transaction.tx")
+    }
+
+    pub fn staging_file_path(&self) -> PathBuf {
+        PathBuf::from(self.staging_file().path())
     }
 
     pub fn new_transaction(genesis_hash: &str) -> Self {
@@ -78,19 +89,17 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_new_transaction(&mut self) -> &mut Self {
-        self.generate_new_random_staging_file_path();
+        self.reset_staging_dir();
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_new_transaction_command(&self.staging_file_path),
+                .get_new_transaction_command(self.staging_file().path()),
         );
         process_assert::assert_process_exited_successfully(output);
         self
     }
 
-    fn generate_new_random_staging_file_path(&mut self) {
-        let mut staging_file_path = file_utils::get_temp_folder();
-        staging_file_path.push("transaction.tx");
-        self.staging_file_path = staging_file_path;
+    fn reset_staging_dir(&mut self) {
+        self.staging_dir = TempDir::new().unwrap();
     }
 
     pub fn assert_add_input(&mut self, tx_id: &Hash, tx_index: u8, amount: Value) -> &mut Self {
@@ -99,7 +108,7 @@ impl JCLITransactionWrapper {
                 &tx_id.to_hex(),
                 tx_index,
                 &amount.to_string(),
-                &self.staging_file_path,
+                self.staging_file().path(),
             ));
         process_assert::assert_process_exited_successfully(output);
         self
@@ -117,7 +126,7 @@ impl JCLITransactionWrapper {
                 &tx_id.to_hex(),
                 tx_index,
                 amount,
-                &self.staging_file_path,
+                self.staging_file().path(),
             ),
             expected_part,
         );
@@ -142,7 +151,7 @@ impl JCLITransactionWrapper {
     pub fn assert_add_certificate(&mut self, certificate: &str) -> &mut Self {
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_add_certificate_command(&certificate, &self.staging_file_path),
+                .get_add_certificate_command(&certificate, self.staging_file().path()),
         );
         process_assert::assert_process_exited_successfully(output);
         self
@@ -153,7 +162,7 @@ impl JCLITransactionWrapper {
             process_utils::run_process_and_get_output(self.commands.get_add_account_command(
                 &account_addr,
                 &amount.to_string(),
-                &self.staging_file_path,
+                self.staging_file().path(),
             ));
         process_assert::assert_process_exited_successfully(output);
         self
@@ -164,7 +173,7 @@ impl JCLITransactionWrapper {
             self.commands.get_add_account_command(
                 &account_addr,
                 &amount.to_string(),
-                &self.staging_file_path,
+                self.staging_file().path(),
             ),
             expected_msg,
         );
@@ -179,7 +188,7 @@ impl JCLITransactionWrapper {
             process_utils::run_process_and_get_output(self.commands.get_add_output_command(
                 &addr,
                 &amount.to_string(),
-                &self.staging_file_path,
+                self.staging_file().path(),
             ));
         process_assert::assert_process_exited_successfully(output);
         self
@@ -187,7 +196,8 @@ impl JCLITransactionWrapper {
 
     pub fn assert_finalize(&mut self) -> &mut Self {
         let output = process_utils::run_process_and_get_output(
-            self.commands.get_finalize_command(&self.staging_file_path),
+            self.commands
+                .get_finalize_command(self.staging_file().path()),
         );
         process_assert::assert_process_exited_successfully(output);
         self
@@ -198,7 +208,7 @@ impl JCLITransactionWrapper {
             process_utils::run_process_and_get_output(self.commands.get_finalize_with_fee_command(
                 &address,
                 &linear_fee,
-                &self.staging_file_path,
+                self.staging_file().path(),
             ));
         process_assert::assert_process_exited_successfully(output);
         self
@@ -206,7 +216,8 @@ impl JCLITransactionWrapper {
 
     pub fn assert_finalize_fail(&self, expected_part: &str) {
         let output = process_utils::run_process_and_get_output(
-            self.commands.get_finalize_command(&self.staging_file_path),
+            self.commands
+                .get_finalize_command(self.staging_file().path()),
         );
         let actual = output.err_as_single_line();
 
@@ -221,10 +232,10 @@ impl JCLITransactionWrapper {
         process_assert::assert_process_failed(output);
     }
 
-    pub fn assert_add_auth(&mut self, key: &PathBuf) -> &mut Self {
+    pub fn assert_add_auth(&mut self, key: &Path) -> &mut Self {
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_auth_command(&key, &self.staging_file_path),
+                .get_auth_command(key, self.staging_file().path()),
         );
         process_assert::assert_process_exited_successfully(output);
         self
@@ -317,6 +328,7 @@ impl JCLITransactionWrapper {
     ) -> Witness {
         let transaction_id = self.get_transaction_id();
         Witness::new(
+            &self.staging_dir,
             &self.genesis_hash,
             &transaction_id,
             &addr_type,
@@ -333,7 +345,7 @@ impl JCLITransactionWrapper {
     pub fn assert_add_witness_fail(&mut self, witness: &Witness, expected_part: &str) {
         process_assert::assert_process_failed_and_matches_message(
             self.commands
-                .get_add_witness_command(&witness.file, &self.staging_file_path),
+                .get_add_witness_command(&witness.file, self.staging_file().path()),
             expected_part,
         );
     }
@@ -341,7 +353,7 @@ impl JCLITransactionWrapper {
     pub fn assert_add_witness(&mut self, witness: &Witness) -> &mut Self {
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_add_witness_command(&witness.file, &self.staging_file_path),
+                .get_add_witness_command(&witness.file, self.staging_file().path()),
         );
         process_assert::assert_process_exited_successfully(output);
         self
@@ -349,7 +361,7 @@ impl JCLITransactionWrapper {
 
     pub fn assert_seal(&mut self) -> &mut Self {
         let output = process_utils::run_process_and_get_output(
-            self.commands.get_seal_command(&self.staging_file_path),
+            self.commands.get_seal_command(self.staging_file().path()),
         );
         process_assert::assert_process_exited_successfully(output);
         self
@@ -358,7 +370,7 @@ impl JCLITransactionWrapper {
     pub fn assert_to_message(&self) -> String {
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_transaction_message_to_command(&self.staging_file_path),
+                .get_transaction_message_to_command(self.staging_file().path()),
         );
         let content = output.as_single_line();
         process_assert::assert_process_exited_successfully(output);
@@ -368,7 +380,7 @@ impl JCLITransactionWrapper {
     pub fn assert_to_message_fails(&self, expected_msg: &str) {
         process_assert::assert_process_failed_and_matches_message(
             self.commands
-                .get_transaction_message_to_command(&self.staging_file_path),
+                .get_transaction_message_to_command(self.staging_file().path()),
             expected_msg,
         );
     }
@@ -376,7 +388,7 @@ impl JCLITransactionWrapper {
     pub fn get_transaction_id(&self) -> Hash {
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_transaction_id_command(&self.staging_file_path),
+                .get_transaction_id_command(self.staging_file().path()),
         );
         Hash::from_hex(output.as_single_line().as_str())
             .expect("Cannot parse transaction id into hash")
@@ -385,7 +397,7 @@ impl JCLITransactionWrapper {
     pub fn get_transaction_info(&self, format: &str) -> String {
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_transaction_info_command(&format, &self.staging_file_path),
+                .get_transaction_info_command(&format, self.staging_file().path()),
         );
         output.as_single_line()
     }

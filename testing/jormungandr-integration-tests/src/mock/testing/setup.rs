@@ -1,6 +1,5 @@
 use crate::common::{
-    configuration::jormungandr_config::JormungandrConfig,
-    file_utils,
+    configuration::jormungandr_config::JormungandrParams,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use crate::mock::{
@@ -9,14 +8,16 @@ use crate::mock::{
 };
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::key::Hash;
-use futures::future::FutureExt;
 use jormungandr_lib::interfaces::TrustedPeer;
-use std::{
-    thread,
-    time::{Duration, Instant},
-};
+
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
+use futures::future::FutureExt;
 use tokio::sync::oneshot;
 use tonic::transport::Server;
+
+use std::thread;
+use std::time::{Duration, Instant};
 
 const LOCALHOST: &str = "127.0.0.1";
 
@@ -38,32 +39,48 @@ impl Config {
     }
 }
 
-pub fn bootstrap_node() -> (JormungandrProcess, JormungandrConfig) {
-    let config = ConfigurationBuilder::new().with_slot_duration(4).build();
-    let server = Starter::new().config(config.clone()).start_async().unwrap();
-    thread::sleep(Duration::from_secs(4));
-    (server, config)
+pub struct Fixture {
+    temp_dir: TempDir,
 }
 
-pub fn build_configuration(mock_port: u16) -> JormungandrConfig {
-    let trusted_peer = TrustedPeer {
-        address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port)
-            .parse()
-            .unwrap(),
-    };
+impl Fixture {
+    pub fn new() -> Self {
+        let temp_dir = TempDir::new().unwrap();
+        Fixture { temp_dir }
+    }
 
-    ConfigurationBuilder::new()
-        .with_slot_duration(4)
-        .with_block0_consensus(ConsensusVersion::GenesisPraos)
-        .with_trusted_peers(vec![trusted_peer])
-        .build()
-}
+    pub fn bootstrap_node(&self) -> (JormungandrProcess, JormungandrParams) {
+        let config = ConfigurationBuilder::new()
+            .with_slot_duration(4)
+            .build(&self.temp_dir);
+        let server = Starter::new().config(config.clone()).start_async().unwrap();
+        thread::sleep(Duration::from_secs(4));
+        (server, config)
+    }
 
-pub fn bootstrap_node_with_peer(mock_port: u16) -> (JormungandrProcess, JormungandrConfig) {
-    let config = build_configuration(mock_port);
-    let server = Starter::new().config(config.clone()).start_async().unwrap();
-    thread::sleep(Duration::from_secs(4));
-    (server, config)
+    pub fn build_configuration(&self, mock_port: u16) -> JormungandrParams {
+        let trusted_peer = TrustedPeer {
+            address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port)
+                .parse()
+                .unwrap(),
+        };
+
+        ConfigurationBuilder::new()
+            .with_slot_duration(4)
+            .with_block0_consensus(ConsensusVersion::GenesisPraos)
+            .with_trusted_peers(vec![trusted_peer])
+            .build(&self.temp_dir)
+    }
+
+    pub fn bootstrap_node_with_peer(
+        &self,
+        mock_port: u16,
+    ) -> (JormungandrProcess, JormungandrParams) {
+        let config = self.build_configuration(mock_port);
+        let server = Starter::new().config(config.clone()).start_async().unwrap();
+        thread::sleep(Duration::from_secs(4));
+        (server, config)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -78,10 +95,14 @@ pub fn start_mock(
     tip_hash: Hash,
     protocol_version: ProtocolVersion,
 ) -> MockController {
-    let log_file = file_utils::get_path_in_temp("mock.log");
-    println!("mock will put logs into path: {:?}", log_file);
+    let temp_dir = TempDir::new().unwrap();
+    let log_file = temp_dir.child("mock.log");
+    println!(
+        "mock will put logs into {}",
+        log_file.path().to_string_lossy()
+    );
 
-    let logger = MockLogger::new(log_file.clone());
+    let logger = MockLogger::new(log_file.path());
     let (shutdown_signal, rx) = oneshot::channel::<()>();
 
     tokio::spawn(async move {
@@ -91,7 +112,7 @@ pub fn start_mock(
             genesis_hash,
             tip_hash,
             protocol_version,
-            log_file,
+            log_file.path(),
         );
 
         Server::builder()
@@ -100,7 +121,7 @@ pub fn start_mock(
             .await
             .unwrap();
     });
-    MockController::new(logger, shutdown_signal)
+    MockController::new(temp_dir, logger, shutdown_signal)
 }
 
 pub struct MockVerifier {
@@ -120,11 +141,19 @@ impl MockVerifier {
 pub struct MockController {
     verifier: MockVerifier,
     stop_signal: tokio::sync::oneshot::Sender<()>,
+    // only need to keep this for the lifetime of the fixture
+    #[allow(dead_code)]
+    temp_dir: TempDir,
 }
 
 impl MockController {
-    pub fn new(logger: MockLogger, stop_signal: tokio::sync::oneshot::Sender<()>) -> Self {
+    fn new(
+        temp_dir: TempDir,
+        logger: MockLogger,
+        stop_signal: tokio::sync::oneshot::Sender<()>,
+    ) -> Self {
         Self {
+            temp_dir,
             verifier: MockVerifier::new(logger),
             stop_signal: stop_signal,
         }

@@ -5,20 +5,21 @@ extern crate rand;
 
 use self::lazy_static::lazy_static;
 use self::rand::Rng;
-use super::file_utils;
 use std::env;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU16, Ordering};
 
 mod block0_config_builder;
 pub mod jormungandr_config;
+mod node_config;
 mod node_config_builder;
 mod secret_model_factory;
 
 pub use block0_config_builder::Block0ConfigurationBuilder;
-pub use jormungandr_config::JormungandrConfig;
+pub use jormungandr_config::JormungandrParams;
+pub use node_config::TestConfig;
 pub use node_config_builder::NodeConfigBuilder;
-pub use secret_model_factory::SecretModelFactory;
+pub use secret_model_factory::{write_secret, SecretModelFactory};
 
 /// Get jormungandr executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {

@@ -14,54 +14,43 @@ use jormungandr_integration_tests::common::legacy::{
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 
 use rand_chacha::ChaChaRng;
-use std::{path::PathBuf, str::FromStr};
 
-pub fn legacy_last_5th_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(5);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_release(context, legacy_app, version, "legacy_last_5th_release")
+use std::borrow::Cow;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+fn ordinal_suffix(n: u32) -> &'static str {
+    match n {
+        1 => "st",
+        2 => "nd",
+        3 => "rd",
+        _ => "th",
+    }
 }
 
-pub fn legacy_last_4th_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(4);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_release(context, legacy_app, version, "legacy_last_4th_release")
+pub fn last_nth_release_title(n: u32) -> Cow<'static, str> {
+    match n {
+        1 => "legacy_last_release".into(),
+        _ => format!("legacy_last_{}{}_release", n, ordinal_suffix(n)).into(),
+    }
 }
 
-pub fn legacy_last_3rd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(3);
+pub fn last_nth_release(context: Context<ChaChaRng>, n: u32) -> Result<ScenarioResult> {
+    let title = last_nth_release_title(n);
+    let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
+    let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(&*title));
     let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_release(context, legacy_app, version, "legacy_last_3rd_release")
-}
-
-pub fn legacy_last_2nd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(2);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_release(context, legacy_app, version, "legacy_last_2nd_release")
-}
-
-pub fn legacy_last_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(1);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_release(context, legacy_app, version, "legacy_last_release")
+    test_legacy_release(context, legacy_app, version, title)
 }
 
 fn test_legacy_release(
     mut context: Context<ChaChaRng>,
     legacy_app: PathBuf,
     version: Version,
-    name: &str,
+    name: impl AsRef<str>,
 ) -> Result<ScenarioResult> {
+    let name = name.as_ref();
     let scenario_settings = prepare_scenario! {
         name,
         &mut context,
@@ -140,77 +129,29 @@ fn test_legacy_release(
     Ok(ScenarioResult::passed())
 }
 
-pub fn legacy_disruption_last_5th_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(5);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_disruption_release(
-        context,
-        legacy_app,
-        version,
-        "legacy_disruption_last_5th_release",
-    )
+pub fn disruption_last_nth_release_title(n: u32) -> Cow<'static, str> {
+    match n {
+        1 => "legacy_disruption_last_release".into(),
+        _ => format!("legacy_disruption_last_{}{}_release", n, ordinal_suffix(n)).into(),
+    }
 }
 
-pub fn legacy_disruption_last_4th_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(4);
+pub fn disruption_last_nth_release(context: Context<ChaChaRng>, n: u32) -> Result<ScenarioResult> {
+    let title = disruption_last_nth_release_title(n);
+    let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
+    let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(&*title));
     let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_disruption_release(
-        context,
-        legacy_app,
-        version,
-        "legacy_disruption_last_4th_release",
-    )
-}
-
-pub fn legacy_disruption_last_3rd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(3);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_disruption_release(
-        context,
-        legacy_app,
-        version,
-        "legacy_disruption_last_3rd_release",
-    )
-}
-
-pub fn legacy_disruption_last_2nd_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(2);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_disruption_release(
-        context,
-        legacy_app,
-        version,
-        "legacy_disruption_last_2nd_release",
-    )
-}
-
-pub fn legacy_disruption_last_release(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let releases = download_last_n_releases(1);
-    let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release);
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_disruption_release(
-        context,
-        legacy_app,
-        version,
-        "legacy_disruption_last_release",
-    )
+    test_legacy_disruption_release(context, legacy_app, version, title)
 }
 
 fn test_legacy_disruption_release(
     mut context: Context<ChaChaRng>,
     legacy_app: PathBuf,
     version: Version,
-    name: &str,
+    name: impl AsRef<str>,
 ) -> Result<ScenarioResult> {
+    let name = name.as_ref();
     let scenario_settings = prepare_scenario! {
         name,
         &mut context,

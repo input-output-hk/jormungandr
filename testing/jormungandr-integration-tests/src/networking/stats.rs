@@ -1,6 +1,6 @@
 use crate::common::{
     jcli_wrapper,
-    network::{builder, wallet},
+    network::{self, wallet},
     transaction_utils::TransactionHash,
 };
 const PASSIVE: &str = "PASSIVE";
@@ -8,7 +8,7 @@ const LEADER: &str = "LEADER";
 
 #[test]
 pub fn passive_node_last_block_info() {
-    let mut network_controller = builder("node_preffered_list_itself")
+    let mut network_controller = network::builder()
         .single_trust_direction(PASSIVE, LEADER)
         .initials(vec![
             wallet("alice").with(1_000_000).delegated_to(LEADER),

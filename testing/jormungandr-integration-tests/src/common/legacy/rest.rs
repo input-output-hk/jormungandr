@@ -9,12 +9,12 @@ use std::collections::HashMap;
 /// in order to assure compatibility and lack of serde errors
 #[derive(Debug, Clone)]
 pub struct BackwardCompatibleRest {
-    endpoint: String,
+    uri: String,
 }
 
 impl BackwardCompatibleRest {
-    pub fn new(endpoint: String) -> Self {
-        Self { endpoint }
+    pub fn new(uri: String) -> Self {
+        Self { uri }
     }
 
     fn print_response_text(&self, text: &str) {
@@ -41,7 +41,7 @@ impl BackwardCompatibleRest {
     }
 
     fn path(&self, path: &str) -> String {
-        format!("{}/api/v0/{}", self.endpoint, path)
+        format!("{}/v0/{}", self.uri, path)
     }
 
     pub fn stake_distribution(&self) -> Result<String, reqwest::Error> {

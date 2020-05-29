@@ -20,7 +20,7 @@ impl LegacySettings {
         LegacySettings {
             alias: settings.alias.clone(),
             config: converter
-                .convert(settings.config.clone())
+                .convert(&settings.config)
                 .expect("cannot convert node config to legacy"),
             secret: settings.secrets().clone(),
             node_topology: settings.node_topology.clone(),

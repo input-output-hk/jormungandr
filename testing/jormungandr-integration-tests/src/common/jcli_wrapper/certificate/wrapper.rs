@@ -1,11 +1,14 @@
 use super::commands::CertificateCommands;
 
 use crate::common::{
-    file_assert, file_utils, process_assert,
+    file_utils, process_assert,
     process_utils::{self, output_extensions::ProcessOutput},
 };
 use jormungandr_lib::interfaces::TaxType;
-use std::path::PathBuf;
+
+use assert_fs::prelude::*;
+use assert_fs::{NamedTempFile, TempDir};
+use std::path::Path;
 
 #[derive(Debug, Default)]
 pub struct JCLICertificateWrapper {
@@ -55,24 +58,19 @@ impl JCLICertificateWrapper {
         certification
     }
 
-    pub fn assert_get_stake_pool_id(&self, input_file: &PathBuf) -> String {
+    pub fn assert_get_stake_pool_id(&self, input_file: &Path) -> String {
         println!("Running get stake pool id...");
-        let stake_pool_id_file = file_utils::get_path_in_temp("stake_pool.id");
+        let temp_file = NamedTempFile::new("stake_pool.id").unwrap();
         let output = process_utils::run_process_and_get_output(
             self.commands
-                .get_stake_pool_id_command(&input_file, &stake_pool_id_file),
+                .get_stake_pool_id_command(&input_file, temp_file.path()),
         );
         process_assert::assert_process_exited_successfully(output);
-        file_assert::assert_file_exists_and_not_empty(&stake_pool_id_file);
-        file_utils::read_file(&stake_pool_id_file)
+        temp_file.assert(crate::predicate::file_exists_and_not_empty());
+        file_utils::read_file(temp_file.path())
     }
 
-    pub fn assert_sign(
-        &self,
-        signing_key: &PathBuf,
-        input_file: &PathBuf,
-        output_file: &PathBuf,
-    ) -> String {
+    pub fn assert_sign(&self, signing_key: &Path, input_file: &Path, output_file: &Path) -> String {
         println!("Running sign certification...");
         let output = process_utils::run_process_and_get_output(self.commands.get_sign_command(
             &signing_key,
@@ -88,12 +86,14 @@ impl JCLICertificateWrapper {
         &self,
         pool_kes_pk: &str,
         pool_vrf_pk: &str,
-        stake_key_file: &PathBuf,
+        stake_key_file: &Path,
         start_validity: u32,
         management_threshold: u32,
         owner_pk: &str,
         tax_type: Option<TaxType>,
-    ) -> PathBuf {
+    ) {
+        let temp_dir = TempDir::new().unwrap();
+
         let stake_pool_cert = self.assert_new_stake_pool_registration(
             &pool_kes_pk,
             &pool_vrf_pk,
@@ -102,38 +102,40 @@ impl JCLICertificateWrapper {
             owner_pk,
             tax_type,
         );
-        let stake_pool_cert_file =
-            file_utils::create_file_in_temp("stake_pool.cert", &stake_pool_cert);
+        let stake_pool_cert_file = temp_dir.child("stake_pool.cert");
+        stake_pool_cert_file.write_str(&stake_pool_cert).unwrap();
 
-        let stake_pool_signcert_file = file_utils::get_path_in_temp("stake_pool.signcert");
+        let stake_pool_signcert_file = temp_dir.child("stake_pool.signcert");
         self.assert_sign(
             &stake_key_file,
-            &stake_pool_cert_file,
-            &stake_pool_signcert_file,
+            stake_pool_cert_file.path(),
+            stake_pool_signcert_file.path(),
         );
-        stake_pool_signcert_file
     }
 
     pub fn assert_new_signed_stake_pool_delegation(
         &self,
         stake_pool_id: &str,
         stake_key_pub: &str,
-        stake_key_file: &PathBuf,
+        stake_key_file: &Path,
     ) -> String {
+        let temp_dir = TempDir::new().unwrap();
+
         let stake_delegation_cert =
             self.assert_new_stake_delegation(&stake_pool_id, &stake_key_pub);
 
-        let stake_delegation_cert_file =
-            file_utils::create_file_in_temp("stake_delegation.cert", &stake_delegation_cert);
-        let stake_delegation_signcert_file =
-            file_utils::get_path_in_temp("stake_delegation.signcert");
+        let stake_delegation_cert_file = temp_dir.child("stake_delegation.cert");
+        stake_delegation_cert_file
+            .write_str(&stake_delegation_cert)
+            .unwrap();
+        let stake_delegation_signcert_file = temp_dir.child("stake_delegation.signcert");
 
         self.assert_sign(
             &stake_key_file,
-            &stake_delegation_cert_file,
-            &stake_delegation_signcert_file,
+            stake_delegation_cert_file.path(),
+            stake_delegation_signcert_file.path(),
         );
-        file_utils::read_file(&stake_delegation_signcert_file)
+        file_utils::read_file(stake_delegation_signcert_file.path())
     }
 
     pub fn assert_new_stake_pool_retirement(&self, stake_pool_id: &str) -> String {

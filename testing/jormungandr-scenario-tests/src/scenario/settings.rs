@@ -1,5 +1,4 @@
 use crate::{scenario::Context, style};
-use jormungandr_integration_tests::common::file_utils;
 use jormungandr_lib::{
     interfaces::{
         Explorer, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
@@ -256,12 +255,14 @@ impl Prepare for Policy {
 }
 
 impl Prepare for Log {
-    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
         let format = "plain";
         let level = "info";
+        let mut path = context.working_directory().to_path_buf();
+        path.push("node.log");
 
         let loggers = vec![
             LogEntry {
@@ -272,12 +273,7 @@ impl Prepare for Log {
             LogEntry {
                 format: format.to_string(),
                 level: level.to_string(),
-                output: LogOutput::File(
-                    file_utils::get_path_in_temp("node.log")
-                        .into_os_string()
-                        .into_string()
-                        .unwrap(),
-                ),
+                output: LogOutput::File(path),
             },
         ];
         Log(loggers)
