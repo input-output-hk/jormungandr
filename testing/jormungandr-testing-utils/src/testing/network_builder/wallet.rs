@@ -80,13 +80,8 @@ pub struct Wallet {
 impl Wallet {
     pub fn save_to<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
         let dir = dir.as_ref().join(self.template().alias());
-
         let file = std::fs::File::create(&dir)?;
-
-        match &self.inner {
-            Inner::Account(account) => account.save_to(file),
-            _ => unimplemented!(),
-        }
+        self.inner.save_to(file)
     }
 
     pub fn generate_account<RNG>(template: WalletTemplate, rng: &mut RNG) -> Self
