@@ -11,8 +11,9 @@ use jormungandr_integration_tests::{
     common::jormungandr::{logger::JormungandrLogger, rest, JormungandrRest, RestError},
     mock::client::JormungandrClient,
 };
-use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, NodeState, NodeStatsDto, PeerRecord, PeerStats,
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{EnclaveLeaderId, FragmentLog, NodeState, NodeStatsDto, PeerRecord, PeerStats},
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -197,7 +198,7 @@ impl NodeController {
         self.progress_bar.log_info(info);
     }
 
-    pub fn tip(&self) -> Result<HeaderId> {
+    pub fn tip(&self) -> Result<Hash> {
         let hash = self.rest_client.tip()?;
         self.progress_bar.log_info(format!("tip '{}'", hash));
         Ok(hash)

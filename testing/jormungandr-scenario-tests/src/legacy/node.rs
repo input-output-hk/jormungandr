@@ -15,8 +15,9 @@ use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
     common::jormungandr::logger::JormungandrLogger, mock::client::JormungandrClient,
 };
-use jormungandr_lib::interfaces::{
-    EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats,
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats},
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -221,7 +222,7 @@ impl LegacyNodeController {
         self.progress_bar.log_info(info);
     }
 
-    pub fn tip(&self) -> Result<HeaderId> {
+    pub fn tip(&self) -> Result<Hash> {
         let hash = self.get("tip")?.text()?;
 
         let hash = hash.parse().chain_err(|| ErrorKind::InvalidHeaderId)?;

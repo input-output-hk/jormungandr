@@ -1,17 +1,17 @@
-use chain_impl_mockchain::key::Hash;
 use std::{fmt, time::Duration};
 use thiserror::Error;
 
 use crate::testing::measurement::{benchmark_speed, Speed, Thresholds};
 
 mod wait;
+use jormungandr_lib::crypto::hash::Hash;
 pub use wait::SyncWaitParams;
 
 pub trait SyncNode {
     fn alias(&self) -> &str;
     fn last_block_height(&self) -> u32;
     fn log_stats(&self);
-    fn all_blocks_hashes(&self) -> Vec<Hash>;
+    fn tip(&self) -> Hash;
     fn log_content(&self) -> String;
     fn get_lines_with_error_and_invalid(&self) -> Vec<String>;
     fn is_running(&self) -> bool;

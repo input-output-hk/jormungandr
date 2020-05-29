@@ -6,8 +6,8 @@ use crate::{
 };
 pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
 
-use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::{
+    crypto::hash::Hash,
     interfaces::{FragmentStatus, NodeState},
     time::Duration as LibsDuration,
 };
@@ -154,8 +154,8 @@ impl SyncNode for NodeController {
         println!("Node: {} -> {:?}", self.alias(), self.stats());
     }
 
-    fn all_blocks_hashes(&self) -> Vec<Hash> {
-        self.all_blocks_hashes().unwrap()
+    fn tip(&self) -> Hash {
+        self.tip().expect("cannot get tip from rest")
     }
 
     fn is_running(&self) -> bool {
@@ -188,8 +188,8 @@ impl SyncNode for LegacyNodeController {
         println!("Node: {} -> {:?}", self.alias(), self.stats());
     }
 
-    fn all_blocks_hashes(&self) -> Vec<Hash> {
-        self.all_blocks_hashes().unwrap()
+    fn tip(&self) -> Hash {
+        self.tip().expect("cannot get tip from rest")
     }
 
     fn log_content(&self) -> String {
@@ -299,14 +299,14 @@ pub fn assert_are_in_sync<A: SyncNode + ?Sized>(
     let duration: LibsDuration = sync_wait.wait_time().into();
     let first_node = nodes.iter().next().unwrap();
 
-    let expected_block_hashes = first_node.all_blocks_hashes();
+    let expected_tip = first_node.tip();
     let block_height = first_node.last_block_height();
 
     for node in nodes.iter().skip(1) {
-        let all_block_hashes = node.all_blocks_hashes();
+        let tip = node.tip();
         assert_equals(
-            &expected_block_hashes,
-            &all_block_hashes,
+            &expected_tip,
+            &tip,
             &format!("nodes are out of sync (different block hashes) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
                 duration,
                 first_node.alias(),
