@@ -280,6 +280,7 @@ pub fn node_trust_itself() {
 }
 
 #[test]
+#[ignore]
 pub fn node_put_itself_in_preffered_layers() {
     let mut network_controller = network::builder()
         .single_trust_direction(CLIENT, SERVER)

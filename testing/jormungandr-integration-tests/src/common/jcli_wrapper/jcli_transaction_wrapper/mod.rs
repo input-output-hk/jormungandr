@@ -19,7 +19,7 @@ use jormungandr_testing_utils::wallet::Wallet;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub struct JCLITransactionWrapper {
     staging_dir: TempDir,
@@ -39,6 +39,10 @@ impl JCLITransactionWrapper {
 
     fn staging_file(&self) -> ChildPath {
         self.staging_dir.child("transaction.tx")
+    }
+
+    pub fn staging_file_path(&self) -> PathBuf {
+        PathBuf::from(self.staging_file().path())
     }
 
     pub fn new_transaction(genesis_hash: &str) -> Self {
