@@ -102,12 +102,12 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::OwnerStakeDelegation(ref tx) => is_transaction_valid(tx),
         Fragment::PoolRegistration(ref tx) => is_transaction_valid(tx),
         Fragment::PoolRetirement(ref tx) => is_transaction_valid(tx),
-        // disabled for now
-        Fragment::PoolUpdate(_) => false,
-        Fragment::UpdateProposal(_) => false,
-        Fragment::UpdateVote(_) => false,
-        Fragment::VotePlan(_) => false,
-        Fragment::VoteCast(_) => false,
+        Fragment::PoolUpdate(ref tx) => is_transaction_valid(tx),
+        // vote stuff
+        Fragment::UpdateProposal(_) => false, // TODO: enable when ready
+        Fragment::UpdateVote(_) => false,     // TODO: enable when ready
+        Fragment::VotePlan(ref tx) => is_transaction_valid(tx),
+        Fragment::VoteCast(ref tx) => is_transaction_valid(tx),
     }
 }
 
