@@ -216,6 +216,13 @@ impl Readable for SignedCertificate {
                     (),
                 )))
             }
+            7 => {
+                let cert = certificate::VoteCast::read(buf)?;
+                Ok(SignedCertificate(certificate::SignedCertificate::VoteCast(
+                    cert,
+                    (),
+                )))
+            }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
