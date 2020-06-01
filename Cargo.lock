@@ -1471,7 +1471,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "linked-hash-map",
- "lru",
+ "lru 0.5.0",
  "multiaddr",
  "nix 0.17.0",
  "pin-project",
@@ -1766,6 +1766,15 @@ name = "lru"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e488db3a9e108382265a30764f43cfc87517322e5d04ae0603b32a33461dca3"
+dependencies = [
+ "hashbrown",
+]
+
+[[package]]
+name = "lru"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb997a7ef669f5d9e59c297db18ba05df203fbca59ae00e8b5ceea329d9f4ddf"
 dependencies = [
  "hashbrown",
 ]
@@ -2362,7 +2371,7 @@ checksum = "ad74b4f644e23d1faf58fca06eed184db0efef1e7da9fc46b9f168d8b18e01f0"
 dependencies = [
  "cid",
  "hex",
- "lru",
+ "lru 0.4.5",
  "multiaddr",
  "rand 0.7.3",
  "rayon",
