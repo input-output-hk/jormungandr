@@ -1033,6 +1033,7 @@ paths:
   /api/v0/shutdown:
     get:
       deprecated: true
+      operationId: ShutdownGet
       description: Starts node shutdown procedure
       tags:
         - utils
