@@ -61,7 +61,7 @@ pin-project = "0.4"
 multiaddr = "0.3.1"
 
 [target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
-version = "0.10.4"
+version = "0.10.6"
 default-features = false
 features = ["rustls-tls"]
 
