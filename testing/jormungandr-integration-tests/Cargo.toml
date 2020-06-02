@@ -39,7 +39,7 @@ url = "2.1.1"
 yaml-rust = "0.4.4"
 
 [target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
-version = "0.10.4"
+version = "0.10.6"
 default-features = false
 features = ["blocking", "json", "rustls-tls"]
 
