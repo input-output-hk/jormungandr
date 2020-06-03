@@ -11,7 +11,8 @@ pub use archive::decompress;
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, FragmentBuilder, FragmentBuilderError,
     FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError, FragmentSenderSetup,
-    FragmentVerifier, FragmentVerifierError, MemPoolCheck,
+    FragmentSenderSetupBuilder, FragmentVerifier, FragmentVerifierError, MemPoolCheck,
+    VerifyStrategy,
 };
 pub use measurement::{
     benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
