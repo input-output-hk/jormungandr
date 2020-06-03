@@ -404,6 +404,7 @@ impl Sink<net_data::Gossip> for GossipProcessor {
             );
             e
         })?;
+        debug!(self.logger, "received gossip on {} nodes", nodes.len());
         let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
             filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
         });
