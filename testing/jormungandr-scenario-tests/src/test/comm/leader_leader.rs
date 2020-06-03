@@ -48,7 +48,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     let mut wallet1 = controller.wallet("delegated2")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    let fragment_sender = controller.fragment_sender_with_setup(FragmentSenderSetup::NO_VERIFY);
+    let fragment_sender = controller.fragment_sender_with_setup(FragmentSenderSetup::no_verify());
     let fragment_verifier = FragmentVerifier;
 
     for _ in 0..10 {

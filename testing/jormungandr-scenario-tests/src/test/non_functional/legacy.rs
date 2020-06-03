@@ -214,7 +214,7 @@ fn test_legacy_disruption_release(
     let mut wallet2 = controller.wallet("delegated1")?;
 
     controller
-        .fragment_sender_with_setup(FragmentSenderSetup::RESEND_3_TIMES)
+        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
     leader4 =
