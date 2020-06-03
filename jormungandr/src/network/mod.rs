@@ -14,9 +14,13 @@ mod service;
 mod subscription;
 
 use self::convert::Encode;
-use futures::{future, prelude::*};
+use chain_network::grpc::legacy;
 use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
+
+use futures::{future, prelude::*};
 use poldercast::Address;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaChaRng;
 use thiserror::Error;
 use tokio::time;
 
@@ -130,6 +134,7 @@ pub struct GlobalState {
     topology: P2pTopology,
     peers: Peers,
     logger: Logger,
+    legacy_node_id: Option<legacy::NodeId>,
 }
 
 pub type GlobalStateR = Arc<GlobalState>;
@@ -139,11 +144,26 @@ impl GlobalState {
     pub fn new(
         block0_hash: HeaderHash,
         config: Configuration,
-        topology: P2pTopology,
         stats_counter: StatsCounter,
         logger: Logger,
     ) -> Self {
         let peers = Peers::new(config.max_connections, logger.clone());
+
+        let mut rng_seed = [0; 32];
+        rand::thread_rng().fill(&mut rng_seed);
+        let mut prng = ChaChaRng::from_seed(rng_seed);
+
+        let legacy_node_id = if config.generate_legacy_node_id {
+            Some(legacy::NodeId::generate(&mut prng).unwrap())
+        } else {
+            None
+        };
+
+        let topology = P2pTopology::new(
+            &config,
+            logger.new(o!(log::KEY_SUB_TASK => "poldercast")),
+            prng,
+        );
 
         GlobalState {
             block0_hash,
@@ -152,6 +172,7 @@ impl GlobalState {
             topology,
             peers,
             logger,
+            legacy_node_id,
         }
     }
 

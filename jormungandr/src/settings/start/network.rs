@@ -92,6 +92,9 @@ pub struct Configuration {
     pub skip_bootstrap: bool,
 
     pub http_fetch_block0_service: Vec<String>,
+
+    /// Whether to use pre-0.9 "node-id-bin" metadata when subscribing
+    pub generate_legacy_node_id: bool,
 }
 
 #[derive(Clone)]

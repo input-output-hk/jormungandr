@@ -26,14 +26,18 @@ use std::task::{Context, Poll};
 pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
+    let legacy_node_id = state.global.legacy_node_id;
     let builder = ClientBuilder {
         channels,
         logger: state.logger.clone(),
     };
     let cf = async move {
-        let mut grpc_client = grpc::connect(&peer)
-            .await
-            .map_err(ConnectError::Transport)?;
+        let mut grpc_client = if let Some(node_id) = legacy_node_id {
+            grpc::connect_legacy(&peer, node_id).await
+        } else {
+            grpc::connect(&peer).await
+        }
+        .map_err(ConnectError::Transport)?;
         let block0 = grpc_client
             .handshake()
             .await

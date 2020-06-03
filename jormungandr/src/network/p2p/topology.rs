@@ -11,6 +11,7 @@ use poldercast::{
     poldercast::{Cyclon, Rings, Vicinity},
     NodeProfile, PolicyReport, StrikeReason, Topology,
 };
+use rand_chacha::ChaChaRng;
 use slog::Logger;
 use tokio::sync::RwLock;
 
@@ -55,7 +56,7 @@ impl Builder {
         self
     }
 
-    fn set_custom_modules(mut self, config: &Configuration) -> Self {
+    fn set_custom_modules(mut self, config: &Configuration, rng: ChaChaRng) -> Self {
         if let Some(size) = config.max_unreachable_nodes_to_connect_per_event {
             self.topology
                 .add_layer(custom_layers::RandomDirectConnections::with_max_view_length(size));
@@ -66,6 +67,7 @@ impl Builder {
 
         self.topology.add_layer(PreferredListLayer::new(
             config.layers.preferred_list.clone(),
+            rng,
         ));
 
         self
@@ -79,10 +81,10 @@ impl Builder {
 }
 
 impl P2pTopology {
-    pub fn new(config: &Configuration, logger: Logger) -> Self {
+    pub fn new(config: &Configuration, logger: Logger, rng: ChaChaRng) -> Self {
         Builder::new(config.profile.clone(), logger)
             .set_poldercast_modules()
-            .set_custom_modules(&config)
+            .set_custom_modules(&config, rng)
             .set_policy(config.policy.clone())
             .build()
     }

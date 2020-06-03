@@ -22,7 +22,6 @@ use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::Blockchain,
     diagnostic::Diagnostic,
-    network::p2p::P2pTopology,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -105,13 +104,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let leadership_logs =
         leadership::Logs::new(bootstrapped_node.settings.leadership.logs_capacity);
 
-    let topology = P2pTopology::new(
-        &bootstrapped_node.settings.network,
-        bootstrapped_node
-            .logger
-            .new(o!(log::KEY_TASK => "poldercast")),
-    );
-
     let stats_counter = StatsCounter::default();
 
     {
@@ -188,7 +180,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let network_state = Arc::new(network::GlobalState::new(
         bootstrapped_node.block0_hash,
         bootstrapped_node.settings.network.clone(),
-        topology,
         stats_counter.clone(),
         bootstrapped_node
             .logger
