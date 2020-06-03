@@ -32,7 +32,7 @@ log:
     level:  trace
     format: plain
   - output:
-    file: example.log
+      file: example.log
     level: info
     format: json
 ```
