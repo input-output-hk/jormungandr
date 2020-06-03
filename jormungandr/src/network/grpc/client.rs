@@ -22,8 +22,6 @@ pub use chain_network::grpc::client::{
 pub enum FetchBlockError {
     #[error("connection to peer failed")]
     Connect { source: ConnectError },
-    #[error("connection broken")]
-    ClientNotReady { source: net_error::Error },
     #[error("block request failed")]
     GetBlocks { source: net_error::Error },
     #[error("block response stream failed")]

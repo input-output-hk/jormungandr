@@ -129,11 +129,6 @@ pub enum ConnectError {
     },
     #[error("subscription request failed")]
     Subscription(#[source] net_error::Error),
-    #[error("node address {peer_responded} reported by the peer is not the expected {expected}")]
-    AddressMismatch {
-        expected: Address,
-        peer_responded: Address,
-    },
 }
 
 impl Future for ConnectFuture {
