@@ -17,9 +17,6 @@ jobs:
         with:
           submodules: true
 
-      - name: Install hub
-        uses: geertvdc/setup-hub@master
-
       - name: Get version
         id: version
         run: |
@@ -31,8 +28,10 @@ jobs:
         env:
           GITHUB_USER: ${{ secrets.GITHUB_USER }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          hub release delete nightly
+          curl -fsSL https://github.com/github/hub/raw/master/script/get | bash -s 2.14.1
+          bin/hub release delete nightly
 
       - name: Create Nightly
         id: create_nightly
