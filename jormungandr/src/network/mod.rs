@@ -69,7 +69,6 @@ use crate::utils::{
     task::TokioServiceInfo,
 };
 use chain_network::data::gossip::Gossip;
-use futures::{channel::oneshot::Receiver, future::Shared};
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
@@ -631,13 +630,16 @@ async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeer
     peers
 }
 
-pub async fn bootstrap(
+pub async fn bootstrap<S>(
     config: &Configuration,
     blockchain: NewBlockchain,
     branch: Tip,
-    bootstrap_stopper: Shared<Receiver<()>>,
+    bootstrap_stopper: S,
     logger: &Logger,
-) -> Result<bool, bootstrap::Error> {
+) -> Result<bool, bootstrap::Error>
+where
+    S: Future<Output = Result<(), futures::channel::oneshot::Canceled>> + Unpin + Clone,
+{
     use futures::future::{select, Either, FutureExt};
 
     if config.protocol != Protocol::Grpc {

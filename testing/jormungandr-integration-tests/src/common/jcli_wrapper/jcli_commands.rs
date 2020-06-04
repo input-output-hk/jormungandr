@@ -80,7 +80,7 @@ pub fn get_rest_shutdown_command(host: &str) -> Command {
         .arg("rest")
         .arg("v0")
         .arg("shutdown")
-        .arg("get")
+        .arg("post")
         .arg("-h")
         .arg(&host);
     command

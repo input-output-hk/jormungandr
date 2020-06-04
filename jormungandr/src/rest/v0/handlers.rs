@@ -106,9 +106,9 @@ pub async fn get_settings(context: ContextLock) -> Result<impl Reply, Rejection>
         .map_err(warp::reject::custom)
 }
 
-pub async fn get_shutdown(context: ContextLock) -> Result<impl Reply, Rejection> {
-    let context = context.read().await;
-    logic::get_shutdown(&context)
+pub async fn shutdown(context: ContextLock) -> Result<impl Reply, Rejection> {
+    let mut context = context.write().await;
+    logic::shutdown(&mut context)
         .await
         .map(|_| warp::reply())
         .map_err(warp::reject::custom)

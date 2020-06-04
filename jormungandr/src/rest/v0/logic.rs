@@ -375,9 +375,8 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
     })
 }
 
-pub async fn get_shutdown(context: &Context) -> Result<(), Error> {
-    // Verify that node has fully started and is able to process shutdown
-    context.try_full()?;
+pub async fn shutdown(context: &mut Context) -> Result<(), Error> {
+    context.stop_bootstrap();
     context.server_stopper()?.stop();
     Ok(())
 }

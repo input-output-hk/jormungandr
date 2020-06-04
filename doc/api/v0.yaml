@@ -1039,6 +1039,15 @@ paths:
 
   /api/v0/shutdown:
     get:
+      deprecated: true
+      operationId: ShutdownGet
+      description: Starts node shutdown procedure
+      tags:
+        - utils
+      responses:
+        '200':
+          description: Success
+    post:
       description: Starts node shutdown procedure
       operationId: Shutdown
       tags:
