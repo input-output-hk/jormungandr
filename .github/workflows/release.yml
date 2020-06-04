@@ -23,6 +23,7 @@ jobs:
 
   release_assets:
     name: Release assets
+    needs: initial_release
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false

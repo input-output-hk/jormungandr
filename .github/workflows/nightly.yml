@@ -43,6 +43,7 @@ jobs:
 
   release_assets:
     name: Release assets
+    needs: nightly_release
     if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ${{ matrix.config.os }}
     strategy:
