@@ -7,6 +7,7 @@ name: Nightly Release
 jobs:
   nightly_release:
     name: Create nightly release
+    if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -42,6 +43,7 @@ jobs:
 
   release_assets:
     name: Release assets
+    if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
