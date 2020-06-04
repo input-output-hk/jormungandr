@@ -5,7 +5,7 @@ use crate::common::{
     startup,
 };
 use chain_addr::Discrimination;
-use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
+use chain_impl_mockchain::{vote::CommitteeId, fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee}};
 use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
 
 use assert_fs::fixture::ChildPath;
@@ -194,4 +194,22 @@ pub fn test_genesis_decode_bijection() {
     let right_hash = jcli_wrapper::assert_genesis_hash(block0_after.path());
 
     assert_eq!(params.genesis_block_hash().clone(), right_hash);
+}
+
+#[test]
+pub fn test_encode_genesis_with_vit_params() {
+    let mut fee = LinearFee::new(1, 1, 1);
+    fee.per_vote_certificate_fees(PerVoteCertificateFee::new(
+        Some(NonZeroU64::new(2).unwrap()),
+        Some(NonZeroU64::new(1).unwrap()),
+    ));
+    let fixture = Fixture::with_config(
+        ConfigurationBuilder::new()
+            .with_linear_fees(fee)
+            .with_committee_ids(vec![
+                CommitteeId::from_hex("7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19").unwrap().into(),
+                CommitteeId::from_hex("f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db").unwrap().into()
+            ]),
+    );
+    fixture.assert_encode();
 }

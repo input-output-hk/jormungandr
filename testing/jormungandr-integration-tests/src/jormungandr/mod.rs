@@ -4,3 +4,4 @@ pub mod genesis;
 pub mod legacy;
 pub mod recovery;
 pub mod transactions;
+pub mod vit;
