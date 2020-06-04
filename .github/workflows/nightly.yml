@@ -45,10 +45,57 @@ jobs:
           draft: false
           prerelease: true
 
+  update_deps:
+    name: Update dependencies
+    if: ${{ github.repository_owner == 'input-output-hk' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - id: cargo-registry
+        name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        id: ls-crates-io-index
+        name: Get head commit hash of crates.io registry index
+        continue-on-error: true
+        shell: bash
+        run: |
+          commit=$(
+            git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
+            cut -f 1
+          )
+          echo "::set-output name=head::$commit"
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        name: Cache cargo registry index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry/index
+          key: cargo-index-${{ steps.ls-crates-io-index.outputs.head }}
+          restore-keys: |
+            cargo-index-
+
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        name: Fetch dependencies
+        run: cargo fetch --locked
+
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        name: Prune unpacked sources of dependency crates from cache
+        shell: bash
+        run: |
+          rm -rf ~/.cargo/registry/src
+
   release_assets:
     name: Release assets
-    needs: nightly_release
     if: ${{ github.repository_owner == 'input-output-hk' }}
+    needs: [nightly_release, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
@@ -146,6 +193,26 @@ jobs:
           echo ::set-output name=version::$VERSION
         shell: bash
 
+      # https://github.com/actions/runner/issues/498
+      - if: ${{ runner.os == 'Windows' }}
+        name: Fix up Cargo.lock hash
+        shell: powershell
+        run: |
+          ((Get-Content Cargo.lock) -join "`n") + "`n" |
+          Set-Content -NoNewline Cargo.lock
+
+      # https://github.com/actions/virtual-environments/issues/895
+      # https://github.com/actions/virtual-environments/issues/936
+      - if: ${{ runner.os == 'Windows' }}
+        name: Clean up cargo registry files
+        run: rm -r -fo $env:UserProfile\.cargo\registry
+
+      - name: Restore cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         env:
@@ -153,7 +220,7 @@ jobs:
         with:
           use-cross: ${{ matrix.cross }}
           command: rustc
-          args:  --manifest-path jormungandr/Cargo.toml --release --target ${{ matrix.config.target }} --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.target_cpu }} -C lto
+          args: --manifest-path jormungandr/Cargo.toml --locked --release --target ${{ matrix.config.target }} --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
@@ -162,7 +229,7 @@ jobs:
         with:
           use-cross: ${{ matrix.cross }}
           command: rustc
-          args: --manifest-path jcli/Cargo.toml --release --target ${{ matrix.config.target }} --bin jcli -- -C target-cpu=${{ matrix.target_cpu }} -C lto
+          args: --manifest-path jcli/Cargo.toml --locked --release --target ${{ matrix.config.target }} --bin jcli -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Pack binaries (Unix)
         if: matrix.config.os != 'windows-latest'
