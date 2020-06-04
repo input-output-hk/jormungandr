@@ -16,7 +16,7 @@ use jormungandr_testing_utils::{
         network_builder::{
             Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
         },
-        FragmentSender, FragmentSenderSetup,
+        FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
     wallet::Wallet,
 };
@@ -329,11 +329,15 @@ impl Controller {
         &self,
         setup: FragmentSenderSetup<'a>,
     ) -> FragmentSender<'a> {
+        let mut builder = FragmentSenderSetupBuilder::from(setup);
+        let root_dir: PathBuf = PathBuf::from(self.working_directory().path());
+        builder.dump_fragments_into(root_dir.join("fragments"));
         let hash = Hash::from_hash(self.block0_hash.clone());
+
         FragmentSender::new(
             hash,
             self.settings.block0.blockchain_configuration.linear_fees,
-            setup,
+            builder.build(),
         )
     }
 }

@@ -676,12 +676,7 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("delegated1")?;
     let mut wallet2 = controller.wallet("delegated2")?;
 
-    let setup = FragmentSenderSetup {
-        resend_on_error: Some(3),
-        sync_nodes: vec![&core, &relay1, &relay2],
-        ignore_any_errors: false,
-        no_verify: false,
-    };
+    let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&core, &relay1, &relay2]);
 
     controller
         .fragment_sender_with_setup(setup)

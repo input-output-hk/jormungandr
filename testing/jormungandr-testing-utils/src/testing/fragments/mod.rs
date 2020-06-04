@@ -1,8 +1,9 @@
 pub use self::{
+    export::{FragmentExporter, FragmentExporterError},
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     sender::{FragmentSender, FragmentSenderError},
-    setup::FragmentSenderSetup,
+    setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     transaction::transaction_to,
     verifier::{FragmentVerifier, FragmentVerifierError},
 };
@@ -22,6 +23,7 @@ use jormungandr_lib::{
 };
 use thiserror::Error;
 
+mod export;
 mod initial_certificates;
 mod node;
 mod sender;

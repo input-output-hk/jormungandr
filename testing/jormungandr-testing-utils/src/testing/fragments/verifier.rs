@@ -1,6 +1,4 @@
-use crate::testing::fragments::node::FragmentNode;
-use crate::testing::fragments::node::FragmentNodeError;
-use crate::testing::fragments::node::MemPoolCheck;
+use crate::testing::fragments::node::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::time::Duration;

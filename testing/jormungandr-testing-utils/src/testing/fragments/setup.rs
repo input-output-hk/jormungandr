@@ -1,34 +1,70 @@
+use super::FragmentNode;
 use crate::testing::SyncNode;
+use std::fmt;
+use std::path::PathBuf;
+
+#[derive(Clone)]
+pub enum VerifyStrategy<'a> {
+    AnyOf(Vec<&'a dyn FragmentNode>),
+    AllOf(Vec<&'a dyn FragmentNode>),
+    Single(&'a dyn FragmentNode),
+}
+
+impl<'a> fmt::Debug for VerifyStrategy<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VerifyStrategy::AnyOf(nodes) => {
+                let aliases: Vec<String> = nodes.iter().map(|x| x.alias().to_string()).collect();
+                write!(f, "Any of {:?}", aliases)
+            }
+            VerifyStrategy::AllOf(nodes) => {
+                let aliases: Vec<String> = nodes.iter().map(|x| x.alias().to_string()).collect();
+                write!(f, "All of {:?}", aliases)
+            }
+            VerifyStrategy::Single(node) => write!(f, "{}", node.alias()),
+        }
+    }
+}
 
 pub struct FragmentSenderSetup<'a> {
     pub resend_on_error: Option<u8>,
     pub sync_nodes: Vec<&'a dyn SyncNode>,
     pub ignore_any_errors: bool,
-    pub no_verify: bool,
+    pub dump_fragments: Option<PathBuf>,
+    /// Sender will confirm transaction (increment account counter)
+    ///
+    pub auto_confirm: bool,
+    /// Sender verifies transaction strategy. By default is disabled,
+    /// so sender will verify fragment against node to which recieved transaction
+    pub verify_strategy: Option<VerifyStrategy<'a>>,
+
+    /// Just send fragment without any verifications
+    pub fire_and_forget: bool,
 }
 
 impl<'a> FragmentSenderSetup<'a> {
-    pub const NO_VERIFY: FragmentSenderSetup<'a> = FragmentSenderSetup {
-        resend_on_error: None,
-        sync_nodes: Vec::new(),
-        ignore_any_errors: true,
-        no_verify: true,
-    };
+    pub fn ignore_errors() -> Self {
+        let mut builder = FragmentSenderSetupBuilder::new();
+        builder.ignore_any_errors();
+        builder.into()
+    }
 
-    pub const RESEND_3_TIMES: FragmentSenderSetup<'a> = FragmentSenderSetup {
-        resend_on_error: Some(3),
-        sync_nodes: Vec::new(),
-        ignore_any_errors: false,
-        no_verify: false,
-    };
+    pub fn resend_3_times() -> Self {
+        let mut builder = FragmentSenderSetupBuilder::new();
+        builder.resend_on_error(3);
+        builder.into()
+    }
 
     pub fn resend_3_times_and_sync_with(sync_nodes: Vec<&'a dyn SyncNode>) -> Self {
-        Self {
-            resend_on_error: Some(3),
-            sync_nodes,
-            ignore_any_errors: false,
-            no_verify: false,
-        }
+        let mut builder = FragmentSenderSetupBuilder::new();
+        builder.resend_on_error(3).sync_nodes(sync_nodes);
+        builder.into()
+    }
+
+    pub fn no_verify() -> Self {
+        let mut builder = FragmentSenderSetupBuilder::new();
+        builder.fire_and_forget();
+        builder.into()
     }
 
     pub fn new() -> Self {
@@ -36,7 +72,10 @@ impl<'a> FragmentSenderSetup<'a> {
             resend_on_error: None,
             sync_nodes: Vec::new(),
             ignore_any_errors: false,
-            no_verify: false,
+            dump_fragments: None,
+            auto_confirm: true,
+            verify_strategy: None,
+            fire_and_forget: false,
         }
     }
 
@@ -63,13 +102,68 @@ impl<'a> FragmentSenderSetup<'a> {
         }
     }
 
-    pub fn no_verify(&self) -> bool {
-        self.no_verify
+    pub fn auto_confirm(&self) -> bool {
+        self.auto_confirm
+    }
+
+    pub fn fire_and_forget(&self) -> bool {
+        self.fire_and_forget
     }
 }
 
 impl<'a> Default for FragmentSenderSetup<'a> {
     fn default() -> FragmentSenderSetup<'a> {
         FragmentSenderSetup::new()
+    }
+}
+
+pub struct FragmentSenderSetupBuilder<'a> {
+    setup: FragmentSenderSetup<'a>,
+}
+
+impl<'a> FragmentSenderSetupBuilder<'a> {
+    pub fn from(setup: FragmentSenderSetup<'a>) -> Self {
+        Self { setup }
+    }
+
+    pub fn new() -> Self {
+        Self {
+            setup: FragmentSenderSetup::new(),
+        }
+    }
+
+    pub fn resend_on_error(&mut self, count: u8) -> &mut Self {
+        self.setup.resend_on_error = Some(count);
+        self
+    }
+
+    pub fn sync_nodes(&mut self, sync_nodes: Vec<&'a dyn SyncNode>) -> &mut Self {
+        self.setup.sync_nodes = sync_nodes;
+        self
+    }
+
+    pub fn ignore_any_errors(&mut self) -> &mut Self {
+        self.setup.ignore_any_errors = true;
+        self
+    }
+
+    pub fn dump_fragments_into(&mut self, path: PathBuf) -> &mut Self {
+        self.setup.dump_fragments = Some(path);
+        self
+    }
+
+    pub fn fire_and_forget(&mut self) -> &mut Self {
+        self.setup.fire_and_forget = true;
+        self
+    }
+
+    pub fn build(self) -> FragmentSenderSetup<'a> {
+        self.setup
+    }
+}
+
+impl<'a> Into<FragmentSenderSetup<'a>> for FragmentSenderSetupBuilder<'a> {
+    fn into(self) -> FragmentSenderSetup<'a> {
+        self.setup
     }
 }

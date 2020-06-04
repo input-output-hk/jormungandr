@@ -63,7 +63,7 @@ pub fn test_legacy_node_all_fragments() {
         .expect("cannot crate fragment from transaction between first and second pool owner");
 
     fragment_sender
-        .send_fragment(fragment, &jormungandr)
+        .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .expect("fragment send error for transaction between first and second pool owner");
     std::thread::sleep(std::time::Duration::from_secs(30));
 
@@ -79,7 +79,7 @@ pub fn test_legacy_node_all_fragments() {
         .expect("cannot create pool registration fragment for first stake pool owner");
 
     fragment_sender
-        .send_fragment(fragment, &jormungandr)
+        .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .expect("error while sending registration certificate for first stake pool owner");
     first_stake_pool_owner.confirm_transaction();
 
@@ -95,7 +95,7 @@ pub fn test_legacy_node_all_fragments() {
         .expect("cannot create pool registration fragment for second stake owner");
 
     fragment_sender
-        .send_fragment(fragment, &jormungandr)
+        .send_fragment(&mut second_stake_pool_owner, fragment, &jormungandr)
         .expect("error while sending registration certificate for second stake pool owner");
     second_stake_pool_owner.confirm_transaction();
 
@@ -122,7 +122,7 @@ pub fn test_legacy_node_all_fragments() {
         .unwrap();
 
     fragment_sender
-        .send_fragment(fragment, &jormungandr)
+        .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .expect("error while sending owner delegation cert");
     first_stake_pool_owner.confirm_transaction();
 
@@ -147,7 +147,7 @@ pub fn test_legacy_node_all_fragments() {
         .expect("error while sending full delegation certificate");
 
     fragment_sender
-        .send_fragment(fragment, &jormungandr)
+        .send_fragment(&mut full_delegator, fragment, &jormungandr)
         .unwrap();
 
     let full_delegator_info = jcli_wrapper::assert_rest_account_get_stats(
@@ -170,7 +170,7 @@ pub fn test_legacy_node_all_fragments() {
         .expect("error while sending split delegation certificate");
 
     fragment_sender
-        .send_fragment(fragment, &jormungandr)
+        .send_fragment(&mut split_delegator, fragment, &jormungandr)
         .unwrap();
 
     let split_delegator = jcli_wrapper::assert_rest_account_get_stats(
@@ -218,7 +218,7 @@ pub fn test_legacy_node_all_fragments() {
         .expect("error while sending stake pool retirement certificate");
 
     fragment_sender
-        .send_fragment(fragment, &jormungandr)
+        .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .unwrap();
 
     let stake_pools_from_rest = jormungandr
