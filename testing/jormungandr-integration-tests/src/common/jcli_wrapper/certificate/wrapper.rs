@@ -8,8 +8,11 @@ use jormungandr_lib::interfaces::TaxType;
 
 use assert_fs::prelude::*;
 use assert_fs::{NamedTempFile, TempDir};
-use std::{process::Command, path::{PathBuf, Path}};
 use chain_impl_mockchain::block::BlockDate;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 #[derive(Debug, Default)]
 pub struct JCLICertificateWrapper {
@@ -23,21 +26,29 @@ impl JCLICertificateWrapper {
         }
     }
 
-    pub fn assert_new_vote_plan(&self, proposal_id: &str, 
-        vote_start: BlockDate, 
-        vote_end: BlockDate, 
-        committe_end: BlockDate
+    pub fn assert_new_vote_plan(
+        &self,
+        proposal_id: &str,
+        vote_start: BlockDate,
+        vote_end: BlockDate,
+        committe_end: BlockDate,
     ) -> String {
-        self.assert_new_certificate(self.commands.get_vote_command(proposal_id, vote_start, vote_end, committe_end))        
+        self.assert_new_certificate(self.commands.get_vote_command(
+            proposal_id,
+            vote_start,
+            vote_end,
+            committe_end,
+        ))
     }
 
-    pub fn assert_new_signed_vote_plan(&self, proposal_id: &str, 
-        vote_start: BlockDate, 
-        vote_end: BlockDate, 
+    pub fn assert_new_signed_vote_plan(
+        &self,
+        proposal_id: &str,
+        vote_start: BlockDate,
+        vote_end: BlockDate,
         committe_end: BlockDate,
         stake_key_file: &Path,
     ) -> PathBuf {
-       
         let temp_dir = TempDir::new().unwrap();
         let cert = self.assert_new_vote_plan(proposal_id, vote_start, vote_end, committe_end);
 
@@ -45,14 +56,9 @@ impl JCLICertificateWrapper {
         cert_file.write_str(&cert).unwrap();
 
         let signcert_file = temp_dir.child("vote_plan.signcert");
-        self.assert_sign(
-            &stake_key_file,
-            cert_file.path(),
-            signcert_file.path(),
-        );
+        self.assert_sign(&stake_key_file, cert_file.path(), signcert_file.path());
         PathBuf::from(signcert_file.path())
     }
-
 
     fn assert_new_certificate(&self, command: Command) -> String {
         let output = process_utils::run_process_and_get_output(command);
@@ -63,7 +69,10 @@ impl JCLICertificateWrapper {
 
     pub fn assert_new_stake_delegation(&self, stake_pool_id: &str, delegation_id: &str) -> String {
         println!("Running new stake delegation...");
-        self.assert_new_certificate(self.commands.get_new_stake_delegation_command(&stake_pool_id, &delegation_id))
+        self.assert_new_certificate(
+            self.commands
+                .get_new_stake_delegation_command(&stake_pool_id, &delegation_id),
+        )
     }
 
     pub fn assert_new_stake_pool_registration(
@@ -76,16 +85,14 @@ impl JCLICertificateWrapper {
         tax_type: Option<TaxType>,
     ) -> String {
         println!("Running new stake pool registration...");
-        self.assert_new_certificate(
-            self.commands.get_stake_pool_registration_command(
-                &kes_key,
-                &vrf_key,
-                start_validity,
-                management_threshold,
-                owner_pk,
-                tax_type,
-            )
-        )
+        self.assert_new_certificate(self.commands.get_stake_pool_registration_command(
+            &kes_key,
+            &vrf_key,
+            start_validity,
+            management_threshold,
+            owner_pk,
+            tax_type,
+        ))
     }
 
     pub fn assert_get_stake_pool_id(&self, input_file: &Path) -> String {

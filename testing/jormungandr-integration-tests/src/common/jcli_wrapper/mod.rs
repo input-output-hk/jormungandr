@@ -2,8 +2,8 @@
 
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
-    AccountState, FragmentLog, FragmentStatus, LeadershipLog, SettingsDto, StakePoolStats,
-    UTxOInfo, UTxOOutputInfo, CommitteeIdDef
+    AccountState, CommitteeIdDef, FragmentLog, FragmentStatus, LeadershipLog, SettingsDto,
+    StakePoolStats, UTxOInfo, UTxOOutputInfo,
 };
 pub mod certificate;
 pub mod jcli_commands;
@@ -19,11 +19,11 @@ use chain_addr::Discrimination;
 
 use assert_fs::prelude::*;
 use assert_fs::{fixture::ChildPath, NamedTempFile};
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::str::FromStr;
 use thiserror::Error;
-use serde_json::Value;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -226,26 +226,20 @@ pub fn assert_transaction_post_failed(transactions_message: &str, host: &str) {
 }
 
 pub fn assert_get_active_voting_committees(host: &str) -> Vec<CommitteeIdDef> {
-    let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_rest_active_committes(host),
-    );
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_rest_active_committes(host));
     let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output.clone());
-    serde_yaml::from_str(&content)
-        .expect("JCLI returned malformed CommitteeIdDef")  
+    serde_yaml::from_str(&content).expect("JCLI returned malformed CommitteeIdDef")
 }
 
 pub fn assert_get_active_vote_plans(host: &str) -> Vec<Value> {
-    let output = process_utils::run_process_and_get_output(
-        jcli_commands::get_rest_active_vote_plans(host),
-    );
+    let output =
+        process_utils::run_process_and_get_output(jcli_commands::get_rest_active_vote_plans(host));
     let content = output.as_lossy_string();
     process_assert::assert_process_exited_successfully(output.clone());
-    serde_yaml::from_str(&content)
-        .expect("JCLI returned malformed VotePlan")  
+    serde_yaml::from_str(&content).expect("JCLI returned malformed VotePlan")
 }
-
-
 
 pub fn assert_key_generate_default() -> String {
     let output = process_utils::run_process_and_get_output(

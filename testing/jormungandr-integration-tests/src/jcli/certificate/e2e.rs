@@ -59,13 +59,13 @@ pub fn test_create_vote_plan() {
         .write_str(&owner.signing_key().to_bech32_str())
         .unwrap();
 
-
-    let certificate_wrapper = JCLICertificateWrapper::new(); 
+    let certificate_wrapper = JCLICertificateWrapper::new();
     let certificate = certificate_wrapper.assert_new_vote_plan(
-        "f4fdab54e2d516ce1cabe8ae8cfe77e99eeb530f7033cdf20e2392e012373a7b", 
-        BlockDate:: new(1,0),
-        BlockDate:: new(1,59),
-        BlockDate:: new(2,29));
-    
+        "f4fdab54e2d516ce1cabe8ae8cfe77e99eeb530f7033cdf20e2392e012373a7b",
+        BlockDate::new(1, 0),
+        BlockDate::new(1, 59),
+        BlockDate::new(2, 29),
+    );
+
     assert_ne!(certificate, "", "vote plan cert is empty");
 }

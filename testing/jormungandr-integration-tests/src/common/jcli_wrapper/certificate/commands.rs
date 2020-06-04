@@ -5,8 +5,8 @@ use std::process::Command;
 
 use crate::common::configuration;
 
-use jormungandr_lib::interfaces::TaxType;
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_lib::interfaces::TaxType;
 
 #[derive(Default, Debug)]
 pub struct CertificateCommands {}
@@ -44,7 +44,12 @@ impl CertificateCommands {
         command
     }
 
-    pub fn get_vote_command(&self, proposal_id: &str, vote_start: BlockDate, vote_end: BlockDate, committe_end: BlockDate
+    pub fn get_vote_command(
+        &self,
+        proposal_id: &str,
+        vote_start: BlockDate,
+        vote_end: BlockDate,
+        committe_end: BlockDate,
     ) -> Command {
         let mut command = Command::new(configuration::get_jcli_app().as_os_str());
         command

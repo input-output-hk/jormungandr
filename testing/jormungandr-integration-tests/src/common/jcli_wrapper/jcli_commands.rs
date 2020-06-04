@@ -315,7 +315,6 @@ pub fn get_rest_active_committes(host: &str) -> Command {
         .arg("--host")
         .arg(&host);
     command
-
 }
 
 pub fn get_rest_active_vote_plans(host: &str) -> Command {
