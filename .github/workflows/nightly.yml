@@ -47,35 +47,75 @@ jobs:
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, target_cpu: generic, cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, target_cpu: broadwell, cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: broadwell, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, target_cpu: generic, cross: true}
-          # - {os: ubuntu-latest, toolchain: stable, target: mips64el-unknown-linux-gnuabi64, target_cpu: generic, cross: true}
-          # - {os: ubuntu-latest, toolchain: stable, target: powerpc64le-unknown-linux-gnu, target_cpu: generic, cross: true}
+          - {os: ubuntu-latest, target: x86_64-unknown-linux-gnu}
           # Macos
-          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, target_cpu: generic, cross: false}
-          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, target_cpu: broadwell, cross: false}
+          - {os: macos-latest, target: x86_64-apple-darwin}
+        target_cpu: [generic, broadwell]
+        toolchain: [stable]
+        cross: [false]
+        include:
           # Windows
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, target_cpu: generic, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: generic, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, target_cpu: broadwell, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: broadwell, cross: false}
+          - config: {os: windows-latest, target: x86_64-pc-windows-gnu}
+            target_cpu: generic
+            toolchain: stable-x86_64-pc-windows-gnu
+            cross: false
+          - config: {os: windows-latest, target: x86_64-pc-windows-gnu}
+            target_cpu: broadwell
+            toolchain: stable-x86_64-pc-windows-gnu
+            cross: false
+          - config: {os: windows-latest, target: x86_64-pc-windows-msvc}
+            target_cpu: generic
+            toolchain: stable-x86_64-pc-windows-msvc
+            cross: false
+          - config: {os: windows-latest, target: x86_64-pc-windows-msvc}
+            target_cpu: broadwell
+            toolchain: stable-x86_64-pc-windows-msvc
+            cross: false
+          # Cross targets
+          - config: {os: ubuntu-latest, target: aarch64-unknown-linux-gnu}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest, target: arm-unknown-linux-gnueabi}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest,  target: x86_64-unknown-linux-musl}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest,  target: x86_64-unknown-linux-musl}
+            target_cpu: broadwell
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest, target: aarch64-linux-android}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          # - config: {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64}
+          #   target_cpu: generic
+          #   toolchain: stable
+          #   cross: true
+          # - config: {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu}
+          #   target_cpu: generic
+          #   toolchain: stable
+          #   cross: true
+
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.config.toolchain }}
+          toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.config.target }}
           override: true
           default: true
 
       - name: Downgrade cross
         uses: actions-rs/cargo@v1
-        if: ${{ matrix.config.cross }}
+        if: ${{ matrix.cross }}
         with:
           command: install
           args: --version 0.1.16 cross
@@ -103,26 +143,26 @@ jobs:
         env:
           DATE: ${{ env.DATE }}
         with:
-          use-cross: ${{ matrix.config.cross }}
+          use-cross: ${{ matrix.cross }}
           command: rustc
-          args:  --manifest-path jormungandr/Cargo.toml --release --target ${{ matrix.config.target }} --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.config.target_cpu }} -C lto
+          args:  --manifest-path jormungandr/Cargo.toml --release --target ${{ matrix.config.target }} --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         env:
           DATE: ${{ env.DATE }}
         with:
-          use-cross: ${{ matrix.config.cross }}
+          use-cross: ${{ matrix.cross }}
           command: rustc
-          args: --manifest-path jcli/Cargo.toml --release --target ${{ matrix.config.target }} --bin jcli -- -C target-cpu=${{ matrix.config.target_cpu }} -C lto
+          args: --manifest-path jcli/Cargo.toml --release --target ${{ matrix.config.target }} --bin jcli -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Pack binaries if unix
         if: matrix.config.os != 'windows-latest'
-        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.tar.gz jormungandr jcli
+        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz jormungandr jcli
 
       - name: Pack binaries if windows
         if: matrix.config.os == 'windows-latest'
-        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.zip
+        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip
 
       - name: Upload binaries to nightly release
         uses: svenstaro/upload-release-action@v1-release
