@@ -355,11 +355,11 @@ async fn process_and_propagate_new_ref(
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
-    debug!(logger, "processing the new block and propagating"; "hash" => %hash);
+    debug!(logger, "processing the new block and propagating");
 
     process_new_ref(logger, blockchain, tip, new_block_ref).await?;
 
-    debug!(logger, "propagating block to the network"; "hash" => %hash);
+    debug!(logger, "propagating block to the network");
     network_msg_box
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
         .await
