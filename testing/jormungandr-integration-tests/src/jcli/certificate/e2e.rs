@@ -50,7 +50,7 @@ pub fn test_create_and_sign_new_stake_delegation() {
 }
 
 #[test]
-pub fn test_create_vote_plan() {
+pub fn test_create_vote_plan_certificate() {
     let temp_dir = TempDir::new().unwrap();
 
     let owner = create_new_key_pair::<Ed25519>();
@@ -62,9 +62,18 @@ pub fn test_create_vote_plan() {
     let certificate_wrapper = JCLICertificateWrapper::new();
     let certificate = certificate_wrapper.assert_new_vote_plan(
         "f4fdab54e2d516ce1cabe8ae8cfe77e99eeb530f7033cdf20e2392e012373a7b",
-        BlockDate::new(1, 0),
-        BlockDate::new(1, 59),
-        BlockDate::new(2, 29),
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        BlockDate {
+            epoch: 1,
+            slot_id: 59,
+        },
+        BlockDate {
+            epoch: 2,
+            slot_id: 29,
+        },
     );
 
     assert_ne!(certificate, "", "vote plan cert is empty");
