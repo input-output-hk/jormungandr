@@ -220,7 +220,7 @@ jobs:
         with:
           use-cross: ${{ matrix.cross }}
           command: rustc
-          args: --manifest-path jormungandr/Cargo.toml --locked --release --target ${{ matrix.config.target }} --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.target_cpu }} -C lto
+          args: --manifest-path jormungandr/Cargo.toml --verbose --locked --release --target ${{ matrix.config.target }} --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
@@ -229,7 +229,7 @@ jobs:
         with:
           use-cross: ${{ matrix.cross }}
           command: rustc
-          args: --manifest-path jcli/Cargo.toml --locked --release --target ${{ matrix.config.target }} --bin jcli -- -C target-cpu=${{ matrix.target_cpu }} -C lto
+          args: --manifest-path jcli/Cargo.toml --verbose --locked --release --target ${{ matrix.config.target }} --bin jcli -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Pack binaries (Unix)
         if: matrix.config.os != 'windows-latest'
