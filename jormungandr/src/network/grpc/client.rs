@@ -6,13 +6,14 @@ use crate::{
 };
 use chain_network::data as net_data;
 use chain_network::error as net_error;
+use chain_network::grpc::{client::Builder, legacy};
 use futures::prelude::*;
 use slog::Logger;
 use thiserror::Error;
 use tonic::transport;
 
 use std::convert::TryFrom;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 
 pub use chain_network::grpc::client::{
     BlockSubscription, FragmentSubscription, GossipSubscription,
@@ -37,19 +38,25 @@ pub type ConnectError = transport::Error;
 pub type Client = chain_network::grpc::Client<tonic::transport::Channel>;
 
 pub async fn connect(peer: &Peer) -> Result<Client, ConnectError> {
+    connect_internal(peer, Builder::new()).await
+}
+
+pub async fn connect_legacy(peer: &Peer, node_id: legacy::NodeId) -> Result<Client, ConnectError> {
+    let mut builder = Builder::new();
+    builder.legacy_node_id(node_id);
+    connect_internal(peer, builder).await
+}
+
+async fn connect_internal(peer: &Peer, builder: Builder) -> Result<Client, ConnectError> {
     assert!(peer.protocol == Protocol::Grpc);
     let endpoint = destination_endpoint(peer.connection)
         .concurrency_limit(concurrency_limits::CLIENT_REQUESTS)
         .timeout(peer.timeout);
-    Client::connect(endpoint).await
+    builder.connect(endpoint).await
 }
 
 fn destination_endpoint(addr: SocketAddr) -> transport::Endpoint {
-    let ip = addr.ip();
-    let uri = match ip {
-        IpAddr::V4(ip) => format!("http://{}:{}", ip, addr.port()),
-        IpAddr::V6(ip) => format!("http://[{}]:{}", ip, addr.port()),
-    };
+    let uri = format!("http://{}", addr);
     transport::Endpoint::try_from(uri).unwrap()
 }
 

@@ -1,7 +1,6 @@
 pub use jormungandr_lib::interfaces::{PreferredListConfig, TrustedPeer};
 use poldercast::{Address, GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
 use rand::seq::IteratorRandom;
-use rand::{Rng as _, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::collections::HashSet;
 
@@ -22,23 +21,12 @@ pub struct PreferredListLayer {
 }
 
 impl PreferredListLayer {
-    pub fn new(config: PreferredListConfig) -> Self {
-        let mut seed = [0; 32];
-
-        rand::thread_rng().fill(&mut seed);
+    pub fn new(config: PreferredListConfig, prng: ChaChaRng) -> Self {
         let addresses: Vec<Address> = config.peers.iter().map(|p| p.address.clone()).collect();
-        Self::new_with_seed(config.view_max.into(), addresses, seed)
-    }
-
-    fn new_with_seed(
-        view_max: usize,
-        peers: Vec<Address>,
-        seed: <ChaChaRng as SeedableRng>::Seed,
-    ) -> Self {
         Self {
-            view_max,
-            peers: peers.iter().cloned().collect(),
-            prng: ChaChaRng::from_seed(seed),
+            view_max: config.view_max.into(),
+            peers: addresses.into_iter().collect(),
+            prng,
         }
     }
 }

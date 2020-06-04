@@ -452,6 +452,7 @@ dependencies = [
  "futures 0.3.5",
  "pin-project",
  "prost",
+ "rand_core 0.5.1",
  "thiserror",
  "tonic",
  "tonic-build",

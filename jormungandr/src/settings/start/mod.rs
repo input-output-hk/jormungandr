@@ -297,6 +297,7 @@ fn generate_network(
         http_fetch_block0_service,
         bootstrap_from_trusted_peers,
         skip_bootstrap,
+        generate_legacy_node_id: true,
     };
 
     if network.max_inbound_connections > network.max_connections {
