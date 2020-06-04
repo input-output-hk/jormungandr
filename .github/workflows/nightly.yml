@@ -22,6 +22,7 @@ jobs:
           echo ::set-output name=version::$VERSION
 
       - name: Delete nightly with hub
+        continue-on-error: true
         env:
           GITHUB_USER: ${{ secrets.GITHUB_USER }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
