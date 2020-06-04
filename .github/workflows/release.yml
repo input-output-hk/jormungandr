@@ -34,8 +34,8 @@ jobs:
           - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, target_cpu: generic, cross: true}
           - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, target_cpu: generic, cross: true}
           - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: mips64el-unknown-linux-gnuabi64, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: powerpc64le-unknown-linux-gnu, target_cpu: generic, cross: true}
+          # - {os: ubuntu-latest, toolchain: stable, target: mips64el-unknown-linux-gnuabi64, target_cpu: generic, cross: true}
+          # - {os: ubuntu-latest, toolchain: stable, target: powerpc64le-unknown-linux-gnu, target_cpu: generic, cross: true}
           - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: generic, cross: true}
           - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: broadwell, cross: true}
           - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, target_cpu: generic, cross: true}
