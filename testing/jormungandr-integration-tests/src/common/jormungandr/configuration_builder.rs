@@ -10,8 +10,8 @@ use crate::common::{
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, ConsensusLeaderId, EpochStabilityDepth, Initial, InitialUTxO,
-    KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
+    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, Initial,
+    InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
     NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, TrustedPeer,
 };
 
@@ -34,6 +34,7 @@ pub struct ConfigurationBuilder {
     node_config_builder: NodeConfigBuilder,
     rewards_history: bool,
     configure_default_log: bool,
+    committee_ids: Vec<CommitteeIdDef>,
 }
 
 impl Default for ConfigurationBuilder {
@@ -60,6 +61,7 @@ impl ConfigurationBuilder {
             node_config_builder: NodeConfigBuilder::new(),
             rewards_history: false,
             configure_default_log: true,
+            committee_ids: vec![],
         }
     }
 
@@ -87,10 +89,11 @@ impl ConfigurationBuilder {
         self.rewards_history = true;
         self
     }
-    /*
-    pub fn with_block_hash_from(&mut self, config: &JormungandrParams) -> &mut Self {
-        self.with_block_hash(config.genesis_block_hash.clone())
-    }*/
+
+    pub fn with_committee_ids(&mut self, committee_ids: Vec<CommitteeIdDef>) -> &mut Self {
+        self.committee_ids = committee_ids;
+        self
+    }
 
     pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
         self.linear_fees = linear_fees;
