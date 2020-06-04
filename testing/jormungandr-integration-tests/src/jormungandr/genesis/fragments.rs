@@ -142,14 +142,10 @@ pub fn test_all_fragments() {
 
     let mut new_stake_pool = stake_pool.clone();
     let mut stake_pool_info = new_stake_pool.info_mut();
-    stake_pool_info.rewards = TaxType::zero();
+    stake_pool_info.serial = 100u128;
 
     // 6. send pool update certificate
-
-    /*
-        Ignoring failed step till resolution
-
-    startup::sleep_till_next_epoch(1, &jormungandr.config);
+    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
 
     transaction = stake_pool_owner
         .issue_pool_update_cert(
@@ -163,7 +159,6 @@ pub fn test_all_fragments() {
 
     jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
     stake_pool_owner.confirm_transaction();
-    */
 
     // 7. send pool retire certificate
     transaction = stake_pool_owner
