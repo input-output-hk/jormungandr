@@ -1,4 +1,5 @@
 use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
+use poldercast::Address;
 use slog::FilterLevel;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -44,6 +45,17 @@ pub struct StartArguments {
     /// Start the explorer task and enable associated query endpoints.
     #[structopt(long = "enable-explorer")]
     pub explorer_enabled: bool,
+
+    /// The address to listen from and accept connection from. This is the
+    /// public address that will be distributed to other peers of the network.
+    #[structopt(long = "public-address")]
+    pub public_address: Option<Address>,
+
+    /// Specifies the address the node will listen to to receive p2p connection.
+    /// Can be left empty and the node will listen to whatever value was given
+    /// to `public_address`.
+    #[structopt(long = "listen-address")]
+    pub listen_address: Option<Address>,
 }
 
 #[derive(StructOpt, Debug)]

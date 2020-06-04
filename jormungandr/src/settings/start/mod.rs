@@ -242,7 +242,9 @@ fn generate_network(
 
     let mut profile = poldercast::NodeProfileBuilder::new();
 
-    if let Some(address) = p2p.public_address {
+    if let Some(address) = command_arguments.public_address.clone() {
+        profile.address(address);
+    } else if let Some(address) = p2p.public_address {
         profile.address(address);
     }
 
@@ -257,18 +259,17 @@ fn generate_network(
         profile.add_subscription(sub);
     }
 
+    let p2p_listen_address = p2p.listen_address.as_ref();
+    let listen_address = command_arguments
+        .listen_address
+        .as_ref()
+        .or_else(|| p2p_listen_address)
+        .map(|v| multiaddr_to_socket_addr(v.multi_address()).ok_or(Error::ListenAddressNotValid))
+        .transpose()?;
+
     let mut network = network::Configuration {
         profile: profile.build(),
-        listen_address: match &p2p.listen_address {
-            None => None,
-            Some(v) => {
-                if let Some(addr) = multiaddr_to_socket_addr(v.multi_address()) {
-                    Some(addr)
-                } else {
-                    return Err(Error::ListenAddressNotValid);
-                }
-            }
-        },
+        listen_address,
         trusted_peers: p2p
             .trusted_peers
             .clone()
