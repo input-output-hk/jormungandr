@@ -205,11 +205,19 @@ jobs:
           path: ~/.cargo/registry
           key: cargo-registry-${{ hashFiles('Cargo.lock') }}
 
+      - name: Create .cargo/config.toml
+        shell: bash
+        run: |
+          mkdir .cargo
+          cat > .cargo/config.toml <<EOF
+          [target.${{ matrix.config.target }}]
+          rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}", "-C", "lto"]
+          EOF
+
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         env:
           DATE: ${{ env.DATE }}
-          RUSTFLAGS: -C target-cpu=${{ matrix.target_cpu }} -C lto
         with:
           use-cross: ${{ matrix.cross }}
           command: build
@@ -226,7 +234,6 @@ jobs:
         uses: actions-rs/cargo@v1
         env:
           DATE: ${{ env.DATE }}
-          RUSTFLAGS: -C target-cpu=${{ matrix.target_cpu }} -C lto
         with:
           use-cross: ${{ matrix.cross }}
           command: build
