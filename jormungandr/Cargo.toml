@@ -60,17 +60,10 @@ warp = { version = "0.2.3", features = ["tls"] }
 pin-project = "0.4"
 multiaddr = "0.3.1"
 
-[target.'cfg(not(target_os = "android"))'.dependencies.reqwest]
+[dependencies.reqwest]
 version = "0.10.6"
 default-features = false
 features = ["rustls-tls"]
-
-# rustls-native-certs required by rustls-tls does not support Android, so build
-# with OpenSSL.
-# TODO rustls-tls should work on Android when https://github.com/seanmonstar/reqwest/pull/862
-# is merged and released.
-[target.'cfg(target_os = "android")'.dependencies.reqwest]
-version = "0.10.4"
 
 [dev-dependencies]
 rand_core = "0.5"

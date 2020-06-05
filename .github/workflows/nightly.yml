@@ -7,13 +7,15 @@ name: Nightly Release
 jobs:
   nightly_release:
     name: Create nightly release
+    if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_nightly.outputs.upload_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@master
-
-      - name: Install hub
-        uses: geertvdc/setup-hub@master
+        uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - name: Get version
         id: version
@@ -22,11 +24,14 @@ jobs:
           echo ::set-output name=version::$VERSION
 
       - name: Delete nightly with hub
+        continue-on-error: true
         env:
           GITHUB_USER: ${{ secrets.GITHUB_USER }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          hub release delete nightly
+          curl -fsSL https://github.com/github/hub/raw/master/script/get | bash -s 2.14.1
+          bin/hub release delete nightly
 
       - name: Create Nightly
         id: create_nightly
@@ -39,46 +44,128 @@ jobs:
           draft: false
           prerelease: true
 
+  update_deps:
+    name: Update dependencies
+    if: ${{ github.repository_owner == 'input-output-hk' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - id: cargo-registry
+        name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        id: ls-crates-io-index
+        name: Get head commit hash of crates.io registry index
+        continue-on-error: true
+        shell: bash
+        run: |
+          commit=$(
+            git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
+            cut -f 1
+          )
+          echo "::set-output name=head::$commit"
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        name: Cache cargo registry index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry/index
+          key: cargo-index-${{ steps.ls-crates-io-index.outputs.head }}
+          restore-keys: |
+            cargo-index-
+
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        name: Fetch dependencies
+        run: cargo fetch --locked
+
+      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
+        name: Prune unpacked sources of dependency crates from cache
+        shell: bash
+        run: |
+          rm -rf ~/.cargo/registry/src
+
   release_assets:
     name: Release assets
+    if: ${{ github.repository_owner == 'input-output-hk' }}
+    needs: [nightly_release, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, target_cpu: generic, cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: x86_64-unknown-linux-gnu, target_cpu: broadwell, cross: false}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-unknown-linux-gnu, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: arm-unknown-linux-gnueabi, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: armv7-unknown-linux-gnueabihf, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: generic, cross: true}
-          - {os: ubuntu-latest, toolchain: stable,  target: x86_64-unknown-linux-musl, target_cpu: broadwell, cross: true}
-          - {os: ubuntu-latest, toolchain: stable, target: aarch64-linux-android, target_cpu: generic, cross: true}
-          # - {os: ubuntu-latest, toolchain: stable, target: mips64el-unknown-linux-gnuabi64, target_cpu: generic, cross: true}
-          # - {os: ubuntu-latest, toolchain: stable, target: powerpc64le-unknown-linux-gnu, target_cpu: generic, cross: true}
+          - {os: ubuntu-latest, target: x86_64-unknown-linux-gnu}
           # Macos
-          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, target_cpu: generic, cross: false}
-          - {os: macos-latest, toolchain: stable, target: x86_64-apple-darwin, target_cpu: broadwell, cross: false}
+          - {os: macos-latest, target: x86_64-apple-darwin}
+        target_cpu: [generic, broadwell]
+        toolchain: [stable]
+        cross: [false]
+        include:
           # Windows
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, target_cpu: generic, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: generic, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-gnu, target: x86_64-pc-windows-gnu, target_cpu: broadwell, cross: false}
-          - {os: windows-latest, toolchain: stable-x86_64-pc-windows-msvc, target: x86_64-pc-windows-msvc, target_cpu: broadwell, cross: false}
+          - config: {os: windows-latest, target: x86_64-pc-windows-gnu}
+            target_cpu: generic
+            toolchain: stable-x86_64-pc-windows-gnu
+            cross: false
+          - config: {os: windows-latest, target: x86_64-pc-windows-gnu}
+            target_cpu: broadwell
+            toolchain: stable-x86_64-pc-windows-gnu
+            cross: false
+          - config: {os: windows-latest, target: x86_64-pc-windows-msvc}
+            target_cpu: generic
+            toolchain: stable-x86_64-pc-windows-msvc
+            cross: false
+          - config: {os: windows-latest, target: x86_64-pc-windows-msvc}
+            target_cpu: broadwell
+            toolchain: stable-x86_64-pc-windows-msvc
+            cross: false
+          # Cross targets
+          - config: {os: ubuntu-latest, target: aarch64-unknown-linux-gnu}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest, target: arm-unknown-linux-gnueabi}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest,  target: x86_64-unknown-linux-musl}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest,  target: x86_64-unknown-linux-musl}
+            target_cpu: broadwell
+            toolchain: stable
+            cross: true
+          - config: {os: ubuntu-latest, target: aarch64-linux-android}
+            target_cpu: generic
+            toolchain: stable
+            cross: true
+          # - config: {os: ubuntu-latest, target: mips64el-unknown-linux-gnuabi64}
+          #   target_cpu: generic
+          #   toolchain: stable
+          #   cross: true
+          # - config: {os: ubuntu-latest, target: powerpc64le-unknown-linux-gnu}
+          #   target_cpu: generic
+          #   toolchain: stable
+          #   cross: true
+
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.config.toolchain }}
+          toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.config.target }}
           override: true
           default: true
-
-      - name: Downgrade cross
-        uses: actions-rs/cargo@v1
-        if: ${{ matrix.config.cross }}
-        with:
-          command: install
-          args: --version 0.1.16 cross
 
       - name: Get current date
         run: |
@@ -87,7 +174,7 @@ jobs:
         shell: bash
 
       - name: Checkout code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           submodules: true
 
@@ -98,38 +185,86 @@ jobs:
           echo ::set-output name=version::$VERSION
         shell: bash
 
+      # https://github.com/actions/runner/issues/498
+      - if: ${{ runner.os == 'Windows' }}
+        name: Fix up Cargo.lock hash
+        shell: powershell
+        run: |
+          ((Get-Content Cargo.lock) -join "`n") + "`n" |
+          Set-Content -NoNewline Cargo.lock
+
+      # https://github.com/actions/virtual-environments/issues/895
+      # https://github.com/actions/virtual-environments/issues/936
+      - if: ${{ runner.os == 'Windows' }}
+        name: Clean up cargo registry files
+        run: rm -r -fo $env:UserProfile\.cargo\registry
+
+      - name: Restore cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         env:
           DATE: ${{ env.DATE }}
         with:
-          use-cross: ${{ matrix.config.cross }}
+          use-cross: ${{ matrix.cross }}
           command: rustc
-          args:  --manifest-path jormungandr/Cargo.toml --release --target ${{ matrix.config.target }} --bin jormungandr --no-default-features -- -C target-cpu=${{ matrix.config.target_cpu }} -C lto
+          args: |
+            --manifest-path jormungandr/Cargo.toml
+            --bin jormungandr
+            --no-default-features
+            --verbose
+            --locked
+            --release
+            --target ${{ matrix.config.target }}
+            -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         env:
           DATE: ${{ env.DATE }}
         with:
-          use-cross: ${{ matrix.config.cross }}
+          use-cross: ${{ matrix.cross }}
           command: rustc
-          args: --manifest-path jcli/Cargo.toml --release --target ${{ matrix.config.target }} --bin jcli -- -C target-cpu=${{ matrix.config.target_cpu }} -C lto
+          args: |
+            --manifest-path jcli/Cargo.toml
+            --bin jcli
+            --verbose
+            --locked
+            --release
+            --target ${{ matrix.config.target }}
+            -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
-      - name: Pack binaries if unix
+      - name: Pack binaries (Unix)
         if: matrix.config.os != 'windows-latest'
-        run: tar -C ./target/${{ matrix.config.target }}/release -czvf jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.tar.gz jormungandr jcli
+        run: |
+          archive=jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
+          tar -C ./target/${{ matrix.config.target }}/release -czvf $archive jormungandr jcli
+          echo "::set-env name=RELEASE_ARCHIVE::$archive"
+          echo "::set-env name=RELEASE_CONTENT_TYPE::application/gzip"
 
-      - name: Pack binaries if windows
+      - name: Pack binaries (Windows)
         if: matrix.config.os == 'windows-latest'
-        run: compress-archive ./target/${{ matrix.config.target }}/release/jormungandr.exe, ./target/${{ matrix.config.target }}/release/jcli.exe jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.zip
+        run: |
+          $archive = "jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip"
+          $args = @{
+            Path  = "./target/${{ matrix.config.target }}/release/jormungandr.exe",
+                    "./target/${{ matrix.config.target }}/release/jcli.exe"
+            DestinationPath = $archive
+          }
+          Compress-Archive @args
+          echo "::set-env name=RELEASE_ARCHIVE::$archive"
+          echo "::set-env name=RELEASE_CONTENT_TYPE::application/zip"
 
       - name: Upload binaries to nightly release
-        uses: svenstaro/upload-release-action@v1-release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}.*
-          asset_name: jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.config.target_cpu }}
-          tag: nightly
-          file_glob: true
-          overwrite: true
+          upload_url: ${{ needs.nightly_release.outputs.upload_url }}
+          asset_path: ./${{ env.RELEASE_ARCHIVE }}
+          asset_name: ${{ env.RELEASE_ARCHIVE }}
+          asset_content_type: ${{ env.RELEASE_CONTENT_TYPE }}
