@@ -171,11 +171,20 @@ jobs:
           path: ~/.cargo/registry
           key: cargo-registry-${{ hashFiles('Cargo.lock') }}
 
+      - name: Create .cargo/config.toml
+        shell: bash
+        run: |
+          mkdir .cargo
+          cat > .cargo/config.toml <<EOF
+          [target.${{ matrix.config.target }}]
+          rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}", "-C", "lto"]
+          EOF
+
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
         with:
           use-cross: ${{ matrix.cross }}
-          command: rustc
+          command: build
           args: |
             --manifest-path jormungandr/Cargo.toml
             --bin jormungandr
@@ -184,13 +193,12 @@ jobs:
             --locked
             --release
             --target ${{ matrix.config.target }}
-            -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         with:
           use-cross: ${{ matrix.cross }}
-          command: rustc
+          command: build
           args: |
             --manifest-path jcli/Cargo.toml
             --bin jcli
@@ -198,7 +206,6 @@ jobs:
             --locked
             --release
             --target ${{ matrix.config.target }}
-            -- -C target-cpu=${{ matrix.target_cpu }} -C lto
 
       - name: Get tag version
         id: get_version
