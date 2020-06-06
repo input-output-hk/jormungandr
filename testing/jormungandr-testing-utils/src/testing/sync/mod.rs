@@ -1,56 +1,20 @@
-use std::{fmt, time::Duration};
-use thiserror::Error;
+use crate::testing::{
+    measurement::{benchmark_speed, Speed, Thresholds},
+    verify::{assert_equals, Error as VerificationError},
+};
 
-use crate::testing::measurement::{benchmark_speed, Speed, Thresholds};
-
+mod measure;
+mod node;
+mod report;
 mod wait;
-use jormungandr_lib::crypto::hash::Hash;
+
+use jormungandr_lib::time::Duration as LibsDuration;
+pub use measure::*;
+pub use node::{SyncNode, SyncNodeError, SyncNodeRecord};
+pub use report::{MeasurementReportInterval, MeasurementReporter};
 pub use wait::SyncWaitParams;
 
-pub trait SyncNode {
-    fn alias(&self) -> &str;
-    fn last_block_height(&self) -> u32;
-    fn log_stats(&self);
-    fn tip(&self) -> Hash;
-    fn log_content(&self) -> String;
-    fn get_lines_with_error_and_invalid(&self) -> Vec<String>;
-    fn is_running(&self) -> bool;
-}
-
-#[derive(Debug, Clone)]
-pub struct SyncNodeRecord {
-    pub alias: String,
-    pub block_height: u32,
-}
-
-impl fmt::Display for SyncNodeRecord {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({} -> {})", self.alias, self.block_height)
-    }
-}
-
-impl SyncNodeRecord {
-    pub fn new(alias: String, block_height: u32) -> Self {
-        Self {
-            alias,
-            block_height,
-        }
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum SyncNodeError {
-    #[error(
-        "Timeout exceeded '{timeout:?}'. Target node: {target_node}. Sync nodes: {sync_nodes:?}"
-    )]
-    TimeoutWhenSyncingTargetNode {
-        timeout: Duration,
-        target_node: SyncNodeRecord,
-        sync_nodes: Vec<SyncNodeRecord>,
-    },
-}
-
-pub fn assure_node_in_sync(
+pub fn ensure_node_is_in_sync_with_others(
     target_node: &dyn SyncNode,
     other_nodes: Vec<&dyn SyncNode>,
     sync_wait: Thresholds<Speed>,
@@ -90,4 +54,51 @@ pub fn assure_node_in_sync(
         sync_nodes: other_nodes_records,
         timeout: benchmark.definition().thresholds().unwrap().max().into(),
     })
+}
+
+pub fn ensure_nodes_are_in_sync<A: SyncNode + ?Sized>(
+    sync_wait: SyncWaitParams,
+    nodes: &[&A],
+) -> Result<(), VerificationError> {
+    if nodes.len() < 2 {
+        return Ok(());
+    }
+
+    wait_for_nodes_sync(&sync_wait);
+    let duration: LibsDuration = sync_wait.wait_time().into();
+    let first_node = nodes.iter().next().unwrap();
+
+    let expected_tip = first_node.tip();
+    let block_height = first_node.last_block_height();
+
+    for node in nodes.iter().skip(1) {
+        let tip = node.tip();
+        assert_equals(
+            &expected_tip,
+            &tip,
+            &format!("nodes are out of sync (different block hashes) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                duration,
+                first_node.alias(),
+                first_node.log_content(),
+                node.alias(),
+                node.log_content()),
+        )?;
+        assert_equals(
+            &block_height,
+            &node.last_block_height(),
+            &format!("nodes are out of sync (different block height) after sync grace period: ({}) . Left node: alias: {}, content: {}, Right node: alias: {}, content: {}",
+                duration,
+                first_node.alias(),
+                first_node.log_content(),
+                node.alias(),
+                node.log_content()
+                ),
+        )?;
+    }
+    Ok(())
+}
+
+pub fn wait_for_nodes_sync(sync_wait_params: &SyncWaitParams) {
+    let wait_time = sync_wait_params.wait_time();
+    std::thread::sleep(wait_time);
 }
