@@ -10,6 +10,7 @@ jobs:
     if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ubuntu-latest
     outputs:
+      release_date: ${{ steps.version.outputs.date }}
       release_version: ${{ steps.version.outputs.version }}
       upload_url: ${{ steps.create_nightly.outputs.upload_url }}
     steps:
@@ -21,7 +22,8 @@ jobs:
         shell: python
         run: |
           from __future__ import print_function
-          import json
+          import json, re
+          from datetime import date
           from subprocess import Popen, PIPE
           p = Popen(
             'cargo read-manifest --manifest-path jormungandr/Cargo.toml',
@@ -29,7 +31,15 @@ jobs:
             stdout=PIPE
           )
           d = json.load(p.stdout)
-          print('::set-output name=version::' + d['version'])
+          date = date.today().strftime('%Y%m%d')
+          version = re.sub(
+            r'^(\d+\.\d+\.\d+)(-.*)?$',
+            r'\1-nightly.' + date,
+            d['version'],
+            count=1
+          )
+          print('::set-output name=date::' + date)
+          print('::set-output name=version::' + version)
 
       - name: Delete the existing nightly release
         continue-on-error: true
@@ -173,23 +183,10 @@ jobs:
           override: true
           default: true
 
-      - name: Get current date
-        run: |
-          export DATE=`date +'%Y%m%d'`;
-          echo ::set-env name=DATE::$DATE
-        shell: bash
-
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           submodules: true
-
-      - name: Get version
-        id: version
-        run: |
-          export VERSION=`cat ./jormungandr/Cargo.toml | grep "version" | head -n 1 | awk '{print $3}' | cut -d "\"" -f 2 `
-          echo ::set-output name=version::$VERSION
-        shell: bash
 
       # https://github.com/actions/runner/issues/498
       - if: ${{ runner.os == 'Windows' }}
@@ -231,6 +228,8 @@ jobs:
 
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
+        env:
+          DATE: ${{ needs.create_release.outputs.release_date }}
         with:
           use-cross: ${{ matrix.cross }}
           command: build
@@ -245,6 +244,8 @@ jobs:
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
+        env:
+          DATE: ${{ needs.create_release.outputs.release_date }}
         with:
           use-cross: ${{ matrix.cross }}
           command: build
@@ -259,7 +260,7 @@ jobs:
       - name: Pack binaries (Unix)
         if: matrix.config.os != 'windows-latest'
         run: |
-          archive=jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
+          archive=jormungandr-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
           tar -C ./target/${{ matrix.config.target }}/release -czvf $archive jormungandr jcli
           echo "::set-env name=RELEASE_ARCHIVE::$archive"
           echo "::set-env name=RELEASE_CONTENT_TYPE::application/gzip"
@@ -267,7 +268,7 @@ jobs:
       - name: Pack binaries (Windows)
         if: matrix.config.os == 'windows-latest'
         run: |
-          $archive = "jormungandr-${{ steps.version.outputs.version }}.${{ env.DATE }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip"
+          $archive = "jormungandr-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip"
           $args = @{
             Path  = "./target/${{ matrix.config.target }}/release/jormungandr.exe",
                     "./target/${{ matrix.config.target }}/release/jcli.exe"
