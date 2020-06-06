@@ -8,7 +8,7 @@ use crate::{
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
         Result,
     },
-    Context,
+    Context, NodeController,
 };
 use chain_core::property::FromStr;
 use jormungandr_testing_utils::{
@@ -183,11 +183,11 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         leaders.iter().map(|node| node as &dyn SyncNode).collect();
     sync_nodes.extend(legacy_leaders.iter().map(|node| node as &dyn SyncNode));
 
-    utils::measure_how_many_nodes_are_running(sync_nodes.clone(), "real_network_bootstrap_score");
+    utils::measure_how_many_nodes_are_running(&sync_nodes, "real_network_bootstrap_score");
 
     let leaders_count = leaders.len() as u64;
     utils::measure_and_log_sync_time(
-        sync_nodes,
+        &sync_nodes,
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_sync",
         MeasurementReportInterval::Long,
@@ -196,11 +196,13 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut wallet = controller.wallet(&wallet_name(1)).unwrap();
     let wallet2 = controller.wallet(&wallet_name(2)).unwrap();
 
+    let fragment_nodes: Vec<&NodeController> = leaders.iter().collect();
+
     utils::measure_single_transaction_propagation_speed(
         &mut controller,
         &mut wallet,
         &wallet2,
-        leaders.iter().collect(),
+        &fragment_nodes,
         SyncWaitParams::large_network(leaders_count).into(),
         "real_network_single_transaction_propagation",
         MeasurementReportInterval::Standard,

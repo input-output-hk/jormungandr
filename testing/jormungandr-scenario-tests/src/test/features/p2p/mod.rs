@@ -17,11 +17,11 @@ pub fn assert_connected_cnt(
     info: &str,
 ) -> Result<()> {
     let stats = node.stats()?.stats.expect("empty stats");
-    utils::assert_equals(
+    Ok(utils::assert_equals(
         &peer_connected_cnt,
         &stats.peer_connected_cnt.clone(),
         &format!("{}: peer_connected_cnt, Node {}", info, node.alias()),
-    )
+    )?)
 }
 
 pub fn assert_node_stats(
@@ -171,7 +171,7 @@ pub fn assert_are_not_available(
 
 pub fn assert_empty_quarantine(node: &NodeController, info: &str) -> Result<()> {
     let quarantine = node.p2p_quarantined()?;
-    utils::assert_equals(
+    Ok(utils::assert_equals(
         &vec![],
         &quarantine,
         &format!(
@@ -179,7 +179,7 @@ pub fn assert_empty_quarantine(node: &NodeController, info: &str) -> Result<()> 
             info,
             node.alias()
         ),
-    )
+    )?)
 }
 
 pub fn assert_are_in_quarantine(

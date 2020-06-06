@@ -55,7 +55,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![&passive, &leader],
+        &[&passive, &leader],
         SyncWaitParams::two_nodes().into(),
         "transaction_to_passive_sync",
         MeasurementReportInterval::Standard,
@@ -132,7 +132,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
-        vec![&passive, &leader],
+        &[&passive, &leader],
         SyncWaitParams::nodes_restart(2).into(),
         "leader_restart",
         MeasurementReportInterval::Standard,
@@ -189,7 +189,7 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![&passive, &leader],
+        &[&passive, &leader],
         SyncWaitParams::nodes_restart(2).into(),
         "passive_node_is_updated_sync",
         MeasurementReportInterval::Standard,
