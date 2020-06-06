@@ -5,17 +5,16 @@ on:
 name: Nightly Release
 
 jobs:
-  nightly_release:
+  create_release:
     name: Create nightly release
     if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ubuntu-latest
     outputs:
+      release_version: ${{ steps.version.outputs.version }}
       upload_url: ${{ steps.create_nightly.outputs.upload_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          submodules: true
 
       - name: Get version from jormungandr/Cargo.toml
         id: version
@@ -32,26 +31,24 @@ jobs:
           d = json.load(p.stdout)
           print('::set-output name=version::' + d['version'])
 
-      - name: Delete nightly with hub
+      - name: Delete the existing nightly release
         continue-on-error: true
         env:
-          GITHUB_USER: ${{ secrets.GITHUB_USER }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
         run: |
-          curl -fsSL https://github.com/github/hub/raw/master/script/get | bash -s 2.14.1
-          bin/hub release delete nightly
+          hub release delete nightly
+          git push --delete origin refs/tags/nightly
 
       - name: Create Nightly
         id: create_nightly
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: nightly
-          release_name: ${{ steps.version.outputs.version }}
-          draft: false
-          prerelease: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          hub release create --prerelease --draft \
+            -m "Release ${{ steps.version.outputs.version }} (in progress)" \
+            -t $GITHUB_SHA nightly
+          upload_url=$(hub release show -f '%uA' nightly)
+          echo "::set-output name=upload_url::$upload_url"
 
   update_deps:
     name: Update dependencies
@@ -100,10 +97,10 @@ jobs:
         run: |
           rm -rf ~/.cargo/registry/src
 
-  release_assets:
-    name: Release assets
+  build_assets:
+    name: Build assets
     if: ${{ github.repository_owner == 'input-output-hk' }}
-    needs: [nightly_release, update_deps]
+    needs: [create_release, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
@@ -280,7 +277,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.nightly_release.outputs.upload_url }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./${{ env.RELEASE_ARCHIVE }}
           asset_name: ${{ env.RELEASE_ARCHIVE }}
           asset_content_type: ${{ env.RELEASE_CONTENT_TYPE }}
+
+  publish_release:
+    name: Publish nightly release
+    if: ${{ github.repository_owner == 'input-output-hk' }}
+    needs: [create_release, build_assets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          hub release edit --draft=false \
+            -m 'Release ${{ needs.create_release.outputs.release_version }}' \
+            nightly
