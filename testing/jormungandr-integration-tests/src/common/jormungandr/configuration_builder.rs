@@ -238,6 +238,7 @@ impl ConfigurationBuilder {
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff.clone())
             .with_linear_fees(self.linear_fees.clone())
+            .with_committee_ids(self.committee_ids.clone())
             .build();
 
         let path_to_output_block = build_genesis_block(&block0_config, temp_dir);
