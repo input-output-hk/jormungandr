@@ -17,11 +17,20 @@ jobs:
         with:
           submodules: true
 
-      - name: Get version
+      - name: Get version from jormungandr/Cargo.toml
         id: version
+        shell: python
         run: |
-          export VERSION=`cat ./jormungandr/Cargo.toml | grep "version" | head -n 1 | awk '{print $3}' | cut -d "\"" -f 2 `
-          echo ::set-output name=version::$VERSION
+          from __future__ import print_function
+          import json
+          from subprocess import Popen, PIPE
+          p = Popen(
+            'cargo read-manifest --manifest-path jormungandr/Cargo.toml',
+            shell=True,
+            stdout=PIPE
+          )
+          d = json.load(p.stdout)
+          print('::set-output name=version::' + d['version'])
 
       - name: Delete nightly with hub
         continue-on-error: true
