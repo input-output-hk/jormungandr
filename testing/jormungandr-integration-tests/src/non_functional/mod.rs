@@ -103,51 +103,6 @@ pub fn check_transaction_was_processed(
         .map_err(NodeStuckError::InternalJormungandrError)
 }
 
-pub fn assert_nodes_are_in_sync(nodes: Vec<&JormungandrProcess>) {
-    if nodes.len() < 2 {
-        return;
-    }
-    let sync_wait: u64 = (nodes.len() * 10) as u64;
-    process_utils::sleep(sync_wait);
-    let first_node = nodes.iter().next().unwrap();
-    let block_height = first_node
-        .rest()
-        .stats()
-        .unwrap()
-        .stats
-        .unwrap()
-        .last_block_height
-        .unwrap()
-        .parse::<i32>()
-        .unwrap();
-    let grace_value = 2;
-
-    for node in nodes.iter().skip(1) {
-        let current_block_height = &node
-            .rest()
-            .stats()
-            .unwrap()
-            .stats
-            .unwrap()
-            .last_block_height
-            .unwrap()
-            .parse::<i32>()
-            .unwrap();
-        let abs = (current_block_height - block_height).abs();
-        println!("{} vs {}.. {}", block_height, current_block_height, abs);
-        assert!(
-            abs <= grace_value,
-            format!("Nodes are out of sync more than {}", grace_value)
-        );
-    }
-}
-
-pub fn assert_no_errors_in_logs(nodes: Vec<&JormungandrProcess>, message: &str) {
-    for node in nodes {
-        node.assert_no_errors_in_log_with_message(message);
-    }
-}
-
 pub fn check_funds_transferred_to(
     address: &str,
     value: Value,
