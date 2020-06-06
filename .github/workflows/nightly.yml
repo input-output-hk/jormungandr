@@ -220,10 +220,17 @@ jobs:
           rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}", "-C", "lto"]
           EOF
 
+      - if: ${{ matrix.cross }}
+        name: Create Cross.toml
+        shell: bash
+        run: |
+          cat > Cross.toml <<EOF
+          [build.env]
+          passthrough = ["DATE"]
+          EOF
+
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
-        env:
-          DATE: ${{ env.DATE }}
         with:
           use-cross: ${{ matrix.cross }}
           command: build
@@ -238,8 +245,6 @@ jobs:
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
-        env:
-          DATE: ${{ env.DATE }}
         with:
           use-cross: ${{ matrix.cross }}
           command: build
