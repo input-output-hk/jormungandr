@@ -24,6 +24,18 @@ impl From<[u8; CommitteeId::COMMITTEE_ID_SIZE]> for CommitteeIdDef {
     }
 }
 
+impl CommitteeIdDef {
+    /// returns the identifier encoded in hexadecimal string
+    pub fn to_hex(&self) -> String {
+        hex::encode(self.0)
+    }
+
+    /// read the identifier from the hexadecimal string
+    pub fn from_hex(s: &str) -> Result<Self, hex::FromHexError> {
+        CommitteeId::from_hex(s).map(Into::into)
+    }
+}
+
 fn get_bytes(committee_id: &CommitteeId) -> [u8; CommitteeId::COMMITTEE_ID_SIZE] {
     let mut bytes = [0; CommitteeId::COMMITTEE_ID_SIZE];
     bytes.copy_from_slice(committee_id.as_ref());

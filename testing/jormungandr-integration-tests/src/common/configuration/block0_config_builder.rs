@@ -14,9 +14,9 @@ use self::serde_derive::{Deserialize, Serialize};
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     interfaces::{
-        ActiveSlotCoefficient, Block0Configuration, BlockchainConfiguration, ConsensusLeaderId,
-        EpochStabilityDepth, Initial, InitialUTxO, KESUpdateSpeed, NumberOfSlotsPerEpoch, Ratio,
-        RewardConstraints, RewardParams, SlotDuration, TaxType,
+        ActiveSlotCoefficient, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
+        ConsensusLeaderId, EpochStabilityDepth, Initial, InitialUTxO, KESUpdateSpeed,
+        NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams, SlotDuration, TaxType,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -114,10 +114,17 @@ impl Block0ConfigurationBuilder {
             .consensus_genesis_praos_active_slot_coeff = consensus_genesis_praos_active_slot_coeff;
         self
     }
+
+    pub fn with_committee_ids(&mut self, committee_ids: Vec<CommitteeIdDef>) -> &mut Self {
+        self.blockchain_configuration.committees = committee_ids;
+        self
+    }
+
     pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
         self.blockchain_configuration.linear_fees = linear_fees;
         self
     }
+
     pub fn with_certs(&mut self, certs: Vec<Initial>) -> &mut Self {
         self.initial.extend(certs.iter().cloned());
         self

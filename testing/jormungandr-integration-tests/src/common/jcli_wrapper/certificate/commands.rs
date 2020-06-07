@@ -5,6 +5,7 @@ use std::process::Command;
 
 use crate::common::configuration;
 
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::TaxType;
 
 #[derive(Default, Debug)]
@@ -40,6 +41,29 @@ impl CertificateCommands {
             .arg(&stake_pool_id)
             .arg("--retirement-time")
             .arg(&retirement_time.to_string());
+        command
+    }
+
+    pub fn get_vote_command(
+        &self,
+        proposal_id: &str,
+        vote_start: BlockDate,
+        vote_end: BlockDate,
+        committe_end: BlockDate,
+    ) -> Command {
+        let mut command = Command::new(configuration::get_jcli_app().as_os_str());
+        command
+            .arg("certificate")
+            .arg("new")
+            .arg("vote-plan")
+            .arg("--proposal-id")
+            .arg(&proposal_id)
+            .arg("--vote-start")
+            .arg(vote_start.to_string())
+            .arg("--vote-end")
+            .arg(vote_end.to_string())
+            .arg("--committee-end")
+            .arg(committe_end.to_string());
         command
     }
 

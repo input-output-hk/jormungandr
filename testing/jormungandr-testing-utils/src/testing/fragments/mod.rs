@@ -1,6 +1,6 @@
 pub use self::{
     export::{FragmentExporter, FragmentExporterError},
-    initial_certificates::{signed_delegation_cert, signed_stake_pool_cert},
+    initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     sender::{FragmentSender, FragmentSenderError},
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
@@ -9,7 +9,7 @@ pub use self::{
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{
-    certificate::PoolId,
+    certificate::{PoolId, VotePlan},
     fee::LinearFee,
     fragment::Fragment,
     testing::{
@@ -157,5 +157,10 @@ impl FragmentBuilder {
             &old_stake_pool.clone().into(),
             new_stake_pool.clone().into(),
         )
+    }
+
+    pub fn vote_plan(&self, wallet: &Wallet, vote_plan: VotePlan) -> Fragment {
+        let inner_wallet = wallet.clone().into();
+        self.fragment_factory().vote_plan(&inner_wallet, vote_plan)
     }
 }

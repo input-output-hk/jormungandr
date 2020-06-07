@@ -303,6 +303,34 @@ pub fn get_key_from_bytes_command(input_file: &Path, key_type: &str) -> Command 
     command
 }
 
+pub fn get_rest_active_committes(host: &str) -> Command {
+    let mut command = get_jcli_command();
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("vote")
+        .arg("active")
+        .arg("committees")
+        .arg("get")
+        .arg("--host")
+        .arg(&host);
+    command
+}
+
+pub fn get_rest_active_vote_plans(host: &str) -> Command {
+    let mut command = get_jcli_command();
+    command
+        .arg("rest")
+        .arg("v0")
+        .arg("vote")
+        .arg("active")
+        .arg("plans")
+        .arg("get")
+        .arg("--host")
+        .arg(&host);
+    command
+}
+
 pub fn get_rest_message_log_command(host: &str) -> Command {
     let mut command = get_jcli_command();
     command

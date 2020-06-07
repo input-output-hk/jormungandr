@@ -10,10 +10,10 @@ mod web;
 
 pub use archive::decompress;
 pub use fragments::{
-    signed_delegation_cert, signed_stake_pool_cert, FragmentBuilder, FragmentBuilderError,
-    FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError, FragmentSenderSetup,
-    FragmentSenderSetupBuilder, FragmentVerifier, FragmentVerifierError, MemPoolCheck,
-    VerifyStrategy,
+    signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, FragmentBuilder,
+    FragmentBuilderError, FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError,
+    FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentVerifier, FragmentVerifierError,
+    MemPoolCheck, VerifyStrategy,
 };
 pub use measurement::{
     benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
