@@ -1,6 +1,9 @@
 use crate::common::jormungandr::rest::RestError;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{EnclaveLeaderId, FragmentLog, NodeSecret},
+};
 use jormungandr_testing_utils::testing::MemPoolCheck;
 use std::collections::HashMap;
 
@@ -130,5 +133,24 @@ impl BackwardCompatibleRest {
 
         self.post("message", raw)?;
         Ok(MemPoolCheck::new(fragment_id))
+    }
+
+    pub fn promote(&self, secret: NodeSecret) -> Result<EnclaveLeaderId, reqwest::Error> {
+        let path = "leaders";
+        let response = reqwest::blocking::Client::new()
+            .post(&self.path(path))
+            .json(&secret)
+            .send()?;
+
+        let leader_id: EnclaveLeaderId = response.json()?;
+        Ok(leader_id)
+    }
+
+    pub fn demote(&self, leader_id: u32) -> Result<(), reqwest::Error> {
+        let path = format!("leaders/{}", leader_id);
+        reqwest::blocking::Client::new()
+            .delete(&self.path(&path))
+            .send()?;
+        Ok(())
     }
 }
