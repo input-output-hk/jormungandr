@@ -73,10 +73,10 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         1_000.into(),
     )?;
 
-    let leaders = vec![&leader1, &leader2, &leader3, &leader4];
+    let leaders = [&leader1, &leader2, &leader3, &leader4];
 
     utils::measure_and_log_sync_time(
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(4, 2).into(),
         "fully_connected_sync",
         MeasurementReportInterval::Standard,
@@ -86,7 +86,7 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &mut controller,
         &mut wallet1,
         &wallet2,
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(4, 2).into(),
         "fully_connected_single_transaction_propagation",
         MeasurementReportInterval::Standard,
@@ -155,9 +155,9 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         1_000.into(),
     )?;
 
-    let leaders = vec![&leader1, &leader2, &leader3, &leader4, &leader5];
+    let leaders = [&leader1, &leader2, &leader3, &leader4, &leader5];
     utils::measure_and_log_sync_time(
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(5, 3).into(),
         "star_sync",
         MeasurementReportInterval::Standard,
@@ -167,7 +167,7 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &mut controller,
         &mut wallet1,
         &wallet2,
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(5, 3).into(),
         "star_single_transaction_propagation",
         MeasurementReportInterval::Standard,
@@ -234,7 +234,7 @@ pub fn ring(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![&leader1, &leader2, &leader3, &leader4],
+        &[&leader1, &leader2, &leader3, &leader4],
         SyncWaitParams::network_size(4, 3).into(),
         "ring_sync",
         MeasurementReportInterval::Standard,
@@ -305,10 +305,10 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         1_000.into(),
     )?;
 
-    let leaders = vec![&leader1, &leader2, &leader3, &leader4, &leader5];
+    let leaders = [&leader1, &leader2, &leader3, &leader4, &leader5];
 
     utils::measure_and_log_sync_time(
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(5, 3).into(),
         "mesh_sync",
         MeasurementReportInterval::Standard,
@@ -318,7 +318,7 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &mut controller,
         &mut wallet1,
         &wallet2,
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(5, 3).into(),
         "mesh_single_transaction_propagation",
         MeasurementReportInterval::Standard,
@@ -382,10 +382,10 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         1_000.into(),
     )?;
 
-    let leaders = vec![&leader1, &leader2, &leader3, &leader4];
+    let leaders = [&leader1, &leader2, &leader3, &leader4];
 
     utils::measure_and_log_sync_time(
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(4, 4).into(),
         "point_to_point_sync",
         MeasurementReportInterval::Standard,
@@ -395,7 +395,7 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &mut controller,
         &mut wallet1,
         &wallet2,
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(4, 4).into(),
         "point_to_point_single_transaction_propagation",
         MeasurementReportInterval::Standard,
@@ -472,10 +472,10 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
         1_000.into(),
     )?;
 
-    let leaders = vec![&leader1, &leader2, &leader3, &leader4];
+    let leaders = [&leader1, &leader2, &leader3, &leader4];
 
     utils::measure_and_log_sync_time(
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(4, 4).into(),
         "point_to_point_on_file_storage_sync",
         MeasurementReportInterval::Standard,
@@ -485,7 +485,7 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
         &mut controller,
         &mut wallet1,
         &wallet2,
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(4, 4).into(),
         "point_to_point_on_file_storage_single_transaction_propagation",
         MeasurementReportInterval::Standard,
@@ -562,12 +562,12 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         1_000.into(),
     )?;
 
-    let leaders = vec![
+    let leaders = [
         &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7,
     ];
 
     utils::measure_and_log_sync_time(
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(7, 5).into(),
         "tree_sync",
         MeasurementReportInterval::Standard,
@@ -577,7 +577,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &mut controller,
         &mut wallet1,
         &wallet2,
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(7, 5).into(),
         "tree_single_transaction_propagation",
         MeasurementReportInterval::Standard,
@@ -682,13 +682,13 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         .fragment_sender_with_setup(setup)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())?;
 
-    let leaders = vec![
+    let leaders = [
         &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
         &core,
     ];
 
     utils::measure_and_log_sync_time(
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(10, 3).into(),
         "relay_sync",
         MeasurementReportInterval::Standard,
@@ -698,7 +698,7 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         &mut controller,
         &mut wallet1,
         &wallet2,
-        leaders.clone(),
+        &leaders,
         SyncWaitParams::network_size(10, 3).into(),
         "relay_single_transaction_propagation",
         MeasurementReportInterval::Standard,

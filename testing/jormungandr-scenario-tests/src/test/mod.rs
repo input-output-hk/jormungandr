@@ -14,6 +14,7 @@ error_chain! {
         Wallet(jormungandr_testing_utils::wallet::WalletError);
         FragmentSender(jormungandr_testing_utils::testing::FragmentSenderError);
         FragmentVerifier(jormungandr_testing_utils::testing::FragmentVerifierError);
+        VerificationFailed(jormungandr_testing_utils::testing::VerificationError);
     }
 
     links {

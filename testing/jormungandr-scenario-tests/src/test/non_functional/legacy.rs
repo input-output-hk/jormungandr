@@ -109,7 +109,7 @@ fn test_legacy_release(
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![
+        &[
             &leader1 as &dyn SyncNode,
             &leader2 as &dyn SyncNode,
             &leader3 as &dyn SyncNode,
@@ -244,7 +244,7 @@ fn test_legacy_disruption_release(
     )?;
 
     utils::measure_and_log_sync_time(
-        vec![
+        &[
             &leader1 as &dyn SyncNode,
             &leader2 as &dyn SyncNode,
             &leader3 as &dyn SyncNode,

@@ -65,7 +65,7 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     }
 
     utils::measure_and_log_sync_time(
-        vec![&leader_1, &leader_2],
+        &[&leader_1, &leader_2],
         SyncWaitParams::two_nodes().into(),
         "two_transaction_to_two_leaders_sync",
         MeasurementReportInterval::Standard,

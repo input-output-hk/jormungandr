@@ -1,7 +1,7 @@
 use super::{FragmentExporter, FragmentExporterError};
 use crate::{
     testing::{
-        assure_node_in_sync,
+        ensure_node_is_in_sync_with_others,
         fragments::node::{FragmentNode, MemPoolCheck},
         FragmentSenderSetup, FragmentVerifier, SyncNode, SyncNodeError, SyncWaitParams,
     },
@@ -223,7 +223,7 @@ impl<'a> FragmentSender<'a> {
         }
 
         let nodes_length = (self.setup.sync_nodes().len() + 1) as u64;
-        assure_node_in_sync(
+        ensure_node_is_in_sync_with_others(
             node,
             self.setup.sync_nodes(),
             SyncWaitParams::network_size(nodes_length, 2).into(),

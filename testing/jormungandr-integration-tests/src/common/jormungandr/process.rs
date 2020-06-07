@@ -3,8 +3,10 @@ use crate::common::configuration::{JormungandrParams, TestConfig};
 use crate::common::explorer::Explorer;
 use crate::common::jcli_wrapper;
 use chain_impl_mockchain::fee::LinearFee;
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{Block0Configuration, TrustedPeer};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{Block0Configuration, TrustedPeer},
+};
 use jormungandr_testing_utils::testing::SyncNode;
 
 use assert_fs::TempDir;

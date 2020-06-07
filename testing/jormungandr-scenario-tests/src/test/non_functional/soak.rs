@@ -2,11 +2,11 @@ use crate::test::non_functional::*;
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     scenario::repository::ScenarioResult,
-    test::utils::{self, SyncWaitParams},
+    test::utils::SyncWaitParams,
     test::Result,
     Context,
 };
-use jormungandr_testing_utils::testing::FragmentVerifier;
+use jormungandr_testing_utils::testing::{ensure_nodes_are_in_sync, FragmentVerifier};
 use rand_chacha::ChaChaRng;
 use std::time::{Duration, SystemTime};
 
@@ -143,9 +143,9 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         }
     }
 
-    utils::assert_are_in_sync(
+    ensure_nodes_are_in_sync(
         SyncWaitParams::ZeroWait,
-        vec![
+        &[
             &leader1, &leader2, &leader3, &leader4, &leader5, &leader6, &leader7, &relay1, &relay2,
         ],
     )?;

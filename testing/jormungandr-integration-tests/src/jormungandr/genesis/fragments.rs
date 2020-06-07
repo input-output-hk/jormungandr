@@ -3,10 +3,7 @@ use crate::common::{
 };
 use jormungandr_testing_utils::stake_pool::StakePool;
 
-use chain_impl_mockchain::{
-    accounting::account::{DelegationRatio, DelegationType},
-    rewards::TaxType,
-};
+use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
