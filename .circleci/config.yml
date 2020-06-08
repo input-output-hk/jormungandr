@@ -177,13 +177,10 @@ workflows:
             - cargo_fetch
       - test_debug:
           requires:
-            - rustfmt
             - cargo_fetch
       - test_release:
           requires:
-            - rustfmt
             - cargo_fetch
       - test_beta:
           requires:
-            - rustfmt
             - cargo_fetch
