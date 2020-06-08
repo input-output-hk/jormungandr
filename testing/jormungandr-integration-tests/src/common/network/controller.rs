@@ -5,9 +5,11 @@ use crate::common::{
 };
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
-use jormungandr_testing_utils::testing::network_builder::NodeSetting;
-use jormungandr_testing_utils::testing::network_builder::{
-    LeadershipMode, PersistenceMode, Settings, SpawnParams, Wallet,
+use jormungandr_testing_utils::{
+    testing::network_builder::{
+        LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams,
+    },
+    wallet::Wallet,
 };
 
 use assert_fs::fixture::FixtureError;
@@ -60,7 +62,7 @@ impl Controller {
 
     pub fn wallet(&mut self, wallet: &str) -> Result<Wallet, ControllerError> {
         if let Some(wallet) = self.settings.wallets.remove(wallet) {
-            Ok(wallet)
+            Ok(wallet.into())
         } else {
             Err(ControllerError::WalletNotFound(wallet.to_owned()))
         }

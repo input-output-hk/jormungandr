@@ -1,8 +1,12 @@
 use crate::common::{
-    jcli_wrapper,
+    jormungandr::JormungandrProcess,
     network::{self, wallet},
-    transaction_utils::TransactionHash,
 };
+use std::{cmp::PartialOrd, fmt::Display};
+
+use jormungandr_lib::interfaces::NodeStats;
+use jormungandr_testing_utils::testing::FragmentSender;
+
 const PASSIVE: &str = "PASSIVE";
 const LEADER: &str = "LEADER";
 
@@ -21,7 +25,7 @@ pub fn passive_node_last_block_info() {
     let passive = network_controller.spawn_as_passive_and_wait(PASSIVE);
 
     let mut alice = network_controller.wallet("alice").unwrap();
-    let bob = network_controller.wallet("bob").unwrap();
+    let mut bob = network_controller.wallet("bob").unwrap();
 
     let stats_before = passive
         .rest()
@@ -29,58 +33,74 @@ pub fn passive_node_last_block_info() {
         .expect("cannot get stats at beginning")
         .stats
         .expect("empty stats");
-    for _ in 0..10 {
-        let fragment = alice
-            .transaction_to(
-                &leader.genesis_block_hash(),
-                &leader.fees(),
-                bob.address(),
-                10.into(),
-            )
-            .unwrap()
-            .encode();
-        jcli_wrapper::assert_transaction_in_block_with_wait(
-            &fragment,
-            &leader,
-            &Default::default(),
-        );
 
-        alice.confirm_transaction();
-    }
+    let fragment_sender = FragmentSender::new(
+        leader.genesis_block_hash(),
+        leader.fees(),
+        Default::default(),
+    );
 
-    let stats_after = passive
+    fragment_sender
+        .send_transactions_round_trip(10, &mut alice, &mut bob, &leader, 100.into())
+        .expect("fragment send error");
+
+    assert_last_stats_are_updated(stats_before, &passive);
+}
+
+fn assert_last_stats_are_updated(stats_before: NodeStats, node: &JormungandrProcess) {
+    let stats_after = node
         .rest()
         .stats()
         .expect("cannot get stats at end")
         .stats
         .expect("empty stats");
 
-    assert!(
-        stats_before.last_block_content_size == stats_after.last_block_content_size,
-        "last block content size should to be updated"
+    compare_stats_element(
+        stats_before.last_block_content_size,
+        stats_after.last_block_content_size,
+        "last block content size",
     );
-    assert!(
-        stats_before.last_block_date == stats_after.last_block_date,
-        "last block date should to be updated"
+    compare_stats_element(
+        stats_before.last_block_date.unwrap(),
+        stats_after.last_block_date.unwrap(),
+        "last block date",
     );
-    assert!(
-        stats_before.last_block_fees == stats_after.last_block_fees,
-        "last block fees size should to be updated"
+    compare_stats_element(
+        stats_before.last_block_fees,
+        stats_after.last_block_fees,
+        "last block fees size",
     );
-    assert!(
-        stats_before.last_block_hash == stats_after.last_block_hash,
-        "last block hash should to be updated"
+    compare_stats_element(
+        stats_before.last_block_hash.unwrap(),
+        stats_after.last_block_hash.unwrap(),
+        "last block hash",
     );
-    assert!(
-        stats_before.last_block_sum == stats_after.last_block_sum,
-        "last block sum should to be updated"
+    compare_stats_element(
+        stats_before.last_block_sum,
+        stats_after.last_block_sum,
+        "last block sum",
     );
-    assert!(
-        stats_before.last_block_time == stats_after.last_block_time,
-        "last block time should to be updated"
+    compare_stats_element(
+        stats_before.last_block_time.unwrap(),
+        stats_after.last_block_time.unwrap(),
+        "last block time",
     );
+    compare_stats_element(
+        stats_before.last_block_tx,
+        stats_after.last_block_tx,
+        "last block tx",
+    );
+}
+
+fn compare_stats_element<T>(before_value: T, after_value: T, info: &str)
+where
+    T: Display + PartialOrd,
+{
     assert!(
-        stats_before.last_block_tx == stats_after.last_block_tx,
-        "last block tx should to be updated"
+        before_value > after_value,
+        "{} should to be updated. {} vs {}",
+        info,
+        before_value,
+        after_value,
     );
 }
