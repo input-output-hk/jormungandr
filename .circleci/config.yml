@@ -105,6 +105,8 @@ jobs:
 
   test_debug:
     executor: rust-stable
+    environment:
+      CARGO_INCREMENTAL: 0
     steps:
       - test
 
@@ -116,6 +118,8 @@ jobs:
 
   test_beta:
     executor: rust-beta
+    environment:
+      CARGO_INCREMENTAL: 0
     steps:
       - test
 
