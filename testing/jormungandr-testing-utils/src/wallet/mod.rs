@@ -18,7 +18,7 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
-    interfaces::{Address, Initial, Value},
+    interfaces::{Address, Initial, InitialUTxO, Value},
 };
 
 use chain_addr::Discrimination;
@@ -75,6 +75,13 @@ impl Wallet {
         ))
     }
 
+    pub fn into_initial_fund(&self, value: u64) -> InitialUTxO {
+        InitialUTxO {
+            address: self.address(),
+            value: value.into(),
+        }
+    }
+
     pub fn new_utxo<RNG>(rng: &mut RNG) -> Wallet
     where
         RNG: CryptoRng + RngCore,
@@ -89,6 +96,13 @@ impl Wallet {
         let mut delegation = delegation::Wallet::generate(rng);
         delegation.generate_new_signing_key(delegation_identifier.clone());
         Wallet::Delegation(delegation)
+    }
+
+    pub fn save_to<W: std::io::Write>(&self, w: W) -> std::io::Result<()> {
+        match self {
+            Wallet::Account(account) => account.save_to(w),
+            _ => unimplemented!(),
+        }
     }
 
     pub fn address(&self) -> Address {

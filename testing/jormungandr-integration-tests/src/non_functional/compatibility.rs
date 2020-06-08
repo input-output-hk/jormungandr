@@ -4,8 +4,10 @@ use crate::common::{
     startup,
     transaction_utils::TransactionHash,
 };
+use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_testing_utils::testing::FragmentSender;
 use std::str::FromStr;
 
 fn test_connectivity_between_master_and_legacy_app(version: String, temp_dir: &TempDir) {
@@ -73,4 +75,95 @@ pub fn test_compability() {
     for release in download_last_n_releases(5) {
         test_connectivity_between_master_and_legacy_app(release.version(), &temp_dir);
     }
+}
+
+#[test]
+pub fn test_upgrade_downgrade() {
+    let temp_dir = TempDir::new().unwrap();
+    for release in download_last_n_releases(1) {
+        test_upgrade_and_downgrade_from_legacy_to_master(release.version(), &temp_dir);
+    }
+}
+
+fn test_upgrade_and_downgrade_from_legacy_to_master(version: String, temp_dir: &TempDir) {
+    println!("Testing version: {}", version);
+
+    let mut sender = startup::create_new_account_address();
+    let mut receiver = startup::create_new_account_address();
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(vec![
+            sender.into_initial_fund(1_000_000),
+            receiver.into_initial_fund(1_000_000),
+        ])
+        .with_storage(&temp_dir.child("storage"))
+        .build(temp_dir);
+
+    let version = Version::from_str(&version).unwrap();
+
+    // build some storage data on legacy node
+
+    let legacy_jormungandr = Starter::new()
+        .config(config.clone())
+        .legacy(version)
+        .start()
+        .unwrap();
+
+    let fragment_sender = FragmentSender::new(
+        legacy_jormungandr.genesis_block_hash(),
+        legacy_jormungandr.fees(),
+        Default::default(),
+    );
+
+    fragment_sender
+        .send_transactions_round_trip(
+            10,
+            &mut sender,
+            &mut receiver,
+            &legacy_jormungandr,
+            100.into(),
+        )
+        .expect("fragment send error for legacy version");
+
+    legacy_jormungandr.assert_no_errors_in_log();
+
+    legacy_jormungandr.shutdown();
+
+    // upgrade node to newest
+
+    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+
+    fragment_sender
+        .send_transactions_round_trip(10, &mut sender, &mut receiver, &jormungandr, 100.into())
+        .expect("fragment send error for legacy version");
+
+    jormungandr.assert_no_errors_in_log();
+    jormungandr.shutdown();
+
+    // rollback node to legacy again
+
+    let legacy_jormungandr = Starter::new()
+        .config(config.clone())
+        .legacy(version)
+        .start()
+        .unwrap();
+
+    let fragment_sender = FragmentSender::new(
+        legacy_jormungandr.genesis_block_hash(),
+        legacy_jormungandr.fees(),
+        Default::default(),
+    );
+
+    fragment_sender
+        .send_transactions_round_trip(
+            10,
+            &mut sender,
+            &mut receiver,
+            &legacy_jormungandr,
+            100.into(),
+        )
+        .expect("fragment send error for legacy version");
+
+    legacy_jormungandr.assert_no_errors_in_log();
+    legacy_jormungandr.shutdown();
 }
