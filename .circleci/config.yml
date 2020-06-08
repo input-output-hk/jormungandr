@@ -1,164 +1,161 @@
-version: 2
+version: 2.1
+
+executors:
+  rust-stable:
+    docker:
+      - image: inputoutput/rust:stable
+    working_directory: /home/circleci/build
+  rust-beta:
+    docker:
+      - image: instrumentisto/rust:beta
+    working_directory: /home/build
+
 jobs:
   cargo_fetch:
-    docker:
-      - image: inputoutput/rust:stable
-    working_directory: /home/circleci/project
+    executor: rust-stable
     steps:
       - checkout
+      - run: git --version
       - run: git submodule sync
-      - run: git submodule update --init
+      - run: git submodule update --init --depth=1
+      - run:
+          name: Get top commit hash of cargo registry index
+          command: |
+            git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
+              cut -f 1 | tee .circleci/crates.io-index.head
       - restore_cache:
+          name: Restore cargo registry index from cache
           keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-            - cargo-v3-{{ checksum "Cargo.toml" }}
-            - cargo-v3-
-      - run: cargo fetch
+            - cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
+            - cargo-index-v1-
+      - restore_cache:
+          name: Restore dependency crates from cache
+          keys:
+            - cargo-deps-v1-{{ checksum "Cargo.lock" }}
+      - run:
+          name: Fetch dependencies and update cargo registry index
+          command: |
+            cargo fetch --locked
+            git -C /usr/local/cargo/registry/index/github.com-1ecc6299db9ec823 \
+                show-ref -s refs/remotes/origin/master |
+              tee .circleci/crates.io-index.head
       - save_cache:
-          key: cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+          name: Save cargo registry index into cache
+          key: cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
           paths:
-            - /usr/local/cargo/registry
-            - /usr/local/cargo/git
+            - /usr/local/cargo/registry/index
+      - save_cache:
+          name: Save dependency crates into cache
+          key: cargo-deps-v1-{{ checksum "Cargo.lock" }}
+          paths:
+            - /usr/local/cargo/registry/cache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .circleci/crates.io-index.head
 
   cargo_audit:
-    docker:
-      - image: inputoutput/rust:stable
-    working_directory: /home/circleci/project
+    executor: rust-stable
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
+      - attach_workspace:
+          at: .
       - restore_cache:
+          name: Restore cargo registry index from cache
           keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
+      - run:
+          name: Get top commit hash of RustSec advisory database
+          command: |
+            git ls-remote --heads https://github.com/RustSec/advisory-db.git master |
+              cut -f 1 | tee .circleci/advisory-db.head
       - restore_cache:
+          name: Restore advisory database from cache
           keys:
-            - cargo-advisory-db-v1
+            - cargo-advisory-db-v2-{{ checksum ".circleci/advisory-db.head" }}
+            - cargo-advisory-db-v2-
       - run:
           name: Print Cargo Audit Version
           command: cargo audit --version
       - run:
           name: Check Cargo Audit
-          command: cargo audit
+          command: |
+            cargo audit
+            git -C /usr/local/cargo/advisory-db \
+                show-ref -s refs/remotes/origin/master \
+              > .circleci/advisory-db.head
       - save_cache:
-          key: cargo-advisory-db-v1
+          name: Save advisory database into cache
+          key: cargo-advisory-db-v2-{{ checksum ".circleci/advisory-db.head" }}
           paths:
             - /usr/local/cargo/advisory-db
 
   rustfmt:
-    docker:
-      - image: inputoutput/rust:stable
-    working_directory: /home/circleci/project
+    executor: rust-stable
     steps:
       - checkout
+      - run: git submodule sync
+      - run: git submodule update --init --depth=1
       - run:
           name: Print version information
           command: cargo fmt -- --version
       - run:
           name: Check rustfmt
-          command: cargo fmt -- --check
+          command: cargo fmt --all -- --check
 
   test_debug:
-    docker:
-      - image: inputoutput/rust:stable
-    environment:
-      CARGO_INCREMENTAL: 0
-    working_directory: /home/circleci/project
+    executor: rust-stable
     steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
-      - restore_cache:
-          keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Print version information
-          command: rustc --version; cargo --version
-      - run:
-          name: Build binaries
-          command: cargo build -p jormungandr -p jcli --offline --verbose --frozen
-      - run:
-          name: Build tests
-          command: cargo build --tests --offline --verbose --frozen
-      - run:
-          name: Test
-          environment:
-            RUST_BACKTRACE: 1
-          command: cargo test --offline --verbose --frozen --tests
-
-  test_doc:
-    docker:
-      - image: inputoutput/rust:stable
-    environment:
-      CARGO_INCREMENTAL: 0
-    working_directory: /home/circleci/project
-    steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
-      - restore_cache:
-          keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Print version information
-          command: rustc --version; cargo --version
-      - run:
-          name: Test
-          environment:
-            RUST_BACKTRACE: 1
-          command: cargo test --offline --verbose --frozen --doc -- --test-threads=1
+      - test
 
   test_release:
-    docker:
-      - image: inputoutput/rust:stable
-    working_directory: /home/circleci/project
+    executor: rust-stable
     steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
-      - restore_cache:
-          keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
-      - run:
-          name: Print version information
-          command: rustc --version; cargo --version
-      - run:
-          name: Build binaries
-          command: cargo build -p jormungandr -p jcli --release --offline --verbose --frozen
-      - run:
-          name: Build tests
-          command: cargo build --tests --release --offline --verbose --frozen
-      - run:
-          name: Test
-          command: cargo test --release --offline --verbose --tests
+      - test:
+          mode: --release
 
   test_beta:
-    docker:
-      - image: instrumentisto/rust:beta
-    environment:
-      CARGO_INCREMENTAL: 0
-    working_directory: /home/circleci/project
+    executor: rust-beta
+    steps:
+      - test
+
+commands:
+  test:
+    description: "Steps for the test jobs"
+    parameters:
+      mode:
+        type: string
+        default: ''
+      cargo_behavior:
+        type: string
+        default: --locked --offline --verbose
     steps:
       - checkout
       - run: git submodule sync
-      - run: git submodule update --init
+      - run: git submodule update --init --depth=1
+      - attach_workspace:
+          at: .
       - restore_cache:
+          name: Restore cargo registry index from cache
           keys:
-            - cargo-v3-{{ checksum "Cargo.toml" }}-{{ checksum "Cargo.lock" }}
+            - cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
+      - restore_cache:
+          name: Restore dependency crates from cache
+          keys:
+            - cargo-deps-v1-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
       - run:
-          name: Build binaries
-          command: cargo build -p jormungandr -p jcli --offline --verbose --frozen
-      - run:
-          name: Build tests
-          command: cargo build --tests --offline --verbose --frozen
+          name: Build
+          command: |
+            cargo build --all-targets << parameters.mode >> << parameters.cargo_behavior >>
       - run:
           name: Test
           environment:
             RUST_BACKTRACE: 1
-          command: cargo test --offline --verbose --tests
+          command: |
+            cargo test << parameters.mode >> << parameters.cargo_behavior >>
 
 workflows:
   version: 2
@@ -166,15 +163,10 @@ workflows:
     jobs:
       - cargo_fetch
       - rustfmt
-      # Temporarily disabled, vulnerable dependencies are pending update
-      #- cargo_audit:
-      #    requires:
-      #      - cargo_fetch
-      - test_debug:
+      - cargo_audit:
           requires:
-            - rustfmt
             - cargo_fetch
-      - test_doc:
+      - test_debug:
           requires:
             - rustfmt
             - cargo_fetch
