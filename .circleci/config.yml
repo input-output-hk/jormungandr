@@ -146,16 +146,25 @@ commands:
       - run:
           name: Print version information
           command: rustc --version; cargo --version
+      # `cargo build --all-targets` runs out of memory
       - run:
-          name: Build
+          name: Build jormungandr
           command: |
-            cargo build --all-targets << parameters.mode >> << parameters.cargo_behavior >>
+            cargo build -p jormungandr --bin jormungandr << parameters.mode >> << parameters.cargo_behavior >>
+      - run:
+          name: Build jcli
+          command: |
+            cargo build -p jcli --bin jcli << parameters.mode >> << parameters.cargo_behavior >>
+      - run:
+          name: Build tests
+          command: |
+            cargo build --workspace --tests << parameters.mode >> << parameters.cargo_behavior >>
       - run:
           name: Test
           environment:
             RUST_BACKTRACE: 1
           command: |
-            cargo test << parameters.mode >> << parameters.cargo_behavior >>
+            cargo test --workspace << parameters.mode >> << parameters.cargo_behavior >>
 
 workflows:
   version: 2
