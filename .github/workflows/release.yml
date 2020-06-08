@@ -6,23 +6,32 @@ on:
 name: Release
 
 jobs:
-  initial_release:
-    name: Create base release
+  create_release:
+    name: Create draft release
     if: ${{ github.repository_owner == 'input-output-hk' }}
     runs-on: ubuntu-latest
     outputs:
+      version: ${{ steps.version.outputs.version }}
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-      - name: Create Release
+      - name: Get version from tag name
+        id: version
+        run: echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create release
         id: create_release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+        run: |
+          release_tag=${GITHUB_REF#refs/tags/}
+          hub release create --draft \
+            -m "Release ${{ steps.version.outputs.version }} (in progress)" \
+            $release_tag
+          upload_url=$(hub release show -f '%uA' $release_tag)
+          echo "::set-output name=upload_url::$upload_url"
 
   update_deps:
     name: Update dependencies
@@ -71,10 +80,10 @@ jobs:
         run: |
           rm -rf ~/.cargo/registry/src
 
-  release_assets:
-    name: Release assets
+  build_assets:
+    name: Build assets
     if: ${{ github.repository_owner == 'input-output-hk' }}
-    needs: [initial_release, update_deps]
+    needs: [create_release, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
@@ -207,15 +216,10 @@ jobs:
             --release
             --target ${{ matrix.config.target }}
 
-      - name: Get tag version
-        id: get_version
-        run: echo "::set-output name=version::${GITHUB_REF#refs/tags/}"
-        shell: bash
-
       - name: Pack binaries (Unix)
         if: matrix.config.os != 'windows-latest'
         run: |
-          archive=jormungandr-${{ steps.get_version.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
+          archive=jormungandr-${{ needs.create_release.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
           tar -C ./target/${{ matrix.config.target }}/release -czvf $archive jormungandr jcli
           echo "::set-env name=RELEASE_ARCHIVE::$archive"
           echo "::set-env name=RELEASE_CONTENT_TYPE::application/gzip"
@@ -223,7 +227,7 @@ jobs:
       - name: Pack binaries (Windows)
         if: matrix.config.os == 'windows-latest'
         run: |
-          $archive = "jormungandr-${{ steps.get_version.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip"
+          $archive = "jormungandr-${{ needs.create_release.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip"
           $args = @{
             Path  = "./target/${{ matrix.config.target }}/release/jormungandr.exe",
                     "./target/${{ matrix.config.target }}/release/jcli.exe"
@@ -238,7 +242,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.initial_release.outputs.upload_url }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./${{ env.RELEASE_ARCHIVE }}
           asset_name: ${{ env.RELEASE_ARCHIVE }}
           asset_content_type: ${{ env.RELEASE_CONTENT_TYPE }}
+
+  publish_release:
+    name: Publish release
+    if: ${{ github.repository_owner == 'input-output-hk' }}
+    needs: [create_release, build_assets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_tag=${GITHUB_REF#refs/tags/}
+          hub release edit --draft=false \
+            -m 'Release ${{ needs.create_release.outputs.version }}' \
+            $release_tag
