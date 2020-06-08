@@ -1,17 +1,18 @@
 use crate::common::{
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
+    configuration::JormungandrParams
 };
-use chain_impl_mockchain::header::HeaderId;
-use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
-use jormungandr_testing_utils::{
-    testing::{
-        network_builder::{LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams},
-        JormungandrParams,
-    },
-    wallet::Wallet,
+use chain_impl_mockchain::{fee::LinearFee, header::HeaderId};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{Log, LogEntry, LogOutput, NodeConfig},
 };
-
+use jormungandr_testing_utils::testing::{
+    network_builder::{LeadershipMode, PersistenceMode, Settings, SpawnParams},
+    FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
+};
+use jormungandr_testing_utils::{testing::network_builder::NodeSetting, wallet::Wallet};
 use assert_fs::fixture::FixtureError;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -78,6 +79,29 @@ impl Controller {
         } else {
             Err(ControllerError::NodeNotFound(alias.to_string()))
         }
+    }
+
+    pub fn block0_hash(&self) -> Hash {
+        Hash::from(self.settings.block0.to_block().header.hash())
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.settings.block0.blockchain_configuration.linear_fees
+    }
+
+    pub fn fragment_sender(&self) -> FragmentSender {
+        self.fragment_sender_with_setup(Default::default())
+    }
+
+    pub fn fragment_sender_with_setup<'a>(
+        &self,
+        setup: FragmentSenderSetup<'a>,
+    ) -> FragmentSender<'a> {
+        let mut builder = FragmentSenderSetupBuilder::from(setup);
+        let dump_folder = PathBuf::from(self.working_directory.child("fragments").path());
+        builder.dump_fragments_into(dump_folder);
+
+        FragmentSender::new(self.block0_hash(), self.fees(), builder.build())
     }
 
     pub fn spawn_and_wait(&mut self, alias: &str) -> JormungandrProcess {

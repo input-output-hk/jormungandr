@@ -178,7 +178,8 @@ impl Drop for JormungandrProcess {
 
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
-        self.logger.print_error_and_invalid_logs();
+        self.logger
+            .print_error_and_invalid_logs(Some(self.alias.clone()));
     }
 }
 

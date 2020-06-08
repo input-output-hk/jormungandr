@@ -314,9 +314,8 @@ pub fn node_put_itself_in_preffered_layers() {
         .is_ok());
 }
 
-#[ignore]
 #[test]
-pub fn topic_of_interest_influences_node_sync_ability() {
+pub fn topics_of_interest_influences_node_sync_ability() {
     let fast_client_alias = "FAST_CLIENT";
     let slow_client_alias = "SLOW_CLIENT";
 
@@ -333,11 +332,11 @@ pub fn topic_of_interest_influences_node_sync_ability() {
     let mut network_controller = network::builder()
         .star_topology(SERVER, vec![fast_client_alias, slow_client_alias])
         .initials(vec![
-            wallet("delegated0").with(1_000_000).delegated_to(SERVER),
-            wallet("delegated1")
+            wallet("alice").with(1_000_000).delegated_to(SERVER),
+            wallet("bob")
                 .with(1_000_000)
                 .delegated_to(fast_client_alias),
-            wallet("delegated2")
+            wallet("clarice")
                 .with(1_000_000)
                 .delegated_to(slow_client_alias),
         ])
@@ -348,11 +347,17 @@ pub fn topic_of_interest_influences_node_sync_ability() {
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
+    let server = network_controller.spawn_and_wait(SERVER);
     let fast_client = network_controller.spawn_and_wait(fast_client_alias);
-    let slow_client = network_controller.spawn_and_wait(fast_client_alias);
+    let slow_client = network_controller.spawn_and_wait(slow_client_alias);
 
-    process_utils::sleep(30);
+    let mut alice = network_controller.wallet("alice").unwrap();
+    let mut bob = network_controller.wallet("bob").unwrap();
+
+    network_controller
+        .fragment_sender()
+        .send_transactions_round_trip(10, &mut alice, &mut bob, &server, 100.into())
+        .unwrap();
 
     let fast_client_block_recv_cnt = fast_client
         .rest()
@@ -369,8 +374,14 @@ pub fn topic_of_interest_influences_node_sync_ability() {
         .unwrap()
         .block_recv_cnt;
 
+    println!("FAST");
+    fast_client.logger.print_raw_log();
+
+    println!("SLOW");
+    slow_client.logger.print_raw_log();
+
     assert!(
         fast_client_block_recv_cnt > slow_client_block_recv_cnt,
-        "node with high block topic of interest should have more recieved blocks"
+        "node with high block topic of interest should have more recieved blocks fast:{} vs slow:{}",fast_client_block_recv_cnt,slow_client_block_recv_cnt
     );
 }
