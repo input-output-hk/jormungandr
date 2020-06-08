@@ -41,23 +41,29 @@ jobs:
           print('::set-output name=date::' + date)
           print('::set-output name=version::' + version)
 
-      - name: Delete the existing nightly release
+      - name: Delete existing nightly releases
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          hub release delete nightly
-          git push --delete origin refs/tags/nightly
+          set +e
+          git ls-remote --tags --refs origin 'refs/tags/nightly*' |
+          cut -f 2 |
+          while read ref; do
+            hub release delete ${ref#refs/tags/}
+            git push --delete origin $ref
+          done
 
       - name: Create Nightly
         id: create_nightly
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          release_tag=nightly.${{ steps.version.outputs.date }}
           hub release create --prerelease --draft \
             -m "Release ${{ steps.version.outputs.version }} (in progress)" \
-            -t $GITHUB_SHA nightly
-          upload_url=$(hub release show -f '%uA' nightly)
+            -t $GITHUB_SHA $release_tag
+          upload_url=$(hub release show -f '%uA' $release_tag)
           echo "::set-output name=upload_url::$upload_url"
 
   update_deps:
@@ -301,6 +307,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          release_tag=nightly.${{ needs.create_release.outputs.release_date }}
           hub release edit --draft=false \
             -m 'Release ${{ needs.create_release.outputs.version }}' \
-            nightly
+            $release_tag
