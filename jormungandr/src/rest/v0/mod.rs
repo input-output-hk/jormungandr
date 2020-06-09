@@ -43,7 +43,7 @@ pub fn filter(
     };
 
     let fragment = {
-        let root = warp::path!("fragments" / ..).boxed();
+        let root = warp::path!("fragment" / ..).boxed();
 
         let logs = warp::path!("logs")
             .and(warp::get())
