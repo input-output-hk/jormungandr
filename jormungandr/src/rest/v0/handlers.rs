@@ -47,6 +47,17 @@ pub async fn post_message(
         .map_err(warp::reject::custom)
 }
 
+pub async fn post_messages(
+    messages: Vec<String>,
+    context: ContextLock,
+) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::post_messages(&context, messages)
+        .await
+        .map(|r| warp::reply::json(&r))
+        .map_err(warp::reject::custom)
+}
+
 pub async fn get_tip(context: ContextLock) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
     logic::get_tip(&context).await.map_err(warp::reject::custom)

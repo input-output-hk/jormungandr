@@ -71,6 +71,8 @@ pub enum Error {
     Storage(#[from] StorageError),
     #[error("Invalid topic")]
     InvalidTopic,
+    #[error(transparent)]
+    Hex(#[from] hex::FromHexError),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -155,6 +157,26 @@ pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, E
     let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
     context.try_full()?.transaction_task.clone().try_send(msg)?;
     Ok(fragment_id)
+}
+
+pub async fn post_messages(context: &Context, messages: Vec<String>) -> Result<Vec<String>, Error> {
+    let fragments = messages
+        .into_iter()
+        .map(|message| {
+            let message = hex::decode(message)?;
+            Fragment::deserialize(message.as_slice()).map_err(Error::Deserialize)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let fragment_ids = fragments
+        .iter()
+        .map(|fragment| fragment.id().to_string())
+        .collect();
+    let mut msgbox = context.try_full()?.transaction_task.clone();
+    for fragment in fragments.into_iter() {
+        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
+        msgbox.try_send(msg)?;
+    }
+    Ok(fragment_ids)
 }
 
 pub async fn get_tip(context: &Context) -> Result<String, Error> {

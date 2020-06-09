@@ -190,6 +190,13 @@ pub fn filter(
         .and_then(handlers::post_message)
         .boxed();
 
+    let messages = warp::path!("messages")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_context.clone())
+        .and_then(handlers::post_messages)
+        .boxed();
+
     let node_stats = warp::path!("node" / "stats")
         .and(warp::get())
         .and(with_context.clone())
@@ -259,6 +266,7 @@ pub fn filter(
         .or(stake_pools)
         .or(stake_pool)
         .or(message)
+        .or(messages)
         .or(node_stats)
         .or(tip)
         .or(rewards)
