@@ -38,6 +38,7 @@ pub struct Context<RNG: RngCore + Sized = ChaChaRng> {
     testing_directory: TestingDirectory,
     generate_documentation: bool,
     progress_bar_mode: ProgressBarMode,
+    log_level: String,
 }
 
 impl Context<ChaChaRng> {
@@ -48,6 +49,7 @@ impl Context<ChaChaRng> {
         testing_directory: Option<PathBuf>,
         generate_documentation: bool,
         progress_bar_mode: ProgressBarMode,
+        log_level: String,
     ) -> Self {
         let rng = Random::<ChaChaRng>::new(seed);
 
@@ -66,6 +68,7 @@ impl Context<ChaChaRng> {
             testing_directory,
             generate_documentation,
             progress_bar_mode,
+            log_level,
         }
     }
 
@@ -84,6 +87,7 @@ impl Context<ChaChaRng> {
             testing_directory: self.testing_directory.clone(),
             generate_documentation: self.generate_documentation,
             progress_bar_mode: self.progress_bar_mode,
+            log_level: self.log_level.clone(),
         }
     }
 
@@ -113,6 +117,10 @@ impl<RNG: RngCore> Context<RNG> {
 
     pub fn random(&mut self) -> &mut Random<RNG> {
         &mut self.rng
+    }
+
+    pub fn log_level(&self) -> String {
+        self.log_level.clone()
     }
 
     pub fn generate_new_rest_listen_address(&mut self) -> SocketAddr {
