@@ -362,6 +362,8 @@ pub fn newest_node_enters_legacy_network(
         MeasurementReportInterval::Standard,
     )?;
 
+    leader4.shutdown();
+
     //let assume that we are not satisfied how newest node behaves and we want to rollback
     let old_leader4 = controller.spawn_legacy_node(
         controller
@@ -385,7 +387,7 @@ pub fn newest_node_enters_legacy_network(
         MeasurementReportInterval::Standard,
     )?;
 
-    leader4.shutdown()?;
+    old_leader4.shutdown()?;
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
