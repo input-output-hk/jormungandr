@@ -96,6 +96,12 @@ jobs:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init --depth=1
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          name: Restore cargo registry index from cache
+          keys:
+            - cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
       - run:
           name: Print version information
           command: cargo fmt -- --version
@@ -182,7 +188,9 @@ workflows:
   test_all:
     jobs:
       - cargo_fetch
-      - rustfmt
+      - rustfmt:
+          requires:
+            - cargo_fetch
       - cargo_audit:
           requires:
             - cargo_fetch
