@@ -66,6 +66,10 @@ struct CommandArgs {
     /// to set if to reproduce an existing test
     #[structopt(long = "seed")]
     seed: Option<Seed>,
+
+    /// level for all nodes
+    #[structopt(long = "log-level", default_value = "info")]
+    log_level: String,
 }
 
 fn main() {
@@ -81,6 +85,7 @@ fn main() {
         .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
     let testing_directory = command_args.testing_directory;
     let generate_documentation = command_args.generate_documentation;
+    let log_level = command_args.log_level;
 
     let context = Context::new(
         seed,
@@ -89,6 +94,7 @@ fn main() {
         testing_directory,
         generate_documentation,
         progress_bar_mode,
+        log_level,
     );
 
     introduction(&context);

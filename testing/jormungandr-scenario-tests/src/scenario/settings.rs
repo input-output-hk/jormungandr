@@ -260,7 +260,7 @@ impl Prepare for Log {
         RNG: RngCore + CryptoRng,
     {
         let format = "plain";
-        let level = "info";
+        let level = context.log_level();
         let mut path = context.working_directory().to_path_buf();
         path.push("node.log");
 
