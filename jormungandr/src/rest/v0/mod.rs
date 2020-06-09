@@ -282,7 +282,7 @@ pub fn filter(
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find::<logic::Error>() {
         let (body, code) = match err {
-            logic::Error::PublicKey(_) | logic::Error::Hash(_) => {
+            logic::Error::PublicKey(_) | logic::Error::Hash(_) | logic::Error::Hex(_) => {
                 (err.to_string(), StatusCode::BAD_REQUEST)
             }
             err => (
