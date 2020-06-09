@@ -32,14 +32,14 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
-        LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
-        SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
-        TransactionOutput, VotePlanStatus,
+        FragmentStatus, LeadershipLog, NodeStats, NodeStatsDto, PeerStats,
+        Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
+        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanWithId,
     },
     time::SystemTime,
 };
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 
@@ -118,6 +118,35 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
             Error::MsgSendError(e)
         })?;
     reply_future.await.map_err(Into::into)
+}
+
+pub async fn get_message_statuses(
+    context: &Context,
+    ids: Vec<String>,
+) -> Result<HashMap<String, FragmentStatus>, Error> {
+    let ids = ids
+        .into_iter()
+        .map(|s| FragmentId::from_str(&s))
+        .collect::<Result<Vec<_>, _>>()?;
+    let logger = context.logger()?.new(o!("request" => "message_statuses"));
+    let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
+    let mut mbox = context.try_full()?.transaction_task.clone();
+    mbox.send(TransactionMsg::GetStatuses(ids, reply_handle))
+        .await
+        .map_err(|e| {
+            debug!(&logger, "error getting message statuses"; "reason" => %e);
+            Error::MsgSendError(e)
+        })?;
+    reply_future
+        .await
+        .map_err(Into::into)
+        .map(|result_intermediate| {
+            let mut result = HashMap::new();
+            result_intermediate.into_iter().for_each(|(k, v)| {
+                result.insert(k.to_string(), v);
+            });
+            result
+        })
 }
 
 pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, Error> {

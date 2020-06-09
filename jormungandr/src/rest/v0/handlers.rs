@@ -26,6 +26,17 @@ pub async fn get_message_logs(context: ContextLock) -> Result<impl Reply, Reject
         .map(|r| warp::reply::json(&r))
 }
 
+pub async fn get_message_statuses(
+    fragment_ids: Vec<String>,
+    context: ContextLock,
+) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::get_message_statuses(&context, fragment_ids)
+        .await
+        .map_err(warp::reject::custom)
+        .map(|r| warp::reply::json(&r))
+}
+
 pub async fn post_message(
     message: bytes::Bytes,
     context: ContextLock,

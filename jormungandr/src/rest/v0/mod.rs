@@ -42,11 +42,24 @@ pub fn filter(
         root.and(get.or(get_next)).boxed()
     };
 
-    let fragment = warp::path!("fragment" / "logs")
-        .and(warp::get())
-        .and(with_context.clone())
-        .and_then(handlers::get_message_logs)
-        .boxed();
+    let fragment = {
+        let root = warp::path!("fragments" / ..).boxed();
+
+        let logs = warp::path!("logs")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_message_logs)
+            .boxed();
+
+        let statuses = warp::path!("statuses")
+            .and(warp::post())
+            .and(warp::body::json())
+            .and(with_context.clone())
+            .and_then(handlers::get_message_statuses)
+            .boxed();
+
+        root.and(logs.or(statuses)).boxed()
+    };
 
     let leaders = {
         let root = warp::path!("leaders" / ..).boxed();

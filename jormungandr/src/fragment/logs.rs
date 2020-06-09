@@ -4,6 +4,7 @@ use jormungandr_lib::{
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus},
 };
 use lru::LruCache;
+use std::collections::HashMap;
 
 pub struct Logs {
     entries: LruCache<Hash, FragmentLog>,
@@ -75,6 +76,23 @@ impl Logs {
         for fragment_id in fragment_ids {
             self.modify(fragment_id, status.clone());
         }
+    }
+
+    pub fn logs_by_ids(
+        &self,
+        fragment_ids: impl IntoIterator<Item = FragmentId>,
+    ) -> HashMap<FragmentId, &FragmentLog> {
+        let mut result = HashMap::new();
+        fragment_ids
+            .into_iter()
+            .filter_map(|fragment_id| {
+                let key: Hash = fragment_id.clone().into();
+                self.entries.peek(&key).map(|log| (fragment_id, log))
+            })
+            .for_each(|(k, v)| {
+                result.insert(k, v);
+            });
+        result
     }
 
     pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a FragmentLog> {
