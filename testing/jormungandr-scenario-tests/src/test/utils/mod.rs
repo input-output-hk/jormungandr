@@ -8,21 +8,22 @@ pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
 
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{FragmentStatus, NodeState},
+    interfaces::{BlockDate, FragmentLog, FragmentStatus, NodeState},
 };
 use jormungandr_testing_utils::{
     testing::{Speed, Thresholds},
     wallet::Wallet,
 };
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 pub use jormungandr_testing_utils::testing::{
     assert, assert_equals,
     sync::{
         measure_and_log_sync_time, measure_fragment_propagation_speed,
         measure_how_many_nodes_are_running,
     },
-    MeasurementReportInterval,
+    FragmentNodeError, MeasurementReportInterval, MemPoolCheck,
 };
 
 pub fn wait(seconds: u64) {
@@ -89,6 +90,44 @@ impl SyncNode for NodeController {
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         self.logger().get_lines_with_error_and_invalid().collect()
+    }
+}
+
+impl FragmentNode for LegacyNodeController {
+    fn alias(&self) -> &str {
+        self.alias()
+    }
+    fn fragment_logs(
+        &self,
+    ) -> std::result::Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
+        //TODO: implement conversion
+        self.fragment_logs()
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+    fn send_fragment(
+        &self,
+        fragment: Fragment,
+    ) -> std::result::Result<MemPoolCheck, FragmentNodeError> {
+        //TODO: implement conversion
+        self.send_fragment(fragment)
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+    fn log_pending_fragment(&self, fragment_id: FragmentId) {
+        self.progress_bar()
+            .log_info(format!("Fragment '{}' is still pending", fragment_id));
+    }
+    fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String) {
+        self.progress_bar()
+            .log_info(format!("Fragment '{}' rejected: {}", fragment_id, reason));
+    }
+    fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash) {
+        self.progress_bar().log_info(format!(
+            "Fragment '{}' in block: {} ({})",
+            fragment_id, block, date
+        ));
+    }
+    fn log_content(&self) -> String {
+        self.logger().get_log_content()
     }
 }
 

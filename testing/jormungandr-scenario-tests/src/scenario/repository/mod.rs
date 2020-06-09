@@ -293,5 +293,12 @@ fn scenarios_repository() -> Vec<Scenario> {
         mesh_disruption,
         vec![Tag::Short],
     ));
+
+    repository.push(Scenario::new(
+        "newest_node_enters_legacy_network",
+        legacy::newest_node_enters_legacy_network,
+        vec![Tag::Short],
+    ));
+
     repository
 }
