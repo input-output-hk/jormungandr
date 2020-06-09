@@ -8,6 +8,7 @@ use jormungandr_lib::interfaces::NodeStats;
 use jormungandr_testing_utils::testing::FragmentSender;
 
 const PASSIVE: &str = "PASSIVE";
+const LEADER_CLIENT: &str = "LEADER_CLIENT";
 const LEADER: &str = "LEADER";
 
 #[test]
@@ -45,6 +46,43 @@ pub fn passive_node_last_block_info() {
         .expect("fragment send error");
 
     assert_last_stats_are_updated(stats_before, &passive);
+}
+
+#[test]
+pub fn leader_node_last_block_info() {
+    let mut network_controller = network::builder()
+        .single_trust_direction(LEADER_CLIENT, LEADER)
+        .initials(vec![
+            wallet("alice").with(1_000_000).delegated_to(LEADER),
+            wallet("bob").with(1_000_000),
+        ])
+        .build()
+        .unwrap();
+
+    let leader = network_controller.spawn_and_wait(LEADER);
+    let leader_client = network_controller.spawn_and_wait(LEADER_CLIENT);
+
+    let mut alice = network_controller.wallet("alice").unwrap();
+    let mut bob = network_controller.wallet("bob").unwrap();
+
+    let stats_before = leader_client
+        .rest()
+        .stats()
+        .expect("cannot get stats at beginning")
+        .stats
+        .expect("empty stats");
+
+    let fragment_sender = FragmentSender::new(
+        leader.genesis_block_hash(),
+        leader.fees(),
+        Default::default(),
+    );
+
+    fragment_sender
+        .send_transactions_round_trip(10, &mut alice, &mut bob, &leader, 100.into())
+        .expect("fragment send error");
+
+    assert_last_stats_are_updated(stats_before, &leader_client);
 }
 
 fn assert_last_stats_are_updated(stats_before: NodeStats, node: &JormungandrProcess) {
