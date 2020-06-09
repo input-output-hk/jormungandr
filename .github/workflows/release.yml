@@ -8,7 +8,9 @@ name: Release
 jobs:
   create_release:
     name: Create draft release
-    if: ${{ github.repository_owner == 'input-output-hk' }}
+    if: >
+      github.repository_owner == 'input-output-hk'
+      || startsWith(github.event.head_commit.message, 'TEST CI:')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -35,7 +37,9 @@ jobs:
 
   update_deps:
     name: Update dependencies
-    if: ${{ github.repository_owner == 'input-output-hk' }}
+    if: >
+      github.repository_owner == 'input-output-hk'
+      || startsWith(github.event.head_commit.message, 'TEST CI:')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -82,7 +86,9 @@ jobs:
 
   build_assets:
     name: Build assets
-    if: ${{ github.repository_owner == 'input-output-hk' }}
+    if: >
+      github.repository_owner == 'input-output-hk'
+      || startsWith(github.event.head_commit.message, 'TEST CI:')
     needs: [create_release, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
@@ -249,7 +255,9 @@ jobs:
 
   publish_release:
     name: Publish release
-    if: ${{ github.repository_owner == 'input-output-hk' }}
+    if: >
+      github.repository_owner == 'input-output-hk'
+      || startsWith(github.event.head_commit.message, 'TEST CI:')
     needs: [create_release, build_assets]
     runs-on: ubuntu-latest
     steps:
