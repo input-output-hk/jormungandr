@@ -529,6 +529,10 @@ where
 
     fn custom_errors_found(&self) -> Result<(), StartupError> {
         let log_file_path = self.params.log_file_path();
+        if !log_file_path.exists() {
+            // Still too early in the startup phase
+            return Ok(());
+        }
         let logger = JormungandrLogger::new(log_file_path);
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         if logger
