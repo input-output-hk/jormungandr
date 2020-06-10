@@ -16,7 +16,7 @@ use jormungandr_testing_utils::testing::Timestamp;
 #[derive(Debug, Error)]
 pub enum LoggerError {
     #[error("{log_file}")]
-    LogFileDoesNotExists { log_file: String },
+    LogFileDoesNotExist { log_file: String },
 }
 
 #[derive(Debug)]
@@ -204,7 +204,7 @@ impl JormungandrLogger {
         if self.log_file_path.exists() {
             Ok(())
         } else {
-            Err(LoggerError::LogFileDoesNotExists {
+            Err(LoggerError::LogFileDoesNotExist {
                 log_file: self.log_file_path.to_str().unwrap().to_string(),
             })
         }
