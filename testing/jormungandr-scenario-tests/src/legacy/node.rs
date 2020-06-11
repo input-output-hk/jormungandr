@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
     legacy::LegacySettings,
@@ -509,10 +511,6 @@ impl LegacyNodeController {
             .file_path()
             .unwrap();
         JormungandrLogger::new(log_file)
-    }
-
-    pub fn log_content(&self) -> String {
-        self.logger().get_log_content()
     }
 }
 

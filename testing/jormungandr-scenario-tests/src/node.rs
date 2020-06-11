@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{scenario::ProgressBarMode, style, Context};
 use chain_impl_mockchain::{
     block::Block,
@@ -61,8 +63,6 @@ pub enum Error {
         #[source]
         cause: serde_yaml::Error,
     },
-    #[error("cannot create a temporary directory")]
-    CannotCreateTemporaryDirectory,
     #[error("cannot spawn the node")]
     CannotSpawnNode(#[source] bawawa::Error),
     // FIXME: duplicate of GrpcError?
@@ -80,10 +80,6 @@ pub enum Error {
     InvalidNetworkStats(#[source] serde_json::Error),
     #[error("leaders ids in an invalid format")]
     InvalidEnclaveLeaderIds(#[source] serde_json::Error),
-    #[error("peer in an invalid format")]
-    InvalidPeerStats(#[source] serde_json::Error),
-    #[error("the node is no longer running, status: {status:?}")]
-    NodeStopped { status: Status },
     #[error("node '{alias}' failed to start after {} s", .duration.as_secs())]
     NodeFailedToBootstrap {
         alias: String,

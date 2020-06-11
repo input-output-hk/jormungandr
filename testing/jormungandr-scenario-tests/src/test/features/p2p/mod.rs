@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod connections;
 pub mod stats;
 

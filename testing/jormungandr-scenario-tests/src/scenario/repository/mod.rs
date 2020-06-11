@@ -287,6 +287,12 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short],
     ));
 
+    repository.push(Scenario::new(
+        "point_to_point_disruption_overlap",
+        point_to_point_disruption_overlap,
+        vec![Tag::Short, Tag::Unstable],
+    ));
+
     repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
     repository.push(Scenario::new(
         "mesh_disruption",

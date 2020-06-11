@@ -1,11 +1,26 @@
-extern crate jormungandr_integration_tests;
-extern crate jormungandr_scenario_tests;
+#[macro_use(error_chain, bail)]
+extern crate error_chain;
+#[macro_use(lazy_static)]
+extern crate lazy_static;
 
-use jormungandr_scenario_tests::{
-    parse_tag_from_str, prepare_command,
-    scenario::{parse_progress_bar_mode_from_str, ProgressBarMode},
-    style, Context, ScenariosRepository, Seed, Tag,
+mod legacy;
+mod node;
+mod programs;
+#[macro_use]
+mod scenario;
+mod example_scenarios;
+mod slog;
+mod style;
+mod test;
+
+use node::{Node, NodeBlock0, NodeController};
+use programs::prepare_command;
+use scenario::{
+    parse_progress_bar_mode_from_str,
+    repository::{parse_tag_from_str, ScenarioResult, ScenariosRepository, Tag},
+    Context, ProgressBarMode, Seed,
 };
+
 use std::path::PathBuf;
 use structopt::StructOpt;
 

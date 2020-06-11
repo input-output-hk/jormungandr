@@ -2,13 +2,13 @@ use crate::legacy::LegacyNodeController;
 use crate::{
     node::{FragmentNode, NodeController},
     scenario::Controller,
-    test::{ErrorKind, Result},
+    test::Result,
 };
 pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
 
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{BlockDate, FragmentLog, FragmentStatus, NodeState},
+    interfaces::{BlockDate, FragmentLog, NodeState},
 };
 use jormungandr_testing_utils::{
     testing::{Speed, Thresholds},
@@ -126,8 +126,8 @@ impl FragmentNode for LegacyNodeController {
             fragment_id, block, date
         ));
     }
-    fn log_content(&self) -> String {
-        self.logger().get_log_content()
+    fn log_content(&self) -> Vec<String> {
+        self.logger().get_lines_from_log().collect()
     }
 }
 
@@ -163,16 +163,4 @@ impl SyncNode for LegacyNodeController {
     fn is_running(&self) -> bool {
         self.stats().unwrap()["state"].as_str().unwrap() == "Running"
     }
-}
-
-pub fn assert_is_in_block<A: SyncNode + ?Sized>(status: FragmentStatus, node: &A) -> Result<()> {
-    if !status.is_in_a_block() {
-        bail!(ErrorKind::AssertionFailed(format!(
-            "fragment status sent to node: {} is not in block :({:?}). logs: {}",
-            node.alias(),
-            status,
-            node.log_content()
-        )))
-    }
-    Ok(())
 }
