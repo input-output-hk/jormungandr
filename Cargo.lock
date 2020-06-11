@@ -1551,6 +1551,7 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "console",
+ "custom_debug",
  "error-chain",
  "futures 0.3.5",
  "hex",
@@ -1571,6 +1572,7 @@ dependencies = [
  "serde_yaml",
  "slog",
  "structopt",
+ "thiserror",
  "tokio 0.1.22",
  "yaml-rust",
 ]
