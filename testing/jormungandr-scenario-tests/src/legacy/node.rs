@@ -510,10 +510,6 @@ impl LegacyNodeController {
             .unwrap();
         JormungandrLogger::new(log_file)
     }
-
-    pub fn log_content(&self) -> String {
-        self.logger().get_log_content()
-    }
 }
 
 impl LegacyNode {
