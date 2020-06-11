@@ -8,12 +8,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum FragmentNodeError {
-    #[error("cannot send fragment due to '{reason}' to '{fragment_id}' to node '{alias}' . logs: {logs}")]
+    #[error("cannot send fragment due to '{reason}' to '{fragment_id}' to node '{alias}'")]
     CannotSendFragment {
         reason: String,
         alias: String,
         fragment_id: FragmentId,
-        logs: String,
+        logs: Vec<String>,
     },
     #[error("reqwest error")]
     ReqwestError(#[from] reqwest::Error),
@@ -30,7 +30,7 @@ pub trait FragmentNode {
     fn log_pending_fragment(&self, fragment_id: FragmentId);
     fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String);
     fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash);
-    fn log_content(&self) -> String;
+    fn log_content(&self) -> Vec<String>;
 }
 
 #[derive(Clone, Debug)]

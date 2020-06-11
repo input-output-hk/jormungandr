@@ -6,26 +6,24 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum FragmentVerifierError {
-    #[error("fragment sent to node: {alias} is not in block :({status:?}). logs: {logs}")]
+    #[error("fragment sent to node: {alias} is not in block :({status:?})")]
     FragmentNotInBlock {
         alias: String,
         status: FragmentStatus,
-        logs: String,
+        logs: Vec<String>,
     },
     #[error("transaction already balanced")]
     FragmentIsPendingForTooLong {
         fragment_id: FragmentId,
         timeout: Duration,
         alias: String,
-        logs: String,
+        logs: Vec<String>,
     },
-    #[error(
-        "fragment sent to node: {alias} is not in in fragment pool :({fragment_id}). logs: {logs}"
-    )]
+    #[error("fragment sent to node: {alias} is not in in fragment pool :({fragment_id})")]
     FragmentNoInMemPoolLogs {
         alias: String,
         fragment_id: FragmentId,
-        logs: String,
+        logs: Vec<String>,
     },
     #[error("fragment node error")]
     FragmentNodeError(#[from] FragmentNodeError),

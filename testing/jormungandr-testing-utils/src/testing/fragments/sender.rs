@@ -18,11 +18,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum FragmentSenderError {
-    #[error("fragment sent to node: {alias} is not in block due to  '{reason}'. logs: {logs}")]
+    #[error("fragment sent to node: {alias} is not in block due to '{reason}'")]
     FragmentNotInBlock {
         alias: String,
         reason: String,
-        logs: String,
+        logs: Vec<String>,
     },
     #[error(
         "Too many attempts failed ({attempts}) while trying to send fragment to node: {alias}"

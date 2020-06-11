@@ -33,7 +33,7 @@ impl FragmentNode for NodeController {
             fragment_id, block, date
         ));
     }
-    fn log_content(&self) -> String {
-        self.logger().get_log_content()
+    fn log_content(&self) -> Vec<String> {
+        self.logger().get_lines_from_log().collect()
     }
 }
