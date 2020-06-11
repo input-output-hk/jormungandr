@@ -23,14 +23,32 @@ pub enum FragmentVerifierError {
         logs: Vec<String>,
     },
     #[error("fragment sent to node: {alias} is not in in fragment pool :({fragment_id})")]
-    FragmentNoInMemPoolLogs {
+    FragmentNotInMemPoolLogs {
         alias: String,
         fragment_id: FragmentId,
         #[debug(skip)]
         logs: Vec<String>,
     },
     #[error("fragment node error")]
-    FragmentNodeError(#[from] FragmentNodeError),
+    FragmentNode(#[from] FragmentNodeError),
+}
+
+impl FragmentVerifierError {
+    pub fn logs(&self) -> impl Iterator<Item = &str> {
+        use self::FragmentVerifierError::*;
+        let maybe_logs = match self {
+            FragmentNotInBlock { logs, .. }
+            | FragmentIsPendingForTooLong { logs, .. }
+            | FragmentNotInMemPoolLogs { logs, .. }
+            | FragmentNode(FragmentNodeError::CannotSendFragment { logs, .. }) => Some(logs),
+            FragmentNode(_) => None,
+        };
+        maybe_logs
+            .into_iter()
+            .map(|logs| logs.iter())
+            .flatten()
+            .map(String::as_str)
+    }
 }
 
 pub struct FragmentVerifier;
@@ -87,7 +105,7 @@ impl FragmentVerifier {
             return Ok(status);
         }
 
-        Err(FragmentVerifierError::FragmentNoInMemPoolLogs {
+        Err(FragmentVerifierError::FragmentNotInMemPoolLogs {
             alias: node.alias().to_string(),
             fragment_id: *check.fragment_id(),
             logs: node.log_content(),

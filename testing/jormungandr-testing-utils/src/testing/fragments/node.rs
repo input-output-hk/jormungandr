@@ -27,6 +27,21 @@ pub enum FragmentNodeError {
     ListFragmentError(String),
 }
 
+impl FragmentNodeError {
+    pub fn logs(&self) -> impl Iterator<Item = &str> {
+        use self::FragmentNodeError::*;
+        let maybe_logs = match self {
+            CannotSendFragment { logs, .. } => Some(logs),
+            _ => None,
+        };
+        maybe_logs
+            .into_iter()
+            .map(|logs| logs.iter())
+            .flatten()
+            .map(String::as_str)
+    }
+}
+
 pub trait FragmentNode {
     fn alias(&self) -> &str;
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError>;

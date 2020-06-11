@@ -45,6 +45,21 @@ pub enum FragmentSenderError {
     FragmentExporterError(#[from] FragmentExporterError),
 }
 
+impl FragmentSenderError {
+    pub fn logs(&self) -> impl Iterator<Item = &str> {
+        use self::FragmentSenderError::*;
+        let maybe_logs = match self {
+            FragmentNotInBlock { logs, .. } => Some(logs),
+            _ => None,
+        };
+        maybe_logs
+            .into_iter()
+            .map(|logs| logs.iter())
+            .flatten()
+            .map(String::as_str)
+    }
+}
+
 pub struct FragmentSender<'a> {
     block0_hash: Hash,
     fees: LinearFee,

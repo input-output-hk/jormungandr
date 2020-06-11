@@ -98,7 +98,7 @@ error_chain! {
             display("node '{}' failed to shutdown. Message: {}. Log: {}", alias, message, log),
         }
 
-        FragmentNoInMemPoolLogs (alias: String, fragment_id: FragmentId, log: String) {
+        FragmentNotInMemPoolLogs (alias: String, fragment_id: FragmentId, log: String) {
             description("cannot find fragment in mempool logs"),
             display("fragment '{}' not in the mempool of the node '{}'. logs: {}", fragment_id, alias, log),
         }
@@ -398,7 +398,7 @@ impl LegacyNodeController {
                     }
                 }
             } else {
-                bail!(ErrorKind::FragmentNoInMemPoolLogs(
+                bail!(ErrorKind::FragmentNotInMemPoolLogs(
                     self.alias().to_string(),
                     *check.fragment_id(),
                     self.logger().get_log_content()
