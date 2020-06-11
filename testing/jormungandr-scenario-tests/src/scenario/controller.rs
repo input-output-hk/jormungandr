@@ -13,10 +13,11 @@ use jormungandr_integration_tests::common::legacy::Version;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
     testing::{
+        benchmark_consumption,
         network_builder::{
             Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
         },
-        FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
+        ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
     wallet::Wallet,
 };
@@ -174,6 +175,17 @@ impl Controller {
 
     pub fn working_directory(&self) -> &ChildPath {
         &self.working_directory
+    }
+
+    pub fn start_monitor_resources(
+        &mut self,
+        info: &str,
+        nodes: Vec<&NodeController>,
+    ) -> ConsumptionBenchmarkRun {
+        benchmark_consumption(info.to_owned())
+            .for_processes(nodes.iter().map(|x| x.as_named_process()).collect())
+            .bare_metal_stake_pool_consumption_target()
+            .start()
     }
 
     pub fn wallet(&mut self, wallet: &str) -> Result<Wallet> {

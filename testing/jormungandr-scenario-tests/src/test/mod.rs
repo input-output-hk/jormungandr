@@ -15,6 +15,7 @@ error_chain! {
         FragmentSender(jormungandr_testing_utils::testing::FragmentSenderError);
         FragmentVerifier(jormungandr_testing_utils::testing::FragmentVerifierError);
         VerificationFailed(jormungandr_testing_utils::testing::VerificationError);
+        MonitorResourcesError(jormungandr_testing_utils::testing::ConsumptionBenchmarkError);
     }
 
     links {
