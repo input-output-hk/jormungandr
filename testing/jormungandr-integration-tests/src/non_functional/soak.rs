@@ -36,7 +36,7 @@ pub fn test_blocks_are_being_created_for_48_hours() {
     let mut benchmark_consumption =
         benchmark_consumption("test_blocks_are_being_created_for_48_hours_resources")
             .bare_metal_stake_pool_consumption_target()
-            .for_process(jormungandr.pid() as usize)
+            .for_process("Node 48 hours up", jormungandr.pid() as usize)
             .start();
 
     loop {

@@ -43,7 +43,7 @@ pub fn collect_reward_for_15_minutes() {
     let mut benchmark_consumption =
         benchmark_consumption("collect_reward_for_15_minutes_resources")
             .target(ResourcesUsage::new(10, 200_000, 5_000_000))
-            .for_process(jormungandr.pid() as usize)
+            .for_process("Node 15 minutes up", jormungandr.pid() as usize)
             .start();
 
     loop {
@@ -60,7 +60,6 @@ pub fn collect_reward_for_15_minutes() {
         jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_uri());
         sender.confirm_transaction();
 
-        println!("63");
         benchmark_consumption.snapshot().unwrap();
 
         if benchmark_endurance.max_endurance_reached() {
@@ -69,7 +68,6 @@ pub fn collect_reward_for_15_minutes() {
             return;
         }
 
-        println!("72");
         if let Err(err) = jormungandr.check_no_errors_in_log() {
             let message = format!("{}", err);
             benchmark_endurance.exception(message.clone()).print();
@@ -77,7 +75,6 @@ pub fn collect_reward_for_15_minutes() {
             panic!(message);
         }
 
-        println!("80");
         benchmark_consumption.snapshot().unwrap();
         if benchmark_endurance.max_endurance_reached() {
             benchmark_consumption.stop().print();
@@ -86,7 +83,6 @@ pub fn collect_reward_for_15_minutes() {
         }
         process_utils::sleep(5);
 
-        println!("89");
         let _rewards = jormungandr
             .rest()
             .reward_history(1)
