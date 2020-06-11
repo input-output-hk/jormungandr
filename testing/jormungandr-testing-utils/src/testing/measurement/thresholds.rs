@@ -118,7 +118,7 @@ impl Thresholds<Consumption> {
         let target_virtual_memory = resources_usage.virtual_memory_usage();
 
         let green_marker =
-            ResourcesUsage::new(target_cpu / 2, target_memory / 2, target_virtual_memory / 2);
+            ResourcesUsage::new(target_cpu / 4, target_memory / 4, target_virtual_memory / 4);
         let green = Consumption::new(vec![green_marker]);
 
         let yellow_marker =
@@ -126,7 +126,7 @@ impl Thresholds<Consumption> {
         let yellow = Consumption::new(vec![yellow_marker]);
 
         let red_marker =
-            ResourcesUsage::new(target_cpu / 4, target_memory / 4, target_virtual_memory / 4);
+            ResourcesUsage::new(target_cpu / 2, target_memory / 2, target_virtual_memory / 2);
         let red = Consumption::new(vec![red_marker]);
 
         let max_marker = ResourcesUsage::new(target_cpu, target_memory, target_virtual_memory);
