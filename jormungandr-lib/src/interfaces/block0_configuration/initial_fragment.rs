@@ -72,6 +72,13 @@ pub fn try_initials_vec_from_messages<'a>(
                 let cert = certificate::SignedCertificate::StakeDelegation(cert, auth);
                 inits.push(Initial::Cert(cert.into()))
             }
+            Fragment::VotePlan(tx) => {
+                let tx = tx.as_slice();
+                let cert = tx.payload().into_payload();
+                let auth = tx.payload_auth().into_payload_auth();
+                let cert = certificate::SignedCertificate::VotePlan(cert, auth);
+                inits.push(Initial::Cert(cert.into()))
+            }
             _ => return Err(Error::Block0MessageUnexpected),
         }
     }
