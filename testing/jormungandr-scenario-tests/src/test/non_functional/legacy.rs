@@ -263,3 +263,135 @@ fn test_legacy_disruption_release(
     controller.finalize();
     Ok(ScenarioResult::passed())
 }
+
+pub fn newest_node_enters_legacy_network(
+    mut context: Context<ChaChaRng>,
+) -> Result<ScenarioResult> {
+    let title = last_nth_release_title(1);
+    let releases = download_last_n_releases(1);
+    let last_release = releases.last().unwrap();
+    let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(&*title));
+    let version = Version::from_str(&last_release.version()).unwrap();
+
+    let scenario_settings = prepare_scenario! {
+        &title,
+        &mut context,
+        topology [
+            LEADER_1,
+            LEADER_2 -> LEADER_1,
+            LEADER_3 -> LEADER_1,
+            LEADER_4 -> LEADER_1,
+        ]
+        blockchain {
+            consensus = GenesisPraos,
+            number_of_slots_per_epoch = 60,
+            slot_duration = 1,
+            leaders = [ LEADER_1 ],
+            initials = [
+                account "unassigned1" with   500_000_000,
+                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
+                account "delegated2" with  2_000_000_000 delegates to LEADER_2,
+                account "delegated3" with  2_000_000_000 delegates to LEADER_3,
+                account "delegated4" with  2_000_000_000 delegates to LEADER_4
+            ],
+        }
+    };
+
+    let mut controller = scenario_settings.build(context)?;
+
+    controller.monitor_nodes();
+
+    let leader1 = controller.spawn_legacy_node(
+        controller
+            .new_spawn_params(LEADER_1)
+            .persistence_mode(PersistenceMode::Persistent)
+            .jormungandr(legacy_app.clone()),
+        &version,
+    )?;
+    leader1.wait_for_bootstrap()?;
+
+    let leader2 = controller.spawn_legacy_node(
+        controller
+            .new_spawn_params(LEADER_2)
+            .persistence_mode(PersistenceMode::Persistent)
+            .jormungandr(legacy_app.clone()),
+        &version,
+    )?;
+    leader1.wait_for_bootstrap()?;
+
+    let leader3 = controller.spawn_legacy_node(
+        controller
+            .new_spawn_params(LEADER_3)
+            .persistence_mode(PersistenceMode::Persistent)
+            .jormungandr(legacy_app.clone()),
+        &version,
+    )?;
+    leader3.wait_for_bootstrap()?;
+
+    let mut wallet1 = controller.wallet("unassigned1")?;
+    let mut wallet2 = controller.wallet("delegated1")?;
+
+    // do some transaction and allow network to spin off a bit
+    controller
+        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
+        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
+
+    // new node enters the network
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    leader4.wait_for_bootstrap()?;
+
+    // force newest node to keep up and talk to legacy nodes
+    let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]);
+    controller
+        .fragment_sender_with_setup(setup)
+        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
+
+    utils::measure_and_log_sync_time(
+        &[
+            &leader1 as &dyn SyncNode,
+            &leader2 as &dyn SyncNode,
+            &leader3 as &dyn SyncNode,
+            &leader4 as &dyn SyncNode,
+        ],
+        SyncWaitParams::network_size(4, 2).into(),
+        &title,
+        MeasurementReportInterval::Standard,
+    )?;
+
+    leader4.shutdown();
+
+    //let assume that we are not satisfied how newest node behaves and we want to rollback
+    let old_leader4 = controller.spawn_legacy_node(
+        controller
+            .new_spawn_params(LEADER_4)
+            .persistence_mode(PersistenceMode::Persistent)
+            .jormungandr(legacy_app.clone()),
+        &version,
+    )?;
+    old_leader4.wait_for_bootstrap()?;
+
+    // repeat sync
+    let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]);
+    controller
+        .fragment_sender_with_setup(setup)
+        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
+
+    utils::measure_and_log_sync_time(
+        &[&leader1, &leader2, &leader3, &old_leader4],
+        SyncWaitParams::network_size(4, 2).into(),
+        &title,
+        MeasurementReportInterval::Standard,
+    )?;
+
+    old_leader4.shutdown()?;
+    leader3.shutdown()?;
+    leader2.shutdown()?;
+    leader1.shutdown()?;
+
+    controller.finalize();
+    Ok(ScenarioResult::passed())
+}

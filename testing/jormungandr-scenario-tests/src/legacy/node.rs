@@ -158,6 +158,10 @@ impl LegacyNodeController {
         self.settings.config.p2p.public_address.clone()
     }
 
+    pub fn progress_bar(&self) -> &ProgressBarController {
+        &self.progress_bar
+    }
+
     fn post(&self, path: &str, body: Vec<u8>) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("POST '{}'", path));
 
