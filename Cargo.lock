@@ -4140,9 +4140,9 @@ dependencies = [
 
 [[package]]
 name = "valico"
-version = "3.2.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdd40226f32a01bdbdb6bf5d74396ad6754c390892e261bcbdb7a6e46d09d33b"
+checksum = "2e06847fab030aa7355f219287e04fe6e090343aa6de55724704b38ba956abb6"
 dependencies = [
  "chrono",
  "jsonway",
