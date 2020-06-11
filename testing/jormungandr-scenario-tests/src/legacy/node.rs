@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
     legacy::LegacySettings,

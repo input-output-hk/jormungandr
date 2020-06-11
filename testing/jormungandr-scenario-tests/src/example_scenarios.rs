@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     scenario::repository::ScenarioResult,
