@@ -3,16 +3,20 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog},
 };
+
 use std::collections::HashMap;
+
+use custom_debug::CustomDebug;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, CustomDebug)]
 pub enum FragmentNodeError {
     #[error("cannot send fragment due to '{reason}' to '{fragment_id}' to node '{alias}'")]
     CannotSendFragment {
         reason: String,
         alias: String,
         fragment_id: FragmentId,
+        #[debug(skip)]
         logs: Vec<String>,
     },
     #[error("reqwest error")]
