@@ -1,17 +1,14 @@
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
     legacy::LegacySettings,
-    node::{ProgressBarController, Status},
+    node::{Error, ProgressBarController, Result, Status},
     style, Context,
 };
-use bawawa::{Control, Process};
 use chain_impl_mockchain::{
     block::Block,
     fragment::{Fragment, FragmentId},
     header::HeaderId,
 };
-use futures::executor::block_on;
-use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
     common::jormungandr::logger::JormungandrLogger, mock::client::JormungandrClient,
 };
@@ -25,90 +22,18 @@ pub use jormungandr_testing_utils::testing::{
     },
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
+
+use bawawa::{Control, Process};
+use futures::executor::block_on;
+use indicatif::ProgressBar;
+use rand_core::RngCore;
+use tokio::prelude::*;
 use yaml_rust::{Yaml, YamlLoader};
 
-use rand_core::RngCore;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
-    time::Duration,
-};
-use tokio::prelude::*;
-
-error_chain! {
-    foreign_links {
-        Io(std::io::Error);
-        Reqwest(reqwest::Error);
-        BlockFormatError(chain_core::mempack::ReadError);
-        SerializationError(yaml_rust::scanner::ScanError);
-        GrpcError(jormungandr_integration_tests::mock::client::MockClientError);
-    }
-
-    errors {
-        CannotCreateTemporaryDirectory {
-            description("Cannot create a temporary directory")
-        }
-
-        CannotSpawnNode {
-            description("Cannot spawn the node"),
-        }
-
-        InvalidGrpcCall {
-            description("Invalid grpc call")
-        }
-
-        InvalidHeaderId {
-            description("Invalid header id"),
-        }
-
-        InvalidBlock {
-            description("Invalid block"),
-        }
-        InvalidFragmentLogs {
-            description("Fragment logs in an invalid format")
-        }
-        InvalidNodeStats {
-            description("Node stats in an invalid format")
-        }
-
-        InvalidNetworkStats {
-            description("Network stats in an invalid format")
-        }
-
-        InvalidEnclaveLeaderIds {
-            description("Leaders ids in an invalid format")
-        }
-
-        InvalidPeerStats{
-            description("Peer in an invalid format")
-        }
-
-        NodeStopped (status: Status) {
-            description("the node is no longer running"),
-        }
-
-        NodeFailedToBootstrap (alias: String, duration: Duration, log: String) {
-            description("cannot start node"),
-            display("node '{}' failed to start after {} s. log: {}", alias, duration.as_secs(), log),
-        }
-
-        NodeFailedToShutdown (alias: String, message: String, log: String) {
-            description("cannot shutdown node"),
-            display("node '{}' failed to shutdown. Message: {}. Log: {}", alias, message, log),
-        }
-
-        FragmentNoInMemPoolLogs (alias: String, fragment_id: FragmentId, log: String) {
-            description("cannot find fragment in mempool logs"),
-            display("fragment '{}' not in the mempool of the node '{}'. logs: {}", fragment_id, alias, log),
-        }
-
-        FragmentIsPendingForTooLong (fragment_id: FragmentId, duration: Duration, alias: String, log: String) {
-            description("fragment is pending for too long"),
-            display("fragment '{}' is pending for too long ({} s). Node: {}, Logs: {}", fragment_id, duration.as_secs(), alias, log),
-        }
-    }
-}
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 /// send query to a running node
 #[derive(Clone)]
@@ -229,7 +154,7 @@ impl LegacyNodeController {
     pub fn tip(&self) -> Result<Hash> {
         let hash = self.get("tip")?.text()?;
 
-        let hash = hash.parse().chain_err(|| ErrorKind::InvalidHeaderId)?;
+        let hash = hash.parse().map_err(Error::InvalidHeaderId)?;
 
         self.progress_bar.log_info(format!("tip '{}'", hash));
 
@@ -237,7 +162,7 @@ impl LegacyNodeController {
     }
 
     pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
-        block_on(self.grpc_client.pull_blocks_to_tip(from)).chain_err(|| ErrorKind::InvalidGrpcCall)
+        block_on(self.grpc_client.pull_blocks_to_tip(from)).map_err(Error::InvalidGrpcCall)
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
@@ -248,7 +173,7 @@ impl LegacyNodeController {
         let network_stats: Vec<PeerStats> = if response_text.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+            serde_json::from_str(&response_text).map_err(Error::InvalidNetworkStats)?
         };
         Ok(network_stats)
     }
@@ -262,7 +187,7 @@ impl LegacyNodeController {
         let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+            serde_json::from_str(&response_text).map_err(Error::InvalidNetworkStats)?
         };
         Ok(network_stats)
     }
@@ -276,7 +201,7 @@ impl LegacyNodeController {
         let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+            serde_json::from_str(&response_text).map_err(Error::InvalidNetworkStats)?
         };
         Ok(network_stats)
     }
@@ -290,7 +215,7 @@ impl LegacyNodeController {
         let network_stats: Vec<PeerRecord> = if response_text.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+            serde_json::from_str(&response_text).map_err(Error::InvalidNetworkStats)?
         };
         Ok(network_stats)
     }
@@ -304,7 +229,7 @@ impl LegacyNodeController {
         let network_stats: Vec<Info> = if response_text.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&response_text).chain_err(|| ErrorKind::InvalidNetworkStats)?
+            serde_json::from_str(&response_text).map_err(Error::InvalidNetworkStats)?
         };
         Ok(network_stats)
     }
@@ -335,8 +260,7 @@ impl LegacyNodeController {
         let mut resp = self.get(&format!("block/{}", header_hash))?;
         let mut bytes = Vec::new();
         resp.copy_to(&mut bytes)?;
-        let block =
-            Block::read(&mut ReadBuf::from(&bytes)).chain_err(|| ErrorKind::InvalidBlock)?;
+        let block = Block::read(&mut ReadBuf::from(&bytes)).map_err(Error::InvalidBlock)?;
 
         self.progress_bar.log_info(format!(
             "block{} ({}) '{}'",
@@ -354,7 +278,7 @@ impl LegacyNodeController {
         let logs: Vec<FragmentLog> = if logs.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&logs).chain_err(|| ErrorKind::InvalidFragmentLogs)?
+            serde_json::from_str(&logs).map_err(Error::InvalidFragmentLogs)?
         };
 
         self.progress_bar
@@ -402,21 +326,21 @@ impl LegacyNodeController {
                     }
                 }
             } else {
-                bail!(ErrorKind::FragmentNoInMemPoolLogs(
-                    self.alias().to_string(),
-                    *check.fragment_id(),
-                    self.logger().get_log_content()
-                ))
+                return Err(Error::FragmentNotInMemPoolLogs {
+                    alias: self.alias().to_string(),
+                    fragment_id: *check.fragment_id(),
+                    logs: self.logger().get_lines_from_log().collect(),
+                });
             }
             std::thread::sleep(duration);
         }
 
-        bail!(ErrorKind::FragmentIsPendingForTooLong(
-            *check.fragment_id(),
-            Duration::from_secs(duration.as_secs() * max_try),
-            self.alias().to_string(),
-            self.logger().get_log_content()
-        ))
+        Err(Error::FragmentIsPendingForTooLong {
+            fragment_id: *check.fragment_id(),
+            duration: Duration::from_secs(duration.as_secs() * max_try),
+            alias: self.alias().to_string(),
+            logs: self.logger().get_lines_from_log().collect(),
+        })
     }
 
     pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>> {
@@ -424,7 +348,7 @@ impl LegacyNodeController {
         let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
             Vec::new()
         } else {
-            serde_json::from_str(&leaders).chain_err(|| ErrorKind::InvalidEnclaveLeaderIds)?
+            serde_json::from_str(&leaders).map_err(Error::InvalidEnclaveLeaderIds)?
         };
 
         self.progress_bar
@@ -508,11 +432,11 @@ impl LegacyNodeController {
             };
             std::thread::sleep(sleep);
         }
-        bail!(ErrorKind::NodeFailedToBootstrap(
-            self.alias().to_string(),
-            Duration::from_secs(sleep.as_secs() * max_try),
-            self.logger().get_log_content()
-        ))
+        Err(Error::NodeFailedToBootstrap {
+            alias: self.alias().to_string(),
+            duration: Duration::from_secs(sleep.as_secs() * max_try),
+            logs: self.logger().get_lines_from_log().collect(),
+        })
     }
 
     pub fn wait_for_shutdown(&self) -> Result<()> {
@@ -524,14 +448,14 @@ impl LegacyNodeController {
             };
             std::thread::sleep(sleep);
         }
-        bail!(ErrorKind::NodeFailedToShutdown(
-            self.alias().to_string(),
-            format!(
+        Err(Error::NodeFailedToShutdown {
+            alias: self.alias().to_string(),
+            message: format!(
                 "node is still up after {} s from sending shutdown request",
                 sleep.as_secs()
             ),
-            self.logger().get_log_content()
-        ))
+            logs: self.logger().get_lines_from_log().collect(),
+        })
     }
 
     fn ports_are_opened(&self) -> bool {
@@ -567,11 +491,11 @@ impl LegacyNodeController {
             self.progress_bar.log_info("shuting down");
             self.wait_for_shutdown()
         } else {
-            bail!(ErrorKind::NodeFailedToShutdown(
-                self.alias().to_string(),
-                result,
-                self.logger().get_log_content()
-            ))
+            Err(Error::NodeFailedToShutdown {
+                alias: self.alias().to_string(),
+                message: result,
+                logs: self.logger().get_lines_from_log().collect(),
+            })
         }
     }
 
@@ -639,18 +563,28 @@ impl LegacyNode {
         }
 
         serde_yaml::to_writer(
-            std::fs::File::create(&config_file)
-                .chain_err(|| format!("Cannot create file {:?}", config_file))?,
+            std::fs::File::create(&config_file).map_err(|e| Error::CannotCreateFile {
+                path: config_file.clone(),
+                cause: e,
+            })?,
             node_settings.config(),
         )
-        .chain_err(|| format!("cannot write in {:?}", config_file))?;
+        .map_err(|e| Error::CannotWriteYamlFile {
+            path: config_file.clone(),
+            cause: e,
+        })?;
 
         serde_yaml::to_writer(
-            std::fs::File::create(&config_secret)
-                .chain_err(|| format!("Cannot create file {:?}", config_secret))?,
+            std::fs::File::create(&config_secret).map_err(|e| Error::CannotCreateFile {
+                path: config_secret.clone(),
+                cause: e,
+            })?,
             node_settings.secrets(),
         )
-        .chain_err(|| format!("cannot write in {:?}", config_secret))?;
+        .map_err(|e| Error::CannotWriteYamlFile {
+            path: config_secret.clone(),
+            cause: e,
+        })?;
 
         command.arguments(&[
             "--config",
@@ -672,7 +606,7 @@ impl LegacyNode {
             }
         }
 
-        let process = Process::spawn(command).chain_err(|| ErrorKind::CannotSpawnNode)?;
+        let process = Process::spawn(command).map_err(Error::CannotSpawnNode)?;
 
         let node = LegacyNode {
             alias: alias.into(),

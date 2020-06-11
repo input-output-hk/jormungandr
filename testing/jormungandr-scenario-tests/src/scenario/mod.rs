@@ -23,12 +23,8 @@ pub use jormungandr_testing_utils::testing::network_builder::{
 };
 
 error_chain! {
-    links {
-        Node(crate::node::Error, crate::node::ErrorKind);
-        LegacyNode(crate::legacy::Error, crate::legacy::ErrorKind);
-    }
-
     foreign_links {
+        Node(crate::node::Error);
         Wallet(jormungandr_testing_utils::wallet::WalletError);
         FsFixture(assert_fs::fixture::FixtureError);
         Io(std::io::Error);

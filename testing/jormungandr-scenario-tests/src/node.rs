@@ -1,15 +1,12 @@
 use crate::{scenario::ProgressBarMode, style, Context};
-use bawawa::{Control, Process};
 use chain_impl_mockchain::{
     block::Block,
     fragment::{Fragment, FragmentId},
     header::HeaderId,
 };
-use futures::executor::block_on;
-use indicatif::ProgressBar;
 use jormungandr_integration_tests::{
     common::jormungandr::{logger::JormungandrLogger, rest, JormungandrRest, RestError},
-    mock::client::JormungandrClient,
+    mock::client::{JormungandrClient, MockClientError},
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -21,76 +18,118 @@ pub use jormungandr_testing_utils::testing::{
     },
     FragmentNode, MemPoolCheck,
 };
+
+use bawawa::{Control, Process};
+use custom_debug::CustomDebug;
+use futures::executor::block_on;
+use indicatif::ProgressBar;
 use rand_core::RngCore;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    process::ExitStatus,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
 use tokio::prelude::*;
 
-error_chain! {
-    foreign_links {
-        Io(std::io::Error);
-        Reqwest(reqwest::Error);
-        BlockFormatError(chain_core::mempack::ReadError);
-        RestError(RestError);
-    }
+use std::collections::HashMap;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-    errors {
-        CannotCreateTemporaryDirectory {
-            description("Cannot create a temporary directory")
-        }
+pub type Result<T> = std::result::Result<T, Error>;
 
-        CannotSpawnNode {
-            description("Cannot spawn the node"),
-        }
+#[derive(CustomDebug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    Io(#[from] io::Error),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
+    #[error(transparent)]
+    BlockFormatError(#[from] chain_core::mempack::ReadError),
+    #[error(transparent)]
+    RestError(#[from] RestError),
+    #[error(transparent)]
+    SerializationError(#[from] yaml_rust::scanner::ScanError),
+    #[error(transparent)]
+    GrpcError(#[from] MockClientError),
+    #[error("cannot create file {path}")]
+    CannotCreateFile {
+        path: PathBuf,
+        #[source]
+        cause: io::Error,
+    },
+    #[error("cannot write YAML into {path}")]
+    CannotWriteYamlFile {
+        path: PathBuf,
+        #[source]
+        cause: serde_yaml::Error,
+    },
+    #[error("cannot create a temporary directory")]
+    CannotCreateTemporaryDirectory,
+    #[error("cannot spawn the node")]
+    CannotSpawnNode(#[source] bawawa::Error),
+    // FIXME: duplicate of GrpcError?
+    #[error("invalid grpc call")]
+    InvalidGrpcCall(#[source] MockClientError),
+    #[error("invalid header id")]
+    InvalidHeaderId(#[source] chain_crypto::hash::Error),
+    #[error("invalid block")]
+    InvalidBlock(#[source] chain_core::mempack::ReadError),
+    #[error("fragment logs in an invalid format")]
+    InvalidFragmentLogs(#[source] serde_json::Error),
+    #[error("node stats in an invalid format")]
+    InvalidNodeStats(#[source] RestError),
+    #[error("network stats in an invalid format")]
+    InvalidNetworkStats(#[source] serde_json::Error),
+    #[error("leaders ids in an invalid format")]
+    InvalidEnclaveLeaderIds(#[source] serde_json::Error),
+    #[error("peer in an invalid format")]
+    InvalidPeerStats(#[source] serde_json::Error),
+    #[error("the node is no longer running, status: {status:?}")]
+    NodeStopped { status: Status },
+    #[error("node '{alias}' failed to start after {} s", .duration.as_secs())]
+    NodeFailedToBootstrap {
+        alias: String,
+        duration: Duration,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
+    #[error("node '{alias}' failed to shutdown, message: {message}")]
+    NodeFailedToShutdown {
+        alias: String,
+        message: String,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
+    #[error("fragment '{fragment_id}' not in the mempool of the node '{alias}'")]
+    FragmentNotInMemPoolLogs {
+        alias: String,
+        fragment_id: FragmentId,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
+    #[error("fragment '{fragment_id}' is pending for too long ({} s) for node '{alias}'", .duration.as_secs())]
+    FragmentIsPendingForTooLong {
+        fragment_id: FragmentId,
+        duration: Duration,
+        alias: String,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
+}
 
-        InvalidHeaderId {
-            description("Invalid header id"),
-        }
-
-        InvalidGrpcCall {
-            description("Invalid grpc call")
-        }
-
-        InvalidBlock {
-            description("Invalid block"),
-        }
-        InvalidFragmentLogs {
-            description("Fragment logs in an invalid format")
-        }
-        InvalidNodeStats {
-            description("Node stats in an invalid format")
-        }
-
-        InvalidNetworkStats {
-            description("Network stats in an invalid format")
-        }
-
-        InvalidEnclaveLeaderIds {
-            description("Leaders ids in an invalid format")
-        }
-
-        InvalidPeerStats{
-            description("Peer in an invalid format")
-        }
-
-        NodeStopped (status: Status) {
-            description("the node is no longer running"),
-        }
-
-        NodeFailedToBootstrap (alias: String, duration: Duration, log: String) {
-            description("cannot start node"),
-            display("node '{}' failed to start after {} s. log: {}", alias, duration.as_secs(), log),
-        }
-
-        NodeFailedToShutdown (alias: String, message: String, log: String) {
-            description("cannot shutdown node"),
-            display("node '{}' failed to shutdown. Message: {}. Log: {}", alias, message, log),
-        }
+impl Error {
+    pub fn logs(&self) -> impl Iterator<Item = &str> {
+        use self::Error::*;
+        let maybe_logs = match self {
+            NodeFailedToBootstrap { logs, .. }
+            | NodeFailedToShutdown { logs, .. }
+            | FragmentNotInMemPoolLogs { logs, .. }
+            | FragmentIsPendingForTooLong { logs, .. } => Some(logs),
+            _ => None,
+        };
+        maybe_logs
+            .into_iter()
+            .map(|logs| logs.iter())
+            .flatten()
+            .map(String::as_str)
     }
 }
 
@@ -205,7 +244,7 @@ impl NodeController {
     }
 
     pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
-        block_on(self.grpc_client.pull_blocks_to_tip(from)).chain_err(|| ErrorKind::InvalidGrpcCall)
+        block_on(self.grpc_client.pull_blocks_to_tip(from)).map_err(Error::InvalidGrpcCall)
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
@@ -269,8 +308,7 @@ impl NodeController {
         let mut resp = self.get(&format!("block/{}", header_hash))?;
         let mut bytes = Vec::new();
         resp.copy_to(&mut bytes)?;
-        let block =
-            Block::read(&mut ReadBuf::from(&bytes)).chain_err(|| ErrorKind::InvalidBlock)?;
+        let block = Block::read(&mut ReadBuf::from(&bytes)).map_err(Error::InvalidBlock)?;
 
         self.progress_bar.log_info(format!(
             "block{} ({}) '{}'",
@@ -343,9 +381,7 @@ impl NodeController {
     }
 
     pub fn stats(&self) -> Result<NodeStatsDto> {
-        self.rest_client
-            .stats()
-            .chain_err(|| ErrorKind::InvalidNodeStats)
+        self.rest_client.stats().map_err(Error::InvalidNodeStats)
     }
 
     pub fn log_stats(&self) {
@@ -371,11 +407,11 @@ impl NodeController {
             };
             std::thread::sleep(sleep);
         }
-        bail!(ErrorKind::NodeFailedToBootstrap(
-            self.alias().to_string(),
-            Duration::from_secs(sleep.as_secs() * max_try),
-            self.logger().get_log_content()
-        ))
+        Err(Error::NodeFailedToBootstrap {
+            alias: self.alias().to_string(),
+            duration: Duration::from_secs(sleep.as_secs() * max_try),
+            logs: self.logger().get_lines_from_log().collect(),
+        })
     }
 
     pub fn wait_for_shutdown(&self) -> Result<()> {
@@ -387,14 +423,14 @@ impl NodeController {
             };
             std::thread::sleep(sleep);
         }
-        bail!(ErrorKind::NodeFailedToShutdown(
-            self.alias().to_string(),
-            format!(
+        Err(Error::NodeFailedToShutdown {
+            alias: self.alias().to_string(),
+            message: format!(
                 "node is still up after {} s from sending shutdown request",
                 sleep.as_secs()
             ),
-            self.logger().get_log_content()
-        ))
+            logs: self.logger().get_lines_from_log().collect(),
+        })
     }
 
     fn ports_are_opened(&self) -> bool {
@@ -434,11 +470,11 @@ impl NodeController {
             self.progress_bar.log_info("shuting down");
             self.wait_for_shutdown()
         } else {
-            bail!(ErrorKind::NodeFailedToShutdown(
-                self.alias().to_string(),
-                result,
-                self.logger().get_log_content()
-            ))
+            Err(Error::NodeFailedToShutdown {
+                alias: self.alias().to_string(),
+                message: result,
+                logs: self.logger().get_lines_from_log().collect(),
+            })
         }
     }
 
@@ -512,18 +548,28 @@ impl Node {
         }
 
         serde_yaml::to_writer(
-            std::fs::File::create(&config_file)
-                .chain_err(|| format!("Cannot create file {:?}", config_file))?,
+            std::fs::File::create(&config_file).map_err(|e| Error::CannotCreateFile {
+                path: config_file.clone(),
+                cause: e,
+            })?,
             node_settings.config(),
         )
-        .chain_err(|| format!("cannot write in {:?}", config_file))?;
+        .map_err(|e| Error::CannotWriteYamlFile {
+            path: config_file.clone(),
+            cause: e,
+        })?;
 
         serde_yaml::to_writer(
-            std::fs::File::create(&config_secret)
-                .chain_err(|| format!("Cannot create file {:?}", config_secret))?,
+            std::fs::File::create(&config_secret).map_err(|e| Error::CannotCreateFile {
+                path: config_secret.clone(),
+                cause: e,
+            })?,
             node_settings.secrets(),
         )
-        .chain_err(|| format!("cannot write in {:?}", config_secret))?;
+        .map_err(|e| Error::CannotWriteYamlFile {
+            path: config_secret.clone(),
+            cause: e,
+        })?;
 
         command.arguments(&[
             "--config",
@@ -545,7 +591,7 @@ impl Node {
             }
         }
 
-        let process = Process::spawn(command).chain_err(|| ErrorKind::CannotSpawnNode)?;
+        let process = Process::spawn(command).map_err(Error::CannotSpawnNode)?;
 
         let node = Node {
             alias: alias.into(),

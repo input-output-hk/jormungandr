@@ -14,15 +14,18 @@ use jormungandr_lib::{
     interfaces::{FragmentStatus, Value},
 };
 use std::time::Duration;
+
+use custom_debug::CustomDebug;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, CustomDebug)]
 pub enum FragmentSenderError {
-    #[error("fragment sent to node: {alias} is not in block due to  '{reason}'. logs: {logs}")]
+    #[error("fragment sent to node: {alias} is not in block due to '{reason}'")]
     FragmentNotInBlock {
         alias: String,
         reason: String,
-        logs: String,
+        #[debug(skip)]
+        logs: Vec<String>,
     },
     #[error(
         "Too many attempts failed ({attempts}) while trying to send fragment to node: {alias}"
@@ -40,6 +43,21 @@ pub enum FragmentSenderError {
     TransactionAutoConfirmDisabledError,
     #[error("fragment exporter error")]
     FragmentExporterError(#[from] FragmentExporterError),
+}
+
+impl FragmentSenderError {
+    pub fn logs(&self) -> impl Iterator<Item = &str> {
+        use self::FragmentSenderError::*;
+        let maybe_logs = match self {
+            FragmentNotInBlock { logs, .. } => Some(logs),
+            _ => None,
+        };
+        maybe_logs
+            .into_iter()
+            .map(|logs| logs.iter())
+            .flatten()
+            .map(String::as_str)
+    }
 }
 
 pub struct FragmentSender<'a> {

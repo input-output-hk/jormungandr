@@ -701,6 +701,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_debug"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77918c835e779ed75fbca65fc3cc3b6e664eb37886e103e73f1f7171ac73832c"
+dependencies = [
+ "custom_debug_derive",
+]
+
+[[package]]
+name = "custom_debug_derive"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a39fd0ac282783a1cdc683b33d8f0a67b57b403aa9549b0448c98db0c6f649a"
+dependencies = [
+ "proc-macro2",
+ "syn",
+ "synstructure",
+]
+
+[[package]]
 name = "difference"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1531,6 +1551,7 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "console",
+ "custom_debug",
  "error-chain",
  "futures 0.3.5",
  "hex",
@@ -1551,6 +1572,7 @@ dependencies = [
  "serde_yaml",
  "slog",
  "structopt",
+ "thiserror",
  "tokio 0.1.22",
  "yaml-rust",
 ]
@@ -1567,6 +1589,7 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "chrono",
+ "custom_debug",
  "flate2",
  "hex",
  "humantime",
@@ -3246,6 +3269,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "synstructure"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "unicode-xid",
 ]
 
 [[package]]

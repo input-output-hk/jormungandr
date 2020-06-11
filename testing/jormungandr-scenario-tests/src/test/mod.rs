@@ -11,6 +11,7 @@ use std::time::Duration;
 error_chain! {
 
     foreign_links {
+        Node(crate::node::Error);
         Wallet(jormungandr_testing_utils::wallet::WalletError);
         FragmentSender(jormungandr_testing_utils::testing::FragmentSenderError);
         FragmentVerifier(jormungandr_testing_utils::testing::FragmentVerifierError);
@@ -18,8 +19,6 @@ error_chain! {
     }
 
     links {
-        Node(crate::node::Error, crate::node::ErrorKind);
-        LegacyNode(crate::legacy::Error, crate::legacy::ErrorKind);
         Scenario(crate::scenario::Error, crate::scenario::ErrorKind);
     }
 

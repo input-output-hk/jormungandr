@@ -1,34 +1,54 @@
 use crate::testing::fragments::node::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use chain_impl_mockchain::fragment::FragmentId;
+use custom_debug::CustomDebug;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::time::Duration;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, CustomDebug)]
 pub enum FragmentVerifierError {
-    #[error("fragment sent to node: {alias} is not in block :({status:?}). logs: {logs}")]
+    #[error("fragment sent to node: {alias} is not in block :({status:?})")]
     FragmentNotInBlock {
         alias: String,
         status: FragmentStatus,
-        logs: String,
+        #[debug(skip)]
+        logs: Vec<String>,
     },
     #[error("transaction already balanced")]
     FragmentIsPendingForTooLong {
         fragment_id: FragmentId,
         timeout: Duration,
         alias: String,
-        logs: String,
+        #[debug(skip)]
+        logs: Vec<String>,
     },
-    #[error(
-        "fragment sent to node: {alias} is not in in fragment pool :({fragment_id}). logs: {logs}"
-    )]
-    FragmentNoInMemPoolLogs {
+    #[error("fragment sent to node: {alias} is not in in fragment pool :({fragment_id})")]
+    FragmentNotInMemPoolLogs {
         alias: String,
         fragment_id: FragmentId,
-        logs: String,
+        #[debug(skip)]
+        logs: Vec<String>,
     },
     #[error("fragment node error")]
-    FragmentNodeError(#[from] FragmentNodeError),
+    FragmentNode(#[from] FragmentNodeError),
+}
+
+impl FragmentVerifierError {
+    pub fn logs(&self) -> impl Iterator<Item = &str> {
+        use self::FragmentVerifierError::*;
+        let maybe_logs = match self {
+            FragmentNotInBlock { logs, .. }
+            | FragmentIsPendingForTooLong { logs, .. }
+            | FragmentNotInMemPoolLogs { logs, .. }
+            | FragmentNode(FragmentNodeError::CannotSendFragment { logs, .. }) => Some(logs),
+            FragmentNode(_) => None,
+        };
+        maybe_logs
+            .into_iter()
+            .map(|logs| logs.iter())
+            .flatten()
+            .map(String::as_str)
+    }
 }
 
 pub struct FragmentVerifier;
@@ -85,7 +105,7 @@ impl FragmentVerifier {
             return Ok(status);
         }
 
-        Err(FragmentVerifierError::FragmentNoInMemPoolLogs {
+        Err(FragmentVerifierError::FragmentNotInMemPoolLogs {
             alias: node.alias().to_string(),
             fragment_id: *check.fragment_id(),
             logs: node.log_content(),
