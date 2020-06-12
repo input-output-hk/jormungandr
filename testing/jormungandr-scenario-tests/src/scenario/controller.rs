@@ -18,7 +18,7 @@ use jormungandr_testing_utils::{
         },
         FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
-    wallet::Wallet,
+    wallet::Wallet, stake_pool::StakePool,
 };
 
 use assert_fs::fixture::ChildPath;
@@ -170,6 +170,14 @@ impl Controller {
             runtime: runtime::Runtime::new()?,
             working_directory,
         })
+    }
+
+    pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool> {
+        if let Some(stake_pool) = self.settings.stake_pools.remove(node_alias) {
+            Ok(stake_pool.into())
+        } else {
+            Err(ErrorKind::StakePoolNotFound(node_alias.to_owned()).into())
+        }    
     }
 
     pub fn working_directory(&self) -> &ChildPath {
