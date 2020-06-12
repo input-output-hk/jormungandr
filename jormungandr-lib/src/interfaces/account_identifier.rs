@@ -94,6 +94,16 @@ impl From<AccountIdentifier> for transaction::AccountIdentifier {
     }
 }
 
+impl From<transaction::UnspecifiedAccountIdentifier> for AccountIdentifier {
+    fn from(t: transaction::UnspecifiedAccountIdentifier) -> Self {
+        Self(
+            t.to_single_account()
+                .map(transaction::AccountIdentifier::Single)
+                .unwrap_or_else(|| transaction::AccountIdentifier::Multi(t.to_multi_account())),
+        )
+    }
+}
+
 /* ------------------- Serde ----------------------------------------------- */
 
 impl Serialize for AccountIdentifier {
