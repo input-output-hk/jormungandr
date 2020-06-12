@@ -1,5 +1,7 @@
 use crate::jcli_app::{
-    certificate::{pool_owner_sign, stake_delegation_account_binding_sign},
+    certificate::{
+        committee_vote_tally_sign, pool_owner_sign, stake_delegation_account_binding_sign,
+    },
     transaction::Error,
     utils::io,
 };
@@ -176,6 +178,12 @@ impl Staging {
                 Certificate::OwnerStakeDelegation(_) => unreachable!(),
                 Certificate::VotePlan(_) => unreachable!(),
                 Certificate::VoteCast(_) => unreachable!(),
+                Certificate::VoteTally(vt) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vt))?;
+                    let sc = committee_vote_tally_sign(vt, keys, builder)
+                        .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
             },
         };
         self.kind = StagingKind::Authed;
@@ -264,6 +272,9 @@ impl Staging {
                 }
                 Certificate::VoteCast(vp) => {
                     self.finalize_payload(&vp, fee_algorithm, output_policy)
+                }
+                Certificate::VoteTally(vt) => {
+                    self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
                 Certificate::OwnerStakeDelegation(c) => {
                     let balance = self.finalize_payload(&c, fee_algorithm, output_policy)?;
@@ -393,6 +404,9 @@ impl Staging {
                     SignedCertificate::VoteCast(vp, a) => {
                         self.make_fragment(&vp, &a, Fragment::VoteCast)
                     }
+                    SignedCertificate::VoteTally(vt, a) => {
+                        self.make_fragment(&vt, &a, Fragment::VoteTally)
+                    }
                 }
             }
         }
@@ -435,6 +449,9 @@ impl Staging {
                 }
                 Certificate::VoteCast(cp) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&cp))
+                }
+                Certificate::VoteTally(vt) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
             },
         }

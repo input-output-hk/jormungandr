@@ -192,6 +192,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
                 Fragment::PoolUpdate(tx) => totals(tx),
                 Fragment::VotePlan(tx) => totals(tx),
                 Fragment::VoteCast(tx) => totals(tx),
+                Fragment::VoteTally(tx) => totals(tx),
                 Fragment::Initial(_)
                 | Fragment::OldUtxoDeclaration(_)
                 | Fragment::UpdateProposal(_)

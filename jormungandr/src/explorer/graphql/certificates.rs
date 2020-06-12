@@ -16,6 +16,7 @@ pub enum Certificate {
     PoolUpdate(PoolUpdate),
     VotePlan(VotePlan),
     VoteCast(VoteCast),
+    VoteTally(VoteTally),
 }
 
 pub struct StakeDelegation(certificate::StakeDelegation);
@@ -33,6 +34,8 @@ pub struct VotePlan(certificate::VotePlan);
 
 pub struct VoteCast(certificate::VoteCast);
 
+pub struct VoteTally(certificate::VoteTally);
+
 graphql_union!(Certificate: Context |&self| {
     // the left hand side of the `instance_resolvers` match-like pub structure is the one
     // that's used to match in the graphql query with the `__typename` field
@@ -44,6 +47,7 @@ graphql_union!(Certificate: Context |&self| {
         &PoolRetirement => match *self { Certificate::PoolRetirement(ref c) => Some(c), _ => None},
         &VotePlan => match *self { Certificate::VotePlan(ref c) => Some(c), _ => None},
         &VoteCast => match *self { Certificate::VoteCast(ref c) => Some(c), _ => None},
+        &VoteTally => match *self { Certificate::VoteTally(ref c) => Some(c), _ => None},
     }
 });
 
@@ -245,6 +249,15 @@ impl VoteCast {
     }
 }
 
+#[juniper::object(
+    Context = Context,
+)]
+impl VoteTally {
+    pub fn vote_plan(&self) -> VotePlanId {
+        self.0.id().clone().into()
+    }
+}
+
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/
@@ -270,6 +283,7 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::PoolUpdate(c) => Ok(Certificate::PoolUpdate(PoolUpdate(c))),
             certificate::Certificate::VotePlan(c) => Ok(Certificate::VotePlan(VotePlan(c))),
             certificate::Certificate::VoteCast(c) => Ok(Certificate::VoteCast(VoteCast(c))),
+            certificate::Certificate::VoteTally(c) => Ok(Certificate::VoteTally(VoteTally(c))),
         }
     }
 }
