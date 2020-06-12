@@ -9,7 +9,7 @@ use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
 };
 use jormungandr_testing_utils::testing::{
-    benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
+    benchmark_consumption, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
 };
 use std::{str::FromStr, time::Duration};
 
@@ -34,6 +34,12 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
     let benchmark = benchmark_endurance("test_explorer_is_in_sync_with_node_for_15_minutes")
         .target(Duration::from_secs(900))
         .start();
+
+    let mut consumption_benchmark =
+        benchmark_consumption("explorer with node is not consuming too much resources")
+            .bare_metal_stake_pool_consumption_target()
+            .for_process("Node with Explorer", jormungandr.pid() as usize)
+            .start();
 
     loop {
         let transaction =
@@ -64,6 +70,10 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             benchmark.stop().print();
             return;
         }
+
+        consumption_benchmark
+            .snapshot()
+            .expect("cannot gather system resources for snapshot");
 
         std::mem::swap(&mut sender, &mut receiver);
     }

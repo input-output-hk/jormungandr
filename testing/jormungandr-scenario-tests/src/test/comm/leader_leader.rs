@@ -6,9 +6,8 @@ use crate::{
     },
     Context, ScenarioResult,
 };
-use jormungandr_testing_utils::testing::{FragmentSenderSetup, FragmentVerifier};
+use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use rand_chacha::ChaChaRng;
-use std::time::Duration;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
@@ -41,27 +40,24 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     controller.monitor_nodes();
+    let mut monitor = controller
+        .start_monitor_resources("two_transaction_to_two_leaders", vec![&leader_1, &leader_2]);
 
     leader_2.wait_for_bootstrap()?;
     leader_1.wait_for_bootstrap()?;
 
+    monitor.snapshot()?;
+
     let mut wallet1 = controller.wallet("delegated2")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    let fragment_sender = controller.fragment_sender_with_setup(FragmentSenderSetup::no_verify());
-    let fragment_verifier = FragmentVerifier;
+    let fragment_sender =
+        controller.fragment_sender_with_setup(FragmentSenderSetup::resend_3_times());
 
     for _ in 0..10 {
-        let check1 =
-            fragment_sender.send_transaction(&mut wallet1, &wallet2, &leader_1, 1_000.into())?;
-        let check2 =
-            fragment_sender.send_transaction(&mut wallet2, &wallet1, &leader_2, 1_000.into())?;
-
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check1, &leader_1)?;
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check2, &leader_2)?;
-
-        wallet1.confirm_transaction();
-        wallet2.confirm_transaction();
+        fragment_sender.send_transaction(&mut wallet1, &wallet2, &leader_1, 1_000.into())?;
+        fragment_sender.send_transaction(&mut wallet2, &wallet1, &leader_2, 1_000.into())?;
+        monitor.snapshot()?;
     }
 
     utils::measure_and_log_sync_time(
@@ -71,8 +67,8 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
         MeasurementReportInterval::Standard,
     )?;
 
-    leader_1.shutdown().unwrap();
-    leader_2.shutdown().unwrap();
+    monitor.snapshot()?;
+    monitor.stop().print();
     controller.finalize();
     Ok(ScenarioResult::passed())
 }

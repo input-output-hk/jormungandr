@@ -1,6 +1,32 @@
 use crate::testing::measurement::{marker::ResourcesUsage, status::Status, thresholds::Thresholds};
 use std::{cmp::Ordering, fmt};
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct NamedProcess {
+    name: String,
+    id: usize,
+}
+
+impl NamedProcess {
+    pub fn new(name: String, id: usize) -> Self {
+        Self { name, id }
+    }
+
+    pub fn name(&self) -> String {
+        self.name.to_string()
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
+}
+
+impl fmt::Display for NamedProcess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "id: {}, alias: {}", self.id, self.name)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Consumption {
     average_usage: ResourcesUsage,
@@ -49,10 +75,10 @@ impl Consumption {
         let green = thresholds.green_threshold();
         let yellow = thresholds.yellow_threshold();
 
-        if *self >= green {
+        if *self <= green {
             return Status::Green;
         }
-        if *self >= yellow {
+        if *self <= yellow {
             return Status::Yellow;
         }
         Status::Red

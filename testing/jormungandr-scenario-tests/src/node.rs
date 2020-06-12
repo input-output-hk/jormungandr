@@ -18,7 +18,7 @@ pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
     },
-    FragmentNode, MemPoolCheck,
+    FragmentNode, MemPoolCheck, NamedProcess,
 };
 
 use bawawa::{Control, Process};
@@ -152,6 +152,7 @@ pub struct NodeController {
     settings: NodeSetting,
     progress_bar: ProgressBarController,
     status: Arc<Mutex<Status>>,
+    process_id: u32,
 }
 
 /// Node is going to be used by the `Controller` to monitor the node process
@@ -193,6 +194,10 @@ impl NodeController {
 
     pub fn address(&self) -> poldercast::Address {
         self.settings.config.p2p.public_address.clone()
+    }
+
+    pub fn as_named_process(&self) -> NamedProcess {
+        NamedProcess::new(self.alias().to_string(), self.process_id as usize)
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {
@@ -512,6 +517,7 @@ impl Node {
             settings: self.node_settings.clone(),
             status: self.status.clone(),
             progress_bar: self.progress_bar.clone(),
+            process_id: self.id(),
         }
     }
 

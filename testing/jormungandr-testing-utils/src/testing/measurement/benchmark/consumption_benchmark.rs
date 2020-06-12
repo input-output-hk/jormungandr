@@ -1,28 +1,30 @@
 use crate::testing::measurement::{
-    attribute::Consumption, marker::ResourcesUsage, thresholds::Thresholds,
+    attribute::{Consumption, NamedProcess},
+    marker::ResourcesUsage,
+    thresholds::Thresholds,
 };
-use std::fmt;
+use std::collections::HashMap;
 use sysinfo::{ProcessExt, SystemExt};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ConsumptionBenchmarkError {
-    #[error("couldn't find process with id {0}")]
-    NoProcessWitId(usize),
+    #[error("couldn't find process {0}")]
+    NoProcessWitId(NamedProcess),
 }
 
 #[derive(Clone)]
 pub struct ConsumptionBenchmarkDef {
     name: String,
     thresholds: Option<Thresholds<Consumption>>,
-    pid: usize,
+    pids: Vec<NamedProcess>,
 }
 
 impl ConsumptionBenchmarkDef {
     pub fn new(name: String) -> Self {
         ConsumptionBenchmarkDef {
             name,
-            pid: 0,
+            pids: Vec::new(),
             thresholds: None,
         }
     }
@@ -33,7 +35,7 @@ impl ConsumptionBenchmarkDef {
 
     pub fn bare_metal_stake_pool_consumption_target(&mut self) -> &mut Self {
         self.thresholds = Some(Thresholds::<Consumption>::new_consumption(
-            ResourcesUsage::new(10, 50_000, 200_000),
+            ResourcesUsage::new(10, 160_000, 20_000_000),
         ));
         self
     }
@@ -48,8 +50,13 @@ impl ConsumptionBenchmarkDef {
         self
     }
 
-    pub fn for_process(&mut self, pid: usize) -> &mut Self {
-        self.pid = pid;
+    pub fn for_process<S: Into<String>>(&mut self, name: S, pid: usize) -> &mut Self {
+        self.pids.push(NamedProcess::new(name.into(), pid.into()));
+        self
+    }
+
+    pub fn for_processes(&mut self, processes: Vec<NamedProcess>) -> &mut Self {
+        self.pids.extend(processes);
         self
     }
 
@@ -60,14 +67,14 @@ impl ConsumptionBenchmarkDef {
     pub fn start(&self) -> ConsumptionBenchmarkRun {
         ConsumptionBenchmarkRun {
             definition: self.clone(),
-            markers: Vec::new(),
+            markers: self.pids.iter().map(|x| (x.clone(), vec![])).collect(),
         }
     }
 }
 
 pub struct ConsumptionBenchmarkRun {
     definition: ConsumptionBenchmarkDef,
-    markers: Vec<ResourcesUsage>,
+    markers: HashMap<NamedProcess, Vec<ResourcesUsage>>,
 }
 
 impl ConsumptionBenchmarkRun {
@@ -75,21 +82,19 @@ impl ConsumptionBenchmarkRun {
         let mut system = sysinfo::System::new();
         system.refresh_processes();
 
-        let (_, process) = system
-            .get_processes()
-            .iter()
-            .find(|(pid, _)| (**pid as usize) == self.definition.pid)
-            .ok_or(ConsumptionBenchmarkError::NoProcessWitId(
-                self.definition.pid,
-            ))?;
+        for (named_process, resources) in self.markers.iter_mut() {
+            let process = system.get_process(named_process.id() as i32).ok_or(
+                ConsumptionBenchmarkError::NoProcessWitId(named_process.clone()),
+            )?;
 
-        let marker = ResourcesUsage::new(
-            process.cpu_usage() as u32,
-            process.memory() as u32,
-            process.virtual_memory() as u32,
-        );
+            let marker = ResourcesUsage::new(
+                process.cpu_usage() as u32,
+                process.memory() as u32,
+                process.virtual_memory() as u32,
+            );
 
-        self.markers.push(marker);
+            resources.push(marker);
+        }
         Ok(())
     }
 
@@ -102,11 +107,19 @@ impl ConsumptionBenchmarkRun {
         match self.definition.thresholds() {
             Some(_thresholds) => ConsumptionBenchmarkFinish {
                 definition: self.definition.clone(),
-                consumption: Consumption::new(self.markers),
+                consumptions: self
+                    .markers
+                    .iter()
+                    .map(|(name, data)| (name.clone(), Consumption::new(data.clone())))
+                    .collect(),
             },
             None => ConsumptionBenchmarkFinish {
                 definition: self.definition.clone(),
-                consumption: Consumption::new(self.markers),
+                consumptions: self
+                    .markers
+                    .iter()
+                    .map(|(name, data)| (name.clone(), Consumption::new(data.clone())))
+                    .collect(),
             },
         }
     }
@@ -114,31 +127,31 @@ impl ConsumptionBenchmarkRun {
 
 pub struct ConsumptionBenchmarkFinish {
     definition: ConsumptionBenchmarkDef,
-    consumption: Consumption,
+    consumptions: HashMap<NamedProcess, Consumption>,
 }
 
 impl ConsumptionBenchmarkFinish {
     pub fn print(&self) {
-        println!("{}", &self);
+        for (named_process, consumption) in self.consumptions.iter() {
+            self.print_single(named_process, consumption)
+        }
     }
-}
 
-impl fmt::Display for ConsumptionBenchmarkFinish {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn print_single(&self, named_process: &NamedProcess, consumption: &Consumption) {
         match self.definition.thresholds() {
-            Some(thresholds) => write!(
-                f,
-                "Measurement: {}. Result: {}. Actual: {} Thresholds: {}",
+            Some(thresholds) => println!(
+                "Measurement: {}_{}. Result: {}. Actual: {} Thresholds: {}",
                 self.definition.name(),
-                self.consumption.against(&thresholds),
-                self.consumption,
-                thresholds,
+                named_process.name(),
+                consumption.against(&thresholds),
+                consumption,
+                thresholds
             ),
-            None => write!(
-                f,
-                "Measurement: {}. Value: {}",
+            None => println!(
+                "Measurement: {}_{}. Value: {}",
                 self.definition.name(),
-                self.consumption
+                named_process.name(),
+                consumption
             ),
         }
     }
