@@ -61,4 +61,6 @@ pub use self::transaction_output::TransactionOutput;
 pub use self::transaction_witness::TransactionWitness;
 pub use self::utxo_info::{UTxOInfo, UTxOOutputInfo};
 pub use self::value::{Value, ValueDef};
-pub use self::vote::{VotePlanSerializableHelper, VotePlanWithId};
+pub use self::vote::{
+    Payload, PayloadTypeDef, Tally, TallyResult, VotePlanStatus, VoteProposalStatus,
+};
