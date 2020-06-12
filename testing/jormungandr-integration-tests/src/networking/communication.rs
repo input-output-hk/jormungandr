@@ -34,7 +34,7 @@ pub fn two_nodes_communication() {
     trusted_node_dir.create_dir_all().unwrap();
     let trusted_node_config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![leader_jormungandr.to_trusted_peer()])
-        .with_block_hash(leader_config.genesis_block_hash().clone())
+        .with_block_hash(leader_config.genesis_block_hash())
         .build(&trusted_node_dir);
 
     let trusted_jormungandr = Starter::new()
