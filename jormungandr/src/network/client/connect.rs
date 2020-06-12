@@ -139,23 +139,21 @@ impl Future for ConnectFuture {
     type Output = Result<Client, ConnectError>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        loop {
-            // First, check if the connection is cancelled
-            if let Poll::Ready(()) = self
-                .sender
-                .as_mut()
-                .expect("polled a future after it has been resolved")
-                .poll_canceled(cx)
-            {
-                return Err(ConnectError::Canceled).into();
-            }
+        // First, check if the connection is cancelled
+        if let Poll::Ready(()) = self
+            .sender
+            .as_mut()
+            .expect("polled a future after it has been resolved")
+            .poll_canceled(cx)
+        {
+            return Err(ConnectError::Canceled).into();
+        }
 
-            let (client, comms) = ready!(Pin::new(&mut self.task).poll(cx))?;
+        let (client, comms) = ready!(Pin::new(&mut self.task).poll(cx))?;
 
-            return match self.sender.take().unwrap().send(comms) {
-                Ok(()) => Ok(client).into(),
-                Err(_) => Err(ConnectError::Canceled).into(),
-            };
+        match self.sender.take().unwrap().send(comms) {
+            Ok(()) => Ok(client).into(),
+            Err(_) => Err(ConnectError::Canceled).into(),
         }
     }
 }
