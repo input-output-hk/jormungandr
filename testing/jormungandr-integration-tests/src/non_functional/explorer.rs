@@ -9,7 +9,7 @@ use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
 };
 use jormungandr_testing_utils::testing::{
-    benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
+    benchmark_consumption, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
 };
 use std::{str::FromStr, time::Duration};
 
@@ -35,10 +35,10 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
         .target(Duration::from_secs(900))
         .start();
 
-    let consumption_benchmark =
+    let mut consumption_benchmark =
         benchmark_consumption("explorer with node is not consuming too much resources")
             .bare_metal_stake_pool_consumption_target()
-            .for_process("Node with Explorer", jormungandr.pid())
+            .for_process("Node with Explorer", jormungandr.pid() as usize)
             .start();
 
     loop {
@@ -77,8 +77,6 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
 
         std::mem::swap(&mut sender, &mut receiver);
     }
-
-    consumption_benchmark.stop().print();
 }
 
 fn finish_test_prematurely(error_message: String, benchmark: EnduranceBenchmarkRun) {

@@ -50,8 +50,8 @@ impl ConsumptionBenchmarkDef {
         self
     }
 
-    pub fn for_process(&mut self, name: String, pid: usize) -> &mut Self {
-        self.pids.push(NamedProcess::new(name, pid.into()));
+    pub fn for_process<S: Into<String>>(&mut self, name: S, pid: usize) -> &mut Self {
+        self.pids.push(NamedProcess::new(name.into(), pid.into()));
         self
     }
 
@@ -83,7 +83,7 @@ impl ConsumptionBenchmarkRun {
         system.refresh_processes();
 
         for (named_process, resources) in self.markers.iter_mut() {
-            let process = system.get_process(named_process.id()).ok_or(
+            let process = system.get_process(named_process.id() as i32).ok_or(
                 ConsumptionBenchmarkError::NoProcessWitId(named_process.clone()),
             )?;
 
