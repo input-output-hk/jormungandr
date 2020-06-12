@@ -75,8 +75,11 @@ pub fn try_initials_vec_from_messages<'a>(
             Fragment::VotePlan(tx) => {
                 let tx = tx.as_slice();
                 let cert = tx.payload().into_payload();
-                let auth = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::VotePlan(cert, auth);
+                // the pattern match here is to make sure we are actually expecting the `()`
+                // and that if it changes the compiler will detect it and tell us about the
+                // change so we are reminded of a breaking change
+                let () = tx.payload_auth().into_payload_auth();
+                let cert = certificate::SignedCertificate::VotePlan(cert, ());
                 inits.push(Initial::Cert(cert.into()))
             }
             _ => return Err(Error::Block0MessageUnexpected),
