@@ -34,7 +34,7 @@ use jormungandr_lib::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
         LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
         SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
-        TransactionOutput, VotePlanWithId,
+        TransactionOutput, VotePlanStatus,
     },
     time::SystemTime,
 };
@@ -192,6 +192,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
                 Fragment::PoolUpdate(tx) => totals(tx),
                 Fragment::VotePlan(tx) => totals(tx),
                 Fragment::VoteCast(tx) => totals(tx),
+                Fragment::VoteTally(tx) => totals(tx),
                 Fragment::Initial(_)
                 | Fragment::OldUtxoDeclaration(_)
                 | Fragment::UpdateProposal(_)
@@ -635,14 +636,14 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .collect())
 }
 
-pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlanWithId>, Error> {
+pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlanStatus>, Error> {
     let vp = context
         .blockchain_tip()?
         .get_ref()
         .await
         .active_vote_plans()
-        .iter()
-        .map(|vote_plan| VotePlanWithId::new(vote_plan))
+        .into_iter()
+        .map(VotePlanStatus::from)
         .collect();
     Ok(vp)
 }

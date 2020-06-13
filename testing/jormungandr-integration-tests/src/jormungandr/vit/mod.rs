@@ -57,7 +57,7 @@ pub fn test_get_initial_vote_plan() {
     assert!(vote_plans.len() == 1);
 
     let vote_plan = vote_plans.get(0).unwrap();
-    let actual_vote_plan_id = vote_plan["voteplan_id"].as_str().unwrap().to_string();
+    let actual_vote_plan_id = vote_plan["id"].as_str().unwrap().to_string();
 
     assert_eq!(actual_vote_plan_id, expected_vote_plan.to_id().to_string());
 }

@@ -196,7 +196,7 @@ pub fn test_genesis_decode_bijection() {
 
     let right_hash = jcli_wrapper::assert_genesis_hash(block0_after.path());
 
-    assert_eq!(params.genesis_block_hash().clone(), right_hash);
+    assert_eq!(params.genesis_block_hash(), right_hash);
 }
 
 #[test]

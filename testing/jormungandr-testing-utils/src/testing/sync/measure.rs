@@ -81,7 +81,7 @@ pub fn measure_fragment_propagation_speed<A: FragmentNode + Sized + Send>(
             let leader_index_usize = (leader_id - 1) as usize;
             let leader: &A = leaders.get(leader_index_usize).unwrap();
             let fragment_logs = leader.fragment_logs().unwrap();
-            let alias = FragmentNode::alias(leader).clone();
+            let alias = FragmentNode::alias(leader);
             report_node_stats
                 .do_if_interval_reached(|| println!("Node: {} -> {:?}", alias, fragment_logs));
 

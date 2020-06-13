@@ -6,7 +6,7 @@ use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     certificate::{
         Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
-        StakeDelegation,
+        StakeDelegation, TallyProof, VoteTally,
     },
     key::EitherEd25519SecretKey,
     transaction::{
@@ -73,6 +73,10 @@ impl Sign {
                     SignedCertificate::PoolUpdate(c, PoolSignature::Owners(a))
                 })?
             }
+            Certificate::VoteTally(vt) => {
+                let txbuilder = Transaction::block0_payload_builder(&vt);
+                committee_vote_tally_sign(vt, &keys_str, txbuilder)?
+            }
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
@@ -80,6 +84,35 @@ impl Sign {
             Certificate::VoteCast(_) => return Err(Error::VoteCastDoesntNeedSignature),
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
+    }
+}
+
+pub(crate) fn committee_vote_tally_sign(
+    vote_tally: VoteTally,
+    keys_str: &[String],
+    builder: TxBuilderState<SetAuthData<VoteTally>>,
+) -> Result<SignedCertificate, Error> {
+    use chain_impl_mockchain::vote::PayloadType;
+    use std::convert::TryInto as _;
+
+    match vote_tally.tally_type() {
+        PayloadType::Public => {
+            if keys_str.len() > 1 {
+                return Err(Error::ExpectingOnlyOneSigningKey {
+                    got: keys_str.len(),
+                });
+            }
+            let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+            let id = private_key.to_public().as_ref().try_into().unwrap();
+
+            let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+                private_key.sign_slice(&d.0)
+            });
+
+            let proof = TallyProof::Public { id, signature };
+
+            Ok(SignedCertificate::VoteTally(vote_tally, proof))
+        }
     }
 }
 

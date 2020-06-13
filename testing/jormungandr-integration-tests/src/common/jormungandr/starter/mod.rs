@@ -548,7 +548,7 @@ where
     fn verify_is_up(&self) -> Result<(), StartupError> {
         let start = Instant::now();
         let log_file_path = self.params.log_file_path();
-        let logger = JormungandrLogger::new(log_file_path.clone());
+        let logger = JormungandrLogger::new(log_file_path);
         loop {
             if start.elapsed() > self.starter.timeout {
                 return Err(StartupError::Timeout {

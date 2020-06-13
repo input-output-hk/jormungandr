@@ -111,6 +111,12 @@ impl<T> From<DigestOf<Blake2b256, T>> for Hash {
     }
 }
 
+impl<T> From<Hash> for DigestOf<Blake2b256, T> {
+    fn from(h: Hash) -> Self {
+        DigestOf::from(h.0)
+    }
+}
+
 impl From<Hash> for [u8; 32] {
     fn from(hash: Hash) -> [u8; 32] {
         hash.0.into()
