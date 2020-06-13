@@ -12,7 +12,7 @@ Midgard Serpent
 edition = "2018"
 
 [dependencies]
-arc-swap = "^0.4.6"
+arc-swap = "^0.4.7"
 juniper = "0.14.2"
 bincode = "1.2.1"
 bytes = "0.5"
