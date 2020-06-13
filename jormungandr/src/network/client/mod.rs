@@ -200,6 +200,13 @@ impl Client {
             })?;
         } else {
             match client_box.as_mut().poll_flush(cx) {
+                Poll::Pending => {
+                    // Ignoring possible Pending return here: due to the following
+                    // ready!() invocation, this function cannot return Continue
+                    // while no progress has been made.
+                    Ok(())
+                }
+                Poll::Ready(Ok(())) => Ok(()),
                 Poll::Ready(Err(e)) => {
                     error!(
                         self.logger,
@@ -208,13 +215,6 @@ impl Client {
                     );
                     Err(())
                 }
-                Poll::Pending => {
-                    // Ignoring possible Pending return here: due to the following
-                    // ready!() invocation, this function cannot return Continue
-                    // while no progress has been made.
-                    Ok(())
-                }
-                _ => Ok(()),
             }?;
         }
 
