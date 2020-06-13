@@ -1,6 +1,6 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
-    intercom::{self, ReplySendError, ReplyStreamHandle},
+    intercom::{self, ReplySendError, ReplyStreamHandle, ReplyStreamSink},
     start_up::{NodeStorage, NodeStorageConnection},
 };
 use chain_storage::{for_path_to_nth_ancestor, BlockInfo, Error as StorageError};
@@ -9,7 +9,7 @@ use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use r2d2::{ManageConnection, Pool};
 use slog::Logger;
 use thiserror::Error;
-use tokio::task::spawn_blocking;
+use tokio::task;
 
 use std::convert::identity;
 use std::pin::Pin;
@@ -50,52 +50,70 @@ impl From<StorageError> for Error {
     }
 }
 
-async fn run_blocking_with_connection<F, T, E, EOut>(
-    pool: Pool<ConnectionManager>,
-    f: F,
-) -> Result<T, EOut>
+async fn run_blocking_with_connection<F, T, E>(pool: Pool<ConnectionManager>, f: F) -> Result<T, E>
 where
     F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
     F: Send + 'static,
     T: Send + 'static,
-    E: Send + 'static,
-    EOut: Send + From<E> + From<Error> + 'static,
+    E: From<Error> + Send + 'static,
 {
-    spawn_blocking(move || {
+    task::spawn_blocking(move || {
         let mut connection = pool.get().map_err(Error::ConnectionFailed)?;
-        f(&mut connection).map_err(Into::into)
+        f(&mut connection)
     })
     .await
     .unwrap()
 }
 
-async fn pump_block_sink<T, F>(
+struct BlockSinkPump<T, F> {
     iter: Box<BlockIterState<T, F>>,
-    pool: &Pool<ConnectionManager>,
-    sink: &mut ReplyStreamHandle<T>,
-) -> Result<BlockIteration<T, F>, ReplySendError>
+    pool: Pool<ConnectionManager>,
+    sink: ReplyStreamSink<T>,
+}
+
+impl<T, F> BlockSinkPump<T, F>
 where
     F: FnMut(Block) -> T,
     F: Send + 'static,
     T: Send + 'static,
 {
-    let mut sink1 = sink.clone();
-    match run_blocking_with_connection(pool.clone(), move |connection| {
-        iter.fill_sink(connection, &mut sink1)
-            .map_err(StreamingError::Sending)
-    })
-    .await
-    {
-        Ok(BlockIteration::Continue(iter)) => {
-            future::poll_fn(|cx| sink.poll_ready(cx)).await?;
-            Ok(BlockIteration::Continue(iter))
+    fn start(
+        iter: BlockIterState<T, F>,
+        pool: Pool<ConnectionManager>,
+        handle: ReplyStreamHandle<T>,
+    ) -> Self {
+        BlockSinkPump {
+            iter: Box::new(iter),
+            pool,
+            sink: handle.start_sending(),
         }
-        Ok(BlockIteration::Break) => Ok(BlockIteration::Break),
-        Err(StreamingError::Storage(e)) => {
-            sink.send(Err(e.into())).await?;
-            Ok(BlockIteration::Break)
+    }
+
+    async fn pump(mut self) -> Result<Option<Self>, ReplySendError> {
+        let mut sink = self.sink.clone();
+        let iter = self.iter;
+        match run_blocking_with_connection(self.pool.clone(), move |connection| {
+            iter.fill_sink(connection, &mut sink)
+                .map_err(StreamingError::Sending)
+        })
+        .await
+        {
+            Ok(BlockIteration::Continue(iter)) => {
+                self.iter = iter;
+                let sink = &mut self.sink;
+                future::poll_fn(|cx| sink.poll_ready(cx)).await?;
+                Ok(Some(self))
+            }
+            Ok(BlockIteration::Break) => {
+                self.sink.close().await?;
+                Ok(None)
+            }
+            Err(StreamingError::Storage(e)) => {
+                self.sink.send(Err(e.into())).await?;
+                Ok(None)
+            }
+            Err(StreamingError::Sending(e)) => Err(e),
         }
-        Err(StreamingError::Sending(e)) => Err(e),
     }
 }
 
@@ -169,15 +187,14 @@ impl Storage {
         Storage { pool, logger }
     }
 
-    async fn run<F, T, E, EOut>(&self, f: F) -> Result<T, EOut>
+    async fn run<F, T, E>(&self, f: F) -> Result<T, Error>
     where
         F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
         F: Send + 'static,
         T: Send + 'static,
-        E: Send + 'static,
-        EOut: Send + From<E> + From<Error> + 'static,
+        E: Into<Error> + Send + 'static,
     {
-        run_blocking_with_connection(self.pool.clone(), f).await
+        run_blocking_with_connection(self.pool.clone(), |conn| f(conn).map_err(Into::into)).await
     }
 
     pub async fn get_tag(&self, tag: String) -> Result<Option<HeaderHash>, Error> {
@@ -239,50 +256,29 @@ impl Storage {
         from: HeaderHash,
         to: HeaderHash,
     ) -> Result<impl Stream<Item = Result<Block, intercom::Error>>, Error> {
+        let (rh, rf) = intercom::stream_reply(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
         let iter = self
-            .run::<_, _, _, Error>(move |connection| match connection.is_ancestor(&from, &to) {
-                Ok(Some(distance)) => match connection.get_block_info(&to) {
-                    Ok(to_info) => Ok(Box::new(BlockIterState::new(to_info, distance, identity))),
-                    Err(e) => Err(e.into()),
+            .run(
+                move |connection| match connection.is_ancestor(&from, &to)? {
+                    Some(distance) => {
+                        let to_info = connection.get_block_info(&to)?;
+                        Ok(BlockIterState::new(to_info, distance, identity))
+                    }
+                    None => Err(Error::CannotIterate),
                 },
-                Ok(None) => Err(Error::CannotIterate),
-                Err(e) => Err(e.into()),
-            })
+            )
             .await?;
-
-        let (rh, rs) = intercom::stream_reply(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
-
-        struct PumpState<F> {
-            iter: Box<BlockIterState<Block, F>>,
-            pool: Pool<ConnectionManager>,
-            handle: ReplyStreamHandle<Block>,
-        }
-        let state = PumpState {
-            iter,
-            pool: self.pool.clone(),
-            handle: rh,
-        };
-        let pump = stream::unfold(state, |mut state| async move {
-            match pump_block_sink(state.iter, &state.pool, &mut state.handle)
-                .await
-                .unwrap_or_else(|e| panic!("unexpected channel error: {:?}", e))
-            {
-                BlockIteration::Continue(iter) => {
-                    let state = PumpState { iter, ..state };
-                    Some(((), state))
-                }
-                BlockIteration::Break => {
-                    state
-                        .handle
-                        .close()
-                        .await
-                        .unwrap_or_else(|e| panic!("unexpected channel error: {:?}", e));
-                    None
-                }
-            }
-        });
-        let stream = PumpedStream::new(rs, pump);
-        Ok(stream)
+        let pump = BlockSinkPump::start(iter, self.pool.clone(), rh);
+        let stream = rf.await.expect("unexpected channel error");
+        Ok(PumpedStream::new(
+            stream,
+            stream::unfold(pump, |pump| {
+                pump.pump().map(|res| {
+                    res.expect("unexpected channel error")
+                        .map(|pump| ((), pump))
+                })
+            }),
+        ))
     }
 
     /// Stream a branch ending at `to` and starting from the ancestor
@@ -295,9 +291,9 @@ impl Storage {
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        sink: ReplyStreamHandle<Block>,
+        handle: ReplyStreamHandle<Block>,
     ) -> Result<(), ReplySendError> {
-        self.send_branch_with(to, depth, sink, identity).await
+        self.send_branch_with(to, depth, handle, identity).await
     }
 
     /// Like `send_branch`, but with a transformation function applied
@@ -306,7 +302,7 @@ impl Storage {
         &self,
         to: HeaderHash,
         depth: Option<u64>,
-        mut sink: ReplyStreamHandle<T>,
+        handle: ReplyStreamHandle<T>,
         transform: F,
     ) -> Result<(), ReplySendError>
     where
@@ -314,29 +310,26 @@ impl Storage {
         F: Send + 'static,
         T: Send + 'static,
     {
-        let res: Result<_, Error> = self
+        let res = self
             .run(move |connection| {
                 connection.get_block_info(&to).map(|to_info| {
                     let depth = depth.unwrap_or(to_info.chain_length - 1);
-                    Box::new(BlockIterState::new(to_info, depth, transform))
+                    BlockIterState::new(to_info, depth, transform)
                 })
             })
             .await;
 
         match res {
-            Ok(mut iter) => {
-                while let BlockIteration::Continue(new_iter_state) =
-                    pump_block_sink(iter, &self.pool, &mut sink).await?
-                {
-                    iter = new_iter_state;
+            Ok(iter) => {
+                let mut pump = BlockSinkPump::start(iter, self.pool.clone(), handle);
+                while let Some(new_state) = pump.pump().await? {
+                    pump = new_state;
                 }
             }
             Err(e) => {
-                sink.send(Err(e.into())).await?;
+                handle.reply_error(e.into());
             }
         }
-
-        sink.close().await?;
         Ok(())
     }
 
@@ -421,7 +414,7 @@ where
         }
         ready!(self.as_mut().pump().poll_next(cx));
         *self.as_mut().pressure() = PUMP_PRESSURE_FULL;
-        ().into()
+        Poll::Ready(())
     }
 }
 
@@ -485,7 +478,7 @@ where
     fn fill_sink(
         mut self: Box<Self>,
         store: &mut NodeStorageConnection,
-        sink: &mut ReplyStreamHandle<T>,
+        sink: &mut ReplyStreamSink<T>,
     ) -> Result<BlockIteration<T, F>, ReplySendError> {
         if let Some(item) = self.pending_item.take() {
             let is_err = item.is_err();
@@ -548,7 +541,7 @@ where
     fn try_send_item(
         &mut self,
         item: Result<T, intercom::Error>,
-        sink: &mut ReplyStreamHandle<T>,
+        sink: &mut ReplyStreamSink<T>,
     ) -> Result<bool, ReplySendError> {
         sink.try_send_item(item).map(|()| true).or_else(|e| {
             if e.is_full() {

@@ -99,7 +99,7 @@ async fn handle_get_headers_range(
     storage: Storage,
     checkpoints: Vec<HeaderHash>,
     to: HeaderHash,
-    mut handle: ReplyStreamHandle<Header>,
+    handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
     let res = storage.find_closest_ancestor(checkpoints, to).await;
     match res {
@@ -109,7 +109,10 @@ async fn handle_get_headers_range(
                 .send_branch_with(to, depth, handle, |block| block.header())
                 .await
         }
-        Err(e) => handle.send(Err(e.into())).await,
+        Err(e) => {
+            handle.reply_error(e.into());
+            Ok(())
+        }
     }
 }
 
@@ -118,7 +121,7 @@ async fn handle_get_blocks(
     ids: Vec<HeaderHash>,
     handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
-    let mut handle = handle;
+    let mut sink = handle.start_sending();
     for id in ids {
         let res = match storage.get(id).await {
             Ok(Some(block)) => Ok(block),
@@ -128,16 +131,21 @@ async fn handle_get_blocks(
             ))),
             Err(e) => Err(e.into()),
         };
-        handle.send(res).await?;
+        let is_err = res.is_err();
+        sink.send(res).await?;
+        if is_err {
+            break;
+        }
     }
-    Ok(())
+    sink.close().await
 }
 
 async fn handle_get_headers(
     storage: Storage,
     ids: Vec<HeaderHash>,
-    mut handle: ReplyStreamHandle<Header>,
+    handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
+    let mut sink = handle.start_sending();
     for id in ids {
         let res = match storage.get(id).await {
             Ok(Some(block)) => Ok(block.header()),
@@ -147,16 +155,20 @@ async fn handle_get_headers(
             ))),
             Err(e) => Err(e.into()),
         };
-        handle.send(res).await?;
+        let is_err = res.is_err();
+        sink.send(res).await?;
+        if is_err {
+            break;
+        }
     }
-    Ok(())
+    sink.close().await
 }
 
 async fn handle_pull_blocks_to_tip(
     storage: Storage,
     blockchain_tip: Tip,
     checkpoints: Vec<HeaderHash>,
-    mut handle: ReplyStreamHandle<Block>,
+    handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
     let tip = blockchain_tip.get_ref().await;
     let tip_hash = tip.hash();
@@ -169,6 +181,9 @@ async fn handle_pull_blocks_to_tip(
         });
     match res {
         Ok((to, depth)) => storage.send_branch(to, depth, handle).await,
-        Err(e) => handle.send(Err(e.into())).await,
+        Err(e) => {
+            handle.reply_error(e.into());
+            Ok(())
+        }
     }
 }

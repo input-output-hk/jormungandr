@@ -11,6 +11,7 @@ use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 
 use futures::channel::{mpsc, oneshot};
 use futures::prelude::*;
+use futures::ready;
 use slog::Logger;
 use std::{
     error,
@@ -247,20 +248,43 @@ impl<T: 'static> error::Error for ReplyTrySendError<T> {
 
 #[derive(Debug)]
 pub struct ReplyStreamHandle<T> {
+    lead_sender: oneshot::Sender<Result<mpsc::Receiver<Result<T, Error>>, Error>>,
+    buffer_size: usize,
+}
+
+impl<T> ReplyStreamHandle<T> {
+    fn reply(self, result: Result<mpsc::Receiver<Result<T, Error>>, Error>) {
+        // Ignoring a send error: it means the result is no longer needed
+        let _ = self.lead_sender.send(result);
+    }
+
+    pub fn start_sending(self) -> ReplyStreamSink<T> {
+        let (sender, receiver) = mpsc::channel(self.buffer_size);
+        self.reply(Ok(receiver));
+        ReplyStreamSink { sender }
+    }
+
+    pub fn reply_error(self, error: Error) {
+        self.reply(Err(error))
+    }
+}
+
+#[derive(Debug)]
+pub struct ReplyStreamSink<T> {
     sender: mpsc::Sender<Result<T, Error>>,
 }
 
-impl<T> Unpin for ReplyStreamHandle<T> {}
+impl<T> Unpin for ReplyStreamSink<T> {}
 
-impl<T> Clone for ReplyStreamHandle<T> {
+impl<T> Clone for ReplyStreamSink<T> {
     fn clone(&self) -> Self {
-        ReplyStreamHandle {
+        ReplyStreamSink {
             sender: self.sender.clone(),
         }
     }
 }
 
-impl<T> ReplyStreamHandle<T> {
+impl<T> ReplyStreamSink<T> {
     pub fn try_send_item(&mut self, item: Result<T, Error>) -> Result<(), ReplyTrySendError<T>> {
         self.sender.try_send(item).map_err(ReplyTrySendError)
     }
@@ -270,7 +294,7 @@ impl<T> ReplyStreamHandle<T> {
     }
 }
 
-impl<T> Sink<Result<T, Error>> for ReplyStreamHandle<T> {
+impl<T> Sink<Result<T, Error>> for ReplyStreamSink<T> {
     type Error = ReplySendError;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
@@ -298,6 +322,36 @@ impl<T> Sink<Result<T, Error>> for ReplyStreamHandle<T> {
     }
 }
 
+pub struct ReplyStreamFuture<T, E> {
+    lead_receiver: oneshot::Receiver<Result<mpsc::Receiver<Result<T, Error>>, Error>>,
+    logger: Logger,
+    _phantom_error: PhantomData<E>,
+}
+
+impl<T, E> Unpin for ReplyStreamFuture<T, E> {}
+
+impl<T, E> Future for ReplyStreamFuture<T, E>
+where
+    E: From<Error>,
+{
+    type Output = Result<ReplyStream<T, E>, E>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let receiver = ready!(Pin::new(&mut self.lead_receiver).poll(cx)).map_err(
+            |e: oneshot::Canceled| {
+                warn!(self.logger, "response canceled by the processing task");
+                Error::from(e)
+            },
+        )??;
+        let stream = ReplyStream {
+            receiver,
+            logger: self.logger.clone(),
+            _phantom_error: PhantomData,
+        };
+        Poll::Ready(Ok(stream))
+    }
+}
+
 pub struct ReplyStream<T, E> {
     receiver: mpsc::Receiver<Result<T, Error>>,
     logger: Logger,
@@ -305,6 +359,13 @@ pub struct ReplyStream<T, E> {
 }
 
 impl<T, E> Unpin for ReplyStream<T, E> {}
+
+impl<T> ReplyStream<T, Error> {
+    /// Converts this stream into an infallible stream for uploading
+    pub fn upload(self) -> UploadStream<T> {
+        UploadStream { inner: self }
+    }
+}
 
 impl<T, E> Stream for ReplyStream<T, E>
 where
@@ -350,24 +411,20 @@ impl<T> Stream for UploadStream<T> {
 }
 
 pub fn stream_reply<T, E>(
-    buffer: usize,
+    buffer_size: usize,
     logger: Logger,
-) -> (ReplyStreamHandle<T>, ReplyStream<T, E>) {
-    let (sender, receiver) = mpsc::channel(buffer);
-    let stream = ReplyStream {
-        receiver,
+) -> (ReplyStreamHandle<T>, ReplyStreamFuture<T, E>) {
+    let (lead_sender, lead_receiver) = oneshot::channel();
+    let handle = ReplyStreamHandle {
+        lead_sender,
+        buffer_size,
+    };
+    let future = ReplyStreamFuture {
+        lead_receiver,
         logger,
         _phantom_error: PhantomData,
     };
-    (ReplyStreamHandle { sender }, stream)
-}
-
-pub fn upload_stream_reply<T>(
-    buffer: usize,
-    logger: Logger,
-) -> (ReplyStreamHandle<T>, UploadStream<T>) {
-    let (handle, inner) = stream_reply(buffer, logger);
-    (handle, UploadStream { inner })
+    (handle, future)
 }
 
 #[derive(Debug)]

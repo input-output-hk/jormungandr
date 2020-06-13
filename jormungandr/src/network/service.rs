@@ -114,30 +114,33 @@ impl BlockService for NodeService {
     ) -> Result<Self::PullBlocksToTipStream, Error> {
         let from = from.decode()?;
         let logger = self.logger().new(o!("request" => "PullBlocksToTip"));
-        let (handle, stream) =
+        let (handle, future) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
         let client_box = self.channels.client_box.clone();
         send_message(client_box, ClientMsg::PullBlocksToTip(from, handle), logger).await?;
+        let stream = future.await?;
         Ok(convert::response_stream(stream))
     }
 
     async fn get_blocks(&self, ids: BlockIds) -> Result<Self::GetBlocksStream, Error> {
         let ids = ids.decode()?;
         let logger = self.logger().new(o!("request" => "GetBlocks"));
-        let (handle, stream) =
+        let (handle, future) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
         let client_box = self.channels.client_box.clone();
         send_message(client_box, ClientMsg::GetBlocks(ids, handle), logger).await?;
+        let stream = future.await?;
         Ok(convert::response_stream(stream))
     }
 
     async fn get_headers(&self, ids: BlockIds) -> Result<Self::GetHeadersStream, Error> {
         let ids = ids.decode()?;
         let logger = self.logger().new(o!("request" => "GetHeaders"));
-        let (handle, stream) =
+        let (handle, future) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
         let client_box = self.channels.client_box.clone();
         send_message(client_box, ClientMsg::GetHeaders(ids, handle), logger).await?;
+        let stream = future.await?;
         Ok(convert::response_stream(stream))
     }
 
@@ -149,7 +152,7 @@ impl BlockService for NodeService {
         let from = from.decode()?;
         let to = to.decode()?;
         let logger = self.logger().new(o!("request" => "PullHeaders"));
-        let (handle, stream) =
+        let (handle, future) =
             intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
         let client_box = self.channels.client_box.clone();
         send_message(
@@ -158,6 +161,7 @@ impl BlockService for NodeService {
             logger,
         )
         .await?;
+        let stream = future.await?;
         Ok(convert::response_stream(stream))
     }
 

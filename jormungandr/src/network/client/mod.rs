@@ -251,24 +251,32 @@ impl Client {
     }
 
     fn upload_blocks(&mut self, block_ids: BlockIds) -> Result<(), ()> {
-        debug!(self.logger, "peer requests {} blocks", block_ids.len());
+        let logger = self.logger.new(o!("solicitation" => "UploadBlocks"));
+        debug!(logger, "peer requests {} blocks", block_ids.len());
         let block_ids = block_ids.decode().map_err(|e| {
             info!(
-                self.logger,
+                logger,
                 "failed to decode block IDs from solicitation request";
                 "reason" => %e,
             );
         })?;
-        let (reply_handle, stream) = intercom::upload_stream_reply(
-            buffer_sizes::outbound::BLOCKS,
-            self.logger.new(o!("solicitation" => "UploadBlocks")),
-        );
+        let (reply_handle, future) =
+            intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetBlocks(block_ids, reply_handle));
-        let stream = stream.map(|res| res.encode());
         let mut client = self.inner.clone();
-        let logger = self.logger.clone();
         self.global_state.spawn(async move {
+            let stream = match future.await {
+                Ok(stream) => stream.upload().map(|item| item.encode()),
+                Err(e) => {
+                    info!(
+                        logger,
+                        "cannot serve peer's solicitation";
+                        "reason" => %e,
+                    );
+                    return;
+                }
+            };
             match client.upload_blocks(stream).await {
                 Ok(()) => {
                     debug!(logger, "finished uploading blocks");
@@ -286,36 +294,45 @@ impl Client {
     }
 
     fn push_missing_headers(&mut self, req: ChainPullRequest) -> Result<(), ()> {
+        let logger = self.logger.new(o!("solicitation" => "PushHeaders"));
         let from = req.from.decode().map_err(|e| {
             info!(
-                self.logger,
+                logger,
                 "failed to decode checkpoint block IDs from header pull request";
                 "reason" => %e,
             );
         })?;
         let to = req.to.decode().map_err(|e| {
             info!(
-                self.logger,
+                logger,
                 "failed to decode tip block ID from header pull request";
                 "reason" => %e,
             );
         })?;
         debug!(
-            self.logger,
+            logger,
             "peer requests missing part of the chain";
             "checkpoints" => ?from,
             "to" => ?to,
         );
-        let (reply_handle, stream) = intercom::upload_stream_reply(
-            buffer_sizes::outbound::HEADERS,
-            self.logger.new(o!("solicitation" => "PushHeaders")),
-        );
+        let (reply_handle, future) =
+            intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetHeadersRange(from, to, reply_handle));
-        let stream = stream.map(|res| res.encode());
         let mut client = self.inner.clone();
         let logger = self.logger.clone();
         self.global_state.spawn(async move {
+            let stream = match future.await {
+                Ok(stream) => stream.upload().map(|item| item.encode()),
+                Err(e) => {
+                    info!(
+                        logger,
+                        "cannot serve peer's solicitation";
+                        "reason" => %e,
+                    );
+                    return;
+                }
+            };
             match client.push_headers(stream).await {
                 Ok(()) => {
                     debug!(logger, "finished pushing headers");
