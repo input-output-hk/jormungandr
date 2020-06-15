@@ -1,6 +1,7 @@
 use crate::jcli_app::{
     certificate::{
-        committee_vote_tally_sign, pool_owner_sign, stake_delegation_account_binding_sign,
+        committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
+        stake_delegation_account_binding_sign,
     },
     transaction::Error,
     utils::io,
@@ -176,7 +177,12 @@ impl Staging {
                     self.extra_authed = Some(sc.into())
                 }
                 Certificate::OwnerStakeDelegation(_) => unreachable!(),
-                Certificate::VotePlan(_) => unreachable!(),
+                Certificate::VotePlan(vp) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vp))?;
+                    let sc = committee_vote_plan_sign(vp, keys, builder)
+                        .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
                 Certificate::VoteCast(_) => unreachable!(),
                 Certificate::VoteTally(vt) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vt))?;
@@ -374,6 +380,9 @@ impl Staging {
                         Certificate::OwnerStakeDelegation(osd) => {
                             self.make_fragment(&osd, &(), Fragment::OwnerStakeDelegation)
                         }
+                        Certificate::VoteCast(vote_cast) => {
+                            self.make_fragment(&vote_cast, &(), Fragment::VoteCast)
+                        }
                         _ => unreachable!(),
                     },
                 }
@@ -400,9 +409,6 @@ impl Staging {
                     }
                     SignedCertificate::VotePlan(vp, a) => {
                         self.make_fragment(&vp, &a, Fragment::VotePlan)
-                    }
-                    SignedCertificate::VoteCast(vp, a) => {
-                        self.make_fragment(&vp, &a, Fragment::VoteCast)
                     }
                     SignedCertificate::VoteTally(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::VoteTally)

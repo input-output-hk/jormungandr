@@ -78,8 +78,8 @@ pub fn try_initials_vec_from_messages<'a>(
                 // the pattern match here is to make sure we are actually expecting the `()`
                 // and that if it changes the compiler will detect it and tell us about the
                 // change so we are reminded of a breaking change
-                let () = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::VotePlan(cert, ());
+                let auth = tx.payload_auth().into_payload_auth();
+                let cert = certificate::SignedCertificate::VotePlan(cert, auth);
                 inits.push(Initial::Cert(cert.into()))
             }
             _ => return Err(Error::Block0MessageUnexpected),
@@ -186,7 +186,6 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
             Fragment::PoolUpdate(empty_auth_tx(c, a))
         }
         certificate::SignedCertificate::VotePlan(c, a) => Fragment::VotePlan(empty_auth_tx(c, a)),
-        certificate::SignedCertificate::VoteCast(c, a) => Fragment::VoteCast(empty_auth_tx(c, a)),
         certificate::SignedCertificate::VoteTally(c, a) => Fragment::VoteTally(empty_auth_tx(c, a)),
     }
 }
