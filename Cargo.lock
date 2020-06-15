@@ -406,7 +406,7 @@ dependencies = [
  "cfg-if",
  "cryptoxide",
  "curve25519-dalek",
- "digest 0.8.1",
+ "digest 0.9.0",
  "ed25519-bip32",
  "ed25519-dalek",
  "generic-array 0.14.1",
@@ -742,6 +742,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 dependencies = [
  "generic-array 0.12.3",
+]
+
+[[package]]
+name = "digest"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
+dependencies = [
+ "generic-array 0.14.1",
 ]
 
 [[package]]
