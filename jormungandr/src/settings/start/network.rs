@@ -93,19 +93,21 @@ pub struct Configuration {
 
     pub http_fetch_block0_service: Vec<String>,
 
-    /// Whether to use pre-0.9 "node-id-bin" metadata when subscribing
-    pub generate_legacy_node_id: bool,
+    /// A pre-0.9 node ID to put in "node-id-bin" metadata when subscribing
+    pub legacy_node_id: Option<poldercast::Id>,
 }
 
 #[derive(Clone)]
 pub struct TrustedPeer {
     pub address: poldercast::Address,
+    pub legacy_node_id: Option<poldercast::Id>,
 }
 
 impl From<super::config::TrustedPeer> for TrustedPeer {
     fn from(tp: super::config::TrustedPeer) -> Self {
         TrustedPeer {
             address: tp.address,
+            legacy_node_id: tp.id,
         }
     }
 }

@@ -406,7 +406,7 @@ dependencies = [
  "cfg-if",
  "cryptoxide",
  "curve25519-dalek",
- "digest 0.8.1",
+ "digest 0.9.0",
  "ed25519-bip32",
  "ed25519-dalek",
  "generic-array 0.14.1",
@@ -742,6 +742,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 dependencies = [
  "generic-array 0.12.3",
+]
+
+[[package]]
+name = "digest"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
+dependencies = [
+ "generic-array 0.14.1",
 ]
 
 [[package]]
@@ -2284,9 +2293,9 @@ checksum = "b18befed8bc2b61abc79a457295e7e838417326da1586050b919414073977f19"
 
 [[package]]
 name = "poldercast"
-version = "0.13.1"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad74b4f644e23d1faf58fca06eed184db0efef1e7da9fc46b9f168d8b18e01f0"
+checksum = "b3908d6ede3d7ab33a989f1c46bd7ba38474d715563d1ab66676fe26cdaaee3e"
 dependencies = [
  "cid",
  "hex",

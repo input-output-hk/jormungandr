@@ -248,6 +248,9 @@ fn generate_network(
         profile.address(address);
     }
 
+    let legacy_node_id = poldercast::Id::generate(rand::thread_rng());
+    profile.id(legacy_node_id);
+
     for (topic, interest_level) in p2p
         .topics_of_interest
         .unwrap_or(config::default_interests())
@@ -298,7 +301,7 @@ fn generate_network(
         http_fetch_block0_service,
         bootstrap_from_trusted_peers,
         skip_bootstrap,
-        generate_legacy_node_id: true,
+        legacy_node_id: Some(legacy_node_id),
     };
 
     if network.max_inbound_connections > network.max_connections {

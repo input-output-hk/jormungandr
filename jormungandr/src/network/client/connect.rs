@@ -7,12 +7,14 @@ use super::{Client, ClientBuilder, InboundSubscriptions};
 use crate::blockcfg::HeaderHash;
 use chain_core::mempack::{self, ReadBuf, Readable};
 use chain_network::error::{self as net_error, HandshakeError};
+use chain_network::grpc::legacy;
 
 use futures::channel::oneshot;
 use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::ready;
 
+use std::convert::TryInto;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -26,15 +28,23 @@ use std::task::{Context, Poll};
 pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
-    let legacy_node_id = state.global.legacy_node_id;
-    let builder = ClientBuilder {
-        channels,
-        logger: state.logger.clone(),
-    };
+    let legacy_node_id = state.global.config.legacy_node_id;
+    let logger = state.logger.clone();
     let cf = async move {
         let mut grpc_client = if let Some(node_id) = legacy_node_id {
+            let node_id: legacy::NodeId = node_id.as_ref().try_into().unwrap();
+            debug!(
+                logger,
+                "connecting with legacy node id {}", hex::encode(node_id.as_bytes());
+                "peer_addr" => %peer.connection,
+            );
             grpc::connect_legacy(&peer, node_id).await
         } else {
+            debug!(
+                logger,
+                "connecting";
+                "peer_addr" => %peer.connection,
+            );
             grpc::connect(&peer).await
         }
         .map_err(ConnectError::Transport)?;
@@ -66,6 +76,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             fragments: fragment_sub,
             gossip: gossip_sub,
         };
+        let builder = ClientBuilder { channels, logger };
         let client = Client::new(
             grpc_client,
             builder,
