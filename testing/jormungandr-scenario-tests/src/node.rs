@@ -572,11 +572,7 @@ impl Node {
             cause: e,
         })?;
 
-        command.arguments(&[
-            "--config",
-            &config_file.display().to_string(),
-            "--log-level=warn",
-        ]);
+        command.arguments(&["--config", &config_file.display().to_string()]);
 
         match block0 {
             NodeBlock0::File(path) => {
