@@ -6,10 +6,7 @@ use jormungandr_lib::{
 
 use std::collections::HashMap;
 
-use custom_debug::CustomDebug;
-use thiserror::Error;
-
-#[derive(Error, CustomDebug)]
+#[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentNodeError {
     #[error("cannot send fragment due to '{reason}' to '{fragment_id}' to node '{alias}'")]
     CannotSendFragment {

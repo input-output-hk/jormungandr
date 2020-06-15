@@ -1,11 +1,9 @@
 use crate::testing::fragments::node::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use chain_impl_mockchain::fragment::FragmentId;
-use custom_debug::CustomDebug;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::time::Duration;
-use thiserror::Error;
 
-#[derive(Error, CustomDebug)]
+#[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentVerifierError {
     #[error("fragment sent to node: {alias} is not in block :({status:?})")]
     FragmentNotInBlock {
