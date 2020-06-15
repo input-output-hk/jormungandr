@@ -93,8 +93,8 @@ pub struct Configuration {
 
     pub http_fetch_block0_service: Vec<String>,
 
-    /// Whether to use pre-0.9 "node-id-bin" metadata when subscribing
-    pub generate_legacy_node_id: bool,
+    /// A pre-0.9 node ID to put in "node-id-bin" metadata when subscribing
+    pub legacy_node_id: Option<poldercast::Id>,
 }
 
 #[derive(Clone)]

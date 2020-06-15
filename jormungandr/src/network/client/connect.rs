@@ -14,6 +14,7 @@ use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::ready;
 
+use std::convert::TryInto;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -27,7 +28,7 @@ use std::task::{Context, Poll};
 pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
-    let legacy_node_id = state.global.legacy_node_id;
+    let legacy_node_id = state.global.config.legacy_node_id;
     let logger = state.logger.clone();
     let cf = async move {
         let mut grpc_client = if let Some(node_id) = legacy_node_id {

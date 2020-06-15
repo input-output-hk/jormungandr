@@ -14,7 +14,6 @@ mod service;
 mod subscription;
 
 use self::convert::Encode;
-use chain_network::grpc::legacy;
 use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
 
 use futures::{future, prelude::*};
@@ -133,7 +132,6 @@ pub struct GlobalState {
     topology: P2pTopology,
     peers: Peers,
     logger: Logger,
-    legacy_node_id: Option<legacy::NodeId>,
 }
 
 pub type GlobalStateR = Arc<GlobalState>;
@@ -150,13 +148,7 @@ impl GlobalState {
 
         let mut rng_seed = [0; 32];
         rand::thread_rng().fill(&mut rng_seed);
-        let mut prng = ChaChaRng::from_seed(rng_seed);
-
-        let legacy_node_id = if config.generate_legacy_node_id {
-            Some(legacy::NodeId::generate(&mut prng).unwrap())
-        } else {
-            None
-        };
+        let prng = ChaChaRng::from_seed(rng_seed);
 
         let topology = P2pTopology::new(
             &config,
@@ -171,7 +163,6 @@ impl GlobalState {
             topology,
             peers,
             logger,
-            legacy_node_id,
         }
     }
 
