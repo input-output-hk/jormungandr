@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 bech32 = "0.7"
+bytesize = "1.0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chain-impl-mockchain = { path = "../../chain-deps/chain-impl-mockchain", features = [ "property-test-api" ] }
