@@ -104,7 +104,7 @@ pub struct P2pConfig {
     ///
     /// TODO: To remove once we can afford a breaking change in the config
     #[serde(default, skip)]
-    pub public_id: Option<Id>,
+    pub public_id: Option<poldercast::Id>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
@@ -189,40 +189,7 @@ pub struct TrustedPeer {
     //
     // TODO: to remove once we can afford having a config breaking change
     #[serde(skip, default)]
-    pub id: Option<Id>,
-}
-
-// Lifted from poldercast 0.11 for backward compatibility
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Id([u8; ID_LEN]);
-
-const ID_LEN: usize = 24;
-
-impl Id {
-    fn zero() -> Self {
-        Id([0; ID_LEN])
-    }
-}
-
-impl FromStr for Id {
-    type Err = hex::FromHexError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut v = Self::zero();
-        hex::decode_to_slice(s, &mut v.0)?;
-        Ok(v)
-    }
-}
-
-impl AsRef<[u8]> for Id {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl fmt::Debug for Id {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("Id").field(&hex::encode(self)).finish()
-    }
+    pub id: Option<poldercast::Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -305,7 +272,7 @@ impl std::str::FromStr for TrustedPeer {
         };
 
         let optional_id = if let Some(id) = split.next() {
-            let id = id.parse::<Id>().map_err(|e| e.to_string())?;
+            let id = id.parse::<poldercast::Id>().map_err(|e| e.to_string())?;
             Some(id)
         } else {
             None

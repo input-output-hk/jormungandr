@@ -404,6 +404,9 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
                 .map(|tp| {
                     let mut builder = poldercast::NodeProfileBuilder::new();
                     builder.address(tp.address.clone());
+                    if let Some(id) = tp.legacy_node_id {
+                        builder.id(id);
+                    }
                     builder.build()
                 })
                 .map(p2p::Gossip::from)

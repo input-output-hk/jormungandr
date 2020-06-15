@@ -100,12 +100,14 @@ pub struct Configuration {
 #[derive(Clone)]
 pub struct TrustedPeer {
     pub address: poldercast::Address,
+    pub legacy_node_id: Option<poldercast::Id>,
 }
 
 impl From<super::config::TrustedPeer> for TrustedPeer {
     fn from(tp: super::config::TrustedPeer) -> Self {
         TrustedPeer {
             address: tp.address,
+            legacy_node_id: tp.id,
         }
     }
 }
