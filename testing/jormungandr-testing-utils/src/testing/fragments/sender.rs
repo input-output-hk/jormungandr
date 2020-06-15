@@ -1,5 +1,6 @@
 use super::{FragmentExporter, FragmentExporterError};
 use crate::{
+    stake_pool::StakePool,
     testing::{
         ensure_node_is_in_sync_with_others,
         fragments::node::{FragmentNode, MemPoolCheck},
@@ -84,7 +85,76 @@ impl<'a> FragmentSender<'a> {
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let address = to.address();
         let fragment = from.transaction_to(&self.block0_hash, &self.fees, address, value)?;
-        self.dump_fragment_if_enabled(from, to, &value, &fragment, via)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_full_delegation<A: FragmentNode + SyncNode + Sized>(
+        &self,
+        from: &mut Wallet,
+        to: &StakePool,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_full_delegation_cert(&self.block0_hash, &self.fees, to)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_split_delegation<A: FragmentNode + SyncNode + Sized>(
+        &self,
+        from: &mut Wallet,
+        distribution: &[(&StakePool, u8)],
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment =
+            from.issue_split_delegation_cert(&self.block0_hash, &self.fees, distribution.to_vec())?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_owner_delegation<A: FragmentNode + SyncNode + Sized>(
+        &self,
+        from: &mut Wallet,
+        to: &StakePool,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_owner_delegation_cert(&self.block0_hash, &self.fees, to)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_pool_registration<A: FragmentNode + SyncNode + Sized>(
+        &self,
+        from: &mut Wallet,
+        to: &StakePool,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_pool_registration_cert(&self.block0_hash, &self.fees, to)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_pool_update<A: FragmentNode + SyncNode + Sized>(
+        &self,
+        from: &mut Wallet,
+        to: &StakePool,
+        update_stake_pool: &StakePool,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment =
+            from.issue_pool_update_cert(&self.block0_hash, &self.fees, to, update_stake_pool)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_pool_retire<A: FragmentNode + SyncNode + Sized>(
+        &self,
+        from: &mut Wallet,
+        to: &StakePool,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_pool_retire_cert(&self.block0_hash, &self.fees, to)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
 
@@ -165,14 +235,12 @@ impl<'a> FragmentSender<'a> {
     fn dump_fragment_if_enabled(
         &self,
         sender: &Wallet,
-        reciever: &Wallet,
-        value: &Value,
         fragment: &Fragment,
         via: &dyn FragmentNode,
     ) -> Result<(), FragmentSenderError> {
         if let Some(dump_folder) = &self.setup.dump_fragments {
             FragmentExporter::new(dump_folder.to_path_buf())?
-                .dump_to_file(fragment, value, sender, reciever, via)?;
+                .dump_to_file(fragment, sender, via)?;
         }
         Ok(())
     }

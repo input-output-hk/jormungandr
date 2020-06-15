@@ -63,6 +63,8 @@ pub struct Settings {
     pub wallets: HashMap<WalletAlias, Wallet>,
 
     pub block0: Block0Configuration,
+
+    pub stake_pools: HashMap<NodeAlias, StakePool>,
 }
 
 impl Settings {
@@ -85,6 +87,7 @@ impl Settings {
                 ),
                 initial: Vec::new(),
             },
+            stake_pools: HashMap::new(),
         };
 
         settings.populate_trusted_peers();
@@ -188,6 +191,9 @@ impl Settings {
                         self.block0
                             .initial
                             .push(Initial::Cert(signed_stake_pool_cert(&stake_pool).into()));
+
+                        self.stake_pools
+                            .insert(delegation.clone(), stake_pool.clone());
 
                         node_id
                     }
