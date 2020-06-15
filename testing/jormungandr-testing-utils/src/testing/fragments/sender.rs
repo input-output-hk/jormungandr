@@ -16,10 +16,7 @@ use jormungandr_lib::{
 };
 use std::time::Duration;
 
-use custom_debug::CustomDebug;
-use thiserror::Error;
-
-#[derive(Error, CustomDebug)]
+#[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentSenderError {
     #[error("fragment sent to node: {alias} is not in block due to '{reason}'")]
     FragmentNotInBlock {

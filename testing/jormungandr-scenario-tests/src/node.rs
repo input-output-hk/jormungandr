@@ -22,7 +22,6 @@ pub use jormungandr_testing_utils::testing::{
 };
 
 use bawawa::{Control, Process};
-use custom_debug::CustomDebug;
 use futures::executor::block_on;
 use indicatif::ProgressBar;
 use rand_core::RngCore;
@@ -37,7 +36,7 @@ use std::time::Duration;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(CustomDebug, thiserror::Error)]
+#[derive(custom_debug::Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Io(#[from] io::Error),

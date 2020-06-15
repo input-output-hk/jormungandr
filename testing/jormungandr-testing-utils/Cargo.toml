@@ -23,7 +23,7 @@ rand_core = "0.5"
 rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
-custom_debug = "0.4"
+custom_debug = "0.5"
 thiserror = "1.0"
 poldercast = "0.13.1"
 sysinfo = { version = "0.14.4" }

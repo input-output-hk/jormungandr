@@ -702,18 +702,18 @@ dependencies = [
 
 [[package]]
 name = "custom_debug"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77918c835e779ed75fbca65fc3cc3b6e664eb37886e103e73f1f7171ac73832c"
+checksum = "e8225047674d65dcf4321e6bd3e060bdbbe940604a99b1559827f3e61c498d1e"
 dependencies = [
  "custom_debug_derive",
 ]
 
 [[package]]
 name = "custom_debug_derive"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a39fd0ac282783a1cdc683b33d8f0a67b57b403aa9549b0448c98db0c6f649a"
+checksum = "9b35d34eb004bf2d33c093f1c55ee77829e8654644288d3b6afd8c2d99d23729"
 dependencies = [
  "proc-macro2",
  "syn",
