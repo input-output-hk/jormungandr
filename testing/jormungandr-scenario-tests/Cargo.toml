@@ -37,7 +37,7 @@ hex = "0.4"
 futures = "0.3.5"
 console = "0.11"
 yaml-rust = "0.4.4"
-indicatif = "0.14"
+indicatif = "0.15"
 lazy_static = "1"
 
 [dependencies.reqwest]
