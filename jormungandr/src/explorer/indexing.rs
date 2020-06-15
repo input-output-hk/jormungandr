@@ -8,10 +8,13 @@ use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::block::Proof;
-use chain_impl_mockchain::certificate::{Certificate, PoolId, PoolRegistration, PoolRetirement};
+use chain_impl_mockchain::certificate::{
+    Certificate, ExternalProposalId, PoolId, PoolRegistration, PoolRetirement, VotePlanId,
+};
 use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
+use chain_impl_mockchain::vote::{Choice, Options, PayloadType};
 use std::{convert::TryInto, sync::Arc};
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
@@ -25,6 +28,8 @@ pub type Epochs = Hamt<Epoch, EpochData>;
 
 pub type StakePoolBlocks = Hamt<PoolId, PersistentSequence<HeaderHash>>;
 pub type StakePool = Hamt<PoolId, StakePoolData>;
+
+pub type VotePlans = Hamt<VotePlanId, ExplorerVotePlan>;
 
 #[derive(Clone)]
 pub struct StakePoolData {
@@ -87,6 +92,30 @@ pub struct EpochData {
 pub enum ExplorerAddress {
     New(Address),
     Old(OldAddress),
+}
+
+#[derive(Clone)]
+pub struct ExplorerVotePlan {
+    pub id: VotePlanId,
+    pub vote_start: BlockDate,
+    pub vote_end: BlockDate,
+    pub committee_end: BlockDate,
+    pub payload_type: PayloadType,
+    pub proposals: Vec<ExplorerVoteProposal>,
+}
+
+#[derive(Clone)]
+pub struct ExplorerVoteProposal {
+    pub proposal_id: ExternalProposalId,
+    pub options: Options,
+    pub tally: Option<ExplorerVoteTally>,
+    pub votes: std::collections::HashMap<ExplorerAddress, Choice>,
+}
+
+// TODO do proper vote tally
+#[derive(Clone)]
+pub enum ExplorerVoteTally {
+    Public,
 }
 
 pub struct ExplorerBlockBuildingContext<'a> {
