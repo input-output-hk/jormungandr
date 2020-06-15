@@ -238,7 +238,7 @@ pub fn nightly_bootstrap_legacy() {
     // test rollback
     legacy_jormungandr_config.refresh_instance_params();
 
-    let rollback_jormungandr = Starter::new()
+    let _rollback_jormungandr = Starter::new()
         .config(legacy_jormungandr_config.clone())
         .timeout(Duration::from_secs(48_000))
         .legacy(version)

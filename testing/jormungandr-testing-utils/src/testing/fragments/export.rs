@@ -3,7 +3,7 @@ use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chrono::{DateTime, Utc};
 use hex;
-use jormungandr_lib::interfaces::{Address, Value};
+use jormungandr_lib::interfaces::Address;
 use std::io::Write;
 use std::{fs, path::PathBuf};
 use thiserror::Error;
@@ -32,12 +32,10 @@ impl FragmentExporter {
     pub fn dump_to_file(
         &self,
         fragment: &Fragment,
-        value: &Value,
         sender: &Wallet,
-        reciever: &Wallet,
         via: &dyn FragmentNode,
     ) -> Result<(), FragmentExporterError> {
-        let file_name = self.generate_file_name(fragment, value, sender, reciever, via);
+        let file_name = self.generate_file_name(fragment, sender, via);
         let file_path = self.dump_folder.join(file_name);
         let mut file = fs::File::create(&file_path)
             .map_err(|_| FragmentExporterError::CannotCreateDumpFile(file_path))?;
@@ -53,20 +51,16 @@ impl FragmentExporter {
     fn generate_file_name(
         &self,
         fragment: &Fragment,
-        value: &Value,
         sender: &Wallet,
-        reciever: &Wallet,
         via: &dyn FragmentNode,
     ) -> String {
         let now: DateTime<Utc> = Utc::now();
 
         format!(
-            "{}_tx_{}_for_{}_ada_from_{}_to_{}_via_{}.txt",
+            "{}_{}_from_{}_to_{}.txt",
             now.format("%F_%H_%M_%S"),
             self.format_id(fragment.hash()),
-            value,
             self.format_address(sender.address()),
-            self.format_address(reciever.address()),
             via.alias()
         )
     }

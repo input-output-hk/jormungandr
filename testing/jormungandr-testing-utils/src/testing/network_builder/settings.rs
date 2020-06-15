@@ -64,7 +64,7 @@ pub struct Settings {
 
     pub block0: Block0Configuration,
 
-    pub stake_pools: HashMap<NodeAlias, StakePool>
+    pub stake_pools: HashMap<NodeAlias, StakePool>,
 }
 
 impl Settings {
@@ -192,7 +192,8 @@ impl Settings {
                             .initial
                             .push(Initial::Cert(signed_stake_pool_cert(&stake_pool).into()));
 
-                        self.stake_pools.insert(delegation.clone(),stake_pool.clone());
+                        self.stake_pools
+                            .insert(delegation.clone(), stake_pool.clone());
 
                         node_id
                     }

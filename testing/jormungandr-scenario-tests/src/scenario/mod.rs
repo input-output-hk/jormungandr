@@ -41,6 +41,10 @@ error_chain! {
             description("Wallet was not found"),
             display("Wallet '{}' was not found. Used before or never initialize", wallet)
         }
+        StakePoolNotFound(node: String) {
+            description("StakePool was not found"),
+            display("StakePool '{}' was not found. Used before or never initialize", node)
+        }
     }
 }
 

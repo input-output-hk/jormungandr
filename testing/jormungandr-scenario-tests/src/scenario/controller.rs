@@ -12,13 +12,14 @@ use chain_impl_mockchain::header::HeaderId;
 use jormungandr_integration_tests::common::legacy::Version;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
+    stake_pool::StakePool,
     testing::{
         network_builder::{
             Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
         },
         FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
-    wallet::Wallet, stake_pool::StakePool,
+    wallet::Wallet,
 };
 
 use assert_fs::fixture::ChildPath;
@@ -177,7 +178,7 @@ impl Controller {
             Ok(stake_pool.into())
         } else {
             Err(ErrorKind::StakePoolNotFound(node_alias.to_owned()).into())
-        }    
+        }
     }
 
     pub fn working_directory(&self) -> &ChildPath {
