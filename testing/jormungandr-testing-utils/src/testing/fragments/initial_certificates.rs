@@ -2,6 +2,7 @@ use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{
     certificate::{
         PoolId, PoolOwnersSigned, PoolSignature, SignedCertificate, StakeDelegation, VotePlan,
+        VotePlanProof,
     },
     transaction::{AccountBindingSignature, SingleAccountBindingSignature, TxBuilder},
 };
@@ -37,6 +38,21 @@ pub fn signed_stake_pool_cert(stake_pool: &StakePool) -> SignedCertificate {
     SignedCertificate::PoolRegistration(stake_pool.info(), PoolSignature::Owners(owner_signed))
 }
 
-pub fn vote_plan_cert(vote_plan: &VotePlan) -> SignedCertificate {
-    SignedCertificate::VotePlan(vote_plan.clone(), ())
+pub fn vote_plan_cert(wallet: &Wallet, vote_plan: &VotePlan) -> SignedCertificate {
+    let txb = TxBuilder::new()
+        .set_payload(vote_plan)
+        .set_ios(&[], &[])
+        .set_witnesses(&[]);
+
+    let auth_data = txb.get_auth_data();
+
+    let signature = SingleAccountBindingSignature::new(&auth_data, |d| wallet.sign_slice(d.0));
+
+    SignedCertificate::VotePlan(
+        vote_plan.clone(),
+        VotePlanProof {
+            id: wallet.identifier().into_public_key().into(),
+            signature,
+        },
+    )
 }

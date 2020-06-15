@@ -4,30 +4,52 @@ use crate::common::{
 };
 use assert_fs::TempDir;
 use chain_impl_mockchain::{testing::VoteTestGen, vote::CommitteeId};
-use jormungandr_lib::interfaces::CommitteeIdDef;
+use jormungandr_lib::{crypto::key::KeyPair, interfaces::CommitteeIdDef};
+use jormungandr_testing_utils::wallet::Wallet;
+use rand::rngs::OsRng;
+use rand_core::{CryptoRng, RngCore};
 
-fn committee_ids() -> Vec<CommitteeIdDef> {
-    vec![
-        CommitteeId::from_hex("7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19")
-            .unwrap()
-            .into(),
-        CommitteeId::from_hex("f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db")
-            .unwrap()
-            .into(),
-    ]
+const TEST_COMMITTEE_SIZE: usize = 3;
+
+fn generate_wallets_and_committee<RNG>(rng: &mut RNG) -> (Vec<Wallet>, Vec<CommitteeIdDef>)
+where
+    RNG: CryptoRng + RngCore,
+{
+    let mut ids = Vec::new();
+    let mut wallets = Vec::new();
+    for _i in 0..TEST_COMMITTEE_SIZE {
+        let wallet = Wallet::new_account(rng);
+        let id = CommitteeIdDef::from(CommitteeId::from(
+            wallet.address().1.public_key().unwrap().clone(),
+        ));
+        ids.push(id);
+        wallets.push(wallet);
+    }
+    (wallets, ids)
 }
 
 #[test]
 pub fn test_get_committee_id() {
     let temp_dir = TempDir::new().unwrap();
 
-    let expected_committee_ids = committee_ids();
+    let mut rng = OsRng;
+    let (_, mut expected_committee_ids) = generate_wallets_and_committee(&mut rng);
+
+    let leader_key_pair = KeyPair::generate(&mut rng);
 
     let config = ConfigurationBuilder::new()
+        .with_leader_key_pair(leader_key_pair.clone())
         .with_committee_ids(expected_committee_ids.clone())
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+
+    expected_committee_ids.insert(
+        0,
+        CommitteeIdDef::from(CommitteeId::from(
+            leader_key_pair.identifier().into_public_key(),
+        )),
+    );
 
     let actual_committee_ids =
         jcli_wrapper::assert_get_active_voting_committees(&jormungandr.rest_uri());
@@ -39,11 +61,13 @@ pub fn test_get_committee_id() {
 pub fn test_get_initial_vote_plan() {
     let temp_dir = TempDir::new().unwrap();
 
-    let expected_committee_ids = committee_ids();
+    let mut rng = OsRng;
+    let (wallets, expected_committee_ids) = generate_wallets_and_committee(&mut rng);
 
     let expected_vote_plan = VoteTestGen::vote_plan();
+
     let vote_plan_cert =
-        jormungandr_testing_utils::testing::vote_plan_cert(&expected_vote_plan).into();
+        jormungandr_testing_utils::testing::vote_plan_cert(&wallets[0], &expected_vote_plan).into();
 
     let config = ConfigurationBuilder::new()
         .with_committee_ids(expected_committee_ids.clone())
