@@ -83,7 +83,7 @@ impl ConsumptionBenchmarkRun {
         system.refresh_processes();
 
         for (named_process, resources) in self.markers.iter_mut() {
-            let process = system.get_process(named_process.id() as i32).ok_or(
+            let process = system.get_process(named_process.id().into()).ok_or(
                 ConsumptionBenchmarkError::NoProcessWitId(named_process.clone()),
             )?;
 
