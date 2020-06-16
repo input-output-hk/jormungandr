@@ -83,7 +83,7 @@ impl Decode for net_data::Fragment {
     type Object = Fragment;
 
     fn decode(self) -> Result<Self::Object, Error> {
-        read(&self)
+        Fragment::deserialize(self.as_bytes()).map_err(|e| Error::new(Code::InvalidArgument, e))
     }
 }
 
@@ -133,7 +133,8 @@ impl Encode for Fragment {
     type NetworkData = net_data::Fragment;
 
     fn encode(&self) -> Self::NetworkData {
-        net_data::Fragment::from_bytes(self.to_raw().as_ref())
+        let serialized = self.serialize_as_vec().unwrap();
+        net_data::Fragment::from_bytes(serialized)
     }
 }
 
