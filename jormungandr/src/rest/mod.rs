@@ -2,6 +2,7 @@
 
 pub mod context;
 pub mod explorer;
+pub mod notifier;
 pub mod v0;
 mod v1;
 
@@ -32,11 +33,13 @@ pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: Co
 
     let api =
         warp::path!("api" / ..).and(v0::filter(context.clone()).or(v1::filter(context.clone())));
+
+    let notifier = notifier::filter(context.clone());
     if explorer_enabled {
         let explorer = explorer::filter(context);
-        setup_cors(api.or(explorer), config, stopper_rx).await;
+        setup_cors(api.or(notifier).or(explorer), config, stopper_rx).await;
     } else {
-        setup_cors(api, config, stopper_rx).await;
+        setup_cors(api.or(notifier), config, stopper_rx).await;
     }
 }
 

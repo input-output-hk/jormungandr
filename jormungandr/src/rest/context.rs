@@ -145,4 +145,5 @@ pub struct FullContext {
     pub enclave: Enclave,
     pub network_state: NetworkStateR,
     pub explorer: Option<crate::explorer::Explorer>,
+    pub notifier: crate::notifier::Notifier,
 }
