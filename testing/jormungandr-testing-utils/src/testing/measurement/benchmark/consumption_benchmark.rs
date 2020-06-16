@@ -4,6 +4,7 @@ use crate::testing::measurement::{
     thresholds::Thresholds,
 };
 use std::collections::HashMap;
+use sysinfo::AsU32;
 use sysinfo::{ProcessExt, SystemExt};
 use thiserror::Error;
 
@@ -83,9 +84,13 @@ impl ConsumptionBenchmarkRun {
         system.refresh_processes();
 
         for (named_process, resources) in self.markers.iter_mut() {
-            let process = system.get_process(named_process.id().into()).ok_or(
-                ConsumptionBenchmarkError::NoProcessWitId(named_process.clone()),
-            )?;
+            let (_, process) = system
+                .get_processes()
+                .iter()
+                .find(|(pid, _)| (named_process.id() as u32) == pid.as_u32())
+                .ok_or(ConsumptionBenchmarkError::NoProcessWitId(
+                    named_process.clone(),
+                ))?;
 
             let marker = ResourcesUsage::new(
                 process.cpu_usage() as u32,
