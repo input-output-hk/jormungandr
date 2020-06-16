@@ -1,18 +1,19 @@
+use crate::common::transaction_utils::TransactionHash;
 use crate::common::{
     jcli_wrapper,
     jormungandr::{ConfigurationBuilder, Starter},
     legacy::{download_last_n_releases, get_jormungandr_bin, Version},
     startup,
 };
-use jormungandr_lib::interfaces::InitialUTxO;
+use chain_impl_mockchain::{
+    accounting::account::{DelegationRatio, DelegationType},
+    transaction::AccountIdentifier,
+};
 use jormungandr_testing_utils::{stake_pool::StakePool, testing::FragmentSender};
-
-use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
 
 use assert_fs::TempDir;
 use std::str::FromStr;
 
-#[ignore]
 #[test]
 pub fn test_legacy_node_all_fragments() {
     let temp_dir = TempDir::new().unwrap();
@@ -28,14 +29,10 @@ pub fn test_legacy_node_all_fragments() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
-            InitialUTxO {
-                address: first_stake_pool_owner.address(),
-                value: 200.into(),
-            },
-            InitialUTxO {
-                address: second_stake_pool_owner.address(),
-                value: 1_000_000.into(),
-            },
+            first_stake_pool_owner.into_initial_fund(1_000_000),
+            second_stake_pool_owner.into_initial_fund(2_000_000),
+            full_delegator.into_initial_fund(2_000_000),
+            split_delegator.into_initial_fund(2_000_000),
         ])
         .build(&temp_dir);
 
@@ -60,12 +57,11 @@ pub fn test_legacy_node_all_fragments() {
             second_stake_pool_owner.address(),
             1_000.into(),
         )
-        .expect("cannot crate fragment from transaction between first and second pool owner");
+        .expect("cannot create fragment from transaction between first and second pool owner");
 
     fragment_sender
         .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .expect("fragment send error for transaction between first and second pool owner");
-    std::thread::sleep(std::time::Duration::from_secs(30));
 
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
 
@@ -81,7 +77,6 @@ pub fn test_legacy_node_all_fragments() {
     fragment_sender
         .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .expect("error while sending registration certificate for first stake pool owner");
-    first_stake_pool_owner.confirm_transaction();
 
     let second_stake_pool = StakePool::new(&second_stake_pool_owner);
 
@@ -97,7 +92,6 @@ pub fn test_legacy_node_all_fragments() {
     fragment_sender
         .send_fragment(&mut second_stake_pool_owner, fragment, &jormungandr)
         .expect("error while sending registration certificate for second stake pool owner");
-    second_stake_pool_owner.confirm_transaction();
 
     let stake_pools_from_rest = jormungandr
         .rest()
@@ -124,7 +118,6 @@ pub fn test_legacy_node_all_fragments() {
     fragment_sender
         .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .expect("error while sending owner delegation cert");
-    first_stake_pool_owner.confirm_transaction();
 
     let stake_pool_owner_info = jcli_wrapper::assert_rest_account_get_stats(
         &first_stake_pool_owner.address().to_string(),
@@ -188,26 +181,31 @@ pub fn test_legacy_node_all_fragments() {
         DelegationType::Ratio(delegation_ratio)
     );
 
-    /*
-        let mut new_stake_pool = stake_pool.clone();
-        let mut stake_pool_info = new_stake_pool.info_mut();
-        stake_pool_info.rewards = TaxType::zero();
+    let mut new_stake_pool = first_stake_pool.clone();
+    let mut stake_pool_info = new_stake_pool.info_mut();
 
-        // 6. send pool update certificate
+    stake_pool_info.reward_account = Some(AccountIdentifier::Single(
+        second_stake_pool_owner
+            .identifier()
+            .into_public_key()
+            .into(),
+    ));
 
-        startup::sleep_till_next_epoch(1, &jormungandr.config);
+    // 6. send pool update certificate
 
-        transaction = stake_pool_owner.issue_pool_update_cert(
+    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
+    fragment = first_stake_pool_owner
+        .issue_pool_update_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            &stake_pool,
-            &new_stake_pool
-        ).unwrap()
-        .encode();
+            &first_stake_pool,
+            &new_stake_pool,
+        )
+        .unwrap();
 
-        jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
-        stake_pool_owner.confirm_transaction();
-    */
+    jcli_wrapper::assert_transaction_in_block(&fragment.encode(), &jormungandr);
+    first_stake_pool_owner.confirm_transaction();
+
     // 7. send pool retire certificate
     fragment = first_stake_pool_owner
         .issue_pool_retire_cert(
