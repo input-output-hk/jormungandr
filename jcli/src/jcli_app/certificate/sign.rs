@@ -80,7 +80,10 @@ impl Sign {
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
-            Certificate::VotePlan(_) => return Err(Error::VotePlanDoesntNeedSignature),
+            Certificate::VotePlan(vp) => {
+                let txbuilder = Transaction::block0_payload_builder(&vp);
+                committee_vote_plan_sign(vp, &keys_str, txbuilder)?
+            }
             Certificate::VoteCast(_) => return Err(Error::VoteCastDoesntNeedSignature),
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
