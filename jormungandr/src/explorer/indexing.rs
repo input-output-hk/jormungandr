@@ -14,7 +14,7 @@ use chain_impl_mockchain::certificate::{
 use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
-use chain_impl_mockchain::vote::{Choice, Options, PayloadType};
+use chain_impl_mockchain::vote::{Choice, Options, PayloadType, Weight};
 use std::{convert::TryInto, sync::Arc};
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
@@ -115,7 +115,10 @@ pub struct ExplorerVoteProposal {
 // TODO do proper vote tally
 #[derive(Clone)]
 pub enum ExplorerVoteTally {
-    Public,
+    Public {
+        results: Vec<Weight>,
+        options: Options,
+    },
 }
 
 pub struct ExplorerBlockBuildingContext<'a> {

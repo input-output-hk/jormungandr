@@ -25,7 +25,7 @@ use std::str::FromStr;
 
 use self::scalars::{
     BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
-    PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId,
+    PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId, Weight,
 };
 
 use crate::explorer::{ExplorerDB, Settings};
@@ -915,12 +915,23 @@ graphql_union!(Payload: Context |&self| {
 });
 
 // TODO do proper vote tally
-pub struct TallyPublic;
+pub struct TallyPublic {
+    results: Vec<Weight>,
+    options: VoteOptionRange,
+}
 
 #[juniper::object(
     Context = Context
 )]
-impl TallyPublic {}
+impl TallyPublic {
+    fn results(&self) -> &[Weight] {
+        &self.results
+    }
+
+    fn options(&self) -> &VoteOptionRange {
+        &self.options
+    }
+}
 
 pub enum Tally {
     Public(TallyPublic),
@@ -968,8 +979,11 @@ impl VotePlan {
                         proposal_id: ExternalProposalId::from(proposal.proposal_id),
                         options: VoteOptionRange::from(proposal.options),
                         tally: proposal.tally.map(|tally| match tally {
-                            super::indexing::ExplorerVoteTally::Public => {
-                                Tally::Public(TallyPublic)
+                            super::indexing::ExplorerVoteTally::Public { results, options } => {
+                                Tally::Public(TallyPublic {
+                                    results: results.into_iter().map(Into::into).collect(),
+                                    options: options.into(),
+                                })
                             }
                         }),
                         votes: Vec::new(),

@@ -469,7 +469,7 @@ async fn bootstrap_internal(
 
     let explorer_db = if settings.explorer {
         futures::select! {
-            explorer_result = explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain).fuse() => {
+            explorer_result = explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
                 Some(explorer_result?)
             },
             result = bootstrap_stopper.clone() => match result {

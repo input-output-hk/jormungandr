@@ -54,6 +54,9 @@ pub enum PayloadType {
 #[derive(juniper::GraphQLScalarValue)]
 pub struct Address(pub String);
 
+#[derive(juniper::GraphQLScalarValue)]
+pub struct Weight(pub String);
+
 /// Vote option range
 ///
 /// provide a range of available choices for a given proposal. Usual value would
@@ -241,5 +244,11 @@ impl TryFrom<IndexCursor> for blockcfg::ChainLength {
 impl From<chain_impl_mockchain::certificate::ExternalProposalId> for ExternalProposalId {
     fn from(id: chain_impl_mockchain::certificate::ExternalProposalId) -> Self {
         ExternalProposalId(id.to_string())
+    }
+}
+
+impl From<vote::Weight> for Weight {
+    fn from(w: vote::Weight) -> Self {
+        Self(format!("{}", w))
     }
 }

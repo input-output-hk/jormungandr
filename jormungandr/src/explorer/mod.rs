@@ -16,7 +16,7 @@ use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
 };
-use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
+use crate::blockchain::{self, Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
 use crate::utils::async_msg::MessageQueue;
 use crate::utils::task::TokioServiceInfo;
@@ -56,6 +56,7 @@ pub struct ExplorerDB {
     longest_chain_tip: Tip,
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
+    blockchain_tip: blockchain::Tip,
 }
 
 #[derive(Clone)]
@@ -141,7 +142,11 @@ impl ExplorerDB {
     /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
-    pub async fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
+    pub async fn bootstrap(
+        block0: Block,
+        blockchain: &Blockchain,
+        blockchain_tip: blockchain::Tip,
+    ) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -170,7 +175,7 @@ impl ExplorerDB {
         let addresses = apply_block_to_addresses(Addresses::new(), &block)?;
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
-        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &block);
+        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &blockchain_tip, &block);
 
         let initial_state = State {
             blocks,
@@ -198,6 +203,7 @@ impl ExplorerDB {
             }),
             blockchain_config,
             blockchain: blockchain.clone(),
+            blockchain_tip,
         };
 
         let maybe_head = blockchain
@@ -274,7 +280,11 @@ impl ExplorerDB {
                     chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                     stake_pool_data,
                     stake_pool_blocks,
-                    vote_plans: apply_block_to_vote_plans(vote_plans, &explorer_block),
+                    vote_plans: apply_block_to_vote_plans(
+                        vote_plans,
+                        &self.blockchain_tip,
+                        &explorer_block,
+                    ),
                 },
             )
             .await;
@@ -587,7 +597,11 @@ fn apply_block_to_stake_pools(
     (data, blocks)
 }
 
-fn apply_block_to_vote_plans(mut vote_plans: VotePlans, block: &ExplorerBlock) -> VotePlans {
+fn apply_block_to_vote_plans(
+    mut vote_plans: VotePlans,
+    blockchain_tip: &blockchain::Tip,
+    block: &ExplorerBlock,
+) -> VotePlans {
     for tx in block.transactions.values() {
         if let Some(cert) = &tx.certificate {
             vote_plans = match cert {
@@ -639,13 +653,35 @@ fn apply_block_to_vote_plans(mut vote_plans: VotePlans, block: &ExplorerBlock) -
                     use chain_impl_mockchain::vote::PayloadType;
                     vote_plans
                         .update(vote_tally.id(), |vote_plan| {
+                            let proposals_from_state =
+                                futures::executor::block_on(blockchain_tip.get_ref())
+                                    .active_vote_plans()
+                                    .into_iter()
+                                    .find_map(|vps| {
+                                        if vps.id != vote_plan.id {
+                                            return None;
+                                        }
+                                        Some(vps.proposals)
+                                    })
+                                    .unwrap();
                             let proposals = vote_plan
                                 .proposals
                                 .clone()
                                 .into_iter()
-                                .map(|mut proposal| {
+                                .enumerate()
+                                .map(|(index, mut proposal)| {
                                     proposal.tally = Some(match vote_tally.tally_type() {
-                                        PayloadType::Public => ExplorerVoteTally::Public,
+                                        PayloadType::Public => ExplorerVoteTally::Public {
+                                            results: proposals_from_state[index]
+                                                .tally
+                                                .clone()
+                                                .unwrap()
+                                                .public()
+                                                .unwrap()
+                                                .results()
+                                                .to_vec(),
+                                            options: proposal.options.clone(),
+                                        },
                                     });
                                     proposal
                                 })
