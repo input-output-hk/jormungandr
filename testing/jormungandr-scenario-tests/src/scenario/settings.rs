@@ -10,6 +10,8 @@ use jormungandr_testing_utils::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting, Settings,
     Topology as TopologyTemplate, WalletTemplate, WalletType,
 };
+
+use assert_fs::prelude::*;
 use rand_core::{CryptoRng, RngCore};
 use std::io::Write;
 
@@ -20,7 +22,7 @@ pub trait Prepare: Clone + Send + 'static {
 }
 
 pub trait PrepareNodeSettings: Clone + Send {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: NodeTemplate) -> Self
+    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: &NodeTemplate) -> Self
     where
         RNG: RngCore + CryptoRng;
 }
@@ -129,7 +131,7 @@ impl PrepareSettings for Settings {
             .map(|(alias, template)| {
                 (
                     alias.clone(),
-                    NodeSetting::prepare(alias, context, template),
+                    NodeSetting::prepare(alias, context, &template),
                 )
             })
             .collect();
@@ -139,15 +141,16 @@ impl PrepareSettings for Settings {
 }
 
 impl PrepareNodeSettings for NodeSetting {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: NodeTemplate) -> Self
+    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: &NodeTemplate) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
+        let config = NodeConfig::prepare(alias.clone(), context, template);
         NodeSetting {
             alias,
-            config: NodeConfig::prepare(context),
+            config,
             secret: NodeSecret::prepare(context),
-            node_topology: template,
+            node_topology: template.clone(),
         }
     }
 }
@@ -164,8 +167,8 @@ impl Prepare for NodeSecret {
     }
 }
 
-impl Prepare for NodeConfig {
-    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+impl PrepareNodeSettings for NodeConfig {
+    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: &NodeTemplate) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
@@ -173,7 +176,7 @@ impl Prepare for NodeConfig {
             rest: Rest::prepare(context),
             p2p: P2p::prepare(context),
             storage: None,
-            log: Some(Log::prepare(context)),
+            log: Some(Log::prepare(alias, context, template)),
             mempool: Some(Mempool::prepare(context)),
             explorer: Explorer::prepare(context),
             bootstrap_from_trusted_peers: None,
@@ -254,15 +257,18 @@ impl Prepare for Policy {
     }
 }
 
-impl Prepare for Log {
-    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+impl PrepareNodeSettings for Log {
+    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, _template: &NodeTemplate) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
         let format = "plain";
         let level = context.log_level();
-        let mut path = context.working_directory().to_path_buf();
-        path.push("node.log");
+        let path = context
+            .child_directory(alias)
+            .child("node.log")
+            .path()
+            .to_path_buf();
 
         let loggers = vec![
             LogEntry {
