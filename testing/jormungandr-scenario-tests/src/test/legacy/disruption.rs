@@ -1,7 +1,6 @@
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     test::{
-        non_functional::*,
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
         Result,
     },
@@ -15,6 +14,7 @@ use jormungandr_testing_utils::testing::FragmentSenderSetup;
 
 use rand_chacha::ChaChaRng;
 
+use super::{LEADER_1, LEADER_2, LEADER_3, LEADER_4};
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::str::FromStr;
