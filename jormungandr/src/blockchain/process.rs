@@ -198,10 +198,19 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let explorer = self.explorer_msgbox.clone();
 
+        let notifier = self.notifier_msgbox.clone();
+
         info.run_periodic_fallible(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
-            move || reprocess_tip(blockchain.clone(), tip.clone(), explorer.clone()),
+            move || {
+                reprocess_tip(
+                    blockchain.clone(),
+                    tip.clone(),
+                    explorer.clone(),
+                    notifier.clone(),
+                )
+            },
         )
     }
 
@@ -286,6 +295,7 @@ async fn reprocess_tip(
     mut blockchain: Blockchain,
     tip: Tip,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    notifier_msg_box: MessageBox<crate::notifier::Message>,
 ) -> Result<(), Error> {
     let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
 
@@ -302,6 +312,7 @@ async fn reprocess_tip(
             tip.clone(),
             Arc::clone(other),
             explorer_msg_box.clone(),
+            Some(notifier_msg_box.clone()),
         )
         .await?
     }
@@ -323,6 +334,7 @@ pub async fn process_new_ref(
     mut tip: Tip,
     candidate: Arc<Ref>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    notifier_msg_box: Option<MessageBox<crate::notifier::Message>>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
     let tip_ref = tip.get_ref().await;
@@ -371,6 +383,15 @@ pub async fn process_new_ref(
                     .await
                     .unwrap_or_else(|err| {
                         tracing::error!("cannot send new tip to explorer: {}", err)
+                    })
+            }
+
+            if let Some(mut msg_box) = notifier_msg_box {
+                msg_box
+                    .send(crate::notifier::Message::NewTip(candidate_hash))
+                    .await
+                    .unwrap_or_else(|err| {
+                        tracing::error!("cannot notify new block to subscribers: {}", err)
                     });
             }
         }
@@ -385,11 +406,19 @@ async fn process_and_propagate_new_ref(
     new_block_ref: Arc<Ref>,
     mut network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    notifier_msg_box: MessageBox<crate::notifier::Message>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     tracing::debug!("processing the new block and propagating");
 
-    process_new_ref(blockchain, tip, new_block_ref, explorer_msg_box).await?;
+    process_new_ref(
+        blockchain,
+        tip,
+        new_block_ref,
+        explorer_msg_box,
+        Some(notifier_msg_box),
+    )
+    .await?;
 
     tracing::debug!("propagating block to the network");
     network_msg_box
@@ -424,6 +453,7 @@ async fn process_leadership_block(
         Arc::clone(&new_block_ref),
         network_msg_box,
         explorer_msg_box.clone(),
+        notifier_msg_box.clone(),
     )
     .await?;
 
@@ -533,7 +563,7 @@ async fn process_network_blocks(
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    mut event_notifier_msg_box: MessageBox<crate::notifier::Message>,
+    mut notifier_msg_box: MessageBox<crate::notifier::Message>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
     stats_counter: StatsCounter,
@@ -552,7 +582,7 @@ async fn process_network_blocks(
                     block.clone(),
                     &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
-                    &mut event_notifier_msg_box,
+                    &mut notifier_msg_box,
                     &mut get_next_block_scheduler,
                 )
                 .await;
@@ -591,6 +621,7 @@ async fn process_network_blocks(
                 Arc::clone(&new_block_ref),
                 network_msg_box,
                 explorer_msg_box,
+                notifier_msg_box,
             )
             .await?;
 
