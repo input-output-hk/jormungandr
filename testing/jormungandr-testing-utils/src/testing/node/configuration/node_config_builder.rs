@@ -48,6 +48,7 @@ impl NodeConfigBuilder {
                     .unwrap(),
                 tls: None,
                 cors: None,
+                notifier: None,
             },
             p2p: P2p {
                 trusted_peers: vec![],
