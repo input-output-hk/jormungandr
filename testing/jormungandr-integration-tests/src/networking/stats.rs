@@ -4,6 +4,7 @@ use crate::common::{
 };
 use std::{cmp::PartialOrd, fmt::Display};
 
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::NodeStats;
 use jormungandr_testing_utils::testing::FragmentSender;
 
@@ -98,9 +99,13 @@ fn assert_last_stats_are_updated(stats_before: NodeStats, node: &JormungandrProc
         stats_after.last_block_content_size,
         "last block content size",
     );
+
+    let before_last_block_date: BlockDate = stats_before.last_block_date.unwrap().parse().unwrap();
+    let after_last_block_date: BlockDate = stats_after.last_block_date.unwrap().parse().unwrap();
+
     compare_stats_element(
-        stats_before.last_block_date.unwrap(),
-        stats_after.last_block_date.unwrap(),
+        before_last_block_date,
+        after_last_block_date,
         "last block date",
     );
     compare_stats_element(
