@@ -135,7 +135,7 @@ where
     T: Display + PartialOrd,
 {
     assert!(
-        before_value > after_value,
+        before_value < after_value,
         "{} should to be updated. {} vs {}",
         info,
         before_value,
