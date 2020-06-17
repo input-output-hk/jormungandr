@@ -226,6 +226,13 @@ impl Readable for SignedCertificate {
                     cert, auth,
                 )))
             }
+            7 => {
+                let cert = certificate::VoteTally::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::VoteTally(cert, auth),
+                ))
+            }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
