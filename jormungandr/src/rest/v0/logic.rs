@@ -34,7 +34,7 @@ use jormungandr_lib::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
         FragmentStatus, LeadershipLog, NodeStats, NodeStatsDto, PeerStats,
         Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
-        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanWithId,
+        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanStatus,
     },
     time::SystemTime,
 };
