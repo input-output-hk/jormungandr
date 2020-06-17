@@ -1,17 +1,12 @@
 use crate::{scenario::Context, style};
 use jormungandr_lib::{
-    interfaces::{
-        Explorer, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
-        TopicsOfInterest,
-    },
+    interfaces::{Explorer, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest},
     time::Duration,
 };
 use jormungandr_testing_utils::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting, Settings,
     Topology as TopologyTemplate, WalletTemplate, WalletType,
 };
-
-use assert_fs::prelude::*;
 use rand_core::{CryptoRng, RngCore};
 use std::io::Write;
 
@@ -145,10 +140,9 @@ impl PrepareNodeSettings for NodeSetting {
     where
         RNG: RngCore + CryptoRng,
     {
-        let config = NodeConfig::prepare(alias.clone(), context, template);
         NodeSetting {
             alias,
-            config,
+            config: NodeConfig::prepare(context),
             secret: NodeSecret::prepare(context),
             node_topology: template.clone(),
         }
@@ -167,8 +161,8 @@ impl Prepare for NodeSecret {
     }
 }
 
-impl PrepareNodeSettings for NodeConfig {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: &NodeTemplate) -> Self
+impl Prepare for NodeConfig {
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
@@ -176,7 +170,7 @@ impl PrepareNodeSettings for NodeConfig {
             rest: Rest::prepare(context),
             p2p: P2p::prepare(context),
             storage: None,
-            log: Some(Log::prepare(alias, context, template)),
+            log: None,
             mempool: Some(Mempool::prepare(context)),
             explorer: Explorer::prepare(context),
             bootstrap_from_trusted_peers: None,
@@ -254,34 +248,5 @@ impl Prepare for Policy {
             quarantine_duration: Some(Duration::new(30, 0)),
             quarantine_whitelist: None,
         }
-    }
-}
-
-impl PrepareNodeSettings for Log {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, _template: &NodeTemplate) -> Self
-    where
-        RNG: RngCore + CryptoRng,
-    {
-        let format = "plain";
-        let level = context.log_level();
-        let path = context
-            .child_directory(alias)
-            .child("node.log")
-            .path()
-            .to_path_buf();
-
-        let loggers = vec![
-            LogEntry {
-                format: format.to_string(),
-                level: level.to_string(),
-                output: LogOutput::Stderr,
-            },
-            LogEntry {
-                format: format.to_string(),
-                level: level.to_string(),
-                output: LogOutput::File(path),
-            },
-        ];
-        Log(loggers)
     }
 }
