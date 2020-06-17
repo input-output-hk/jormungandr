@@ -226,7 +226,7 @@ impl Readable for SignedCertificate {
                     cert, auth,
                 )))
             }
-            7 => {
+            8 => {
                 let cert = certificate::VoteTally::read(buf)?;
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
