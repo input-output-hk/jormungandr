@@ -47,9 +47,6 @@ impl SignedCertificate {
             certificate::SignedCertificate::VotePlan(c, _) => {
                 Certificate(certificate::Certificate::VotePlan(c))
             }
-            certificate::SignedCertificate::VoteCast(c, _) => {
-                Certificate(certificate::Certificate::VoteCast(c))
-            }
             certificate::SignedCertificate::VoteTally(c, _) => {
                 Certificate(certificate::Certificate::VoteTally(c))
             }
@@ -170,13 +167,10 @@ impl property::Serialize for SignedCertificate {
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
-            certificate::SignedCertificate::VotePlan(c, ()) => {
+            certificate::SignedCertificate::VotePlan(c, a) => {
                 writer.write_all(&[6])?;
                 writer.write_all(c.serialize().as_slice())?;
-            }
-            certificate::SignedCertificate::VoteCast(c, ()) => {
-                writer.write_all(&[7])?;
-                writer.write_all(c.serialize().as_slice())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::VoteTally(c, a) => {
                 writer.write_all(&[8])?;
@@ -227,17 +221,17 @@ impl Readable for SignedCertificate {
             }
             6 => {
                 let cert = certificate::VotePlan::read(buf)?;
+                let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(certificate::SignedCertificate::VotePlan(
-                    cert,
-                    (),
+                    cert, auth,
                 )))
             }
-            7 => {
-                let cert = certificate::VoteCast::read(buf)?;
-                Ok(SignedCertificate(certificate::SignedCertificate::VoteCast(
-                    cert,
-                    (),
-                )))
+            8 => {
+                let cert = certificate::VoteTally::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::VoteTally(cert, auth),
+                ))
             }
             t => Err(ReadError::UnknownTag(t as u32)),
         }

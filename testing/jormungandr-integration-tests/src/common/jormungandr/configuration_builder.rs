@@ -9,6 +9,7 @@ use crate::common::{
 };
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
+use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, Initial,
     InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
@@ -35,6 +36,7 @@ pub struct ConfigurationBuilder {
     rewards_history: bool,
     configure_default_log: bool,
     committee_ids: Vec<CommitteeIdDef>,
+    leader_key_pair: Option<KeyPair<Ed25519>>,
 }
 
 impl Default for ConfigurationBuilder {
@@ -62,6 +64,7 @@ impl ConfigurationBuilder {
             rewards_history: false,
             configure_default_log: true,
             committee_ids: vec![],
+            leader_key_pair: None,
         }
     }
 
@@ -201,6 +204,11 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_leader_key_pair(&mut self, leader_key_pair: KeyPair<Ed25519>) -> &mut Self {
+        self.leader_key_pair = Some(leader_key_pair);
+        self
+    }
+
     pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
         let mut node_config = self.node_config_builder.build();
 
@@ -220,7 +228,10 @@ impl ConfigurationBuilder {
             }
         };
 
-        let leader_key_pair = create_new_key_pair::<Ed25519>();
+        let leader_key_pair = self
+            .leader_key_pair
+            .clone()
+            .unwrap_or_else(|| create_new_key_pair::<Ed25519>());
         let mut leaders_ids = self.consensus_leader_ids.clone();
         leaders_ids.push(leader_key_pair.identifier().into());
 

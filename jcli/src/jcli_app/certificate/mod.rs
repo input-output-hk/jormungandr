@@ -16,11 +16,13 @@ mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod new_stake_pool_retirement;
 mod new_vote_plan;
+mod new_vote_tally;
 mod sign;
 mod weighted_pool_ids;
 
 pub(crate) use self::sign::{
-    committee_vote_tally_sign, pool_owner_sign, stake_delegation_account_binding_sign,
+    committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
+    stake_delegation_account_binding_sign,
 };
 
 #[derive(Debug, Error)]
@@ -137,6 +139,8 @@ pub enum NewArgs {
     StakePoolRetirement(new_stake_pool_retirement::StakePoolRetirement),
     /// create a new vote plan certificate
     VotePlan(new_vote_plan::VotePlanRegistration),
+    /// create a new vote tally certificate
+    VoteTally(new_vote_tally::VoteTallyRegistration),
 }
 
 #[derive(StructOpt)]
@@ -165,6 +169,7 @@ impl NewArgs {
             NewArgs::OwnerStakeDelegation(args) => args.exec()?,
             NewArgs::StakePoolRetirement(args) => args.exec()?,
             NewArgs::VotePlan(args) => args.exec()?,
+            NewArgs::VoteTally(args) => args.exec()?,
         }
         Ok(())
     }
@@ -210,7 +215,6 @@ fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certific
                 SignedCertificate::PoolRetirement(pr, _) => Certificate::PoolRetirement(pr),
                 SignedCertificate::PoolUpdate(pu, _) => Certificate::PoolUpdate(pu),
                 SignedCertificate::VotePlan(vp, _) => Certificate::VotePlan(vp),
-                SignedCertificate::VoteCast(vp, _) => Certificate::VoteCast(vp),
                 SignedCertificate::VoteTally(vt, _) => Certificate::VoteTally(vt),
             };
 

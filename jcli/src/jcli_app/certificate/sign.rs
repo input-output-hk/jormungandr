@@ -6,7 +6,7 @@ use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     certificate::{
         Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
-        StakeDelegation, TallyProof, VoteTally,
+        StakeDelegation, TallyProof, VotePlan, VotePlanProof, VoteTally,
     },
     key::EitherEd25519SecretKey,
     transaction::{
@@ -15,7 +15,7 @@ use chain_impl_mockchain::{
     },
 };
 use jormungandr_lib::interfaces;
-use std::path::PathBuf;
+use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -80,7 +80,10 @@ impl Sign {
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
-            Certificate::VotePlan(_) => return Err(Error::VotePlanDoesntNeedSignature),
+            Certificate::VotePlan(vp) => {
+                let txbuilder = Transaction::block0_payload_builder(&vp);
+                committee_vote_plan_sign(vp, &keys_str, txbuilder)?
+            }
             Certificate::VoteCast(_) => return Err(Error::VoteCastDoesntNeedSignature),
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
@@ -93,7 +96,6 @@ pub(crate) fn committee_vote_tally_sign(
     builder: TxBuilderState<SetAuthData<VoteTally>>,
 ) -> Result<SignedCertificate, Error> {
     use chain_impl_mockchain::vote::PayloadType;
-    use std::convert::TryInto as _;
 
     match vote_tally.tally_type() {
         PayloadType::Public => {
@@ -114,6 +116,29 @@ pub(crate) fn committee_vote_tally_sign(
             Ok(SignedCertificate::VoteTally(vote_tally, proof))
         }
     }
+}
+
+pub(crate) fn committee_vote_plan_sign(
+    vote_plan: VotePlan,
+    keys_str: &[String],
+    builder: TxBuilderState<SetAuthData<VotePlan>>,
+) -> Result<SignedCertificate, Error> {
+    if keys_str.len() > 1 {
+        return Err(Error::ExpectingOnlyOneSigningKey {
+            got: keys_str.len(),
+        });
+    }
+
+    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+    let id = private_key.to_public().as_ref().try_into().unwrap();
+
+    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(&d.0)
+    });
+
+    let proof = VotePlanProof { id, signature };
+
+    Ok(SignedCertificate::VotePlan(vote_plan, proof))
 }
 
 pub(crate) fn stake_delegation_account_binding_sign(
