@@ -1,3 +1,4 @@
+use bytesize::ByteSize;
 use std::{cmp::Ordering, fmt};
 
 #[derive(Clone, Debug)]
@@ -47,10 +48,13 @@ impl Ord for ResourcesUsage {
 
 impl fmt::Display for ResourcesUsage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let memory_usage = ByteSize::kib(self.memory_usage.into()).to_string();
+        let virtual_memory_usage = ByteSize::kib(self.virtual_memory_usage.into()).to_string();
+
         write!(
             f,
-            "Usage(CPU: {:.1} %. Memory: {:.1}. Virtual memory: {:.1})",
-            self.cpu_usage, self.memory_usage, self.virtual_memory_usage
+            "(CPU: {:.1} %. Mem: {}. V_Mem: {})",
+            self.cpu_usage, memory_usage, virtual_memory_usage
         )
     }
 }
