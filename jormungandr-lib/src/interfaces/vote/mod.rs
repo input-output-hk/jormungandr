@@ -16,7 +16,7 @@ use std::collections::HashMap;
 #[derive(
     Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, serde::Deserialize,
 )]
-#[serde(remote = "PayloadType")]
+#[serde(remote = "PayloadType", rename_all = "snake_case")]
 enum PayloadTypeDef {
     Public,
 }
@@ -24,39 +24,34 @@ enum PayloadTypeDef {
 #[derive(Deserialize)]
 #[serde(remote = "VotePlan")]
 pub struct VotePlanDef {
-    #[serde(with = "PayloadTypeDef")]
-    #[serde(getter = "payload_type")]
+    #[serde(with = "PayloadTypeDef", getter = "payload_type")]
     payload_type: PayloadType,
-    #[serde(with = "BlockDateDef")]
-    #[serde(getter = "vote_start")]
+    #[serde(with = "BlockDateDef", getter = "vote_start")]
     vote_start: BlockDate,
-    #[serde(with = "BlockDateDef")]
-    #[serde(getter = "vote_end")]
+    #[serde(with = "BlockDateDef", getter = "vote_end")]
     vote_end: BlockDate,
-    #[serde(with = "BlockDateDef")]
-    #[serde(getter = "committee_end")]
+    #[serde(with = "BlockDateDef", getter = "committee_end")]
     committee_end: BlockDate,
-    #[serde(deserialize_with = "deserialize_proposals")]
-    #[serde(getter = "proposals")]
+    #[serde(deserialize_with = "deserialize_proposals", getter = "proposals")]
     proposals: Proposals,
 }
 
 #[derive(Deserialize)]
 #[serde(remote = "Proposal")]
 struct VoteProposalDef {
-    #[serde(deserialize_with = "deserialize_external_proposal_id")]
-    #[serde(getter = "external_id")]
+    #[serde(
+        deserialize_with = "deserialize_external_proposal_id",
+        getter = "external_id"
+    )]
     external_id: ExternalProposalId,
-    #[serde(deserialize_with = "deserialize_choices")]
-    #[serde(getter = "options")]
+    #[serde(deserialize_with = "deserialize_choices", getter = "options")]
     options: Options,
-    #[serde(with = "VoteActionDef")]
-    #[serde(getter = "action")]
+    #[serde(with = "VoteActionDef", getter = "action")]
     action: VoteAction,
 }
 
 #[derive(Deserialize)]
-#[serde(remote = "VoteAction")]
+#[serde(remote = "VoteAction", rename_all = "snake_case")]
 enum VoteActionDef {
     OffChain,
     #[serde(with = "TreasuryGovernanceActionDef")]
@@ -66,7 +61,7 @@ enum VoteActionDef {
 }
 
 #[derive(Deserialize)]
-#[serde(remote = "TreasuryGovernanceAction")]
+#[serde(remote = "TreasuryGovernanceAction", rename_all = "snake_case")]
 enum TreasuryGovernanceActionDef {
     TransferToRewards {
         #[serde(with = "ValueDef")]

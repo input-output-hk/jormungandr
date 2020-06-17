@@ -59,7 +59,7 @@ pub fn test_create_vote_plan_certificate() {
         .unwrap();
 
     let vote_plan_config = r#"
-payload_type: Public
+payload_type: public
 vote_start:
   epoch: 0
   slot_id: 200
@@ -71,8 +71,11 @@ committee_end:
   slot_id: 400
 proposals:
   - external_id: f4fdab54e2d516ce1cabe8ae8cfe77e99eeb530f7033cdf20e2392e012373a7b
-    options: 0x3
-    action: OffChain
+    options: 3
+    action:
+      treasury:
+        transfer_to_rewards:
+          value: 100
     "#;
 
     let vote_plan_config_path = temp_dir.child("vote_plan.yaml");
