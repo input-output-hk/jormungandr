@@ -93,11 +93,20 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
         &self.node_config
     }
 
+    pub fn node_config_mut(&mut self) -> &mut Conf {
+        &mut self.node_config
+    }
+
     fn regenerate_ports(&mut self) {
         self.node_config.set_rest_socket_addr(SocketAddr::new(
             IpAddr::V4(Ipv4Addr::LOCALHOST),
             super::get_available_port(),
         ));
+        self.node_config.set_p2p_public_address(
+            format!("/ip4/127.0.0.1/tcp/{}", super::get_available_port())
+                .parse()
+                .unwrap(),
+        );
     }
 
     pub fn fees(&self) -> LinearFee {

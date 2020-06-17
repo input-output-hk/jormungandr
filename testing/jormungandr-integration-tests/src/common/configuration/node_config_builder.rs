@@ -56,7 +56,7 @@ impl NodeConfigBuilder {
                     messages: String::from("high"),
                     blocks: String::from("high"),
                 }),
-                allow_private_addresses: false,
+                allow_private_addresses: true,
                 policy: Some(Policy {
                     quarantine_duration: Some(Duration::new(1, 0)),
                     quarantine_whitelist: None,
