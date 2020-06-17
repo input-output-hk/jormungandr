@@ -94,7 +94,7 @@ fn assert_last_stats_are_updated(stats_before: NodeStats, node: &JormungandrProc
         .stats
         .expect("empty stats");
 
-    compare_stats_element(
+    stats_element_is_different(
         stats_before.last_block_content_size,
         stats_after.last_block_content_size,
         "last block content size",
@@ -103,44 +103,58 @@ fn assert_last_stats_are_updated(stats_before: NodeStats, node: &JormungandrProc
     let before_last_block_date: BlockDate = stats_before.last_block_date.unwrap().parse().unwrap();
     let after_last_block_date: BlockDate = stats_after.last_block_date.unwrap().parse().unwrap();
 
-    compare_stats_element(
+    stats_element_is_greater(
         before_last_block_date,
         after_last_block_date,
         "last block date",
     );
-    compare_stats_element(
+    stats_element_is_different(
         stats_before.last_block_fees,
         stats_after.last_block_fees,
         "last block fees size",
     );
-    compare_stats_element(
+
+    stats_element_is_different(
         stats_before.last_block_hash.unwrap(),
         stats_after.last_block_hash.unwrap(),
         "last block hash",
     );
-    compare_stats_element(
+    stats_element_is_different(
         stats_before.last_block_sum,
         stats_after.last_block_sum,
         "last block sum",
     );
-    compare_stats_element(
+    stats_element_is_greater(
         stats_before.last_block_time.unwrap(),
         stats_after.last_block_time.unwrap(),
         "last block time",
     );
-    compare_stats_element(
+    stats_element_is_different(
         stats_before.last_block_tx,
         stats_after.last_block_tx,
         "last block tx",
     );
 }
 
-fn compare_stats_element<T>(before_value: T, after_value: T, info: &str)
+fn stats_element_is_greater<T>(before_value: T, after_value: T, info: &str)
 where
     T: Display + PartialOrd,
 {
     assert!(
         before_value < after_value,
+        "{} should to be updated. {} vs {}",
+        info,
+        before_value,
+        after_value,
+    );
+}
+
+fn stats_element_is_different<T>(before_value: T, after_value: T, info: &str)
+where
+    T: Display + PartialOrd,
+{
+    assert!(
+        before_value != after_value,
         "{} should to be updated. {} vs {}",
         info,
         before_value,
