@@ -2,17 +2,18 @@ use crate::utils::async_msg::{channel, MessageBox, MessageQueue};
 use crate::utils::task::TokioServiceInfo;
 use chain_impl_mockchain::header::HeaderId;
 use futures::{SinkExt, StreamExt};
+use slog::Logger;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use thiserror::Error;
 
 #[derive(Clone)]
 pub struct Notifier {
     next_user_id: Arc<AtomicUsize>,
     clients: Arc<tokio::sync::Mutex<Clients>>,
-    max_connections: u32,
+    max_connections: usize,
 }
 
+// TODO: move to intercom?
 pub enum Message {
     NewBlock(HeaderId),
     NewTip(HeaderId),
@@ -20,11 +21,16 @@ pub enum Message {
 
 type Clients = std::collections::HashMap<usize, warp::ws::WebSocket>;
 
-const MAX_CONNECTIONS_DEFAULT: u32 = 3;
+// TODO: define this in Settings
+const MAX_CONNECTIONS_DEFAULT: usize = 255;
+
+// error codes in 4000-4999 are reserved for private use.
+// I couldn't find an error code for max connections
 const MAX_CONNECTIONS_ERROR_CLOSE_CODE: u16 = 4000;
+const MAX_CONNECTIONS_ERROR_REASON: &str = "MAX CONNECTIONS reached";
 
 impl Notifier {
-    pub fn new(max_connections: Option<u32>) -> Notifier {
+    pub fn new(max_connections: Option<usize>) -> Notifier {
         Notifier {
             next_user_id: Arc::new(AtomicUsize::new(1)),
             clients: Default::default(),
@@ -35,6 +41,7 @@ impl Notifier {
     pub async fn start(&mut self, info: TokioServiceInfo, queue: MessageQueue<Message>) {
         let clients1 = self.clients.clone();
         let clients2 = self.clients.clone();
+        let logger = info.logger();
 
         // TODO: what limit should I put in there?
         let (deleted_msgbox, deleted_queue) = channel::<usize>(32);
@@ -48,7 +55,12 @@ impl Notifier {
             .for_each(|input| {
                 info.spawn(
                     "notifier send new messages",
-                    process_message(clients1.clone(), input, deleted_msgbox.clone()),
+                    process_message(
+                        logger.clone(),
+                        clients1.clone(),
+                        input,
+                        deleted_msgbox.clone(),
+                    ),
                 );
                 futures::future::ready(())
             })
@@ -74,7 +86,7 @@ impl Notifier {
         if let Some(mut ws) = rejected {
             let close_msg = warp::ws::Message::close_with(
                 MAX_CONNECTIONS_ERROR_CLOSE_CODE,
-                "MAX CONNECTIONS reached",
+                MAX_CONNECTIONS_ERROR_REASON,
             );
             if ws.send(close_msg).await.is_ok() {
                 let _ = ws.close().await;
@@ -84,6 +96,7 @@ impl Notifier {
 }
 
 async fn process_message(
+    logger: Logger,
     clients: Arc<tokio::sync::Mutex<Clients>>,
     msg: Message,
     mut disconnected: MessageBox<usize>,
@@ -96,10 +109,12 @@ async fn process_message(
     let dead = async move { notify_all(clients, warp_msg).await };
 
     for id in dead.await {
-        disconnected
-            .send(id)
-            .await
-            .expect("couldn't push disconnected client id");
+        disconnected.send(id).await.unwrap_or_else(|err| {
+            error!(
+                logger,
+                "notifier error when adding id to disconnected: {}", err
+            );
+        });
     }
 }
 

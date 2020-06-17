@@ -17,6 +17,9 @@ pub struct Rest {
     /// Enables CORS if provided
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cors: Option<Cors>,
+    /// Change notifier api settings if provided
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notifier: Option<Notifier>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -84,6 +87,13 @@ impl AsRef<str> for CorsOrigin {
     fn as_ref(&self) -> &str {
         &self.0
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Notifier {
+    /// Limit on the number of simultaneous connections.
+    /// If not specified, an internal default limit is used.
+    pub max_connections: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

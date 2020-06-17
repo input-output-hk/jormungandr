@@ -128,6 +128,7 @@ impl RawSettings {
                 listen: cmd_listen,
                 tls: None,
                 cors: None,
+                notifier: None,
             }),
             (None, None) => None,
         }

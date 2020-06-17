@@ -129,7 +129,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let event_notifier = {
         let (msgbox, queue) = async_msg::channel(NOTIFIER_TASK_QUEUE_LEN);
 
-        let mut notifier = notifier::Notifier::new(None);
+        let max_connections = bootstrapped_node
+            .settings
+            .rest
+            .and_then(|settings| settings.notifier)
+            .and_then(|settings| settings.max_connections);
+
+        let mut notifier = notifier::Notifier::new(max_connections);
 
         let context = notifier.clone();
 
