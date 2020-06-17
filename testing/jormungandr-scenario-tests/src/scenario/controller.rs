@@ -16,7 +16,8 @@ use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption,
         network_builder::{
-            Blockchain, LeadershipMode, PersistenceMode, Settings, SpawnParams, Topology,
+            Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, Settings,
+            SpawnParams, Topology, Wallet as WalletSetting, WalletAlias,
         },
         ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
@@ -57,6 +58,7 @@ pub struct Controller {
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 
     runtime: runtime::Runtime,
+    topology: Topology,
 }
 
 impl ControllerBuilder {
@@ -92,8 +94,8 @@ impl ControllerBuilder {
 
     pub fn build_settings(&mut self, context: &mut ContextChaCha) {
         self.controller_progress.inc(1);
-        let topology = std::mem::replace(&mut self.topology, None).unwrap();
-        let blockchain = std::mem::replace(&mut self.blockchain, None).unwrap();
+        let topology = self.topology.clone().expect("topology not set");
+        let blockchain = self.blockchain.clone().expect("blockchain not defined");
         self.settings = Some(Settings::prepare(topology, blockchain, context));
         self.controller_progress.inc(5);
     }
@@ -115,7 +117,12 @@ impl ControllerBuilder {
             _ => (),
         }
 
-        Controller::new(self.settings.unwrap(), context, working_directory)
+        Controller::new(
+            self.settings.unwrap(),
+            context,
+            working_directory,
+            self.topology.unwrap(),
+        )
     }
 
     fn summary(&self) {
@@ -151,6 +158,7 @@ impl Controller {
         settings: Settings,
         context: ContextChaCha,
         working_directory: ChildPath,
+        topology: Topology,
     ) -> Result<Self> {
         use chain_core::property::Serialize as _;
 
@@ -171,12 +179,13 @@ impl Controller {
             progress_bar_thread: None,
             runtime: runtime::Runtime::new()?,
             working_directory,
+            topology,
         })
     }
 
     pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool> {
-        if let Some(stake_pool) = self.settings.stake_pools.remove(node_alias) {
-            Ok(stake_pool.into())
+        if let Some(stake_pool) = self.settings.stake_pools.get(node_alias) {
+            Ok(stake_pool.clone().into())
         } else {
             Err(ErrorKind::StakePoolNotFound(node_alias.to_owned()).into())
         }
@@ -184,6 +193,27 @@ impl Controller {
 
     pub fn working_directory(&self) -> &ChildPath {
         &self.working_directory
+    }
+
+    pub fn nodes(&self) -> impl Iterator<Item = (&NodeAlias, &NodeSetting)> {
+        self.settings.nodes.iter()
+    }
+
+    pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
+        self.settings.wallets.iter()
+    }
+
+    pub fn get_all_wallets(&mut self) -> Vec<Wallet> {
+        let mut wallets = vec![];
+
+        for alias in self.settings.wallets.clone().keys() {
+            wallets.push(self.wallet(alias).unwrap());
+        }
+        wallets
+    }
+
+    pub fn topology(&self) -> &Topology {
+        &self.topology
     }
 
     pub fn start_monitor_resources(
@@ -198,8 +228,8 @@ impl Controller {
     }
 
     pub fn wallet(&mut self, wallet: &str) -> Result<Wallet> {
-        if let Some(wallet) = self.settings.wallets.remove(wallet) {
-            Ok(wallet.into())
+        if let Some(wallet) = self.settings.wallets.get(wallet) {
+            Ok(wallet.clone().into())
         } else {
             Err(ErrorKind::WalletNotFound(wallet.to_owned()).into())
         }
