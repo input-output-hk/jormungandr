@@ -12,7 +12,10 @@ use jormungandr_integration_tests::{
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{EnclaveLeaderId, FragmentLog, NodeState, NodeStatsDto, PeerRecord, PeerStats},
+    interfaces::{
+        EnclaveLeaderId, FragmentLog, Log, LogEntry, LogOutput, NodeState, NodeStatsDto,
+        PeerRecord, PeerStats,
+    },
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -173,6 +176,7 @@ pub struct Node {
 const NODE_CONFIG: &str = "node_config.yaml";
 const NODE_SECRET: &str = "node_secret.yaml";
 const NODE_STORAGE: &str = "storage.db";
+const NODE_LOG: &str = "node.log";
 
 impl NodeController {
     pub fn alias(&self) -> &NodeAlias {
@@ -542,6 +546,22 @@ impl Node {
 
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
+        let log_file = dir.join(NODE_LOG);
+
+        let format = "plain";
+        let level = context.log_level();
+        node_settings.config.log = Some(Log(vec![
+            LogEntry {
+                format: format.to_string(),
+                level: level.to_string(),
+                output: LogOutput::Stderr,
+            },
+            LogEntry {
+                format: format.to_string(),
+                level: level.to_string(),
+                output: LogOutput::File(log_file),
+            },
+        ]));
 
         if peristence_mode == PersistenceMode::Persistent {
             let path_to_storage = dir.join(NODE_STORAGE);

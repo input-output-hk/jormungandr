@@ -101,10 +101,6 @@ impl<RNG: RngCore> Context<RNG> {
         &self.jormungandr
     }
 
-    pub(super) fn working_directory(&self) -> &Path {
-        self.testing_directory.path()
-    }
-
     pub fn child_directory(&self, path: impl AsRef<Path>) -> ChildPath {
         let child = self.testing_directory.child(path);
         child.create_dir_all().unwrap();

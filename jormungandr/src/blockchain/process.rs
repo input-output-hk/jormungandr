@@ -382,7 +382,7 @@ async fn process_leadership_block(
 
     let fragments = block.fragments().map(|f| f.id()).collect();
 
-    debug!(logger, "updating fragment's log");
+    trace!(logger, "updating fragments log");
     try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
         .map_err(|_| "cannot remove fragments from pool".to_string())?;
 

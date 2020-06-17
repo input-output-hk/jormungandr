@@ -1,9 +1,6 @@
 use crate::{scenario::Context, style};
 use jormungandr_lib::{
-    interfaces::{
-        Explorer, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
-        TopicsOfInterest,
-    },
+    interfaces::{Explorer, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest},
     time::Duration,
 };
 use jormungandr_testing_utils::testing::network_builder::{
@@ -20,7 +17,7 @@ pub trait Prepare: Clone + Send + 'static {
 }
 
 pub trait PrepareNodeSettings: Clone + Send {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: NodeTemplate) -> Self
+    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: &NodeTemplate) -> Self
     where
         RNG: RngCore + CryptoRng;
 }
@@ -129,7 +126,7 @@ impl PrepareSettings for Settings {
             .map(|(alias, template)| {
                 (
                     alias.clone(),
-                    NodeSetting::prepare(alias, context, template),
+                    NodeSetting::prepare(alias, context, &template),
                 )
             })
             .collect();
@@ -139,7 +136,7 @@ impl PrepareSettings for Settings {
 }
 
 impl PrepareNodeSettings for NodeSetting {
-    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: NodeTemplate) -> Self
+    fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: &NodeTemplate) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
@@ -147,7 +144,7 @@ impl PrepareNodeSettings for NodeSetting {
             alias,
             config: NodeConfig::prepare(context),
             secret: NodeSecret::prepare(context),
-            node_topology: template,
+            node_topology: template.clone(),
         }
     }
 }
@@ -173,7 +170,7 @@ impl Prepare for NodeConfig {
             rest: Rest::prepare(context),
             p2p: P2p::prepare(context),
             storage: None,
-            log: Some(Log::prepare(context)),
+            log: None,
             mempool: Some(Mempool::prepare(context)),
             explorer: Explorer::prepare(context),
             bootstrap_from_trusted_peers: None,
@@ -251,31 +248,5 @@ impl Prepare for Policy {
             quarantine_duration: Some(Duration::new(30, 0)),
             quarantine_whitelist: None,
         }
-    }
-}
-
-impl Prepare for Log {
-    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
-    where
-        RNG: RngCore + CryptoRng,
-    {
-        let format = "plain";
-        let level = context.log_level();
-        let mut path = context.working_directory().to_path_buf();
-        path.push("node.log");
-
-        let loggers = vec![
-            LogEntry {
-                format: format.to_string(),
-                level: level.to_string(),
-                output: LogOutput::Stderr,
-            },
-            LogEntry {
-                format: format.to_string(),
-                level: level.to_string(),
-                output: LogOutput::File(path),
-            },
-        ];
-        Log(loggers)
     }
 }
