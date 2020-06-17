@@ -891,31 +891,31 @@ impl PoolStakeDistribution {
     }
 }
 
-pub struct PayloadPublic {
+pub struct VotePayloadPublicStatus {
     choice: i32,
 }
 
 #[juniper::object(
     Context = Context
 )]
-impl PayloadPublic {
+impl VotePayloadPublicStatus {
     pub fn choice(&self, _context: &Context) -> i32 {
         self.choice
     }
 }
 
-pub enum Payload {
-    Public(PayloadPublic),
+pub enum VotePayloadStatus {
+    Public(VotePayloadPublicStatus),
 }
 
-graphql_union!(Payload: Context |&self| {
+graphql_union!(VotePayloadStatus: Context |&self| {
     instance_resolvers: |_| {
-        &PayloadPublic => match *self { Payload::Public(ref c) => Some(c) },
+        &VotePayloadPublicStatus => match *self { VotePayloadStatus::Public(ref c) => Some(c) },
     }
 });
 
 // TODO do proper vote tally
-pub struct TallyPublic {
+pub struct TallyPublicStatus {
     results: Vec<Weight>,
     options: VoteOptionRange,
 }
@@ -923,7 +923,7 @@ pub struct TallyPublic {
 #[juniper::object(
     Context = Context
 )]
-impl TallyPublic {
+impl TallyPublicStatus {
     fn results(&self) -> &[Weight] {
         &self.results
     }
@@ -933,26 +933,26 @@ impl TallyPublic {
     }
 }
 
-pub enum Tally {
-    Public(TallyPublic),
+pub enum TallyStatus {
+    Public(TallyPublicStatus),
 }
 
-graphql_union!(Tally: Context |&self| {
+graphql_union!(TallyStatus: Context |&self| {
     instance_resolvers: |_| {
-        &TallyPublic => match *self { Tally::Public(ref c) => Some(c) },
+        &TallyPublicStatus => match *self { TallyStatus::Public(ref c) => Some(c) },
     }
 });
 
-pub struct VotePlan {
+pub struct VotePlanStatus {
     id: VotePlanId,
     vote_start: BlockDate,
     vote_end: BlockDate,
     committee_end: BlockDate,
     payload_type: PayloadType,
-    proposals: Vec<VoteProposal>,
+    proposals: Vec<VoteProposalStatus>,
 }
 
-impl VotePlan {
+impl VotePlanStatus {
     pub fn vote_plan_from_id(vote_plan_id: VotePlanId, context: &Context) -> FieldResult<Self> {
         let vote_plan_id = chain_impl_mockchain::certificate::VotePlanId::from_str(&vote_plan_id.0)
             .map_err(|err| -> juniper::FieldError {
@@ -967,7 +967,7 @@ impl VotePlan {
             proposals,
         }) = block_on(context.db.get_vote_plan_by_id(&vote_plan_id))
         {
-            let vote_plan = VotePlan {
+            let vote_plan = VotePlanStatus {
                 id: VotePlanId::from(id),
                 vote_start: BlockDate::from(vote_start),
                 vote_end: BlockDate::from(vote_end),
@@ -975,12 +975,12 @@ impl VotePlan {
                 payload_type: PayloadType::from(payload_type),
                 proposals: proposals
                     .into_iter()
-                    .map(|proposal| VoteProposal {
+                    .map(|proposal| VoteProposalStatus {
                         proposal_id: ExternalProposalId::from(proposal.proposal_id),
                         options: VoteOptionRange::from(proposal.options),
                         tally: proposal.tally.map(|tally| match tally {
                             super::indexing::ExplorerVoteTally::Public { results, options } => {
-                                Tally::Public(TallyPublic {
+                                TallyStatus::Public(TallyPublicStatus {
                                     results: results.into_iter().map(Into::into).collect(),
                                     options: options.into(),
                                 })
@@ -1005,7 +1005,7 @@ impl VotePlan {
 #[juniper::object(
     Context = Context
 )]
-impl VotePlan {
+impl VotePlanStatus {
     pub fn id(&self) -> &VotePlanId {
         &self.id
     }
@@ -1026,40 +1026,40 @@ impl VotePlan {
         &self.payload_type
     }
 
-    pub fn proposals(&self) -> &[VoteProposal] {
+    pub fn proposals(&self) -> &[VoteProposalStatus] {
         &self.proposals
     }
 }
 
-pub struct Vote {
-    address: scalars::Address,
-    payload: Payload,
+pub struct VoteStatus {
+    address: Address,
+    payload: VotePayloadStatus,
 }
 
 #[juniper::object(
     Context = Context
 )]
-impl Vote {
-    pub fn address(&self) -> &scalars::Address {
+impl VoteStatus {
+    pub fn address(&self) -> &Address {
         &self.address
     }
 
-    pub fn payload(&self) -> &Payload {
+    pub fn payload(&self) -> &VotePayloadStatus {
         &self.payload
     }
 }
 
-pub struct VoteProposal {
+pub struct VoteProposalStatus {
     proposal_id: ExternalProposalId,
     options: VoteOptionRange,
-    tally: Option<Tally>,
-    votes: Vec<Vote>,
+    tally: Option<TallyStatus>,
+    votes: Vec<VoteStatus>,
 }
 
 #[juniper::object(
     Context = Context
 )]
-impl VoteProposal {
+impl VoteProposalStatus {
     pub fn proposal_id(&self) -> &ExternalProposalId {
         &self.proposal_id
     }
@@ -1068,11 +1068,11 @@ impl VoteProposal {
         &self.options
     }
 
-    pub fn tally(&self) -> Option<&Tally> {
+    pub fn tally(&self) -> Option<&TallyStatus> {
         self.tally.as_ref()
     }
 
-    pub fn votes(&self) -> &[Vote] {
+    pub fn votes(&self) -> &[VoteStatus] {
         &self.votes
     }
 }
@@ -1216,8 +1216,8 @@ impl Query {
         Ok(Status {})
     }
 
-    pub fn vote_plan(&self, id: String, context: &Context) -> FieldResult<VotePlan> {
-        VotePlan::vote_plan_from_id(VotePlanId(id), context)
+    pub fn vote_plan(&self, id: String, context: &Context) -> FieldResult<VotePlanStatus> {
+        VotePlanStatus::vote_plan_from_id(VotePlanId(id), context)
     }
 }
 

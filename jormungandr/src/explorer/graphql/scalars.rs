@@ -52,9 +52,6 @@ pub enum PayloadType {
 }
 
 #[derive(juniper::GraphQLScalarValue)]
-pub struct Address(pub String);
-
-#[derive(juniper::GraphQLScalarValue)]
 pub struct Weight(pub String);
 
 /// Vote option range
