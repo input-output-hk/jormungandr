@@ -193,10 +193,19 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let logger = info.logger().clone();
 
+        let notifier = self.notifier_msgbox.clone();
+
         info.run_periodic_fallible(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
-            move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
+            move || {
+                reprocess_tip(
+                    logger.clone(),
+                    blockchain.clone(),
+                    tip.clone(),
+                    notifier.clone(),
+                )
+            },
         )
     }
 
@@ -267,7 +276,12 @@ fn try_request_fragment_removal(
 /// this function will re-process the tip against the different branches
 /// this is because a branch may have become more interesting with time
 /// moving forward and branches may have been dismissed
-async fn reprocess_tip(logger: Logger, mut blockchain: Blockchain, tip: Tip) -> Result<(), Error> {
+async fn reprocess_tip(
+    logger: Logger,
+    mut blockchain: Blockchain,
+    tip: Tip,
+    notifier_msg_box: MessageBox<crate::notifier::Message>,
+) -> Result<(), Error> {
     let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
 
     let tip_as_ref = tip.get_ref().await;
@@ -278,7 +292,14 @@ async fn reprocess_tip(logger: Logger, mut blockchain: Blockchain, tip: Tip) -> 
         .collect::<Vec<_>>();
 
     for other in others {
-        process_new_ref(&logger, &mut blockchain, tip.clone(), Arc::clone(other)).await?
+        process_new_ref(
+            &logger,
+            &mut blockchain,
+            tip.clone(),
+            Arc::clone(other),
+            Some(notifier_msg_box.clone()),
+        )
+        .await?
     }
 
     Ok(())
@@ -298,6 +319,7 @@ pub async fn process_new_ref(
     blockchain: &mut Blockchain,
     mut tip: Tip,
     candidate: Arc<Ref>,
+    notifier_msg_box: Option<MessageBox<crate::notifier::Message>>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
     let tip_ref = tip.get_ref().await;
@@ -344,6 +366,15 @@ pub async fn process_new_ref(
                 let branch = blockchain.branches_mut().apply_or_create(candidate).await;
                 tip.swap(branch).await;
             }
+
+            if let Some(mut msg_box) = notifier_msg_box {
+                msg_box
+                    .send(crate::notifier::Message::NewTip(candidate_hash))
+                    .await
+                    .unwrap_or_else(|err| {
+                        error!(logger, "cannot notify new block to subscribers: {}", err)
+                    });
+            }
         }
     }
 
@@ -356,12 +387,20 @@ async fn process_and_propagate_new_ref(
     tip: Tip,
     new_block_ref: Arc<Ref>,
     mut network_msg_box: MessageBox<NetworkMsg>,
+    notifier_msg_box: MessageBox<crate::notifier::Message>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
     debug!(logger, "processing the new block and propagating");
 
-    process_new_ref(logger, blockchain, tip, new_block_ref).await?;
+    process_new_ref(
+        logger,
+        blockchain,
+        tip,
+        new_block_ref,
+        Some(notifier_msg_box),
+    )
+    .await?;
 
     debug!(logger, "propagating block to the network");
     network_msg_box
@@ -397,6 +436,7 @@ async fn process_leadership_block(
         blockchain_tip,
         Arc::clone(&new_block_ref),
         network_msg_box,
+        notifier_msg_box.clone(),
     )
     .await?;
 
@@ -513,7 +553,7 @@ async fn process_network_blocks(
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    mut event_notifier_msg_box: MessageBox<crate::notifier::Message>,
+    mut notifier_msg_box: MessageBox<crate::notifier::Message>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
     stats_counter: StatsCounter,
@@ -533,7 +573,7 @@ async fn process_network_blocks(
                     block.clone(),
                     &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
-                    &mut event_notifier_msg_box,
+                    &mut notifier_msg_box,
                     &mut get_next_block_scheduler,
                     &logger,
                 )
@@ -574,6 +614,7 @@ async fn process_network_blocks(
                 blockchain_tip,
                 Arc::clone(&new_block_ref),
                 network_msg_box,
+                notifier_msg_box,
             )
             .await?;
 
