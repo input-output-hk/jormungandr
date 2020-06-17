@@ -114,7 +114,7 @@ impl LegacyNodeConfigConverter {
                 max_inbound_connections: None,
                 max_connections: None,
                 topics_of_interest: source.p2p.topics_of_interest.clone(),
-                allow_private_addresses: false,
+                allow_private_addresses: source.p2p.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: None,
             },
