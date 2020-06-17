@@ -608,10 +608,10 @@ impl Node {
             }
         }
 
-        let process = Process::spawn(command).map_err(Error::CannotSpawnNode)?;
+        let process = Process::spawn(command.clone()).map_err(Error::CannotSpawnNode)?;
 
         let node = Node {
-            alias: alias.into(),
+            alias: alias.clone().into(),
 
             dir,
 
@@ -623,7 +623,8 @@ impl Node {
         };
 
         node.progress_bar_start();
-
+        node.progress_bar
+            .log_info(&format!("{} bootstrapping: {}", alias, command));
         Ok(node)
     }
 

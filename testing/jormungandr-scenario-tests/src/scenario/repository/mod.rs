@@ -13,9 +13,10 @@ use crate::{
         comm::leader_leader::*,
         comm::passive_leader::*,
         features::{leader_promotion::*, p2p::*},
+        legacy,
         network::real::real_network,
         network::topology::scenarios::*,
-        non_functional::{disruption::*, legacy, soak::*},
+        non_functional::{disruption::*, soak::*},
         Result,
     },
     Context,
@@ -200,6 +201,24 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_node_promotion",
         passive_node_promotion,
+        vec![Tag::Short],
+    ));
+
+    repository.push(Scenario::new(
+        "legacy_current_node_fragment_propagation",
+        legacy::legacy_current_node_fragment_propagation,
+        vec![Tag::Short],
+    ));
+
+    repository.push(Scenario::new(
+        "current_node_legacy_fragment_propagation",
+        legacy::current_node_legacy_fragment_propagation,
+        vec![Tag::Short],
+    ));
+
+    repository.push(Scenario::new(
+        "current_node_fragment_propagation",
+        legacy::current_node_fragment_propagation,
         vec![Tag::Short],
     ));
 

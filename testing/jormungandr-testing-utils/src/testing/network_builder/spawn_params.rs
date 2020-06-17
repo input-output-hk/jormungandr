@@ -3,6 +3,7 @@ use jormungandr_lib::interfaces::{
 };
 
 use super::{LeadershipMode, PersistenceMode};
+use crate::legacy::Version;
 use std::path::PathBuf;
 
 #[derive(Clone)]
@@ -21,6 +22,7 @@ pub struct SpawnParams {
     pub max_inbound_connections: Option<u32>,
     pub alias: String,
     pub node_id: Option<poldercast::Address>,
+    pub version: Option<Version>,
 }
 
 impl SpawnParams {
@@ -40,6 +42,7 @@ impl SpawnParams {
             max_connections: None,
             max_inbound_connections: None,
             preferred_layer: None,
+            version: None,
         }
     }
 
@@ -64,6 +67,10 @@ impl SpawnParams {
         self.persistence_mode
     }
 
+    pub fn get_version(&self) -> &Option<Version> {
+        &self.version
+    }
+
     pub fn topics_of_interest(&mut self, topics_of_interest: TopicsOfInterest) -> &mut Self {
         self.topics_of_interest = Some(topics_of_interest);
         self
@@ -71,6 +78,11 @@ impl SpawnParams {
 
     pub fn node_id(&mut self, node_id: poldercast::Address) -> &mut Self {
         self.node_id = Some(node_id);
+        self
+    }
+
+    pub fn version(&mut self, version: Version) -> &mut Self {
+        self.version = Some(version);
         self
     }
 
