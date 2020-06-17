@@ -562,6 +562,7 @@ impl Peers {
         nodes: Vec<Address>,
         header: Header,
     ) -> Result<(), Vec<Address>> {
+        debug!(self.logger, "propagating block to {:?}", nodes);
         self.propagate_with(nodes, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_block_announcement(header.clone()),
             CommStatus::Connecting(comms) => {
@@ -577,10 +578,7 @@ impl Peers {
         nodes: Vec<Address>,
         fragment: Fragment,
     ) -> Result<(), Vec<Address>> {
-        debug!(
-            self.logger,
-            "propagating fragment";
-        );
+        debug!(self.logger, "propagating fragment to {:?}", nodes);
         self.propagate_with(nodes, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_fragment(fragment.clone()),
             CommStatus::Connecting(comms) => {

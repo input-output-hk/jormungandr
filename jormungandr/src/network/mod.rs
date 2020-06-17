@@ -370,8 +370,8 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
     if let Err(unreached_nodes) = propagate_res {
         debug!(
             state.logger(),
-            "will try to connect to {} of the peers not immediately reachable for propagation",
-            unreached_nodes.len(),
+            "will try to connect to the peers not immediately reachable for propagation: {:?}",
+            unreached_nodes,
         );
         for node in unreached_nodes {
             let mut options = p2p::comm::ConnectOptions::default();
