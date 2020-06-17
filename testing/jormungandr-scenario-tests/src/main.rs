@@ -9,8 +9,9 @@ mod programs;
 #[macro_use]
 mod scenario;
 mod example_scenarios;
+mod interactive;
 mod slog;
-mod style;
+pub mod style;
 mod test;
 
 use node::{Node, NodeBlock0, NodeController};
