@@ -9,6 +9,8 @@ pub use suite_result::ScenarioSuiteResult;
 pub use tag::{parse_tag_from_str, Tag};
 
 use crate::{
+    example_scenarios::scenario_2,
+    interactive::interactive,
     test::{
         comm::leader_leader::*,
         comm::passive_leader::*,
@@ -137,6 +139,15 @@ fn scenarios_repository() -> Vec<Scenario> {
         transaction_to_passive,
         vec![Tag::Short],
     ));
+
+    repository.push(Scenario::new(
+        "interactive",
+        interactive,
+        vec![Tag::Interactive],
+    ));
+
+    repository.push(Scenario::new("example", scenario_2, vec![Tag::Short]));
+
     repository.push(Scenario::new(
         "leader_restart",
         leader_restart,
