@@ -154,6 +154,14 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_log_path(&mut self, path: PathBuf) -> &mut Self {
+        self.with_log(Log(vec![LogEntry {
+            format: "json".to_string(),
+            level: "debug".to_string(),
+            output: LogOutput::File(path),
+        }]))
+    }
+
     pub fn without_log(&mut self) -> &mut Self {
         self.configure_default_log = false;
         self
