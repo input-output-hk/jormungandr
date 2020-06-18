@@ -1,6 +1,6 @@
 use super::error::ErrorKind;
-use super::scalars::{BlockCount, IndexCursor, PoolCount, TransactionCount};
-use super::{Block, Context, Pool, Transaction};
+use super::scalars::{BlockCount, IndexCursor, PoolCount, TransactionCount, VotePlanCount};
+use super::{Block, Context, Pool, Transaction, VotePlanStatus};
 use crate::blockcfg::HeaderHash;
 use crate::explorer::indexing::ExplorerTransaction;
 use juniper::FieldResult;
@@ -70,6 +70,19 @@ impl PoolEdge {
 }
 
 #[juniper::object(
+    Context = Context
+)]
+impl VotePlanEdge {
+    pub fn node(&self) -> &VotePlanStatus {
+        &self.node
+    }
+
+    pub fn cursor(&self) -> &IndexCursor {
+        &self.cursor
+    }
+}
+
+#[juniper::object(
     Context = Context,
     name = "BlockConnection"
 )]
@@ -126,6 +139,25 @@ impl PoolConnection {
     }
 }
 
+#[juniper::object(
+    Context = Context,
+    name = "VotePlanConnection"
+)]
+impl VotePlanConnection {
+    pub fn page_info(&self) -> &PageInfo {
+        &self.page_info
+    }
+
+    pub fn edges(&self) -> &Vec<VotePlanEdge> {
+        &self.edges
+    }
+
+    /// A count of the total number of objects in this connection, ignoring pagination.
+    pub fn total_count(&self) -> &VotePlanCount {
+        &self.total_count
+    }
+}
+
 pub struct PageInfo {
     pub has_next_page: bool,
     pub has_previous_page: bool,
@@ -151,6 +183,11 @@ pub struct BlockEdge {
 
 pub struct PoolEdge {
     node: Pool,
+    pub cursor: IndexCursor,
+}
+
+pub struct VotePlanEdge {
+    node: VotePlanStatus,
     pub cursor: IndexCursor,
 }
 
@@ -257,6 +294,7 @@ where
 pub type BlockConnection = Connection<BlockEdge, BlockCount>;
 pub type TransactionConnection = Connection<TransactionEdge, TransactionCount>;
 pub type PoolConnection = Connection<PoolEdge, PoolCount>;
+pub type VotePlanConnection = Connection<VotePlanEdge, VotePlanCount>;
 
 #[derive(Clone)]
 pub enum TransactionNodeFetchInfo {
@@ -298,6 +336,18 @@ impl Edge for PoolEdge {
     type Node = Pool;
     fn new(node: Self::Node, cursor: IndexCursor) -> Self {
         PoolEdge { node, cursor }
+    }
+
+    fn cursor(&self) -> &IndexCursor {
+        &self.cursor
+    }
+}
+
+impl Edge for VotePlanEdge {
+    type Node = VotePlanStatus;
+
+    fn new(node: Self::Node, cursor: IndexCursor) -> Self {
+        VotePlanEdge { node, cursor }
     }
 
     fn cursor(&self) -> &IndexCursor {

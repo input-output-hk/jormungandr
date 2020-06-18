@@ -5,7 +5,7 @@ mod scalars;
 
 use self::connections::{
     BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
-    PoolConnection, TransactionConnection, TransactionNodeFetchInfo,
+    PoolConnection, TransactionConnection, TransactionNodeFetchInfo, VotePlanConnection,
 };
 use self::error::ErrorKind;
 use super::indexing::{
@@ -213,6 +213,7 @@ impl From<&ExplorerBlock> for Block {
     }
 }
 
+#[derive(Clone)]
 struct BlockDate {
     epoch: Epoch,
     slot: Slot,
@@ -396,6 +397,7 @@ impl TransactionOutput {
     }
 }
 
+#[derive(Clone)]
 struct Address {
     id: ExplorerAddress,
 }
@@ -757,6 +759,7 @@ struct FeeSettings {
     certificate_vote_cast: Value,
 }
 
+#[derive(Clone)]
 struct Epoch {
     id: blockcfg::Epoch,
 }
@@ -891,6 +894,7 @@ impl PoolStakeDistribution {
     }
 }
 
+#[derive(Clone)]
 pub struct VotePayloadPublicStatus {
     choice: i32,
 }
@@ -904,6 +908,7 @@ impl VotePayloadPublicStatus {
     }
 }
 
+#[derive(Clone)]
 pub enum VotePayloadStatus {
     Public(VotePayloadPublicStatus),
 }
@@ -915,6 +920,7 @@ graphql_union!(VotePayloadStatus: Context |&self| {
 });
 
 // TODO do proper vote tally
+#[derive(Clone)]
 pub struct TallyPublicStatus {
     results: Vec<Weight>,
     options: VoteOptionRange,
@@ -933,6 +939,7 @@ impl TallyPublicStatus {
     }
 }
 
+#[derive(Clone)]
 pub enum TallyStatus {
     Public(TallyPublicStatus),
 }
@@ -943,6 +950,7 @@ graphql_union!(TallyStatus: Context |&self| {
     }
 });
 
+#[derive(Clone)]
 pub struct VotePlanStatus {
     id: VotePlanId,
     vote_start: BlockDate,
@@ -958,40 +966,8 @@ impl VotePlanStatus {
             .map_err(|err| -> juniper::FieldError {
                 ErrorKind::InvalidAddress(err.to_string()).into()
             })?;
-        if let Some(super::indexing::ExplorerVotePlan {
-            id,
-            vote_start,
-            vote_end,
-            committee_end,
-            payload_type,
-            proposals,
-        }) = block_on(context.db.get_vote_plan_by_id(&vote_plan_id))
-        {
-            let vote_plan = VotePlanStatus {
-                id: VotePlanId::from(id),
-                vote_start: BlockDate::from(vote_start),
-                vote_end: BlockDate::from(vote_end),
-                committee_end: BlockDate::from(committee_end),
-                payload_type: PayloadType::from(payload_type),
-                proposals: proposals
-                    .into_iter()
-                    .map(|proposal| VoteProposalStatus {
-                        proposal_id: ExternalProposalId::from(proposal.proposal_id),
-                        options: VoteOptionRange::from(proposal.options),
-                        tally: proposal.tally.map(|tally| match tally {
-                            super::indexing::ExplorerVoteTally::Public { results, options } => {
-                                TallyStatus::Public(TallyPublicStatus {
-                                    results: results.into_iter().map(Into::into).collect(),
-                                    options: options.into(),
-                                })
-                            }
-                        }),
-                        votes: Vec::new(),
-                    })
-                    .collect(),
-            };
-
-            return Ok(vote_plan);
+        if let Some(vote_plan) = block_on(context.db.get_vote_plan_by_id(&vote_plan_id)) {
+            return Ok(Self::vote_plan_from_data(vote_plan));
         }
 
         Err(ErrorKind::NotFound(format!(
@@ -999,6 +975,41 @@ impl VotePlanStatus {
             vote_plan_id.to_string()
         ))
         .into())
+    }
+
+    pub fn vote_plan_from_data(vote_plan: super::indexing::ExplorerVotePlan) -> Self {
+        let super::indexing::ExplorerVotePlan {
+            id,
+            vote_start,
+            vote_end,
+            committee_end,
+            payload_type,
+            proposals,
+        } = vote_plan;
+
+        VotePlanStatus {
+            id: VotePlanId::from(id),
+            vote_start: BlockDate::from(vote_start),
+            vote_end: BlockDate::from(vote_end),
+            committee_end: BlockDate::from(committee_end),
+            payload_type: PayloadType::from(payload_type),
+            proposals: proposals
+                .into_iter()
+                .map(|proposal| VoteProposalStatus {
+                    proposal_id: ExternalProposalId::from(proposal.proposal_id),
+                    options: VoteOptionRange::from(proposal.options),
+                    tally: proposal.tally.map(|tally| match tally {
+                        super::indexing::ExplorerVoteTally::Public { results, options } => {
+                            TallyStatus::Public(TallyPublicStatus {
+                                results: results.into_iter().map(Into::into).collect(),
+                                options: options.into(),
+                            })
+                        }
+                    }),
+                    votes: Vec::new(),
+                })
+                .collect(),
+        }
     }
 }
 
@@ -1031,6 +1042,7 @@ impl VotePlanStatus {
     }
 }
 
+#[derive(Clone)]
 pub struct VoteStatus {
     address: Address,
     payload: VotePayloadStatus,
@@ -1049,6 +1061,7 @@ impl VoteStatus {
     }
 }
 
+#[derive(Clone)]
 pub struct VoteProposalStatus {
     proposal_id: ExternalProposalId,
     options: VoteOptionRange,
@@ -1218,6 +1231,59 @@ impl Query {
 
     pub fn vote_plan(&self, id: String, context: &Context) -> FieldResult<VotePlanStatus> {
         VotePlanStatus::vote_plan_from_id(VotePlanId(id), context)
+    }
+
+    pub fn all_vote_plans(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<VotePlanConnection> {
+        let mut vote_plans = block_on(context.db.get_vote_plans());
+
+        vote_plans.sort_unstable_by_key(|(id, data)| id.clone());
+
+        let boundaries = if !vote_plans.is_empty() {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: vote_plans
+                    .len()
+                    .checked_sub(1)
+                    .unwrap()
+                    .try_into()
+                    .expect("tried to paginate more than 2^32 elements"),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
+
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        VotePlanConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => {
+                let from = range.lower_bound;
+                let to = range.upper_bound;
+
+                (from..=to)
+                    .map(|i: u32| {
+                        let (pool_id, vote_plan_data) = &vote_plans[usize::try_from(i).unwrap()];
+                        (
+                            VotePlanStatus::vote_plan_from_data(vote_plan_data.as_ref().clone()),
+                            i.try_into().unwrap(),
+                        )
+                    })
+                    .collect::<Vec<(VotePlanStatus, u32)>>()
+            }
+        })
     }
 }
 

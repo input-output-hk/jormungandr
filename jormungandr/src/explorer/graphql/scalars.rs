@@ -5,7 +5,7 @@ use chain_impl_mockchain::{value, vote};
 use juniper::{ParseScalarResult, ParseScalarValue};
 use std::convert::{TryFrom, TryInto};
 
-#[derive(juniper::GraphQLScalarValue)]
+#[derive(Clone, juniper::GraphQLScalarValue)]
 pub struct Slot(pub String);
 
 #[derive(juniper::GraphQLScalarValue)]
@@ -40,26 +40,29 @@ pub struct TimeOffsetSeconds(pub String);
 #[derive(juniper::GraphQLScalarValue)]
 pub struct NonZero(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[derive(Clone, juniper::GraphQLScalarValue)]
 pub struct VotePlanId(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[derive(Clone, juniper::GraphQLScalarValue)]
 pub struct ExternalProposalId(pub String);
 
-#[derive(juniper::GraphQLEnum)]
+#[derive(Clone, juniper::GraphQLEnum)]
 pub enum PayloadType {
     Public,
 }
 
-#[derive(juniper::GraphQLScalarValue)]
+#[derive(Clone, juniper::GraphQLScalarValue)]
 pub struct Weight(pub String);
+
+#[derive(juniper::GraphQLScalarValue)]
+pub struct VotePlanCount(pub String);
 
 /// Vote option range
 ///
 /// provide a range of available choices for a given proposal. Usual value would
 /// be `[0, 3[` (or `0..3` in rust's range syntax), meaning there are 3 options
 /// available: `0`, `1` and `2`
-#[derive(juniper::GraphQLObject)]
+#[derive(Clone, juniper::GraphQLObject)]
 pub struct VoteOptionRange {
     /// the start of the vote option range, starting from 0 usually
     start: i32,
@@ -247,5 +250,17 @@ impl From<chain_impl_mockchain::certificate::ExternalProposalId> for ExternalPro
 impl From<vote::Weight> for Weight {
     fn from(w: vote::Weight) -> Self {
         Self(format!("{}", w))
+    }
+}
+
+impl From<u64> for VotePlanCount {
+    fn from(number: u64) -> VotePlanCount {
+        VotePlanCount(format!("{}", number))
+    }
+}
+
+impl From<u32> for VotePlanCount {
+    fn from(number: u32) -> VotePlanCount {
+        VotePlanCount(format!("{}", number))
     }
 }
