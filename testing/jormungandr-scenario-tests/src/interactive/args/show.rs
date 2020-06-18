@@ -2,6 +2,7 @@ use super::do_for_all_alias;
 use crate::node::NodeController;
 use crate::{legacy::LegacyNodeController, test::Result};
 use structopt::StructOpt;
+use jormungandr_integration_tests::common::jormungandr::JormungandrLogger;
 
 #[derive(StructOpt, Debug)]
 pub enum Show {
@@ -193,6 +194,38 @@ impl ShowNodeStats {
     }
 }
 
+fn show_logs_for(only_errors: bool, contains: &Option<String>, alias: &str,tail:  Option<usize> ,logger: JormungandrLogger) {
+    let logs: Vec<String> = {
+        if only_errors {
+            logger.get_lines_with_error().collect()
+        } else if let Some(contains) = &contains {
+            logger
+                .get_lines_from_log()
+                .filter(|x| x.contains(contains.as_str()))
+                .collect()
+        } else if let Some(tail) = tail {
+            logger
+                .get_lines_from_log()
+                .collect::<Vec<String>>()
+                .iter()
+                .cloned()
+                .rev()
+                .take(tail)
+                .collect()
+        } else {
+            logger.get_lines_from_log().collect()
+        }
+    };
+
+    println!("{}:", alias);
+
+    for log in logs {
+        println!("\t{}", log);
+    }
+
+}
+
+
 impl ShowLogs {
     pub fn exec(
         &self,
@@ -204,35 +237,11 @@ impl ShowLogs {
             nodes,
             legacy_nodes,
             |node| {
-                let logs: Vec<String> = {
-                    if self.only_errors {
-                        node.logger().get_lines_with_error().collect()
-                    } else if let Some(contains) = &self.contains {
-                        node.logger()
-                            .get_lines_from_log()
-                            .filter(|x| x.contains(contains.as_str()))
-                            .collect()
-                    } else if let Some(tail) = self.tail {
-                        node.logger()
-                            .get_lines_from_log()
-                            .collect::<Vec<String>>()
-                            .iter()
-                            .cloned()
-                            .rev()
-                            .take(tail)
-                            .collect()
-                    } else {
-                        node.logger().get_lines_from_log().collect()
-                    }
-                };
-
-                println!("{}:", node.alias());
-
-                for log in logs {
-                    println!("\t{}", log);
-                }
-            },
-            |node| println!("{} is up", node.alias()),
+                show_logs_for(self.only_errors, &self.contains, node.alias(), self.tail, node.logger())
+        },
+            |node| {
+                show_logs_for(self.only_errors, &self.contains, node.alias(), self.tail, node.logger())
+            }
         )
     }
 }
