@@ -115,8 +115,7 @@ jobs:
           path: ~/.cargo/registry/cache
           key: cargo-deps-${{ needs.cache_info.outputs.cargo-lock-hash }}
 
-      - if: ${{ steps.cargo-deps.outputs.cache-hit != 'true' }}
-        name: Check out the repository
+      - name: Check out the repository
         uses: actions/checkout@v2
         with:
           submodules: true
