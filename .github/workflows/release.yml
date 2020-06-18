@@ -1,95 +1,132 @@
 on:
+  schedule:
+    - cron: '0 3 * * *' # Nightly, run at 03:00 UTC
   push:
     tags:
-      - 'v[0-9]+.*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'v[0-9]+.*' # Release tags matching v*, i.e. v1.0, v20.15.10
+    branches:
+      - 'ci/test/nightly' # For testing nightly build workflow
 
 name: Release
 
 jobs:
+
   create_release:
-    name: Create draft release
+    name: Create release
     if: >
       github.repository_owner == 'input-output-hk'
-      || startsWith(github.event.head_commit.message, 'TEST CI:')
+      || startsWith(github.ref, 'refs/heads/ci/test/')
+      || startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-ci-test.')
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.release_info.outputs.version }}
+      tag: ${{ steps.release_info.outputs.tag }}
+      date: ${{ steps.release_info.outputs.date }}
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-      - name: Get version from tag name
-        id: version
-        run: echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
-
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Create release
-        id: create_release
+      - id: release_info
+        name: Get release information
+        run: python3 ci/release-info.py "$GITHUB_EVENT_NAME"
+
+      - if: ${{ steps.release_info.outputs.release_type == 'nightly' }}
+        name: Delete existing nightly releases
+        continue-on-error: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          release_tag=${GITHUB_REF#refs/tags/}
-          hub release create --draft \
-            -m "Release ${{ steps.version.outputs.version }} (in progress)" \
-            $release_tag
+          set +e
+          git ls-remote --tags --refs origin 'refs/tags/nightly*' |
+          cut -f 2 |
+          while read ref; do
+            hub release delete ${ref#refs/tags/}
+            git push --delete origin $ref
+          done
+
+      - id: create_release
+        name: Create a draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_tag='${{ steps.release_info.outputs.tag }}'
+          hub release create ${{ steps.release_info.outputs.release_flags }} --draft \
+            -m "Release ${{ steps.release_info.outputs.version }} (in progress)" \
+            -t $GITHUB_SHA $release_tag
           upload_url=$(hub release show -f '%uA' $release_tag)
           echo "::set-output name=upload_url::$upload_url"
 
-  update_deps:
-    name: Update dependencies
+  cache_info:
+    name: Bootstrap cache
     if: >
       github.repository_owner == 'input-output-hk'
-      || startsWith(github.event.head_commit.message, 'TEST CI:')
+      || startsWith(github.ref, 'refs/heads/ci/test/')
+      || startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-ci-test.')
     runs-on: ubuntu-latest
+    outputs:
+      crates-io-index-head: ${{ steps.ls-crates-io-index.outputs.head }}
+      cargo-lock-hash: ${{ steps.hash-cargo-lock.outputs.hash }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          submodules: true
 
-      - id: cargo-registry
-        name: Cache cargo registry
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
-
-      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
-        id: ls-crates-io-index
+      - id: ls-crates-io-index
         name: Get head commit hash of crates.io registry index
-        continue-on-error: true
-        shell: bash
         run: |
           commit=$(
             git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
             cut -f 1
           )
+          echo "$commit"
           echo "::set-output name=head::$commit"
-      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
-        name: Cache cargo registry index
-        uses: actions/cache@v1
+
+      - id: hash-cargo-lock
+        name: Calculate dependency cache key
+        run: |
+          hash=$(
+            ci/strip-own-version-from-cargo-lock.pl Cargo.lock |
+            sha1sum | cut -d ' ' -f 1
+          )
+          echo "$hash"
+          echo "::set-output name=hash::$hash"
+
+  update_deps:
+    name: Update dependencies
+    needs: cache_info
+    # Caches on Windows and Unix do not interop:
+    # https://github.com/actions/cache/issues/330#issuecomment-637701649
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Cache cargo registry index
+        uses: actions/cache@v2
         with:
           path: ~/.cargo/registry/index
-          key: cargo-index-${{ steps.ls-crates-io-index.outputs.head }}
-          restore-keys: |
-            cargo-index-
+          key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
+          restore-keys: cargo-index-
 
-      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
-        name: Fetch dependencies
+      - id: cargo-deps
+        name: Cache cargo dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry/cache
+          key: cargo-deps-${{ needs.cache_info.outputs.cargo-lock-hash }}
+
+      - if: ${{ steps.cargo-deps.outputs.cache-hit != 'true' }}
+        name: Check out the repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Fetch dependencies and update cargo registry
         run: cargo fetch --locked
-
-      - if: ${{ steps.cargo-registry.outputs.cache-hit != 'true' }}
-        name: Prune unpacked sources of dependency crates from cache
-        shell: bash
-        run: |
-          rm -rf ~/.cargo/registry/src
 
   build_assets:
     name: Build assets
-    if: >
-      github.repository_owner == 'input-output-hk'
-      || startsWith(github.event.head_commit.message, 'TEST CI:')
-    needs: [create_release, update_deps]
+    needs: [create_release, cache_info, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
@@ -154,6 +191,7 @@ jobs:
           #   toolchain: stable
           #   cross: true
     steps:
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
@@ -166,25 +204,17 @@ jobs:
         with:
           submodules: true
 
-      # https://github.com/actions/runner/issues/498
-      - if: ${{ runner.os == 'Windows' }}
-        name: Fix up Cargo.lock hash
-        shell: powershell
-        run: |
-          ((Get-Content Cargo.lock) -join "`n") + "`n" |
-          Set-Content -NoNewline Cargo.lock
-
-      # https://github.com/actions/virtual-environments/issues/895
-      # https://github.com/actions/virtual-environments/issues/936
-      - if: ${{ runner.os == 'Windows' }}
-        name: Clean up cargo registry files
-        run: rm -r -fo $env:UserProfile\.cargo\registry
-
-      - name: Restore cargo registry
-        uses: actions/cache@v1
+      - name: Restore cargo registry index
+        uses: actions/cache@v2
         with:
-          path: ~/.cargo/registry
-          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+          path: ~/.cargo/registry/index
+          key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
+
+      - name: Restore cargo dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry/cache
+          key: cargo-deps-${{ needs.cache_info.outputs.cargo-lock-hash }}
 
       - name: Create .cargo/config.toml
         shell: bash
@@ -195,12 +225,23 @@ jobs:
           rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}", "-C", "lto"]
           EOF
 
+      - if: ${{ matrix.cross }}
+        name: Create Cross.toml
+        shell: bash
+        run: |
+          cat > Cross.toml <<EOF
+          [build.env]
+          passthrough = ["DATE"]
+          EOF
+
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
+        env:
+          DATE: ${{ needs.create_release.outputs.date }}
         with:
           use-cross: ${{ matrix.cross }}
           command: build
-          args: |
+          args: >
             --manifest-path jormungandr/Cargo.toml
             --bin jormungandr
             --no-default-features
@@ -211,10 +252,12 @@ jobs:
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
+        env:
+          DATE: ${{ needs.create_release.outputs.date }}
         with:
           use-cross: ${{ matrix.cross }}
           command: build
-          args: |
+          args: >
             --manifest-path jcli/Cargo.toml
             --bin jcli
             --verbose
@@ -243,7 +286,7 @@ jobs:
           echo "::set-env name=RELEASE_ARCHIVE::$archive"
           echo "::set-env name=RELEASE_CONTENT_TYPE::application/zip"
 
-      - name: Upload binaries to release
+      - name: Upload binaries to the release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -255,20 +298,16 @@ jobs:
 
   publish_release:
     name: Publish release
-    if: >
-      github.repository_owner == 'input-output-hk'
-      || startsWith(github.event.head_commit.message, 'TEST CI:')
     needs: [create_release, build_assets]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Check out the repository
         uses: actions/checkout@v2
 
       - name: Publish release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          release_tag=${GITHUB_REF#refs/tags/}
           hub release edit --draft=false \
             -m 'Release ${{ needs.create_release.outputs.version }}' \
-            $release_tag
+            ${{ needs.create_release.outputs.tag }}
