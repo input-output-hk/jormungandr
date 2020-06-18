@@ -366,25 +366,89 @@ pub fn nightly_bootstrap_current() {
         .unwrap();
 }
 
-#[ignore]
 #[test]
-pub fn qa_bootstrap() {
+pub fn qa_bootstrap_legacy() {
     let temp_dir = TempDir::new().unwrap();
-    let testnet_config = TestnetConfig::new_qa();
-    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
+    let (_, version) = get_legacy_app(&temp_dir);
 
-    let _jormungandr = Starter::new()
-        .config(testnet_config.make_config(&temp_dir))
+    let testnet_config = TestnetConfig::new_qa();
+    let mut legacy_jormungandr_config = testnet_config.make_config(&temp_dir);
+
+    // bootstrap node as legacy node
+    let legacy_jormungandr = Starter::new()
+        .config(legacy_jormungandr_config.clone())
         .timeout(Duration::from_secs(48_000))
-        .benchmark("passive_node_qa_bootstrap")
+        .legacy(version.clone())
+        .benchmark("legacy node bootstrap from trusted peers")
+        .passive()
+        .start()
+        .unwrap();
+
+    let config = ConfigurationBuilder::new()
+        .with_block_hash(testnet_config.block0_hash())
+        .with_trusted_peers(vec![legacy_jormungandr.to_trusted_peer()])
+        .build(&temp_dir);
+
+    // bootstrap latest node from legacy node peer
+    let new_jormungandr_from_local_trusted_peer = Starter::new()
+        .config(config)
+        .timeout(Duration::from_secs(24_000))
+        .benchmark("latest node bootstrap from legacy node")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
         .unwrap();
 
+    new_jormungandr_from_local_trusted_peer.shutdown();
+    legacy_jormungandr.shutdown();
+
+    // test node upgrade from old data
+    legacy_jormungandr_config.refresh_instance_params();
+
+    let latest_jormungandr = Starter::new()
+        .config(legacy_jormungandr_config.clone())
+        .timeout(Duration::from_secs(48_000))
+        .benchmark("latest node bootstrap from legacy data")
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    latest_jormungandr.shutdown();
+
+    // test rollback
+    legacy_jormungandr_config.refresh_instance_params();
+
+    let _rollback_jormungandr = Starter::new()
+        .config(legacy_jormungandr_config.clone())
+        .timeout(Duration::from_secs(48_000))
+        .legacy(version)
+        .benchmark("legacy node bootstrap from new data")
+        .passive()
+        .start()
+        .unwrap();
+}
+
+#[test]
+pub fn qa_bootstrap_current() {
+    let temp_dir = TempDir::new().unwrap();
+    let testnet_config = TestnetConfig::new_qa();
+    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .config(jormungandr_config.clone())
+        .timeout(Duration::from_secs(48_000))
+        .benchmark("passive_node_nightly_bootstrap")
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    jormungandr.shutdown();
     jormungandr_config.refresh_instance_params();
 
-    // start from storage
+    println!("start from storage");
+
     let loading_from_storage_timeout = Duration::from_secs(24_000);
     let jormungandr_from_storage = Starter::new()
         .config(jormungandr_config)
@@ -396,20 +460,23 @@ pub fn qa_bootstrap() {
 
     storage_loading_benchmark_from_log(
         &jormungandr_from_storage.logger,
-        "passive_node_qa_loading_from_storage",
+        "passive_node_nightly_loading_from_storage",
         loading_from_storage_timeout,
     )
     .print();
 
     let config = ConfigurationBuilder::new()
         .with_block_hash(testnet_config.block0_hash())
+        .with_log_path(temp_dir.child("local_node.log").path().into())
         .with_trusted_peers(vec![jormungandr_from_storage.to_trusted_peer()])
         .build(&temp_dir);
+
+    println!("start from local trusted peer");
 
     let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
         .timeout(Duration::from_secs(24_000))
-        .benchmark("passive_node_from_trusted_peer_qa_bootstrap")
+        .benchmark("passive_node_from_trusted_peer_nightly_bootstrap")
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
