@@ -109,7 +109,7 @@ pub struct ExplorerVoteProposal {
     pub proposal_id: ExternalProposalId,
     pub options: Options,
     pub tally: Option<ExplorerVoteTally>,
-    pub votes: std::collections::HashMap<ExplorerAddress, Choice>,
+    pub votes: Hamt<ExplorerAddress, Choice>,
 }
 
 // TODO do proper vote tally

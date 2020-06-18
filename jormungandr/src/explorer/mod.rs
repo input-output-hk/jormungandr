@@ -621,7 +621,7 @@ fn apply_block_to_vote_plans(
                                     proposal_id: proposal.external_id().clone(),
                                     options: proposal.options().clone(),
                                     tally: None,
-                                    votes: std::collections::HashMap::new(),
+                                    votes: Default::default(),
                                 })
                                 .collect(),
                         }),
@@ -636,9 +636,11 @@ fn apply_block_to_vote_plans(
                     vote_plans
                         .update(vote_cast.vote_plan(), |vote_plan| {
                             let mut proposals = vote_plan.proposals.clone();
-                            proposals[vote_cast.proposal_index() as usize]
+                            proposals[vote_cast.proposal_index() as usize].votes = proposals
+                                [vote_cast.proposal_index() as usize]
                                 .votes
-                                .insert(voter, choice.clone());
+                                .insert(voter, Arc::new(choice.clone()))
+                                .unwrap();
                             let vote_plan = ExplorerVotePlan {
                                 proposals,
                                 ..(**vote_plan).clone()
