@@ -317,7 +317,7 @@ pub fn newest_node_enters_legacy_network(
             .jormungandr(legacy_app.clone()),
         &version,
     )?;
-    leader1.wait_for_bootstrap()?;
+    leader2.wait_for_bootstrap()?;
 
     let leader3 = controller.spawn_legacy_node(
         controller

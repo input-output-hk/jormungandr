@@ -406,13 +406,13 @@ pub fn point_to_point_disruption_overlap(
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
+    
+    leader2.wait_for_bootstrap()?;
     let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-
-    leader2.wait_for_bootstrap()?;
     leader1.wait_for_bootstrap()?;
 
     //1. 2 and 1 is up
