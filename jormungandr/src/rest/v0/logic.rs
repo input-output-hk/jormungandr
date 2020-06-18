@@ -32,14 +32,14 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
-        FragmentStatus, LeadershipLog, NodeStats, NodeStatsDto, PeerStats,
-        Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
-        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanStatus,
+        LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
+        SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
+        TransactionOutput, VotePlanStatus,
     },
     time::SystemTime,
 };
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 
@@ -122,61 +122,12 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
     reply_future.await.map_err(Into::into)
 }
 
-pub async fn get_message_statuses(
-    context: &Context,
-    ids: Vec<String>,
-) -> Result<HashMap<String, FragmentStatus>, Error> {
-    let ids = ids
-        .into_iter()
-        .map(|s| FragmentId::from_str(&s))
-        .collect::<Result<Vec<_>, _>>()?;
-    let logger = context.logger()?.new(o!("request" => "message_statuses"));
-    let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
-    let mut mbox = context.try_full()?.transaction_task.clone();
-    mbox.send(TransactionMsg::GetStatuses(ids, reply_handle))
-        .await
-        .map_err(|e| {
-            debug!(&logger, "error getting message statuses"; "reason" => %e);
-            Error::MsgSendError(e)
-        })?;
-    reply_future
-        .await
-        .map_err(Into::into)
-        .map(|result_intermediate| {
-            let mut result = HashMap::new();
-            result_intermediate.into_iter().for_each(|(k, v)| {
-                result.insert(k.to_string(), v);
-            });
-            result
-        })
-}
-
 pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, Error> {
     let fragment = Fragment::deserialize(message).map_err(Error::Deserialize)?;
     let fragment_id = fragment.id().to_string();
     let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
     context.try_full()?.transaction_task.clone().try_send(msg)?;
     Ok(fragment_id)
-}
-
-pub async fn post_messages(context: &Context, messages: Vec<String>) -> Result<Vec<String>, Error> {
-    let fragments = messages
-        .into_iter()
-        .map(|message| {
-            let message = hex::decode(message)?;
-            Fragment::deserialize(message.as_slice()).map_err(Error::Deserialize)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let fragment_ids = fragments
-        .iter()
-        .map(|fragment| fragment.id().to_string())
-        .collect();
-    let mut msgbox = context.try_full()?.transaction_task.clone();
-    for fragment in fragments.into_iter() {
-        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
-        msgbox.try_send(msg)?;
-    }
-    Ok(fragment_ids)
 }
 
 pub async fn get_tip(context: &Context) -> Result<String, Error> {

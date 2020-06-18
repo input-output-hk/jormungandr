@@ -337,71 +337,6 @@ paths:
                       }
                     ]
 
-  /api/v0/fragment/statuses:
-    post:
-      description: Get statuses of fragments
-      operationId: FragmentStatuses
-      tags:
-        - fragment
-      requestBody:
-        description: List of fragment IDs
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: string
-                pattern: '[0-9a-f]+'
-            example: ["68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968"]
-          
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  oneOf:
-                    - description: Fragment is yet to be processed
-                      type: string
-                      enum:
-                        - Pending
-                    - description: "Fragment was rejected and won't be added to a block"
-                      type: object
-                      required:
-                        - Rejected
-                      properties:
-                        Rejected:
-                          type: object
-                          required:
-                            - reason
-                          properties:
-                            reason:
-                              description: Reason for rejection
-                              type: string
-                    - description: Fragment was added to a block
-                      type: object
-                      required:
-                        - InABlock
-                      properties:
-                        InABlock:
-                          type: object
-                          required:
-                            - date
-                            - block
-                          properties:
-                            date:
-                              description: Epoch and slot ID of block containing fragment separated with a dot
-                              type: string
-                              pattern: "[0-9]+\\.[0-9]+"
-                            block:
-                              description: Block hash where the fragment was last seen
-                              type: string
-                              pattern: '[0-9a-fa-f]+'
-              example: {"68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968": "Pending"}
-
   /api/v0/leaders:
     get:
       description: Gets leader IDs
@@ -690,37 +625,6 @@ paths:
               example: 68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968
         '400':
           description: Message is malformed
-
-  /api/v0/messages:
-    post:
-      description: Post a batch of signed transactions
-      operationId: Messages
-      tags:
-        - fragment
-      requestBody:
-        description: An array of hex-encoded signed transactions
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: string
-                pattern: '[0-9a-f]+'
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                description: A list of fragment IDs
-                type: array
-                items:
-                  type: string
-                  pattern: '[0-9a-f]+'
-              example: ["68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968"]
-        '400':
-          description: One of messages is malformed
 
   /api/v0/network/stats:
     get:

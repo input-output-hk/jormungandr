@@ -9,7 +9,7 @@ pub fn filter(
     context: ContextLock,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let with_context = warp::any().map(move || context.clone());
-    let root = warp::path!("api" / "v0" / ..);
+    let root = warp::path!("v0" / ..);
 
     let shutdown = warp::path!("shutdown")
         .and(warp::get().or(warp::post()))
@@ -51,14 +51,7 @@ pub fn filter(
             .and_then(handlers::get_message_logs)
             .boxed();
 
-        let statuses = warp::path!("statuses")
-            .and(warp::get())
-            .and(warp::query())
-            .and(with_context.clone())
-            .and_then(handlers::get_message_statuses)
-            .boxed();
-
-        root.and(logs.or(statuses)).boxed()
+        root.and(logs).boxed()
     };
 
     let leaders = {
@@ -190,13 +183,6 @@ pub fn filter(
         .and_then(handlers::post_message)
         .boxed();
 
-    let messages = warp::path!("messages")
-        .and(warp::post())
-        .and(warp::body::json())
-        .and(with_context.clone())
-        .and_then(handlers::post_messages)
-        .boxed();
-
     let node_stats = warp::path!("node" / "stats")
         .and(warp::get())
         .and(with_context.clone())
@@ -266,7 +252,6 @@ pub fn filter(
         .or(stake_pools)
         .or(stake_pool)
         .or(message)
-        .or(messages)
         .or(node_stats)
         .or(tip)
         .or(rewards)
