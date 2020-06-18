@@ -9,6 +9,8 @@ pub enum Tag {
     Feature,
     Unstable,
     All,
+    Interactive,
+    Example,
 }
 
 pub fn parse_tag_from_str(tag: &str) -> Result<Tag> {
@@ -19,6 +21,8 @@ pub fn parse_tag_from_str(tag: &str) -> Result<Tag> {
         "perf" => Ok(Tag::Perf),
         "feature" => Ok(Tag::Feature),
         "unstable" => Ok(Tag::Unstable),
+        "interactive" => Ok(Tag::Interactive),
+        "example" => Ok(Tag::Example),
         _ => Ok(Tag::All),
     }
 }

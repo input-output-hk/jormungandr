@@ -727,6 +727,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dialoguer"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4aa86af7b19b40ef9cbef761ed411a49f0afa06b7b6dcd3dfe2f96a3c546138"
+dependencies = [
+ "console",
+ "lazy_static",
+ "tempfile",
+]
+
+[[package]]
 name = "difference"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1567,6 +1578,7 @@ dependencies = [
  "chain-time",
  "console",
  "custom_debug",
+ "dialoguer",
  "error-chain",
  "futures 0.3.5",
  "hex",

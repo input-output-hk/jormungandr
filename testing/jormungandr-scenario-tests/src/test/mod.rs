@@ -12,6 +12,8 @@ use std::time::Duration;
 error_chain! {
 
     foreign_links {
+        Interactive(crate::interactive::InteractiveCommandError);
+        IoError(std::io::Error);
         Node(crate::node::Error);
         Wallet(jormungandr_testing_utils::wallet::WalletError);
         FragmentSender(jormungandr_testing_utils::testing::FragmentSenderError);

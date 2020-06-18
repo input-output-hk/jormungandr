@@ -37,7 +37,7 @@ const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfull
 
 // TODO: convert strings to enums for level/task/
 // TODO: convert ts to DateTime
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LogEntry {
     pub msg: String,
     pub level: Level,
