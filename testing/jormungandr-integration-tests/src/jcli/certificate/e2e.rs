@@ -6,7 +6,6 @@ use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use chain_impl_mockchain::block::BlockDate;
 
 #[test]
 pub fn test_create_and_sign_new_stake_delegation() {
@@ -59,22 +58,31 @@ pub fn test_create_vote_plan_certificate() {
         .write_str(&owner.signing_key().to_bech32_str())
         .unwrap();
 
+    let vote_plan_config = r#"
+payload_type: public
+vote_start:
+  epoch: 0
+  slot_id: 200
+vote_end:
+  epoch: 0
+  slot_id: 300
+committee_end:
+  epoch: 0
+  slot_id: 400
+proposals:
+  - external_id: f4fdab54e2d516ce1cabe8ae8cfe77e99eeb530f7033cdf20e2392e012373a7b
+    options: 3
+    action:
+      treasury:
+        transfer_to_rewards:
+          value: 100
+    "#;
+
+    let vote_plan_config_path = temp_dir.child("vote_plan.yaml");
+    std::fs::write(vote_plan_config_path.path(), vote_plan_config).unwrap();
+
     let certificate_wrapper = JCLICertificateWrapper::new();
-    let certificate = certificate_wrapper.assert_new_vote_plan(
-        "f4fdab54e2d516ce1cabe8ae8cfe77e99eeb530f7033cdf20e2392e012373a7b",
-        BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
-        BlockDate {
-            epoch: 1,
-            slot_id: 59,
-        },
-        BlockDate {
-            epoch: 2,
-            slot_id: 29,
-        },
-    );
+    let certificate = certificate_wrapper.assert_new_vote_plan(vote_plan_config_path.path());
 
     assert_ne!(certificate, "", "vote plan cert is empty");
 }

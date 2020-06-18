@@ -89,6 +89,8 @@ pub enum Error {
     TooManyVotePlanProposals { actual: usize, max: usize },
     #[error("invalid certificate, expecting a vote plan one")]
     NotVotePlanCertificate,
+    #[error("invalid vote plan certificate configuration")]
+    VotePlanConfig(#[source] serde_yaml::Error),
 }
 
 #[allow(clippy::large_enum_variant)]

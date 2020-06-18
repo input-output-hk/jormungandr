@@ -8,7 +8,6 @@ use jormungandr_lib::interfaces::TaxType;
 
 use assert_fs::prelude::*;
 use assert_fs::{NamedTempFile, TempDir};
-use chain_impl_mockchain::block::BlockDate;
 use std::{
     path::{Path, PathBuf},
     process::Command,
@@ -26,31 +25,17 @@ impl JCLICertificateWrapper {
         }
     }
 
-    pub fn assert_new_vote_plan(
-        &self,
-        proposal_id: &str,
-        vote_start: BlockDate,
-        vote_end: BlockDate,
-        committe_end: BlockDate,
-    ) -> String {
-        self.assert_new_certificate(self.commands.get_vote_command(
-            proposal_id,
-            vote_start,
-            vote_end,
-            committe_end,
-        ))
+    pub fn assert_new_vote_plan(&self, proposal_file: &Path) -> String {
+        self.assert_new_certificate(self.commands.get_vote_command(proposal_file))
     }
 
     pub fn assert_new_signed_vote_plan(
         &self,
-        proposal_id: &str,
-        vote_start: BlockDate,
-        vote_end: BlockDate,
-        committe_end: BlockDate,
+        proposal_file: &Path,
         stake_key_file: &Path,
     ) -> PathBuf {
         let temp_dir = TempDir::new().unwrap();
-        let cert = self.assert_new_vote_plan(proposal_id, vote_start, vote_end, committe_end);
+        let cert = self.assert_new_vote_plan(proposal_file);
 
         let cert_file = temp_dir.child("vote_plan.cert");
         cert_file.write_str(&cert).unwrap();

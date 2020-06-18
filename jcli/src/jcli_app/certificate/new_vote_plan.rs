@@ -1,85 +1,37 @@
-use crate::jcli_app::certificate::{write_cert, Error};
-use chain_impl_mockchain::{
-    block::BlockDate,
-    certificate::{Certificate, ExternalProposalId, Proposal, Proposals, VotePlan},
-    vote::{Options, PayloadType},
+use crate::jcli_app::{
+    certificate::{write_cert, Error},
+    utils::io,
 };
+use chain_impl_mockchain::certificate::{Certificate, VotePlan};
+use jormungandr_lib::interfaces::VotePlanDef;
+use serde::Deserialize;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 /// create a vote plan certificate
 ///
-/// 3 Block dates need to be provided as well as the proposal id
+/// the vote plan configuration data needs to be provided
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct VotePlanRegistration {
-    /// vote start block date
-    ///
-    /// It should be provided in the format of `epoch.slot_id`, ex: 0.0
-    #[structopt(long = "vote-start")]
-    pub vote_start: BlockDate,
-
-    /// vote end block date
-    ///
-    /// It should be provided in the format of `epoch.slot_id`, ex: 0.0
-    #[structopt(long = "vote-end")]
-    pub vote_end: BlockDate,
-
-    /// committee end block date
-    ///
-    /// It should be provided in the format of `epoch.slot_id`, ex: 0.0
-    #[structopt(long = "committee-end")]
-    pub committee_end: BlockDate,
-
-    /// proposal id to add to the vote plan certificate
-    ///
-    /// There may not be more than 255 proposals per vote plan certificate
-    #[structopt(long = "proposal-id")]
-    pub proposals: Vec<ExternalProposalId>,
+    /// the file containing the vote plan configuration (YAML). If no file
+    /// provided, it will be read from the standard input
+    pub input: Option<PathBuf>,
 
     /// write the output to the given file or print it to the standard output if not defined
     #[structopt(long = "output")]
     pub output: Option<PathBuf>,
 }
 
+#[derive(Deserialize)]
+struct VotePlanConfiguration(#[serde(with = "VotePlanDef")] VotePlan);
+
 impl VotePlanRegistration {
     pub fn exec(self) -> Result<(), Error> {
-        // check that the block dates are consecutive
-        if self.vote_start >= self.vote_end {
-            return Err(Error::InvalidVotePlanVoteBlockDates {
-                vote_start: self.vote_start,
-                vote_end: self.vote_end,
-            });
-        }
-        if self.vote_end >= self.committee_end {
-            return Err(Error::InvalidVotePlanCommitteeBlockDates {
-                vote_end: self.vote_end,
-                committee_end: self.committee_end,
-            });
-        }
-        if self.proposals.len() > Proposals::MAX_LEN {
-            return Err(Error::TooManyVotePlanProposals {
-                actual: self.proposals.len(),
-                max: Proposals::MAX_LEN,
-            });
-        }
-
-        let default_options: Options =
-            Options::new_length(3).expect("Vote Option's range from 0 to 3 (excluded)");
-
-        // build certificate
-        let mut proposals = Proposals::new();
-        for proposal_id in self.proposals {
-            let _ = proposals.push(Proposal::new(proposal_id, default_options.clone()));
-        }
-        let vote_plan = VotePlan::new(
-            self.vote_start,
-            self.vote_end,
-            self.committee_end,
-            proposals,
-            PayloadType::Public,
-        );
-        let cert = Certificate::VotePlan(vote_plan);
+        let configuration = io::open_file_read(&self.input)?;
+        let vote_plan_certificate: VotePlanConfiguration =
+            serde_yaml::from_reader(configuration).map_err(Error::VotePlanConfig)?;
+        let cert = Certificate::VotePlan(vote_plan_certificate.0);
         write_cert(self.output.as_deref(), cert.into())
     }
 }
