@@ -26,11 +26,21 @@ pub async fn get_message_logs(context: ContextLock) -> Result<impl Reply, Reject
         .map(|r| warp::reply::json(&r))
 }
 
+#[derive(Deserialize)]
+pub struct GetMessageStatusesQuery {
+    fragment_ids: String,
+}
+
 pub async fn get_message_statuses(
-    fragment_ids: Vec<String>,
+    query: GetMessageStatusesQuery,
     context: ContextLock,
 ) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
+    let fragment_ids = query
+        .fragment_ids
+        .split(',')
+        .map(|s| s.to_string())
+        .collect();
     logic::get_message_statuses(&context, fragment_ids)
         .await
         .map_err(warp::reject::custom)

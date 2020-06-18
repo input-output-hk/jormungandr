@@ -52,8 +52,8 @@ pub fn filter(
             .boxed();
 
         let statuses = warp::path!("statuses")
-            .and(warp::post())
-            .and(warp::body::json())
+            .and(warp::get())
+            .and(warp::query())
             .and(with_context.clone())
             .and_then(handlers::get_message_statuses)
             .boxed();
