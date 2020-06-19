@@ -295,7 +295,6 @@ impl Controller {
         } else {
             bail!(ErrorKind::NodeNotFound(params.get_alias()))
         };
-
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);
 

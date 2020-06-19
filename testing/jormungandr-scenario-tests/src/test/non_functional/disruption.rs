@@ -415,10 +415,10 @@ pub fn point_to_point_disruption_overlap(
     )?;
     leader1.wait_for_bootstrap()?;
 
-    //1. 2 and 1 is up
+    println!("1. 2 and 1 is up");
     utils::wait(5);
 
-    //2. node 1 is down
+    println!("2. node 1 is down");
     leader1.shutdown()?;
 
     let mut leader3 = controller.spawn_node(
@@ -428,25 +428,21 @@ pub fn point_to_point_disruption_overlap(
     )?;
     leader3.wait_for_bootstrap()?;
 
-    //3. only Node 3 is up
+    println!("3. only Node 3 is up");
     leader2.shutdown()?;
 
-    //4. 1 and 3 is up
-    leader1 = controller.spawn_node(
-        LEADER_1,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
+    println!("4. 1 and 3 is up");
+    leader1 = controller.spawn_node_custom(
+        controller
+            .new_spawn_params(LEADER_1)
+            .leadership_mode(LeadershipMode::Leader)
+            .persistence_mode(PersistenceMode::Persistent)
+            .bootstrap_from_peers(false)
+            .skip_bootstrap(true),
     )?;
     leader1.wait_for_bootstrap()?;
 
-    leader3 = controller.spawn_node(
-        LEADER_3,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    leader3.wait_for_bootstrap()?;
-
-    //5. 2 and 3 is up
+    println!("5. 2 and 3 is up");
     leader1.shutdown()?;
     leader2 = controller.spawn_node(
         LEADER_2,
@@ -455,7 +451,7 @@ pub fn point_to_point_disruption_overlap(
     )?;
     leader2.wait_for_bootstrap()?;
 
-    //6. 1 and 2 is up
+    println!("6. 1 and 2 is up");
     leader3.shutdown()?;
 
     leader1 = controller.spawn_node(
@@ -465,26 +461,32 @@ pub fn point_to_point_disruption_overlap(
     )?;
     leader1.wait_for_bootstrap()?;
 
-    //7. only Node 3 is up
+    println!("7. only Node 3 is up");
     leader1.shutdown()?;
     leader2.shutdown()?;
 
-    leader3 = controller.spawn_node(
-        LEADER_3,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
+    leader3 = controller.spawn_node_custom(
+        controller
+            .new_spawn_params(LEADER_3)
+            .leadership_mode(LeadershipMode::Leader)
+            .persistence_mode(PersistenceMode::Persistent)
+            .bootstrap_from_peers(false)
+            .skip_bootstrap(true),
     )?;
     leader3.wait_for_bootstrap()?;
 
-    //8. 1 and 3 is up
-    leader1 = controller.spawn_node(
-        LEADER_1,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
+    println!("8. 1 and 3 is up");
+    leader1 = controller.spawn_node_custom(
+        controller
+            .new_spawn_params(LEADER_1)
+            .leadership_mode(LeadershipMode::Leader)
+            .persistence_mode(PersistenceMode::Persistent)
+            .bootstrap_from_peers(false)
+            .skip_bootstrap(true),
     )?;
     leader1.wait_for_bootstrap()?;
 
-    //9. all nodes are up
+    println!("9. all nodes are up");
     leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,

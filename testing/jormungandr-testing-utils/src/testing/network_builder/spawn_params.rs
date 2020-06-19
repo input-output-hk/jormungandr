@@ -23,6 +23,8 @@ pub struct SpawnParams {
     pub alias: String,
     pub node_id: Option<poldercast::Address>,
     pub version: Option<Version>,
+    pub bootstrap_from_peers: Option<bool>,
+    pub skip_bootstrap: Option<bool>,
 }
 
 impl SpawnParams {
@@ -43,6 +45,8 @@ impl SpawnParams {
             max_inbound_connections: None,
             preferred_layer: None,
             version: None,
+            bootstrap_from_peers: None,
+            skip_bootstrap: None,
         }
     }
 
@@ -101,8 +105,18 @@ impl SpawnParams {
         self
     }
 
+    pub fn skip_bootstrap(&mut self, skip_bootstrap: bool) -> &mut Self {
+        self.skip_bootstrap = Some(skip_bootstrap);
+        self
+    }
+
     pub fn mempool(&mut self, mempool: Mempool) -> &mut Self {
         self.mempool = Some(mempool);
+        self
+    }
+
+    pub fn bootstrap_from_peers(&mut self, bootstrap_from_peers: bool) -> &mut Self {
+        self.bootstrap_from_peers = Some(bootstrap_from_peers);
         self
     }
 
@@ -194,6 +208,14 @@ impl SpawnParams {
 
         if let Some(preferred_layer) = &self.preferred_layer {
             node_config.p2p.layers = Some(preferred_layer.clone());
+        }
+
+        if let Some(bootstrap_from_peers) = &self.bootstrap_from_peers {
+            node_config.bootstrap_from_trusted_peers = Some(*bootstrap_from_peers);
+        }
+
+        if let Some(skip_bootstrap) = &self.skip_bootstrap {
+            node_config.skip_bootstrap = Some(*skip_bootstrap);
         }
     }
 }

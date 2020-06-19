@@ -8,7 +8,7 @@ mod node;
 mod rest;
 
 pub use configuration_builder::{
-    LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter, version_0_8_19
+    version_0_8_19, LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
 pub use jormungandr_testing_utils::legacy::{NodeConfig, Version};
 pub use rest::BackwardCompatibleRest;
