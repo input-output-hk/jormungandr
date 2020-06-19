@@ -15,6 +15,7 @@ mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod new_stake_pool_retirement;
+mod new_vote_cast;
 mod new_vote_plan;
 mod new_vote_tally;
 mod sign;
@@ -143,6 +144,8 @@ pub enum NewArgs {
     VotePlan(new_vote_plan::VotePlanRegistration),
     /// create a new vote tally certificate
     VoteTally(new_vote_tally::VoteTallyRegistration),
+    /// create a vote cast certificate
+    VoteCast(new_vote_cast::VoteCastCmd),
 }
 
 #[derive(StructOpt)]
@@ -172,6 +175,7 @@ impl NewArgs {
             NewArgs::StakePoolRetirement(args) => args.exec()?,
             NewArgs::VotePlan(args) => args.exec()?,
             NewArgs::VoteTally(args) => args.exec()?,
+            NewArgs::VoteCast(args) => args.exec()?,
         }
         Ok(())
     }
