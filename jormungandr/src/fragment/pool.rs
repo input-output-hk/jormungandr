@@ -39,6 +39,7 @@ impl Pool {
         mut fragments: Vec<Fragment>,
         logger: Logger,
     ) -> Result<usize, ()> {
+        debug!(logger, "received {} fragments", fragments.len(); "origin" => ?origin);
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
             return Ok(0);

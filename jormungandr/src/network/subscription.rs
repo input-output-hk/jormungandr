@@ -304,6 +304,7 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
             );
             e
         })?;
+        debug!(self.logger, "received fragment"; "hash" => %fragment.hash());
         self.buffered_fragments.push(fragment);
         Ok(())
     }
