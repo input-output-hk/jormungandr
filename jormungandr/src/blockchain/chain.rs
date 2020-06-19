@@ -66,54 +66,94 @@ use tokio::stream::StreamExt;
 // derive
 use thiserror::Error;
 
-error_chain! {
-    foreign_links {
-        Storage(StorageError);
-        Ledger(ledger::Error);
-        Block0(Block0Error);
+pub type Result<A> = std::result::Result<A, Error>;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("")]
+    Storage {
+        #[from]
+        #[source]
+        source: StorageError,
+    },
+
+    #[error("")]
+    Ledger {
+        #[from]
+        #[source]
+        source: ledger::Error,
+    },
+
+    #[error("")]
+    Block0 {
+        #[from]
+        #[source]
+        source: Block0Error,
+    },
+
+    #[error("Error while creating the initial ledger out of the block0")]
+    Block0InitialLedgerError,
+
+    #[error("Block0 already exists in the storage")]
+    Block0AlreadyInStorage,
+
+    #[error("Block0 is not yet in the storage")]
+    Block0NotAlreadyInStorage,
+
+    #[error(
+        "Missing a block from the storage. The node was recovering \
+          the blockchain and the parent block '{hash}' was not \
+          already stored"
+    )]
+    MissingParentBlock { hash: HeaderHash },
+
+    #[error("Tag '{tag}' not found in the storage")]
+    NoTag { tag: String },
+
+    #[error("The block header verification failed: {reason}")]
+    BlockHeaderVerificationFailed { reason: String },
+
+    #[error("Received block {hash} is not known from previously received headers")]
+    BlockNotRequested { hash: HeaderHash },
+
+    #[error("Block cannot be applied on top of the previous block's ledger state")]
+    CannotApplyBlock,
+
+    #[error("{message}")]
+    Custom { message: String },
+
+    #[error("{error}")]
+    Chained {
+        error: Box<Self>,
+        #[source]
+        chain: Box<dyn std::error::Error + Send + 'static>,
+    },
+}
+
+impl Error {
+    pub fn with_chain<E, M>(e: E, message: M) -> Self
+    where
+        M: Into<Self>,
+        E: std::error::Error + Send + 'static,
+    {
+        Self::Chained {
+            error: Box::new(message.into()),
+            chain: Box::new(e),
+        }
     }
+}
 
-    errors {
-        Block0InitialLedgerError {
-            description("Error while creating the initial ledger out of the block0")
+impl<'a> From<&'a str> for Error {
+    fn from(message: &'a str) -> Self {
+        Self::Custom {
+            message: message.to_owned(),
         }
+    }
+}
 
-        Block0AlreadyInStorage {
-            description("Block0 already exists in the storage")
-        }
-
-        Block0NotAlreadyInStorage {
-            description("Block0 is not yet in the storage")
-        }
-
-        MissingParentBlock(hash: HeaderHash) {
-            description("missing a parent block from the storage"),
-            display(
-                "Missing a block from the storage. The node was recovering \
-                 the blockchain and the parent block '{}' was not \
-                 already stored",
-                hash,
-            ),
-        }
-
-        NoTag (tag: String) {
-            description("Missing tag from the storage"),
-            display("Tag '{}' not found in the storage", tag),
-        }
-
-        BlockHeaderVerificationFailed (reason: String) {
-            description("Block header verification failed"),
-            display("The block header verification failed: {}", reason),
-        }
-
-        BlockNotRequested (hash: HeaderHash) {
-            description("Received an unknown block"),
-            display("Received block {} is not known from previously received headers", hash)
-        }
-
-        CannotApplyBlock {
-            description("Block cannot be applied on top of the previous block's ledger state"),
-        }
+impl From<String> for Error {
+    fn from(message: String) -> Self {
+        Self::Custom { message }
     }
 }
 
@@ -404,7 +444,9 @@ impl Blockchain {
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
                 pre_verify_link(header, parent_ref.header())
                     .map(|()| pre_check)
-                    .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into())
+                    .map_err(|e| Error::BlockHeaderVerificationFailed {
+                        reason: e.to_string(),
+                    })
             }
             _ => Ok(pre_check),
         }
@@ -437,9 +479,9 @@ impl Blockchain {
 
         if check_header_proof == CheckHeaderProof::Enabled {
             match epoch_leadership_schedule.verify(&header) {
-                Verification::Failure(error) => {
-                    Err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()))
-                }
+                Verification::Failure(error) => Err(Error::BlockHeaderVerificationFailed {
+                    reason: error.to_string(),
+                }),
                 Verification::Success => Ok(()),
             }?;
         }
@@ -471,7 +513,7 @@ impl Blockchain {
 
         ledger
             .apply_block(epoch_ledger_parameters, &block.contents, &metadata)
-            .chain_err(|| ErrorKind::CannotApplyBlock)
+            .map_err(|err| Error::with_chain(err, Error::CannotApplyBlock))
     }
 
     async fn apply_block_finalize(
@@ -552,10 +594,10 @@ impl Blockchain {
 
             let start_time = block0
                 .start_time()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
+                .map_err(|err| Error::with_chain(err, Error::Block0InitialLedgerError))?;
             let slot_duration = block0
                 .slot_duration()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
+                .map_err(|err| Error::with_chain(err, Error::Block0InitialLedgerError))?;
 
             TimeFrame::new(
                 chain_time::Timeline::new(start_time),
@@ -567,7 +609,7 @@ impl Blockchain {
         // this allow chaining of the operation and lifting the error handling
         // in the same place
         let block0_ledger = Ledger::new(block0_id, block0.contents.iter())
-            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
+            .map_err(|err| Error::with_chain(err, Error::Block0InitialLedgerError))?;
         let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
         let ledger_parameters = block0_leadership.ledger_parameters().clone();
 
@@ -615,7 +657,7 @@ impl Blockchain {
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
 
         if already_exist {
-            return Err(ErrorKind::Block0AlreadyInStorage.into());
+            return Err(Error::Block0AlreadyInStorage);
         }
 
         let block0_branch = self.apply_block0(&block0).await?;
@@ -654,7 +696,7 @@ impl Blockchain {
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
 
         if !already_exist {
-            return Err(ErrorKind::Block0NotAlreadyInStorage.into());
+            return Err(Error::Block0NotAlreadyInStorage);
         }
 
         let opt = self
@@ -666,7 +708,9 @@ impl Blockchain {
         let head_hash = if let Some(id) = opt {
             id
         } else {
-            return Err(ErrorKind::NoTag(MAIN_BRANCH_TAG.to_owned()).into());
+            return Err(Error::NoTag {
+                tag: MAIN_BRANCH_TAG.to_owned(),
+            });
         };
 
         let block0_branch = self.apply_block0(&block0).await?;
@@ -728,9 +772,9 @@ impl Blockchain {
                             header
                         ),
                         PreCheckedHeader::MissingParent { header } => {
-                            return Err(
-                                ErrorKind::MissingParentBlock(header.block_parent_hash()).into()
-                            )
+                            return Err(Error::MissingParentBlock {
+                                hash: header.block_parent_hash(),
+                            })
                         }
                     };
 

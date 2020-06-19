@@ -2,7 +2,7 @@ use super::{
     candidate,
     chain::{self, AppliedBlock, CheckHeaderProof},
     chain_selection::{self, ComparisonResult},
-    Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+    Blockchain, Error, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::{
     blockcfg::{Block, FragmentId, Header, HeaderHash},
@@ -428,7 +428,7 @@ async fn process_leadership_block_inner(
             logger,
             "block from leader event does not have parent block in storage"
         );
-        return Err(ErrorKind::MissingParentBlock(parent_hash).into());
+        return Err(Error::MissingParentBlock { hash: parent_hash });
     };
 
     debug!(logger, "apply and store block");
@@ -612,7 +612,7 @@ async fn process_network_block(
                 "parent" => %parent_hash,
                 "date" => %header.block_date(),
             );
-            Err(ErrorKind::MissingParentBlock(parent_hash).into())
+            Err(Error::MissingParentBlock { hash: parent_hash })
         }
         PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
             let r = check_and_apply_block(
@@ -730,14 +730,14 @@ async fn process_chain_headers(
 }
 
 fn network_block_error_into_reply(err: chain::Error) -> intercom::Error {
-    use super::chain::ErrorKind::*;
+    use super::chain::Error::*;
 
-    match err.0 {
-        Storage(e) => intercom::Error::failed(e),
-        Ledger(e) => intercom::Error::failed_precondition(e),
-        Block0(e) => intercom::Error::failed(e),
-        MissingParentBlock(_) => intercom::Error::failed_precondition(err.to_string()),
-        BlockHeaderVerificationFailed(_) => intercom::Error::invalid_argument(err.to_string()),
+    match err {
+        Storage { source } => intercom::Error::failed(source),
+        Ledger { source } => intercom::Error::failed_precondition(source),
+        Block0 { source } => intercom::Error::failed(source),
+        MissingParentBlock { .. } => intercom::Error::failed_precondition(err.to_string()),
+        BlockHeaderVerificationFailed { .. } => intercom::Error::invalid_argument(err.to_string()),
         _ => intercom::Error::failed(err.to_string()),
     }
 }

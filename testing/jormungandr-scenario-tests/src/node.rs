@@ -611,7 +611,7 @@ impl Node {
         let process = Process::spawn(command.clone()).map_err(Error::CannotSpawnNode)?;
 
         let node = Node {
-            alias: alias.clone().into(),
+            alias: alias.into(),
 
             dir,
 
