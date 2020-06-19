@@ -4,6 +4,8 @@ use chain_network::grpc;
 
 use tonic::transport::Server;
 
+use std::convert::TryInto;
+
 pub async fn run_listen_socket(
     listen: &Listen,
     state: GlobalStateR,
@@ -14,7 +16,12 @@ pub async fn run_listen_socket(
     let logger = state.logger().new(o!("local_addr" => sockaddr.to_string()));
     info!(logger, "listening and accepting gRPC connections");
 
-    let service = grpc::Server::new(grpc::NodeService::new(NodeService::new(channels, state)));
+    let mut builder = grpc::server::Builder::new();
+    if let Some(node_id) = state.config.legacy_node_id {
+        let node_id: grpc::legacy::NodeId = node_id.as_ref().try_into().unwrap();
+        builder.legacy_node_id(node_id);
+    }
+    let service = builder.build(NodeService::new(channels, state));
 
     Server::builder()
         .add_service(service)
