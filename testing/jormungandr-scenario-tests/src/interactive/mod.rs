@@ -1,8 +1,6 @@
 mod args;
 
 use crate::{
-    legacy::LegacyNodeController,
-    node::NodeController,
     scenario::{repository::ScenarioResult, Controller},
     style,
     test::Result,
@@ -40,11 +38,9 @@ pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     };
 
     let mut controller = scenario_settings.build(context).unwrap();
-    let mut nodes = vec![];
-    let mut legacy_nodes = vec![];
 
     let user_integration: UserInteraction = Default::default();
-    user_integration.interact(&mut controller, &mut nodes, &mut legacy_nodes)?;
+    user_integration.interact(&mut controller)?;
 
     controller.finalize();
     Ok(ScenarioResult::passed())
@@ -66,13 +62,10 @@ impl UserInteraction {
         }
     }
 
-    pub fn interact(
-        &self,
-        mut controller: &mut Controller,
-        mut nodes: &mut Vec<NodeController>,
-        mut legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn interact(&self, mut controller: &mut Controller) -> Result<()> {
         let mut wallets: Vec<Wallet> = controller.get_all_wallets();
+        let mut nodes = vec![];
+        let mut legacy_nodes = vec![];
 
         self.show_info();
 
@@ -86,12 +79,16 @@ impl UserInteraction {
             }
 
             match InteractiveCommand::from_iter_safe(&mut tokens.iter().map(|x| OsStr::new(x))) {
-                Ok(interactive) => interactive.exec(
-                    &mut controller,
-                    &mut nodes,
-                    &mut legacy_nodes,
-                    &mut wallets,
-                )?,
+                Ok(interactive) => {
+                    if let Err(err) = interactive.exec(
+                        &mut controller,
+                        &mut nodes,
+                        &mut legacy_nodes,
+                        &mut wallets,
+                    ) {
+                        println!("{}", style::error.apply_to(format!("Error: {}", err)));
+                    }
+                }
                 Err(err) => self.print_help(Box::new(err)),
             }
         }

@@ -12,7 +12,7 @@ pub enum LegacyConfigConverterError {
     UnsupportedVersion(Version),
 }
 
-const fn version_0_8_19() -> Version {
+pub fn version_0_8_19() -> Version {
     Version::new(0, 8, 19)
 }
 

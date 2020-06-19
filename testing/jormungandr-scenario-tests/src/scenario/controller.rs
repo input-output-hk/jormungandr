@@ -270,8 +270,6 @@ impl Controller {
         let mut legacy_node_settings =
             LegacySettings::from_settings(node_setting_overriden, version);
 
-        println!("settings: {:?}, debug: {:?}", legacy_node_settings, version);
-
         let mut node = LegacyNode::spawn(
             &jormungandr,
             &self.context,
@@ -297,7 +295,6 @@ impl Controller {
         } else {
             bail!(ErrorKind::NodeNotFound(params.get_alias()))
         };
-
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);
 
