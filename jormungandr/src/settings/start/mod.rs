@@ -248,7 +248,9 @@ fn generate_network(
         profile.address(address);
     }
 
-    let legacy_node_id = poldercast::Id::generate(rand::thread_rng());
+    let legacy_node_id = p2p
+        .public_id
+        .unwrap_or_else(|| poldercast::Id::generate(rand::thread_rng()));
     profile.id(legacy_node_id);
 
     for (topic, interest_level) in p2p
