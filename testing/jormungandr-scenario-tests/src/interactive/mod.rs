@@ -62,16 +62,12 @@ impl UserInteraction {
         }
     }
 
-    pub fn interact(
-        &self,
-        mut controller: &mut Controller,
-    ) -> Result<()> {
+    pub fn interact(&self, mut controller: &mut Controller) -> Result<()> {
         let mut wallets: Vec<Wallet> = controller.get_all_wallets();
         let mut nodes = vec![];
         let mut legacy_nodes = vec![];
 
         self.show_info();
-
 
         loop {
             self.show_title();
@@ -84,10 +80,15 @@ impl UserInteraction {
 
             match InteractiveCommand::from_iter_safe(&mut tokens.iter().map(|x| OsStr::new(x))) {
                 Ok(interactive) => {
-                    if let Err(err) = interactive.exec(&mut controller,&mut nodes,&mut legacy_nodes,&mut wallets) {
-                        println!("{}", style::error.apply_to(format!("Error: {}",err)));
+                    if let Err(err) = interactive.exec(
+                        &mut controller,
+                        &mut nodes,
+                        &mut legacy_nodes,
+                        &mut wallets,
+                    ) {
+                        println!("{}", style::error.apply_to(format!("Error: {}", err)));
                     }
-                },
+                }
                 Err(err) => self.print_help(Box::new(err)),
             }
         }

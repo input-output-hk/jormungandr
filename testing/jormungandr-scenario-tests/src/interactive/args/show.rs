@@ -1,8 +1,8 @@
 use super::do_for_all_alias;
 use crate::node::NodeController;
 use crate::{legacy::LegacyNodeController, test::Result};
-use structopt::StructOpt;
 use jormungandr_integration_tests::common::jormungandr::JormungandrLogger;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub enum Show {
@@ -194,7 +194,13 @@ impl ShowNodeStats {
     }
 }
 
-fn show_logs_for(only_errors: bool, contains: &Option<String>, alias: &str,tail:  Option<usize> ,logger: JormungandrLogger) {
+fn show_logs_for(
+    only_errors: bool,
+    contains: &Option<String>,
+    alias: &str,
+    tail: Option<usize>,
+    logger: JormungandrLogger,
+) {
     let logs: Vec<String> = {
         if only_errors {
             logger.get_lines_with_error().collect()
@@ -222,9 +228,7 @@ fn show_logs_for(only_errors: bool, contains: &Option<String>, alias: &str,tail:
     for log in logs {
         println!("\t{}", log);
     }
-
 }
-
 
 impl ShowLogs {
     pub fn exec(
@@ -237,11 +241,23 @@ impl ShowLogs {
             nodes,
             legacy_nodes,
             |node| {
-                show_logs_for(self.only_errors, &self.contains, node.alias(), self.tail, node.logger())
-        },
+                show_logs_for(
+                    self.only_errors,
+                    &self.contains,
+                    node.alias(),
+                    self.tail,
+                    node.logger(),
+                )
+            },
             |node| {
-                show_logs_for(self.only_errors, &self.contains, node.alias(), self.tail, node.logger())
-            }
+                show_logs_for(
+                    self.only_errors,
+                    &self.contains,
+                    node.alias(),
+                    self.tail,
+                    node.logger(),
+                )
+            },
         )
     }
 }

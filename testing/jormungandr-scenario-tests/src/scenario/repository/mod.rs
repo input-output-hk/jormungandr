@@ -146,7 +146,7 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Interactive],
     ));
 
-    repository.push(Scenario::new("example", scenario_2, vec![Tag::Short]));
+    repository.push(Scenario::new("example", scenario_2, vec![Tag::Example]));
 
     repository.push(Scenario::new(
         "leader_restart",

@@ -40,7 +40,7 @@ pub fn legacy_current_node_fragment_propagation(
             ],
         }
     };
-    
+
     let (legacy_app, version) = get_legacy_data(title, &mut context);
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
@@ -160,7 +160,6 @@ pub fn current_node_legacy_fragment_propagation(
         .send_pool_retire(&mut david, &david_stake_pool, &passive)
         .expect("send pool retire failed");
 
-
     leader.shutdown()?;
     passive.shutdown()?;
 
@@ -267,7 +266,7 @@ fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized>(
             passive,
         )
         .expect("send update stake pool failed");
-    
+
     sender
         .send_pool_retire(&mut david, &david_stake_pool, passive)
         .expect("send pool retire failed");
