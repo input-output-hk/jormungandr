@@ -1,4 +1,4 @@
-use super::super::{service::NodeService, Channels, GlobalStateR, ListenError};
+use super::super::{concurrency_limits, service::NodeService, Channels, GlobalStateR, ListenError};
 use crate::settings::start::network::Listen;
 use chain_network::grpc;
 
@@ -24,6 +24,7 @@ pub async fn run_listen_socket(
     let service = builder.build(NodeService::new(channels, state));
 
     Server::builder()
+        .concurrency_limit_per_connection(concurrency_limits::SERVER_REQUESTS)
         .add_service(service)
         .serve(sockaddr)
         .await

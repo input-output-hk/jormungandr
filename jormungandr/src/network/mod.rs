@@ -54,6 +54,9 @@ mod buffer_sizes {
 mod concurrency_limits {
     // How many concurrent requests are permitted per client connection
     pub const CLIENT_REQUESTS: usize = 256;
+
+    // How many concurrent requests are permitted per server connection
+    pub const SERVER_REQUESTS: usize = 256;
 }
 
 use self::client::ConnectError;
