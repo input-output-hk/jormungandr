@@ -62,6 +62,7 @@ impl NodeConfigBuilder {
                     quarantine_whitelist: None,
                 }),
                 layers: None,
+                public_id: None,
             },
             mempool: Some(Mempool::default()),
             explorer: Explorer { enabled: false },

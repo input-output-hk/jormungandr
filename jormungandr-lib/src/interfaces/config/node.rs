@@ -16,7 +16,8 @@ pub struct Rest {
 pub struct P2p {
     /// The public address to which other peers may connect to
     pub public_address: poldercast::Address,
-
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_id: Option<poldercast::Id>,
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Vec<TrustedPeer>,
@@ -97,6 +98,8 @@ pub struct PreferredListConfig {
 #[serde(deny_unknown_fields)]
 pub struct TrustedPeer {
     pub address: poldercast::Address,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<poldercast::Id>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -116,6 +119,7 @@ impl P2p {
     pub fn make_trusted_peer_setting(&self) -> TrustedPeer {
         TrustedPeer {
             address: self.get_listen_address(),
+            id: self.public_id.clone(),
         }
     }
 

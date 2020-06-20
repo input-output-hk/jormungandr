@@ -63,6 +63,7 @@ impl Fixture {
             address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port)
                 .parse()
                 .unwrap(),
+            id: None,
         };
 
         ConfigurationBuilder::new()

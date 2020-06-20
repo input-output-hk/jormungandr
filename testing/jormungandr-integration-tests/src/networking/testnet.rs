@@ -95,6 +95,12 @@ impl TestnetConfig {
                     .expect("incorrect trusted peer address")
                     .parse()
                     .expect("cannot parse trusted peer address"),
+                id: Some(
+                    trusted_peer_id
+                        .expect("incorrect trusted peer id")
+                        .parse()
+                        .expect("cannot parse trusted peer id"),
+                ),
             });
         }
         trusted_peers
@@ -127,17 +133,15 @@ fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> 
     Wallet::from_existing_account(&private_key, Some(account_state.counter()))
 }
 
-#[test]
-pub fn itn_bootstrap_current() {
+fn bootstrap_current(testnet_config: TestnetConfig, network_alias: &str) {
     let temp_dir = TempDir::new().unwrap();
-    let testnet_config = TestnetConfig::new_itn();
     let mut jormungandr_config = testnet_config.make_config(&temp_dir);
 
     // start from itn trusted peers
     let jormungandr_from_trusted_peers = Starter::new()
         .config(jormungandr_config.clone())
         .timeout(Duration::from_secs(96_000))
-        .benchmark("passive_node_itn_bootstrap")
+        .benchmark(&format!("passive_node_{}_bootstrap", network_alias))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
@@ -158,7 +162,7 @@ pub fn itn_bootstrap_current() {
 
     storage_loading_benchmark_from_log(
         &jormungandr_from_storage.logger,
-        "passive_node_itn_loading_from_storage",
+        &format!("passive_node_{}_loading_from_storage", network_alias),
         loading_from_storage_timeout,
     )
     .print();
@@ -171,11 +175,92 @@ pub fn itn_bootstrap_current() {
     let _jormungandr_from_local_trusted_peer = Starter::new()
         .config(config)
         .timeout(Duration::from_secs(15_000))
-        .benchmark("passive_node_from_trusted_peer_itn_bootstrap")
+        .benchmark(&format!(
+            "passive_node_from_trusted_peer_{}_bootstrap",
+            network_alias
+        ))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
         .unwrap();
+}
+
+fn bootstrap_legacy(testnet_config: TestnetConfig, network_prefix: &str) {
+    let temp_dir = TempDir::new().unwrap();
+    let (_, version) = get_legacy_app(&temp_dir);
+
+    let mut legacy_jormungandr_config = testnet_config.make_config(&temp_dir);
+
+    // bootstrap node as legacy node
+    let legacy_jormungandr = Starter::new()
+        .config(legacy_jormungandr_config.clone())
+        .timeout(Duration::from_secs(48_000))
+        .legacy(version.clone())
+        .benchmark(&format!(
+            "legacy node bootstrap from {} trusted peers",
+            network_prefix
+        ))
+        .passive()
+        .start()
+        .unwrap();
+
+    let config = ConfigurationBuilder::new()
+        .with_block_hash(testnet_config.block0_hash())
+        .with_trusted_peers(vec![legacy_jormungandr.to_trusted_peer()])
+        .build(&temp_dir);
+
+    // bootstrap latest node from legacy node peer
+    let new_jormungandr_from_local_trusted_peer = Starter::new()
+        .config(config)
+        .timeout(Duration::from_secs(24_000))
+        .benchmark(&format!(
+            "latest node bootstrap from {} legacy node",
+            network_prefix
+        ))
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    new_jormungandr_from_local_trusted_peer.shutdown();
+    legacy_jormungandr.shutdown();
+
+    // test node upgrade from old data
+    legacy_jormungandr_config.refresh_instance_params();
+
+    let latest_jormungandr = Starter::new()
+        .config(legacy_jormungandr_config.clone())
+        .timeout(Duration::from_secs(48_000))
+        .benchmark(&format!(
+            "latest node bootstrap from {} legacy data",
+            network_prefix
+        ))
+        .passive()
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    latest_jormungandr.shutdown();
+
+    // test rollback
+    legacy_jormungandr_config.refresh_instance_params();
+
+    let _rollback_jormungandr = Starter::new()
+        .config(legacy_jormungandr_config.clone())
+        .timeout(Duration::from_secs(48_000))
+        .legacy(version)
+        .benchmark(&format!(
+            "legacy node bootstrap from {} new data",
+            network_prefix
+        ))
+        .passive()
+        .start()
+        .unwrap();
+}
+
+#[test]
+pub fn itn_bootstrap_current() {
+    bootstrap_current(TestnetConfig::new_itn(), "itn");
 }
 
 fn get_legacy_app(temp_dir: &TempDir) -> (PathBuf, Version) {
@@ -188,306 +273,46 @@ fn get_legacy_app(temp_dir: &TempDir) -> (PathBuf, Version) {
 
 #[test]
 pub fn itn_bootstrap_legacy() {
-    let temp_dir = TempDir::new().unwrap();
-    let (_, version) = get_legacy_app(&temp_dir);
+    bootstrap_legacy(TestnetConfig::new_itn(), "itn");
+}
 
-    let testnet_config = TestnetConfig::new_itn();
-    let mut legacy_jormungandr_config = testnet_config.make_config(&temp_dir);
-
-    // bootstrap node as legacy node
-    let legacy_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .legacy(version.clone())
-        .benchmark("legacy node bootstrap from trusted peers")
-        .passive()
-        .start()
-        .unwrap();
-
-    let config = ConfigurationBuilder::new()
-        .with_block_hash(testnet_config.block0_hash())
-        .with_trusted_peers(vec![legacy_jormungandr.to_trusted_peer()])
-        .build(&temp_dir);
-
-    // bootstrap latest node from legacy node peer
-    let new_jormungandr_from_local_trusted_peer = Starter::new()
-        .config(config)
-        .timeout(Duration::from_secs(24_000))
-        .benchmark("latest node bootstrap from legacy node")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    new_jormungandr_from_local_trusted_peer.shutdown();
-    legacy_jormungandr.shutdown();
-
-    // test node upgrade from old data
-    legacy_jormungandr_config.refresh_instance_params();
-
-    let latest_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .benchmark("latest node bootstrap from legacy data")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    latest_jormungandr.shutdown();
-
-    // test rollback
-    legacy_jormungandr_config.refresh_instance_params();
-
-    let _rollback_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .legacy(version)
-        .benchmark("legacy node bootstrap from new data")
-        .passive()
-        .start()
-        .unwrap();
+#[test]
+pub fn itn_e2e_stake_pool() {
+    e2e_stake_pool(TestnetConfig::new_itn());
 }
 
 #[test]
 pub fn nightly_bootstrap_legacy() {
-    let temp_dir = TempDir::new().unwrap();
-    let (_, version) = get_legacy_app(&temp_dir);
-
-    let testnet_config = TestnetConfig::new_nightly();
-    let mut legacy_jormungandr_config = testnet_config.make_config(&temp_dir);
-
-    // bootstrap node as legacy node
-    let legacy_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .legacy(version.clone())
-        .benchmark("legacy node bootstrap from trusted peers")
-        .passive()
-        .start()
-        .unwrap();
-
-    let config = ConfigurationBuilder::new()
-        .with_block_hash(testnet_config.block0_hash())
-        .with_trusted_peers(vec![legacy_jormungandr.to_trusted_peer()])
-        .build(&temp_dir);
-
-    // bootstrap latest node from legacy node peer
-    let new_jormungandr_from_local_trusted_peer = Starter::new()
-        .config(config)
-        .timeout(Duration::from_secs(24_000))
-        .benchmark("latest node bootstrap from legacy node")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    new_jormungandr_from_local_trusted_peer.shutdown();
-    legacy_jormungandr.shutdown();
-
-    // test node upgrade from old data
-    legacy_jormungandr_config.refresh_instance_params();
-
-    let latest_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .benchmark("latest node bootstrap from legacy data")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    latest_jormungandr.shutdown();
-
-    // test rollback
-    legacy_jormungandr_config.refresh_instance_params();
-
-    let _rollback_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .legacy(version)
-        .benchmark("legacy node bootstrap from new data")
-        .passive()
-        .start()
-        .unwrap();
+    bootstrap_current(TestnetConfig::new_nightly(), "nightly");
 }
 
 #[test]
 pub fn nightly_bootstrap_current() {
-    let temp_dir = TempDir::new().unwrap();
-    let testnet_config = TestnetConfig::new_nightly();
-    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
+    bootstrap_current(TestnetConfig::new_nightly(), "nightly")
+}
 
-    let jormungandr = Starter::new()
-        .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .benchmark("passive_node_nightly_bootstrap")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    jormungandr.shutdown();
-    jormungandr_config.refresh_instance_params();
-
-    println!("start from storage");
-
-    let loading_from_storage_timeout = Duration::from_secs(24_000);
-    let jormungandr_from_storage = Starter::new()
-        .config(jormungandr_config)
-        .timeout(loading_from_storage_timeout.clone())
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    storage_loading_benchmark_from_log(
-        &jormungandr_from_storage.logger,
-        "passive_node_nightly_loading_from_storage",
-        loading_from_storage_timeout,
-    )
-    .print();
-
-    let config = ConfigurationBuilder::new()
-        .with_block_hash(testnet_config.block0_hash())
-        .with_log_path(temp_dir.child("local_node.log").path().into())
-        .with_trusted_peers(vec![jormungandr_from_storage.to_trusted_peer()])
-        .build(&temp_dir);
-
-    println!("start from local trusted peer");
-
-    let _jormungandr_from_local_trusted_peer = Starter::new()
-        .config(config)
-        .timeout(Duration::from_secs(24_000))
-        .benchmark("passive_node_from_trusted_peer_nightly_bootstrap")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
+#[test]
+pub fn nightly_e2e_stake_pool() {
+    e2e_stake_pool(TestnetConfig::new_nightly());
 }
 
 #[test]
 pub fn qa_bootstrap_legacy() {
-    let temp_dir = TempDir::new().unwrap();
-    let (_, version) = get_legacy_app(&temp_dir);
-
-    let testnet_config = TestnetConfig::new_qa();
-    let mut legacy_jormungandr_config = testnet_config.make_config(&temp_dir);
-
-    // bootstrap node as legacy node
-    let legacy_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .legacy(version.clone())
-        .benchmark("legacy node bootstrap from trusted peers")
-        .passive()
-        .start()
-        .unwrap();
-
-    let config = ConfigurationBuilder::new()
-        .with_block_hash(testnet_config.block0_hash())
-        .with_trusted_peers(vec![legacy_jormungandr.to_trusted_peer()])
-        .build(&temp_dir);
-
-    // bootstrap latest node from legacy node peer
-    let new_jormungandr_from_local_trusted_peer = Starter::new()
-        .config(config)
-        .timeout(Duration::from_secs(24_000))
-        .benchmark("latest node bootstrap from legacy node")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    new_jormungandr_from_local_trusted_peer.shutdown();
-    legacy_jormungandr.shutdown();
-
-    // test node upgrade from old data
-    legacy_jormungandr_config.refresh_instance_params();
-
-    let latest_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .benchmark("latest node bootstrap from legacy data")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    latest_jormungandr.shutdown();
-
-    // test rollback
-    legacy_jormungandr_config.refresh_instance_params();
-
-    let _rollback_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .legacy(version)
-        .benchmark("legacy node bootstrap from new data")
-        .passive()
-        .start()
-        .unwrap();
+    bootstrap_current(TestnetConfig::new_qa(), "qa");
 }
 
 #[test]
 pub fn qa_bootstrap_current() {
-    let temp_dir = TempDir::new().unwrap();
-    let testnet_config = TestnetConfig::new_qa();
-    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
-
-    let jormungandr = Starter::new()
-        .config(jormungandr_config.clone())
-        .timeout(Duration::from_secs(48_000))
-        .benchmark("passive_node_nightly_bootstrap")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    jormungandr.shutdown();
-    jormungandr_config.refresh_instance_params();
-
-    println!("start from storage");
-
-    let loading_from_storage_timeout = Duration::from_secs(24_000);
-    let jormungandr_from_storage = Starter::new()
-        .config(jormungandr_config)
-        .timeout(loading_from_storage_timeout.clone())
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
-
-    storage_loading_benchmark_from_log(
-        &jormungandr_from_storage.logger,
-        "passive_node_nightly_loading_from_storage",
-        loading_from_storage_timeout,
-    )
-    .print();
-
-    let config = ConfigurationBuilder::new()
-        .with_block_hash(testnet_config.block0_hash())
-        .with_log_path(temp_dir.child("local_node.log").path().into())
-        .with_trusted_peers(vec![jormungandr_from_storage.to_trusted_peer()])
-        .build(&temp_dir);
-
-    println!("start from local trusted peer");
-
-    let _jormungandr_from_local_trusted_peer = Starter::new()
-        .config(config)
-        .timeout(Duration::from_secs(24_000))
-        .benchmark("passive_node_from_trusted_peer_nightly_bootstrap")
-        .passive()
-        .verify_by(StartupVerificationMode::Rest)
-        .start()
-        .unwrap();
+    bootstrap_current(TestnetConfig::new_qa(), "qa");
 }
 
 #[test]
-#[ignore]
-pub fn e2e_stake_pool() {
+pub fn qa_e2e_stake_pool() {
+    e2e_stake_pool(TestnetConfig::new_qa());
+}
+
+fn e2e_stake_pool(testnet_config: TestnetConfig) {
     let temp_dir = TempDir::new().unwrap();
-    let testnet_config = TestnetConfig::new_qa();
     let block0_hash = testnet_config.block0_hash();
 
     let jormungandr = Starter::new()
@@ -509,6 +334,7 @@ pub fn e2e_stake_pool() {
     //register stake pool
     let stake_pool_id =
         create_new_stake_pool(&mut actor_account, &block0_hash, &jormungandr, &long_wait);
+
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
