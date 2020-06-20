@@ -114,49 +114,6 @@ pub fn current_node_legacy_fragment_propagation(
 
     send_all_fragment_types(&mut controller, &passive, Some(version));
 
-    let leader_stake_pool = controller.stake_pool(LEADER).unwrap();
-    let david_stake_pool = StakePool::new(&david);
-
-    let sender = controller.fragment_sender();
-
-    sender
-        .send_transaction(&mut alice, &bob, &passive, 10.into())
-        .expect("send transaction failed");
-    sender
-        .send_pool_registration(&mut david, &david_stake_pool, &passive)
-        .expect("send pool registration");
-    sender
-        .send_owner_delegation(&mut david, &david_stake_pool, &passive)
-        .expect("send owner delegation");
-    sender
-        .send_full_delegation(&mut bob, &leader_stake_pool, &passive)
-        .expect("send full delegation failed");
-
-    let distribution: Vec<(&StakePool, u8)> = vec![(&leader_stake_pool, 1), (&david_stake_pool, 1)];
-    sender
-        .send_split_delegation(&mut bob, &distribution, &passive)
-        .expect("send split delegation failed");
-
-    let mut david_and_clarice_stake_pool = david_stake_pool.clone();
-    david_and_clarice_stake_pool
-        .info_mut()
-        .owners
-        .push(clarice.identifier().into_public_key());
-
-    if version != version_0_8_19() {
-        sender
-            .send_pool_update(
-                &mut david,
-                &david_stake_pool,
-                &david_and_clarice_stake_pool,
-                &passive,
-            )
-            .expect("send update stake pool failed");
-    }
-    sender
-        .send_pool_retire(&mut david, &david_stake_pool, &passive)
-        .expect("send pool retire failed");
-
     leader.shutdown()?;
     passive.shutdown()?;
 
