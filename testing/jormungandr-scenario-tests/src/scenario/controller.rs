@@ -298,6 +298,11 @@ impl Controller {
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);
 
+        // remove all id from trusted peers for current version
+        for trusted_peer in node_setting_overriden.config.p2p.trusted_peers.iter_mut() {
+            trusted_peer.id = None;
+        }
+
         let block0_setting = match params.get_leadership_mode() {
             LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
             LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash),
