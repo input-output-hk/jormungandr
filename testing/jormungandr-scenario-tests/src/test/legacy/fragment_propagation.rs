@@ -59,7 +59,7 @@ pub fn legacy_current_node_fragment_propagation(
     )?;
     passive.wait_for_bootstrap()?;
 
-    send_all_fragment_types(&mut controller, &passive);
+    send_all_fragment_types(&mut controller, &passive, Some(version));
 
     leader.shutdown()?;
     passive.shutdown()?;
@@ -112,10 +112,7 @@ pub fn current_node_legacy_fragment_propagation(
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 
-    let mut alice = controller.wallet("alice").unwrap();
-    let mut bob = controller.wallet("bob").unwrap();
-    let clarice = controller.wallet("clarice").unwrap();
-    let mut david = controller.wallet("david").unwrap();
+    send_all_fragment_types(&mut controller, &passive, Some(version));
 
     let leader_stake_pool = controller.stake_pool(LEADER).unwrap();
     let david_stake_pool = StakePool::new(&david);
@@ -203,7 +200,7 @@ pub fn current_node_fragment_propagation(
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 
-    send_all_fragment_types(&mut controller, &passive);
+    send_all_fragment_types(&mut controller, &passive, None);
 
     leader.shutdown()?;
     passive.shutdown()?;
@@ -223,6 +220,7 @@ fn get_legacy_data(title: &str, context: &mut Context<ChaChaRng>) -> (PathBuf, V
 fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized>(
     controller: &mut Controller,
     passive: &A,
+    version: Option<Version>,
 ) {
     let mut alice = controller.wallet("alice").unwrap();
     let mut bob = controller.wallet("bob").unwrap();
@@ -258,14 +256,18 @@ fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized>(
         .owners
         .push(clarice.identifier().into_public_key());
 
-    sender
-        .send_pool_update(
-            &mut david,
-            &david_stake_pool,
-            &david_and_clarice_stake_pool,
-            passive,
-        )
-        .expect("send update stake pool failed");
+    if let Some(version) = version {
+        if version != version_0_8_19() {
+            sender
+                .send_pool_update(
+                    &mut david,
+                    &david_stake_pool,
+                    &david_and_clarice_stake_pool,
+                    passive,
+                )
+                .expect("send update stake pool failed");
+        }
+    }
 
     sender
         .send_pool_retire(&mut david, &david_stake_pool, passive)
