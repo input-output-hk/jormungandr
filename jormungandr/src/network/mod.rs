@@ -59,6 +59,9 @@ mod concurrency_limits {
     pub const SERVER_REQUESTS: usize = 256;
 }
 
+// TCP level keepalive duration for connections
+const TCP_KEEPALIVE: Duration = Duration::from_secs(60);
+
 use self::client::ConnectError;
 use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};

@@ -1,4 +1,6 @@
-use super::super::{concurrency_limits, service::NodeService, Channels, GlobalStateR, ListenError};
+use super::super::{
+    concurrency_limits, service::NodeService, Channels, GlobalStateR, ListenError, TCP_KEEPALIVE,
+};
 use crate::settings::start::network::Listen;
 use chain_network::grpc;
 
@@ -25,6 +27,7 @@ pub async fn run_listen_socket(
 
     Server::builder()
         .concurrency_limit_per_connection(concurrency_limits::SERVER_REQUESTS)
+        .tcp_keepalive(Some(TCP_KEEPALIVE))
         .add_service(service)
         .serve(sockaddr)
         .await
