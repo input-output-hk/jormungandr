@@ -54,6 +54,19 @@ mod buffer_sizes {
 mod concurrency_limits {
     // How many concurrent requests are permitted per client connection
     pub const CLIENT_REQUESTS: usize = 256;
+
+    // How many concurrent requests are permitted per server connection
+    pub const SERVER_REQUESTS: usize = 256;
+}
+
+mod keepalive_durations {
+    use std::time::Duration;
+
+    // TCP level keepalive duration for client and server connections
+    pub const TCP: Duration = Duration::from_secs(60);
+
+    // HTTP/2 keepalive for client connections
+    pub const HTTP2: Duration = Duration::from_secs(120);
 }
 
 use self::client::ConnectError;

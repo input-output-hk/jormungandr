@@ -1,7 +1,7 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
-    network::concurrency_limits,
     network::convert::Decode,
+    network::{concurrency_limits, keepalive_durations},
     settings::start::network::{Peer, Protocol},
 };
 use chain_network::data as net_data;
@@ -49,6 +49,8 @@ async fn connect_internal(peer: &Peer, builder: Builder) -> Result<Client, Conne
     assert!(peer.protocol == Protocol::Grpc);
     let endpoint = destination_endpoint(peer.connection)
         .concurrency_limit(concurrency_limits::CLIENT_REQUESTS)
+        .tcp_keepalive(Some(keepalive_durations::TCP))
+        .http2_keep_alive_interval(keepalive_durations::HTTP2)
         .timeout(peer.timeout);
     builder.connect(endpoint).await
 }
