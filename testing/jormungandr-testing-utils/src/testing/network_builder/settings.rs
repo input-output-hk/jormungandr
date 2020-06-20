@@ -13,7 +13,7 @@ use jormungandr_lib::{
     },
 };
 use rand_core::{CryptoRng, RngCore};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// contains all the data to start or interact with a node
 #[derive(Debug, Clone)]
@@ -214,13 +214,28 @@ impl Settings {
     }
 
     fn populate_trusted_peers(&mut self) {
+        //generate public id for all nodes treated as trusted peers
+        let mut trusted_peers_aliases = HashSet::new();
+
+        //gather aliases which are trusted peers
+        for (_alias, node) in self.nodes.iter() {
+            for trusted_peer in node.node_topology.trusted_peers() {
+                trusted_peers_aliases.insert(trusted_peer.clone());
+            }
+        }
+
+        //generate public id for trusted peers
+        for alias in trusted_peers_aliases {
+            self.nodes.get_mut(&alias).unwrap().config.p2p.public_id =
+                Some(poldercast::Id::generate(rand::thread_rng()));
+        }
+
         let nodes = self.nodes.clone();
         for (_alias, node) in self.nodes.iter_mut() {
             let mut trusted_peers = Vec::new();
 
             for trusted_peer in node.node_topology.trusted_peers() {
                 let trusted_peer = nodes.get(trusted_peer).unwrap();
-
                 trusted_peers.push(trusted_peer.config.p2p.make_trusted_peer_setting());
             }
 
