@@ -12,7 +12,7 @@ pub enum LegacyConfigConverterError {
     UnsupportedVersion(Version),
 }
 
-pub fn version_0_8_19() -> Version {
+pub const fn version_0_8_19() -> Version {
     Version::new(0, 8, 19)
 }
 
@@ -95,9 +95,19 @@ impl LegacyNodeConfigConverter {
             .p2p
             .trusted_peers
             .iter()
-            .map(|peer| TrustedPeer {
-                id: Some(Self::generate_legacy_poldercast_id(&mut rng)),
-                address: peer.address.clone(),
+            .map(|peer| {
+                let id = {
+                    if let Some(id) = peer.id {
+                        id.to_string()
+                    } else {
+                        Self::generate_legacy_poldercast_id(&mut rng)
+                    }
+                };
+
+                TrustedPeer {
+                    id: Some(id),
+                    address: peer.address.clone(),
+                }
             })
             .collect();
 
@@ -117,6 +127,7 @@ impl LegacyNodeConfigConverter {
                 allow_private_addresses: source.p2p.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: None,
+                public_id: None,
             },
             mempool: source.mempool.clone(),
             explorer: source.explorer.clone(),
