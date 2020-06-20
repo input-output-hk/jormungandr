@@ -59,8 +59,15 @@ mod concurrency_limits {
     pub const SERVER_REQUESTS: usize = 256;
 }
 
-// TCP level keepalive duration for connections
-const TCP_KEEPALIVE: Duration = Duration::from_secs(60);
+mod keepalive_durations {
+    use std::time::Duration;
+
+    // TCP level keepalive duration for client and server connections
+    pub const TCP: Duration = Duration::from_secs(60);
+
+    // HTTP/2 keepalive for client connections
+    pub const HTTP2: Duration = Duration::from_secs(120);
+}
 
 use self::client::ConnectError;
 use self::p2p::{comm::Peers, P2pTopology};
