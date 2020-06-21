@@ -831,6 +831,10 @@ pub fn new_epoch_leadership_from(
         //       for the blockchain
         use chain_impl_mockchain::chaintypes::ConsensusVersion;
 
+        let ledger = parent_ledger_state
+            .apply_protocol_changes()
+            .expect("protocol update should not fail");
+
         // 1. distribute the rewards (if any) This will give us the transition state
         let (transition_state, epoch_rewards_info) =
             if let Some(distribution) = parent.epoch_leadership_schedule().stake_distribution() {
@@ -840,7 +844,7 @@ pub fn new_epoch_leadership_from(
                     RewardsInfoParameters::default()
                 };
 
-                let (ledger, rewards_info) = parent_ledger_state
+                let (ledger, rewards_info) = ledger
                     .distribute_rewards(
                         distribution,
                         &parent.epoch_ledger_parameters(),
@@ -852,7 +856,7 @@ pub fn new_epoch_leadership_from(
                 }
                 (Arc::new(ledger), Some(Arc::new(rewards_info)))
             } else {
-                (parent_ledger_state.clone(), parent_epoch_rewards_info)
+                (Arc::new(ledger), parent_epoch_rewards_info)
             };
 
         // 2. now that the rewards have been distributed, prepare the schedule
