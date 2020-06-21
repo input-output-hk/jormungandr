@@ -629,10 +629,10 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         &mut context,
         topology [
             LEADER_4,
-            LEADER_1 -> LEADER_4 -> LEADER_5,
-            LEADER_2 -> LEADER_1 -> LEADER_3,
-            LEADER_3 -> LEADER_1 -> LEADER_4,
-            LEADER_5 -> LEADER_3 -> LEADER_1,
+            LEADER_1 -> LEADER_4,
+            LEADER_2 -> LEADER_1 -> LEADER_4,
+            LEADER_3 -> LEADER_1 -> LEADER_2,
+            LEADER_5 -> LEADER_2 -> LEADER_1,
         ]
         blockchain {
             consensus = GenesisPraos,
@@ -707,6 +707,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
 
     leader5 =
         controller.restart_node(leader5, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+
     controller.fragment_sender().send_transactions_round_trip(
         10,
         &mut wallet1,
