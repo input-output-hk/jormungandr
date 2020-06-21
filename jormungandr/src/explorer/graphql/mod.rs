@@ -1006,7 +1006,16 @@ impl VotePlanStatus {
                             })
                         }
                     }),
-                    votes: Vec::new(),
+                    votes: proposal
+                        .votes
+                        .iter()
+                        .map(|(key, value)| VoteStatus {
+                            address: key.into(),
+                            payload: VotePayloadStatus::Public(VotePayloadPublicStatus {
+                                choice: value.as_ref().as_byte().into(),
+                            }),
+                        })
+                        .collect(),
                 })
                 .collect(),
         }
