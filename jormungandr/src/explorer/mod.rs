@@ -647,9 +647,7 @@ fn apply_block_to_vote_plans(
                             };
                             Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
                         })
-                        .unwrap();
-
-                    vote_plans
+                        .unwrap()
                 }
                 Certificate::VoteTally(vote_tally) => {
                     use chain_impl_mockchain::vote::PayloadType;
@@ -688,16 +686,13 @@ fn apply_block_to_vote_plans(
                                     proposal
                                 })
                                 .collect();
-                            // TODO do proper vote tally
                             let vote_plan = ExplorerVotePlan {
                                 proposals,
                                 ..(**vote_plan).clone()
                             };
                             Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
                         })
-                        .unwrap();
-
-                    vote_plans
+                        .unwrap()
                 }
                 _ => vote_plans,
             }

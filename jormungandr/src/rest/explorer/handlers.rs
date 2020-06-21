@@ -38,11 +38,7 @@ pub async fn graphql(data: GraphQLRequest, context: ContextLock) -> Result<impl 
     // Run the query in a threadpool, as Juniper is synchronous
     spawn_blocking(move || {
         let response = data.execute(&explorer.schema, &explorer.context());
-        if response.is_ok() {
-            Ok(warp::reply::json(&response))
-        } else {
-            Err(warp::reject::custom(Error::ProcessingError))
-        }
+        Ok(warp::reply::json(&response))
     })
     .await
     .map_err(Error::BlockingError)
