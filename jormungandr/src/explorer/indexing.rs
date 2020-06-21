@@ -237,6 +237,17 @@ impl ExplorerBlock {
                             &current_block_txs,
                         ))
                     }
+                    Fragment::VoteTally(tx) => {
+                        let tx = tx.as_slice();
+                        Some(ExplorerTransaction::from(
+                            &context,
+                            &fragment_id,
+                            &tx,
+                            Some(Certificate::VoteTally(tx.payload().into_payload())),
+                            offset,
+                            &current_block_txs,
+                        ))
+                    }
                     Fragment::OldUtxoDeclaration(decl) => {
                         let outputs = decl
                             .addrs
