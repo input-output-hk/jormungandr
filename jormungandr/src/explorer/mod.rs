@@ -6,8 +6,9 @@ mod persistent_sequence;
 use self::error::{Error, ErrorKind, Result};
 use self::graphql::Context;
 use self::indexing::{
-    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock, StakePool,
-    StakePoolBlocks, StakePoolData, Transactions,
+    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
+    ExplorerVotePlan, ExplorerVoteProposal, ExplorerVoteTally, StakePool, StakePoolBlocks,
+    StakePoolData, Transactions, VotePlans,
 };
 use self::persistent_sequence::PersistentSequence;
 
@@ -15,13 +16,13 @@ use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
 };
-use crate::blockchain::{Blockchain, Multiverse, MAIN_BRANCH_TAG};
+use crate::blockchain::{self, Blockchain, Multiverse, MAIN_BRANCH_TAG};
 use crate::intercom::ExplorerMsg;
 use crate::utils::async_msg::MessageQueue;
 use crate::utils::task::TokioServiceInfo;
 use chain_addr::Discrimination;
 use chain_core::property::Block as _;
-use chain_impl_mockchain::certificate::{Certificate, PoolId};
+use chain_impl_mockchain::certificate::{Certificate, PoolId, VotePlanId};
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse;
 use futures::prelude::*;
@@ -55,6 +56,7 @@ pub struct ExplorerDB {
     longest_chain_tip: Tip,
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
+    blockchain_tip: blockchain::Tip,
 }
 
 #[derive(Clone)]
@@ -79,6 +81,7 @@ struct State {
     chain_lengths: ChainLengths,
     stake_pool_data: StakePool,
     stake_pool_blocks: StakePoolBlocks,
+    vote_plans: VotePlans,
 }
 
 #[derive(Clone)]
@@ -139,7 +142,11 @@ impl ExplorerDB {
     /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
-    pub async fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
+    pub async fn bootstrap(
+        block0: Block,
+        blockchain: &Blockchain,
+        blockchain_tip: blockchain::Tip,
+    ) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -168,6 +175,7 @@ impl ExplorerDB {
         let addresses = apply_block_to_addresses(Addresses::new(), &block)?;
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
+        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &blockchain_tip, &block);
 
         let initial_state = State {
             blocks,
@@ -178,6 +186,7 @@ impl ExplorerDB {
             stake_pool_data,
             stake_pool_blocks,
             parent_ref: None,
+            vote_plans,
         };
 
         let multiverse = Multiverse::<State>::new();
@@ -194,6 +203,7 @@ impl ExplorerDB {
             }),
             blockchain_config,
             blockchain: blockchain.clone(),
+            blockchain_tip,
         };
 
         let maybe_head = blockchain
@@ -243,6 +253,7 @@ impl ExplorerDB {
             chain_lengths,
             stake_pool_data,
             stake_pool_blocks,
+            vote_plans,
         } = previous_state.state().clone();
 
         let explorer_block = ExplorerBlock::resolve_from(
@@ -269,6 +280,11 @@ impl ExplorerDB {
                     chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                     stake_pool_data,
                     stake_pool_blocks,
+                    vote_plans: apply_block_to_vote_plans(
+                        vote_plans,
+                        &self.blockchain_tip,
+                        &explorer_block,
+                    ),
                 },
             )
             .await;
@@ -393,6 +409,27 @@ impl ExplorerDB {
         self.with_latest_state(move |state| {
             state
                 .stake_pool_data
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect()
+        })
+        .await
+    }
+
+    pub async fn get_vote_plan_by_id(&self, vote_plan_id: &VotePlanId) -> Option<ExplorerVotePlan> {
+        self.with_latest_state(move |state| {
+            state
+                .vote_plans
+                .lookup(vote_plan_id)
+                .map(|vote_plan| vote_plan.as_ref().clone())
+        })
+        .await
+    }
+
+    pub async fn get_vote_plans(&self) -> Vec<(VotePlanId, Arc<ExplorerVotePlan>)> {
+        self.with_latest_state(move |state| {
+            state
+                .vote_plans
                 .iter()
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect()
@@ -558,6 +595,116 @@ fn apply_block_to_stake_pools(
     }
 
     (data, blocks)
+}
+
+fn apply_block_to_vote_plans(
+    mut vote_plans: VotePlans,
+    blockchain_tip: &blockchain::Tip,
+    block: &ExplorerBlock,
+) -> VotePlans {
+    for tx in block.transactions.values() {
+        if let Some(cert) = &tx.certificate {
+            vote_plans = match cert {
+                Certificate::VotePlan(vote_plan) => vote_plans
+                    .insert(
+                        vote_plan.to_id(),
+                        Arc::new(ExplorerVotePlan {
+                            id: vote_plan.to_id(),
+                            vote_start: vote_plan.vote_start(),
+                            vote_end: vote_plan.vote_end(),
+                            committee_end: vote_plan.committee_end(),
+                            payload_type: vote_plan.payload_type(),
+                            proposals: vote_plan
+                                .proposals()
+                                .iter()
+                                .map(|proposal| ExplorerVoteProposal {
+                                    proposal_id: proposal.external_id().clone(),
+                                    options: proposal.options().clone(),
+                                    tally: None,
+                                    votes: Default::default(),
+                                })
+                                .collect(),
+                        }),
+                    )
+                    .unwrap(),
+                Certificate::VoteCast(vote_cast) => {
+                    use chain_impl_mockchain::vote::Payload;
+                    let voter = tx.inputs[0].address.clone();
+                    let choice = match vote_cast.payload() {
+                        Payload::Public { choice } => choice,
+                    };
+                    vote_plans
+                        .update(vote_cast.vote_plan(), |vote_plan| {
+                            let mut proposals = vote_plan.proposals.clone();
+                            proposals[vote_cast.proposal_index() as usize].votes = proposals
+                                [vote_cast.proposal_index() as usize]
+                                .votes
+                                .insert(voter, Arc::new(choice.clone()))
+                                .unwrap();
+                            let vote_plan = ExplorerVotePlan {
+                                proposals,
+                                ..(**vote_plan).clone()
+                            };
+                            Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                        })
+                        .unwrap();
+
+                    vote_plans
+                }
+                Certificate::VoteTally(vote_tally) => {
+                    use chain_impl_mockchain::vote::PayloadType;
+                    vote_plans
+                        .update(vote_tally.id(), |vote_plan| {
+                            let proposals_from_state =
+                                futures::executor::block_on(blockchain_tip.get_ref())
+                                    .active_vote_plans()
+                                    .into_iter()
+                                    .find_map(|vps| {
+                                        if vps.id != vote_plan.id {
+                                            return None;
+                                        }
+                                        Some(vps.proposals)
+                                    })
+                                    .unwrap();
+                            let proposals = vote_plan
+                                .proposals
+                                .clone()
+                                .into_iter()
+                                .enumerate()
+                                .map(|(index, mut proposal)| {
+                                    proposal.tally = Some(match vote_tally.tally_type() {
+                                        PayloadType::Public => ExplorerVoteTally::Public {
+                                            results: proposals_from_state[index]
+                                                .tally
+                                                .clone()
+                                                .unwrap()
+                                                .public()
+                                                .unwrap()
+                                                .results()
+                                                .to_vec(),
+                                            options: proposal.options.clone(),
+                                        },
+                                    });
+                                    proposal
+                                })
+                                .collect();
+                            // TODO do proper vote tally
+                            let vote_plan = ExplorerVotePlan {
+                                proposals,
+                                ..(**vote_plan).clone()
+                            };
+                            Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                        })
+                        .unwrap();
+
+                    vote_plans
+                }
+                _ => vote_plans,
+            }
+        }
+    }
+
+    vote_plans
 }
 
 impl BlockchainConfig {
