@@ -27,6 +27,7 @@ use rand_core::{CryptoRng, RngCore};
 use thiserror::Error;
 
 pub use chain_impl_mockchain::{
+    account::SpendingCounter,
     block::Block,
     certificate::{PoolId, SignedCertificate},
     chaintypes::ConsensusVersion,
@@ -34,7 +35,7 @@ pub use chain_impl_mockchain::{
     fragment::Fragment,
     header::HeaderId,
     milli::Milli,
-    transaction::{TransactionBindingAuthData, UnspecifiedAccountIdentifier},
+    transaction::{Input, TransactionBindingAuthData, UnspecifiedAccountIdentifier},
 };
 
 #[derive(Error, Debug)]
@@ -143,6 +144,14 @@ impl Wallet {
                 Identifier::from(delegation.last_delegation_identifier().as_ref().clone())
             }
             _ => unimplemented!(),
+        }
+    }
+
+    pub fn add_input_with_value(&self, value: Value) -> Input {
+        match self {
+            Wallet::Account(account) => account.add_input_with_value(value),
+            Wallet::UTxO(_utxo) => unimplemented!(),
+            Wallet::Delegation(_delegation) => unimplemented!(),
         }
     }
 

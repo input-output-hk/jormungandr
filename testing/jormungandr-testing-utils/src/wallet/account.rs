@@ -13,7 +13,7 @@ use jormungandr_lib::{
         account::{Identifier, SigningKey},
         hash::Hash,
     },
-    interfaces::Address,
+    interfaces::{Address, Value},
 };
 
 use rand_core::{CryptoRng, RngCore};
@@ -96,6 +96,10 @@ impl Wallet {
             self.internal_counter(),
             |d| self.signing_key().as_ref().sign(d),
         )
+    }
+
+    pub fn add_input_with_value(&self, value: Value) -> Input {
+        Input::from_account_single(self.identifier().to_inner(), value.into())
     }
 
     pub fn add_input<'a, Extra: Payload>(
