@@ -405,28 +405,21 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let config = &state.config;
     let topology = &state.topology;
     let logger = state.logger().new(o!(log::KEY_SUB_TASK => "start_gossip"));
-    let address = config.profile.address().unwrap();
     // inject the trusted peers as initial gossips, this will make the node
     // gossip with them at least at the beginning
-    topology
-        .accept_gossips(
-            address.clone(),
-            config
-                .trusted_peers
-                .iter()
-                .map(|tp| {
-                    let mut builder = poldercast::NodeProfileBuilder::new();
-                    builder.address(tp.address.clone());
-                    if let Some(id) = tp.legacy_node_id {
-                        builder.id(id);
-                    }
-                    builder.build()
-                })
-                .map(p2p::Gossip::from)
-                .collect::<Vec<p2p::Gossip>>()
-                .into(),
-        )
-        .await;
+
+    for tp in config.trusted_peers.iter() {
+        topology
+            .accept_gossips(tp.address.clone(), {
+                let mut builder = poldercast::NodeProfileBuilder::new();
+                builder.address(tp.address.clone());
+                if let Some(id) = tp.legacy_node_id {
+                    builder.id(id);
+                }
+                p2p::Gossips::from(vec![p2p::Gossip::from(builder.build())])
+            })
+            .await;
+    }
     let view = topology.view(poldercast::Selection::Any).await;
     let peers: Vec<p2p::Address> = view.peers;
     debug!(logger, "sending gossip to {} peers", peers.len());
