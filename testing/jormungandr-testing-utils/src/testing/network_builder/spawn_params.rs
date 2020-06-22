@@ -21,7 +21,7 @@ pub struct SpawnParams {
     pub max_connections: Option<u32>,
     pub max_inbound_connections: Option<u32>,
     pub alias: String,
-    pub node_id: Option<poldercast::Address>,
+    pub public_address: Option<poldercast::Address>,
     pub version: Option<Version>,
     pub bootstrap_from_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,
@@ -38,7 +38,7 @@ impl SpawnParams {
             alias: alias.to_owned(),
             leadership_mode: LeadershipMode::Leader,
             persistence_mode: PersistenceMode::Persistent,
-            node_id: None,
+            public_address: None,
             trusted_peers: None,
             listen_address: None,
             max_connections: None,
@@ -80,8 +80,8 @@ impl SpawnParams {
         self
     }
 
-    pub fn node_id(&mut self, node_id: poldercast::Address) -> &mut Self {
-        self.node_id = Some(node_id);
+    pub fn public_address(&mut self, public_address: poldercast::Address) -> &mut Self {
+        self.public_address = Some(public_address);
         self
     }
 
@@ -186,8 +186,8 @@ impl SpawnParams {
             node_config.p2p.policy = Some(policy.clone());
         }
 
-        if let Some(node_id) = &self.node_id {
-            node_config.p2p.public_address = node_id.clone();
+        if let Some(public_address) = &self.public_address {
+            node_config.p2p.public_address = public_address.clone();
         }
 
         if let Some(max_inbound_connections) = &self.max_inbound_connections {

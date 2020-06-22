@@ -134,6 +134,7 @@ impl JormungandrProcess {
     pub fn to_trusted_peer(&self) -> TrustedPeer {
         TrustedPeer {
             address: self.p2p_public_address.clone(),
+            id: None,
         }
     }
 

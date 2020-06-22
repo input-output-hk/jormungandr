@@ -220,6 +220,11 @@ impl ConfigurationBuilder {
     pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
         let mut node_config = self.node_config_builder.build();
 
+        //remove id from trusted peers
+        for trusted_peer in node_config.p2p.trusted_peers.iter_mut() {
+            trusted_peer.id = None;
+        }
+
         let default_log_file = || temp_dir.child("node.log").path().to_path_buf();
 
         let log_file_path = match (&node_config.log, self.configure_default_log) {

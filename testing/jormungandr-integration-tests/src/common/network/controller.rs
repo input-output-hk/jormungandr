@@ -125,6 +125,10 @@ impl Controller {
         let mut config = node_setting.config().clone();
         spawn_params.override_settings(&mut config);
 
+        for peer in config.p2p.trusted_peers.iter_mut() {
+            peer.id = None;
+        }
+
         let log_file_path = dir.child("node.log").path().to_path_buf();
         config.log = Some(Log(vec![LogEntry {
             format: "json".into(),
@@ -136,7 +140,6 @@ impl Controller {
             let path_to_storage = dir.child("storage").path().into();
             config.storage = Some(path_to_storage);
         }
-
         dir.create_dir_all()?;
 
         let config_file = dir.child("node_config.yaml");
