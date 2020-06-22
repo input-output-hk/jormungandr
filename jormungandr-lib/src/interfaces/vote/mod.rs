@@ -5,7 +5,7 @@ use crate::{
 use chain_impl_mockchain::{
     certificate::{ExternalProposalId, Proposal, Proposals, VoteAction, VotePlan},
     header::BlockDate,
-    ledger::governance::TreasuryGovernanceAction,
+    ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
     value::Value,
     vote::{self, Options, PayloadType},
 };
@@ -57,6 +57,19 @@ enum VoteActionDef {
     #[serde(with = "TreasuryGovernanceActionDef")]
     Treasury {
         action: TreasuryGovernanceAction,
+    },
+    #[serde(with = "ParametersGovernanceActionDef")]
+    Parameters {
+        action: ParametersGovernanceAction,
+    },
+}
+
+#[derive(Deserialize)]
+#[serde(remote = "ParametersGovernanceAction", rename_all = "snake_case")]
+enum ParametersGovernanceActionDef {
+    RewardAdd {
+        #[serde(with = "ValueDef")]
+        value: Value,
     },
 }
 
