@@ -1,4 +1,5 @@
 pub use self::{
+    adversary::{AdversaryFragmentSender, AdversaryFragmentSenderError},
     export::{FragmentExporter, FragmentExporterError},
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
@@ -23,6 +24,7 @@ use jormungandr_lib::{
 };
 use thiserror::Error;
 
+mod adversary;
 mod export;
 mod initial_certificates;
 mod node;
