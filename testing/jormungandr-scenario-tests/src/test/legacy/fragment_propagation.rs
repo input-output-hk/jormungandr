@@ -46,14 +46,14 @@ pub fn legacy_current_node_fragment_propagation(
     controller.monitor_nodes();
 
     let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
     let passive = controller.spawn_legacy_node(
         controller
             .new_spawn_params(PASSIVE)
             .leadership_mode(LeadershipMode::Passive)
-            .persistence_mode(PersistenceMode::InMemory)
+            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app),
         &version,
     )?;
@@ -102,14 +102,17 @@ pub fn current_node_legacy_fragment_propagation(
         controller
             .new_spawn_params(LEADER)
             .leadership_mode(LeadershipMode::Leader)
-            .persistence_mode(PersistenceMode::InMemory)
+            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app),
         &version,
     )?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let passive = controller.spawn_node(
+        PASSIVE,
+        LeadershipMode::Passive,
+        PersistenceMode::Persistent,
+    )?;
     passive.wait_for_bootstrap()?;
 
     send_all_fragment_types(&mut controller, &passive, Some(version));
@@ -150,11 +153,14 @@ pub fn current_node_fragment_propagation(
     controller.monitor_nodes();
 
     let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let passive = controller.spawn_node(
+        PASSIVE,
+        LeadershipMode::Passive,
+        PersistenceMode::Persistent,
+    )?;
     passive.wait_for_bootstrap()?;
 
     send_all_fragment_types(&mut controller, &passive, None);

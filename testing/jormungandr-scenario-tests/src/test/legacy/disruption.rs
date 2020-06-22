@@ -78,8 +78,11 @@ fn test_legacy_release(
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
     leader3.wait_for_bootstrap()?;
     let leader1 = controller.spawn_legacy_node(
         controller
@@ -89,12 +92,18 @@ fn test_legacy_release(
         &version,
     )?;
     leader1.wait_for_bootstrap()?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     leader2.wait_for_bootstrap()?;
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
     leader4.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;

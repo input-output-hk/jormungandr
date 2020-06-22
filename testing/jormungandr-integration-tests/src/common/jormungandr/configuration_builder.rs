@@ -122,12 +122,6 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_storage(&mut self, temp_dir: &ChildPath) -> &mut Self {
-        self.node_config_builder
-            .with_storage(temp_dir.path().into());
-        self
-    }
-
     pub fn with_block0_consensus(&mut self, consensus: ConsensusVersion) -> &mut Self {
         self.block0_consensus = consensus;
         self
@@ -217,8 +211,11 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
-        let mut node_config = self.node_config_builder.build();
+    pub fn build(&mut self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
+        let mut node_config = self
+            .node_config_builder
+            .with_storage(temp_dir.child("storage").path().into())
+            .build();
 
         //remove id from trusted peers
         for trusted_peer in node_config.p2p.trusted_peers.iter_mut() {

@@ -85,7 +85,7 @@ fn spawn_node(
         if storage {
             PersistenceMode::Persistent
         } else {
-            PersistenceMode::InMemory
+            PersistenceMode::Persistent
         }
     };
 

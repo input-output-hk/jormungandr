@@ -1,20 +1,21 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
     intercom::{self, ReplySendError, ReplyStreamHandle, ReplyStreamSink},
-    start_up::{NodeStorage, NodeStorageConnection},
+    start_up::NodeStorage,
 };
+use chain_core::property::{Deserialize, Serialize};
 use chain_storage::{for_path_to_nth_ancestor, BlockInfo, Error as StorageError};
 use futures::{prelude::*, ready, stream::FusedStream};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
-use r2d2::{ManageConnection, Pool};
 use slog::Logger;
 use thiserror::Error;
 use tokio::task;
 
-use std::convert::identity;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
+use std::{
+    convert::identity,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 const BLOCK_STREAM_BUFFER_SIZE: usize = 32;
 
@@ -33,8 +34,6 @@ pub enum Error {
     BlockAlreadyPresent,
     #[error("the parent block is missing for the required write")]
     MissingParent,
-    #[error("failed to connect to the database")]
-    ConnectionFailed(#[source] r2d2::Error),
     #[error("cannot iterate between the 2 given blocks")]
     CannotIterate,
 }
@@ -50,24 +49,19 @@ impl From<StorageError> for Error {
     }
 }
 
-async fn run_blocking_with_connection<F, T, E>(pool: Pool<ConnectionManager>, f: F) -> Result<T, E>
+async fn run_blocking_with_connection<F, T, E>(mut storage: NodeStorage, f: F) -> Result<T, E>
 where
-    F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
+    F: FnOnce(&mut NodeStorage) -> Result<T, E>,
     F: Send + 'static,
     T: Send + 'static,
     E: From<Error> + Send + 'static,
 {
-    task::spawn_blocking(move || {
-        let mut connection = pool.get().map_err(Error::ConnectionFailed)?;
-        f(&mut connection)
-    })
-    .await
-    .unwrap()
+    task::spawn_blocking(move || f(&mut storage)).await.unwrap()
 }
 
 struct BlockSinkPump<T, F> {
     iter: Box<BlockIterState<T, F>>,
-    pool: Pool<ConnectionManager>,
+    storage: NodeStorage,
     sink: ReplyStreamSink<T>,
 }
 
@@ -79,12 +73,12 @@ where
 {
     fn start(
         iter: BlockIterState<T, F>,
-        pool: Pool<ConnectionManager>,
+        storage: NodeStorage,
         handle: ReplyStreamHandle<T>,
     ) -> Self {
         BlockSinkPump {
             iter: Box::new(iter),
-            pool,
+            storage,
             sink: handle.start_sending(),
         }
     }
@@ -92,7 +86,7 @@ where
     async fn pump(mut self) -> Result<Option<Self>, ReplySendError> {
         let mut sink = self.sink.clone();
         let iter = self.iter;
-        match run_blocking_with_connection(self.pool.clone(), move |connection| {
+        match run_blocking_with_connection(self.storage.clone(), move |connection| {
             iter.fill_sink(connection, &mut sink)
                 .map_err(StreamingError::Sending)
         })
@@ -118,51 +112,21 @@ where
 }
 
 #[derive(Clone)]
-struct ConnectionManager {
-    inner: Arc<NodeStorage>,
-}
-
-impl ConnectionManager {
-    pub fn new(storage: NodeStorage) -> Self {
-        Self {
-            inner: Arc::new(storage),
-        }
-    }
-}
-
-impl ManageConnection for ConnectionManager {
-    type Connection = NodeStorageConnection;
-    type Error = StorageError;
-
-    fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        self.inner.connect()
-    }
-
-    fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
-        conn.ping()
-    }
-
-    fn has_broken(&self, _conn: &mut Self::Connection) -> bool {
-        false
-    }
-}
-
-#[derive(Clone)]
 pub struct Storage {
-    pool: Pool<ConnectionManager>,
+    inner: NodeStorage,
     logger: Logger,
 }
 
 pub struct Ancestor {
     pub header_hash: HeaderHash,
-    pub distance: u64,
+    pub distance: u32,
 }
 
 struct BlockIterState<T, F> {
-    to_length: u64,
-    cur_length: u64,
+    to_length: u32,
+    cur_length: u32,
     transform: F,
-    pending_infos: Vec<BlockInfo<HeaderHash>>,
+    pending_infos: Vec<BlockInfo>,
     pending_item: Option<Result<T, intercom::Error>>,
 }
 
@@ -181,56 +145,68 @@ enum StreamingError {
 
 impl Storage {
     pub fn new(storage: NodeStorage, logger: Logger) -> Self {
-        let manager = ConnectionManager::new(storage);
-        let pool = Pool::builder().build(manager).unwrap();
-
-        Storage { pool, logger }
+        Self {
+            inner: storage,
+            logger,
+        }
     }
 
     async fn run<F, T, E>(&self, f: F) -> Result<T, Error>
     where
-        F: FnOnce(&mut NodeStorageConnection) -> Result<T, E>,
+        F: FnOnce(&mut NodeStorage) -> Result<T, E>,
         F: Send + 'static,
         T: Send + 'static,
         E: Into<Error> + Send + 'static,
     {
-        run_blocking_with_connection(self.pool.clone(), |conn| f(conn).map_err(Into::into)).await
+        run_blocking_with_connection(self.inner.clone(), |conn| f(conn).map_err(Into::into)).await
     }
 
     pub async fn get_tag(&self, tag: String) -> Result<Option<HeaderHash>, Error> {
-        self.run(move |connection| connection.get_tag(&tag)).await
+        self.run(move |connection| {
+            connection.get_tag(&tag).map(|maybe_id| {
+                maybe_id.map(|id_bin| HeaderHash::deserialize(&id_bin[..]).unwrap())
+            })
+        })
+        .await
     }
 
     pub async fn put_tag(&self, tag: String, header_hash: HeaderHash) -> Result<(), Error> {
-        self.run(move |connection| connection.put_tag(&tag, &header_hash))
-            .await
+        self.run(move |connection| {
+            connection.put_tag(&tag, &header_hash.serialize_as_vec().unwrap())
+        })
+        .await
     }
 
     pub async fn get(&self, header_hash: HeaderHash) -> Result<Option<Block>, Error> {
-        self.run(move |connection| match connection.get_block(&header_hash) {
-            Err(StorageError::BlockNotFound) => Ok(None),
-            Ok((block, _block_info)) => Ok(Some(block)),
-            Err(e) => Err(e),
+        self.run(move |connection| {
+            match connection.get_block(&header_hash.serialize_as_vec().unwrap()) {
+                Err(StorageError::BlockNotFound) => Ok(None),
+                Ok(block) => Ok(Some(Block::deserialize(&block[..]).unwrap())),
+                Err(e) => Err(e),
+            }
         })
         .await
     }
 
     pub async fn block_exists(&self, header_hash: HeaderHash) -> Result<bool, Error> {
-        self.run(
-            move |connection| match connection.block_exists(&header_hash) {
+        self.run(move |connection| {
+            match connection.block_exists(&header_hash.serialize_as_vec().unwrap()) {
                 Err(StorageError::BlockNotFound) => Ok(false),
                 Ok(r) => Ok(r),
                 Err(e) => Err(e),
-            },
-        )
+            }
+        })
         .await
     }
 
-    pub async fn get_blocks_by_chain_length(&self, chain_length: u64) -> Result<Vec<Block>, Error> {
+    pub async fn get_blocks_by_chain_length(&self, chain_length: u32) -> Result<Vec<Block>, Error> {
         self.run(
             move |connection| match connection.get_blocks_by_chain_length(chain_length) {
                 Err(StorageError::BlockNotFound) => Ok(Vec::new()),
-                Ok(r) => Ok(r.into_iter().map(|(block, _)| block).collect()),
+                Ok(r) => Ok(r
+                    .into_iter()
+                    .map(|block_bin| Block::deserialize(&block_bin[..]).unwrap())
+                    .collect()),
                 Err(e) => Err(e),
             },
         )
@@ -238,10 +214,17 @@ impl Storage {
     }
 
     pub async fn put_block(&self, block: Block) -> Result<(), Error> {
-        self.run(move |connection| match connection.put_block(&block) {
-            Err(StorageError::BlockNotFound) => unreachable!(),
-            Err(e) => Err(e),
-            Ok(()) => Ok(()),
+        let info = BlockInfo::new(
+            block.header.id().serialize_as_vec().unwrap(),
+            block.header.block_parent_hash().serialize_as_vec().unwrap(),
+            block.header.chain_length().into(),
+        );
+        self.run(move |connection| {
+            match connection.put_block(&block.serialize_as_vec().unwrap(), info) {
+                Err(StorageError::BlockNotFound) => unreachable!(),
+                Err(e) => Err(e),
+                Ok(()) => Ok(()),
+            }
         })
         .await
     }
@@ -256,6 +239,8 @@ impl Storage {
         from: HeaderHash,
         to: HeaderHash,
     ) -> Result<impl Stream<Item = Result<Block, intercom::Error>>, Error> {
+        let from = from.serialize_as_vec().unwrap();
+        let to = to.serialize_as_vec().unwrap();
         let (rh, rf) = intercom::stream_reply(BLOCK_STREAM_BUFFER_SIZE, self.logger.clone());
         let iter = self
             .run(
@@ -268,7 +253,7 @@ impl Storage {
                 },
             )
             .await?;
-        let pump = BlockSinkPump::start(iter, self.pool.clone(), rh);
+        let pump = BlockSinkPump::start(iter, self.inner.clone(), rh);
         let stream = rf.await.expect("unexpected channel error");
         Ok(PumpedStream::new(
             stream,
@@ -290,7 +275,7 @@ impl Storage {
     pub async fn send_branch(
         &self,
         to: HeaderHash,
-        depth: Option<u64>,
+        depth: Option<u32>,
         handle: ReplyStreamHandle<Block>,
     ) -> Result<(), ReplySendError> {
         self.send_branch_with(to, depth, handle, identity).await
@@ -301,7 +286,7 @@ impl Storage {
     pub async fn send_branch_with<T, F>(
         &self,
         to: HeaderHash,
-        depth: Option<u64>,
+        depth: Option<u32>,
         handle: ReplyStreamHandle<T>,
         transform: F,
     ) -> Result<(), ReplySendError>
@@ -312,16 +297,18 @@ impl Storage {
     {
         let res = self
             .run(move |connection| {
-                connection.get_block_info(&to).map(|to_info| {
-                    let depth = depth.unwrap_or(to_info.chain_length - 1);
-                    BlockIterState::new(to_info, depth, transform)
-                })
+                connection
+                    .get_block_info(&to.serialize_as_vec().unwrap())
+                    .map(|to_info| {
+                        let depth = depth.unwrap_or(to_info.chain_length());
+                        BlockIterState::new(to_info, depth, transform)
+                    })
             })
             .await;
 
         match res {
             Ok(iter) => {
-                let mut pump = BlockSinkPump::start(iter, self.pool.clone(), handle);
+                let mut pump = BlockSinkPump::start(iter, self.inner.clone(), handle);
                 while let Some(new_state) = pump.pump().await? {
                     pump = new_state;
                 }
@@ -340,11 +327,14 @@ impl Storage {
     ) -> Result<Option<Ancestor>, Error> {
         self.run(move |connection| {
             let mut ancestor = None;
-            let mut closest_found = std::u64::MAX;
+            let mut closest_found = std::u32::MAX;
             for checkpoint in checkpoints {
                 // Checkpoints sent by a peer may not
                 // be present locally, so we need to ignore certain errors
-                match connection.is_ancestor(&checkpoint, &descendant) {
+                match connection.is_ancestor(
+                    &checkpoint.serialize_as_vec().unwrap(),
+                    &descendant.serialize_as_vec().unwrap(),
+                ) {
                     Ok(None) => {}
                     Ok(Some(distance)) => {
                         if closest_found > distance {
@@ -456,10 +446,10 @@ impl<T, F> BlockIterState<T, F>
 where
     F: FnMut(Block) -> T,
 {
-    fn new(to_info: BlockInfo<HeaderHash>, distance: u64, transform: F) -> Self {
+    fn new(to_info: BlockInfo, distance: u32, transform: F) -> Self {
         BlockIterState {
-            to_length: to_info.chain_length,
-            cur_length: to_info.chain_length - distance,
+            to_length: to_info.chain_length(),
+            cur_length: to_info.chain_length() - distance,
             transform,
             pending_infos: vec![to_info],
             pending_item: None,
@@ -477,7 +467,7 @@ where
     // after which iteration terminates.
     fn fill_sink(
         mut self: Box<Self>,
-        store: &mut NodeStorageConnection,
+        store: &mut NodeStorage,
         sink: &mut ReplyStreamSink<T>,
     ) -> Result<BlockIteration<T, F>, ReplySendError> {
         if let Some(item) = self.pending_item.take() {
@@ -508,33 +498,36 @@ where
         Ok(BlockIteration::Break)
     }
 
-    fn get_next_block(&mut self, store: &mut NodeStorageConnection) -> Result<Block, Error> {
+    fn get_next_block(&mut self, store: &mut NodeStorage) -> Result<Block, Error> {
         debug_assert!(self.has_next());
         self.cur_length += 1;
 
         let block_info = self.pending_infos.pop().unwrap();
-        let cur_length = self.cur_length;
 
-        if block_info.chain_length == cur_length {
+        if block_info.chain_length() == self.cur_length {
             // We've seen this block on a previous ancestor traversal.
-            let (block, _block_info) = store.get_block(&block_info.block_hash)?;
-            Ok(block)
+            let block = store.get_block(&block_info.id())?;
+            Ok(Block::deserialize(&block[..]).unwrap())
         } else {
             // We don't have this block yet, so search back from
             // the furthest block that we do have.
-            assert!(cur_length < block_info.chain_length);
-            let length = block_info.chain_length;
+            assert!(self.cur_length < block_info.chain_length());
+            let length = block_info.chain_length();
             let parent = block_info.parent_id();
             let mut pending_infos = Vec::new();
-            pending_infos.push(block_info);
-            let block_info =
-                for_path_to_nth_ancestor(store, &parent, length - cur_length - 1, |new_info| {
+            pending_infos.push(block_info.clone());
+            let block_info = for_path_to_nth_ancestor(
+                store,
+                &parent,
+                length - self.cur_length - 1,
+                |new_info| {
                     pending_infos.push(new_info.clone());
-                })?;
+                },
+            )?;
 
-            let (block, _block_info) = store.get_block(&block_info.block_hash)?;
+            let block = store.get_block(&block_info.id())?;
             self.pending_infos.append(&mut pending_infos);
-            Ok(block)
+            Ok(Block::deserialize(&block[..]).unwrap())
         }
     }
 

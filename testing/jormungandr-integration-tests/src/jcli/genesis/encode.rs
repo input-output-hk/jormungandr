@@ -24,10 +24,10 @@ struct Fixture {
 
 impl Fixture {
     fn new() -> Self {
-        Self::with_config(&ConfigurationBuilder::new())
+        Self::with_config(&mut ConfigurationBuilder::new())
     }
 
-    fn with_config(builder: &ConfigurationBuilder) -> Self {
+    fn with_config(builder: &mut ConfigurationBuilder) -> Self {
         let temp_dir = TempDir::new().unwrap();
         let params = builder.build(&temp_dir);
         Fixture { temp_dir, params }

@@ -118,7 +118,6 @@ impl From<StorageError> for Error {
             StorageError::BackendError(_) => net_error::Code::Internal,
             StorageError::BlockAlreadyPresent => net_error::Code::Internal,
             StorageError::MissingParent => net_error::Code::InvalidArgument,
-            StorageError::ConnectionFailed(_) => net_error::Code::Internal,
         };
         Error {
             code,

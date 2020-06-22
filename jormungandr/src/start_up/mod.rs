@@ -7,11 +7,11 @@ use crate::{
     log, network,
     settings::start::Settings,
 };
-use chain_storage::{BlockStore, BlockStoreBuilder, BlockStoreConnection};
+use chain_core::property::{self, BlockId};
+use chain_storage::BlockStore;
 use slog::Logger;
 
-pub type NodeStorage = BlockStore<Block>;
-pub type NodeStorageConnection = BlockStoreConnection<Block>;
+pub type NodeStorage = BlockStore;
 
 const BLOCKSTORE_BUSY_TIMEOUT: u64 = 1000;
 
@@ -19,28 +19,22 @@ const BLOCKSTORE_BUSY_TIMEOUT: u64 = 1000;
 ///
 pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, Error> {
     let raw_block_store = match &setting.storage {
-        None => {
-            info!(logger, "storing blockchain in memory");
-            BlockStoreBuilder::memory()
-                .busy_timeout(BLOCKSTORE_BUSY_TIMEOUT)
-                .build()
-        }
+        None => unimplemented!("in-memory storage is not available"),
         Some(dir) => {
             std::fs::create_dir_all(dir).map_err(|err| Error::IO {
                 source: err,
                 reason: ErrorKind::SQLite,
             })?;
-            let mut sqlite = dir.clone();
-            sqlite.push("blocks.sqlite");
-            info!(logger, "storing blockchain in '{:?}'", sqlite);
-            BlockStoreBuilder::file(sqlite)
-                .busy_timeout(BLOCKSTORE_BUSY_TIMEOUT)
-                .build()
+            let path = dir.clone();
+            info!(logger, "storing blockchain in '{:?}'", path);
+            let zero_id: [u8; 32] = <Block as property::Block>::Id::zero().into();
+            let zero_id = zero_id.to_vec();
+            BlockStore::new(path, zero_id.clone(), zero_id.len())
         }
     };
 
     Ok(Storage::new(
-        raw_block_store,
+        raw_block_store?,
         logger.new(o!(log::KEY_SUB_TASK => "storage")),
     ))
 }

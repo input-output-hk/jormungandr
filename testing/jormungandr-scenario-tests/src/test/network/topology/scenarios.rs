@@ -46,14 +46,26 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     leader4.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
@@ -127,16 +139,31 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader5 = controller.spawn_node(
+        LEADER_5,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     leader5.wait_for_bootstrap()?;
     leader4.wait_for_bootstrap()?;
@@ -210,18 +237,33 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     controller.monitor_nodes();
 
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
     leader4.wait_for_bootstrap()?;
 
-    let leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader5 = controller.spawn_node(
+        LEADER_5,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     leader5.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
@@ -291,14 +333,26 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     leader4.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
@@ -461,20 +515,41 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader6 =
-        controller.spawn_node(LEADER_6, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader7 =
-        controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader5 = controller.spawn_node(
+        LEADER_5,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader6 = controller.spawn_node(
+        LEADER_6,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader7 = controller.spawn_node(
+        LEADER_7,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     controller.monitor_nodes();
     leader7.wait_for_bootstrap()?;
@@ -564,8 +639,11 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let core =
-        controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let core = controller.spawn_node(
+        CORE_NODE,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     controller.monitor_nodes();
     core.wait_for_bootstrap()?;
@@ -573,31 +651,52 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let relay1 = controller.spawn_node(
         RELAY_NODE_1,
         LeadershipMode::Passive,
-        PersistenceMode::InMemory,
+        PersistenceMode::Persistent,
     )?;
     let relay2 = controller.spawn_node(
         RELAY_NODE_2,
         LeadershipMode::Passive,
-        PersistenceMode::InMemory,
+        PersistenceMode::Persistent,
     )?;
 
     relay2.wait_for_bootstrap()?;
     relay1.wait_for_bootstrap()?;
 
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader6 =
-        controller.spawn_node(LEADER_6, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader7 =
-        controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader3 = controller.spawn_node(
+        LEADER_3,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader4 = controller.spawn_node(
+        LEADER_4,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader5 = controller.spawn_node(
+        LEADER_5,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader6 = controller.spawn_node(
+        LEADER_6,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    let leader7 = controller.spawn_node(
+        LEADER_7,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     leader1.wait_for_bootstrap()?;
     leader2.wait_for_bootstrap()?;

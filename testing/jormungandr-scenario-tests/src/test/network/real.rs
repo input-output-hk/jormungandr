@@ -134,15 +134,18 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     );
     let mut controller = scenario_settings.build(context)?;
 
-    let core =
-        controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let core = controller.spawn_node(
+        CORE_NODE,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
 
     let mut relays = vec![];
     for i in 0..relay_nodes_count {
         relays.push(controller.spawn_node(
             &relay_name(i + 1),
             LeadershipMode::Leader,
-            PersistenceMode::InMemory,
+            PersistenceMode::Persistent,
         )?);
     }
 
@@ -151,7 +154,7 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         leaders.push(controller.spawn_node(
             &leader_name(i + 1),
             LeadershipMode::Leader,
-            PersistenceMode::InMemory,
+            PersistenceMode::Persistent,
         )?);
     }
 
@@ -168,7 +171,7 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
                 controller
                     .new_spawn_params(&legacy_name(i + 1))
                     .leadership_mode(LeadershipMode::Leader)
-                    .persistence_mode(PersistenceMode::InMemory)
+                    .persistence_mode(PersistenceMode::Persistent)
                     .jormungandr(legacy_app.clone()),
                 &version,
             )?,

@@ -151,7 +151,7 @@ impl SpawnParams {
     }
 
     pub fn in_memory(&mut self) -> &mut Self {
-        self.persistence_mode = PersistenceMode::InMemory;
+        self.persistence_mode = PersistenceMode::Persistent;
         self
     }
 

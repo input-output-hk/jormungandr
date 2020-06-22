@@ -81,7 +81,6 @@ pub fn test_node_recovers_from_node_restart() {
             address: sender.address(),
             value: 100.into(),
         }])
-        .with_storage(&temp_dir.child("storage"))
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
@@ -123,7 +122,6 @@ pub fn test_node_recovers_kill_signal() {
             address: sender.address(),
             value: 100.into(),
         }])
-        .with_storage(&temp_dir.child("storage"))
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
