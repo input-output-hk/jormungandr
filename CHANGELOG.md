@@ -1,5 +1,137 @@
 # Change Log
 
+## [v0.9.0](https://github.com/input-output-hk/jormungandr/tree/v0.9.0) (2020-06-23)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.9.0-rc3...v0.9.0)
+
+## [v0.9.0-rc3](https://github.com/input-output-hk/jormungandr/tree/v0.9.0-rc3) (2020-06-22)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.9.0-rc2...v0.9.0-rc3)
+
+**Implemented enhancements:**
+
+- jcli: voteplan config update [\#2401](https://github.com/input-output-hk/jormungandr/pull/2401)
+
+**Fixed bugs:**
+
+- fix the from address from the trusted peer initial topology [\#2409](https://github.com/input-output-hk/jormungandr/pull/2409)
+- Don't skip the node's public id in serde [\#2408](https://github.com/input-output-hk/jormungandr/pull/2408)
+
+**Merged pull requests:**
+
+- \[Tests\] Adversary fragment sender [\#2410](https://github.com/input-output-hk/jormungandr/pull/2410)
+- \[Tests\] Public id revert [\#2403](https://github.com/input-output-hk/jormungandr/pull/2403)
+
+## [v0.9.0-rc2](https://github.com/input-output-hk/jormungandr/tree/v0.9.0-rc2) (2020-06-21)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.9.0-rc1...v0.9.0-rc2)
+
+**Implemented enhancements:**
+
+- Tune gRPC connections [\#2402](https://github.com/input-output-hk/jormungandr/pull/2402)
+- Protocol update at epoch transition [\#2400](https://github.com/input-output-hk/jormungandr/pull/2400)
+- Log received fragments [\#2399](https://github.com/input-output-hk/jormungandr/pull/2399)
+- implement `jcli certificate new vote-cast` [\#2398](https://github.com/input-output-hk/jormungandr/pull/2398)
+- explorer: get vote plan info by id [\#2360](https://github.com/input-output-hk/jormungandr/pull/2360)
+
+**Fixed bugs:**
+
+- Set up use of "node-id-bin" in server responses [\#2397](https://github.com/input-output-hk/jormungandr/pull/2397)
+
+**Merged pull requests:**
+
+- fix vote tally processing in explorer and add better errors display [\#2406](https://github.com/input-output-hk/jormungandr/pull/2406)
+- \[Test\] mesh\_disruption test simplify trusted peers net [\#2404](https://github.com/input-output-hk/jormungandr/pull/2404)
+- \[Tests\] Network test maintenance [\#2395](https://github.com/input-output-hk/jormungandr/pull/2395)
+- Bump async-trait from 0.1.35 to 0.1.36 [\#2394](https://github.com/input-output-hk/jormungandr/pull/2394)
+
+## [v0.9.0-rc1](https://github.com/input-output-hk/jormungandr/tree/v0.9.0-rc1) (2020-06-18)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.19...v0.9.0-rc1)
+
+**Implemented enhancements:**
+
+- factor out `toolchain` from this CI table and add the few outliers with `include`: [\#2310](https://github.com/input-output-hk/jormungandr/issues/2310)
+- Update VotePlan & configure it from a file [\#2388](https://github.com/input-output-hk/jormungandr/pull/2388)
+- Include extended committees [\#2367](https://github.com/input-output-hk/jormungandr/pull/2367)
+- Vote tally and plan status [\#2357](https://github.com/input-output-hk/jormungandr/pull/2357)
+- Consistently use optimization flags when building releases [\#2322](https://github.com/input-output-hk/jormungandr/pull/2322)
+- settings: allow setting public and listen address from cli args [\#2318](https://github.com/input-output-hk/jormungandr/pull/2318)
+- Log incoming gossip on debug level [\#2305](https://github.com/input-output-hk/jormungandr/pull/2305)
+
+**Fixed bugs:**
+
+- Use the same legacy node ID in gossip as in subs [\#2370](https://github.com/input-output-hk/jormungandr/pull/2370)
+- Fix error reporting in streaming replies [\#2358](https://github.com/input-output-hk/jormungandr/pull/2358)
+- Update chain-network to fix legacy node ID format [\#2348](https://github.com/input-output-hk/jormungandr/pull/2348)
+- decode the vote plan with the associated data from transaction [\#2345](https://github.com/input-output-hk/jormungandr/pull/2345)
+- Update chain-deps to fix legacy node ID length [\#2331](https://github.com/input-output-hk/jormungandr/pull/2331)
+
+**Closed issues:**
+
+- Legacy node cannot sync with node from master [\#2301](https://github.com/input-output-hk/jormungandr/issues/2301)
+
+**Merged pull requests:**
+
+- Be sure to check out the repo before cargo fetch [\#2392](https://github.com/input-output-hk/jormungandr/pull/2392)
+- Bump lru from 0.5.1 to 0.5.2 [\#2391](https://github.com/input-output-hk/jormungandr/pull/2391)
+- One release workflow to rule them all [\#2389](https://github.com/input-output-hk/jormungandr/pull/2389)
+- \[Tests\] Interactive scenario [\#2387](https://github.com/input-output-hk/jormungandr/pull/2387)
+- \[Tests\] Testnet config fix [\#2386](https://github.com/input-output-hk/jormungandr/pull/2386)
+- Legacy scenario test fix [\#2384](https://github.com/input-output-hk/jormungandr/pull/2384)
+- Bump structopt from 0.3.14 to 0.3.15 [\#2382](https://github.com/input-output-hk/jormungandr/pull/2382)
+- Bump tar from 0.4.28 to 0.4.29 [\#2381](https://github.com/input-output-hk/jormungandr/pull/2381)
+- Serialize fragments just like we did last summer [\#2380](https://github.com/input-output-hk/jormungandr/pull/2380)
+- Save node test logs in directories with other node data [\#2379](https://github.com/input-output-hk/jormungandr/pull/2379)
+- \[Tests\] Legacy current node fragment propagation [\#2377](https://github.com/input-output-hk/jormungandr/pull/2377)
+- Bump thiserror from 1.0.19 to 1.0.20 [\#2376](https://github.com/input-output-hk/jormungandr/pull/2376)
+- Bump base64 from 0.12.1 to 0.12.2 [\#2375](https://github.com/input-output-hk/jormungandr/pull/2375)
+- Disable double logging in staging tests [\#2372](https://github.com/input-output-hk/jormungandr/pull/2372)
+- \[Test\] fix test\_legacy\_node\_all\_fragments test. [\#2371](https://github.com/input-output-hk/jormungandr/pull/2371)
+- \[Tests\] shorten resource result string [\#2368](https://github.com/input-output-hk/jormungandr/pull/2368)
+- \[Tests\] Add ability to send all types of fragment to FragmentSender [\#2366](https://github.com/input-output-hk/jormungandr/pull/2366)
+- Bump serde from 1.0.111 to 1.0.112 [\#2365](https://github.com/input-output-hk/jormungandr/pull/2365)
+- Bump custom\_debug from 0.4.0 to 0.5.0 [\#2364](https://github.com/input-output-hk/jormungandr/pull/2364)
+- Bump zip from 0.5.5 to 0.5.6 [\#2363](https://github.com/input-output-hk/jormungandr/pull/2363)
+- Bump pin-project from 0.4.20 to 0.4.22 [\#2362](https://github.com/input-output-hk/jormungandr/pull/2362)
+- Bump indicatif from 0.14.0 to 0.15.0 [\#2361](https://github.com/input-output-hk/jormungandr/pull/2361)
+- Bump humantime from 2.0.0 to 2.0.1 [\#2356](https://github.com/input-output-hk/jormungandr/pull/2356)
+- \[Tests\] resources consumption benchmark for network [\#2355](https://github.com/input-output-hk/jormungandr/pull/2355)
+- End binary/library duality in scenario tests [\#2353](https://github.com/input-output-hk/jormungandr/pull/2353)
+- Remove giant merged log strings from test output [\#2351](https://github.com/input-output-hk/jormungandr/pull/2351)
+- Bump serde\_json from 1.0.53 to 1.0.55 [\#2350](https://github.com/input-output-hk/jormungandr/pull/2350)
+- Fix file creation vs. check race in tests [\#2349](https://github.com/input-output-hk/jormungandr/pull/2349)
+- CircleCI: Limit the doctest threads to 1 [\#2347](https://github.com/input-output-hk/jormungandr/pull/2347)
+- Bump serde\_yaml from 0.8.12 to 0.8.13 [\#2342](https://github.com/input-output-hk/jormungandr/pull/2342)
+- Don't use --all flag with cargo fmt [\#2340](https://github.com/input-output-hk/jormungandr/pull/2340)
+- \[Tests\] new test - node enters legacy network [\#2338](https://github.com/input-output-hk/jormungandr/pull/2338)
+- introduced log-level cmd arg for private network tests [\#2337](https://github.com/input-output-hk/jormungandr/pull/2337)
+- Bump async-trait from 0.1.33 to 0.1.35 [\#2336](https://github.com/input-output-hk/jormungandr/pull/2336)
+- \[Tests\] upgrade and downgrade test [\#2335](https://github.com/input-output-hk/jormungandr/pull/2335)
+- \[Tests\] change assertion for last stats [\#2334](https://github.com/input-output-hk/jormungandr/pull/2334)
+- Reworked CircleCI config [\#2332](https://github.com/input-output-hk/jormungandr/pull/2332)
+- Further fix and improve release workflows [\#2329](https://github.com/input-output-hk/jormungandr/pull/2329)
+- Bump pin-project from 0.4.19 to 0.4.20 [\#2328](https://github.com/input-output-hk/jormungandr/pull/2328)
+- Bump valico from 3.2.0 to 3.4.0 [\#2327](https://github.com/input-output-hk/jormungandr/pull/2327)
+- Bump arc-swap from 0.4.6 to 0.4.7 [\#2326](https://github.com/input-output-hk/jormungandr/pull/2326)
+- \[Tests\] decrease amount of nodes in real network [\#2324](https://github.com/input-output-hk/jormungandr/pull/2324)
+- \[Tests\] Sync module refactoring [\#2323](https://github.com/input-output-hk/jormungandr/pull/2323)
+- CI Matrix: Reloaded [\#2319](https://github.com/input-output-hk/jormungandr/pull/2319)
+- \[Tests\] Vit block0 tests [\#2317](https://github.com/input-output-hk/jormungandr/pull/2317)
+- Bump async-trait from 0.1.32 to 0.1.33 [\#2316](https://github.com/input-output-hk/jormungandr/pull/2316)
+- mips and powerpc builds still broken [\#2315](https://github.com/input-output-hk/jormungandr/pull/2315)
+- Inject legacy "node-id-bin" metadata [\#2314](https://github.com/input-output-hk/jormungandr/pull/2314)
+- Remove unused error enum variants in network [\#2313](https://github.com/input-output-hk/jormungandr/pull/2313)
+- \[Test\] Private network test - Fragment dump on send [\#2312](https://github.com/input-output-hk/jormungandr/pull/2312)
+- Bump lru from 0.5.0 to 0.5.1 [\#2309](https://github.com/input-output-hk/jormungandr/pull/2309)
+- Bump async-trait from 0.1.31 to 0.1.32 [\#2308](https://github.com/input-output-hk/jormungandr/pull/2308)
+- ci: add missing parameters to release pipelines [\#2306](https://github.com/input-output-hk/jormungandr/pull/2306)
+- Fix indentation in YAML example of logging config [\#2303](https://github.com/input-output-hk/jormungandr/pull/2303)
+- Bump yaml-rust from 0.4.3 to 0.4.4 [\#2302](https://github.com/input-output-hk/jormungandr/pull/2302)
+- Bump reqwest from 0.10.4 to 0.10.6 [\#2300](https://github.com/input-output-hk/jormungandr/pull/2300)
+- Bump serde from 1.0.110 to 1.0.111 [\#2299](https://github.com/input-output-hk/jormungandr/pull/2299)
+- Update ring & restore release for PowerPC and MIPS [\#2298](https://github.com/input-output-hk/jormungandr/pull/2298)
+
 ## [v0.8.19](https://github.com/input-output-hk/jormungandr/tree/v0.8.19) (2020-05-04)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.8.18...v0.8.19)
