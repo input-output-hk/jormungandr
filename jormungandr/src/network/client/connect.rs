@@ -35,16 +35,12 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             let node_id: legacy::NodeId = node_id.as_ref().try_into().unwrap();
             debug!(
                 logger,
-                "connecting with legacy node id {}", hex::encode(node_id.as_bytes());
-                "peer_addr" => %peer.connection,
+                "connecting with legacy node id {}",
+                hex::encode(node_id.as_bytes())
             );
             grpc::connect_legacy(&peer, node_id).await
         } else {
-            debug!(
-                logger,
-                "connecting";
-                "peer_addr" => %peer.connection,
-            );
+            debug!(logger, "connecting");
             grpc::connect(&peer).await
         }
         .map_err(ConnectError::Transport)?;
