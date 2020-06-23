@@ -3,8 +3,8 @@ use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
-        EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord, PeerStats,
-        StakeDistributionDto,
+        EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeSecret, NodeStatsDto, PeerRecord,
+        PeerStats, StakeDistributionDto,
     },
 };
 use jormungandr_testing_utils::testing::MemPoolCheck;
@@ -110,7 +110,15 @@ impl JormungandrRest {
         Ok(leaders)
     }
 
-    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, reqwest::Error> {
-        self.inner.send_fragment(fragment)
+    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, RestError> {
+        self.inner.send_fragment(fragment).map_err(Into::into)
+    }
+
+    pub fn promote(&self, secret: NodeSecret) -> Result<EnclaveLeaderId, RestError> {
+        self.inner.promote(secret).map_err(Into::into)
+    }
+
+    pub fn demote(&self, leader_id: u32) -> Result<(), RestError> {
+        self.inner.demote(leader_id).map_err(Into::into)
     }
 }

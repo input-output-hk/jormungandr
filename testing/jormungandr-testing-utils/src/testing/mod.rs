@@ -4,6 +4,7 @@ pub mod github;
 /// Module contains cross project test utils
 mod measurement;
 pub mod network_builder;
+mod step_reporter;
 pub mod sync;
 mod verify;
 mod web;
@@ -22,10 +23,10 @@ pub use measurement::{
     EnduranceBenchmarkFinish, EnduranceBenchmarkRun, NamedProcess, ResourcesUsage, Speed,
     SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
 };
+pub use step_reporter::StepReporter;
 pub use sync::{
     ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
     MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
 };
-pub use web::download_file;
-
 pub use verify::{assert, assert_equals, Error as VerificationError};
+pub use web::download_file;
