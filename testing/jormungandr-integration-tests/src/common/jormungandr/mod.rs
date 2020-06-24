@@ -1,4 +1,5 @@
 mod configuration_builder;
+pub mod notifier;
 pub mod process;
 pub mod starter;
 use chain_core::property::Fragment as _;
