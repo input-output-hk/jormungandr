@@ -480,6 +480,9 @@ mod test {
 
     impl Arbitrary for BlockchainConfiguration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let counter_leaders = usize::arbitrary(g) % 12;
+            let counter_committee = usize::arbitrary(g) % 12;
+
             let mut linear_fees =
                 LinearFee::new(u64::arbitrary(g), u64::arbitrary(g), u64::arbitrary(g));
             linear_fees.per_certificate_fees(PerCertificateFee::new(
@@ -505,7 +508,9 @@ mod test {
                     ConsensusVersion::GenesisPraos
                 },
                 linear_fees,
-                consensus_leader_ids: Arbitrary::arbitrary(g),
+                consensus_leader_ids: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(counter_leaders)
+                    .collect(),
                 slots_per_epoch: NumberOfSlotsPerEpoch::arbitrary(g),
                 slot_duration: SlotDuration::arbitrary(g),
                 kes_update_speed: KESUpdateSpeed::arbitrary(g),
@@ -518,7 +523,9 @@ mod test {
                 total_reward_supply: Arbitrary::arbitrary(g),
                 reward_parameters: Arbitrary::arbitrary(g),
                 reward_constraints: Arbitrary::arbitrary(g),
-                committees: Arbitrary::arbitrary(g),
+                committees: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
+                    .take(counter_committee)
+                    .collect(),
             }
         }
     }
