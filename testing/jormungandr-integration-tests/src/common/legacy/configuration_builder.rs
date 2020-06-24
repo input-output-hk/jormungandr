@@ -33,18 +33,12 @@ impl LegacyConfigConverter {
         &self,
         params: JormungandrParams<NewestNodeConfig>,
     ) -> Result<JormungandrParams<NodeConfig>, LegacyConfigConverterError> {
-        if self.version > version_0_8_19() {
-            return Err(LegacyConfigConverterError::UnsupportedVersion(
-                self.version.clone(),
-            ));
-        }
-
         let node_config_converter = LegacyNodeConfigConverter::new(self.version.clone());
         let node_config = node_config_converter.convert(params.node_config())?;
-        Ok(self.build_configuration_before_0_8_19(params, node_config))
+        return Ok(self.build_configuration(params, node_config));
     }
 
-    fn build_configuration_before_0_8_19(
+    fn build_configuration(
         &self,
         params: JormungandrParams<NewestNodeConfig>,
         backward_compatible_config: NodeConfig,
@@ -71,16 +65,51 @@ impl LegacyNodeConfigConverter {
         Self { version }
     }
 
+    ///0.8.19 is a breaking point where in trusted peer id was obsoleted
     pub fn convert(
         &self,
         source: &NewestNodeConfig,
     ) -> Result<NodeConfig, LegacyConfigConverterError> {
         if self.version > version_0_8_19() {
-            return Err(LegacyConfigConverterError::UnsupportedVersion(
-                self.version.clone(),
-            ));
+            return Ok(self.build_node_config_after_0_8_19(source));
         }
         Ok(self.build_node_config_before_0_8_19(source))
+    }
+
+    fn build_node_config_after_0_8_19(&self, source: &NewestNodeConfig) -> NodeConfig {
+        let trusted_peers: Vec<TrustedPeer> = source
+            .p2p
+            .trusted_peers
+            .iter()
+            .map(|peer| TrustedPeer {
+                id: None,
+                address: peer.address.clone(),
+            })
+            .collect();
+
+        NodeConfig {
+            storage: source.storage.clone(),
+            log: source.log.clone(),
+            rest: Rest {
+                listen: source.rest.listen,
+            },
+            p2p: P2p {
+                trusted_peers,
+                public_address: source.p2p.public_address.clone(),
+                listen_address: None,
+                max_inbound_connections: None,
+                max_connections: None,
+                topics_of_interest: source.p2p.topics_of_interest.clone(),
+                allow_private_addresses: source.p2p.allow_private_addresses,
+                policy: source.p2p.policy.clone(),
+                layers: None,
+                public_id: None,
+            },
+            mempool: source.mempool.clone(),
+            explorer: source.explorer.clone(),
+            bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,
+            skip_bootstrap: source.skip_bootstrap,
+        }
     }
 
     fn generate_legacy_poldercast_id(rng: &mut OsRng) -> String {
