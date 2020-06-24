@@ -1,4 +1,4 @@
-use super::JormungandrError;
+use super::{notifier, JormungandrError};
 use crate::common::jcli::JCli;
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
@@ -66,6 +66,10 @@ impl JormungandrProcess {
         JormungandrRest::new_with_cert(self.rest_uri(), cert)
     }
 
+    pub fn notifier(&self) -> notifier::JormungandrNotifier {
+        notifier::JormungandrNotifier::new(self.notifier_url())
+    }
+
     pub fn shutdown(&self) {
         let jcli: JCli = Default::default();
         jcli.rest().v0().shutdown(self.rest_uri());
@@ -106,6 +110,10 @@ impl JormungandrProcess {
 
     pub fn rest_uri(&self) -> String {
         uri_from_socket_addr(self.rest_socket_addr)
+    }
+
+    pub fn notifier_url(&self) -> url::Url {
+        notifier::uri_from_socket_addr(self.rest_socket_addr)
     }
 
     pub fn fees(&self) -> LinearFee {

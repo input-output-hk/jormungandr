@@ -4,6 +4,7 @@ pub mod fragments;
 pub mod genesis;
 pub mod grpc;
 pub mod legacy;
+pub mod notifier;
 pub mod recovery;
 pub mod tls;
 pub mod transactions;
