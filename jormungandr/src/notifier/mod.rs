@@ -1,10 +1,19 @@
+use crate::intercom::NotifierMsg as Message;
 use crate::utils::async_msg::{channel, MessageBox, MessageQueue};
 use crate::utils::task::TokioServiceInfo;
 use chain_impl_mockchain::header::HeaderId;
 use futures::{SinkExt, StreamExt};
+use serde::{Serialize, Serializer};
 use slog::Logger;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+
+const MAX_CONNECTIONS_DEFAULT: usize = 255;
+
+// error codes in 4000-4999 are reserved for private use.
+// I couldn't find an error code for max connections, so I'll use the first one for now
+const MAX_CONNECTIONS_ERROR_CLOSE_CODE: u16 = 4000;
+const MAX_CONNECTIONS_ERROR_REASON: &str = "MAX CONNECTIONS reached";
 
 #[derive(Clone)]
 pub struct Notifier {
@@ -13,21 +22,15 @@ pub struct Notifier {
     max_connections: usize,
 }
 
-// TODO: move to intercom?
-pub enum Message {
+#[derive(Serialize)]
+enum JsonMessage {
+    #[serde(serialize_with = "to_hex")]
     NewBlock(HeaderId),
+    #[serde(serialize_with = "to_hex")]
     NewTip(HeaderId),
 }
 
 type Clients = std::collections::HashMap<usize, warp::ws::WebSocket>;
-
-// TODO: define this in Settings
-const MAX_CONNECTIONS_DEFAULT: usize = 255;
-
-// error codes in 4000-4999 are reserved for private use.
-// I couldn't find an error code for max connections
-const MAX_CONNECTIONS_ERROR_CLOSE_CODE: u16 = 4000;
-const MAX_CONNECTIONS_ERROR_REASON: &str = "MAX CONNECTIONS reached";
 
 impl Notifier {
     pub fn new(max_connections: Option<usize>) -> Notifier {
@@ -46,6 +49,8 @@ impl Notifier {
         // TODO: what limit should I put in there?
         let (deleted_msgbox, deleted_queue) = channel::<usize>(32);
 
+        // TODO: it may be better to have a task that runs periodically instead of
+        // when a sender is detected to be disconected
         info.spawn(
             "clean disconnected notifier clients",
             handle_disconnected(clients2.clone(), deleted_queue),
@@ -101,11 +106,7 @@ async fn process_message(
     msg: Message,
     mut disconnected: MessageBox<usize>,
 ) {
-    let warp_msg = match msg {
-        Message::NewBlock(id) => warp::ws::Message::text(format!("new block: {}", id.to_string())),
-        Message::NewTip(id) => warp::ws::Message::text(format!("new tip: {}", id.to_string())),
-    };
-
+    let warp_msg = JsonMessage::from(msg).into();
     let dead = async move { notify_all(clients, warp_msg).await };
 
     for id in dead.await {
@@ -153,4 +154,26 @@ async fn handle_disconnected(
             .await;
     }
     .await;
+}
+
+impl From<Message> for JsonMessage {
+    fn from(msg: Message) -> JsonMessage {
+        match msg {
+            Message::NewBlock(inner) => JsonMessage::NewBlock(inner),
+            Message::NewTip(inner) => JsonMessage::NewTip(inner),
+        }
+    }
+}
+
+fn to_hex<S>(key: &HeaderId, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&key.to_string())
+}
+
+impl Into<warp::ws::Message> for JsonMessage {
+    fn into(self) -> warp::ws::Message {
+        warp::ws::Message::text(serde_json::to_string(&self).unwrap())
+    }
 }

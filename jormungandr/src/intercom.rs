@@ -606,5 +606,11 @@ pub enum ExplorerMsg {
     NewTip(HeaderHash),
 }
 
+/// Messages to the notifier task
+pub enum NotifierMsg {
+    NewBlock(HeaderHash),
+    NewTip(HeaderHash),
+}
+
 #[cfg(test)]
 mod tests {}
