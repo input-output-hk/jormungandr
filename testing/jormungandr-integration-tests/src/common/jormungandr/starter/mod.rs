@@ -422,7 +422,7 @@ where
 
         let mut command = get_command(
             &self.params,
-            get_jormungandr_app(),
+            self.starter.jormungandr_app_path.clone(),
             self.starter.role,
             self.starter.from_genesis,
         );
@@ -502,7 +502,7 @@ where
     fn start_fail(self, expected_msg: &str) {
         let command = get_command(
             &self.params,
-            get_jormungandr_app(),
+            &self.starter.jormungandr_app_path,
             self.starter.role,
             self.starter.from_genesis,
         );
