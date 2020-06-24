@@ -54,6 +54,10 @@ impl Process {
                         .map(move |count| stats_counter.add_tx_recv_cnt(count))?;
                 }
                 TransactionMsg::RemoveTransactions(fragment_ids, status) => {
+                    debug!(
+                        service_info.logger(),
+                        "removing fragments added to block {:?}: {:?}", status, fragment_ids
+                    );
                     pool.remove_added_to_block(fragment_ids, status);
                 }
                 TransactionMsg::GetLogs(reply_handle) => {

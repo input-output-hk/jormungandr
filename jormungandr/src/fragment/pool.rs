@@ -42,6 +42,7 @@ impl Pool {
         debug!(logger, "received {} fragments", fragments.len(); "origin" => ?origin);
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
+            debug!(logger, "none of the received fragments are valid");
             return Ok(0);
         }
         let mut network_msg_box = self.network_msg_box.clone();
@@ -54,6 +55,10 @@ impl Pool {
             .map(|(fragment, _)| fragment);
         let new_fragments = self.pool.insert_all(new_fragments);
         let count = new_fragments.len();
+        debug!(
+            logger,
+            "{} of the received fragments were added to the pool", count
+        );
         let fragment_logs = new_fragments
             .iter()
             .map(move |fragment| FragmentLog::new(fragment.id(), origin))
