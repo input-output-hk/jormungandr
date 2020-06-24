@@ -7,6 +7,8 @@ use crate::{
 use chain_core::property::Fragment as _;
 use jormungandr_lib::interfaces::FragmentStatus;
 
+use slog::Logger;
+
 pub enum SelectionOutput {
     Commit { fragment_id: FragmentId },
     RequestSmallerFee,
@@ -35,13 +37,15 @@ pub enum FragmentSelectionAlgorithmParams {
 pub struct OldestFirst {
     builder: ContentsBuilder,
     current_total_size: u32,
+    logger: Logger,
 }
 
 impl OldestFirst {
-    pub fn new() -> Self {
+    pub fn new(logger: Logger) -> Self {
         OldestFirst {
             builder: ContentsBuilder::new(),
             current_total_size: 0,
+            logger,
         }
     }
 }
@@ -68,10 +72,13 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             let total_size = self.current_total_size + fragment_size;
 
             if total_size <= ledger_params.block_content_max_size {
+                let logger = self.logger.new(o!("hash" => id.to_string()));
+                debug!(logger, "applying fragment in simulation");
                 match ledger_simulation.apply_fragment(ledger_params, &fragment, block_date) {
                     Ok(ledger_new) => {
                         self.builder.push(fragment);
                         ledger_simulation = ledger_new;
+                        debug!(logger, "successfully applied and committed the fragment");
                     }
                     Err(error) => {
                         use std::error::Error as _;
@@ -80,6 +87,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                         } else {
                             error.to_string()
                         };
+                        debug!(logger, "fragment is rejected"; "reason" => %error);
                         logs.modify(id, FragmentStatus::Rejected { reason: error })
                     }
                 }

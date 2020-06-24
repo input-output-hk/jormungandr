@@ -10,7 +10,9 @@ use crate::{
 use tokio::stream::StreamExt;
 
 pub struct Process {
-    pool: Pool,
+    pool_max_entries: usize,
+    logs: Logs,
+    network_msg_box: MessageBox<NetworkMsg>,
 }
 
 impl Process {
@@ -21,7 +23,9 @@ impl Process {
     ) -> Self {
         let logs = Logs::new(logs_max_entries);
         Process {
-            pool: Pool::new(pool_max_entries, logs, network_msg_box),
+            pool_max_entries,
+            logs,
+            network_msg_box,
         }
     }
 
@@ -31,7 +35,12 @@ impl Process {
         stats_counter: StatsCounter,
         mut input: MessageQueue<TransactionMsg>,
     ) -> Result<(), ()> {
-        let mut pool = self.pool;
+        let mut pool = Pool::new(
+            self.pool_max_entries,
+            self.logs,
+            self.network_msg_box,
+            service_info.logger().clone(),
+        );
 
         while let Some(input_result) = input.next().await {
             match input_result {
@@ -49,11 +58,15 @@ impl Process {
 
                     let stats_counter = stats_counter.clone();
 
-                    pool.insert_and_propagate_all(origin, txs, service_info.logger().clone())
+                    pool.insert_and_propagate_all(origin, txs)
                         .await
                         .map(move |count| stats_counter.add_tx_recv_cnt(count))?;
                 }
                 TransactionMsg::RemoveTransactions(fragment_ids, status) => {
+                    debug!(
+                        service_info.logger(),
+                        "removing fragments added to block {:?}: {:?}", status, fragment_ids
+                    );
                     pool.remove_added_to_block(fragment_ids, status);
                 }
                 TransactionMsg::GetLogs(reply_handle) => {

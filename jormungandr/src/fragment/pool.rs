@@ -17,14 +17,21 @@ pub struct Pool {
     logs: Logs,
     pool: internal::Pool,
     network_msg_box: MessageBox<NetworkMsg>,
+    logger: Logger,
 }
 
 impl Pool {
-    pub fn new(max_entries: usize, logs: Logs, network_msg_box: MessageBox<NetworkMsg>) -> Self {
+    pub fn new(
+        max_entries: usize,
+        logs: Logs,
+        network_msg_box: MessageBox<NetworkMsg>,
+        logger: Logger,
+    ) -> Self {
         Pool {
             logs,
             pool: internal::Pool::new(max_entries),
             network_msg_box,
+            logger,
         }
     }
 
@@ -37,11 +44,11 @@ impl Pool {
         &mut self,
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
-        logger: Logger,
     ) -> Result<usize, ()> {
-        debug!(logger, "received {} fragments", fragments.len(); "origin" => ?origin);
+        debug!(self.logger, "received {} fragments", fragments.len(); "origin" => ?origin);
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
+            debug!(self.logger, "none of the received fragments are valid");
             return Ok(0);
         }
         let mut network_msg_box = self.network_msg_box.clone();
@@ -54,6 +61,10 @@ impl Pool {
             .map(|(fragment, _)| fragment);
         let new_fragments = self.pool.insert_all(new_fragments);
         let count = new_fragments.len();
+        debug!(
+            self.logger,
+            "{} of the received fragments were added to the pool", count
+        );
         let fragment_logs = new_fragments
             .iter()
             .map(move |fragment| FragmentLog::new(fragment.id(), origin))
@@ -63,7 +74,7 @@ impl Pool {
             network_msg_box
                 .send(fragment_msg)
                 .await
-                .map_err(|e| error!(logger, "cannot propagate fragment to network: {}", e))?;
+                .map_err(|e| error!(self.logger, "cannot propagate fragment to network: {}", e))?;
         }
         self.logs.insert_all(fragment_logs);
         Ok(count)
@@ -84,7 +95,7 @@ impl Pool {
         let Pool { logs, pool, .. } = self;
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
-                let mut selection_alg = OldestFirst::new();
+                let mut selection_alg = OldestFirst::new(self.logger.clone());
                 selection_alg.select(&ledger, &ledger_params, block_date, logs, pool);
                 selection_alg.finalize()
             }
