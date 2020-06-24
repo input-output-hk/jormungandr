@@ -174,5 +174,19 @@ mod test {
 
             TestResult::from_bool(block0_configuration == block0_configuration_dec)
         }
+
+        fn block0_configuration_to_serialize(block0_configuration: Block0Configuration) -> TestResult {
+            use chain_core::property::{Serialize as _, Deserialize as _};
+
+            let block = block0_configuration.to_block();
+
+            let bytes = block.serialize_as_vec().unwrap();
+            let reader = std::io::Cursor::new(&bytes);
+            let decoded = Block::deserialize(reader).unwrap();
+
+            let block0_configuration_dec = Block0Configuration::from_block(&decoded).unwrap();
+
+            TestResult::from_bool(block0_configuration == block0_configuration_dec)
+        }
     }
 }
