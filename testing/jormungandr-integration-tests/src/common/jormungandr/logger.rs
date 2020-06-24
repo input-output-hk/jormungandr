@@ -232,13 +232,21 @@ impl JormungandrLogger {
     }
 
     pub fn print_error_and_invalid_logs(&self) {
-        let error_lines: Vec<_> = self.get_lines_with_error_and_invalid().collect();
+        let error_lines: Vec<_> = self
+            .get_lines_with_error_and_invalid()
+            .map(|x| self.remove_white_space(&x))
+            .collect();
+
         if !error_lines.is_empty() {
             println!("Error lines:");
             for line in error_lines {
                 println!("{}", line);
             }
         }
+    }
+
+    fn remove_white_space(&self, input: &str) -> String {
+        input.split_whitespace().collect::<String>()
     }
 
     pub fn print_error_or_warn_lines(&self) {
