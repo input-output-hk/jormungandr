@@ -7,7 +7,9 @@ use super::{
 use crate::{
     blockcfg::{Block, FragmentId, Header, HeaderHash},
     blockchain::Checkpoints,
-    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
+    intercom::{
+        self, BlockMsg, ExplorerMsg, NetworkMsg, NotifierMsg, PropagateMsg, TransactionMsg,
+    },
     log,
     network::p2p::Address,
     stats_counter::StatsCounter,
@@ -58,7 +60,7 @@ pub struct Process {
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub fragment_msgbox: MessageBox<TransactionMsg>,
     pub explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
-    pub notifier_msgbox: MessageBox<crate::notifier::Message>,
+    pub notifier_msgbox: MessageBox<NotifierMsg>,
     pub garbage_collection_interval: Duration,
 }
 
@@ -296,7 +298,7 @@ async fn reprocess_tip(
     logger: Logger,
     mut blockchain: Blockchain,
     tip: Tip,
-    notifier_msg_box: MessageBox<crate::notifier::Message>,
+    notifier_msg_box: MessageBox<NotifierMsg>,
 ) -> Result<(), Error> {
     let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
 
@@ -335,7 +337,7 @@ pub async fn process_new_ref(
     blockchain: &mut Blockchain,
     mut tip: Tip,
     candidate: Arc<Ref>,
-    notifier_msg_box: Option<MessageBox<crate::notifier::Message>>,
+    notifier_msg_box: Option<MessageBox<NotifierMsg>>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
     let tip_ref = tip.get_ref().await;
@@ -383,7 +385,7 @@ pub async fn process_new_ref(
 
             if let Some(mut msg_box) = notifier_msg_box {
                 msg_box
-                    .send(crate::notifier::Message::NewTip(candidate_hash))
+                    .send(NotifierMsg::NewTip(candidate_hash))
                     .await
                     .unwrap_or_else(|err| {
                         error!(logger, "cannot notify new block to subscribers: {}", err)
@@ -401,7 +403,7 @@ async fn process_and_propagate_new_ref(
     tip: Tip,
     new_block_ref: Arc<Ref>,
     mut network_msg_box: MessageBox<NetworkMsg>,
-    notifier_msg_box: MessageBox<crate::notifier::Message>,
+    notifier_msg_box: MessageBox<NotifierMsg>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     let hash = header.hash();
@@ -431,7 +433,7 @@ async fn process_leadership_block(
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    mut notifier_msg_box: MessageBox<crate::notifier::Message>,
+    mut notifier_msg_box: MessageBox<NotifierMsg>,
     block: Block,
     stats_counter: StatsCounter,
 ) -> Result<(), Error> {
@@ -458,7 +460,7 @@ async fn process_leadership_block(
     stats_counter.set_tip_block(Arc::new(block.clone()));
 
     notifier_msg_box
-        .send(crate::notifier::Message::NewBlock(block.id()))
+        .send(NotifierMsg::NewBlock(block.id()))
         .await
         .map_err(|_| "Cannot propagate block to blockchain event notifier")?;
 
@@ -567,7 +569,7 @@ async fn process_network_blocks(
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    mut notifier_msg_box: MessageBox<crate::notifier::Message>,
+    mut notifier_msg_box: MessageBox<NotifierMsg>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
     stats_counter: StatsCounter,
@@ -650,7 +652,7 @@ async fn process_network_block(
     block: Block,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
-    event_notifier_msg_box: &mut MessageBox<crate::notifier::Message>,
+    event_notifier_msg_box: &mut MessageBox<NotifierMsg>,
     get_next_block_scheduler: &mut GetNextBlockScheduler,
     logger: &Logger,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
@@ -705,7 +707,7 @@ async fn check_and_apply_block(
     block: Block,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
-    event_notifier_msg_box: &mut MessageBox<crate::notifier::Message>,
+    event_notifier_msg_box: &mut MessageBox<NotifierMsg>,
     logger: &Logger,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
@@ -749,7 +751,7 @@ async fn check_and_apply_block(
         }
 
         event_notifier_msg_box
-            .try_send(crate::notifier::Message::NewBlock(block_hash))
+            .try_send(NotifierMsg::NewBlock(block_hash))
             .unwrap_or_else(|err| {
                 error!(logger, "cannot notify new block to subscribers: {}", err)
             });
