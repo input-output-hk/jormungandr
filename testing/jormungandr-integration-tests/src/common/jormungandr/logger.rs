@@ -5,13 +5,13 @@ extern crate serde_json;
 use self::serde::{Deserialize, Serialize};
 use crate::common::file_utils;
 use chain_core::property::FromStr;
-use chain_impl_mockchain::key::Hash;
+use chain_impl_mockchain::{block, key::Hash};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use thiserror::Error;
 
-use jormungandr_lib::time::SystemTime;
+use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
 use jormungandr_testing_utils::testing::Timestamp;
 #[derive(Debug, Error)]
 pub enum LoggerError {
@@ -46,6 +46,7 @@ pub struct LogEntry {
     pub hash: Option<String>,
     pub reason: Option<String>,
     pub error: Option<String>,
+    pub block_date: Option<String>,
     pub peer_addr: Option<String>,
 }
 
@@ -62,6 +63,12 @@ impl LogEntry {
             Some(error) => error.contains(error_part),
             None => false,
         }
+    }
+
+    pub fn block_date(&self) -> Option<BlockDate> {
+        self.block_date
+            .clone()
+            .map(|block| block::BlockDate::from_str(&block).unwrap().into())
     }
 
     pub fn is_later_than(&self, reference_time: &SystemTime) -> bool {
