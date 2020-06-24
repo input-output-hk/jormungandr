@@ -44,6 +44,7 @@ yaml-rust = "0.4.4"
 indicatif = "0.15.0"
 fs_extra = "1.1.0"
 json = "0.12.4"
+tungstenite = "0.13.0"
 
 [dependencies.reqwest]
 version = "0.11"
