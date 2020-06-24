@@ -47,9 +47,13 @@ mod test {
         where
             G: Gen,
         {
+            let denom = u64::arbitrary(g) + 1;
+            let num = u64::arbitrary(g) % denom;
+
+            let ratio = Ratio::new_checked(num, denom).unwrap();
             TaxType {
                 fixed: Value::arbitrary(g),
-                ratio: Ratio::arbitrary(g),
+                ratio,
                 max_limit: NonZeroU64::new(Arbitrary::arbitrary(g)),
             }
         }
