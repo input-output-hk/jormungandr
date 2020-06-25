@@ -93,6 +93,7 @@ impl ClientLoadConfig {
     pub fn trusted_peer(&self) -> TrustedPeer {
         TrustedPeer {
             address: self.address.parse().unwrap(),
+            id: None,
         }
     }
 
