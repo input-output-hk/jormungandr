@@ -639,7 +639,11 @@ fn apply_block_to_vote_plans(
                             proposals[vote_cast.proposal_index() as usize].votes = proposals
                                 [vote_cast.proposal_index() as usize]
                                 .votes
-                                .insert(voter, Arc::new(choice.clone()))
+                                .insert_or_update(voter, Arc::new(choice.clone()), |_| {
+                                    Ok::<_, std::convert::Infallible>(Some(Arc::new(
+                                        choice.clone(),
+                                    )))
+                                })
                                 .unwrap();
                             let vote_plan = ExplorerVotePlan {
                                 proposals,
