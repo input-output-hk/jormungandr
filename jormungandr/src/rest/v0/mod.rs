@@ -9,7 +9,7 @@ pub fn filter(
     context: ContextLock,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let with_context = warp::any().map(move || context.clone());
-    let root = warp::path!("api" / "v0" / ..);
+    let root = warp::path!("v0" / ..);
 
     let shutdown = warp::path!("shutdown")
         .and(warp::get().or(warp::post()))
@@ -42,11 +42,17 @@ pub fn filter(
         root.and(get.or(get_next)).boxed()
     };
 
-    let fragment = warp::path!("fragment" / "logs")
-        .and(warp::get())
-        .and(with_context.clone())
-        .and_then(handlers::get_message_logs)
-        .boxed();
+    let fragment = {
+        let root = warp::path!("fragment" / ..).boxed();
+
+        let logs = warp::path!("logs")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_message_logs)
+            .boxed();
+
+        root.and(logs).boxed()
+    };
 
     let leaders = {
         let root = warp::path!("leaders" / ..).boxed();
@@ -261,7 +267,7 @@ pub fn filter(
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find::<logic::Error>() {
         let (body, code) = match err {
-            logic::Error::PublicKey(_) | logic::Error::Hash(_) => {
+            logic::Error::PublicKey(_) | logic::Error::Hash(_) | logic::Error::Hex(_) => {
                 (err.to_string(), StatusCode::BAD_REQUEST)
             }
             err => (

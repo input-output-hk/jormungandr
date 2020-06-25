@@ -71,6 +71,8 @@ pub enum Error {
     Storage(#[from] StorageError),
     #[error("Invalid topic")]
     InvalidTopic,
+    #[error(transparent)]
+    Hex(#[from] hex::FromHexError),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {

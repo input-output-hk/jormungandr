@@ -7,6 +7,7 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
+use std::collections::HashMap;
 use tokio::stream::StreamExt;
 
 pub struct Process {
@@ -72,6 +73,15 @@ impl Process {
                 TransactionMsg::GetLogs(reply_handle) => {
                     let logs = pool.logs().logs().cloned().collect();
                     reply_handle.reply_ok(logs);
+                }
+                TransactionMsg::GetStatuses(fragment_ids, reply_handle) => {
+                    let mut statuses = HashMap::new();
+                    pool.logs().logs_by_ids(fragment_ids).into_iter().for_each(
+                        |(fragment_id, log)| {
+                            statuses.insert(fragment_id, log.status().clone());
+                        },
+                    );
+                    reply_handle.reply_ok(statuses);
                 }
                 TransactionMsg::SelectTransactions {
                     ledger,

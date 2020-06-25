@@ -14,6 +14,7 @@ use futures::prelude::*;
 use futures::ready;
 use slog::Logger;
 use std::{
+    collections::HashMap,
     error,
     fmt::{self, Debug, Display},
     marker::PhantomData,
@@ -515,6 +516,10 @@ pub enum TransactionMsg {
     SendTransaction(FragmentOrigin, Vec<Fragment>),
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),
+    GetStatuses(
+        Vec<FragmentId>,
+        ReplyHandle<HashMap<FragmentId, FragmentStatus>>,
+    ),
     SelectTransactions {
         ledger: Ledger,
         block_date: BlockDate,
