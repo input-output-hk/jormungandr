@@ -7,11 +7,19 @@ info:
   contact:
     url: ''
 
+servers:
+  - url: 'https://localhost'
+
+tags:
+  - name: fragment
+
 paths:
   /api/v0/fragments:
     post:
       description: Post a batch of signed transactions
       operationId: PostFragments
+      tags:
+        - fragment
       requestBody:
         description: An array of hex-encoded signed transactions
         required: true
@@ -41,6 +49,8 @@ paths:
     post:
       description: Get statuses of fragments
       operationId: FragmentStatuses
+      tags:
+        - fragment
       requestBody:
         description: List of fragment IDs
         required: true
@@ -103,6 +113,8 @@ paths:
     get:
       description: Gets logs from node message pool
       operationId: FragmentLogs
+      tags:
+        - fragment
       responses:
         '200':
           description: Success
