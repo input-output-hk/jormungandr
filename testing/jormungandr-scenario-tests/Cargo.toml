@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 slog = "2"
 bawawa = "0.1.5"
-bytes = "0.4"
+bytes = "0.5"
 custom_debug = "0.5"
 dialoguer = "0.6.2"
 error-chain = "0.12"

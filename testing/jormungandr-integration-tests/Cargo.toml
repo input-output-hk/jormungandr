@@ -10,7 +10,7 @@ prost = "0.6"
 tokio = { version = "0.2", features = ["macros"] }
 futures      = "0.3.5"
 base64 = "0.12"
-bytes = "0.4"
+bytes = "0.5"
 hex = "0.4.2"
 chain-addr      = { path = "../../chain-deps/chain-addr" }
 chain-core      = { path = "../../chain-deps/chain-core" }
