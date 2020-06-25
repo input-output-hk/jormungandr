@@ -67,22 +67,26 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     Ok(ScenarioResult::passed())
 }
 
+const LEADER_2: &str = "LEADER_2";
+
 pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
         "L2003-leader_is_restarted",
         &mut context,
         topology [
-            LEADER,
-            PASSIVE -> LEADER,
+            LEADER_2,
+            LEADER -> LEADER_2,
+            PASSIVE -> LEADER -> LEADER_2
         ]
         blockchain {
             consensus = GenesisPraos,
             number_of_slots_per_epoch = 60,
             slot_duration = 1,
-            leaders = [ LEADER],
+            leaders = [ LEADER, LEADER_2],
             initials = [
                 account "unassigned1" with   500_000_000,
                 account "delegated1" with  2_000_000_000 delegates to LEADER,
+                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -90,6 +94,13 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut controller = scenario_settings.build(context)?;
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
+
+    let leader_2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    leader_2.wait_for_bootstrap()?;
 
     let leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
@@ -100,7 +111,6 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
     )?;
-
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -113,7 +123,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader.shutdown()?;
 
     controller
-        .fragment_sender_with_setup(FragmentSenderSetup::no_verify())
+        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_with_iteration_delay(
             10,
             &mut wallet1,
@@ -132,7 +142,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
-        &[&passive, &leader],
+        &[&passive, &leader, &leader_2],
         SyncWaitParams::nodes_restart(2).into(),
         "leader_restart",
         MeasurementReportInterval::Standard,
@@ -140,6 +150,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 
     passive.shutdown()?;
     leader.shutdown()?;
+    leader_2.shutdown()?;
 
     controller.finalize();
     Ok(ScenarioResult::passed())
