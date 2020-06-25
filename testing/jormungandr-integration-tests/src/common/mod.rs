@@ -9,6 +9,7 @@ pub mod file_utils;
 pub mod jcli_wrapper;
 pub mod jormungandr;
 pub mod legacy;
+pub mod load;
 pub mod network;
 pub mod predicates;
 pub mod process_assert;
