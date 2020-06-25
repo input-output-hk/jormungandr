@@ -1,5 +1,14 @@
 # Change Log
 
+## [v0.9.1](https://github.com/input-output-hk/jormungandr/tree/v0.9.1) (2020-06-25)
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/nightly.20200625...v0.9.1)
+
+**Fixed bugs:**
+
+- 0.9.0 as well as Release 0.9.1-nightly.20200624 not working on Windows [\#2418](https://github.com/input-output-hk/jormungandr/issues/2418)
+- explorer: correctly support re-voting [\#2427](https://github.com/input-output-hk/jormungandr/pull/2427)
+
 ## [v0.9.0](https://github.com/input-output-hk/jormungandr/tree/v0.9.0) (2020-06-23)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.9.0-rc3...v0.9.0)
