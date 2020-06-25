@@ -117,6 +117,14 @@ impl JormungandrLogger {
         Ok(panic_in_logs_found || self.get_lines_with_error().count() > 0)
     }
 
+    pub fn last_validated_block_date(&self) -> Option<BlockDate> {
+        self.get_log_entries()
+            .filter(|x| x.msg.contains("validated block"))
+            .map(|x| x.block_date())
+            .last()
+            .unwrap_or(None)
+    }
+
     pub fn print_raw_log(&self) {
         println!("{}", self.get_log_content());
     }
