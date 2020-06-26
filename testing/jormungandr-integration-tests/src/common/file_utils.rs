@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
-use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
+use fs_extra::dir::{copy, CopyOptions};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 pub fn find_file<P: AsRef<Path>>(root: P, part_of_name: &str) -> Option<PathBuf> {
     for entry in fs::read_dir(root).expect("cannot read root directory") {
@@ -34,4 +36,10 @@ pub fn make_readonly(path: &PathBuf) {
     let mut perms = fs::metadata(path.as_os_str()).unwrap().permissions();
     perms.set_readonly(true);
     fs::set_permissions(path.as_os_str(), perms).expect("cannot set permissions");
+}
+
+pub fn copy_folder(from: &PathBuf, to: &PathBuf, overwrite: bool) {
+    let mut options = CopyOptions::new();
+    options.overwrite = overwrite;
+    copy(from, to, &options).expect("cannot copy folder");
 }

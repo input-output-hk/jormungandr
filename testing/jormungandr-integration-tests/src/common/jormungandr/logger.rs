@@ -5,13 +5,13 @@ extern crate serde_json;
 use self::serde::{Deserialize, Serialize};
 use crate::common::file_utils;
 use chain_core::property::FromStr;
-use chain_impl_mockchain::key::Hash;
+use chain_impl_mockchain::{block, key::Hash};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use thiserror::Error;
 
-use jormungandr_lib::time::SystemTime;
+use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
 use jormungandr_testing_utils::testing::Timestamp;
 #[derive(Debug, Error)]
 pub enum LoggerError {
@@ -46,6 +46,7 @@ pub struct LogEntry {
     pub hash: Option<String>,
     pub reason: Option<String>,
     pub error: Option<String>,
+    pub block_date: Option<String>,
     pub peer_addr: Option<String>,
 }
 
@@ -62,6 +63,12 @@ impl LogEntry {
             Some(error) => error.contains(error_part),
             None => false,
         }
+    }
+
+    pub fn block_date(&self) -> Option<BlockDate> {
+        self.block_date
+            .clone()
+            .map(|block| block::BlockDate::from_str(&block).unwrap().into())
     }
 
     pub fn is_later_than(&self, reference_time: &SystemTime) -> bool {
@@ -108,6 +115,14 @@ impl JormungandrLogger {
             .any(|x| self.get_log_content().contains(x));
 
         Ok(panic_in_logs_found || self.get_lines_with_error().count() > 0)
+    }
+
+    pub fn last_validated_block_date(&self) -> Option<BlockDate> {
+        self.get_log_entries()
+            .filter(|x| x.msg.contains("validated block"))
+            .map(|x| x.block_date())
+            .last()
+            .unwrap_or(None)
     }
 
     pub fn print_raw_log(&self) {
@@ -225,13 +240,21 @@ impl JormungandrLogger {
     }
 
     pub fn print_error_and_invalid_logs(&self) {
-        let error_lines: Vec<_> = self.get_lines_with_error_and_invalid().collect();
+        let error_lines: Vec<_> = self
+            .get_lines_with_error_and_invalid()
+            .map(|x| self.remove_white_space(&x))
+            .collect();
+
         if !error_lines.is_empty() {
             println!("Error lines:");
             for line in error_lines {
                 println!("{}", line);
             }
         }
+    }
+
+    fn remove_white_space(&self, input: &str) -> String {
+        input.split_whitespace().collect::<String>()
     }
 
     pub fn print_error_or_warn_lines(&self) {

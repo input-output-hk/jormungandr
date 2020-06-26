@@ -63,7 +63,10 @@ fn get_working_directory() -> PathBuf {
     let mut output_directory: PathBuf = std::env::current_exe().unwrap();
 
     output_directory.pop();
-    output_directory.pop();
+
+    if output_directory.ends_with("deps") {
+        output_directory.pop();
+    }
     output_directory
 }
 
