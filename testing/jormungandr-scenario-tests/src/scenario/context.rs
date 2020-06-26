@@ -3,14 +3,10 @@ use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use rand_chacha::ChaChaRng;
 use rand_core::RngCore;
-use std::{
-    net::SocketAddr,
-    path::{Path, PathBuf},
-    sync::{
-        atomic::{self, AtomicU16},
-        Arc,
-    },
-};
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{self, AtomicU16};
+use std::sync::Arc;
 
 use crate::scenario::ProgressBarMode;
 use jormungandr_testing_utils::testing::network_builder::{Random, Seed};
@@ -29,8 +25,8 @@ enum TestingDirectory {
 pub struct Context<RNG: RngCore + Sized = ChaChaRng> {
     rng: Random<RNG>,
 
-    jormungandr: bawawa::Command,
-    jcli: bawawa::Command,
+    jormungandr: PathBuf,
+    jcli: PathBuf,
 
     next_available_rest_port_number: Arc<AtomicU16>,
     next_available_grpc_port_number: Arc<AtomicU16>,
@@ -44,8 +40,8 @@ pub struct Context<RNG: RngCore + Sized = ChaChaRng> {
 impl Context<ChaChaRng> {
     pub fn new(
         seed: Seed,
-        jormungandr: bawawa::Command,
-        jcli: bawawa::Command,
+        jormungandr: PathBuf,
+        jcli: PathBuf,
         testing_directory: Option<PathBuf>,
         generate_documentation: bool,
         progress_bar_mode: ProgressBarMode,
@@ -82,8 +78,8 @@ impl Context<ChaChaRng> {
             rng,
             next_available_rest_port_number: Arc::clone(&self.next_available_rest_port_number),
             next_available_grpc_port_number: Arc::clone(&self.next_available_grpc_port_number),
-            jormungandr: self.jormungandr().clone(),
-            jcli: self.jcli().clone(),
+            jormungandr: self.jormungandr.clone(),
+            jcli: self.jcli.clone(),
             testing_directory: self.testing_directory.clone(),
             generate_documentation: self.generate_documentation,
             progress_bar_mode: self.progress_bar_mode,
@@ -97,7 +93,7 @@ impl Context<ChaChaRng> {
 }
 
 impl<RNG: RngCore> Context<RNG> {
-    pub fn jormungandr(&self) -> &bawawa::Command {
+    pub fn jormungandr(&self) -> &Path {
         &self.jormungandr
     }
 
@@ -107,7 +103,7 @@ impl<RNG: RngCore> Context<RNG> {
         child
     }
 
-    pub fn jcli(&self) -> &bawawa::Command {
+    pub fn jcli(&self) -> &Path {
         &self.jcli
     }
 

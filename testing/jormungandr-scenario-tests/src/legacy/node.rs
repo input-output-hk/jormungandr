@@ -28,15 +28,15 @@ pub use jormungandr_testing_utils::testing::{
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
 
-use bawawa::{Control, Process};
 use futures::executor::block_on;
 use indicatif::ProgressBar;
 use rand_core::RngCore;
-use tokio::prelude::*;
 use yaml_rust::{Yaml, YamlLoader};
 
 use std::collections::HashMap;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -56,7 +56,7 @@ pub struct LegacyNode {
     #[allow(unused)]
     dir: PathBuf,
 
-    process: Process,
+    process: Child,
 
     progress_bar: ProgressBarController,
     node_settings: LegacySettings,
@@ -537,7 +537,7 @@ impl LegacyNode {
     }
 
     pub fn spawn<R: RngCore>(
-        jormungandr: &bawawa::Command,
+        jormungandr: &Path,
         context: &Context<R>,
         progress_bar: ProgressBar,
         alias: &str,
@@ -546,7 +546,7 @@ impl LegacyNode {
         working_dir: &Path,
         peristence_mode: PersistenceMode,
     ) -> Result<Self> {
-        let mut command = jormungandr.clone();
+        let mut command = Command::new(jormungandr);
         let dir = working_dir.join(alias);
         std::fs::DirBuilder::new().recursive(true).create(&dir)?;
 
@@ -604,23 +604,22 @@ impl LegacyNode {
             cause: e,
         })?;
 
-        command.arguments(&["--config", &config_file.display().to_string()]);
+        command.arg("--config");
+        command.arg(&config_file);
 
         match block0 {
             NodeBlock0::File(path) => {
-                command.arguments(&[
-                    "--genesis-block",
-                    &path.display().to_string(),
-                    "--secret",
-                    &config_secret.display().to_string(),
-                ]);
+                command.arg("--genesis-block");
+                command.arg(&path);
+                command.arg("--secret");
+                command.arg(&config_secret);
             }
             NodeBlock0::Hash(hash) => {
-                command.arguments(&["--genesis-block-hash", &hash.to_string()]);
+                command.args(&["--genesis-block-hash", &hash.to_string()]);
             }
         }
 
-        let process = Process::spawn(command).map_err(Error::CannotSpawnNode)?;
+        let process = command.spawn().map_err(Error::CannotSpawnNode)?;
 
         let node = LegacyNode {
             alias: alias.into(),
@@ -639,16 +638,32 @@ impl LegacyNode {
         Ok(node)
     }
 
-    pub fn capture_logs(&mut self) -> impl Future<Item = (), Error = ()> {
-        let stderr = self.process.stderr().take().unwrap();
+    pub fn capture_logs(&mut self) {
+        let stderr = self.process.stderr.take().unwrap();
+        let reader = BufReader::new(stderr);
+        for line_result in reader.lines() {
+            let line = line_result.expect("failed to read a line from log output");
+            self.progress_bar.log_info(&line);
+        }
+    }
 
-        let stderr = tokio::codec::FramedRead::new(stderr, tokio::codec::LinesCodec::new());
-
-        let progress_bar = self.progress_bar.clone();
-
-        stderr
-            .for_each(move |line| future::ok(progress_bar.log_info(&line)))
-            .map_err(|err| unimplemented!("{}", err))
+    pub fn wait(&mut self) {
+        match self.process.wait() {
+            Err(err) => {
+                self.progress_bar.log_err(&err);
+                self.progress_bar_failure();
+                self.set_status(Status::Failure);
+            }
+            Ok(status) => {
+                if status.success() {
+                    self.progress_bar_success();
+                } else {
+                    self.progress_bar.log_err(&status);
+                    self.progress_bar_failure()
+                }
+                self.set_status(Status::Exit(status));
+            }
+        }
     }
 
     fn progress_bar_start(&self) {
@@ -686,46 +701,5 @@ impl LegacyNode {
 
     fn set_status(&self, status: Status) {
         *self.status.lock().unwrap() = status
-    }
-}
-
-impl Future for LegacyNode {
-    type Item = ();
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        match self.process.poll() {
-            Err(err) => {
-                self.progress_bar.log_err(&err);
-                self.progress_bar_failure();
-                self.set_status(Status::Failure);
-                Err(())
-            }
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Ok(Async::Ready(status)) => {
-                if status.success() {
-                    self.progress_bar_success();
-                } else {
-                    self.progress_bar.log_err(&status);
-                    self.progress_bar_failure()
-                }
-                self.set_status(Status::Exit(status));
-                Ok(Async::Ready(()))
-            }
-        }
-    }
-}
-
-impl Control for LegacyNode {
-    fn command(&self) -> &bawawa::Command {
-        &self.process.command()
-    }
-
-    fn id(&self) -> u32 {
-        self.process.id()
-    }
-
-    fn kill(&mut self) -> bawawa::Result<()> {
-        self.process.kill()
     }
 }

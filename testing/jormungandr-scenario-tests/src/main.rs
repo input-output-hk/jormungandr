@@ -93,8 +93,8 @@ fn main() {
 
     std::env::set_var("RUST_BACKTRACE", "full");
 
-    let jormungandr = prepare_command(command_args.jormungandr);
-    let jcli = prepare_command(command_args.jcli);
+    let jormungandr = prepare_command(&command_args.jormungandr);
+    let jcli = prepare_command(&command_args.jcli);
     let progress_bar_mode = command_args.progress_bar_mode;
     let seed = command_args
         .seed
@@ -154,9 +154,9 @@ fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
 ###############################################################################
     "###,
         *style::icons::jormungandr,
-        style::binary.apply_to(context.jormungandr().to_string()),
+        style::binary.apply_to(context.jormungandr().to_string_lossy()),
         *style::icons::jcli,
-        style::binary.apply_to(context.jcli().to_string()),
+        style::binary.apply_to(context.jcli().to_string_lossy()),
         *style::icons::seed,
         style::seed.apply_to(context.seed()),
     )

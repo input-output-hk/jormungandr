@@ -1,7 +1,5 @@
-use bytes::BytesMut;
 use serde_json::{Map, Value};
 use std::convert::TryFrom;
-use tokio::codec::Decoder;
 
 #[derive(Debug, Clone)]
 pub struct StructuredLog {
@@ -10,13 +8,6 @@ pub struct StructuredLog {
 
     full_log: serde_json::Map<String, Value>,
 }
-
-/// Structural log decoder
-///
-/// For the testing purpose of jormungandr we will assume the structural
-/// logs to always be in JSON output format
-///
-pub struct SlogCodec(tokio::codec::LinesCodec);
 
 error_chain! {
     foreign_links {
@@ -65,24 +56,6 @@ impl TryFrom<Map<String, Value>> for StructuredLog {
         })
     }
 }
-
-impl Decoder for SlogCodec {
-    type Item = StructuredLog;
-    type Error = Error;
-
-    fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>> {
-        let line = self.0.decode(buf)?;
-
-        if let Some(line) = line {
-            let map: Map<_, _> =
-                serde_json::from_str(&line).chain_err(|| ErrorKind::InvalidJSON)?;
-            StructuredLog::try_from(map).map(Some)
-        } else {
-            Ok(None)
-        }
-    }
-}
-
 #[inline]
 fn map_get<'a>(map: &'a Map<String, Value>, key: &str) -> Result<&'a Value> {
     if let Some(value) = map.get(key) {
