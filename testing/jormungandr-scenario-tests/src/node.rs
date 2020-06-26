@@ -31,7 +31,7 @@ use rand_core::RngCore;
 use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -604,6 +604,8 @@ impl Node {
                 command.args(&["--genesis-block-hash", &hash.to_string()]);
             }
         }
+
+        command.stderr(Stdio::piped());
 
         let process = command.spawn().map_err(Error::CannotSpawnNode)?;
 

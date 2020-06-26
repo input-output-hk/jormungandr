@@ -36,7 +36,7 @@ use yaml_rust::{Yaml, YamlLoader};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -618,6 +618,8 @@ impl LegacyNode {
                 command.args(&["--genesis-block-hash", &hash.to_string()]);
             }
         }
+
+        command.stderr(Stdio::piped());
 
         let process = command.spawn().map_err(Error::CannotSpawnNode)?;
 
