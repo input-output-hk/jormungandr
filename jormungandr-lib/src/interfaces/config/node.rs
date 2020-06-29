@@ -153,6 +153,11 @@ pub struct LayersConfig {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PreferredViewMax(usize);
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Notifier {
+    pub max_connections: Option<usize>,
+}
+
 impl Default for PreferredViewMax {
     fn default() -> Self {
         Self(DEFAULT_PREFERRED_VIEW_MAX)

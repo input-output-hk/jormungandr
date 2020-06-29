@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use thiserror::Error;
-use tungstenite::connect;
+use tungstenite::{connect, Message};
 use url::Url;
 
 #[derive(Debug, Error)]
@@ -36,6 +36,11 @@ pub enum JsonMessage {
     NewTip(Hash),
 }
 
+pub enum NotifierMessage {
+    JsonMessage(JsonMessage),
+    MaxConnectionsReached,
+}
+
 impl JormungandrNotifier {
     pub fn new(url: Url) -> Self {
         JormungandrNotifier {
@@ -47,7 +52,7 @@ impl JormungandrNotifier {
 
     pub fn new_client<F>(&mut self, mut for_each: F) -> Result<(), ()>
     where
-        F: FnMut(JsonMessage) -> () + Send + 'static,
+        F: FnMut(NotifierMessage) -> bool + Send + 'static,
     {
         let url = self.url.clone();
         let (mut socket, _response) = connect(url).expect("Can't connect to notifier websocket");
@@ -63,13 +68,37 @@ impl JormungandrNotifier {
 
             let msg = socket.read_message().expect("Error reading message");
 
-            let json_msg = serde_json::from_str(msg.to_text().expect("message is not text"))
-                .expect("Deserialization failed");
+            match msg {
+                Message::Text(text) => {
+                    let json_msg: JsonMessage =
+                        serde_json::from_str(&text).expect("Deserialization failed");
 
-            for_each(json_msg);
+                    if !for_each(NotifierMessage::JsonMessage(json_msg)) {
+                        break;
+                    }
+                }
+                Message::Close(close_frame) => {
+                    if let tungstenite::protocol::frame::coding::CloseCode::Library(4000) =
+                        close_frame.expect("no close code").code
+                    {
+                        for_each(NotifierMessage::MaxConnectionsReached);
+                    }
+
+                    break;
+                }
+                _ => unreachable!("unexpected notifier message"),
+            }
         });
 
         self.handles.push(join);
+
+        Ok(())
+    }
+
+    pub fn wait_all(&mut self) -> std::thread::Result<()> {
+        for handle in self.handles.drain(..) {
+            handle.join()?;
+        }
 
         Ok(())
     }
@@ -79,7 +108,7 @@ impl Drop for JormungandrNotifier {
     fn drop(&mut self) {
         *self.finished.write().unwrap() = true;
         for handle in self.handles.drain(..) {
-            handle.join().expect("failed to join thread");
+            let _ = handle.join();
         }
     }
 }

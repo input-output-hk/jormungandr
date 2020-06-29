@@ -286,6 +286,12 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_notifier_max_connections(&mut self, max_connections: usize) -> &mut Self {
+        self.node_config_builder
+            .with_notifier_max_connections(max_connections);
+        self
+    }
+
     pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
         let mut node_config = self.node_config_builder.build();
 
