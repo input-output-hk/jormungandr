@@ -214,21 +214,21 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader4.wait_for_bootstrap()?;
 
-    let leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader5.wait_for_bootstrap()?;
-
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader3.wait_for_bootstrap()?;
+    let leader1 =
+        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    leader1.wait_for_bootstrap()?;
 
     let leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader2.wait_for_bootstrap()?;
 
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader1.wait_for_bootstrap()?;
+    let leader3 =
+        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    leader3.wait_for_bootstrap()?;
+
+    let leader5 =
+        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    leader5.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
