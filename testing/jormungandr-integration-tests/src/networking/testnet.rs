@@ -2,7 +2,7 @@
 
 use crate::{
     common::{
-        configuration::jormungandr_config::JormungandrParams,
+        configuration::JormungandrParams,
         jcli_wrapper,
         jormungandr::{
             storage_loading_benchmark_from_log, ConfigurationBuilder, JormungandrProcess, Starter,

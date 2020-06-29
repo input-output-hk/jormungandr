@@ -1,6 +1,6 @@
 use crate::common::{
     configuration::{
-        self, jormungandr_config::JormungandrParams, Block0ConfigurationBuilder, NodeConfigBuilder,
+        self, JormungandrParams, Block0ConfigurationBuilder, NodeConfigBuilder,
         SecretModelFactory,
     },
     jcli_wrapper,
