@@ -12,6 +12,7 @@ const MAX_CONNECTIONS_DEFAULT: usize = 255;
 
 // error codes in 4000-4999 are reserved for private use.
 // I couldn't find an error code for max connections, so I'll use the first one for now
+// maybe using the standard error code for Again is the right thing to do
 const MAX_CONNECTIONS_ERROR_CLOSE_CODE: u16 = 4000;
 const MAX_CONNECTIONS_ERROR_REASON: &str = "MAX CONNECTIONS reached";
 
@@ -46,11 +47,11 @@ impl Notifier {
         let clients2 = self.clients.clone();
         let logger = info.logger();
 
-        // TODO: what limit should I put in there?
         let (deleted_msgbox, deleted_queue) = channel::<usize>(32);
 
         // TODO: it may be better to have a task that runs periodically instead of
-        // when a sender is detected to be disconected
+        // when a sender is detected to be disconected, but that would require
+        // reading the sockets besides from writing to them
         info.spawn(
             "clean disconnected notifier clients",
             handle_disconnected(clients2.clone(), deleted_queue),
