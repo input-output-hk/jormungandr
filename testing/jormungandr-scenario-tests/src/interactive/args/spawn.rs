@@ -2,9 +2,7 @@ use super::InteractiveCommandError;
 use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller, style};
 use jormungandr_integration_tests::common::legacy::download_last_n_releases;
-use jormungandr_testing_utils::testing::network_builder::{
-    LeadershipMode, PersistenceMode, SpawnParams,
-};
+use jormungandr_testing_utils::testing::network_builder::{LeadershipMode, SpawnParams};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -81,18 +79,8 @@ fn spawn_node(
     nodes: &mut Vec<NodeController>,
     legacy_nodes: &mut Vec<LegacyNodeController>,
 ) -> Result<()> {
-    let persistence_mode = {
-        if storage {
-            PersistenceMode::Persistent
-        } else {
-            PersistenceMode::Persistent
-        }
-    };
-
     let mut spawn_params = SpawnParams::new(alias);
-    spawn_params
-        .persistence_mode(persistence_mode)
-        .leadership_mode(leadership_mode);
+    spawn_params.leadership_mode(leadership_mode);
 
     if let Some(version) = legacy {
         let releases = download_last_n_releases(5);

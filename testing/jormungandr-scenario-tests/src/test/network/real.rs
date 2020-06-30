@@ -1,5 +1,5 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
+    node::LeadershipMode,
     scenario::{
         repository::ScenarioResult, ActiveSlotCoefficient, ConsensusVersion, ControllerBuilder,
         KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration, Value,
@@ -134,28 +134,16 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     );
     let mut controller = scenario_settings.build(context)?;
 
-    let core = controller.spawn_node(
-        CORE_NODE,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
+    let core = controller.spawn_node(CORE_NODE, LeadershipMode::Leader)?;
 
     let mut relays = vec![];
     for i in 0..relay_nodes_count {
-        relays.push(controller.spawn_node(
-            &relay_name(i + 1),
-            LeadershipMode::Leader,
-            PersistenceMode::Persistent,
-        )?);
+        relays.push(controller.spawn_node(&relay_name(i + 1), LeadershipMode::Leader)?);
     }
 
     let mut leaders = vec![];
     for i in 0..(relay_nodes_count * leaders_per_relay) {
-        leaders.push(controller.spawn_node(
-            &leader_name(i + 1),
-            LeadershipMode::Leader,
-            PersistenceMode::Persistent,
-        )?);
+        leaders.push(controller.spawn_node(&leader_name(i + 1), LeadershipMode::Leader)?);
     }
 
     let releases = download_last_n_releases(1);
@@ -171,7 +159,6 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
                 controller
                     .new_spawn_params(&legacy_name(i + 1))
                     .leadership_mode(LeadershipMode::Leader)
-                    .persistence_mode(PersistenceMode::Persistent)
                     .jormungandr(legacy_app.clone()),
                 &version,
             )?,

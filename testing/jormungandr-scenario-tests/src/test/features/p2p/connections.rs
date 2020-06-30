@@ -1,5 +1,5 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
+    node::LeadershipMode,
     test::{utils, Result},
     Context, ScenarioResult,
 };
@@ -41,16 +41,14 @@ pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     )?;
     leader1.wait_for_bootstrap()?;
 
-    let leader2 =
-        controller.spawn_node(LEADER2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader2 = controller.spawn_node(LEADER2, LeadershipMode::Leader)?;
     leader2.wait_for_bootstrap()?;
 
     let leader3 =
         controller.spawn_node_custom(controller.new_spawn_params(LEADER3).max_connections(1))?;
     leader3.wait_for_bootstrap()?;
 
-    let leader4 =
-        controller.spawn_node(LEADER4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader4 = controller.spawn_node(LEADER4, LeadershipMode::Leader)?;
     leader4.wait_for_bootstrap()?;
 
     utils::wait(30);

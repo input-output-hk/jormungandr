@@ -1,11 +1,6 @@
 #![allow(dead_code)]
 
-use crate::{
-    node::{LeadershipMode, PersistenceMode},
-    scenario::repository::ScenarioResult,
-    test::Result,
-    Context,
-};
+use crate::{node::LeadershipMode, scenario::repository::ScenarioResult, test::Result, Context};
 use rand_chacha::ChaChaRng;
 
 pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -30,13 +25,8 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let node1 =
-        controller.spawn_node("node1", LeadershipMode::Leader, PersistenceMode::Persistent)?;
-    let node2 = controller.spawn_node(
-        "node2",
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
+    let node1 = controller.spawn_node("node1", LeadershipMode::Leader)?;
+    let node2 = controller.spawn_node("node2", LeadershipMode::Passive)?;
 
     controller.monitor_nodes();
 
@@ -82,26 +72,10 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context).unwrap();
 
-    let leader1 = controller.spawn_node(
-        "Leader1",
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    let passive1 = controller.spawn_node(
-        "Passive1",
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
-    let passive2 = controller.spawn_node(
-        "Passive2",
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
-    let passive3 = controller.spawn_node(
-        "Passive3",
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
+    let leader1 = controller.spawn_node("Leader1", LeadershipMode::Leader)?;
+    let passive1 = controller.spawn_node("Passive1", LeadershipMode::Passive)?;
+    let passive2 = controller.spawn_node("Passive2", LeadershipMode::Passive)?;
+    let passive3 = controller.spawn_node("Passive3", LeadershipMode::Passive)?;
 
     controller.monitor_nodes();
 

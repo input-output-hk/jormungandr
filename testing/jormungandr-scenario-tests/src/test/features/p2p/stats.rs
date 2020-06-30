@@ -1,5 +1,5 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
+    node::LeadershipMode,
     test::{utils, Result},
     Context, ScenarioResult,
 };
@@ -35,8 +35,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader1 =
-        controller.spawn_node(LEADER1, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader1 = controller.spawn_node(LEADER1, LeadershipMode::Leader)?;
     leader1.wait_for_bootstrap()?;
 
     super::assert_node_stats(&leader1, 0, 0, 0, 0, "no peers for leader1")?;

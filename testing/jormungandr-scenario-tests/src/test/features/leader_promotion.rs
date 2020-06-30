@@ -1,6 +1,6 @@
 use crate::{
+    node::LeadershipMode,
     node::NodeController,
-    node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
 };
@@ -32,14 +32,9 @@ pub fn passive_node_promotion(mut context: Context<ChaChaRng>) -> Result<Scenari
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
-    let passive = controller.spawn_node(
-        PASSIVE,
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
     controller.monitor_nodes();
 

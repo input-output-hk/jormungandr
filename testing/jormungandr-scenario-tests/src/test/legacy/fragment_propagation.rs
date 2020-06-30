@@ -8,10 +8,7 @@ use jormungandr_integration_tests::common::legacy::{
 use jormungandr_testing_utils::{
     legacy::Version,
     stake_pool::StakePool,
-    testing::{
-        network_builder::{LeadershipMode, PersistenceMode},
-        FragmentNode, SyncNode,
-    },
+    testing::{network_builder::LeadershipMode, FragmentNode, SyncNode},
 };
 use rand_chacha::ChaChaRng;
 use std::path::PathBuf;
@@ -45,15 +42,13 @@ pub fn legacy_current_node_fragment_propagation(
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
 
     let passive = controller.spawn_legacy_node(
         controller
             .new_spawn_params(PASSIVE)
             .leadership_mode(LeadershipMode::Passive)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app),
         &version,
     )?;
@@ -102,17 +97,12 @@ pub fn current_node_legacy_fragment_propagation(
         controller
             .new_spawn_params(LEADER)
             .leadership_mode(LeadershipMode::Leader)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app),
         &version,
     )?;
     leader.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node(
-        PASSIVE,
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
 
     send_all_fragment_types(&mut controller, &passive, Some(version));
@@ -152,15 +142,10 @@ pub fn current_node_fragment_propagation(
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node(
-        PASSIVE,
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
 
     send_all_fragment_types(&mut controller, &passive, None);
