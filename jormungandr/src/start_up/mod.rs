@@ -18,23 +18,16 @@ const BLOCKSTORE_BUSY_TIMEOUT: u64 = 1000;
 /// prepare the block storage from the given settings
 ///
 pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, Error> {
-    let raw_block_store = match &setting.storage {
-        None => unimplemented!("in-memory storage is not available"),
-        Some(dir) => {
-            std::fs::create_dir_all(dir).map_err(|err| Error::IO {
-                source: err,
-                reason: ErrorKind::SQLite,
-            })?;
-            let path = dir.clone();
-            info!(logger, "storing blockchain in '{:?}'", path);
-            let zero_id: [u8; 32] = <Block as property::Block>::Id::zero().into();
-            let zero_id = zero_id.to_vec();
-            BlockStore::new(path, zero_id.clone(), zero_id.len())
-        }
-    };
-
+    std::fs::create_dir_all(&setting.storage).map_err(|err| Error::IO {
+        source: err,
+        reason: ErrorKind::SQLite,
+    })?;
+    info!(logger, "storing blockchain in '{:?}'", setting.storage);
+    let zero_id: [u8; 32] = <Block as property::Block>::Id::zero().into();
+    let zero_id = zero_id.to_vec();
+    let raw_block_store = BlockStore::new(&setting.storage, zero_id.clone(), zero_id.len())?;
     Ok(Storage::new(
-        raw_block_store?,
+        raw_block_store,
         logger.new(o!(log::KEY_SUB_TASK => "storage")),
     ))
 }

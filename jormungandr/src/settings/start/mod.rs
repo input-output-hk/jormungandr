@@ -26,12 +26,14 @@ pub enum Error {
     ExpectedBlock0Info,
     #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]
     ListenAddressNotValid,
+    #[error("You should always provide the path to the blockchain storage database")]
+    ExpectedStoragePath,
 }
 
 /// Overall Settings for node
 pub struct Settings {
     pub network: network::Configuration,
-    pub storage: Option<PathBuf>,
+    pub storage: PathBuf,
     pub block_0: Block0Info,
     pub secrets: Vec<PathBuf>,
     pub rest: Option<Rest>,
@@ -135,7 +137,8 @@ impl RawSettings {
             (Some(path), _) => Some(path.clone()),
             (None, Some(path)) => Some(path.clone()),
             (None, None) => None,
-        };
+        }
+        .ok_or(Error::ExpectedStoragePath)?;
 
         let mut secrets = command_arguments.secret.clone();
         if let Some(secret_files) = config.as_ref().map(|cfg| cfg.secret_files.clone()) {
