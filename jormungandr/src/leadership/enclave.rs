@@ -10,6 +10,8 @@ use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::sync::Arc;
 use thiserror::Error;
 
+pub use crate::secure::enclave::Schedule;
+
 #[derive(Debug, Clone, Error)]
 pub enum EnclaveError {
     #[error("This leader {id} is not in the enclave")]
@@ -47,11 +49,13 @@ impl Enclave {
         leadership: Arc<Leadership>,
         slot_start: u32,
         nb_slots: u32,
-    ) -> Result<Vec<LeaderEvent>, EnclaveError> {
-        Ok(self
-            .inner
-            .leadership_evaluate(&leadership, slot_start, nb_slots)
-            .await)
+    ) -> Result<Schedule, EnclaveError> {
+        Ok(Schedule::new(
+            self.inner.clone(),
+            leadership,
+            slot_start,
+            nb_slots,
+        ))
     }
 
     /// ask the leader associated to the `LeaderEvent` to finalize the given
