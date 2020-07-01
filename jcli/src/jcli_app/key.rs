@@ -84,9 +84,9 @@ pub enum Key {
 pub struct FromBytes {
     /// Type of a private key
     ///
-    /// supported values are: ed25519, ed25519bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
+    /// supported values are: ed25519, ed25519public, ed25519bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
     #[structopt(long = "type")]
-    key_type: GenPrivKeyType,
+    key_type: FromBytesKeyType,
 
     /// retrieve the private key from the given bytes
     #[structopt(name = "INPUT_BYTES")]
@@ -214,6 +214,18 @@ arg_enum! {
     }
 }
 
+arg_enum! {
+    #[derive(StructOpt, Debug)]
+    pub enum FromBytesKeyType {
+        Ed25519,
+        Ed25519Public,
+        Ed25519Bip32,
+        Ed25519Extended,
+        SumEd25519_12,
+        Curve25519_2HashDH,
+    }
+}
+
 impl Key {
     pub fn exec(self) -> Result<(), Error> {
         match self {
@@ -288,11 +300,14 @@ impl FromBytes {
         let bytes = read_hex(&self.input_bytes)?;
 
         let priv_key_bech32 = match self.key_type {
-            GenPrivKeyType::Ed25519 => bytes_to_priv_key::<Ed25519>(&bytes)?,
-            GenPrivKeyType::Ed25519Bip32 => bytes_to_priv_key::<Ed25519Bip32>(&bytes)?,
-            GenPrivKeyType::Ed25519Extended => bytes_to_priv_key::<Ed25519Extended>(&bytes)?,
-            GenPrivKeyType::SumEd25519_12 => bytes_to_priv_key::<SumEd25519_12>(&bytes)?,
-            GenPrivKeyType::Curve25519_2HashDH => bytes_to_priv_key::<Curve25519_2HashDH>(&bytes)?,
+            FromBytesKeyType::Ed25519 => bytes_to_priv_key::<Ed25519>(&bytes)?,
+            FromBytesKeyType::Ed25519Public => bytes_to_pub_key::<Ed25519>(&bytes)?,
+            FromBytesKeyType::Ed25519Bip32 => bytes_to_priv_key::<Ed25519Bip32>(&bytes)?,
+            FromBytesKeyType::Ed25519Extended => bytes_to_priv_key::<Ed25519Extended>(&bytes)?,
+            FromBytesKeyType::SumEd25519_12 => bytes_to_priv_key::<SumEd25519_12>(&bytes)?,
+            FromBytesKeyType::Curve25519_2HashDH => {
+                bytes_to_priv_key::<Curve25519_2HashDH>(&bytes)?
+            }
         };
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", priv_key_bech32)?;
@@ -433,6 +448,12 @@ fn bytes_to_priv_key<K: AsymmetricKey>(bytes: &[u8]) -> Result<String, Error> {
     use chain_crypto::bech32::Bech32 as _;
     let secret: chain_crypto::SecretKey<K> = chain_crypto::SecretKey::from_binary(bytes)?;
     Ok(secret.to_bech32_str())
+}
+
+fn bytes_to_pub_key<K: AsymmetricPublicKey>(bytes: &[u8]) -> Result<String, Error> {
+    use chain_crypto::bech32::Bech32 as _;
+    let public: chain_crypto::PublicKey<K> = chain_crypto::PublicKey::from_binary(bytes)?;
+    Ok(public.to_bech32_str())
 }
 
 #[derive(Debug)]
