@@ -1571,6 +1571,7 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "typed-bytes",
+ "warp",
 ]
 
 [[package]]
