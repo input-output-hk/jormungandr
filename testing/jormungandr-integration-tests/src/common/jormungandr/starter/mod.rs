@@ -158,10 +158,16 @@ impl<'a, Conf: TestConfig> StartupVerification for LogStartupVerification<'a, Co
     }
 
     fn if_succeed(&self) -> bool {
+        let bootstrap_completed_msgs = [
+            "listening and accepting gRPC connections",
+            "genesis block fetched",
+        ];
+
         let logger = JormungandrLogger::new(self.config.log_file_path());
-        logger
-            .contains_message("genesis block fetched")
-            .unwrap_or_else(|_| false)
+
+        bootstrap_completed_msgs
+            .iter()
+            .any(|msg| logger.contains_message(msg).unwrap_or_else(|_| false))
     }
 }
 
