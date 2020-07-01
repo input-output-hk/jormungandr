@@ -1617,6 +1617,8 @@ dependencies = [
 name = "jormungandr-testing-utils"
 version = "0.9.1"
 dependencies = [
+ "assert_fs",
+ "bawawa",
  "bech32",
  "bytesize",
  "cardano-legacy-address",
@@ -1628,6 +1630,7 @@ dependencies = [
  "chrono",
  "custom_debug",
  "flate2",
+ "futures 0.1.29",
  "hex",
  "humantime",
  "jormungandr-lib",
@@ -1642,6 +1645,7 @@ dependencies = [
  "sysinfo",
  "tar",
  "thiserror",
+ "tokio-codec",
  "typed-bytes",
  "zip",
 ]

@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bawawa = "0.1.5"
 bech32 = "0.7"
 bytesize = "1.0.1"
 serde = { version = "1.0", features = ["derive"] }
@@ -33,6 +34,9 @@ zip = "0.5.6"
 flate2 = "1.0.14"
 tar = "0.4"
 hex = "0.4"
+tokio-codec = "0.1"
+futures = "0.1"
+assert_fs = "1.0"
 
 [dependencies.reqwest]
 version = "0.10.6"

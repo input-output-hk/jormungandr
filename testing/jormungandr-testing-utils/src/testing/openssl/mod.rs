@@ -1,3 +1,4 @@
+use assert_fs::fixture::ChildPath;
 use bawawa::{Command, Error, Process, Program, StandardError, StandardOutput};
 use futures::stream::Stream;
 use tokio_codec::LinesCodec;
@@ -35,13 +36,18 @@ impl Openssl {
         Ok(format!("{}", lines.join("\n")))
     }
 
-    pub fn genrsa(&self, length: u32, out_file: &PathBuf) -> Result<String, Error> {
+    pub fn genrsa(&self, length: u32, out_file: &ChildPath) -> Result<String, Error> {
         let mut openssl = Command::new(self.program.clone());
-        openssl.arguments(&["genrsa", "-out", path_to_str(out_file), &length.to_string()]);
+        openssl.arguments(&[
+            "genrsa",
+            "-out",
+            &path_to_str(out_file),
+            &length.to_string(),
+        ]);
         self.echo_stdout(openssl)
     }
 
-    pub fn pkcs8(&self, in_file: &PathBuf, out_file: &PathBuf) -> Result<String, Error> {
+    pub fn pkcs8(&self, in_file: &ChildPath, out_file: &ChildPath) -> Result<String, Error> {
         let mut openssl = Command::new(self.program.clone());
         openssl.arguments(&[
             "pkcs8",
@@ -51,23 +57,24 @@ impl Openssl {
             "-outform",
             "PEM",
             "-in",
-            in_file.as_os_str().to_str().unwrap(),
+            &path_to_str(in_file),
             "-out",
-            path_to_str(out_file),
+            &path_to_str(out_file),
             "-nocrypt",
         ]);
         self.echo_stdout(openssl)
     }
 
-    pub fn req(&self, prv_key: &PathBuf, out_cert: &PathBuf) -> Result<String, Error> {
+    pub fn req(&self, prv_key: &ChildPath, out_cert: &ChildPath) -> Result<String, Error> {
         let mut openssl = Command::new(self.program.clone());
         openssl.arguments(&[
             "req",
             "-new",
+            "-nodes",
             "-key",
-            path_to_str(prv_key),
+            &path_to_str(prv_key),
             "-out",
-            path_to_str(out_cert),
+            &path_to_str(out_cert),
             "-batch",
         ]);
         self.echo_stdout(openssl)
@@ -75,9 +82,9 @@ impl Openssl {
 
     pub fn x509(
         &self,
-        prv_key: &PathBuf,
-        in_cert: &PathBuf,
-        out_cert: &PathBuf,
+        prv_key: &ChildPath,
+        in_cert: &ChildPath,
+        out_cert: &ChildPath,
     ) -> Result<String, Error> {
         let mut openssl = Command::new(self.program.clone());
         openssl.arguments(&[
@@ -86,16 +93,37 @@ impl Openssl {
             "-days",
             &3650.to_string(),
             "-in",
-            path_to_str(in_cert),
+            &path_to_str(in_cert),
             "-signkey",
-            path_to_str(prv_key),
+            &path_to_str(prv_key),
             "-out",
-            path_to_str(out_cert),
+            &path_to_str(out_cert),
+        ]);
+        self.echo_stdout(openssl)
+    }
+
+    pub fn convert_to_der(
+        &self,
+        in_cert: &ChildPath,
+        out_der: &ChildPath,
+    ) -> Result<String, Error> {
+        let mut openssl = Command::new(self.program.clone());
+        openssl.arguments(&[
+            "x509",
+            "-inform",
+            "pem",
+            "-in",
+            &path_to_str(in_cert),
+            "-outform",
+            "der",
+            "-out",
+            &path_to_str(out_der),
         ]);
         self.echo_stdout(openssl)
     }
 }
 
-fn path_to_str(path: &PathBuf) -> &str {
-    path.as_os_str().to_str().unwrap()
+fn path_to_str(path: &ChildPath) -> String {
+    let path_buf: PathBuf = path.path().into();
+    path_buf.as_os_str().to_owned().into_string().unwrap()
 }
