@@ -11,9 +11,9 @@ use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, Block0Configuration, ConsensusLeaderId, EpochStabilityDepth, Initial,
-    InitialUTxO, KESUpdateSpeed, Log, Mempool, NumberOfSlotsPerEpoch, Policy, SignedCertificate,
-    SlotDuration, Tls, TrustedPeer,
+    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, Initial,
+    InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
+    NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};
@@ -127,8 +127,9 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_storage(&mut self, path: PathBuf) -> &mut Self {
-        self.node_config_builder.with_storage(path);
+    pub fn with_storage(&mut self, temp_dir: &ChildPath) -> &mut Self {
+        self.node_config_builder
+            .with_storage(temp_dir.path().into());
         self
     }
 
