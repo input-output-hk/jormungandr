@@ -3,8 +3,10 @@ use crate::{
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
+pub use jormungandr_lib::interfaces::{Cors, Rest, Tls};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
+use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
 
@@ -54,38 +56,6 @@ pub struct ConfigLogSettingsEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigLogSettings(pub Vec<ConfigLogSettingsEntry>);
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct Rest {
-    pub listen: SocketAddr,
-    /// Enables TLS and disables plain HTTP if provided
-    pub tls: Option<Tls>,
-    /// Enables CORS if provided
-    pub cors: Option<Cors>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct Tls {
-    /// Path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
-    pub cert_file: String,
-    /// Path to server private key file, must be PKCS8 with single PEM-encoded, unencrypted key
-    pub priv_key_file: String,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct Cors {
-    /// If none provided, echos request origin
-    #[serde(default)]
-    pub allowed_origins: Vec<CorsOrigin>,
-    /// If none provided, CORS responses won't be cached
-    pub max_age_secs: Option<u64>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
-pub struct CorsOrigin(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -356,49 +326,6 @@ impl<'de> Deserialize<'de> for InterestLevel {
             }
         }
         deserializer.deserialize_str(InterestLevelVisitor)
-    }
-}
-
-impl<'de> Deserialize<'de> for CorsOrigin {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CorsOriginVisitor;
-        impl<'de> Visitor<'de> for CorsOriginVisitor {
-            type Value = CorsOrigin;
-
-            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "an origin in format http[s]://example.com[:3000]",)
-            }
-
-            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use serde::de::Unexpected;
-
-                let uri = warp::http::uri::Uri::from_str(v).map_err(E::custom)?;
-                if let Some(s) = uri.scheme_str() {
-                    if s != "http" && s != "https" {
-                        return Err(E::invalid_value(Unexpected::Str(v), &self));
-                    }
-                }
-                if let Some(p) = uri.path_and_query() {
-                    if p.as_str() != "/" {
-                        return Err(E::invalid_value(Unexpected::Str(v), &self));
-                    }
-                }
-                Ok(CorsOrigin(v.trim_end_matches('/').to_owned()))
-            }
-        }
-        deserializer.deserialize_str(CorsOriginVisitor)
-    }
-}
-
-impl AsRef<str> for CorsOrigin {
-    fn as_ref(&self) -> &str {
-        &self.0
     }
 }
 

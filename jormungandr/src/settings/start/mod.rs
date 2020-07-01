@@ -2,11 +2,10 @@ pub mod config;
 pub mod network;
 
 use self::config::{Config, Leadership};
-pub use self::config::{Cors, Rest, Tls};
 use self::network::Protocol;
 use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
-use jormungandr_lib::interfaces::Mempool;
+pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
 use slog::{FilterLevel, Logger};
 use std::{fs::File, path::PathBuf};
 use thiserror::Error;

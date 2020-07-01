@@ -10,11 +10,12 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct BackwardCompatibleRest {
     uri: String,
+    certificate: Option<reqwest::Certificate>,
 }
 
 impl BackwardCompatibleRest {
-    pub fn new(uri: String) -> Self {
-        Self { uri }
+    pub fn new(uri: String, certificate: Option<reqwest::Certificate>) -> Self {
+        Self { uri, certificate }
     }
 
     fn print_response_text(&self, text: &str) {
@@ -37,7 +38,17 @@ impl BackwardCompatibleRest {
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(path);
-        reqwest::blocking::get(&request)
+        match &self.certificate {
+            None => reqwest::blocking::get(&request),
+            Some(cert) => {
+                let client = reqwest::blocking::Client::builder()
+                    .use_rustls_tls()
+                    .add_root_certificate(cert.clone())
+                    .build()
+                    .unwrap();
+                client.get(&request).send()
+            }
+        }
     }
 
     fn path(&self, path: &str) -> String {

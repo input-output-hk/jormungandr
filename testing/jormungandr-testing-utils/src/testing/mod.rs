@@ -4,6 +4,7 @@ pub mod github;
 /// Module contains cross project test utils
 mod measurement;
 pub mod network_builder;
+mod openssl;
 pub mod sync;
 mod verify;
 mod web;
@@ -29,3 +30,5 @@ pub use sync::{
 pub use web::download_file;
 
 pub use verify::{assert, assert_equals, Error as VerificationError};
+
+pub use openssl::Openssl;

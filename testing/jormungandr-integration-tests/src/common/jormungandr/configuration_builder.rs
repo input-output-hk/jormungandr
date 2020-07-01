@@ -13,7 +13,7 @@ use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, Initial,
     InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
-    NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, TrustedPeer,
+    NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};
@@ -119,6 +119,11 @@ impl ConfigurationBuilder {
 
     pub fn with_explorer(&mut self) -> &mut Self {
         self.node_config_builder.with_explorer();
+        self
+    }
+
+    pub fn with_rest_tls_config(&mut self, tls: Tls) -> &mut Self {
+        self.node_config_builder.with_rest_tls_config(tls);
         self
     }
 

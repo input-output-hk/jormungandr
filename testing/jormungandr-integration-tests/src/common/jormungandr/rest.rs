@@ -1,4 +1,5 @@
 use crate::common::legacy;
+use assert_fs::fixture::ChildPath;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -9,7 +10,8 @@ use jormungandr_lib::{
 };
 use jormungandr_testing_utils::testing::MemPoolCheck;
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::io::Read;
+use std::{fs::File, net::SocketAddr, path::Path};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -35,8 +37,29 @@ pub struct JormungandrRest {
 impl JormungandrRest {
     pub fn new(uri: String) -> Self {
         Self {
-            inner: legacy::BackwardCompatibleRest::new(uri),
+            inner: legacy::BackwardCompatibleRest::new(uri, None),
         }
+    }
+
+    pub fn new_with_cert(uri: String, cert_file: &ChildPath) -> Self {
+        //replace http with https
+        //replace localhost ip to localhost
+        let url = uri
+            .replace("http://", "https://")
+            .replace("127.0.0.1", "localhost");
+        Self {
+            inner: legacy::BackwardCompatibleRest::new(
+                url,
+                Some(Self::extract_certificate(cert_file.path())),
+            ),
+        }
+    }
+
+    fn extract_certificate<P: AsRef<Path>>(cert_file: P) -> reqwest::Certificate {
+        let mut buf = Vec::new();
+        let path = cert_file.as_ref().as_os_str().to_str().unwrap();
+        File::open(path).unwrap().read_to_end(&mut buf).unwrap();
+        reqwest::Certificate::from_der(&buf).unwrap()
     }
 
     fn print_response_text(&self, text: &str) {
