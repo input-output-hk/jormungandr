@@ -8,12 +8,9 @@ edition = "2018"
 
 [dependencies]
 slog = "2"
-bawawa = "0.1.5"
-bytes = "0.4"
 custom_debug = "0.5"
 dialoguer = "0.6.2"
 error-chain = "0.12"
-tokio = "0.1"
 assert_fs = "1.0"
 chain-core           = { path = "../../chain-deps/chain-core" }
 chain-crypto         = { path = "../../chain-deps/chain-crypto", features = [ "property-test-api" ] }

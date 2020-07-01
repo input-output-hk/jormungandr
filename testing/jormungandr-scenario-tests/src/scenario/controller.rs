@@ -27,8 +27,6 @@ use jormungandr_testing_utils::{
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use indicatif::{MultiProgress, ProgressBar};
-use tokio::prelude::*;
-use tokio::runtime;
 
 use std::{
     path::{Path, PathBuf},
@@ -57,7 +55,6 @@ pub struct Controller {
     progress_bar: Arc<MultiProgress>,
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 
-    runtime: runtime::Runtime,
     topology: Topology,
 }
 
@@ -177,7 +174,6 @@ impl Controller {
             block0_hash,
             progress_bar,
             progress_bar_thread: None,
-            runtime: runtime::Runtime::new()?,
             working_directory,
             topology,
         })
@@ -260,8 +256,8 @@ impl Controller {
         };
 
         let jormungandr = match &params.get_jormungandr() {
-            Some(jormungandr) => prepare_command(jormungandr.clone()),
-            None => self.context.jormungandr().clone(),
+            Some(jormungandr) => prepare_command(&jormungandr),
+            None => self.context.jormungandr().to_path_buf(),
         };
 
         let pb = ProgressBar::new_spinner();
@@ -282,8 +278,8 @@ impl Controller {
         )?;
         let controller = node.controller();
 
-        self.runtime.executor().spawn(node.capture_logs());
-        self.runtime.executor().spawn(node);
+        node.capture_logs();
+        node.wait();
 
         Ok(controller)
     }
@@ -309,8 +305,8 @@ impl Controller {
         };
 
         let jormungandr = match &params.get_jormungandr() {
-            Some(jormungandr) => prepare_command(jormungandr.clone()),
-            None => self.context.jormungandr().clone(),
+            Some(jormungandr) => prepare_command(&jormungandr),
+            None => self.context.jormungandr().to_path_buf(),
         };
 
         let pb = ProgressBar::new_spinner();
@@ -328,8 +324,8 @@ impl Controller {
         )?;
         let controller = node.controller();
 
-        self.runtime.executor().spawn(node.capture_logs());
-        self.runtime.executor().spawn(node);
+        node.capture_logs();
+        node.wait();
 
         Ok(controller)
     }
@@ -368,7 +364,6 @@ impl Controller {
     }
 
     pub fn finalize(self) {
-        self.runtime.shutdown_now().wait().unwrap();
         if let Some(thread) = self.progress_bar_thread {
             thread.join().unwrap()
         }
