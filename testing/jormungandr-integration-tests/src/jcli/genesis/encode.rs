@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::{JormungandrParams, Block0ConfigurationBuilder},
+    configuration::{Block0ConfigurationBuilder, JormungandrParams},
     jcli_wrapper,
     jormungandr::ConfigurationBuilder,
     startup,

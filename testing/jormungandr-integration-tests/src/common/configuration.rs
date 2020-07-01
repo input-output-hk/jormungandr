@@ -1,12 +1,9 @@
 use std::env;
 use std::path::PathBuf;
 
-pub use jormungandr_testing_utils::testing::configuration::{Block0ConfigurationBuilder,
-    JormungandrParams,
-    TestConfig,
-    NodeConfigBuilder,
-    write_secret, SecretModelFactory,
-    get_available_port,
+pub use jormungandr_testing_utils::testing::configuration::{
+    get_available_port, write_secret, Block0ConfigurationBuilder, JormungandrParams,
+    NodeConfigBuilder, SecretModelFactory, TestConfig,
 };
 
 /// Get jormungandr executable from current environment

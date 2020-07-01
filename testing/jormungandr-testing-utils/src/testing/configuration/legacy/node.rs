@@ -1,6 +1,4 @@
-use crate::common::configuration::TestConfig;
-use jormungandr_testing_utils::legacy::NodeConfig;
-
+use crate::{legacy::NodeConfig, testing::TestConfig};
 use std::net::SocketAddr;
 use std::path::Path;
 

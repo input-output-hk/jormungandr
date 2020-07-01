@@ -5,10 +5,10 @@ use jormungandr_testing_utils::testing::{
 
 mod rest;
 
+pub use jormungandr_testing_utils::legacy::{version_0_8_19, NodeConfig, Version};
 pub use jormungandr_testing_utils::testing::configuration::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
-pub use jormungandr_testing_utils::legacy::{NodeConfig, Version,version_0_8_19};
 pub use rest::BackwardCompatibleRest;
 
 use crate::common::file_utils;
