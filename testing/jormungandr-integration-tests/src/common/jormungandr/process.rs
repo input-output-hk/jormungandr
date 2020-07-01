@@ -2,14 +2,13 @@ use super::{logger::JormungandrLogger, rest, JormungandrError, JormungandrRest};
 use crate::common::configuration::{JormungandrParams, TestConfig};
 use crate::common::explorer::Explorer;
 use crate::common::jcli_wrapper;
+use assert_fs::{fixture::ChildPath, TempDir};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
 };
 use jormungandr_testing_utils::testing::SyncNode;
-
-use assert_fs::TempDir;
 
 use std::net::SocketAddr;
 use std::process::Child;
@@ -55,6 +54,10 @@ impl JormungandrProcess {
 
     pub fn rest(&self) -> JormungandrRest {
         JormungandrRest::new(self.rest_uri())
+    }
+
+    pub fn secure_rest(&self, cert: &ChildPath) -> JormungandrRest {
+        JormungandrRest::new_with_cert(self.rest_uri(), cert)
     }
 
     pub fn shutdown(&self) {

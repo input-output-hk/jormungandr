@@ -92,6 +92,8 @@ impl LegacyNodeConfigConverter {
             log: source.log.clone(),
             rest: Rest {
                 listen: source.rest.listen,
+                cors: None,
+                tls: None,
             },
             p2p: P2p {
                 trusted_peers,
@@ -145,6 +147,8 @@ impl LegacyNodeConfigConverter {
             log: source.log.clone(),
             rest: Rest {
                 listen: source.rest.listen,
+                cors: None,
+                tls: None,
             },
             p2p: P2p {
                 trusted_peers,
