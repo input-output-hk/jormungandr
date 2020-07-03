@@ -103,3 +103,17 @@ pub async fn get_fragments_logs(context: &Context) -> Result<Vec<FragmentLog>, E
         })?;
     reply_future.await.map_err(Into::into)
 }
+
+pub async fn handle_subscription(
+    ws: warp::ws::Ws,
+    context: &Context,
+) -> Result<impl warp::Reply, Error> {
+    let full_context = context.try_full()?;
+    let notifier: crate::notifier::Notifier = full_context.notifier.clone();
+
+    Ok(ws.on_upgrade(move |socket| add_connection(notifier, socket)))
+}
+
+async fn add_connection(notifier: crate::notifier::Notifier, socket: warp::ws::WebSocket) {
+    notifier.new_connection(socket).await;
+}
