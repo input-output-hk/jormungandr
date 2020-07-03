@@ -9,6 +9,7 @@ mod config;
 mod fragment_log;
 mod leadership_log;
 mod linear_fee;
+pub mod notifier;
 mod old_address;
 mod peer_stats;
 mod ratio;
