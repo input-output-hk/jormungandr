@@ -3,8 +3,8 @@ use crate::utils::async_msg::{channel, MessageBox, MessageQueue};
 use crate::utils::task::TokioServiceInfo;
 use chain_impl_mockchain::header::HeaderId;
 use futures::{SinkExt, StreamExt};
+use jormungandr_lib::interfaces::notifier::JsonMessage;
 use serde::{Serialize, Serializer};
-use slog::Logger;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -23,14 +23,6 @@ pub struct Notifier {
     max_connections: usize,
 }
 
-#[derive(Serialize)]
-enum JsonMessage {
-    #[serde(serialize_with = "to_hex")]
-    NewBlock(HeaderId),
-    #[serde(serialize_with = "to_hex")]
-    NewTip(HeaderId),
-}
-
 type Clients = std::collections::HashMap<usize, warp::ws::WebSocket>;
 
 impl Notifier {
@@ -45,7 +37,6 @@ impl Notifier {
     pub async fn start(&mut self, info: TokioServiceInfo, queue: MessageQueue<Message>) {
         let clients1 = self.clients.clone();
         let clients2 = self.clients.clone();
-        let logger = info.logger();
 
         let (deleted_msgbox, deleted_queue) = channel::<usize>(32);
 
@@ -61,12 +52,7 @@ impl Notifier {
             .for_each(|input| {
                 info.spawn(
                     "notifier send new messages",
-                    process_message(
-                        logger.clone(),
-                        clients1.clone(),
-                        input,
-                        deleted_msgbox.clone(),
-                    ),
+                    process_message(clients1.clone(), input, deleted_msgbox.clone()),
                 );
                 futures::future::ready(())
             })
@@ -102,20 +88,17 @@ impl Notifier {
 }
 
 async fn process_message(
-    logger: Logger,
     clients: Arc<tokio::sync::Mutex<Clients>>,
     msg: Message,
     mut disconnected: MessageBox<usize>,
 ) {
-    let warp_msg = JsonMessage::from(msg).into();
-    let dead = async move { notify_all(clients, warp_msg).await };
+    let warp_msg = warp::ws::Message::text(JsonMessage::from(msg));
 
-    for id in dead.await {
+    let dead = notify_all(clients, warp_msg).await;
+
+    for id in dead {
         disconnected.send(id).await.unwrap_or_else(|err| {
-            error!(
-                logger,
-                "notifier error when adding id to disconnected: {}", err
-            );
+            tracing::error!("notifier error when adding id to disconnected: {}", err);
         });
     }
 }
@@ -160,21 +143,8 @@ async fn handle_disconnected(
 impl From<Message> for JsonMessage {
     fn from(msg: Message) -> JsonMessage {
         match msg {
-            Message::NewBlock(inner) => JsonMessage::NewBlock(inner),
-            Message::NewTip(inner) => JsonMessage::NewTip(inner),
+            Message::NewBlock(inner) => JsonMessage::NewBlock(inner.into()),
+            Message::NewTip(inner) => JsonMessage::NewTip(inner.into()),
         }
-    }
-}
-
-fn to_hex<S>(key: &HeaderId, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&key.to_string())
-}
-
-impl Into<warp::ws::Message> for JsonMessage {
-    fn into(self) -> warp::ws::Message {
-        warp::ws::Message::text(serde_json::to_string(&self).unwrap())
     }
 }

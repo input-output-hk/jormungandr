@@ -1,12 +1,9 @@
 use crate::common::{
-    jormungandr::{
-        notifier::{JsonMessage, NotifierMessage},
-        ConfigurationBuilder,
-    },
+    jormungandr::{notifier::NotifierMessage, ConfigurationBuilder},
     startup,
 };
 
-use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_lib::interfaces::{notifier::JsonMessage, ActiveSlotCoefficient};
 use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
     Arc,
