@@ -4,7 +4,8 @@ use std::path::PathBuf;
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, Log, Mempool, NodeConfig, Notifier, P2p, Policy, Rest, Tls, TopicsOfInterest, TrustedPeer,
+        Explorer, Log, Mempool, NodeConfig, Notifier, P2p, Policy, Rest, Tls, TopicsOfInterest,
+        TrustedPeer,
     },
     time::Duration,
 };
@@ -46,11 +47,8 @@ impl NodeConfigBuilder {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string())
                     .parse()
                     .unwrap(),
-<<<<<<< HEAD:testing/jormungandr-testing-utils/src/testing/configuration/node_config_builder.rs
                 tls: None,
                 cors: None,
-=======
->>>>>>> add notifier max connections tests:testing/jormungandr-integration-tests/src/common/configuration/node_config_builder.rs
                 notifier: None,
             },
             p2p: P2p {

@@ -24,14 +24,6 @@ pub struct Notifier {
     max_connections: usize,
 }
 
-#[derive(Serialize)]
-enum JsonMessage {
-    #[serde(serialize_with = "to_hex")]
-    NewBlock(HeaderId),
-    #[serde(serialize_with = "to_hex")]
-    NewTip(HeaderId),
-}
-
 type Clients = std::collections::HashMap<usize, warp::ws::WebSocket>;
 
 impl Notifier {
