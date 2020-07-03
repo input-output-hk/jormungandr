@@ -37,7 +37,13 @@ pub fn filter(
         root.and(post.or(status).or(logs)).boxed()
     };
 
-    let routes = fragments;
+    let notifier = warp::path!("notifier")
+        .and(warp::ws())
+        .and(with_context)
+        .and_then(handlers::handle_subscription)
+        .boxed();
+
+    let routes = fragments.or(notifier);
 
     root.and(routes).recover(handle_rejection).boxed()
 }

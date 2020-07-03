@@ -17,7 +17,7 @@ pub enum NotifierError {
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> Url {
-    Url::parse(&format!("ws://{}/notifier", addr)).unwrap()
+    Url::parse(&format!("ws://{}/api/v1/notifier", addr)).unwrap()
 }
 
 /// Specialized rest api
