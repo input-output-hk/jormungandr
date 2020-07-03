@@ -19,11 +19,11 @@ const MAX_CONNECTIONS_ERROR_REASON: &str = "MAX CONNECTIONS reached";
 #[derive(Clone)]
 pub struct Notifier {
     next_user_id: Arc<AtomicUsize>,
-    clients: Arc<tokio::sync::Mutex<Clients>>,
+    clients: Arc<tokio::sync::RwLock<Clients>>,
     max_connections: usize,
 }
 
-type Clients = std::collections::HashMap<usize, warp::ws::WebSocket>;
+type Clients = std::collections::HashMap<usize, tokio::sync::Mutex<warp::ws::WebSocket>>;
 
 impl Notifier {
     pub fn new(max_connections: Option<usize>) -> Notifier {
@@ -65,9 +65,9 @@ impl Notifier {
         let clients = Arc::clone(&self.clients);
 
         let rejected = async move {
-            let mut locked_clients = clients.lock().await;
+            let mut locked_clients = clients.write().await;
             if locked_clients.len() < (self.max_connections as usize) {
-                locked_clients.insert(id, ws);
+                locked_clients.insert(id, tokio::sync::Mutex::new(ws));
                 None
             } else {
                 Some(ws)
@@ -88,7 +88,7 @@ impl Notifier {
 }
 
 async fn process_message(
-    clients: Arc<tokio::sync::Mutex<Clients>>,
+    clients: Arc<tokio::sync::RwLock<Clients>>,
     msg: Message,
     mut disconnected: MessageBox<usize>,
 ) {
@@ -104,15 +104,15 @@ async fn process_message(
 }
 
 async fn notify_all(
-    clients: Arc<tokio::sync::Mutex<Clients>>,
+    clients: Arc<tokio::sync::RwLock<Clients>>,
     msg: warp::ws::Message,
 ) -> Vec<usize> {
     let clients = clients.clone();
     async move {
         let mut disconnected = vec![];
-        let mut clients = clients.lock().await;
-        for (client_id, channel) in clients.iter_mut() {
-            if let Err(_disconnected) = channel.send(msg.clone()).await {
+        let clients = clients.read().await;
+        for (client_id, channel) in clients.iter() {
+            if let Err(_disconnected) = channel.lock().await.send(msg.clone()).await {
                 disconnected.push(client_id.clone())
             }
         }
@@ -122,7 +122,7 @@ async fn notify_all(
 }
 
 async fn handle_disconnected(
-    clients: Arc<tokio::sync::Mutex<Clients>>,
+    clients: Arc<tokio::sync::RwLock<Clients>>,
     disconnected: MessageQueue<usize>,
 ) {
     async move {
@@ -131,7 +131,7 @@ async fn handle_disconnected(
             .for_each(|id| {
                 let clients_handle = Arc::clone(&clients2);
                 async move {
-                    let mut locked_clients = clients_handle.lock().await;
+                    let mut locked_clients = clients_handle.write().await;
                     locked_clients.remove(&id);
                 }
             })
