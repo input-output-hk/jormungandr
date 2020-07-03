@@ -1,5 +1,4 @@
-use jormungandr_lib::crypto::hash::Hash;
-use serde::Deserialize;
+use jormungandr_lib::interfaces::notifier::JsonMessage;
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
@@ -27,13 +26,6 @@ pub struct JormungandrNotifier {
     url: Url,
     finished: Arc<RwLock<bool>>,
     handles: Vec<JoinHandle<()>>,
-}
-
-// TODO: maybe this can be shared with the type in jormungandr (that only implements Serialize)
-#[derive(Deserialize, Debug)]
-pub enum JsonMessage {
-    NewBlock(Hash),
-    NewTip(Hash),
 }
 
 pub enum NotifierMessage {
