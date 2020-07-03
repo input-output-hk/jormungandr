@@ -1,4 +1,4 @@
-use crate::rest::{v1::logic, ContextLock};
+use crate::rest::{context::Error, v1::logic, ContextLock};
 use warp::{reject::Reject, Rejection, Reply};
 
 impl Reject for logic::Error {}
@@ -41,4 +41,19 @@ pub async fn get_fragments_logs(context: ContextLock) -> Result<impl Reply, Reje
         .await
         .map_err(warp::reject::custom)
         .map(|r| warp::reply::json(&r))
+}
+
+pub async fn handle_subscription(
+    ws: warp::ws::Ws,
+    context: ContextLock,
+) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::handle_subscription(ws, &context)
+        .await
+        .map_err(warp::reject::custom)
+    // let full_context = context.try_full().map_err(warp::reject::custom)?;
+
+    // let notifier: crate::notifier::Notifier = full_context.notifier.clone();
+
+    // Ok(ws.on_upgrade(move |socket| add_connection(notifier, socket)))
 }
