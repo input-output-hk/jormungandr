@@ -40,7 +40,6 @@ assert_fs = "1.0"
 serde_yaml = "0.8"
 tokio-codec = "0.1"
 futures = "0.1"
-assert_fs = "1.0"
 
 [dependencies.reqwest]
 version = "0.10.6"
