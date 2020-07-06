@@ -1,5 +1,5 @@
 use crate::common::{
-    configuration::jormungandr_config::JormungandrParams,
+    configuration::JormungandrParams,
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
 };

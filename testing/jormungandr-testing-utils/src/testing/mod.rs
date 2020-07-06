@@ -1,4 +1,5 @@
 mod archive;
+pub mod configuration;
 mod fragments;
 pub mod github;
 /// Module contains cross project test utils
@@ -31,4 +32,9 @@ pub use web::download_file;
 
 pub use verify::{assert, assert_equals, Error as VerificationError};
 
+pub use configuration::{
+    Block0ConfigurationBuilder, JormungandrParams, LegacyConfigConverter,
+    LegacyConfigConverterError, LegacyNodeConfigConverter, NodeConfigBuilder, SecretModelFactory,
+    TestConfig,
+};
 pub use openssl::Openssl;

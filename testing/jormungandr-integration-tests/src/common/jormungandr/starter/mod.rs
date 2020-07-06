@@ -3,7 +3,7 @@ pub use commands::{get_command, CommandBuilder};
 
 use super::ConfigurationBuilder;
 use crate::common::{
-    configuration::{get_jormungandr_app, jormungandr_config::JormungandrParams, TestConfig},
+    configuration::{get_jormungandr_app, JormungandrParams, TestConfig},
     file_utils,
     jcli_wrapper::jcli_commands,
     jormungandr::{logger::JormungandrLogger, process::JormungandrProcess},

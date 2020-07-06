@@ -3,14 +3,12 @@ use jormungandr_testing_utils::testing::{
     github::{GitHubApi, Release},
 };
 
-mod configuration_builder;
-mod node;
 mod rest;
 
-pub use configuration_builder::{
-    version_0_8_19, LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
+pub use jormungandr_testing_utils::legacy::{version_0_8_19, NodeConfig, Version};
+pub use jormungandr_testing_utils::testing::configuration::{
+    LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
-pub use jormungandr_testing_utils::legacy::{NodeConfig, Version};
 pub use rest::BackwardCompatibleRest;
 
 use crate::common::file_utils;

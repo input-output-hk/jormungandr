@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
 use super::TestConfig;
+use crate::wallet::Wallet;
 use chain_core::mempack;
 use chain_impl_mockchain::{block::Block, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::interfaces::{Block0Configuration, NodeConfig, UTxOInfo};
-use jormungandr_testing_utils::wallet::Wallet;
 
 use serde::Serialize;
 use std::fs::File;
@@ -24,7 +24,7 @@ pub struct JormungandrParams<Conf = NodeConfig> {
 }
 
 impl<Conf: TestConfig> JormungandrParams<Conf> {
-    pub(crate) fn new<Secs>(
+    pub fn new<Secs>(
         node_config: Conf,
         node_config_path: impl Into<PathBuf>,
         genesis_block_path: impl Into<PathBuf>,

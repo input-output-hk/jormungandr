@@ -1,19 +1,16 @@
-use super::Version;
-use crate::common::configuration::JormungandrParams;
-use jormungandr_lib::interfaces::NodeConfig as NewestNodeConfig;
-use jormungandr_testing_utils::legacy::{NodeConfig, P2p, Rest, TrustedPeer};
+use crate::version_0_8_19;
+use crate::{
+    legacy::{NodeConfig, P2p, TrustedPeer, Version},
+    testing::JormungandrParams,
+};
+use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, Rest};
 use rand::RngCore;
 use rand_core::OsRng;
 use thiserror::Error;
-
 #[derive(Error, Debug)]
 pub enum LegacyConfigConverterError {
     #[error("unsupported version")]
     UnsupportedVersion(Version),
-}
-
-pub const fn version_0_8_19() -> Version {
-    Version::new(0, 8, 19)
 }
 
 /// Used to build configuration for legacy nodes.
