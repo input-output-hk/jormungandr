@@ -617,6 +617,7 @@ pub enum ExplorerMsg {
 pub enum NotifierMsg {
     NewBlock(HeaderHash),
     NewTip(HeaderHash),
+    NewConnection(warp::ws::WebSocket),
 }
 
 #[cfg(test)]
