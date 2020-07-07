@@ -135,9 +135,12 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .and_then(|settings| settings.notifier)
             .and_then(|settings| settings.max_connections);
 
-        let mut notifier = notifier::Notifier::new(max_connections);
+        let blockchain_tip = blockchain_tip.clone();
+        let current_tip = block_on(async { blockchain_tip.get_ref().await.header().id() });
 
-        let context = notifier.clone();
+        let notifier = notifier::Notifier::new(max_connections, current_tip);
+
+        let context = notifier::NotifierContext(msgbox.clone());
 
         services.spawn_future("notifier", move |info| async move {
             notifier.start(info, queue).await

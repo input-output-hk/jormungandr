@@ -121,11 +121,14 @@ pub async fn handle_subscription(
     context: &Context,
 ) -> Result<impl warp::Reply, Error> {
     let full_context = context.try_full()?;
-    let notifier: crate::notifier::Notifier = full_context.notifier.clone();
+    let notifier: crate::notifier::NotifierContext = full_context.notifier.clone();
 
     Ok(ws.on_upgrade(move |socket| add_connection(notifier, socket)))
 }
 
-async fn add_connection(notifier: crate::notifier::Notifier, socket: warp::ws::WebSocket) {
+async fn add_connection(
+    mut notifier: crate::notifier::NotifierContext,
+    socket: warp::ws::WebSocket,
+) {
     notifier.new_connection(socket).await;
 }

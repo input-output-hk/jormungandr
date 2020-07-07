@@ -1,4 +1,4 @@
-use crate::rest::{context::Error, v1::logic, ContextLock};
+use crate::rest::{v1::logic, ContextLock};
 use warp::{reject::Reject, Rejection, Reply};
 
 impl Reject for logic::Error {}
@@ -47,9 +47,4 @@ pub async fn handle_subscription(
     logic::handle_subscription(ws, &context)
         .await
         .map_err(warp::reject::custom)
-    // let full_context = context.try_full().map_err(warp::reject::custom)?;
-
-    // let notifier: crate::notifier::Notifier = full_context.notifier.clone();
-
-    // Ok(ws.on_upgrade(move |socket| add_connection(notifier, socket)))
 }

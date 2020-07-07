@@ -30,7 +30,7 @@ pub fn filter(
 
         let logs = warp::path!("logs")
             .and(warp::get())
-            .and(with_context)
+            .and(with_context.clone())
             .and_then(handlers::get_fragment_logs)
             .boxed();
 
