@@ -312,7 +312,7 @@ impl Controller {
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
-        let mut node = Node::spawn(
+        let node = Node::spawn(
             &jormungandr,
             &self.context,
             pb,
@@ -322,12 +322,7 @@ impl Controller {
             self.working_directory.path(),
             params.get_persistence_mode(),
         )?;
-        let controller = node.controller();
-
-        node.capture_logs();
-        node.wait();
-
-        Ok(controller)
+        Ok(node.controller())
     }
 
     pub fn spawn_node(
