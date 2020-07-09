@@ -61,7 +61,7 @@ impl ClientLoadCommand {
             None
         };
 
-        if let None = scenario_type {
+        if scenario_type.is_none() {
             return Err(ClientLoadCommandError::NoScenarioDefined);
         }
 
@@ -71,13 +71,10 @@ impl ClientLoadCommand {
     }
 
     fn get_block0_hash(&self) -> Hash {
-        tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async {
-                let grpc_client = JormungandrClient::from_address(&self.address).unwrap();
-                return grpc_client.get_genesis_block_hash().await;
-            })
-            .into()
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let grpc_client = JormungandrClient::from_address(&self.address).unwrap();
+            return grpc_client.get_genesis_block_hash().await;
+        })
     }
 
     fn build_config(&self) -> ClientLoadConfig {

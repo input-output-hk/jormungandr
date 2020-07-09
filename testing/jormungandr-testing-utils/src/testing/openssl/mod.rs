@@ -30,10 +30,9 @@ impl Openssl {
         println!("{}", cmd);
 
         let lines: Vec<String> = captured
-            .into_iter()
             .map(|r| r.unwrap_or_else(|_| "".to_owned()))
             .collect();
-        Ok(format!("{}", lines.join("\n")))
+        Ok(lines.join("\n").to_string())
     }
 
     pub fn genrsa(&self, length: u32, out_file: &ChildPath) -> Result<String, Error> {

@@ -2,7 +2,6 @@ use super::FragmentNode;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chrono::{DateTime, Utc};
-use hex;
 use jormungandr_lib::interfaces::Address;
 use std::io::Write;
 use std::{fs, path::PathBuf};
@@ -81,8 +80,8 @@ impl FragmentExporter {
     }
 
     fn format_hash(&self, hash: String) -> String {
-        let start = hash.to_string().chars().next().unwrap();
-        let end = hash.to_string().chars().rev().next().unwrap();
+        let start = hash.chars().next().unwrap();
+        let end = hash.chars().rev().next().unwrap();
         format!("{}_{}", start, end)
     }
 }

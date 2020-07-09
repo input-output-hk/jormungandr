@@ -50,7 +50,7 @@ pub fn ensure_node_is_in_sync_with_others(
     );
 
     Err(SyncNodeError::TimeoutWhenSyncingTargetNode {
-        target_node: target_node,
+        target_node,
         sync_nodes: other_nodes_records,
         timeout: benchmark.definition().thresholds().unwrap().max().into(),
     })

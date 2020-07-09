@@ -52,7 +52,7 @@ impl ConsumptionBenchmarkDef {
     }
 
     pub fn for_process<S: Into<String>>(&mut self, name: S, pid: usize) -> &mut Self {
-        self.pids.push(NamedProcess::new(name.into(), pid.into()));
+        self.pids.push(NamedProcess::new(name.into(), pid));
         self
     }
 

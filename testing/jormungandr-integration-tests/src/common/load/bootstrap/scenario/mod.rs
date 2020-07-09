@@ -56,9 +56,9 @@ impl ScenarioProgressBar {
         let spinner_style = ProgressStyle::default_spinner()
             .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
             .template("{prefix:.bold.dim} {spinner} {wide_msg}");
-        progress_bar.set_style(spinner_style.clone());
+        progress_bar.set_style(spinner_style);
         progress_bar.set_prefix(prefix);
-        progress_bar.set_message(&format!("initializing..."));
+        progress_bar.set_message("initializing...");
 
         Self { progress_bar }
     }
@@ -75,7 +75,6 @@ impl ScenarioProgressBar {
     }
 
     pub fn set_finished(&self) {
-        self.progress_bar
-            .set_message(&format!("bootstrapped succesfully."));
+        self.progress_bar.set_message("bootstrapped succesfully.");
     }
 }

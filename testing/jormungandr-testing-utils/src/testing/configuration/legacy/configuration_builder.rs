@@ -32,7 +32,7 @@ impl LegacyConfigConverter {
     ) -> Result<JormungandrParams<NodeConfig>, LegacyConfigConverterError> {
         let node_config_converter = LegacyNodeConfigConverter::new(self.version.clone());
         let node_config = node_config_converter.convert(params.node_config())?;
-        return Ok(self.build_configuration(params, node_config));
+        Ok(self.build_configuration(params, node_config))
     }
 
     fn build_configuration(

@@ -80,7 +80,7 @@ impl<'a> FragmentSenderSetup<'a> {
     }
 
     pub fn resend_on_error(&self) -> Option<u8> {
-        self.resend_on_error.clone()
+        self.resend_on_error
     }
 
     pub fn sync_nodes(&self) -> Vec<&'a dyn SyncNode> {
@@ -88,7 +88,7 @@ impl<'a> FragmentSenderSetup<'a> {
     }
 
     pub fn no_sync_nodes(&self) -> bool {
-        self.sync_nodes().len() == 0
+        self.sync_nodes().is_empty()
     }
 
     pub fn ignore_any_errors(&self) -> bool {
