@@ -1,5 +1,5 @@
-use crate::common::{jcli_wrapper, jormungandr::starter::Starter, process_assert};
-
+use crate::common::{jcli_wrapper, jormungandr::starter::Starter};
+use assert_cmd::assert::OutputAssertExt;
 #[test]
 pub fn test_non_empty_hash_is_returned_for_block0() {
     let jormungandr = Starter::new().start().unwrap();
@@ -15,13 +15,15 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
     let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
     let jormungandr = Starter::new().start().unwrap();
 
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_rest_get_block_command(
-            &incorrect_block_id,
-            &jormungandr.rest_uri(),
-        ),
+    jcli_wrapper::jcli_commands::get_rest_get_block_command(
+        &incorrect_block_id,
+        &jormungandr.rest_uri(),
+    )
+    .assert()
+    .failure()
+    .stderr(predicates::str::contains(
         "node rejected request because of invalid parameters",
-    );
+    ));
 }
 
 #[test]
@@ -30,12 +32,14 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_re
 
     let jormungandr = Starter::new().start().unwrap();
 
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_rest_get_next_block_id_command(
-            &incorrect_block_id,
-            1,
-            &jormungandr.rest_uri(),
-        ),
+    jcli_wrapper::jcli_commands::get_rest_get_next_block_id_command(
+        &incorrect_block_id,
+        1,
+        &jormungandr.rest_uri(),
+    )
+    .assert()
+    .failure()
+    .stderr(predicates::str::contains(
         "node rejected request because of invalid parameters",
-    );
+    ));
 }

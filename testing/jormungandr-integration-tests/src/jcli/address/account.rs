@@ -1,6 +1,7 @@
 use crate::common::jcli_wrapper;
-use crate::common::process_assert;
+use assert_cmd::assert::OutputAssertExt;
 use chain_addr::Discrimination;
+
 #[test]
 pub fn test_account_address_made_of_incorrect_ed25519_extended_key() {
     let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
@@ -12,10 +13,12 @@ pub fn test_account_address_made_of_incorrect_ed25519_extended_key() {
     public_key.remove(20);
 
     // Assertion changed due to issue #306. After fix please change it to correct one
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_address_account_command(&public_key, Discrimination::Test),
-        "Failed to parse bech32, invalid data format",
-    );
+    jcli_wrapper::jcli_commands::get_address_account_command(&public_key, Discrimination::Test)
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "Failed to parse bech32, invalid data format",
+        ));
 }
 
 #[test]

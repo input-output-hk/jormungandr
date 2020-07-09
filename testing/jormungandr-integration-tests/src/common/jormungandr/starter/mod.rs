@@ -8,15 +8,14 @@ use crate::common::{
     jcli_wrapper::jcli_commands,
     jormungandr::{logger::JormungandrLogger, process::JormungandrProcess},
     legacy::{self, LegacyConfigConverter, LegacyConfigConverterError},
-    process_assert,
     process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
+use assert_cmd::assert::OutputAssertExt;
+use assert_fs::{fixture::FixtureError, TempDir};
 use jormungandr_lib::interfaces::NodeConfig;
 use jormungandr_testing_utils::testing::{
     network_builder::LeadershipMode, SpeedBenchmarkDef, SpeedBenchmarkRun,
 };
-
-use assert_fs::{fixture::FixtureError, TempDir};
 use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -506,13 +505,15 @@ where
     }
 
     fn start_fail(self, expected_msg: &str) {
-        let command = get_command(
+        get_command(
             &self.params,
             &self.starter.jormungandr_app_path,
             self.starter.role,
             self.starter.from_genesis,
-        );
-        process_assert::assert_process_failed_and_matches_message(command, &expected_msg);
+        )
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(expected_msg));
     }
 
     fn if_succeed(&self) -> bool {

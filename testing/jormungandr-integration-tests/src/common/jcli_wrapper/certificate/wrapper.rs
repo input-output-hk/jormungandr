@@ -1,18 +1,12 @@
 use super::commands::CertificateCommands;
 
-use crate::common::{
-    file_utils, process_assert,
-    process_utils::{self, output_extensions::ProcessOutput},
-};
+use crate::common::{file_utils, process_utils::output_extensions::ProcessOutput};
 use jormungandr_lib::interfaces::TaxType;
 
+use assert_cmd::assert::OutputAssertExt;
 use assert_fs::prelude::*;
 use assert_fs::{NamedTempFile, TempDir};
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-};
-
+use std::path::{Path, PathBuf};
 #[derive(Debug, Default)]
 pub struct JCLICertificateWrapper {
     commands: CertificateCommands,
@@ -26,7 +20,12 @@ impl JCLICertificateWrapper {
     }
 
     pub fn assert_new_vote_plan(&self, proposal_file: &Path) -> String {
-        self.assert_new_certificate(self.commands.get_vote_command(proposal_file))
+        self.commands
+            .get_vote_command(proposal_file)
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
     }
 
     pub fn assert_new_signed_vote_plan(
@@ -45,19 +44,14 @@ impl JCLICertificateWrapper {
         PathBuf::from(signcert_file.path())
     }
 
-    fn assert_new_certificate(&self, command: Command) -> String {
-        let output = process_utils::run_process_and_get_output(command);
-        let certification = output.as_single_line();
-        process_assert::assert_process_exited_successfully(output);
-        certification
-    }
-
     pub fn assert_new_stake_delegation(&self, stake_pool_id: &str, delegation_id: &str) -> String {
         println!("Running new stake delegation...");
-        self.assert_new_certificate(
-            self.commands
-                .get_new_stake_delegation_command(&stake_pool_id, &delegation_id),
-        )
+        self.commands
+            .get_new_stake_delegation_command(&stake_pool_id, &delegation_id)
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
     }
 
     pub fn assert_new_stake_pool_registration(
@@ -70,38 +64,40 @@ impl JCLICertificateWrapper {
         tax_type: Option<TaxType>,
     ) -> String {
         println!("Running new stake pool registration...");
-        self.assert_new_certificate(self.commands.get_stake_pool_registration_command(
-            &kes_key,
-            &vrf_key,
-            start_validity,
-            management_threshold,
-            owner_pk,
-            tax_type,
-        ))
+        self.commands
+            .get_stake_pool_registration_command(
+                &kes_key,
+                &vrf_key,
+                start_validity,
+                management_threshold,
+                owner_pk,
+                tax_type,
+            )
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
     }
 
     pub fn assert_get_stake_pool_id(&self, input_file: &Path) -> String {
         println!("Running get stake pool id...");
         let temp_file = NamedTempFile::new("stake_pool.id").unwrap();
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_stake_pool_id_command(&input_file, temp_file.path()),
-        );
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_stake_pool_id_command(&input_file, temp_file.path())
+            .assert()
+            .success();
         temp_file.assert(crate::predicate::file_exists_and_not_empty());
         file_utils::read_file(temp_file.path())
     }
 
     pub fn assert_sign(&self, signing_key: &Path, input_file: &Path, output_file: &Path) -> String {
         println!("Running sign certification...");
-        let output = process_utils::run_process_and_get_output(self.commands.get_sign_command(
-            &signing_key,
-            &input_file,
-            &output_file,
-        ));
-        let certification = output.as_single_line();
-        process_assert::assert_process_exited_successfully(output);
-        certification
+        self.commands
+            .get_sign_command(&signing_key, &input_file, &output_file)
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
     }
 
     pub fn assert_new_signed_stake_pool_cert(
@@ -162,11 +158,11 @@ impl JCLICertificateWrapper {
 
     pub fn assert_new_stake_pool_retirement(&self, stake_pool_id: &str) -> String {
         println!("Running create retirement certification...");
-        let output = process_utils::run_process_and_get_output(
-            self.commands.get_retire_command(&stake_pool_id, 0u64),
-        );
-        let certification = output.as_single_line();
-        process_assert::assert_process_exited_successfully(output);
-        certification
+        self.commands
+            .get_retire_command(&stake_pool_id, 0u64)
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
     }
 }
