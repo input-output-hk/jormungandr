@@ -511,6 +511,8 @@ where
             self.starter.role,
             self.starter.from_genesis,
         )
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
         .assert()
         .failure()
         .stderr(predicates::str::contains(expected_msg));
