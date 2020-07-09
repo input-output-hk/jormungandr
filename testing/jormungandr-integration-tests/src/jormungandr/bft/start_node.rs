@@ -80,9 +80,9 @@ pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
             output: LogOutput::Stderr,
         }]))
         .build(&temp_dir);
-    Starter::new().config(config).start_fail(
-        r"Error while parsing the node configuration file: log\[0\]\.format: unknown variant",
-    );
+    Starter::new()
+        .config(config)
+        .start_fail(r"Error in the overall configuration of the node");
 }
 
 #[test]

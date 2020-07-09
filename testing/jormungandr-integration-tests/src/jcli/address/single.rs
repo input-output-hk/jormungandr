@@ -1,5 +1,5 @@
 use crate::common::jcli_wrapper;
-use crate::common::process_assert;
+use assert_cmd::assert::OutputAssertExt;
 use chain_addr::Discrimination;
 
 #[test]
@@ -122,10 +122,12 @@ pub fn test_utxo_address_made_of_incorrect_ed25519_extended_key() {
     public_key.push('A');
 
     // Assertion changed due to issue #306. After fix please change it to correct one
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_address_single_command(&public_key, Discrimination::Test),
-        "Failed to parse bech32, invalid data format",
-    );
+    jcli_wrapper::jcli_commands::get_address_single_command(&public_key, Discrimination::Test)
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "Failed to parse bech32, invalid data format",
+        ));
 }
 
 #[test]
@@ -139,14 +141,16 @@ pub fn test_delegation_address_made_of_random_string() {
     let delegation_key = "adfasdfasdfdasfasdfadfasdf";
 
     // Assertion changed due to issue #306. After fix please change it to correct one
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_address_delegation_command(
-            &public_key,
-            &delegation_key,
-            Discrimination::Test,
-        ),
+    jcli_wrapper::jcli_commands::get_address_delegation_command(
+        &public_key,
+        &delegation_key,
+        Discrimination::Test,
+    )
+    .assert()
+    .failure()
+    .stderr(predicates::str::contains(
         "Failed to parse bech32, invalid data format",
-    );
+    ));
 }
 
 #[test]
@@ -165,12 +169,14 @@ pub fn test_delegation_address_made_of_incorrect_public_ed25519_extended_key() {
     public_key.push('A');
 
     // Assertion changed due to issue #306. After fix please change it to correct one
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_address_delegation_command(
-            &public_key,
-            &delegation_key,
-            Discrimination::Test,
-        ),
+    jcli_wrapper::jcli_commands::get_address_delegation_command(
+        &public_key,
+        &delegation_key,
+        Discrimination::Test,
+    )
+    .assert()
+    .failure()
+    .stderr(predicates::str::contains(
         "Failed to parse bech32, invalid data format",
-    );
+    ));
 }

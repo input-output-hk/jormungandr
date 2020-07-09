@@ -1,6 +1,7 @@
 use crate::common::{
-    configuration::NodeConfigBuilder, jcli_wrapper, jormungandr::starter::Starter, process_assert,
+    configuration::NodeConfigBuilder, jcli_wrapper, jormungandr::starter::Starter,
 };
+use assert_cmd::assert::OutputAssertExt;
 
 #[test]
 pub fn test_correct_id_is_returned_for_block_tip_if_only_genesis_block_exists() {
@@ -15,8 +16,8 @@ pub fn test_correct_error_is_returned_for_incorrect_path() {
     let config = NodeConfigBuilder::new().build();
     let incorrect_uri = format!("http://{}/api/api", config.rest.listen);
 
-    process_assert::assert_process_failed_and_matches_message(
-        jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_uri),
-        "tcp connect error",
-    );
+    jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_uri)
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("tcp connect error"));
 }

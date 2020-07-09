@@ -12,7 +12,6 @@ pub mod legacy;
 pub mod load;
 pub mod network;
 pub mod predicates;
-pub mod process_assert;
 pub mod process_utils;
 pub mod startup;
 pub mod transaction_utils;

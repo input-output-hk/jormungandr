@@ -1,5 +1,5 @@
 use crate::common::jcli_wrapper;
-use crate::common::process_assert;
+use assert_cmd::assert::OutputAssertExt;
 
 #[test]
 pub fn test_ed25519_key_generation() {
@@ -39,10 +39,12 @@ pub fn test_sumed25519_12_key_generation() {
 
 #[test]
 pub fn test_unknown_key_type_generation() {
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_key_generate_command("unknown"),
-        "Invalid value for '--type <key-type>':",
-    );
+    jcli_wrapper::jcli_commands::get_key_generate_command("unknown")
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "Invalid value for '--type <key-type>':",
+        ));
 }
 
 #[test]
@@ -66,20 +68,22 @@ pub fn test_key_with_too_long_seed_generation() {
 }
 
 fn test_key_invalid_seed_length(seed: &str) {
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_key_generate_with_seed_command("Ed25519Extended", &seed),
-        "invalid seed length, expected 32 bytes but received",
-    );
+    jcli_wrapper::jcli_commands::get_key_generate_with_seed_command("Ed25519Extended", &seed)
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "invalid seed length, expected 32 bytes but received",
+        ));
 }
 
 #[test]
 pub fn test_key_with_seed_with_unknown_symbol_generation() {
     let incorrect_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcay";
-    process_assert::assert_process_failed_and_contains_message(
-        jcli_wrapper::jcli_commands::get_key_generate_with_seed_command(
-            "Ed25519Extended",
-            &incorrect_seed,
-        ),
-        "invalid Hexadecimal",
-    );
+    jcli_wrapper::jcli_commands::get_key_generate_with_seed_command(
+        "Ed25519Extended",
+        &incorrect_seed,
+    )
+    .assert()
+    .failure()
+    .stderr(predicates::str::contains("invalid Hexadecimal"));
 }

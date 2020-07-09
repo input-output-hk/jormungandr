@@ -3,11 +3,13 @@
 pub mod jcli_transaction_commands;
 
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::data::witness::Witness;
-use crate::common::jcli_wrapper;
-use crate::common::process_assert;
-use crate::common::process_utils;
-use crate::common::process_utils::output_extensions::ProcessOutput;
+use crate::common::{
+    data::witness::Witness, jcli_wrapper, process_utils::output_extensions::ProcessOutput,
+};
+use assert_cmd::assert::OutputAssertExt;
+use assert_fs::fixture::ChildPath;
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
@@ -15,10 +17,6 @@ use jormungandr_lib::{
     interfaces::{LegacyUTxO, UTxOInfo, Value},
 };
 use jormungandr_testing_utils::wallet::Wallet;
-
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use std::path::{Path, PathBuf};
 
 pub struct JCLITransactionWrapper {
@@ -90,11 +88,10 @@ impl JCLITransactionWrapper {
 
     pub fn assert_new_transaction(&mut self) -> &mut Self {
         self.reset_staging_dir();
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_new_transaction_command(self.staging_file().path()),
-        );
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_new_transaction_command(self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
@@ -103,14 +100,15 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_add_input(&mut self, tx_id: &Hash, tx_index: u8, amount: Value) -> &mut Self {
-        let output =
-            process_utils::run_process_and_get_output(self.commands.get_add_input_command(
+        self.commands
+            .get_add_input_command(
                 &tx_id.to_hex(),
                 tx_index,
                 &amount.to_string(),
                 self.staging_file().path(),
-            ));
-        process_assert::assert_process_exited_successfully(output);
+            )
+            .assert()
+            .success();
         self
     }
 
@@ -121,15 +119,16 @@ impl JCLITransactionWrapper {
         amount: &str,
         expected_part: &str,
     ) {
-        process_assert::assert_process_failed_and_contains_message(
-            self.commands.get_add_input_command(
+        self.commands
+            .get_add_input_command(
                 &tx_id.to_hex(),
                 tx_index,
                 amount,
                 self.staging_file().path(),
-            ),
-            expected_part,
-        );
+            )
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_part));
     }
 
     pub fn assert_add_input_from_utxo_with_value(
@@ -149,34 +148,35 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_add_certificate(&mut self, certificate: &str) -> &mut Self {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_add_certificate_command(&certificate, self.staging_file().path()),
-        );
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_add_certificate_command(&certificate, self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_add_account(&mut self, account_addr: &str, amount: &Value) -> &mut Self {
-        let output =
-            process_utils::run_process_and_get_output(self.commands.get_add_account_command(
+        self.commands
+            .get_add_account_command(
                 &account_addr,
                 &amount.to_string(),
                 self.staging_file().path(),
-            ));
-        process_assert::assert_process_exited_successfully(output);
+            )
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_add_account_fail(&self, account_addr: &str, amount: Value, expected_msg: &str) {
-        process_assert::assert_process_failed_and_matches_message(
-            self.commands.get_add_account_command(
+        self.commands
+            .get_add_account_command(
                 &account_addr,
                 &amount.to_string(),
                 self.staging_file().path(),
-            ),
-            expected_msg,
-        );
+            )
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_msg));
     }
 
     pub fn assert_add_account_from_legacy(&mut self, fund: &LegacyUTxO) -> &mut Self {
@@ -184,60 +184,42 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_add_output(&mut self, addr: &str, amount: Value) -> &mut Self {
-        let output =
-            process_utils::run_process_and_get_output(self.commands.get_add_output_command(
-                &addr,
-                &amount.to_string(),
-                self.staging_file().path(),
-            ));
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_add_output_command(&addr, &amount.to_string(), self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_finalize(&mut self) -> &mut Self {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_finalize_command(self.staging_file().path()),
-        );
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_finalize_command(self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_finalize_with_fee(&mut self, address: &str, linear_fee: &LinearFee) -> &mut Self {
-        let output =
-            process_utils::run_process_and_get_output(self.commands.get_finalize_with_fee_command(
-                &address,
-                &linear_fee,
-                self.staging_file().path(),
-            ));
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_finalize_with_fee_command(&address, &linear_fee, self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_finalize_fail(&self, expected_part: &str) {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_finalize_command(self.staging_file().path()),
-        );
-        let actual = output.err_as_single_line();
-
-        assert_eq!(
-            actual.contains(expected_part),
-            true,
-            "message : '{}' does not contain expected part '{}'",
-            &actual,
-            &expected_part
-        );
-
-        process_assert::assert_process_failed(output);
+        self.commands
+            .get_finalize_command(self.staging_file().path())
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_part));
     }
 
     pub fn assert_add_auth(&mut self, key: &Path) -> &mut Self {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_auth_command(key, self.staging_file().path()),
-        );
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_auth_command(key, self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
@@ -273,31 +255,33 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_make_witness(&mut self, witness: &Witness) -> &mut Self {
-        let output =
-            process_utils::run_process_and_get_output(self.commands.get_make_witness_command(
+        self.commands
+            .get_make_witness_command(
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
                 witness.spending_account_counter,
                 &witness.file,
                 &witness.private_key_path,
-            ));
-        process_assert::assert_process_exited_successfully(output);
+            )
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_make_witness_fails(&self, witness: &Witness, expected_msg: &str) {
-        process_assert::assert_process_failed_and_matches_message(
-            self.commands.get_make_witness_command(
+        self.commands
+            .get_make_witness_command(
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
                 witness.spending_account_counter,
                 &witness.file,
                 &witness.private_key_path,
-            ),
-            &expected_msg,
-        );
+            )
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_msg));
     }
 
     pub fn create_witness_from_wallet(&self, wallet: &Wallet) -> Witness {
@@ -343,63 +327,62 @@ impl JCLITransactionWrapper {
     }
 
     pub fn assert_add_witness_fail(&mut self, witness: &Witness, expected_part: &str) {
-        process_assert::assert_process_failed_and_matches_message(
-            self.commands
-                .get_add_witness_command(&witness.file, self.staging_file().path()),
-            expected_part,
-        );
+        self.commands
+            .get_add_witness_command(&witness.file, self.staging_file().path())
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_part));
     }
 
     pub fn assert_add_witness(&mut self, witness: &Witness) -> &mut Self {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_add_witness_command(&witness.file, self.staging_file().path()),
-        );
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_add_witness_command(&witness.file, self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_seal(&mut self) -> &mut Self {
-        let output = process_utils::run_process_and_get_output(
-            self.commands.get_seal_command(self.staging_file().path()),
-        );
-        process_assert::assert_process_exited_successfully(output);
+        self.commands
+            .get_seal_command(self.staging_file().path())
+            .assert()
+            .success();
         self
     }
 
     pub fn assert_to_message(&self) -> String {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_transaction_message_to_command(self.staging_file().path()),
-        );
-        let content = output.as_single_line();
-        process_assert::assert_process_exited_successfully(output);
-        content
+        self.commands
+            .get_transaction_message_to_command(self.staging_file().path())
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
     }
 
     pub fn assert_to_message_fails(&self, expected_msg: &str) {
-        process_assert::assert_process_failed_and_matches_message(
-            self.commands
-                .get_transaction_message_to_command(self.staging_file().path()),
-            expected_msg,
-        );
+        self.commands
+            .get_transaction_message_to_command(self.staging_file().path())
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_msg));
     }
 
     pub fn get_transaction_id(&self) -> Hash {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_transaction_id_command(self.staging_file().path()),
-        );
-        Hash::from_hex(output.as_single_line().as_str())
-            .expect("Cannot parse transaction id into hash")
+        self.commands
+            .get_transaction_id_command(self.staging_file().path())
+            .assert()
+            .success()
+            .get_output()
+            .as_hash()
     }
 
     pub fn get_transaction_info(&self, format: &str) -> String {
-        let output = process_utils::run_process_and_get_output(
-            self.commands
-                .get_transaction_info_command(&format, self.staging_file().path()),
-        );
-        output.as_single_line()
+        self.commands
+            .get_transaction_info_command(&format, self.staging_file().path())
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
     }
 
     pub fn get_fragment_id(&self) -> Hash {
