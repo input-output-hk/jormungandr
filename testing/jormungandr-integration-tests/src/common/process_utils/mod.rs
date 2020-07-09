@@ -9,7 +9,7 @@ pub use wait::{Wait, WaitBuilder};
 
 use self::output_extensions::ProcessOutput;
 use std::{
-    process::{Command, Output, Stdio},
+    process::{Child, Command, Output, Stdio},
     thread, time,
 };
 use thiserror::Error;

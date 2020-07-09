@@ -1,10 +1,12 @@
 #![allow(dead_code)]
 
+use assert_cmd::assert::{Assert, OutputAssertExt};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{
     AccountState, CommitteeIdDef, FragmentLog, FragmentStatus, LeadershipLog, SettingsDto,
     StakePoolStats, UTxOInfo, UTxOOutputInfo,
 };
+
 pub mod certificate;
 pub mod jcli_commands;
 pub mod jcli_transaction_wrapper;
@@ -61,10 +63,10 @@ pub fn assert_genesis_encode_fails(
     output_file: &ChildPath,
     expected_msg: &str,
 ) {
-    process_assert::assert_process_failed_and_matches_message(
-        jcli_commands::get_genesis_encode_command(genesis_yaml_file_path, output_file.path()),
-        expected_msg,
-    );
+    jcli_commands::get_genesis_encode_command(genesis_yaml_file_path, output_file.path())
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(expected_msg));
 }
 
 pub fn assert_genesis_hash(path_to_output_block: &Path) -> String {
