@@ -1,3 +1,6 @@
 [submodule "chain-deps"]
 	path = chain-deps
 	url = https://github.com/input-output-hk/chain-libs
+[submodule "testing/jortestkit"]
+	path = testing/jortestkit
+	url = https://github.com/input-output-hk/jortestkit.git

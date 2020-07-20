@@ -1683,6 +1683,7 @@ dependencies = [
  "hex",
  "humantime",
  "jormungandr-lib",
+ "jortestkit",
  "lazy_static",
  "os_info",
  "poldercast",
@@ -1699,6 +1700,39 @@ dependencies = [
  "thiserror",
  "tokio-codec",
  "typed-bytes",
+ "zip",
+]
+
+[[package]]
+name = "jortestkit"
+version = "0.1.0"
+dependencies = [
+ "assert_fs",
+ "bawawa",
+ "bech32",
+ "bytesize",
+ "chrono",
+ "custom_debug",
+ "flate2",
+ "futures 0.1.29",
+ "hex",
+ "humantime",
+ "indicatif",
+ "lazy_static",
+ "os_info",
+ "predicates",
+ "rand 0.7.3",
+ "rand_chacha 0.2.2",
+ "rand_core 0.5.1",
+ "reqwest",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_yaml",
+ "sysinfo",
+ "tar",
+ "thiserror",
+ "tokio-codec",
  "zip",
 ]
 
