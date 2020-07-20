@@ -1,6 +1,6 @@
 use jormungandr_testing_utils::testing::{
     decompress, download_file,
-    github::{GitHubApi, Release},
+    GitHubApi, Release,
 };
 
 mod rest;
