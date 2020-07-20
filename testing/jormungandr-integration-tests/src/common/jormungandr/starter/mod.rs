@@ -131,7 +131,7 @@ impl<'a, Conf: TestConfig> StartupVerification for RestStartupVerification<'a, C
             Some(uptime) => {
                 uptime
                     .parse::<i32>()
-                    .expect(&format!("Cannot parse uptime {}", uptime.to_string()))
+                    .unwrap_or_else(|_| panic!("Cannot parse uptime {}", uptime.to_string()))
                     > 2
             }
             None => false,
@@ -284,7 +284,7 @@ impl Starter {
         match &self.config {
             Some(params) => Ok((params.clone(), optional_temp_dir)),
             None => {
-                let temp_dir = optional_temp_dir.map_or_else(|| TempDir::new(), Ok)?;
+                let temp_dir = optional_temp_dir.map_or_else(TempDir::new, Ok)?;
                 let params = ConfigurationBuilder::new().build(&temp_dir);
                 Ok((params, Some(temp_dir)))
             }

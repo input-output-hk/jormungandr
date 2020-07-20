@@ -134,8 +134,7 @@ impl<'a> AdversaryFragmentSender<'a> {
     ) -> Result<Fragment, FragmentBuilderError> {
         let mut rng = thread_rng();
         let option: u8 = rng.gen();
-        let faulty_tx_builder =
-            FaultyTransactionBuilder::new(self.block0_hash.clone(), self.fees.clone());
+        let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
         match option % 6 {
             0 => Ok(faulty_tx_builder.wrong_block0_hash(from, to))?,
             1 => Ok(faulty_tx_builder.no_witnesses(from, to))?,
@@ -169,7 +168,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         let option: u8 = rng.gen();
         let faulty_tx_cert_builder = FaultTolerantTxCertBuilder::new(
             self.block0_hash.into_hash(),
-            self.fees.clone(),
+            self.fees,
             cert,
             from.clone().into(),
         );
@@ -248,7 +247,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         node: &A,
     ) -> Result<MemPoolCheck, AdversaryFragmentSenderError> {
         self.wait_for_node_sync_if_enabled(node)
-            .map_err(|e| AdversaryFragmentSenderError::SyncNodeError(e))?;
+            .map_err(AdversaryFragmentSenderError::SyncNodeError)?;
 
         let check = node.send_fragment(fragment.clone());
 

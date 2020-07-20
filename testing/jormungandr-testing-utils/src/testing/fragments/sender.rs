@@ -163,7 +163,7 @@ impl<'a> FragmentSender<'a> {
         node: &A,
         value: Value,
     ) -> Result<(), FragmentSenderError> {
-        if self.setup.auto_confirm() == false {
+        if !self.setup.auto_confirm() {
             return Err(FragmentSenderError::TransactionAutoConfirmDisabledError);
         }
 
@@ -182,12 +182,12 @@ impl<'a> FragmentSender<'a> {
         value: Value,
         duration: Duration,
     ) -> Result<(), FragmentSenderError> {
-        if self.setup.auto_confirm() == false {
+        if !self.setup.auto_confirm() {
             return Err(FragmentSenderError::TransactionAutoConfirmDisabledError);
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value.clone())?;
+            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
             std::thread::sleep(duration);
         }
         Ok(())
@@ -201,13 +201,13 @@ impl<'a> FragmentSender<'a> {
         node: &A,
         value: Value,
     ) -> Result<(), FragmentSenderError> {
-        if self.setup.auto_confirm() == false {
+        if !self.setup.auto_confirm() {
             return Err(FragmentSenderError::TransactionAutoConfirmDisabledError);
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value.clone())?;
-            self.send_transaction(&mut wallet2, &wallet1, node, value.clone())?;
+            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
+            self.send_transaction(&mut wallet2, &wallet1, node, value)?;
         }
         Ok(())
     }
@@ -249,7 +249,7 @@ impl<'a> FragmentSender<'a> {
         node: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         self.wait_for_node_sync_if_enabled(node)
-            .map_err(|e| FragmentSenderError::SyncNodeError(e))?;
+            .map_err(FragmentSenderError::SyncNodeError)?;
         for _ in 0..self.setup.attempts_count() {
             let check = node.send_fragment(fragment.clone());
 

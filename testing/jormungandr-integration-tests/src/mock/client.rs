@@ -59,7 +59,7 @@ impl JormungandrClient {
         let port = elements.get(4);
 
         if host.is_none() || port.is_none() {
-            return Err(MockClientError::InvalidAddressFormat(address.to_owned()).into());
+            return Err(MockClientError::InvalidAddressFormat(address.to_owned()));
         }
 
         let port: u16 = port
@@ -116,7 +116,7 @@ impl JormungandrClient {
     }
 
     fn hash_to_bin(&self, block_id: &Hash) -> Vec<u8> {
-        block_id.as_ref().iter().cloned().collect()
+        block_id.as_ref().to_vec()
     }
 
     pub async fn get_blocks(&self, blocks_id: &[Hash]) -> Result<Vec<LibBlock>, MockClientError> {
@@ -141,7 +141,7 @@ impl JormungandrClient {
         let mut client = NodeClient::connect(self.address()).await.unwrap();
 
         let request = tonic::Request::new(PullBlocksToTipRequest {
-            from: self.hashes_to_bin_vec(&vec![from]),
+            from: self.hashes_to_bin_vec(&[from]),
         });
         let response = client
             .pull_blocks_to_tip(request)

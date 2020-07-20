@@ -87,17 +87,13 @@ impl FragmentVerifier {
             let status = log.status().clone();
             match log.status() {
                 FragmentStatus::Pending => {
-                    node.log_pending_fragment(check.fragment_id().clone());
+                    node.log_pending_fragment(*check.fragment_id());
                 }
                 FragmentStatus::Rejected { reason } => {
-                    node.log_rejected_fragment(check.fragment_id().clone(), reason.to_string());
+                    node.log_rejected_fragment(*check.fragment_id(), reason.to_string());
                 }
                 FragmentStatus::InABlock { date, block } => {
-                    node.log_in_block_fragment(
-                        check.fragment_id().clone(),
-                        date.clone(),
-                        block.clone(),
-                    );
+                    node.log_in_block_fragment(*check.fragment_id(), *date, *block);
                 }
             }
             return Ok(status);

@@ -248,7 +248,7 @@ impl ConfigurationBuilder {
         let leader_key_pair = self
             .leader_key_pair
             .clone()
-            .unwrap_or_else(|| create_new_key_pair::<Ed25519>());
+            .unwrap_or_else(create_new_key_pair::<Ed25519>);
         let mut leaders_ids = self.consensus_leader_ids.clone();
         leaders_ids.push(leader_key_pair.identifier().into());
 
@@ -259,13 +259,13 @@ impl ConfigurationBuilder {
         let block0_config = Block0ConfigurationBuilder::new()
             .with_initial(initial)
             .with_leaders(leaders_ids)
-            .with_block0_consensus(self.block0_consensus.clone())
-            .with_kes_update_speed(self.kes_update_speed.clone())
+            .with_block0_consensus(self.block0_consensus)
+            .with_kes_update_speed(self.kes_update_speed)
             .with_slots_per_epoch(self.slots_per_epoch)
             .with_slot_duration(self.slot_duration)
             .with_epoch_stability_depth(self.epoch_stability_depth)
-            .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff.clone())
-            .with_linear_fees(self.linear_fees.clone())
+            .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
+            .with_linear_fees(self.linear_fees)
             .with_committee_ids(self.committee_ids.clone())
             .build();
 
@@ -280,7 +280,7 @@ impl ConfigurationBuilder {
             output_file.path().to_path_buf()
         }
 
-        let secret_model_paths = if self.secrets.len() == 0 {
+        let secret_model_paths = if self.secrets.is_empty() {
             let secret = SecretModelFactory::bft(leader_key_pair.signing_key());
             let output_file = temp_dir.child("node_secret.yaml");
             vec![write_secret(&secret, output_file)]

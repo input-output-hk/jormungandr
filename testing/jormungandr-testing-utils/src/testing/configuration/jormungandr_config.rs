@@ -135,10 +135,12 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
             self.genesis_block_path().display()
         ));
         mempack::read_from_raw::<Block>(&block0_bytes)
-            .expect(&format!(
-                "Failed to parse block in block 0 file '{}'",
-                self.genesis_block_path().display()
-            ))
+            .unwrap_or_else(|_| {
+                panic!(
+                    "Failed to parse block in block 0 file '{}'",
+                    self.genesis_block_path().display()
+                )
+            })
             .contents
             .iter()
             .filter_map(|fragment| match fragment {
@@ -169,10 +171,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
             .block0_utxo()
             .into_iter()
             .find(|utxo| *utxo.address() == wallet.address())
-            .expect(&format!(
-                "No UTxO found in block 0 for address '{:?}'",
-                wallet
-            ));
+            .unwrap_or_else(|| panic!("No UTxO found in block 0 for address '{:?}'", wallet));
         println!(
             "Utxo found for address {}: {:?}",
             wallet.address().to_string(),

@@ -82,12 +82,12 @@ impl Controller {
 
     pub fn spawn_and_wait(&mut self, alias: &str) -> JormungandrProcess {
         self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Leader)
-            .expect(&format!("cannot start {}", alias))
+            .unwrap_or_else(|_| panic!("cannot start {}", alias))
     }
 
     pub fn spawn_as_passive_and_wait(&mut self, alias: &str) -> JormungandrProcess {
         self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Passive)
-            .expect(&format!("cannot start {}", alias))
+            .unwrap_or_else(|_| panic!("cannot start {}", alias))
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, ControllerError> {
