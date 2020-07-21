@@ -77,6 +77,14 @@ impl<'a> AdversaryFragmentSenderSetup<'a> {
         }
     }
 
+    pub fn with_verify() -> Self {
+        Self {
+            verify: true,
+            sync_nodes: vec![],
+            dump_fragments: None,
+        }
+    }
+
     pub fn sync_before(nodes: Vec<&'a dyn SyncNode>) -> Self {
         Self {
             verify: true,
@@ -198,7 +206,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         &self,
         n: u32,
         mut wallet1: &mut Wallet,
-        wallet2: &mut Wallet,
+        wallet2: &Wallet,
         node: &A,
         duration: Duration,
     ) -> Result<(), AdversaryFragmentSenderError> {

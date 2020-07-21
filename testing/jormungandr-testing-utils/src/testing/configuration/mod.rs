@@ -3,7 +3,6 @@ extern crate rand;
 
 use self::lazy_static::lazy_static;
 use self::rand::Rng;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU16, Ordering};
 
 mod block0_config_builder;
