@@ -1,12 +1,16 @@
-use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+use crate::common::{jcli_wrapper, jormungandr::ConfigurationBuilder, startup};
+use jormungandr_testing_utils::{
+    stake_pool::StakePool,
+    testing::{
+        AdversaryFragmentSender, AdversaryFragmentSenderSetup, FragmentSender, FragmentSenderSetup,
+    },
 };
-use jormungandr_testing_utils::stake_pool::StakePool;
 
 use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
+use std::time::Duration;
 
 #[test]
 pub fn test_all_fragments() {
@@ -28,32 +32,26 @@ pub fn test_all_fragments() {
 
     let initial_stake_pool = stake_pools.iter().next().unwrap();
 
-    // 1. send simple transaction
-    let mut transaction = faucet
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            stake_pool_owner.address(),
+    let transaction_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        FragmentSenderSetup::resend_3_times(),
+    );
+
+    transaction_sender
+        .send_transaction(
+            &mut faucet,
+            &stake_pool_owner,
+            &jormungandr,
             stake_pool_owner_stake.into(),
         )
-        .unwrap()
-        .encode();
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
+        .unwrap();
 
     let stake_pool = StakePool::new(&stake_pool_owner);
 
-    // 2. send pool registration certificate
-    transaction = stake_pool_owner
-        .issue_pool_registration_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            &stake_pool,
-        )
-        .unwrap()
-        .encode();
-
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
-    stake_pool_owner.confirm_transaction();
+    transaction_sender
+        .send_pool_registration(&mut stake_pool_owner, &stake_pool, &jormungandr)
+        .unwrap();
 
     let stake_pools_from_rest = jormungandr
         .rest()
@@ -64,18 +62,9 @@ pub fn test_all_fragments() {
         "newly created stake pools is not visible in node"
     );
 
-    // 3. send owner delegation certificate
-    transaction = stake_pool_owner
-        .issue_owner_delegation_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            &stake_pool,
-        )
-        .unwrap()
-        .encode();
-
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
-    stake_pool_owner.confirm_transaction();
+    transaction_sender
+        .send_owner_delegation(&mut stake_pool_owner, &stake_pool, &jormungandr)
+        .unwrap();
 
     let stake_pool_owner_info = jcli_wrapper::assert_rest_account_get_stats(
         &stake_pool_owner.address().to_string(),
@@ -88,17 +77,9 @@ pub fn test_all_fragments() {
         DelegationType::Full(stake_pool.id())
     );
 
-    // 4. send full delegation certificate
-    transaction = full_delegator
-        .issue_full_delegation_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            &stake_pool,
-        )
-        .unwrap()
-        .encode();
-
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
+    transaction_sender
+        .send_full_delegation(&mut full_delegator, &stake_pool, &jormungandr)
+        .unwrap();
 
     let full_delegator_info = jcli_wrapper::assert_rest_account_get_stats(
         &full_delegator.address().to_string(),
@@ -110,17 +91,13 @@ pub fn test_all_fragments() {
         DelegationType::Full(stake_pool.id())
     );
 
-    // 5. send split delegation certificate
-    transaction = split_delegator
-        .issue_split_delegation_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            vec![(initial_stake_pool, 1u8), (&stake_pool, 1u8)],
+    transaction_sender
+        .send_split_delegation(
+            &mut split_delegator,
+            &[(initial_stake_pool, 1u8), (&stake_pool, 1u8)],
+            &jormungandr,
         )
-        .unwrap()
-        .encode();
-
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
+        .unwrap();
 
     let split_delegator = jcli_wrapper::assert_rest_account_get_stats(
         &split_delegator.address().to_string(),
@@ -141,33 +118,20 @@ pub fn test_all_fragments() {
     let mut stake_pool_info = new_stake_pool.info_mut();
     stake_pool_info.serial = 100u128;
 
-    // 6. send pool update certificate
     startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
 
-    transaction = stake_pool_owner
-        .issue_pool_update_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
+    transaction_sender
+        .send_pool_update(
+            &mut stake_pool_owner,
             &stake_pool,
             &new_stake_pool,
+            &jormungandr,
         )
-        .unwrap()
-        .encode();
+        .unwrap();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
-    stake_pool_owner.confirm_transaction();
-
-    // 7. send pool retire certificate
-    transaction = stake_pool_owner
-        .issue_pool_retire_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            &stake_pool,
-        )
-        .unwrap()
-        .encode();
-
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
+    transaction_sender
+        .send_pool_retire(&mut stake_pool_owner, &stake_pool, &jormungandr)
+        .unwrap();
 
     let stake_pools_from_rest = jormungandr
         .rest()
@@ -177,4 +141,68 @@ pub fn test_all_fragments() {
         !stake_pools_from_rest.contains(&stake_pool.id().to_string()),
         "newly created stake pools is not visible in node"
     );
+}
+
+#[test]
+pub fn test_all_adversary_fragments() {
+    let temp_dir = TempDir::new().unwrap();
+
+    let mut faucet = startup::create_new_account_address();
+    let stake_pool_owner = startup::create_new_account_address();
+    let mut full_delegator = startup::create_new_account_address();
+    let split_delegator = startup::create_new_account_address();
+
+    let stake_pool_owner_stake = 1_000;
+
+    let (jormungandr, stake_pools) = startup::start_stake_pool(
+        &[stake_pool_owner.clone()],
+        &[
+            full_delegator.clone(),
+            split_delegator.clone(),
+            faucet.clone(),
+        ],
+        &mut ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
+    )
+    .unwrap();
+
+    let initial_stake_pool = stake_pools.iter().next().unwrap();
+
+    let transaction_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        FragmentSenderSetup::resend_3_times(),
+    );
+
+    let adversary_sender = AdversaryFragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        AdversaryFragmentSenderSetup::no_verify(),
+    );
+    let verifier = jormungandr
+        .correct_state_verifier()
+        .record_wallets_state(vec![&faucet, &stake_pool_owner]);
+    adversary_sender
+        .send_faulty_transactions_with_iteration_delay(
+            10,
+            &mut faucet,
+            &stake_pool_owner,
+            &jormungandr,
+            Duration::from_secs(5),
+        )
+        .unwrap();
+    adversary_sender
+        .send_faulty_full_delegation(&mut full_delegator, initial_stake_pool.id(), &jormungandr)
+        .unwrap();
+    transaction_sender
+        .send_transaction(
+            &mut faucet,
+            &stake_pool_owner,
+            &jormungandr,
+            stake_pool_owner_stake.into(),
+        )
+        .unwrap();
+
+    verifier
+        .value_moved_between_wallets(&faucet, &stake_pool_owner, stake_pool_owner_stake.into())
+        .unwrap();
 }
