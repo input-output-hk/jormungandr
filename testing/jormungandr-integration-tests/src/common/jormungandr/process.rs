@@ -1,4 +1,6 @@
-use super::{logger::JormungandrLogger, rest, JormungandrError, JormungandrRest};
+use super::{
+    logger::JormungandrLogger, rest, JormungandrError, JormungandrRest, JormungandrStateVerifier,
+};
 use crate::common::configuration::{JormungandrParams, TestConfig};
 use crate::common::explorer::Explorer;
 use crate::common::jcli_wrapper;
@@ -66,6 +68,10 @@ impl JormungandrProcess {
 
     pub fn address(&self) -> poldercast::Address {
         self.p2p_public_address.clone()
+    }
+
+    pub fn correct_state_verifier(&self) -> JormungandrStateVerifier {
+        JormungandrStateVerifier::new(self.rest())
     }
 
     pub fn log_stats(&self) {
