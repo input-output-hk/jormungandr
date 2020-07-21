@@ -4,11 +4,11 @@ use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
-        EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord, PeerStats,
-        StakeDistributionDto,
+        AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord,
+        PeerStats, StakeDistributionDto,
     },
 };
-use jormungandr_testing_utils::testing::MemPoolCheck;
+use jormungandr_testing_utils::{testing::MemPoolCheck, wallet::Wallet};
 use std::collections::HashMap;
 use std::io::Read;
 use std::{fs::File, net::SocketAddr, path::Path};
@@ -93,6 +93,11 @@ impl JormungandrRest {
     pub fn stats(&self) -> Result<NodeStatsDto, RestError> {
         let stats = &self.inner.stats()?;
         serde_json::from_str(stats).map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn account_state(&self, wallet: &Wallet) -> Result<AccountState, RestError> {
+        serde_json::from_str(&self.inner.account_state(wallet)?)
+            .map_err(RestError::CannotDeserialize)
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>, RestError> {
