@@ -58,7 +58,11 @@ impl JormungandrStateVerifier {
             .account_state(wallet)?
             .value()
             .checked_add(value)?;
-        assert_eq!(expected, actual);
+        assert_eq!(
+            expected, actual,
+            "No value was deducted friom account: {} vs {}",
+            expected, actual
+        );
         Ok(())
     }
 
@@ -73,7 +77,11 @@ impl JormungandrStateVerifier {
             .ok_or(StateVerifierError::NoSnapshot)?;
         let expected = snapshot.value_for(wallet)?.checked_add(value)?;
         let actual = self.rest.account_state(wallet)?.value().clone();
-        assert_eq!(expected, actual);
+        assert_eq!(
+            expected, actual,
+            "No value was added to account: {} vs {}",
+            expected, actual
+        );
         Ok(())
     }
 }
