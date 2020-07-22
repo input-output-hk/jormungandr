@@ -108,12 +108,20 @@ impl TestnetConfig {
         trusted_peers
     }
 
-    pub fn make_config(&self, temp_dir: &TempDir) -> JormungandrParams {
+    pub fn make_leader_config(&self, temp_dir: &TempDir) -> JormungandrParams {
         ConfigurationBuilder::new()
             .with_block_hash(self.block0_hash())
             .with_storage(&temp_dir.child("storage"))
             .with_trusted_peers(self.trusted_peers.clone())
             .with_public_address(format!("/ip4/{}/tcp/{}", self.public_ip, self.public_port))
+            .build(temp_dir)
+    }
+
+    pub fn make_passive_config(&self, temp_dir: &TempDir) -> JormungandrParams {
+        ConfigurationBuilder::new()
+            .with_block_hash(self.block0_hash())
+            .with_storage(&temp_dir.child("storage"))
+            .with_trusted_peers(self.trusted_peers.clone())
             .build(temp_dir)
     }
 
@@ -137,7 +145,7 @@ fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> 
 
 fn bootstrap_current(testnet_config: TestnetConfig, network_alias: &str) {
     let temp_dir = TempDir::new().unwrap();
-    let mut jormungandr_config = testnet_config.make_config(&temp_dir);
+    let mut jormungandr_config = testnet_config.make_passive_config(&temp_dir);
 
     // start from itn trusted peers
     let jormungandr_from_trusted_peers = Starter::new()
@@ -191,7 +199,7 @@ fn bootstrap_legacy(testnet_config: TestnetConfig, network_prefix: &str) {
     let temp_dir = TempDir::new().unwrap();
     let (_, version) = get_legacy_app(&temp_dir);
 
-    let mut legacy_jormungandr_config = testnet_config.make_config(&temp_dir);
+    let mut legacy_jormungandr_config = testnet_config.make_passive_config(&temp_dir);
 
     // bootstrap node as legacy node
     let legacy_jormungandr = Starter::new()
@@ -278,6 +286,7 @@ pub fn itn_bootstrap_legacy() {
     bootstrap_legacy(TestnetConfig::new_itn(), "itn");
 }
 
+#[ignore]
 #[test]
 pub fn itn_e2e_stake_pool() {
     e2e_stake_pool(TestnetConfig::new_itn());
@@ -293,24 +302,10 @@ pub fn nightly_bootstrap_current() {
     bootstrap_current(TestnetConfig::new_nightly(), "nightly")
 }
 
+#[ignore]
 #[test]
 pub fn nightly_e2e_stake_pool() {
     e2e_stake_pool(TestnetConfig::new_nightly());
-}
-
-#[test]
-pub fn qa_bootstrap_legacy() {
-    bootstrap_current(TestnetConfig::new_qa(), "qa");
-}
-
-#[test]
-pub fn qa_bootstrap_current() {
-    bootstrap_current(TestnetConfig::new_qa(), "qa");
-}
-
-#[test]
-pub fn qa_e2e_stake_pool() {
-    e2e_stake_pool(TestnetConfig::new_qa());
 }
 
 fn e2e_stake_pool(testnet_config: TestnetConfig) {
@@ -318,7 +313,7 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
     let block0_hash = testnet_config.block0_hash();
 
     let jormungandr = Starter::new()
-        .config(testnet_config.make_config(&temp_dir))
+        .config(testnet_config.make_leader_config(&temp_dir))
         .timeout(Duration::from_secs(8000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)
