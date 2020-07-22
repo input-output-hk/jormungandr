@@ -6,7 +6,7 @@ use crate::{
     blockchain::{new_epoch_leadership_from, Ref, Tip},
     intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
     leadership::{
-        enclave::{Enclave, EnclaveError, LeaderEvent},
+        enclave::{Enclave, EnclaveError, LeaderEvent, Schedule},
         LeadershipLogHandle, Logs,
     },
     utils::{async_msg::MessageBox, task::TokioServiceInfo},
@@ -58,13 +58,8 @@ struct Entry {
     log: LeadershipLogHandle,
 }
 
-#[derive(Default)]
-struct Schedule {
-    entries: VecDeque<Entry>,
-}
-
 pub struct Module {
-    schedule: Schedule,
+    schedule: Option<Schedule>,
     service_info: TokioServiceInfo,
     logs: Logs,
     tip_ref: Arc<Ref>,
@@ -86,7 +81,7 @@ impl Module {
         let tip_ref = tip.get_ref().await;
 
         Ok(Self {
-            schedule: Schedule::default(),
+            schedule: None,
             service_info,
             logs,
             tip_ref,
@@ -225,15 +220,21 @@ impl Module {
     }
 
     async fn wait(mut self) -> Result<Self, LeadershipError> {
-        let deadline = self.wait_peek_deadline()?;
+        let deadline = self.wait_peek_deadline().await?;
         delay_until(TokioInstant::from_std(deadline)).await;
         let tip = self.tip.clone();
         self.tip_ref = tip.get_ref().await;
         Ok(self)
     }
 
-    fn wait_peek_deadline(&self) -> Result<Instant, LeadershipError> {
-        match self.schedule.peek() {
+    async fn wait_peek_deadline(&mut self) -> Result<Instant, LeadershipError> {
+        match self
+            .schedule
+            .as_mut()
+            .expect("schedule must be available at this point")
+            .peek()
+            .await
+        {
             None => {
                 // the schedule is empty we were in the _action_ mode, so that means
                 // there is no other schedule to have for the current epoch. Better
@@ -245,12 +246,14 @@ impl Module {
                 );
                 self.next_epoch_instant()
             }
-            Some(entry) => {
+            Some(event) => {
                 let logger = self.service_info.logger().new(o!(
-                    "event_date" => entry.event.date.to_string(),
-                    "leader_id" => entry.event.id.to_string(),
+                    "event_date" => event.date.to_string(),
+                    "leader_id" => event.id.to_string(),
                 ));
-                if let Some(instant) = entry.instant(&self)? {
+                let epoch = Epoch(event.date.epoch);
+                let slot = EpochSlotOffset(event.date.slot_id);
+                if let Some(instant) = self.slot_instant(epoch, slot) {
                     debug!(logger, "awaiting");
                     Ok(instant)
                 } else {
@@ -264,16 +267,31 @@ impl Module {
         }
     }
     async fn action(mut self) -> Result<Self, LeadershipError> {
-        match self.schedule.pop() {
+        match self.schedule.as_mut() {
+            Some(mut schedule) => match schedule.next().await {
+                Some(event) => self.action_entry(event).await,
+                None => self.action_schedule().await,
+            },
             None => self.action_schedule().await,
-            Some(entry) => self.action_entry(entry).await,
         }
     }
 
-    async fn action_entry(self, entry: Entry) -> Result<Self, LeadershipError> {
+    async fn action_entry(self, event: LeaderEvent) -> Result<Self, LeadershipError> {
+        let module = self;
+
+        let epoch = Epoch(event.date.epoch);
+        let slot = EpochSlotOffset(event.date.slot_id);
+        let scheduled_at_time = module.slot_time(epoch, slot);
+        let log = LeadershipLog::new(event.id, event.date.into(), scheduled_at_time);
+
+        let entry = match module.logs.insert(log).await {
+            Ok(log) => Entry { event, log },
+            Err(()) => return Err(LeadershipError::CannotUpdateLogs),
+        };
+
         let end_log = entry.log.clone();
         entry.log.mark_wake().await;
-        let module = self.action_run_entry(entry).await?;
+        let module = module.action_run_entry(entry).await?;
         end_log.mark_finished().await;
         Ok(module)
     }
@@ -578,34 +596,19 @@ impl Module {
     }
 
     async fn action_run_schedule(
-        self,
+        mut self,
         leadership: Arc<Leadership>,
         slot_start: u32,
         nb_slots: u32,
     ) -> Result<Self, LeadershipError> {
-        let schedules = self
-            .enclave
-            .query_schedules(leadership, slot_start, nb_slots)
-            .map_err(|e| LeadershipError::CannotScheduleWithEnclave { source: e })
-            .await?;
+        self.schedule = Some(
+            self.enclave
+                .query_schedules(leadership, slot_start, nb_slots)
+                .map_err(|e| LeadershipError::CannotScheduleWithEnclave { source: e })
+                .await?,
+        );
 
-        let mut module = self;
-        for schedule in schedules.into_iter() {
-            let epoch = Epoch(schedule.date.epoch);
-            let slot = EpochSlotOffset(schedule.date.slot_id);
-            let scheduled_at_time = module.slot_time(epoch, slot);
-            let log = LeadershipLog::new(schedule.id, schedule.date.into(), scheduled_at_time);
-
-            match module.logs.insert(log).await {
-                Ok(log) => module.schedule.push(Entry {
-                    event: schedule,
-                    log,
-                }),
-                Err(()) => return Err(LeadershipError::CannotUpdateLogs),
-            }
-        }
-
-        Ok(module)
+        Ok(self)
     }
 }
 
@@ -614,20 +617,6 @@ impl Entry {
         let epoch = Epoch(self.event.date.epoch);
         let slot = EpochSlotOffset(self.event.date.slot_id);
         Ok(module.slot_instant(epoch, slot))
-    }
-}
-
-impl Schedule {
-    pub fn pop(&mut self) -> Option<Entry> {
-        self.entries.pop_front()
-    }
-
-    pub fn peek(&self) -> Option<&Entry> {
-        self.entries.front()
-    }
-
-    pub fn push(&mut self, entry: Entry) {
-        self.entries.push_back(entry)
     }
 }
 

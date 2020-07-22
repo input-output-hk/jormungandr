@@ -25,6 +25,14 @@ pub struct LeaderEvent {
     pub output: LeaderOutput,
 }
 
+pub struct Schedule {
+    enclave: Arc<Enclave>,
+    leadership: Arc<Leadership>,
+    current_slot: u32,
+    nb_slots: u32,
+    current_slot_data: Vec<LeaderEvent>,
+}
+
 fn get_maximum_id<A>(leaders: &BTreeMap<LeaderId, A>) -> LeaderId {
     leaders.keys().last().copied().unwrap_or_default()
 }
@@ -109,66 +117,6 @@ impl Enclave {
         self.leaders_data.write().await.remove(leader_id)
     }
 
-    // temporary method
-    pub async fn leadership_evaluate1(
-        &self,
-        leadership: &Leadership,
-        leader_id: &LeaderId,
-        slot: SlotId,
-    ) -> Option<LeaderEvent> {
-        let leaders = &self.leaders_data.read().await.leaders;
-        if leaders.is_empty() {
-            return None;
-        }
-
-        leaders.get(leader_id).and_then(|leader| {
-            let date = leadership.date_at_slot(slot);
-            match leadership.is_leader_for_date(&leader, date) {
-                Ok(LeaderOutput::None) => None,
-                Ok(leader_output) => Some(LeaderEvent {
-                    id: *leader_id,
-                    date,
-                    output: leader_output,
-                }),
-                Err(_) => {
-                    // For now silently ignore error
-                    None
-                }
-            }
-        })
-    }
-
-    pub async fn leadership_evaluate(
-        &self,
-        leadership: &Leadership,
-        slot_start: u32,
-        nb_slots: u32,
-    ) -> Vec<LeaderEvent> {
-        let leaders = &self.leaders_data.read().await.leaders;
-        if leaders.is_empty() {
-            return vec![];
-        }
-
-        let mut output = Vec::new();
-        for slot_idx in slot_start..slot_start + nb_slots {
-            let date = leadership.date_at_slot(slot_idx);
-            for (id, leader) in leaders.iter() {
-                match leadership.is_leader_for_date(&leader, date) {
-                    Ok(LeaderOutput::None) => (),
-                    Ok(leader_output) => output.push(LeaderEvent {
-                        id: *id,
-                        date,
-                        output: leader_output,
-                    }),
-                    Err(_) => {
-                        // For now silently ignore error
-                    }
-                }
-            }
-        }
-        output
-    }
-
     pub async fn create_header_genesis_praos(
         &self,
         header_builder: HeaderGenesisPraosBuilder<HeaderSetConsensusSignature>,
@@ -199,6 +147,59 @@ impl Enclave {
         } else {
             None
         }
+    }
+}
+
+impl Schedule {
+    pub fn new(
+        enclave: Arc<Enclave>,
+        leadership: Arc<Leadership>,
+        slot_start: u32,
+        nb_slots: u32,
+    ) -> Self {
+        Self {
+            enclave,
+            leadership,
+            current_slot: slot_start,
+            nb_slots,
+            current_slot_data: Vec::new(),
+        }
+    }
+
+    async fn fill(&mut self) {
+        if !self.current_slot_data.is_empty() {
+            return;
+        }
+
+        while self.current_slot < self.nb_slots && self.current_slot_data.is_empty() {
+            let leaders = &self.enclave.leaders_data.read().await.leaders;
+            let date = self.leadership.date_at_slot(self.current_slot);
+            for (id, leader) in leaders {
+                match self.leadership.is_leader_for_date(&leader, date) {
+                    Ok(LeaderOutput::None) => (),
+                    Ok(leader_output) => self.current_slot_data.push(LeaderEvent {
+                        id: *id,
+                        date,
+                        output: leader_output,
+                    }),
+                    Err(_) => {
+                        // For now silently ignore error
+                    }
+                }
+            }
+
+            self.current_slot += 1;
+        }
+    }
+
+    pub async fn next(&mut self) -> Option<LeaderEvent> {
+        self.fill().await;
+        self.current_slot_data.pop()
+    }
+
+    pub async fn peek(&mut self) -> Option<&LeaderEvent> {
+        self.fill().await;
+        self.current_slot_data.last()
     }
 }
 
