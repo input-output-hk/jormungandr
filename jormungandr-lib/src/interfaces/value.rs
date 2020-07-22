@@ -1,6 +1,7 @@
 use chain_impl_mockchain::value;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
+use value::ValueError;
 
 /// Value in the blockchain, always printed as absolute Lovelace
 ///
@@ -19,6 +20,18 @@ use std::{fmt, str::FromStr};
 ///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Value(value::Value);
+
+impl Value {
+    #[inline]
+    pub fn saturating_add(self, other: Self) -> Self {
+        Value(self.0.saturating_add(other.0))
+    }
+
+    #[inline]
+    pub fn checked_add(self, other: Self) -> Result<Self, ValueError> {
+        self.0.checked_add(other.0).map(Value)
+    }
+}
 
 /* ---------------- Display ------------------------------------------------ */
 

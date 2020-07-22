@@ -12,7 +12,8 @@ mod web;
 
 pub use archive::decompress;
 pub use fragments::{
-    signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, FragmentBuilder,
+    signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentSender,
+    AdversaryFragmentSenderError, AdversaryFragmentSenderSetup, FragmentBuilder,
     FragmentBuilderError, FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError,
     FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentVerifier, FragmentVerifierError,
     MemPoolCheck, VerifyStrategy,

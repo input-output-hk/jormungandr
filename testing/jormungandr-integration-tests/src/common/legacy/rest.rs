@@ -1,7 +1,7 @@
 use crate::common::jormungandr::rest::RestError;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
-use jormungandr_testing_utils::testing::MemPoolCheck;
+use jormungandr_testing_utils::{testing::MemPoolCheck, wallet::Wallet};
 use std::collections::HashMap;
 
 /// Legacy tolerant rest api
@@ -57,6 +57,14 @@ impl BackwardCompatibleRest {
 
     pub fn stake_distribution(&self) -> Result<String, reqwest::Error> {
         let response_text = self.get("stake")?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
+    pub fn account_state(&self, wallet: &Wallet) -> Result<String, reqwest::Error> {
+        let key = hex::encode(wallet.identifier().as_ref().as_ref());
+        let request = format!("account/{}", key);
+        let response_text = self.get(&request)?.text()?;
         self.print_response_text(&response_text);
         Ok(response_text)
     }
