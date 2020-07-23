@@ -1,20 +1,4 @@
-use slog::Drain;
-
-use serde::{Deserialize, Serialize};
-
-use std::{
-    fs::{File, OpenOptions},
-    io::{BufRead, BufReader},
-    path::{Path, PathBuf},
-};
-
-use crate::common::file_utils;
-
-use std::fmt;
-
-use tonic::{Request, Response, Status};
-
-pub use node::{
+pub use builder::node::{
     node_server::{Node, NodeServer},
     {
         Block, BlockEvent, BlockIds, Fragment, FragmentIds, Gossip, HandshakeRequest,
@@ -22,100 +6,31 @@ pub use node::{
         PullHeadersRequest, PushHeadersResponse, TipRequest, TipResponse, UploadBlocksResponse,
     },
 };
-
-use chain_impl_mockchain::key::Hash;
+use slog::Drain;
+use std::fmt;
+use std::{fs::OpenOptions, path::Path};
+use tonic::{Request, Response, Status};
 
 use futures::Stream;
-use std::pin::Pin;
-use tokio::sync::mpsc;
+use std::{pin::Pin, sync::Arc};
+use tokio::sync::{mpsc, RwLock};
 
-pub mod node {
-    tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
-}
+mod builder;
+mod controller;
+mod data;
+mod logger;
+mod verifier;
 
-#[derive(Debug)]
-pub struct MockLogger {
-    pub log_file_path: PathBuf,
-}
+pub use builder::MockBuilder;
+pub use controller::MockController;
+pub use data::{header, MockServerData};
+pub use logger::{MethodType, MockLogger};
+pub use verifier::MockVerifier;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
-pub enum MethodType {
-    Init,
-    Handshake,
-    PullBlocksToTip,
-    Tip,
-    GetBlocks,
-    GetHeaders,
-    GetFragments,
-    GetPeers,
-    PullHeaders,
-    PushHeaders,
-    UploadBlocks,
-    BlockSubscription,
-    FragmentSubscription,
-    GossipSubscription,
-}
-
-impl fmt::Display for MethodType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
-pub enum Level {
-    WARN,
-    INFO,
-    ERRO,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct LogEntry {
-    pub msg: String,
-    pub level: Level,
-    pub ts: String,
-    pub method: MethodType,
-}
-
-impl MockLogger {
-    pub fn new(log_file_path: impl Into<PathBuf>) -> Self {
-        MockLogger {
-            log_file_path: log_file_path.into(),
-        }
-    }
-
-    pub fn get_log_content(&self) -> String {
-        file_utils::read_file(&self.log_file_path)
-    }
-
-    fn parse_line_as_entry(&self, line: &str) -> LogEntry {
-        self.try_parse_line_as_entry(line).unwrap_or_else(|error| panic!(
-            "Cannot parse log line into json '{}': {}. Please ensure json logger is used for node. Full log content: {}",
-            &line,
-            error,
-            self.get_log_content()
-        ))
-    }
-
-    fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
-        serde_json::from_str(&line)
-    }
-
-    pub fn get_log_entries(&self) -> impl Iterator<Item = LogEntry> + '_ {
-        self.get_lines_from_log()
-            .map(move |x| self.parse_line_as_entry(&x))
-    }
-
-    pub fn executed_at_least_once(&self, method: MethodType) -> bool {
-        self.get_log_entries().any(|entry| entry.method == method)
-    }
-
-    fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
-        let file = File::open(self.log_file_path.clone())
-            .unwrap_or_else(|_| panic!("cannot find log file: {:?}", &self.log_file_path));
-        let reader = BufReader::new(file);
-        reader.lines().map(|line| line.unwrap())
-    }
+#[derive(Clone, Debug, PartialEq)]
+pub enum MockExitCode {
+    Timeout,
+    Success,
 }
 
 #[derive(Clone, Debug)]
@@ -131,9 +46,7 @@ impl fmt::Display for ProtocolVersion {
 }
 
 pub struct JormungandrServerImpl {
-    genesis_hash: Hash,
-    tip: Hash,
-    protocol: ProtocolVersion,
+    data: Arc<RwLock<MockServerData>>,
     log: slog::Logger,
 }
 
@@ -151,22 +64,10 @@ impl JormungandrServerImpl {
         slog::Logger::root(drain, o!())
     }
 
-    pub fn new(
-        port: u16,
-        genesis_hash: Hash,
-        tip: Hash,
-        protocol: ProtocolVersion,
-        log_path: impl AsRef<Path>,
-    ) -> Self {
+    pub fn new(data: Arc<RwLock<MockServerData>>, log_path: impl AsRef<Path>, port: u16) -> Self {
         let log = JormungandrServerImpl::init_logger(log_path);
-        info!(log, "{}", format!("mock node started on port {}", port); "method" => MethodType::Init.to_string());
-
-        JormungandrServerImpl {
-            genesis_hash,
-            tip,
-            protocol,
-            log,
-        }
+        info!(log, "{}", format!("mock node started on port {}",port); "method" => MethodType::Init.to_string());
+        JormungandrServerImpl { data, log }
     }
 }
 
@@ -190,9 +91,11 @@ impl Node for JormungandrServerImpl {
     ) -> Result<Response<HandshakeResponse>, Status> {
         info!(self.log,"Handshake method recieved";"method" => MethodType::Handshake.to_string());
 
-        let reply = node::HandshakeResponse {
-            version: self.protocol.clone() as u32,
-            block0: self.genesis_hash.as_ref().to_vec(),
+        let data = self.data.read().await;
+
+        let reply = HandshakeResponse {
+            version: data.protocol().clone() as u32,
+            block0: data.genesis_hash().as_ref().to_vec(),
         };
 
         Ok(Response::new(reply))
@@ -203,11 +106,9 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<TipRequest>,
     ) -> Result<tonic::Response<TipResponse>, tonic::Status> {
         info!(self.log,"Tip request recieved";"method" => MethodType::Tip.to_string());
-
         let tip_response = TipResponse {
-            block_header: self.tip.as_ref().to_vec(),
+            block_header: self.data.read().await.tip().to_raw().to_vec(),
         };
-
         Ok(Response::new(tip_response))
     }
 
