@@ -16,6 +16,7 @@ arc-swap = "^0.4.7"
 juniper = "0.14.2"
 bincode = "1.2.1"
 bytes = "0.5"
+bech32 = "0.7"
 chain-addr = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
 chain-crypto    = { path = "../chain-deps/chain-crypto" }
@@ -53,7 +54,6 @@ structopt = "^0.3"
 thiserror = "1.0.20"
 tokio = { version = "0.2.21", features = ["rt-threaded", "time", "sync", "stream", "signal", "test-util", "blocking"] }
 tonic = "0.2"
-bech32 = "0.7"
 async-trait = "0.1"
 lru = "^0.5.3"
 warp = { version = "0.2.3", features = ["tls"] }

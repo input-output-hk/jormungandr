@@ -1,7 +1,4 @@
-use jormungandr_testing_utils::testing::{
-    decompress, download_file,
-    GitHubApi, Release,
-};
+use jormungandr_testing_utils::testing::{decompress, download_file, GitHubApi, Release};
 
 mod rest;
 

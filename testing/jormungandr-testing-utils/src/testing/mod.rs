@@ -4,13 +4,14 @@ pub mod network_builder;
 pub mod sync;
 mod verify;
 
-pub use jortestkit::archive::decompress;
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, FragmentBuilder,
     FragmentBuilderError, FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError,
     FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentVerifier, FragmentVerifierError,
     MemPoolCheck, VerifyStrategy,
 };
+pub use jortestkit::archive::decompress;
+pub use jortestkit::github::{GitHubApi, GitHubApiError, Release};
 pub use jortestkit::measurement::{
     benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
     ConsumptionBenchmarkError, ConsumptionBenchmarkRun, EfficiencyBenchmarkDef,
@@ -22,7 +23,6 @@ pub use sync::{
     ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
     MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
 };
-pub use jortestkit::github::{GitHubApi,GitHubApiError,Release};
 
 pub use jortestkit::web::download_file;
 
