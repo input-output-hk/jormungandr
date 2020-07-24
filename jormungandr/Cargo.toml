@@ -56,7 +56,7 @@ tokio = { version = "0.2.21", features = ["rt-threaded", "time", "sync", "stream
 tonic = "0.2"
 async-trait = "0.1"
 lru = "^0.5.3"
-warp = { version = "0.2.3", features = ["tls"] }
+warp = { version = "0.2.4", features = ["tls"] }
 pin-project = "0.4"
 multiaddr = "0.3.1"
 
