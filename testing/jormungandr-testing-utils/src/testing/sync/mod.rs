@@ -1,7 +1,5 @@
-use crate::testing::{
-    measurement::{benchmark_speed, Speed, Thresholds},
-    verify::{assert_equals, Error as VerificationError},
-};
+use crate::testing::verify::{assert_equals, Error as VerificationError};
+use crate::testing::{benchmark_speed, Speed, Thresholds};
 
 mod measure;
 mod node;

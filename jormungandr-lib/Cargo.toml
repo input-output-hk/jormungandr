@@ -5,7 +5,6 @@ authors = ["dev@iohk.io"]
 edition = "2018"
 
 [dependencies]
-bech32 = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 chain-impl-mockchain = { path = "../chain-deps/chain-impl-mockchain" }
 chain-addr      = { path = "../chain-deps/chain-addr" }
@@ -22,6 +21,7 @@ humantime = "2.0"
 thiserror = "1.0"
 poldercast = "0.13.1"
 hex = "0.4"
+bech32 = "0.7"
 multiaddr = "0.3.1"
 warp = { version = "0.2.3", features = ["tls"] }
 

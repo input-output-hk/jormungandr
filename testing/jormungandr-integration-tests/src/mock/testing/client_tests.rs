@@ -13,16 +13,15 @@ use chain_impl_mockchain::{
     block::Header,
     chaintypes::ConsensusVersion,
     key::Hash,
-    testing::builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
+    testing::{
+        builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
+        TestGen,
+    },
 };
 use chain_time::{Epoch, TimeEra};
 use jormungandr_lib::interfaces::InitialUTxO;
 
 use assert_fs::TempDir;
-
-fn fake_hash() -> Hash {
-    Hash::from_str("efe2d4e5c4ad84b8e67e7b5676fff41cad5902a60b8cb6f072f42d7c7d26c944").unwrap()
-}
 
 // L1001 Handshake sanity
 #[tokio::test]
@@ -75,7 +74,7 @@ pub async fn get_headers_incorrect_hash() {
     let fixture = Fixture::new();
     let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
-    let fake_hash = fake_hash();
+    let fake_hash: Hash = TestGen::hash().into();
     assert_eq!(
         MockClientError::InvalidRequest(format!(
             "not found (block {} is not known to this node)",
@@ -103,7 +102,7 @@ pub async fn get_blocks_incorrect_hash() {
     let fixture = Fixture::new();
     let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
-    let fake_hash = fake_hash();
+    let fake_hash: Hash = TestGen::hash().into();
     assert_eq!(
         MockClientError::InvalidRequest(format!(
             "not found (block {} is not known to this node)",
@@ -137,7 +136,10 @@ pub async fn pull_blocks_to_tip_incorrect_hash() {
     let fixture = Fixture::new();
     let (server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
-    let blocks = client.pull_blocks_to_tip(fake_hash()).await.unwrap();
+    let blocks = client
+        .pull_blocks_to_tip(TestGen::hash().into())
+        .await
+        .unwrap();
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
 
     let hashes_from_logs = server.logger.get_created_blocks_hashes();
@@ -173,7 +175,11 @@ pub async fn pull_headers_incorrect_hash() {
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     assert_eq!(
         MockClientError::InvalidRequest(format!("not found (block not found)")),
-        client.pull_headers(&[], fake_hash()).await.err().unwrap()
+        client
+            .pull_headers(&[], TestGen::hash().into())
+            .await
+            .err()
+            .unwrap()
     );
 }
 
