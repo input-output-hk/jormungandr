@@ -3,6 +3,7 @@ members = [
   "jormungandr-lib",
   "jormungandr",
   "jcli",
+  "modules/settings",
   "testing/jormungandr-testing-utils",
   "testing/jormungandr-integration-tests",
   "testing/jormungandr-scenario-tests",
