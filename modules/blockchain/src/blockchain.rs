@@ -80,7 +80,14 @@ impl Blockchain {
         self.cache.put(reference.hash(), Arc::clone(&reference));
 
         let new_tip = match self.tip.select(&reference) {
-            Selection::PreferCurrent => false,
+            Selection::PreferCurrent => {
+                // we prefer the current tip, so refresh it in the cache so
+                // it is properly cached and we don't get cache miss in
+                // future `put`.
+                self.heads.put(self.tip.hash(), Arc::clone(&self.tip));
+                self.cache.put(self.tip.hash(), Arc::clone(&self.tip));
+                false
+            }
             Selection::PreferCandidate => {
                 self.tip = Arc::clone(&reference);
                 true
