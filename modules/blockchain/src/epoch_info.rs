@@ -33,7 +33,7 @@ pub struct EpochInfo {
 
 #[derive(Debug, Error)]
 pub enum EpochInfoError {
-    #[error("Cannot needed informations from the block0")]
+    #[error("Cannot needed information from the block0")]
     InvalidBlock0(
         #[source]
         #[from]
