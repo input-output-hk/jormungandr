@@ -1811,6 +1811,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kms"
+version = "0.1.0"
+dependencies = [
+ "chain-crypto",
+ "chain-impl-mockchain",
+ "hex",
+ "rand 0.7.3",
+ "thiserror",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

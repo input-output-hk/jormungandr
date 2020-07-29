@@ -6,6 +6,7 @@ members = [
   "modules/settings",
   "modules/blockchain",
   "modules/clock",
+  "modules/kms",
   "testing/jormungandr-testing-utils",
   "testing/jormungandr-integration-tests",
   "testing/jormungandr-scenario-tests",
