@@ -47,6 +47,15 @@ impl Blockchain {
         Arc::clone(&self.tip)
     }
 
+    /// get an iterator for all the branches currently being considered by
+    /// the `Blockchain`.
+    ///
+    /// The `tip` is already included in the list too and it may be that
+    /// the some branches in the list are no longer `Head` only.
+    pub fn branches(&self) -> lru::Iter<'_, HeaderId, Arc<Reference>> {
+        self.heads.iter()
+    }
+
     pub fn put(&mut self, block: &Block) -> Result<Event, Error> {
         let parent_hash = block.header.block_parent_hash();
         if let Some(parent) = self.heads.get(&parent_hash).cloned() {
