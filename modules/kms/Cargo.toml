@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chain-crypto         = { path = "../../chain-deps/chain-crypto"}
 chain-impl-mockchain = { path = "../../chain-deps/chain-impl-mockchain" }
+blockchain = { path = "../blockchain" }
 thiserror = "1.0.20"
 hex = "0.4.2"
 rand = "0.7"

@@ -1814,11 +1814,12 @@ dependencies = [
 name = "kms"
 version = "0.1.0"
 dependencies = [
- "chain-crypto",
+ "blockchain",
  "chain-impl-mockchain",
  "hex",
  "rand 0.7.3",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

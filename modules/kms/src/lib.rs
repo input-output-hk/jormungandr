@@ -70,6 +70,9 @@ impl KMS {
         self.keys.keys()
     }
 
+    /// this function will not block, however it is possible the action
+    /// queried takes some times to respond asynchronously.
+    ///
     pub fn query(&mut self, id: Id, query: Query) -> Result<(), Error> {
         if let Some(manager) = self.keys.get_mut(&id) {
             manager
