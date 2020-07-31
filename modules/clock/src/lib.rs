@@ -19,6 +19,11 @@ impl Clock {
         Self { frame, era }
     }
 
+    /// returns the current system time in the given clock.
+    ///
+    /// TODO: for testing purpose, it would be interesting to be able to
+    ///       mock/update/configure the clock in a way the time can run
+    ///       at different pace for testing and simulation
     #[inline]
     pub fn now(&self) -> SystemTime {
         SystemTime::now()
