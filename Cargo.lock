@@ -264,6 +264,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "blockchain"
+version = "0.1.0"
+dependencies = [
+ "chain-impl-mockchain",
+ "chain-time",
+ "lru 0.5.3",
+ "thiserror",
+]
+
+[[package]]
 name = "bstr"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
