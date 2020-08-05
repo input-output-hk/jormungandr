@@ -1,4 +1,5 @@
-use crate::{legacy::NodeConfig, testing::TestConfig};
+use super::NodeConfig;
+use crate::testing::node::configuration::TestConfig;
 use std::net::SocketAddr;
 use std::path::Path;
 

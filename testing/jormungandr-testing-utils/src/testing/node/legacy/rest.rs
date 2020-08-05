@@ -1,9 +1,10 @@
-use crate::common::jormungandr::rest::RestError;
+use crate::{
+    testing::{node::RestError, MemPoolCheck},
+    wallet::Wallet,
+};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
-use jormungandr_testing_utils::{testing::MemPoolCheck, wallet::Wallet};
 use std::collections::HashMap;
-
 /// Legacy tolerant rest api
 /// This layer returns raw strings without deserialization
 /// in order to assure compatibility and lack of serde errors

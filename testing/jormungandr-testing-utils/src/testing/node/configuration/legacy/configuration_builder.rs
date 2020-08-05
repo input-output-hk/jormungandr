@@ -1,8 +1,7 @@
-use crate::version_0_8_19;
-use crate::{
-    legacy::{NodeConfig, P2p, TrustedPeer, Version},
-    testing::JormungandrParams,
-};
+use super::config::{P2p, TrustedPeer};
+use crate::testing::node::configuration::legacy::NodeConfig;
+use crate::testing::node::configuration::JormungandrParams;
+use crate::testing::node::{version_0_8_19, Version};
 use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, Rest};
 use rand::RngCore;
 use rand_core::OsRng;

@@ -1,4 +1,6 @@
-use super::{Explorer, LayersConfig, Log, Mempool, Policy, Rest, TopicsOfInterest};
+use jormungandr_lib::interfaces::{
+    Explorer, LayersConfig, Log, Mempool, Policy, Rest, TopicsOfInterest,
+};
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

@@ -1,8 +1,5 @@
-#[macro_use]
 pub mod client;
 pub mod server;
-#[cfg(test)]
-pub mod testing;
 
 pub use client::JormungandrClient;
 pub use server::JormungandrServerImpl;

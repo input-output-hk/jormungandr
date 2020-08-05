@@ -10,7 +10,7 @@ use tonic::transport::Server;
 pub mod node {
     tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
 }
-use crate::mock::server::NodeServer;
+use crate::testing::node::grpc::server::NodeServer;
 
 pub struct MockBuilder {
     mock_port: u16,

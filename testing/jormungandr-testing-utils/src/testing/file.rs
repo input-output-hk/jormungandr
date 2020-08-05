@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use fs_extra::dir::{copy, CopyOptions};
 use std::{
     fs,

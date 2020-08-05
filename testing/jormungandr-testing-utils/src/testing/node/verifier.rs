@@ -1,6 +1,6 @@
 use super::JormungandrRest;
+use crate::wallet::Wallet;
 use jormungandr_lib::interfaces::{AccountState, Value};
-use jormungandr_testing_utils::wallet::Wallet;
 
 pub struct JormungandrStateVerifier {
     rest: JormungandrRest,
@@ -95,7 +95,7 @@ pub enum StateVerifierError {
     #[error("no snapshot was made prior assert execution")]
     NoSnapshot,
     #[error("rest error")]
-    RestError(#[from] crate::common::jormungandr::rest::RestError),
+    RestError(#[from] super::RestError),
     #[error("wrong value calculation")]
     ValueError(#[from] chain_impl_mockchain::value::ValueError),
 }

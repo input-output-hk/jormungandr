@@ -1,4 +1,4 @@
-use jormungandr_integration_tests::mock::client::JormungandrClient;
+use jormungandr_testing_utils::testing::node::grpc::client::JormungandrClient;
 use std::env;
 
 #[tokio::main]

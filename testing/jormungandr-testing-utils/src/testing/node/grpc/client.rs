@@ -1,4 +1,4 @@
-use crate::mock::read_into;
+use crate::testing::node::grpc::read_into;
 
 use node::{
     node_client::NodeClient, Block, BlockIds, Fragment, FragmentIds, HandshakeRequest,

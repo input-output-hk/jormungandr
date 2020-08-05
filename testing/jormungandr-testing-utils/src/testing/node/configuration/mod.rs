@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 
 mod block0_config_builder;
 mod jormungandr_config;
-mod legacy;
+pub mod legacy;
 mod node_config;
 mod node_config_builder;
 mod secret_model_factory;

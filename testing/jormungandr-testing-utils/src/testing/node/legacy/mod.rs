@@ -1,19 +1,24 @@
-use jormungandr_testing_utils::testing::{decompress, download_file, GitHubApi, Release};
-
 mod rest;
+mod version;
 
-pub use jormungandr_testing_utils::legacy::{version_0_8_19, NodeConfig, Version};
-pub use jormungandr_testing_utils::testing::configuration::{
+use crate::testing::file;
+pub use crate::testing::node::configuration::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
-pub use rest::BackwardCompatibleRest;
+use crate::testing::{decompress, download_file, GitHubApi, Release};
+pub use jormungandr_lib::interfaces::{
+    Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
+};
 
-use crate::common::file_utils;
 use assert_fs::fixture::PathChild;
 use assert_fs::prelude::*;
 use url::Url;
 
 use std::path::PathBuf;
+
+pub use rest::BackwardCompatibleRest;
+
+pub use version::{version_0_8_19, Version};
 
 pub fn download_last_n_releases(n: u32) -> Vec<Release> {
     let github_api = GitHubApi::new();
@@ -45,5 +50,5 @@ pub fn get_jormungandr_bin(release: &Release, temp_dir: &impl PathChild) -> Path
     let release_dir = temp_dir.child(format!("release-{}", release.version()));
     release_dir.create_dir_all().unwrap();
     decompress(output.path(), release_dir.path()).unwrap();
-    file_utils::find_file(release_dir.path(), "jormungandr").unwrap()
+    file::find_file(release_dir.path(), "jormungandr").unwrap()
 }

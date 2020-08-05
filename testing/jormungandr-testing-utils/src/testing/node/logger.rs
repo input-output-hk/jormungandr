@@ -3,7 +3,7 @@ extern crate serde;
 extern crate serde_json;
 
 use self::serde::{Deserialize, Serialize};
-use crate::common::file_utils;
+use crate::testing::file as file_utils;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
 use std::fs::File;
@@ -11,8 +11,8 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use thiserror::Error;
 
+use crate::testing::Timestamp;
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
-use jormungandr_testing_utils::testing::Timestamp;
 #[derive(Debug, Error)]
 pub enum LoggerError {
     #[error("{log_file}")]

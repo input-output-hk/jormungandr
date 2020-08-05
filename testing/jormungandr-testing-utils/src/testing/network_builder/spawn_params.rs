@@ -3,7 +3,7 @@ use jormungandr_lib::interfaces::{
 };
 
 use super::{LeadershipMode, PersistenceMode};
-use crate::legacy::Version;
+use crate::testing::node::Version;
 use std::path::PathBuf;
 
 #[derive(Clone)]

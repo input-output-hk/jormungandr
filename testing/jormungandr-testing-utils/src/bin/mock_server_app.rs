@@ -1,6 +1,6 @@
 use chain_core::property::FromStr;
 use chain_impl_mockchain::key::Hash;
-use jormungandr_integration_tests::mock::server::{header, MockBuilder};
+use jormungandr_testing_utils::testing::node::grpc::server::{header, MockBuilder};
 use std::env;
 
 #[tokio::main]
