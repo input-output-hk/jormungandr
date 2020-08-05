@@ -1,11 +1,12 @@
 use super::commands::CertificateCommands;
 
-use crate::common::{file_utils, process_utils::output_extensions::ProcessOutput};
+use crate::common::process_utils::output_extensions::ProcessOutput;
 use jormungandr_lib::interfaces::TaxType;
 
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::prelude::*;
 use assert_fs::{NamedTempFile, TempDir};
+use jormungandr_testing_utils::testing::file;
 use std::path::{Path, PathBuf};
 #[derive(Debug, Default)]
 pub struct JCLICertificateWrapper {
@@ -87,7 +88,7 @@ impl JCLICertificateWrapper {
             .assert()
             .success();
         temp_file.assert(crate::predicate::file_exists_and_not_empty());
-        file_utils::read_file(temp_file.path())
+        file::read_file(temp_file.path())
     }
 
     pub fn assert_sign(&self, signing_key: &Path, input_file: &Path, output_file: &Path) -> String {
@@ -153,7 +154,7 @@ impl JCLICertificateWrapper {
             stake_delegation_cert_file.path(),
             stake_delegation_signcert_file.path(),
         );
-        file_utils::read_file(stake_delegation_signcert_file.path())
+        file::read_file(stake_delegation_signcert_file.path())
     }
 
     pub fn assert_new_stake_pool_retirement(&self, stake_pool_id: &str) -> String {

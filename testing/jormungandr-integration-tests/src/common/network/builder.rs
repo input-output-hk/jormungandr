@@ -1,13 +1,15 @@
 use super::{Controller, ControllerError};
-use crate::common::configuration::NodeConfigBuilder;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::Value;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NodeSecret, NumberOfSlotsPerEpoch, SlotDuration,
 };
-use jormungandr_testing_utils::testing::network_builder::{
-    Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, SpawnParams, TopologyBuilder,
-    WalletAlias, WalletTemplate,
+use jormungandr_testing_utils::testing::{
+    network_builder::{
+        Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, SpawnParams,
+        TopologyBuilder, WalletAlias, WalletTemplate,
+    },
+    NodeConfigBuilder,
 };
 
 use assert_fs::TempDir;

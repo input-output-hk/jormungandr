@@ -1,10 +1,11 @@
-use crate::{
-    common::{configuration, jormungandr::logger::Level, jormungandr::starter::Starter},
-    mock::{
-        server::{MethodType, MockBuilder, MockExitCode, ProtocolVersion},
-        testing::setup::Fixture,
-    },
+use crate::common::{configuration, jormungandr::starter::Starter};
+
+use jormungandr_testing_utils::testing::node::{
+    grpc::server::{MethodType, MockBuilder, MockExitCode, ProtocolVersion},
+    Level,
 };
+
+use super::setup::Fixture;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::key::Hash;
 use std::time::Duration;

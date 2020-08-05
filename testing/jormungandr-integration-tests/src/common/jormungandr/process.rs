@@ -1,8 +1,3 @@
-use super::{
-    logger::JormungandrLogger, rest, JormungandrError, JormungandrRest, JormungandrStateVerifier,
-};
-use crate::common::configuration::{JormungandrParams, TestConfig};
-use crate::common::explorer::Explorer;
 use crate::common::jcli_wrapper;
 use assert_fs::{fixture::ChildPath, TempDir};
 use chain_impl_mockchain::fee::LinearFee;
@@ -10,8 +5,15 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
 };
-use jormungandr_testing_utils::testing::SyncNode;
+use jormungandr_testing_utils::testing::{
+    node::{
+        uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
+        JormungandrStateVerifier,
+    },
+    JormungandrParams, SyncNode, TestConfig,
+};
 
+use super::JormungandrError;
 use std::net::SocketAddr;
 use std::process::Child;
 use std::str::FromStr;
@@ -117,7 +119,7 @@ impl JormungandrProcess {
     }
 
     pub fn rest_uri(&self) -> String {
-        rest::uri_from_socket_addr(self.rest_socket_addr)
+        uri_from_socket_addr(self.rest_socket_addr)
     }
 
     pub fn fees(&self) -> LinearFee {

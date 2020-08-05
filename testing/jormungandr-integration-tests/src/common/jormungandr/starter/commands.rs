@@ -1,6 +1,6 @@
 use super::{FromGenesis, Role};
-use crate::common::configuration::{JormungandrParams, TestConfig};
 
+use jormungandr_testing_utils::testing::{JormungandrParams, TestConfig};
 use serde::Serialize;
 use std::fs::File;
 use std::iter::FromIterator;

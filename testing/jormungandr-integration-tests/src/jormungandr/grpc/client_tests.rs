@@ -4,10 +4,9 @@ use crate::common::{
     startup,
     transaction_utils::TransactionHash,
 };
-use crate::mock::{
-    client::MockClientError,
-    testing::setup::{Config, Fixture},
-};
+
+use super::setup::{Config, Fixture};
+
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{
     block::Header,
@@ -20,6 +19,7 @@ use chain_impl_mockchain::{
 };
 use chain_time::{Epoch, TimeEra};
 use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_testing_utils::testing::node::grpc::client::MockClientError;
 
 use assert_fs::TempDir;
 

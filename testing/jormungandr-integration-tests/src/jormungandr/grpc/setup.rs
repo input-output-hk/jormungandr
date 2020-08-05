@@ -2,9 +2,9 @@ use crate::common::{
     configuration::JormungandrParams,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
-use crate::mock::client::JormungandrClient;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
+use jormungandr_testing_utils::testing::node::grpc::JormungandrClient;
 
 use assert_fs::TempDir;
 use std::thread;

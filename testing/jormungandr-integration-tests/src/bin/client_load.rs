@@ -1,8 +1,8 @@
 use chain_impl_mockchain::key::Hash;
-use jormungandr_integration_tests::{
-    common::load::{ClientLoadConfig, ClientLoadError, PassiveBootstrapLoad, ScenarioType},
-    mock::client::JormungandrClient,
+use jormungandr_integration_tests::common::load::{
+    ClientLoadConfig, ClientLoadError, PassiveBootstrapLoad, ScenarioType,
 };
+use jormungandr_testing_utils::testing::node::grpc::client::JormungandrClient;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
