@@ -12,12 +12,12 @@ use crate::{
 };
 use chain_core::property::FromStr;
 use jormungandr_testing_utils::{
-    legacy::Version,
-    testing::network_builder::{Blockchain, TopologyBuilder, WalletTemplate},
+    testing::{
+        network_builder::{Blockchain, TopologyBuilder, WalletTemplate},
+        node::{download_last_n_releases, get_jormungandr_bin},
+    },
+    Version,
 };
-
-use jormungandr_integration_tests::common::legacy::download_last_n_releases;
-use jormungandr_integration_tests::common::legacy::get_jormungandr_bin;
 
 use rand_chacha::ChaChaRng;
 

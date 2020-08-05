@@ -1,9 +1,8 @@
-use jormungandr_integration_tests::common::legacy::LegacyNodeConfigConverter;
-use jormungandr_integration_tests::common::legacy::Version;
 use jormungandr_lib::interfaces::NodeSecret;
 use jormungandr_testing_utils::{
-    legacy::NodeConfig as LegacyConfig,
     testing::network_builder::{Node as NodeTemplate, NodeSetting},
+    testing::{node::configuration::legacy::NodeConfig as LegacyConfig, LegacyNodeConfigConverter},
+    Version,
 };
 
 #[derive(Debug, Clone)]

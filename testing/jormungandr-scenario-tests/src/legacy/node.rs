@@ -11,9 +11,6 @@ use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
     header::HeaderId,
 };
-use jormungandr_integration_tests::{
-    common::jormungandr::logger::JormungandrLogger, mock::client::JormungandrClient,
-};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
@@ -25,6 +22,7 @@ pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
     },
+    node::{grpc::JormungandrClient, JormungandrLogger},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
 

@@ -1,7 +1,7 @@
 use super::do_for_all_alias;
 use crate::node::NodeController;
 use crate::{legacy::LegacyNodeController, test::Result};
-use jormungandr_integration_tests::common::jormungandr::JormungandrLogger;
+use jormungandr_testing_utils::testing::node::JormungandrLogger;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]

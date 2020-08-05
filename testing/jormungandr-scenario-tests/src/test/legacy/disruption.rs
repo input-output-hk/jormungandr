@@ -6,11 +6,13 @@ use crate::{
     },
     Context, ScenarioResult,
 };
-use jormungandr_integration_tests::common::legacy::{
-    download_last_n_releases, get_jormungandr_bin, Version,
+use jormungandr_testing_utils::{
+    testing::{
+        node::{download_last_n_releases, get_jormungandr_bin},
+        FragmentSenderSetup,
+    },
+    Version,
 };
-
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
 
 use rand_chacha::ChaChaRng;
 

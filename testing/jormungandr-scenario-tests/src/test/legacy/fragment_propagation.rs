@@ -1,17 +1,15 @@
 use super::{LEADER, PASSIVE};
 use crate::scenario::{repository::ScenarioResult, Context, Controller};
-use crate::{interactive::UserInteraction, test::Result};
+use crate::test::Result;
 use chain_core::property::FromStr;
-use jormungandr_integration_tests::common::legacy::{
-    download_last_n_releases, get_jormungandr_bin, version_0_8_19,
-};
 use jormungandr_testing_utils::{
-    legacy::Version,
     stake_pool::StakePool,
     testing::{
         network_builder::{LeadershipMode, PersistenceMode},
+        node::{download_last_n_releases, get_jormungandr_bin},
         FragmentNode, SyncNode,
     },
+    version_0_8_19, Version,
 };
 use rand_chacha::ChaChaRng;
 use std::path::PathBuf;

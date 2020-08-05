@@ -6,10 +6,6 @@ use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
     header::HeaderId,
 };
-use jormungandr_integration_tests::{
-    common::jormungandr::{logger::JormungandrLogger, rest, JormungandrRest, RestError},
-    mock::client::{JormungandrClient, MockClientError},
-};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
@@ -20,6 +16,10 @@ use jormungandr_lib::{
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
+    },
+    node::{
+        grpc::{client::MockClientError, JormungandrClient},
+        uri_from_socket_addr, JormungandrLogger, JormungandrRest, RestError,
     },
     FragmentNode, MemPoolCheck, NamedProcess,
 };
@@ -508,7 +508,7 @@ impl Node {
 
     pub fn controller(&self) -> NodeController {
         let p2p_address = format!("{}", self.node_settings.config().p2p.get_listen_address());
-        let rest_uri = rest::uri_from_socket_addr(self.node_settings.config().rest.listen);
+        let rest_uri = uri_from_socket_addr(self.node_settings.config().rest.listen);
 
         NodeController {
             alias: self.alias().clone(),
