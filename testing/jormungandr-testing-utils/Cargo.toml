@@ -62,4 +62,4 @@ default = []
 property-test-api = [ ]
 
 [build-dependencies]
-tonic-build = "0.2"
+tonic-build = "0.3"
