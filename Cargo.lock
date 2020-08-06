@@ -1651,7 +1651,6 @@ dependencies = [
  "futures 0.3.5",
  "hex",
  "indicatif",
- "jormungandr-integration-tests",
  "jormungandr-lib",
  "jormungandr-testing-utils",
  "lazy_static",
