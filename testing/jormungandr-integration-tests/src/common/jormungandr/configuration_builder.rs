@@ -1,8 +1,5 @@
 use crate::common::{
-    configuration::{
-        self, Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
-    },
-    jcli_wrapper,
+    configuration, jcli_wrapper,
     jormungandr::JormungandrProcess,
     startup::{build_genesis_block, create_new_key_pair},
 };
@@ -16,6 +13,9 @@ use jormungandr_lib::interfaces::{
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};
+use jormungandr_testing_utils::testing::{
+    Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
+};
 use std::path::PathBuf;
 
 pub struct ConfigurationBuilder {

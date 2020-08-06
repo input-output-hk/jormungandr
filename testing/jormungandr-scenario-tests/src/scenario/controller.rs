@@ -9,7 +9,6 @@ use crate::{
 };
 
 use chain_impl_mockchain::header::HeaderId;
-use jormungandr_integration_tests::common::legacy::Version;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
@@ -22,6 +21,7 @@ use jormungandr_testing_utils::{
         ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
     wallet::Wallet,
+    Version,
 };
 
 use assert_fs::fixture::ChildPath;

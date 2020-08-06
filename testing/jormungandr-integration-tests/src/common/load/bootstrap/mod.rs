@@ -1,8 +1,9 @@
 mod scenario;
 
-use crate::common::jormungandr::{JormungandrError, RestError, StartupError};
+use crate::common::jormungandr::{JormungandrError, StartupError};
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::TrustedPeer;
+use jormungandr_testing_utils::testing::node::RestError;
 pub use scenario::{DurationBasedClientLoad, IterationBasedClientLoad};
 use std::path::PathBuf;
 use std::result::Result;

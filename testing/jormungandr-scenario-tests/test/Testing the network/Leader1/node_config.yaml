@@ -1,0 +1,28 @@
+---
+rest:
+  listen: "127.0.0.1:8003"
+p2p:
+  public_address: /ip4/127.0.0.1/tcp/12003
+  public_id: 8efa9f9c798ed64204d2998fdb693c7245e91e2b743afd0b
+  trusted_peers: []
+  allow_private_addresses: true
+  topics_of_interest:
+    messages: high
+    blocks: high
+  policy:
+    quarantine_duration: 30s
+log:
+  - format: plain
+    level: info
+    output: stderr
+  - format: plain
+    level: info
+    output:
+      file: "test\\Testing the network\\Leader1\\node.log"
+explorer:
+  enabled: false
+mempool:
+  pool_max_entries: 10000
+  log_max_entries: 100000
+bootstrap_from_trusted_peers: false
+skip_bootstrap: true

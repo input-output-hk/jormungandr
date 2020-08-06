@@ -2,14 +2,20 @@ use crate::common::transaction_utils::TransactionHash;
 use crate::common::{
     jcli_wrapper,
     jormungandr::{ConfigurationBuilder, Starter},
-    legacy::{download_last_n_releases, get_jormungandr_bin, Version},
     startup,
 };
 use chain_impl_mockchain::{
     accounting::account::{DelegationRatio, DelegationType},
     transaction::AccountIdentifier,
 };
-use jormungandr_testing_utils::{stake_pool::StakePool, testing::FragmentSender};
+use jormungandr_testing_utils::{
+    stake_pool::StakePool,
+    testing::{
+        node::{download_last_n_releases, get_jormungandr_bin},
+        FragmentSender,
+    },
+    Version,
+};
 
 use assert_fs::TempDir;
 use std::str::FromStr;

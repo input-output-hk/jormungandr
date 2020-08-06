@@ -3,18 +3,23 @@ pub use commands::{get_command, CommandBuilder};
 
 use super::ConfigurationBuilder;
 use crate::common::{
-    configuration::{get_jormungandr_app, JormungandrParams, TestConfig},
-    file_utils,
+    configuration::get_jormungandr_app,
     jcli_wrapper::jcli_commands,
-    jormungandr::{logger::JormungandrLogger, process::JormungandrProcess},
-    legacy::{self, LegacyConfigConverter, LegacyConfigConverterError},
+    jormungandr::process::JormungandrProcess,
     process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{fixture::FixtureError, TempDir};
 use jormungandr_lib::interfaces::NodeConfig;
-use jormungandr_testing_utils::testing::{
-    network_builder::LeadershipMode, SpeedBenchmarkDef, SpeedBenchmarkRun,
+use jormungandr_testing_utils::{
+    testing::{
+        file,
+        network_builder::LeadershipMode,
+        node::{configuration::legacy, JormungandrLogger},
+        JormungandrParams, LegacyConfigConverter, LegacyConfigConverterError, SpeedBenchmarkDef,
+        SpeedBenchmarkRun, TestConfig,
+    },
+    Version,
 };
 use serde::Serialize;
 use std::fmt::Debug;
@@ -24,7 +29,6 @@ use std::{
     process::Child,
     time::{Duration, Instant},
 };
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -180,7 +184,7 @@ pub struct Starter {
     verification_mode: StartupVerificationMode,
     on_fail: OnFail,
     temp_dir: Option<TempDir>,
-    legacy: Option<legacy::Version>,
+    legacy: Option<Version>,
     config: Option<JormungandrParams>,
     benchmark: Option<SpeedBenchmarkDef>,
 }
@@ -262,7 +266,7 @@ impl Starter {
         self
     }
 
-    pub fn legacy(&mut self, version: legacy::Version) -> &mut Self {
+    pub fn legacy(&mut self, version: Version) -> &mut Self {
         self.legacy = Some(version);
         self
     }
@@ -374,7 +378,7 @@ impl<'a> ConfiguredStarter<'a, NodeConfig> {
 impl<'a> ConfiguredStarter<'a, legacy::NodeConfig> {
     fn legacy(
         starter: &'a Starter,
-        version: legacy::Version,
+        version: Version,
         params: JormungandrParams<NodeConfig>,
         temp_dir: Option<TempDir>,
     ) -> Result<Self, StartupError> {
@@ -562,7 +566,7 @@ where
             if start.elapsed() > self.starter.timeout {
                 return Err(StartupError::Timeout {
                     timeout: self.starter.timeout.as_secs(),
-                    log_content: file_utils::read_file(&log_file_path),
+                    log_content: file::read_file(&log_file_path),
                 });
             }
             if self.if_succeed() {
@@ -574,7 +578,7 @@ where
                 println!("attempt stopped due to error signal recieved");
                 logger.print_raw_log();
                 return Err(StartupError::ErrorInLogsFound {
-                    log_content: file_utils::read_file(&log_file_path),
+                    log_content: file::read_file(&log_file_path),
                 });
             }
             process_utils::sleep(self.starter.sleep);

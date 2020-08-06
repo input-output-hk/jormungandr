@@ -1,6 +1,7 @@
-pub mod configuration;
+pub mod file;
 mod fragments;
 pub mod network_builder;
+pub mod node;
 pub mod sync;
 mod verify;
 
@@ -29,9 +30,10 @@ pub use jortestkit::web::download_file;
 
 pub use verify::{assert, assert_equals, Error as VerificationError};
 
-pub use configuration::{
+pub use file::*;
+pub use jortestkit::openssl::Openssl;
+pub use node::configuration::{
     Block0ConfigurationBuilder, JormungandrParams, LegacyConfigConverter,
     LegacyConfigConverterError, LegacyNodeConfigConverter, NodeConfigBuilder, SecretModelFactory,
     TestConfig,
 };
-pub use jortestkit::openssl::Openssl;

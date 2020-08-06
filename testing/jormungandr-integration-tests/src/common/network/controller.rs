@@ -1,13 +1,13 @@
 use crate::common::{
-    configuration::JormungandrParams,
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
 };
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 use jormungandr_testing_utils::{
-    testing::network_builder::{
-        LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams,
+    testing::{
+        network_builder::{LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams},
+        JormungandrParams,
     },
     wallet::Wallet,
 };

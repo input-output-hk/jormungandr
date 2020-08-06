@@ -1,9 +1,9 @@
 use super::InteractiveCommandError;
 use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller, style};
-use jormungandr_integration_tests::common::legacy::download_last_n_releases;
-use jormungandr_testing_utils::testing::network_builder::{
-    LeadershipMode, PersistenceMode, SpawnParams,
+use jormungandr_testing_utils::testing::{
+    network_builder::{LeadershipMode, PersistenceMode, SpawnParams},
+    node::download_last_n_releases,
 };
 use structopt::StructOpt;
 

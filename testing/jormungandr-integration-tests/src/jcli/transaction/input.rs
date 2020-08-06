@@ -1,5 +1,6 @@
-use crate::common::{file_utils, jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper};
+use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::file as file_utils;
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {

@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-pub use jormungandr_testing_utils::testing::configuration::{
+pub use jormungandr_testing_utils::testing::node::configuration::{
     get_available_port, write_secret, Block0ConfigurationBuilder, JormungandrParams,
     NodeConfigBuilder, SecretModelFactory, TestConfig,
 };
