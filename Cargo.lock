@@ -482,7 +482,7 @@ dependencies = [
  "prost",
  "rand_core 0.5.1",
  "thiserror",
- "tonic",
+ "tonic 0.2.1",
  "tonic-build",
 ]
 
@@ -1557,7 +1557,7 @@ dependencies = [
  "structopt",
  "thiserror",
  "tokio",
- "tonic",
+ "tonic 0.3.0",
  "versionisator",
  "warp",
 ]
@@ -1599,7 +1599,7 @@ dependencies = [
  "structopt",
  "thiserror",
  "tokio",
- "tonic",
+ "tonic 0.3.0",
  "url",
  "yaml-rust",
 ]
@@ -1715,7 +1715,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-codec",
- "tonic",
+ "tonic 0.3.0",
  "tonic-build",
  "typed-bytes",
  "url",
@@ -3853,6 +3853,36 @@ dependencies = [
  "async-stream",
  "async-trait",
  "base64 0.11.0",
+ "bytes 0.5.6",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "hyper",
+ "percent-encoding 2.1.0",
+ "pin-project",
+ "prost",
+ "prost-derive",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "tower-balance",
+ "tower-load",
+ "tower-make",
+ "tower-service",
+ "tracing",
+ "tracing-futures",
+]
+
+[[package]]
+name = "tonic"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b13b102a19758191af97cff34c6785dffd6610f68de5ab1c4bb8378638e4ef90"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "base64 0.12.3",
  "bytes 0.5.6",
  "futures-core",
  "futures-util",
