@@ -6,7 +6,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord,
-        PeerStats, StakeDistributionDto,
+        PeerStats, StakeDistributionDto, VotePlanStatus,
     },
 };
 use std::collections::HashMap;
@@ -37,8 +37,12 @@ pub struct JormungandrRest {
 impl JormungandrRest {
     pub fn new(uri: String) -> Self {
         Self {
-            inner: legacy::BackwardCompatibleRest::new(uri, None),
+            inner: legacy::BackwardCompatibleRest::new(uri, None, true),
         }
+    }
+
+    pub fn disable_logger(&mut self) {
+        self.inner.disable_logger();
     }
 
     pub fn new_with_cert(uri: String, cert_file: &ChildPath) -> Self {
@@ -51,6 +55,7 @@ impl JormungandrRest {
             inner: legacy::BackwardCompatibleRest::new(
                 url,
                 Some(Self::extract_certificate(cert_file.path())),
+                true,
             ),
         }
     }
@@ -60,10 +65,6 @@ impl JormungandrRest {
         let path = cert_file.as_ref().as_os_str().to_str().unwrap();
         File::open(path).unwrap().read_to_end(&mut buf).unwrap();
         reqwest::Certificate::from_der(&buf).unwrap()
-    }
-
-    fn print_response_text(&self, text: &str) {
-        println!("Response: {}", text);
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<EpochRewardsInfo, RestError> {
@@ -97,6 +98,17 @@ impl JormungandrRest {
 
     pub fn account_state(&self, wallet: &Wallet) -> Result<AccountState, RestError> {
         serde_json::from_str(&self.inner.account_state(wallet)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn account_state_by_pk_raw(&self, bech32_str: &str) -> Result<String, RestError> {
+        self.inner
+            .account_state_by_pk(bech32_str)
+            .map_err(Into::into)
+    }
+
+    pub fn account_state_by_pk(&self, bech32_str: &str) -> Result<AccountState, RestError> {
+        serde_json::from_str(&self.inner.account_state_by_pk(bech32_str)?)
             .map_err(RestError::CannotDeserialize)
     }
 
@@ -138,7 +150,17 @@ impl JormungandrRest {
         Ok(leaders)
     }
 
-    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, reqwest::Error> {
-        self.inner.send_fragment(fragment)
+    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, RestError> {
+        self.inner.send_fragment(fragment).map_err(Into::into)
+    }
+
+    pub fn send_raw_fragment(&self, bytes: Vec<u8>) -> Result<(), RestError> {
+        self.inner.send_raw_fragment(bytes)?;
+        Ok(())
+    }
+
+    pub fn vote_plan_statuses(&self) -> Result<Vec<VotePlanStatus>, RestError> {
+        serde_json::from_str(&self.inner.vote_plan_statuses()?)
+            .map_err(RestError::CannotDeserialize)
     }
 }

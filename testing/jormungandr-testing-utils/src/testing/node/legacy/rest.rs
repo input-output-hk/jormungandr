@@ -2,6 +2,9 @@ use crate::{
     testing::{node::RestError, MemPoolCheck},
     wallet::Wallet,
 };
+use bech32::FromBase32;
+use chain_crypto::PublicKey;
+use chain_impl_mockchain::account;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use std::collections::HashMap;
@@ -12,15 +15,36 @@ use std::collections::HashMap;
 pub struct BackwardCompatibleRest {
     uri: String,
     certificate: Option<reqwest::Certificate>,
+    print_response: bool,
 }
 
 impl BackwardCompatibleRest {
-    pub fn new(uri: String, certificate: Option<reqwest::Certificate>) -> Self {
-        Self { uri, certificate }
+    pub fn new(
+        uri: String,
+        certificate: Option<reqwest::Certificate>,
+        print_response: bool,
+    ) -> Self {
+        Self {
+            uri,
+            certificate,
+            print_response,
+        }
     }
 
     fn print_response_text(&self, text: &str) {
-        println!("Response: {}", text);
+        if self.print_response {
+            println!("Response: {}", text);
+        }
+    }
+
+    fn print_request_path(&self, text: &str) {
+        if self.print_response {
+            println!("Request: {}", text);
+        }
+    }
+
+    pub fn disable_logger(&mut self) {
+        self.print_response = false;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {
@@ -39,6 +63,7 @@ impl BackwardCompatibleRest {
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(path);
+        self.print_request_path(&request);
         match &self.certificate {
             None => reqwest::blocking::get(&request),
             Some(cert) => {
@@ -63,11 +88,22 @@ impl BackwardCompatibleRest {
     }
 
     pub fn account_state(&self, wallet: &Wallet) -> Result<String, reqwest::Error> {
-        let key = hex::encode(wallet.identifier().as_ref().as_ref());
+        self.account_state_by_pk(&wallet.identifier().to_bech32_str())
+    }
+
+    pub fn account_state_by_pk(&self, bech32_str: &str) -> Result<String, reqwest::Error> {
+        let key = hex::encode(Self::try_from_str(bech32_str).as_ref().as_ref());
         let request = format!("account/{}", key);
         let response_text = self.get(&request)?.text()?;
         self.print_response_text(&response_text);
         Ok(response_text)
+    }
+
+    fn try_from_str(src: &str) -> account::Identifier {
+        let (_, data) = bech32::decode(src).unwrap();
+        let dat = Vec::from_base32(&data).unwrap();
+        let pk = PublicKey::from_binary(&dat).unwrap();
+        account::Identifier::from(pk)
     }
 
     pub fn stake_pools(&self) -> Result<String, reqwest::Error> {
@@ -148,7 +184,18 @@ impl BackwardCompatibleRest {
         let raw = fragment.serialize_as_vec().unwrap();
         let fragment_id = fragment.id();
 
-        self.post("message", raw)?;
+        self.send_raw_fragment(raw)?;
         Ok(MemPoolCheck::new(fragment_id))
+    }
+
+    pub fn send_raw_fragment(
+        &self,
+        body: Vec<u8>,
+    ) -> Result<reqwest::blocking::Response, reqwest::Error> {
+        Ok(self.post("message", body)?)
+    }
+
+    pub fn vote_plan_statuses(&self) -> Result<String, reqwest::Error> {
+        self.get("vote/active/plans")?.text()
     }
 }
