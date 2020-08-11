@@ -216,6 +216,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bip39"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+dependencies = [
+ "cryptoxide 0.1.3",
+ "thiserror",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -267,8 +276,8 @@ dependencies = [
 name = "blockchain"
 version = "0.1.0"
 dependencies = [
- "chain-impl-mockchain",
- "chain-time",
+ "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "lru 0.5.3",
  "thiserror",
 ]
@@ -368,10 +377,21 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
 dependencies = [
  "cbor_event",
- "chain-ser",
- "cryptoxide",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "cryptoxide 0.2.1",
+ "ed25519-bip32",
+]
+
+[[package]]
+name = "cardano-legacy-address"
+version = "0.1.1"
+dependencies = [
+ "cbor_event",
+ "chain-ser 0.1.0",
+ "cryptoxide 0.2.1",
  "ed25519-bip32",
 ]
 
@@ -409,20 +429,59 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
 dependencies = [
  "bech32",
  "cfg-if",
- "chain-core",
- "chain-crypto",
- "cryptoxide",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "cryptoxide 0.2.1",
+]
+
+[[package]]
+name = "chain-addr"
+version = "0.1.0"
+dependencies = [
+ "bech32",
+ "cfg-if",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "cryptoxide 0.2.1",
  "quickcheck",
 ]
 
 [[package]]
 name = "chain-core"
 version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
 dependencies = [
- "chain-ser",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+]
+
+[[package]]
+name = "chain-core"
+version = "0.1.0"
+dependencies = [
+ "chain-ser 0.1.0",
+]
+
+[[package]]
+name = "chain-crypto"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+dependencies = [
+ "bech32",
+ "cfg-if",
+ "cryptoxide 0.2.1",
+ "curve25519-dalek",
+ "digest 0.9.0",
+ "ed25519-bip32",
+ "ed25519-dalek",
+ "generic-array 0.14.2",
+ "hex",
+ "rand_core 0.5.1",
+ "sha2 0.8.2",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
 ]
 
 [[package]]
@@ -431,7 +490,7 @@ version = "0.1.0"
 dependencies = [
  "bech32",
  "cfg-if",
- "cryptoxide",
+ "cryptoxide 0.2.1",
  "curve25519-dalek",
  "digest 0.9.0",
  "ed25519-bip32",
@@ -442,34 +501,56 @@ dependencies = [
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "sha2 0.8.2",
- "typed-bytes",
+ "typed-bytes 0.1.0",
+]
+
+[[package]]
+name = "chain-impl-mockchain"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+dependencies = [
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "cfg-if",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "hex",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "rand_core 0.5.1",
+ "sparse-array 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
 ]
 
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
 dependencies = [
- "cardano-legacy-address",
+ "cardano-legacy-address 0.1.1",
  "cfg-if",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-ser",
+ "chain-addr 0.1.0",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "chain-ser 0.1.0",
  "chain-test-utils",
- "chain-time",
+ "chain-time 0.1.0",
  "ed25519-bip32",
  "hex",
- "imhamt",
+ "imhamt 0.1.0",
  "lazy_static",
  "quickcheck",
  "quickcheck_macros",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
- "sparse-array",
+ "sparse-array 0.1.0",
  "strum",
  "strum_macros",
  "thiserror",
- "typed-bytes",
+ "typed-bytes 0.1.0",
 ]
 
 [[package]]
@@ -487,6 +568,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "chain-path-derivation"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
+name = "chain-ser"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+
+[[package]]
 name = "chain-ser"
 version = "0.1.0"
 
@@ -494,7 +588,7 @@ version = "0.1.0"
 name = "chain-storage"
 version = "0.1.0"
 dependencies = [
- "chain-core",
+ "chain-core 0.1.0",
  "rusqlite",
  "thiserror",
 ]
@@ -503,7 +597,7 @@ dependencies = [
 name = "chain-test-utils"
 version = "0.1.0"
 dependencies = [
- "chain-core",
+ "chain-core 0.1.0",
  "quickcheck",
  "quickcheck_macros",
 ]
@@ -511,10 +605,20 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
 dependencies = [
  "cfg-if",
- "chain-core",
- "chain-ser",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+]
+
+[[package]]
+name = "chain-time"
+version = "0.1.0"
+dependencies = [
+ "cfg-if",
+ "chain-core 0.1.0",
+ "chain-ser 0.1.0",
 ]
 
 [[package]]
@@ -720,6 +824,12 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "cryptoxide"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e35f15e1a0699dd988fed910dd78fdc6407f44654cd12589c91fa44ea67d9159"
+
+[[package]]
+name = "cryptoxide"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da24927b5b899890bcb29205436c957b7892ec3a3fbffce81d710b9611e77778"
@@ -840,7 +950,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4727ce16fc016d8047462988ced12496aad2bb29b2b55ecf60d29eb5706fc6f"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.2.1",
 ]
 
 [[package]]
@@ -1229,6 +1339,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "hdkeygen"
+version = "0.2.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+dependencies = [
+ "bip39",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "cbor_event",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-path-derivation",
+ "cryptoxide 0.2.1",
+ "ed25519-bip32",
+ "hex",
+ "thiserror",
+]
+
+[[package]]
 name = "headers"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1351,6 +1478,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "iapyx"
+version = "0.1.0"
+dependencies = [
+ "bip39",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chrono",
+ "console",
+ "cryptoxide 0.2.1",
+ "dialoguer",
+ "ed25519-bip32",
+ "hdkeygen",
+ "hex",
+ "hyper",
+ "jormungandr-lib",
+ "jormungandr-testing-utils",
+ "jortestkit",
+ "lazy_static",
+ "rand 0.7.3",
+ "rand_core 0.5.1",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "structopt",
+ "thiserror",
+ "wallet",
+ "wallet-core",
+]
+
+[[package]]
 name = "idna"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1378,6 +1539,11 @@ dependencies = [
  "walkdir",
  "winapi-util",
 ]
+
+[[package]]
+name = "imhamt"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
 
 [[package]]
 name = "imhamt"
@@ -1476,11 +1642,11 @@ dependencies = [
  "assert_fs",
  "bech32",
  "bincode",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
+ "chain-addr 0.1.0",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "clap",
  "ed25519-bip32",
  "gtmpl",
@@ -1512,20 +1678,20 @@ dependencies = [
  "bech32",
  "bincode",
  "bytes 0.5.6",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
+ "cardano-legacy-address 0.1.1",
+ "chain-addr 0.1.0",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "chain-impl-mockchain 0.1.0",
  "chain-network",
  "chain-storage",
- "chain-time",
+ "chain-time 0.1.0",
  "error-chain",
  "futures 0.3.5",
  "hex",
  "http",
  "humantime",
- "imhamt",
+ "imhamt 0.1.0",
  "jormungandr-lib",
  "juniper",
  "lazy_static",
@@ -1569,11 +1735,11 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "base64 0.12.3",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
+ "chain-addr 0.1.0",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "fs_extra",
  "futures 0.3.5",
  "hex",
@@ -1610,12 +1776,12 @@ version = "0.9.1"
 dependencies = [
  "bech32",
  "bincode",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
+ "cardano-legacy-address 0.1.1",
+ "chain-addr 0.1.0",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "chrono",
  "ed25519-bip32",
  "hex",
@@ -1630,7 +1796,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "thiserror",
- "typed-bytes",
+ "typed-bytes 0.1.0",
  "warp",
 ]
 
@@ -1639,11 +1805,11 @@ name = "jormungandr-scenario-tests"
 version = "0.9.1"
 dependencies = [
  "assert_fs",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
+ "chain-addr 0.1.0",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "console",
  "custom_debug",
  "dialoguer",
@@ -1679,12 +1845,12 @@ dependencies = [
  "bawawa",
  "bech32",
  "bytesize",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
+ "cardano-legacy-address 0.1.1",
+ "chain-addr 0.1.0",
+ "chain-core 0.1.0",
+ "chain-crypto 0.1.0",
+ "chain-impl-mockchain 0.1.0",
+ "chain-time 0.1.0",
  "chrono",
  "custom_debug",
  "flate2",
@@ -1717,7 +1883,7 @@ dependencies = [
  "tokio-codec",
  "tonic",
  "tonic-build",
- "typed-bytes",
+ "typed-bytes 0.1.0",
  "url",
  "zip",
 ]
@@ -1733,6 +1899,7 @@ dependencies = [
  "chrono",
  "custom_debug",
  "flate2",
+ "fs_extra",
  "futures 0.1.29",
  "hex",
  "humantime",
@@ -3379,6 +3546,11 @@ dependencies = [
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+
+[[package]]
+name = "sparse-array"
+version = "0.1.0"
 
 [[package]]
 name = "spin"
@@ -4149,6 +4321,11 @@ dependencies = [
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+
+[[package]]
+name = "typed-bytes"
+version = "0.1.0"
 
 [[package]]
 name = "typenum"
@@ -4341,6 +4518,40 @@ dependencies = [
  "same-file",
  "winapi 0.3.9",
  "winapi-util",
+]
+
+[[package]]
+name = "wallet"
+version = "0.4.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+dependencies = [
+ "bip39",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "cbor_event",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-path-derivation",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "cryptoxide 0.2.1",
+ "ed25519-bip32",
+ "hdkeygen",
+ "hex",
+ "thiserror",
+]
+
+[[package]]
+name = "wallet-core"
+version = "0.4.0"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs#3ed7f38d0c4a2d0fe1d906f47ccfd1f7944a47a3"
+dependencies = [
+ "bip39",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
+ "thiserror",
+ "wallet",
 ]
 
 [[package]]
