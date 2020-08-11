@@ -4,11 +4,7 @@ use crate::{
     common::{
         configuration::JormungandrParams,
         jcli_wrapper,
-        jormungandr::{
-            storage_loading_benchmark_from_log, ConfigurationBuilder, JormungandrProcess, Starter,
-            StartupVerificationMode,
-        },
-        legacy::{download_last_n_releases, get_jormungandr_bin, Version},
+        jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
         process_utils::WaitBuilder,
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
@@ -16,7 +12,13 @@ use crate::{
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::TrustedPeer;
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_testing_utils::{
+    testing::node::{
+        download_last_n_releases, get_jormungandr_bin, storage_loading_benchmark_from_log,
+    },
+    wallet::Wallet,
+    Version,
+};
 use std::{env, path::PathBuf, time::Duration};
 
 #[derive(Clone, Debug)]

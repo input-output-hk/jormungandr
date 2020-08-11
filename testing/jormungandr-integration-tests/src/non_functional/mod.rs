@@ -21,12 +21,11 @@ Long running test for dumping rewards each epoch
 pub mod rewards;
 
 use crate::common::{
-    explorer::ExplorerError,
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrProcess},
 };
 use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_testing_utils::{testing::node::ExplorerError, wallet::Wallet};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

@@ -1,13 +1,15 @@
 use crate::common::{
     jormungandr::{ConfigurationBuilder, Starter},
-    legacy::{download_last_n_releases, Version},
     startup,
     transaction_utils::TransactionHash,
 };
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::FragmentSender;
+use jormungandr_testing_utils::{
+    testing::{node::download_last_n_releases, FragmentSender},
+    Version,
+};
 use std::str::FromStr;
 
 fn test_connectivity_between_master_and_legacy_app(version: String, temp_dir: &TempDir) {
