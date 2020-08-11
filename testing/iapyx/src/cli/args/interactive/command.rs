@@ -221,15 +221,15 @@ impl Vote {
             let proposal = proposals
                 .iter()
                 .find(|x| x.chain_proposal_id_as_str() == self.proposal_id)
-                .ok_or(IapyxCommandError::GeneralError(
-                    "Cannot find proposal".to_string(),
-                ))?;
+                .ok_or_else(|| {
+                    IapyxCommandError::GeneralError("Cannot find proposal".to_string())
+                })?;
             let choice = proposal
                 .chain_vote_options
                 .0
                 .get(&self.choice)
-                .ok_or(IapyxCommandError::GeneralError("wrong choice".to_string()))?;
-            controller.vote(proposal.into(), Choice::new(*choice))?;
+                .ok_or_else(|| IapyxCommandError::GeneralError("wrong choice".to_string()))?;
+            controller.vote(proposal, Choice::new(*choice))?;
             return Ok(());
         }
         Err(IapyxCommandError::GeneralError(

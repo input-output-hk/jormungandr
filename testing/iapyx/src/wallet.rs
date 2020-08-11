@@ -25,7 +25,7 @@ impl Wallet {
     pub fn generate(words_length: Type) -> Result<Self, WalletError> {
         let entropy = Entropy::generate(words_length, rand::random);
         let mnemonics = entropy.to_mnemonics().to_string(&dictionary::ENGLISH);
-        Self::recover(&mnemonics, "iapyx".as_bytes())
+        Self::recover(&mnemonics, b"iapyx")
     }
 
     pub fn recover(mnemonics: &str, password: &[u8]) -> Result<Self, WalletError> {

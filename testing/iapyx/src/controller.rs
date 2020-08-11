@@ -96,12 +96,10 @@ impl Controller {
             let ids: Vec<FragmentId> = self.pending_transactions().keys().cloned().collect();
 
             if limit <= 0 {
-                return Err(ControllerError::TransactionsWerePendingForTooLong {
-                    fragments: ids.clone(),
-                });
+                return Err(ControllerError::TransactionsWerePendingForTooLong { fragments: ids });
             }
 
-            if ids.len() == 0 {
+            if ids.is_empty() {
                 return Ok(());
             }
 
@@ -120,11 +118,11 @@ impl Controller {
                 }
             }
 
-            if ids.len() == 0 {
+            if ids.is_empty() {
                 return Ok(());
             } else {
                 std::thread::sleep(pace);
-                limit = limit + 1;
+                limit += 1;
             }
         }
     }

@@ -70,8 +70,8 @@ impl IapyxLoadCommand {
 
         load::start_async(
             request_generator,
-            VoteStatusProvider::new(backend.to_string()),
-            config.config.clone(),
+            VoteStatusProvider::new(backend),
+            config.config,
             "Wallet backend load test",
         );
         Ok(())

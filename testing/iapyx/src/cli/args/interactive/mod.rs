@@ -97,7 +97,7 @@ impl UserInteraction {
             "{}",
             SUCCESS_STYLE.apply_to("- show wallet stats and pending fragments.")
         );
-        println!("");
+        println!();
         println!(
             "{}",
             SUCCESS_STYLE.apply_to("Type help for more informations.")

@@ -25,7 +25,7 @@ impl WalletRequestGen {
 
     pub fn fill_generator(&mut self) -> Result<(), MultiControllerError> {
         self.initial_requests = self.multi_controller.retrieve_conversion_transactions()?;
-        self.proposals = self.multi_controller.proposals()?.clone();
+        self.proposals = self.multi_controller.proposals()?;
         Ok(())
     }
 
@@ -53,8 +53,8 @@ impl WalletRequestGen {
             .backend()
             .send_fragment(tx)
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))?;
-        self.multi_controller.confirm_transaction(id.clone());
-        return Ok(Some(id.to_string()));
+        self.multi_controller.confirm_transaction(id);
+        Ok(Some(id.to_string()))
     }
 }
 
