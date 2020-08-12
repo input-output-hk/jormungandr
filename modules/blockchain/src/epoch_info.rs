@@ -8,7 +8,7 @@ use chain_impl_mockchain::{
 };
 use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
-    Epoch, Slot, TimeFrame,
+    Epoch, Slot, TimeEra, TimeFrame,
 };
 use std::time::SystemTime;
 use thiserror::Error;
@@ -84,6 +84,14 @@ impl EpochInfo {
             epoch_leadership_schedule: leadership,
             epoch_rewards_info,
         }
+    }
+
+    pub fn time_frame(&self) -> TimeFrame {
+        self.time_frame.clone()
+    }
+
+    pub fn time_era(&self) -> TimeEra {
+        self.epoch_leadership_schedule.era().clone()
     }
 
     pub fn check_header(&self, header: &Header) -> Result<(), EpochInfoError> {
