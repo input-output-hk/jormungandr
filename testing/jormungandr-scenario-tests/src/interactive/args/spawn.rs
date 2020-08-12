@@ -1,4 +1,4 @@
-use super::{UserInteractionController};
+use super::UserInteractionController;
 use crate::{style, test::Result};
 use jormungandr_testing_utils::testing::{
     network_builder::{LeadershipMode, PersistenceMode, SpawnParams},
@@ -85,9 +85,7 @@ fn spawn_node(
         let legacy_release = releases
             .iter()
             .find(|x| x.version().eq_ignore_ascii_case(&version))
-            .ok_or(InteractiveCommandError::UserError(
-                version.to_string(),
-            ))?;
+            .ok_or(InteractiveCommandError::UserError(version.to_string()))?;
 
         let node = controller.controller_mut().spawn_legacy_node(
             &mut spawn_params,

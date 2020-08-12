@@ -1,14 +1,16 @@
 mod args;
-use jortestkit::prelude::{ConsoleWriter,InteractiveCommandExec,UserInteraction,InteractiveCommandError};
 use crate::interactive::args::UserInteractionController;
 use crate::{
     scenario::{repository::ScenarioResult, Context},
     test::Result,
 };
+pub use args::InteractiveCommand;
+use jortestkit::prelude::{
+    ConsoleWriter, InteractiveCommandError, InteractiveCommandExec, UserInteraction,
+};
 use rand_chacha::ChaChaRng;
 use std::ffi::OsStr;
 use structopt::StructOpt;
-pub use args::{InteractiveCommand};
 
 pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
@@ -36,8 +38,8 @@ pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context).unwrap();
     let user_integration = jormungandr_user_interaction();
-    user_integration.interact(&mut JormungandrInteractiveCommandExec{
-        controller: UserInteractionController::new(&mut controller)
+    user_integration.interact(&mut JormungandrInteractiveCommandExec {
+        controller: UserInteractionController::new(&mut controller),
     })?;
     controller.finalize();
     Ok(ScenarioResult::passed())
@@ -65,7 +67,11 @@ pub struct JormungandrInteractiveCommandExec<'a> {
 }
 
 impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
-    fn parse_and_exec(&mut self, tokens: Vec<String>, console: ConsoleWriter) -> std::result::Result<(),InteractiveCommandError> {
+    fn parse_and_exec(
+        &mut self,
+        tokens: Vec<String>,
+        console: ConsoleWriter,
+    ) -> std::result::Result<(), InteractiveCommandError> {
         match InteractiveCommand::from_iter_safe(&mut tokens.iter().map(|x| OsStr::new(x))) {
             Ok(interactive) => {
                 if let Err(err) = {
@@ -73,7 +79,9 @@ impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
                         InteractiveCommand::Show(show) => show.exec(&mut self.controller),
                         InteractiveCommand::Spawn(spawn) => spawn.exec(&mut self.controller),
                         InteractiveCommand::Exit => Ok(()),
-                        InteractiveCommand::Describe(describe) => describe.exec(&mut self.controller),
+                        InteractiveCommand::Describe(describe) => {
+                            describe.exec(&mut self.controller)
+                        }
                         InteractiveCommand::Send(send) => send.exec(&mut self.controller),
                     }
                 } {

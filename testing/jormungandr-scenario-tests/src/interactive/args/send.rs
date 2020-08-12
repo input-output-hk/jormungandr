@@ -1,7 +1,7 @@
-use super::{UserInteractionController};
+use super::UserInteractionController;
 use crate::{style, test::Result};
-use structopt::StructOpt;
 use jortestkit::prelude::InteractiveCommandError;
+use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 pub enum Send {
     /// Sends transaction
@@ -73,6 +73,9 @@ impl SendTransaction {
             return Ok(());
         }
 
-        Err(InteractiveCommandError::UserError(format!("alias not found {}",self.via.clone())))?
+        Err(InteractiveCommandError::UserError(format!(
+            "alias not found {}",
+            self.via.clone()
+        )))?
     }
 }

@@ -15,7 +15,7 @@ pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
 
-pub use jortestkit::console::progress_bar::{ProgressBarMode,parse_progress_bar_mode_from_str};
+pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
 pub use jormungandr_testing_utils::testing::network_builder::{
     Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, TopologyBuilder, Wallet, WalletAlias,

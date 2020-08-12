@@ -14,9 +14,9 @@ mod test;
 use node::{Node, NodeBlock0, NodeController};
 use programs::prepare_command;
 use scenario::{
-    parse_progress_bar_mode_from_str,ProgressBarMode,
+    parse_progress_bar_mode_from_str,
     repository::{parse_tag_from_str, ScenarioResult, ScenariosRepository, Tag},
-    Context, Seed,
+    Context, ProgressBarMode, Seed,
 };
 
 pub use jortestkit::console::style;
