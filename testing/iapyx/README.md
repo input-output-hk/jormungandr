@@ -17,5 +17,5 @@ example:
 Where mnemonics.txt should have format like:
 ```
 town lift follow more chronic lunch weird uniform earth census proof cave gap fancy topic year leader phrase state circle cloth reward dish survey act punch bounce
-neck bulb teach illegal ry monitor claw rival amount boring provide village rival draft stone
+neck bulb teach illegal try monitor claw rival amount boring provide village rival draft stone
 ```
