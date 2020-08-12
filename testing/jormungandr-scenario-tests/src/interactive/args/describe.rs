@@ -1,5 +1,6 @@
-use crate::{scenario::Controller, style, test::Result};
+use crate::{style, test::Result};
 
+use super::UserInteractionController;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -17,7 +18,7 @@ pub enum Describe {
 }
 
 impl Describe {
-    pub fn exec(&self, controller: &mut Controller) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         match self {
             Describe::Wallets(wallets) => wallets.exec(controller),
             Describe::Nodes(desc_nodes) => desc_nodes.exec(controller),
@@ -27,7 +28,7 @@ impl Describe {
                     "{}",
                     style::info.apply_to("Legend: '->' means trust direction".to_owned())
                 );
-                for (alias, node) in controller.topology().clone().into_iter() {
+                for (alias, node) in controller.controller().topology().clone().into_iter() {
                     println!(
                         "\t{} -> {:?}",
                         alias,
@@ -47,9 +48,9 @@ pub struct DescribeWallets {
 }
 
 impl DescribeWallets {
-    pub fn exec(&self, controller: &mut Controller) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         println!("Wallets:");
-        for (alias, wallet) in controller.wallets() {
+        for (alias, wallet) in controller.controller().wallets() {
             println!(
                 "\t{}: address: {}, delegated to: {:?}",
                 alias,
@@ -68,9 +69,9 @@ pub struct DescribeNodes {
 }
 
 impl DescribeNodes {
-    pub fn exec(&self, controller: &mut Controller) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         println!("Nodes:");
-        for (alias, node) in controller.nodes() {
+        for (alias, node) in controller.controller().nodes() {
             println!("\t{}: rest api: {}", alias, node.config().rest.listen);
         }
         Ok(())
@@ -84,7 +85,7 @@ pub struct DescribeAll {
 }
 
 impl DescribeAll {
-    pub fn exec(&self, controller: &mut Controller) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         let describe_wallets = DescribeWallets { alias: None };
         describe_wallets.exec(controller)?;
         let describe_nodes = DescribeNodes { alias: None };

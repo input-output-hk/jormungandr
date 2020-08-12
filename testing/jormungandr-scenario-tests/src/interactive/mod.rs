@@ -1,17 +1,14 @@
 mod args;
-
+use jortestkit::prelude::{ConsoleWriter,InteractiveCommandExec,UserInteraction,InteractiveCommandError};
+use crate::interactive::args::UserInteractionController;
 use crate::{
-    scenario::{repository::ScenarioResult, Controller},
-    style,
+    scenario::{repository::ScenarioResult, Context},
     test::Result,
-    Context,
 };
-pub use args::{InteractiveCommand, InteractiveCommandError};
-use dialoguer::Input;
-use jormungandr_testing_utils::wallet::Wallet;
 use rand_chacha::ChaChaRng;
 use std::ffi::OsStr;
 use structopt::StructOpt;
+pub use args::{InteractiveCommand};
 
 pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let scenario_settings = prepare_scenario! {
@@ -38,119 +35,53 @@ pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     };
 
     let mut controller = scenario_settings.build(context).unwrap();
-
-    let user_integration: UserInteraction = Default::default();
-    user_integration.interact(&mut controller)?;
-
+    let user_integration = jormungandr_user_interaction();
+    user_integration.interact(&mut JormungandrInteractiveCommandExec{
+        controller: UserInteractionController::new(&mut controller)
+    })?;
     controller.finalize();
     Ok(ScenarioResult::passed())
 }
 
-#[derive(Debug)]
-pub struct UserInteraction {
-    title: String,
-    exit_phrase: String,
-    command_prefix: String,
+fn jormungandr_user_interaction() -> UserInteraction {
+    UserInteraction::new(
+        "jormungandr-scenario-tests".to_string(),
+        "jormungandr interactive test".to_string(),
+        "type command:".to_string(),
+        "exit".to_string(),
+        ">".to_string(),
+        vec![
+            "You can control each aspect of test:".to_string(),
+            "- spawn nodes,".to_string(),
+            "- send fragments,".to_string(),
+            "- filter logs,".to_string(),
+            "- show node stats and data.".to_string(),
+        ],
+    )
 }
 
-impl UserInteraction {
-    pub fn new(title: String, exit_phrase: String, command_prefix: String) -> Self {
-        Self {
-            title,
-            exit_phrase,
-            command_prefix,
-        }
-    }
+pub struct JormungandrInteractiveCommandExec<'a> {
+    controller: UserInteractionController<'a>,
+}
 
-    pub fn interact(&self, mut controller: &mut Controller) -> Result<()> {
-        let mut wallets: Vec<Wallet> = controller.get_all_wallets();
-        let mut nodes = vec![];
-        let mut legacy_nodes = vec![];
-
-        self.show_info();
-
-        loop {
-            self.show_title();
-
-            let tokens = self.read_line()?;
-
-            if self.is_exit_command(&tokens) {
-                return Ok(());
-            }
-
-            match InteractiveCommand::from_iter_safe(&mut tokens.iter().map(|x| OsStr::new(x))) {
-                Ok(interactive) => {
-                    if let Err(err) = interactive.exec(
-                        &mut controller,
-                        &mut nodes,
-                        &mut legacy_nodes,
-                        &mut wallets,
-                    ) {
-                        println!("{}", style::error.apply_to(format!("Error: {}", err)));
+impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
+    fn parse_and_exec(&mut self, tokens: Vec<String>, console: ConsoleWriter) -> std::result::Result<(),InteractiveCommandError> {
+        match InteractiveCommand::from_iter_safe(&mut tokens.iter().map(|x| OsStr::new(x))) {
+            Ok(interactive) => {
+                if let Err(err) = {
+                    match interactive {
+                        InteractiveCommand::Show(show) => show.exec(&mut self.controller),
+                        InteractiveCommand::Spawn(spawn) => spawn.exec(&mut self.controller),
+                        InteractiveCommand::Exit => Ok(()),
+                        InteractiveCommand::Describe(describe) => describe.exec(&mut self.controller),
+                        InteractiveCommand::Send(send) => send.exec(&mut self.controller),
                     }
+                } {
+                    console.format_error(InteractiveCommandError::UserError(err.to_string()));
                 }
-                Err(err) => self.print_help(Box::new(err)),
             }
+            Err(err) => console.show_help(InteractiveCommandError::UserError(err.to_string())),
         }
-    }
-
-    fn print_help(&self, error: Box<dyn std::error::Error>) {
-        let message = format!("{}", error);
-        //workaround for not showing app name
-        println!(
-            "{}",
-            message.replace("jormungandr-scenario-tests <SUBCOMMAND>", "<SUBCOMMAND>")
-        );
-    }
-
-    fn show_title(&self) {
-        println!("{}", style::success.apply_to(self.title.to_string()));
-    }
-
-    fn show_info(&self) {
-        println!("----------------------------------------------------------------");
-        println!(
-            "{}",
-            style::success.apply_to("Welcome in jormungandr interactive test.")
-        );
-        println!(
-            "{}",
-            style::success.apply_to("You can control each aspect of test:")
-        );
-        println!("{}", style::success.apply_to("- spawn nodes,"));
-        println!("{}", style::success.apply_to("- send fragments,"));
-        println!("{}", style::success.apply_to("- filter logs,"));
-        println!("{}", style::success.apply_to("- show node stats and data."));
-        println!("");
-        println!(
-            "{}",
-            style::success.apply_to("Type help for more informations.")
-        );
-        println!("----------------------------------------------------------------");
-    }
-
-    fn read_line(&self) -> Result<Vec<String>> {
-        let input: String = Input::new()
-            .with_prompt(&self.command_prefix)
-            .interact()
-            .unwrap();
-        Ok(input
-            .split_ascii_whitespace()
-            .map(|x| x.to_owned())
-            .collect())
-    }
-
-    fn is_exit_command(&self, tokens: &[String]) -> bool {
-        tokens.first().unwrap().eq_ignore_ascii_case("exit")
-    }
-}
-
-impl Default for UserInteraction {
-    fn default() -> UserInteraction {
-        UserInteraction::new(
-            "type command".to_string(),
-            "exit".to_string(),
-            ">".to_string(),
-        )
+        Ok(())
     }
 }

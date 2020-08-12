@@ -1,9 +1,7 @@
-use super::InteractiveCommandError;
-use crate::{legacy::LegacyNodeController, test::Result};
-use crate::{node::NodeController, scenario::Controller, style};
-use jormungandr_testing_utils::wallet::Wallet;
+use super::{UserInteractionController};
+use crate::{style, test::Result};
 use structopt::StructOpt;
-
+use jortestkit::prelude::InteractiveCommandError;
 #[derive(StructOpt, Debug)]
 pub enum Send {
     /// Sends transaction
@@ -11,15 +9,9 @@ pub enum Send {
 }
 
 impl Send {
-    pub fn exec(
-        &self,
-        controller: &mut Controller,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-        wallets: &mut Vec<Wallet>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         match self {
-            Send::Tx(transaction) => transaction.exec(controller, nodes, legacy_nodes, wallets),
+            Send::Tx(transaction) => transaction.exec(controller),
         }
     }
 }
@@ -37,34 +29,23 @@ pub struct SendTransaction {
 }
 
 impl SendTransaction {
-    pub fn exec(
-        &self,
-        controller: &mut Controller,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-        wallets: &mut Vec<Wallet>,
-    ) -> Result<()> {
-        let from_address = controller.wallet(&self.from)?.address();
-        let to_address = controller.wallet(&self.to)?.address();
-
-        let to = wallets
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+        let node = controller
+            .nodes()
             .iter()
             .cloned()
-            .find(|x| x.address() == to_address)
-            .expect(&format!("cannot find wallet with alias: {}", self.to));
-        let mut from = wallets
-            .iter_mut()
-            .find(|x| x.address() == from_address)
-            .expect(&format!("cannot find wallet with alias: {}", self.from));
-
-        let node = nodes.iter().find(|x| *x.alias() == self.via);
-        let legacy_node = legacy_nodes.iter().find(|x| *x.alias() == self.via);
+            .find(|x| *x.alias() == self.via);
+        let legacy_node = controller
+            .legacy_nodes()
+            .iter()
+            .cloned()
+            .find(|x| *x.alias() == self.via);
 
         if let Some(node) = node {
-            let mem_pool_check = controller.fragment_sender().send_transaction(
-                &mut from,
-                &to,
-                node,
+            let mem_pool_check = controller.send_transaction(
+                &self.from,
+                &self.to,
+                &node,
                 self.ada.unwrap_or(100).into(),
             )?;
             println!(
@@ -76,10 +57,10 @@ impl SendTransaction {
             );
             return Ok(());
         } else if let Some(legacy_node) = legacy_node {
-            let mem_pool_check = controller.fragment_sender().send_transaction(
-                &mut from,
-                &to,
-                legacy_node,
+            let mem_pool_check = controller.send_transaction(
+                &self.from,
+                &self.to,
+                &legacy_node,
                 self.ada.unwrap_or(100).into(),
             )?;
             println!(
@@ -92,6 +73,6 @@ impl SendTransaction {
             return Ok(());
         }
 
-        Err(InteractiveCommandError::NodeAliasNotFound(self.via.clone()))?
+        Err(InteractiveCommandError::UserError(format!("alias not found {}",self.via.clone())))?
     }
 }

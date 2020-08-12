@@ -1,6 +1,5 @@
-use super::do_for_all_alias;
-use crate::node::NodeController;
-use crate::{legacy::LegacyNodeController, test::Result};
+use super::{do_for_all_alias, UserInteractionController};
+use crate::test::Result;
 use jormungandr_testing_utils::testing::node::JormungandrLogger;
 use structopt::StructOpt;
 
@@ -75,15 +74,11 @@ pub struct ShowPeerStats {
 }
 
 impl ShowStatus {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
             &self.alias,
-            nodes,
-            legacy_nodes,
+            controller.nodes(),
+            controller.legacy_nodes(),
             |node| println!("{} is up", node.alias()),
             |node| println!("{} is up", node.alias()),
         )
@@ -91,15 +86,11 @@ impl ShowStatus {
 }
 
 impl ShowFragmentCount {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
             &self.alias,
-            nodes,
-            legacy_nodes,
+            controller.nodes(),
+            controller.legacy_nodes(),
             |node| {
                 println!(
                     "{}: {:#?}",
@@ -113,15 +104,11 @@ impl ShowFragmentCount {
 }
 
 impl ShowFragments {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
             &self.alias,
-            nodes,
-            legacy_nodes,
+            controller.nodes(),
+            controller.legacy_nodes(),
             |node| println!("{}: {:#?}", node.alias(), node.fragment_logs().unwrap()),
             |node| {
                 println!(
@@ -135,15 +122,11 @@ impl ShowFragments {
 }
 
 impl ShowBlockHeight {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
             &self.alias,
-            nodes,
-            legacy_nodes,
+            controller.nodes(),
+            controller.legacy_nodes(),
             |node| {
                 println!(
                     "{}: {:?}",
@@ -163,15 +146,11 @@ impl ShowBlockHeight {
 }
 
 impl ShowPeerStats {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
             &self.alias,
-            nodes,
-            legacy_nodes,
+            controller.nodes(),
+            controller.legacy_nodes(),
             |node| println!("{} is up", node.alias()),
             |node| println!("{} is up", node.alias()),
         )
@@ -179,15 +158,11 @@ impl ShowPeerStats {
 }
 
 impl ShowNodeStats {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
             &self.alias,
-            nodes,
-            legacy_nodes,
+            controller.nodes(),
+            controller.legacy_nodes(),
             |node| println!("{}: {:#?}", node.alias(), node.stats()),
             |node| println!("{}: {:#?}", node.alias(), node.stats()),
         )
@@ -231,15 +206,11 @@ fn show_logs_for(
 }
 
 impl ShowLogs {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
             &self.alias,
-            nodes,
-            legacy_nodes,
+            controller.nodes(),
+            controller.legacy_nodes(),
             |node| {
                 show_logs_for(
                     self.only_errors,
@@ -263,19 +234,15 @@ impl ShowLogs {
 }
 
 impl Show {
-    pub fn exec(
-        &self,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         match self {
-            Show::Status(status) => status.exec(nodes, legacy_nodes),
-            Show::Stats(stats) => stats.exec(nodes, legacy_nodes),
-            Show::FragmentCount(fragment_counts) => fragment_counts.exec(nodes, legacy_nodes),
-            Show::Fragments(fragments) => fragments.exec(nodes, legacy_nodes),
-            Show::BlockHeight(block_height) => block_height.exec(nodes, legacy_nodes),
-            Show::PeerStats(peer_stats) => peer_stats.exec(nodes, legacy_nodes),
-            Show::Logs(logs) => logs.exec(nodes, legacy_nodes),
+            Show::Status(status) => status.exec(controller),
+            Show::Stats(stats) => stats.exec(controller),
+            Show::FragmentCount(fragment_counts) => fragment_counts.exec(controller),
+            Show::Fragments(fragments) => fragments.exec(controller),
+            Show::BlockHeight(block_height) => block_height.exec(controller),
+            Show::PeerStats(peer_stats) => peer_stats.exec(controller),
+            Show::Logs(logs) => logs.exec(controller),
         }
     }
 }
