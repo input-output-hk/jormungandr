@@ -1733,6 +1733,7 @@ dependencies = [
  "chrono",
  "custom_debug",
  "flate2",
+ "fs_extra",
  "futures 0.1.29",
  "hex",
  "humantime",
