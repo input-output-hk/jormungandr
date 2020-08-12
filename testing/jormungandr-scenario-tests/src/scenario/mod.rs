@@ -1,14 +1,12 @@
 mod context;
 mod controller;
 mod fragment_node;
-mod progress_bar_mode;
 pub mod repository;
 pub mod settings;
 
 pub use self::{
     context::{Context, ContextChaCha},
     controller::{Controller, ControllerBuilder},
-    progress_bar_mode::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
 pub use chain_impl_mockchain::{
     block::Block, chaintypes::ConsensusVersion, header::HeaderId, milli::Milli, value::Value,
@@ -16,6 +14,8 @@ pub use chain_impl_mockchain::{
 pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
+
+pub use jortestkit::console::progress_bar::{ProgressBarMode,parse_progress_bar_mode_from_str};
 
 pub use jormungandr_testing_utils::testing::network_builder::{
     Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, TopologyBuilder, Wallet, WalletAlias,
