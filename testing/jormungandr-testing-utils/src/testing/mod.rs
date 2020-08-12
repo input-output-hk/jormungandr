@@ -2,6 +2,7 @@ pub mod file;
 mod fragments;
 pub mod network_builder;
 pub mod node;
+mod remote;
 pub mod sync;
 mod verify;
 
@@ -21,6 +22,7 @@ pub use jortestkit::measurement::{
     EnduranceBenchmarkFinish, EnduranceBenchmarkRun, NamedProcess, ResourcesUsage, Speed,
     SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
 };
+pub use remote::RemoteJormungandr;
 pub use sync::{
     ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
     MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
