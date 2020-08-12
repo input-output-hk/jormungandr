@@ -1,12 +1,12 @@
 mod config;
-mod progress_bar;
 
 pub use config::IapyxLoadConfig;
-pub use progress_bar::ProgressBarMode;
+pub use jortestkit::console::progress_bar::{ProgressBarMode,parse_progress_bar_mode_from_str};
 
-use crate::cli::args::load::progress_bar::parse_progress_bar_mode_from_str;
-use crate::{MultiController, VoteStatusProvider, WalletRequestGen};
 use jortestkit::load::{self, Configuration, Monitor};
+
+use crate::{MultiController, VoteStatusProvider, WalletRequestGen};
+
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -53,7 +53,7 @@ pub struct IapyxLoadCommand {
         long = "progress-bar-mode",
         short = "b",
         default_value = "Monitor",
-        parse(try_from_str = parse_progress_bar_mode_from_str)
+        parse(from_str = parse_progress_bar_mode_from_str)
     )]
     progress_bar_mode: ProgressBarMode,
 }
