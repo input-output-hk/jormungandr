@@ -1,9 +1,10 @@
-use iapyx::cli::args::interactive::UserInteraction;
+use iapyx::cli::args::interactive::IapyxInteractiveCommandExec;
+use iapyx::cli::args::interactive::{UserInteractionContoller, WalletState};
+use jortestkit::console::UserInteraction;
 
 pub fn main() {
-   
     let user_interaction = UserInteraction::new(
-        "iapyx-cli".to_string(),
+        "iapyx".to_string(),
         "wallet interactive console".to_string(),
         "type command:".to_string(),
         "exit".to_string(),
@@ -16,8 +17,15 @@ pub fn main() {
             "- generate new wallet".to_string(),
         ],
     );
-   
-    user_integration.interact(&mut JormungandrInteractiveCommandExec{
-        controller: UserInteractionController::new(&mut controller)
-    }).unwrap();    
+
+    user_interaction
+        .interact(&mut IapyxInteractiveCommandExec {
+            controller: UserInteractionContoller {
+                state: WalletState::New,
+                controller: None,
+                backend_address: "127.0.0.1:8000".to_string(),
+                settings: Default::default(),
+            },
+        })
+        .unwrap();
 }

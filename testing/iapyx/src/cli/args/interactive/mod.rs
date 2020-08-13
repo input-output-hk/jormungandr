@@ -2,11 +2,10 @@ pub mod command;
 
 use crate::Controller;
 pub use command::{IapyxCommand, IapyxCommandError};
-use console::Style;
-use dialoguer::Input;
+use jormungandr_testing_utils::testing::node::RestSettings;
+use jortestkit::prelude::{ConsoleWriter, InteractiveCommandError, InteractiveCommandExec};
 use std::ffi::OsStr;
 use structopt::StructOpt;
-use thiserror::Error;
 
 #[derive(Debug, Copy, Clone)]
 pub enum WalletState {
@@ -17,11 +16,15 @@ pub enum WalletState {
 }
 
 pub struct IapyxInteractiveCommandExec {
-    controller: UserInteractionContoller
+    pub controller: UserInteractionContoller,
 }
 
 impl InteractiveCommandExec for IapyxInteractiveCommandExec {
-    fn parse_and_exec(&mut self, tokens: Vec<String>, console: ConsoleWriter) -> std::result::Result<(),InteractiveCommandError> {
+    fn parse_and_exec(
+        &mut self,
+        tokens: Vec<String>,
+        console: ConsoleWriter,
+    ) -> std::result::Result<(), InteractiveCommandError> {
         match IapyxCommand::from_iter_safe(&mut tokens.iter().map(|x| OsStr::new(x))) {
             Ok(interactive) => {
                 if let Err(err) = interactive.exec(&mut self.controller) {
@@ -29,7 +32,7 @@ impl InteractiveCommandExec for IapyxInteractiveCommandExec {
                 }
             }
             Err(err) => console.show_help(InteractiveCommandError::UserError(err.to_string())),
-        } 
+        }
         Ok(())
     }
 }
@@ -37,4 +40,6 @@ impl InteractiveCommandExec for IapyxInteractiveCommandExec {
 pub struct UserInteractionContoller {
     pub state: WalletState,
     pub controller: Option<Controller>,
+    pub backend_address: String,
+    pub settings: RestSettings,
 }

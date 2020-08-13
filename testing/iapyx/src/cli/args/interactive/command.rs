@@ -1,12 +1,13 @@
-use super::{UserInteraction, WalletState};
+use super::WalletState;
+use crate::cli::args::interactive::UserInteractionContoller;
 use crate::Controller;
 use bip39::Type;
 use chain_addr::{AddressReadable, Discrimination};
 use chain_impl_mockchain::fragment::FragmentId;
+use jormungandr_testing_utils::testing::node::RestSettings;
 use structopt::{clap::AppSettings, StructOpt};
 use thiserror::Error;
 use wallet_core::Choice;
-
 #[derive(StructOpt, Debug)]
 #[structopt(setting = AppSettings::NoBinaryName)]
 pub enum IapyxCommand {
@@ -43,7 +44,7 @@ pub enum IapyxCommand {
 }
 
 impl IapyxCommand {
-    pub fn exec(&self, model: &mut UserInteraction) -> Result<(), IapyxCommandError> {
+    pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
         match self {
             IapyxCommand::PendingTransactions => {
                 if let Some(controller) = model.controller.as_mut() {
@@ -184,7 +185,7 @@ pub struct Address {
 }
 
 impl Address {
-    pub fn exec(&self, model: &mut UserInteraction) -> Result<(), IapyxCommandError> {
+    pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
         if let Some(controller) = model.controller.as_mut() {
             let (prefix, discrimination) = {
                 if self.testing {
@@ -215,7 +216,7 @@ pub struct Vote {
 }
 
 impl Vote {
-    pub fn exec(&self, model: &mut UserInteraction) -> Result<(), IapyxCommandError> {
+    pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
         if let Some(controller) = model.controller.as_mut() {
             let proposals = controller.get_proposals()?;
             let proposal = proposals
@@ -246,7 +247,7 @@ pub struct Convert {
 }
 
 impl Convert {
-    pub fn exec(&self, model: &mut UserInteraction) -> Result<(), IapyxCommandError> {
+    pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
         if let Some(controller) = model.controller.as_mut() {
             controller.convert_and_send()?;
             if self.wait {
@@ -274,17 +275,30 @@ impl Convert {
 pub struct Connect {
     #[structopt(short = "a", long = "address")]
     pub address: String,
+
+    /// uses https for sending fragments
+    #[structopt(short = "s", long = "use-https")]
+    pub use_https_for_post: bool,
+
+    /// uses https for sending fragments
+    #[structopt(short = "d", long = "enable-debug")]
+    pub enable_debug: bool,
 }
 
 impl Connect {
-    pub fn exec(&self, model: &mut UserInteraction) -> Result<(), IapyxCommandError> {
+    pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
+        let mut settings: RestSettings = Default::default();
+        settings.use_https_for_post = self.use_https_for_post;
+        settings.enable_debug = self.enable_debug;
+
         if let Some(controller) = model.controller.as_mut() {
-            controller.switch_backend(self.address.clone());
+            controller.switch_backend(self.address.clone(), settings);
             return Ok(());
         }
-        Err(IapyxCommandError::GeneralError(
-            "wallet not recovered or generated".to_string(),
-        ))
+
+        model.backend_address = self.address.clone();
+        model.settings = settings;
+        Ok(())
     }
 }
 
@@ -295,11 +309,12 @@ pub struct Recover {
 }
 
 impl Recover {
-    pub fn exec(&self, model: &mut UserInteraction) -> Result<(), IapyxCommandError> {
+    pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
         model.controller = Some(Controller::recover(
-            "127.0.0.1:8000".to_string(),
+            model.backend_address.clone(),
             &self.mnemonics.join(" "),
             &[],
+            model.settings.clone(),
         )?);
         model.state = WalletState::Recovered;
         Ok(())
@@ -314,10 +329,11 @@ pub struct Generate {
 }
 
 impl Generate {
-    pub fn exec(&self, model: &mut UserInteraction) -> Result<(), IapyxCommandError> {
+    pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
         model.controller = Some(Controller::generate(
-            "127.0.0.1:8000".to_string(),
+            model.backend_address.clone(),
             Type::from_word_count(self.count)?,
+            model.settings.clone(),
         )?);
         model.state = WalletState::Generated;
         Ok(())

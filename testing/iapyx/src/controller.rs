@@ -4,6 +4,7 @@ use crate::{data::Proposal as VitProposal, WalletBackend};
 use bip39::Type;
 use chain_impl_mockchain::{fragment::FragmentId, transaction::Input};
 use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus};
+use jormungandr_testing_utils::testing::node::RestSettings;
 use std::collections::HashMap;
 use thiserror::Error;
 use wallet::{AccountId, Settings};
@@ -16,8 +17,12 @@ pub struct Controller {
 }
 
 impl Controller {
-    pub fn generate(proxy_address: String, words_length: Type) -> Result<Self, ControllerError> {
-        let backend = WalletBackend::new(proxy_address);
+    pub fn generate(
+        proxy_address: String,
+        words_length: Type,
+        backend_settings: RestSettings,
+    ) -> Result<Self, ControllerError> {
+        let backend = WalletBackend::new(proxy_address, backend_settings);
         let settings = backend.settings()?;
         Ok(Self {
             backend,
@@ -30,8 +35,9 @@ impl Controller {
         proxy_address: String,
         mnemonics: &str,
         password: &[u8],
+        backend_settings: RestSettings,
     ) -> Result<Self, ControllerError> {
-        let backend = WalletBackend::new(proxy_address);
+        let backend = WalletBackend::new(proxy_address, backend_settings);
         let settings = backend.settings()?;
         Ok(Self {
             backend,
@@ -40,8 +46,8 @@ impl Controller {
         })
     }
 
-    pub fn switch_backend(&mut self, proxy_address: String) {
-        self.backend = WalletBackend::new(proxy_address);
+    pub fn switch_backend(&mut self, proxy_address: String, backend_settings: RestSettings) {
+        self.backend = WalletBackend::new(proxy_address, backend_settings);
     }
 
     pub fn account(&self, discrimination: chain_addr::Discrimination) -> chain_addr::Address {
@@ -197,7 +203,7 @@ impl Controller {
 pub enum ControllerError {
     #[error("wallet error")]
     WalletError(#[from] crate::wallet::WalletError),
-    #[error("wallet error")]
+    #[error("backend error")]
     BackendError(#[from] crate::backend::WalletBackendError),
     #[error("transactions with ids [{fragments:?}] were pending for too long")]
     TransactionsWerePendingForTooLong { fragments: Vec<FragmentId> },

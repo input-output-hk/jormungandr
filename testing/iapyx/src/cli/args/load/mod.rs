@@ -1,15 +1,17 @@
 mod config;
 
 pub use config::IapyxLoadConfig;
-pub use jortestkit::console::progress_bar::{ProgressBarMode,parse_progress_bar_mode_from_str};
+pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
 use jortestkit::load::{self, Configuration, Monitor};
 
 use crate::{MultiController, VoteStatusProvider, WalletRequestGen};
 
+use jormungandr_testing_utils::testing::node::RestSettings;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
+
 #[derive(Error, Debug)]
 pub enum IapyxLoadCommandError {
     #[error("duration or requests per thread stategy has to be defined")]
@@ -37,12 +39,20 @@ pub struct IapyxLoadCommand {
     pub duration: Option<u64>,
 
     /// how many requests per thread should be sent
-    #[structopt(short = "n", long = "requests per thread")]
+    #[structopt(short = "n", long = "requests-per-thread")]
     pub count: Option<u32>,
 
-    /// how many requests in total should be sent
+    /// wallet mnemonics file
     #[structopt(short = "s", long = "mnemonics")]
     pub wallet_mnemonics_file: PathBuf,
+
+    /// use https for sending fragments
+    #[structopt(short = "h", long = "https")]
+    pub use_https_for_post: bool,
+
+    /// use https for sending fragments
+    #[structopt(short = "d", long = "debug")]
+    pub debug: bool,
 
     // measure
     #[structopt(short = "m", long = "measure")]
@@ -64,7 +74,11 @@ impl IapyxLoadCommand {
         let mnemonics = jortestkit::file::read_file_as_vector(&config.mnemonics_file)
             .map_err(|_e| IapyxLoadCommandError::CannotReadMnemonicsFile)?;
         let backend = config.address;
-        let multicontroller = MultiController::recover(&backend, mnemonics, &[]).unwrap();
+        let mut settings: RestSettings = Default::default();
+        settings.enable_debug = self.debug;
+        settings.use_https_for_post = self.use_https_for_post;
+        println!("{:?}", settings);
+        let multicontroller = MultiController::recover(&backend, mnemonics, &[], settings).unwrap();
         let mut request_generator = WalletRequestGen::new(multicontroller);
         request_generator.fill_generator().unwrap();
 
