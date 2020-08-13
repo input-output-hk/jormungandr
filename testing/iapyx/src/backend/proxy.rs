@@ -3,21 +3,47 @@ use thiserror::Error;
 
 pub struct ProxyClient {
     address: String,
+    debug: bool,
 }
 
 impl ProxyClient {
     pub fn new(address: String) -> Self {
-        Self { address }
+        Self {
+            address,
+            debug: false,
+        }
+    }
+
+    pub fn enable_debug(&mut self) {
+        self.debug = true;
+    }
+
+    pub fn disable_debug(&mut self) {
+        self.debug = false;
+    }
+
+    pub fn print_response(&self, response: &reqwest::blocking::Response) {
+        if self.debug {
+            println!("Response: {:?}", response);
+        }
+    }
+
+    pub fn print_request_path(&self, path: &str) {
+        if self.debug {
+            println!("Request: {}", path);
+        }
     }
 
     pub fn block0(&self) -> Result<Vec<u8>, Error> {
-        Ok(reqwest::blocking::get(&self.path("block0"))?
-            .bytes()?
-            .to_vec())
+        let response = reqwest::blocking::get(&self.path("block0"))?;
+        self.print_response(&response);
+        Ok(response.bytes()?.to_vec())
     }
 
     fn path(&self, path: &str) -> String {
-        format!("{}/{}", self.address, path)
+        let path = format!("{}/{}", self.address, path);
+        self.print_request_path(&path);
+        path
     }
 }
 

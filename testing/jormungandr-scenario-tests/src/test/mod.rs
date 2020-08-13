@@ -12,7 +12,7 @@ use std::time::Duration;
 error_chain! {
 
     foreign_links {
-        Interactive(crate::interactive::InteractiveCommandError);
+        Interactive(jortestkit::console::InteractiveCommandError);
         IoError(std::io::Error);
         Node(crate::node::Error);
         Wallet(jormungandr_testing_utils::wallet::WalletError);

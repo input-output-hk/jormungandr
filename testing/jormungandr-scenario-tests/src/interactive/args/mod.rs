@@ -1,21 +1,97 @@
 use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller};
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_testing_utils::{
+    testing::{FragmentNode, SyncNode},
+    wallet::Wallet,
+};
 use structopt::{clap::AppSettings, StructOpt};
 
-use thiserror::Error;
+use jormungandr_lib::interfaces::Value;
 
 mod describe;
 mod send;
 mod show;
 mod spawn;
 
-#[derive(Error, Debug)]
-pub enum InteractiveCommandError {
-    #[error("cannot spawn not with version '{0}', looks like it's incorrect one")]
-    VersionNotFound(String),
-    #[error("cannot find node with alias(0). Please run 'describe' command ")]
-    NodeAliasNotFound(String),
+pub struct UserInteractionController<'a> {
+    controller: &'a mut Controller,
+    wallets: Vec<Wallet>,
+    nodes: Vec<NodeController>,
+    legacy_nodes: Vec<LegacyNodeController>,
+}
+
+impl<'a> UserInteractionController<'a> {
+    pub fn new(controller: &'a mut Controller) -> Self {
+        let wallets = controller.get_all_wallets();
+        Self {
+            controller,
+            wallets,
+            nodes: Vec::new(),
+            legacy_nodes: Vec::new(),
+        }
+    }
+
+    pub fn wallets(&self) -> &[Wallet] {
+        &self.wallets
+    }
+
+    pub fn wallets_mut(&mut self) -> &mut Vec<Wallet> {
+        &mut self.wallets
+    }
+
+    pub fn nodes(&self) -> &[NodeController] {
+        &self.nodes
+    }
+
+    pub fn legacy_nodes(&self) -> &[LegacyNodeController] {
+        &self.legacy_nodes
+    }
+
+    pub fn legacy_nodes_mut(&mut self) -> &mut Vec<LegacyNodeController> {
+        &mut self.legacy_nodes
+    }
+    pub fn nodes_mut(&mut self) -> &mut Vec<NodeController> {
+        &mut self.nodes
+    }
+
+    pub fn controller(&self) -> &Controller {
+        &self.controller
+    }
+
+    pub fn controller_mut(&mut self) -> &mut Controller {
+        &mut self.controller
+    }
+
+    pub fn send_transaction<A: FragmentNode + SyncNode + Sized>(
+        &mut self,
+        from_str: &str,
+        to_str: &str,
+        via: &A,
+        value: Value,
+    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
+        let from_address = self.controller.wallet(&from_str)?.address();
+        let to_address = self.controller.wallet(&to_str)?.address();
+
+        let to = self
+            .wallets()
+            .iter()
+            .cloned()
+            .find(|x| x.address() == to_address)
+            .expect(&format!("cannot find wallet with alias: {}", to_str));
+
+        let mut temp_wallets = self.wallets_mut().clone();
+        let from = temp_wallets
+            .iter_mut()
+            .find(|x| x.address() == from_address)
+            .expect(&format!("cannot find wallet with alias: {}", from_str));
+
+        let check = self
+            .controller
+            .fragment_sender()
+            .send_transaction(from, &to, via, value)?;
+        *self.wallets_mut() = temp_wallets;
+        Ok(check)
+    }
 }
 
 #[derive(StructOpt, Debug)]
@@ -32,28 +108,11 @@ pub enum InteractiveCommand {
     /// send fragments
     Send(send::Send),
 }
-impl InteractiveCommand {
-    pub fn exec(
-        &self,
-        controller: &mut Controller,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-        wallets: &mut Vec<Wallet>,
-    ) -> Result<()> {
-        match self {
-            InteractiveCommand::Show(show) => show.exec(nodes, legacy_nodes),
-            InteractiveCommand::Spawn(spawn) => spawn.exec(controller, nodes, legacy_nodes),
-            InteractiveCommand::Exit => Ok(()),
-            InteractiveCommand::Describe(describe) => describe.exec(controller),
-            InteractiveCommand::Send(send) => send.exec(controller, nodes, legacy_nodes, wallets),
-        }
-    }
-}
 
 fn do_for_all_alias<F: Fn(&NodeController), G: Fn(&LegacyNodeController)>(
     alias: &Option<String>,
-    nodes: &mut Vec<NodeController>,
-    legacy_nodes: &mut Vec<LegacyNodeController>,
+    nodes: &[NodeController],
+    legacy_nodes: &[LegacyNodeController],
     f: F,
     g: G,
 ) -> Result<()> {

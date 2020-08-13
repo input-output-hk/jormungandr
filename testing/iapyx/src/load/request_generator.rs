@@ -61,7 +61,6 @@ impl WalletRequestGen {
 impl RequestGenerator for WalletRequestGen {
     fn next(&mut self) -> Result<Option<Id>, RequestFailure> {
         if let Some(tx) = self.initial_requests.pop() {
-            println!("Initial fragment_send");
             return self.send_conversion_fragment(tx);
         }
         let id = self

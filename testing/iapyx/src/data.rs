@@ -56,6 +56,7 @@ pub struct Voteplan {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+
 pub struct Category {
     #[serde(alias = "categoryId")]
     pub category_id: String,
@@ -81,8 +82,8 @@ pub struct Proposal {
     pub internal_id: String,
     #[serde(alias = "proposalId")]
     pub proposal_id: String,
-    #[serde(alias = "category")]
-    pub proposal_category: Category,
+    //  #[serde(alias = "category")]
+    //   pub proposal_category: Category,
     #[serde(alias = "proposalTitle")]
     pub proposal_title: String,
     #[serde(alias = "proposalSummary")]

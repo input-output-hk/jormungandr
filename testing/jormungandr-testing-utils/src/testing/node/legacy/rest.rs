@@ -7,44 +7,77 @@ use chain_crypto::PublicKey;
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
-use std::collections::HashMap;
+use reqwest::{
+    blocking::Response,
+    header::{HeaderMap, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, HOST},
+};
+use std::{collections::HashMap, fs::File, io::Write, net::SocketAddr};
+
+#[derive(Debug, Clone)]
+pub struct Settings {
+    pub enable_debug: bool,
+    pub use_https_for_post: bool,
+    pub certificate: Option<reqwest::Certificate>,
+}
+
+impl Settings {
+    pub fn new_use_https_for_post() -> Settings {
+        Settings {
+            enable_debug: false,
+            use_https_for_post: true,
+            certificate: None,
+        }
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Settings {
+            enable_debug: false,
+            use_https_for_post: false,
+            certificate: None,
+        }
+    }
+}
+
 /// Legacy tolerant rest api
 /// This layer returns raw strings without deserialization
 /// in order to assure compatibility and lack of serde errors
 #[derive(Debug, Clone)]
 pub struct BackwardCompatibleRest {
     uri: String,
-    certificate: Option<reqwest::Certificate>,
-    print_response: bool,
+    settings: Settings,
 }
 
 impl BackwardCompatibleRest {
-    pub fn new(
-        uri: String,
-        certificate: Option<reqwest::Certificate>,
-        print_response: bool,
-    ) -> Self {
-        Self {
-            uri,
-            certificate,
-            print_response,
-        }
+    pub fn new(uri: String, settings: Settings) -> Self {
+        Self { uri, settings }
     }
 
     fn print_response_text(&self, text: &str) {
-        if self.print_response {
+        if self.settings.enable_debug {
             println!("Response: {}", text);
         }
     }
 
+    fn print_debug_response(&self, response: &Response) {
+        if self.settings.enable_debug {
+            println!("Response: {:?}", response);
+        }
+    }
+
     fn print_request_path(&self, text: &str) {
-        if self.print_response {
+        if self.settings.enable_debug {
             println!("Request: {}", text);
         }
     }
 
     pub fn disable_logger(&mut self) {
-        self.print_response = false;
+        self.settings.enable_debug = false;
+    }
+
+    pub fn enable_logger(&mut self) {
+        self.settings.enable_debug = true;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {
@@ -64,7 +97,7 @@ impl BackwardCompatibleRest {
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(path);
         self.print_request_path(&request);
-        match &self.certificate {
+        match &self.settings.certificate {
             None => reqwest::blocking::get(&request),
             Some(cert) => {
                 let client = reqwest::blocking::Client::builder()
@@ -78,6 +111,19 @@ impl BackwardCompatibleRest {
     }
 
     fn path(&self, path: &str) -> String {
+        format!("{}/v0/{}", self.uri, path)
+    }
+
+    fn path_http_or_https(&self, path: &str) -> String {
+        if self.settings.use_https_for_post {
+            let url = url::Url::parse(&self.uri).unwrap();
+            return format!(
+                "https://{}:443/{}/v0/{}",
+                url.domain().unwrap(),
+                url.path_segments().unwrap().next().unwrap(),
+                path
+            );
+        }
         format!("{}/v0/{}", self.uri, path)
     }
 
@@ -168,13 +214,27 @@ impl BackwardCompatibleRest {
         self.get("leaders")?.text()
     }
 
+    fn construct_headers(&self) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_TYPE,
+            HeaderValue::from_static("application/octet-stream"),
+        );
+        headers
+    }
+
     fn post(
         &self,
         path: &str,
         body: Vec<u8>,
     ) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        let client = reqwest::blocking::Client::new();
-        client.post(&self.path(path)).body(body).send()
+        let builder = reqwest::blocking::Client::builder();
+        let client = builder.build()?;
+        client
+            .post(&self.path_http_or_https(path))
+            .headers(self.construct_headers())
+            .body(body)
+            .send()
     }
 
     pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, reqwest::Error> {
@@ -183,8 +243,9 @@ impl BackwardCompatibleRest {
 
         let raw = fragment.serialize_as_vec().unwrap();
         let fragment_id = fragment.id();
+        let response = self.send_raw_fragment(raw)?;
+        self.print_response_text(&response.text()?);
 
-        self.send_raw_fragment(raw)?;
         Ok(MemPoolCheck::new(fragment_id))
     }
 
@@ -192,7 +253,9 @@ impl BackwardCompatibleRest {
         &self,
         body: Vec<u8>,
     ) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        Ok(self.post("message", body)?)
+        let response = self.post("message", body)?;
+        self.print_debug_response(&response);
+        Ok(response)
     }
 
     pub fn vote_plan_statuses(&self) -> Result<String, reqwest::Error> {

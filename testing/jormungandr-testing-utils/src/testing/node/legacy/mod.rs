@@ -16,7 +16,7 @@ use url::Url;
 
 use std::path::PathBuf;
 
-pub use rest::BackwardCompatibleRest;
+pub use rest::{BackwardCompatibleRest, Settings};
 
 pub use version::{version_0_8_19, Version};
 

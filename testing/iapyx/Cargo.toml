@@ -33,7 +33,6 @@ regex = "*"
 dialoguer = "0.6.2"
 structopt = "0.3"
 console = "0.11"
-lazy_static = "1"
 
 [dependencies.reqwest]
 version = "0.10.6"

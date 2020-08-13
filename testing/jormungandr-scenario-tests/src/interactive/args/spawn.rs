@@ -1,10 +1,10 @@
-use super::InteractiveCommandError;
-use crate::{legacy::LegacyNodeController, test::Result};
-use crate::{node::NodeController, scenario::Controller, style};
+use super::UserInteractionController;
+use crate::{style, test::Result};
 use jormungandr_testing_utils::testing::{
     network_builder::{LeadershipMode, PersistenceMode, SpawnParams},
     node::download_last_n_releases,
 };
+use jortestkit::console::InteractiveCommandError;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -14,15 +14,10 @@ pub enum Spawn {
 }
 
 impl Spawn {
-    pub fn exec(
-        &self,
-        controller: &mut Controller,
-        nodes: &mut Vec<NodeController>,
-        legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         match self {
-            Spawn::Passive(spawn_passive) => spawn_passive.exec(controller, nodes, legacy_nodes),
-            Spawn::Leader(spawn_leader) => spawn_leader.exec(controller, nodes, legacy_nodes),
+            Spawn::Passive(spawn_passive) => spawn_passive.exec(controller),
+            Spawn::Leader(spawn_leader) => spawn_leader.exec(controller),
         }
     }
 }
@@ -40,12 +35,7 @@ pub struct SpawnPassiveNode {
 }
 
 impl SpawnPassiveNode {
-    pub fn exec(
-        &self,
-        mut controller: &mut Controller,
-        mut nodes: &mut Vec<NodeController>,
-        mut legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<()> {
         spawn_node(
             &mut controller,
             LeadershipMode::Passive,
@@ -53,8 +43,6 @@ impl SpawnPassiveNode {
             &self.alias,
             self.legacy.clone(),
             self.wait,
-            &mut nodes,
-            &mut legacy_nodes,
         )
     }
 }
@@ -72,14 +60,12 @@ pub struct SpawnLeaderNode {
 }
 
 fn spawn_node(
-    controller: &mut Controller,
+    controller: &mut UserInteractionController,
     leadership_mode: LeadershipMode,
     storage: bool,
     alias: &str,
     legacy: Option<String>,
     wait: bool,
-    nodes: &mut Vec<NodeController>,
-    legacy_nodes: &mut Vec<LegacyNodeController>,
 ) -> Result<()> {
     let persistence_mode = {
         if storage {
@@ -99,11 +85,9 @@ fn spawn_node(
         let legacy_release = releases
             .iter()
             .find(|x| x.version().eq_ignore_ascii_case(&version))
-            .ok_or(InteractiveCommandError::VersionNotFound(
-                version.to_string(),
-            ))?;
+            .ok_or(InteractiveCommandError::UserError(version.to_string()))?;
 
-        let node = controller.spawn_legacy_node(
+        let node = controller.controller_mut().spawn_legacy_node(
             &mut spawn_params,
             &legacy_release.version().parse().unwrap(),
         )?;
@@ -124,11 +108,13 @@ fn spawn_node(
             );
         }
 
-        legacy_nodes.push(node);
+        controller.legacy_nodes_mut().push(node);
         return Ok(());
     }
 
-    let node = controller.spawn_node_custom(&mut spawn_params)?;
+    let node = controller
+        .controller_mut()
+        .spawn_node_custom(&mut spawn_params)?;
     println!(
         "{}",
         style::info.apply_to(format!("node '{}' spawned", alias))
@@ -146,17 +132,12 @@ fn spawn_node(
         );
     }
 
-    nodes.push(node);
+    controller.nodes_mut().push(node);
     Ok(())
 }
 
 impl SpawnLeaderNode {
-    pub fn exec(
-        &self,
-        mut controller: &mut Controller,
-        mut nodes: &mut Vec<NodeController>,
-        mut legacy_nodes: &mut Vec<LegacyNodeController>,
-    ) -> Result<()> {
+    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<()> {
         spawn_node(
             &mut controller,
             LeadershipMode::Leader,
@@ -164,8 +145,6 @@ impl SpawnLeaderNode {
             &self.alias,
             self.legacy.clone(),
             self.wait,
-            &mut nodes,
-            &mut legacy_nodes,
         )
     }
 }

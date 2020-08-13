@@ -59,6 +59,14 @@ impl VitStationRestClient {
         }
     }
 
+    pub fn disable_logs(&mut self) {
+        self.logger.set_enabled(false);
+    }
+
+    pub fn enable_logs(&mut self) {
+        self.logger.set_enabled(true);
+    }
+
     pub fn health(&self) -> Result<(), RestError> {
         self.get_and_verify_status_code(&self.path_builder.health())
             .map(|_| ())

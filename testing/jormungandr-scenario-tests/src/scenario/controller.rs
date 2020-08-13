@@ -223,7 +223,7 @@ impl Controller {
             .start()
     }
 
-    pub fn wallet(&mut self, wallet: &str) -> Result<Wallet> {
+    pub fn wallet(&self, wallet: &str) -> Result<Wallet> {
         if let Some(wallet) = self.settings.wallets.get(wallet) {
             Ok(wallet.clone().into())
         } else {

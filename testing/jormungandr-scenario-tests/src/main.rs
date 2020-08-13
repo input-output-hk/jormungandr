@@ -1,7 +1,5 @@
 #[macro_use(error_chain, bail)]
 extern crate error_chain;
-#[macro_use(lazy_static)]
-extern crate lazy_static;
 
 mod legacy;
 mod node;
@@ -11,7 +9,6 @@ mod scenario;
 mod example_scenarios;
 mod interactive;
 mod slog;
-pub mod style;
 mod test;
 
 use node::{Node, NodeBlock0, NodeController};
@@ -21,6 +18,8 @@ use scenario::{
     repository::{parse_tag_from_str, ScenarioResult, ScenariosRepository, Tag},
     Context, ProgressBarMode, Seed,
 };
+
+pub use jortestkit::console::style;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -71,7 +70,7 @@ struct CommandArgs {
     #[structopt(
         long = "progress-bar-mode",
         default_value = "Monitor",
-        parse(try_from_str = parse_progress_bar_mode_from_str)
+        parse(from_str = parse_progress_bar_mode_from_str)
     )]
     progress_bar_mode: ProgressBarMode,
 
