@@ -1544,7 +1544,7 @@ dependencies = [
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "reqwest",
- "rustls 0.17.0",
+ "rustls 0.18.0",
  "serde",
  "serde_derive",
  "serde_json",
