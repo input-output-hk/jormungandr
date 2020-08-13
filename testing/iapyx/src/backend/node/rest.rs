@@ -3,8 +3,8 @@
 use chain_crypto::{bech32::Bech32, Ed25519, PublicKey};
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::interfaces::{AccountState, FragmentLog, NodeStatsDto, VotePlanStatus};
-use jormungandr_testing_utils::testing::node::JormungandrRest;
 pub use jormungandr_testing_utils::testing::node::RestError;
+use jormungandr_testing_utils::testing::node::{JormungandrRest, RestSettings};
 use regex::Regex;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -14,16 +14,17 @@ pub struct WalletNodeRestClient {
 }
 
 impl WalletNodeRestClient {
-    pub fn new(address: String) -> Self {
+    pub fn new(address: String, settings: RestSettings) -> Self {
         let re = Regex::new(r"/v0/?").unwrap();
         let address = re.replace_all(&address, "");
         Self {
-            rest_client: JormungandrRest::new(address.to_string()),
+            rest_client: JormungandrRest::new_with_custom_settings(address.to_string(), settings),
         }
     }
 
     pub fn send_fragment(&self, body: Vec<u8>) -> Result<(), RestError> {
-        self.rest_client.send_raw_fragment(body)?;
+        let result = self.rest_client.send_raw_fragment(body);
+        println!("{:?}", result);
         Ok(())
     }
 
@@ -41,6 +42,10 @@ impl WalletNodeRestClient {
 
     pub fn disable_logs(&mut self) {
         self.rest_client.disable_logger();
+    }
+
+    pub fn enable_logs(&mut self) {
+        self.rest_client.enable_logger();
     }
 
     pub fn stats(&self) -> Result<NodeStatsDto, RestError> {

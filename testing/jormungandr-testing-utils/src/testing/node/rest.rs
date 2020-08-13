@@ -1,5 +1,8 @@
-use crate::testing::node::legacy;
-use crate::{testing::MemPoolCheck, wallet::Wallet};
+use crate::{
+    testing::node::{legacy, RestSettings},
+    testing::MemPoolCheck,
+    wallet::Wallet,
+};
 use assert_fs::fixture::ChildPath;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
@@ -9,6 +12,7 @@ use jormungandr_lib::{
         PeerStats, StakeDistributionDto, VotePlanStatus,
     },
 };
+use legacy::Settings;
 use std::collections::HashMap;
 use std::io::Read;
 use std::{fs::File, net::SocketAddr, path::Path};
@@ -37,12 +41,22 @@ pub struct JormungandrRest {
 impl JormungandrRest {
     pub fn new(uri: String) -> Self {
         Self {
-            inner: legacy::BackwardCompatibleRest::new(uri, None, true),
+            inner: legacy::BackwardCompatibleRest::new(uri, Default::default()),
+        }
+    }
+
+    pub fn new_with_custom_settings(uri: String, settings: Settings) -> Self {
+        Self {
+            inner: legacy::BackwardCompatibleRest::new(uri, settings),
         }
     }
 
     pub fn disable_logger(&mut self) {
         self.inner.disable_logger();
+    }
+
+    pub fn enable_logger(&mut self) {
+        self.inner.enable_logger();
     }
 
     pub fn new_with_cert(uri: String, cert_file: &ChildPath) -> Self {
@@ -51,12 +65,12 @@ impl JormungandrRest {
         let url = uri
             .replace("http://", "https://")
             .replace("127.0.0.1", "localhost");
+
+        let mut settings: RestSettings = Default::default();
+        settings.certificate = Some(Self::extract_certificate(cert_file.path()));
+
         Self {
-            inner: legacy::BackwardCompatibleRest::new(
-                url,
-                Some(Self::extract_certificate(cert_file.path())),
-                true,
-            ),
+            inner: legacy::BackwardCompatibleRest::new(url, settings),
         }
     }
 
