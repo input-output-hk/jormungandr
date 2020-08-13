@@ -13,7 +13,7 @@ pub struct VoteStatusProvider {
 
 impl VoteStatusProvider {
     pub fn new(backend_address: String) -> Self {
-        let mut backend = WalletBackend::new(backend_address);
+        let mut backend = WalletBackend::new(backend_address, Default::default());
         backend.disable_logs();
         Self { backend }
     }

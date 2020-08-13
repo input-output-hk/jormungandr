@@ -3,11 +3,11 @@ use crate::{Proposal, Wallet};
 use bip39::Type;
 use chain_crypto::{bech32::Bech32, Ed25519, PublicKey};
 use chain_impl_mockchain::fragment::FragmentId;
+use jormungandr_testing_utils::testing::node::RestSettings;
 use std::iter;
 use thiserror::Error;
 use wallet::Settings;
 use wallet_core::{Choice, Value};
-
 pub struct MultiController {
     backend: WalletBackend,
     wallets: Vec<Wallet>,
@@ -19,8 +19,9 @@ impl MultiController {
         wallet_backend_address: String,
         words_length: Type,
         count: usize,
+        backend_settings: RestSettings,
     ) -> Result<Self, MultiControllerError> {
-        let backend = WalletBackend::new(wallet_backend_address);
+        let backend = WalletBackend::new(wallet_backend_address, backend_settings);
         let settings = backend.settings()?;
         let wallets = iter::from_fn(|| Some(Wallet::generate(words_length).unwrap()))
             .take(count)
@@ -36,9 +37,9 @@ impl MultiController {
         wallet_backend_address: &str,
         mnemonics: Vec<String>,
         password: &[u8],
+        backend_settings: RestSettings,
     ) -> Result<Self, MultiControllerError> {
-        let mut backend = WalletBackend::new(wallet_backend_address.to_string());
-        backend.disable_logs();
+        let mut backend = WalletBackend::new(wallet_backend_address.to_string(), backend_settings);
         let settings = backend.settings()?;
         let wallets = mnemonics
             .iter()
@@ -68,10 +69,6 @@ impl MultiController {
             if self.backend.account_exists(wallet.id())? {
                 continue;
             }
-
-            let public_key: PublicKey<Ed25519> = wallet.id().into();
-            println!("Wallet: {:?}", public_key.to_bech32_str());
-
             wallet.retrieve_funds(&block0)?;
             for tx in wallet.convert(self.settings.clone()).transactions() {
                 output.push(tx.clone());
