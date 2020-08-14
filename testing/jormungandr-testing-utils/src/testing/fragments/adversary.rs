@@ -143,13 +143,14 @@ impl<'a> AdversaryFragmentSender<'a> {
         let mut rng = thread_rng();
         let option: u8 = rng.gen();
         let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
-        match option % 6 {
+        match option % 7 {
             0 => Ok(faulty_tx_builder.wrong_block0_hash(from, to))?,
             1 => Ok(faulty_tx_builder.no_input(to))?,
             2 => Ok(faulty_tx_builder.no_output(from))?,
             3 => Ok(faulty_tx_builder.unbalanced(from, to))?,
             4 => Ok(faulty_tx_builder.empty())?,
             5 => Ok(faulty_tx_builder.wrong_counter(from, to))?,
+            6 => Ok(faulty_tx_builder.no_witnesses(from, to))?,
             _ => unreachable!(),
         }
     }
@@ -171,13 +172,20 @@ impl<'a> AdversaryFragmentSender<'a> {
         from: &Wallet,
         cert: Certificate,
     ) -> Result<Fragment, FragmentBuilderError> {
+        let mut rng = thread_rng();
+        let option: u8 = rng.gen();
         let faulty_tx_cert_builder = FaultTolerantTxCertBuilder::new(
             self.block0_hash.into_hash(),
             self.fees,
             cert,
             from.clone().into(),
         );
-        Ok(faulty_tx_cert_builder.transaction_with_output_only())
+        match option % 3 {
+            0 => Ok(faulty_tx_cert_builder.transaction_no_witness()),
+            1 => Ok(faulty_tx_cert_builder.transaction_input_to_low()),
+            2 => Ok(faulty_tx_cert_builder.transaction_with_output_only()),
+            _ => unreachable!(),
+        }
     }
 
     pub fn send_faulty_transactions<A: FragmentNode + SyncNode + Sized>(
@@ -299,6 +307,17 @@ impl FaultyTransactionBuilder {
         })
     }
 
+    pub fn no_witnesses(
+        &self,
+        from: &Wallet,
+        to: &Wallet,
+    ) -> Result<Fragment, FragmentBuilderError> {
+        let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
+        let input = from.add_input_with_value(input_value.into());
+        let output = OutputAddress::from_address(to.address().into(), Value(1u64));
+        self.transaction_to(&[input], &[output], |_sign_data| vec![])
+    }
+
     pub fn no_input(&self, to: &Wallet) -> Result<Fragment, FragmentBuilderError> {
         let output = Output::from_address(to.address().into(), Value(1u64));
         self.transaction_to(&[], &[output], |_sign_data| vec![])
@@ -348,7 +367,7 @@ impl FaultyTransactionBuilder {
         let builder = TxBuilder::new().set_nopayload();
         let builder = builder.set_ios(inputs, outputs);
         let witnesses = make_witnesses(&builder.get_auth_data_for_witness().hash());
-        let builder = builder.set_witnesses(&witnesses);
+        let builder = builder.set_witnesses_unchecked(&witnesses);
         let tx = builder.set_payload_auth(&());
         Ok(Fragment::Transaction(tx))
     }
