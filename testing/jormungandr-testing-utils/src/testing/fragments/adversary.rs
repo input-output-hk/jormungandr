@@ -172,7 +172,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         from: &Wallet,
         cert: Certificate,
     ) -> Result<Fragment, FragmentBuilderError> {
-        let mut rng = thread_rng();	
+        let mut rng = thread_rng();
         let option: u8 = rng.gen();
         let faulty_tx_cert_builder = FaultTolerantTxCertBuilder::new(
             self.block0_hash.into_hash(),
@@ -180,11 +180,11 @@ impl<'a> AdversaryFragmentSender<'a> {
             cert,
             from.clone().into(),
         );
-        match option % 3 {	      
-            0 => Ok(faulty_tx_cert_builder.transaction_no_witness()),	
-            1 => Ok(faulty_tx_cert_builder.transaction_input_to_low()),	
-            2 => Ok(faulty_tx_cert_builder.transaction_with_output_only()),	
-            _ => unreachable!(),	
+        match option % 3 {
+            0 => Ok(faulty_tx_cert_builder.transaction_no_witness()),
+            1 => Ok(faulty_tx_cert_builder.transaction_input_to_low()),
+            2 => Ok(faulty_tx_cert_builder.transaction_with_output_only()),
+            _ => unreachable!(),
         }
     }
 
@@ -307,15 +307,15 @@ impl FaultyTransactionBuilder {
         })
     }
 
-    pub fn no_witnesses(	
-        &self,	
-        from: &Wallet,	
-        to: &Wallet,	
-    ) -> Result<Fragment, FragmentBuilderError> {	
-        let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));	
-        let input = from.add_input_with_value(input_value.into());	
-        let output = OutputAddress::from_address(to.address().into(), Value(1u64));	
-        self.transaction_to(&[input], &[output], |_sign_data| vec![])	
+    pub fn no_witnesses(
+        &self,
+        from: &Wallet,
+        to: &Wallet,
+    ) -> Result<Fragment, FragmentBuilderError> {
+        let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
+        let input = from.add_input_with_value(input_value.into());
+        let output = OutputAddress::from_address(to.address().into(), Value(1u64));
+        self.transaction_to(&[input], &[output], |_sign_data| vec![])
     }
 
     pub fn no_input(&self, to: &Wallet) -> Result<Fragment, FragmentBuilderError> {
