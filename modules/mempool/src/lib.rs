@@ -27,13 +27,30 @@ pub enum Error {
     },
 }
 
-struct Entry {
+pub struct Entry {
     fragment: FragmentRaw,
     score: u64,
     previous: *mut Entry,
     next: *mut Entry,
 }
 
+/// Maintain a mempool of Fragment (to add on the blockchain)
+///
+/// If this is on a simple node that is not a block minter/miner then
+/// it does not make sense to use a large capacity size. However for
+/// a block miner is is advised to use a rather large mempool.
+///
+/// the mempool allows to quickly search entries:
+///
+/// * by hash
+/// * by fee
+/// * by size
+/// * by insertion order (first or last one)
+///
+/// Having this much flexibility of the entry selection allows to
+/// optimise the block creation to include the most rewarding first
+/// (fees) and then try to feel the gaps with the smallest entries
+///
 pub struct Mempool {
     by_hash: HashMap<FragmentId, Box<Entry>>,
     by_fee: BTreeMap<u64, HashMap<FragmentId, *mut Entry>>,
@@ -95,10 +112,52 @@ impl Mempool {
     }
 
     fn pop_oldest(&mut self) -> Option<FragmentId> {
-        if let Some(tail) = unsafe { self.tail.as_mut() } {
-            let id = tail.id();
-            let score = tail.score;
-            let size = tail.fragment.size_bytes_plus_size();
+        let id = unsafe { self.tail.as_mut() }?.id();
+
+        self.remove(&id)?;
+
+        Some(id)
+    }
+
+    /// get the entry that has been in the mempool for the longest time
+    pub fn peek_oldest(&self) -> Option<&Entry> {
+        unsafe { self.tail.as_ref() }
+    }
+
+    /// get (one of) the entry has has the smallest size
+    ///
+    /// this is useful for algorithm trying to fit in as many entries in the
+    /// most compact amount of space
+    pub fn peek_smallest(&self) -> Option<&Entry> {
+        let entry = self.by_size.values().next_back()?.values().next()?;
+
+        unsafe { entry.as_ref() }
+    }
+
+    /// get (one of) the largest entry
+    pub fn peek_largest(&self) -> Option<&Entry> {
+        let entry = self.by_size.values().next()?.values().next()?;
+
+        unsafe { entry.as_ref() }
+    }
+
+    /// get (one of) the entry that pay the most fees
+    pub fn peek_most_fee(&self) -> Option<&Entry> {
+        let entry = self.by_fee.values().next()?.values().next()?;
+
+        unsafe { entry.as_ref() }
+    }
+
+    /// remove an entry from the mempool
+    ///
+    /// this could be because it is selected to go on chain or a block
+    /// already referenced it.
+    ///
+    pub fn remove(&mut self, id: &FragmentId) -> Option<Box<Entry>> {
+        if let Some(mut entry) = self.by_hash.remove(id) {
+            let id = entry.id();
+            let score = entry.score;
+            let size = entry.fragment.size_bytes_plus_size();
 
             self.by_fee.entry(score).and_modify(|e| {
                 e.remove(&id);
@@ -106,30 +165,34 @@ impl Mempool {
             self.by_size.entry(size).and_modify(|e| {
                 e.remove(&id);
             });
-            let ptr = self
-                .by_hash
-                .remove(&id)
-                .expect("the entry is definitely in the hashmap");
 
-            self.tail = tail.previous;
-            tail.detach();
+            let ptr: *mut Entry = &mut *entry;
+            if ptr == self.tail {
+                self.tail = entry.previous;
+            }
+            if ptr == self.head {
+                self.head = entry.next;
+            }
+            entry.detach();
 
-            std::mem::drop(ptr);
-
-            Some(id)
+            Some(entry)
         } else {
             None
         }
     }
 
+    /// get the total number of entries in the mempool (never
+    /// larger than the capacity)
     pub fn len(&self) -> usize {
         self.by_hash.len()
     }
 
+    /// tell if the mempool is empty
     pub fn is_empty(&self) -> bool {
         self.by_hash.is_empty()
     }
 
+    /// retrieve the current capacity of the Mempool
     pub fn capacity(&self) -> usize {
         self.cap
     }
@@ -192,8 +255,16 @@ impl Entry {
         })
     }
 
-    fn id(&self) -> FragmentId {
+    pub fn id(&self) -> FragmentId {
         self.fragment.id()
+    }
+
+    pub fn size(&self) -> usize {
+        self.fragment.size_bytes_plus_size()
+    }
+
+    pub fn fee(&self) -> u64 {
+        self.score
     }
 
     fn detach(&mut self) {
