@@ -483,7 +483,7 @@ dependencies = [
  "rand_core 0.5.1",
  "thiserror",
  "tonic",
- "tonic-build",
+ "tonic-build 0.2.0",
 ]
 
 [[package]]
@@ -1719,7 +1719,7 @@ dependencies = [
  "tokio",
  "tokio-codec",
  "tonic",
- "tonic-build",
+ "tonic-build 0.3.1",
  "typed-bytes",
  "url",
  "zip",
@@ -3891,6 +3891,18 @@ name = "tonic-build"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d8d21cb568e802d77055ab7fcd43f0992206de5028de95c8d3a41118d32e8e"
+dependencies = [
+ "proc-macro2",
+ "prost-build",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "tonic-build"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19970cf58f3acc820962be74c4021b8bbc8e8a1c4e3a02095d0aa60cde5f3633"
 dependencies = [
  "proc-macro2",
  "prost-build",
