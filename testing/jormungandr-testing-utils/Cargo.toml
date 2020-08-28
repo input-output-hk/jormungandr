@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = "0.2"
+tonic = "0.3"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros"] }
 futures      = "0.3.5"
@@ -62,4 +62,4 @@ default = []
 property-test-api = [ ]
 
 [build-dependencies]
-tonic-build = "0.2"
+tonic-build = "0.3"
