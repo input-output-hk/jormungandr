@@ -164,7 +164,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
     // In case we do not have a cached block in the stats_counter we can retrieve it from the
     // storage, this should happen just once.
     if header_block.is_none() {
-        let block: Option<ChainBlock> = blockchain.storage().get(tip.hash()).await.unwrap_or(None);
+        let block: Option<ChainBlock> = blockchain.storage().get(tip.hash()).unwrap_or(None);
 
         // Update block if found
         if let Some(block) = block {
@@ -236,8 +236,7 @@ pub async fn get_block_id(context: &Context, block_id_hex: &str) -> Result<Optio
     context
         .blockchain()?
         .storage()
-        .get(parse_block_hash(&block_id_hex)?)
-        .await?
+        .get(parse_block_hash(&block_id_hex)?)?
         .map(|b| b.serialize_as_vec().map_err(Error::Serialize))
         .transpose()
 }
@@ -253,7 +252,6 @@ pub async fn get_block_next_id(
     let maybe_stream = blockchain
         .storage()
         .stream_from_to(block_id, tip.hash())
-        .await
         .map(Some)
         .or_else(|e| match e {
             StorageError::CannotIterate | StorageError::BlockNotFound => Ok(None),

@@ -7,42 +7,23 @@ use crate::{
     log, network,
     settings::start::Settings,
 };
-use chain_storage::{BlockStore, BlockStoreBuilder, BlockStoreConnection};
 use slog::Logger;
 
-pub type NodeStorage = BlockStore<Block>;
-pub type NodeStorageConnection = BlockStoreConnection<Block>;
-
-const BLOCKSTORE_BUSY_TIMEOUT: u64 = 1000;
-
 /// prepare the block storage from the given settings
-///
 pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, Error> {
-    let raw_block_store = match &setting.storage {
-        None => {
-            info!(logger, "storing blockchain in memory");
-            BlockStoreBuilder::memory()
-                .busy_timeout(BLOCKSTORE_BUSY_TIMEOUT)
-                .build()
-        }
-        Some(dir) => {
-            std::fs::create_dir_all(dir).map_err(|err| Error::IO {
-                source: err,
-                reason: ErrorKind::SQLite,
-            })?;
-            let mut sqlite = dir.clone();
-            sqlite.push("blocks.sqlite");
-            info!(logger, "storing blockchain in '{:?}'", sqlite);
-            BlockStoreBuilder::file(sqlite)
-                .busy_timeout(BLOCKSTORE_BUSY_TIMEOUT)
-                .build()
-        }
-    };
+    let logger = logger.new(o!(log::KEY_SUB_TASK => "storage"));
+    if let Some(dir) = &setting.storage {
+        std::fs::create_dir_all(dir).map_err(|err| Error::IO {
+            source: err,
+            reason: ErrorKind::SQLite,
+        })?;
 
-    Ok(Storage::new(
-        raw_block_store,
-        logger.new(o!(log::KEY_SUB_TASK => "storage")),
-    ))
+        info!(logger, "storing blockchain in '{:?}'", dir);
+
+        Storage::file(dir, logger).map_err(Into::into)
+    } else {
+        Storage::memory(logger).map_err(Into::into)
+    }
 }
 
 /// Try to fetch the block0_id from the HTTP base URL (services) in the array
@@ -151,7 +132,7 @@ pub async fn prepare_block_0(
         }
         Block0Info::Hash(block0_id) => {
             let storage_or_http_block0 = {
-                if let Some(block0) = storage.get(*block0_id).await.unwrap() {
+                if let Some(block0) = storage.get(*block0_id).unwrap() {
                     debug!(
                         logger,
                         "retrieved block0 from storage with hash {}", block0_id

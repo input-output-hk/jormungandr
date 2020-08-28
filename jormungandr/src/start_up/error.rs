@@ -1,10 +1,10 @@
 use crate::{
     blockcfg, blockchain,
+    blockchain::StorageError,
     diagnostic::DiagnosticError,
     explorer, network, secure,
     settings::{self, logging},
 };
-use chain_storage::Error as StorageError;
 use std::io;
 use thiserror::Error;
 

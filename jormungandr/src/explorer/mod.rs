@@ -206,12 +206,9 @@ impl ExplorerDB {
             blockchain_tip,
         };
 
-        let maybe_head = blockchain
-            .storage()
-            .get_tag(MAIN_BRANCH_TAG.to_owned())
-            .await?;
+        let maybe_head = blockchain.storage().get_tag(MAIN_BRANCH_TAG)?;
         let stream = match maybe_head {
-            Some(head) => blockchain.storage().stream_from_to(block0_id, head).await?,
+            Some(head) => blockchain.storage().stream_from_to(block0_id, head)?,
             None => {
                 return Err(Error::from(ErrorKind::BootstrapError(
                     "Couldn't read the HEAD tag from storage".to_owned(),
