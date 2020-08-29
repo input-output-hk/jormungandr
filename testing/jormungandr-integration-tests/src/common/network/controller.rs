@@ -6,7 +6,7 @@ use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 use jormungandr_testing_utils::{
     testing::{
-        network_builder::{LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams},
+        network_builder::{LeadershipMode, NodeSetting, Settings, SpawnParams},
         JormungandrParams,
     },
     wallet::Wallet,
@@ -81,19 +81,18 @@ impl Controller {
     }
 
     pub fn spawn_and_wait(&mut self, alias: &str) -> JormungandrProcess {
-        self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Leader)
+        self.spawn_node(alias, LeadershipMode::Leader)
             .unwrap_or_else(|_| panic!("cannot start {}", alias))
     }
 
     pub fn spawn_as_passive_and_wait(&mut self, alias: &str) -> JormungandrProcess {
-        self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Passive)
+        self.spawn_node(alias, LeadershipMode::Passive)
             .unwrap_or_else(|_| panic!("cannot start {}", alias))
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, ControllerError> {
         let mut spawn_params = SpawnParams::new(alias);
         spawn_params.leadership_mode(LeadershipMode::Leader);
-        spawn_params.persistence_mode(PersistenceMode::InMemory);
 
         let mut starter = self.make_starter_for(&spawn_params)?;
         let process = starter.start_async()?;
@@ -136,10 +135,8 @@ impl Controller {
             output: LogOutput::File(log_file_path.clone()),
         }]));
 
-        if let PersistenceMode::Persistent = spawn_params.get_persistence_mode() {
-            let path_to_storage = dir.child("storage").path().into();
-            config.storage = Some(path_to_storage);
-        }
+        let path_to_storage = dir.child("storage").path().into();
+        config.storage = path_to_storage;
         dir.create_dir_all()?;
 
         let config_file = dir.child("node_config.yaml");
@@ -173,13 +170,8 @@ impl Controller {
     pub fn spawn_node(
         &mut self,
         alias: &str,
-        persistence_mode: PersistenceMode,
         leadership_mode: LeadershipMode,
     ) -> Result<JormungandrProcess, ControllerError> {
-        self.spawn_custom(
-            SpawnParams::new(alias)
-                .leadership_mode(leadership_mode)
-                .persistence_mode(persistence_mode),
-        )
+        self.spawn_custom(SpawnParams::new(alias).leadership_mode(leadership_mode))
     }
 }

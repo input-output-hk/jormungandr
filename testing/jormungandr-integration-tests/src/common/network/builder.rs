@@ -56,7 +56,8 @@ impl NetworkBuilder {
         let nodes: HashMap<NodeAlias, NodeSetting> = topology
             .into_iter()
             .map(|(alias, template)| {
-                let config = NodeConfigBuilder::new().build();
+                let storage = temp_dir.path().join("storage");
+                let config = NodeConfigBuilder::new().with_storage(storage).build();
                 (
                     alias.clone(),
                     NodeSetting {

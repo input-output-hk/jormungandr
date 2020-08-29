@@ -15,8 +15,8 @@ use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption,
         network_builder::{
-            Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, Settings,
-            SpawnParams, Topology, Wallet as WalletSetting, WalletAlias,
+            Blockchain, LeadershipMode, NodeAlias, NodeSetting, Settings, SpawnParams, Topology,
+            Wallet as WalletSetting, WalletAlias,
         },
         ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
@@ -274,7 +274,6 @@ impl Controller {
             &mut legacy_node_settings,
             block0_setting,
             self.working_directory.path(),
-            params.get_persistence_mode(),
         )?;
         Ok(node.controller())
     }
@@ -315,7 +314,6 @@ impl Controller {
             &mut node_setting_overriden,
             block0_setting,
             self.working_directory.path(),
-            params.get_persistence_mode(),
         )?;
         Ok(node.controller())
     }
@@ -324,11 +322,9 @@ impl Controller {
         &mut self,
         node_alias: &str,
         leadership_mode: LeadershipMode,
-        persistence_mode: PersistenceMode,
     ) -> Result<NodeController> {
         let mut params = self.new_spawn_params(node_alias);
         params.leadership_mode(leadership_mode);
-        params.persistence_mode(persistence_mode);
         self.spawn_node_custom(&mut params)
     }
 
@@ -336,10 +332,9 @@ impl Controller {
         &mut self,
         node: NodeController,
         leadership_mode: LeadershipMode,
-        persistence_mode: PersistenceMode,
     ) -> Result<NodeController> {
         node.shutdown()?;
-        let new_node = self.spawn_node(node.alias(), leadership_mode, persistence_mode)?;
+        let new_node = self.spawn_node(node.alias(), leadership_mode)?;
         new_node.wait_for_bootstrap()?;
         Ok(new_node)
     }

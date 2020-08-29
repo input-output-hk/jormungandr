@@ -13,7 +13,10 @@ pub fn test_correct_id_is_returned_for_block_tip_if_only_genesis_block_exists() 
 
 #[test]
 pub fn test_correct_error_is_returned_for_incorrect_path() {
-    let config = NodeConfigBuilder::new().build();
+    let storage = assert_fs::TempDir::new().unwrap();
+    let config = NodeConfigBuilder::new()
+        .with_storage(storage.path().to_path_buf())
+        .build();
     let incorrect_uri = format!("http://{}/api/api", config.rest.listen);
 
     jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_uri)

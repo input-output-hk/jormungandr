@@ -1,7 +1,7 @@
 use super::UserInteractionController;
 use crate::{style, test::Result};
 use jormungandr_testing_utils::testing::{
-    network_builder::{LeadershipMode, PersistenceMode, SpawnParams},
+    network_builder::{LeadershipMode, SpawnParams},
     node::download_last_n_releases,
 };
 use jortestkit::console::InteractiveCommandError;
@@ -24,8 +24,6 @@ impl Spawn {
 
 #[derive(StructOpt, Debug)]
 pub struct SpawnPassiveNode {
-    #[structopt(short = "s", long = "storage")]
-    pub storage: bool,
     #[structopt(short = "l", long = "legacy")]
     pub legacy: Option<String>,
     #[structopt(short = "w", long = "wait")]
@@ -39,7 +37,6 @@ impl SpawnPassiveNode {
         spawn_node(
             &mut controller,
             LeadershipMode::Passive,
-            self.storage,
             &self.alias,
             self.legacy.clone(),
             self.wait,
@@ -62,23 +59,12 @@ pub struct SpawnLeaderNode {
 fn spawn_node(
     controller: &mut UserInteractionController,
     leadership_mode: LeadershipMode,
-    storage: bool,
     alias: &str,
     legacy: Option<String>,
     wait: bool,
 ) -> Result<()> {
-    let persistence_mode = {
-        if storage {
-            PersistenceMode::Persistent
-        } else {
-            PersistenceMode::InMemory
-        }
-    };
-
     let mut spawn_params = SpawnParams::new(alias);
-    spawn_params
-        .persistence_mode(persistence_mode)
-        .leadership_mode(leadership_mode);
+    spawn_params.leadership_mode(leadership_mode);
 
     if let Some(version) = legacy {
         let releases = download_last_n_releases(5);
@@ -141,7 +127,6 @@ impl SpawnLeaderNode {
         spawn_node(
             &mut controller,
             LeadershipMode::Leader,
-            self.storage,
             &self.alias,
             self.legacy.clone(),
             self.wait,

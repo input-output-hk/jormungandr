@@ -19,9 +19,7 @@ use jormungandr_lib::{
     },
 };
 pub use jormungandr_testing_utils::testing::{
-    network_builder::{
-        LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
-    },
+    network_builder::{LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, Settings},
     node::{grpc::JormungandrClient, JormungandrLogger},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
@@ -542,7 +540,6 @@ impl LegacyNode {
         node_settings: &mut LegacySettings,
         block0: NodeBlock0,
         working_dir: &Path,
-        peristence_mode: PersistenceMode,
     ) -> Result<Self> {
         let mut command = Command::new(jormungandr);
         let dir = working_dir.join(alias);
@@ -573,10 +570,8 @@ impl LegacyNode {
             },
         ]));
 
-        if peristence_mode == PersistenceMode::Persistent {
-            let path_to_storage = dir.join(NODE_STORAGE);
-            node_settings.config.storage = Some(path_to_storage);
-        }
+        let path_to_storage = dir.join(NODE_STORAGE);
+        node_settings.config.storage = path_to_storage;
 
         serde_yaml::to_writer(
             std::fs::File::create(&config_file).map_err(|e| Error::CannotCreateFile {

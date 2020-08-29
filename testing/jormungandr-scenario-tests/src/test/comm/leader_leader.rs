@@ -1,5 +1,5 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
+    node::LeadershipMode,
     test::{
         utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
@@ -34,11 +34,9 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader_2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader_2 = controller.spawn_node(LEADER_2, LeadershipMode::Leader)?;
     leader_2.wait_for_bootstrap()?;
-    let leader_1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader_1 = controller.spawn_node(LEADER_1, LeadershipMode::Leader)?;
     leader_1.wait_for_bootstrap()?;
     controller.monitor_nodes();
     let mut monitor = controller

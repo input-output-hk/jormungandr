@@ -1,5 +1,5 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
+    node::LeadershipMode,
     test::utils::{self, MeasurementReportInterval, SyncWaitParams},
     test::Result,
     Context, ScenarioResult,
@@ -36,11 +36,9 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -95,22 +93,13 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
 
-    let leader_2 = controller.spawn_node(
-        LEADER_2,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
+    let leader_2 = controller.spawn_node(LEADER_2, LeadershipMode::Leader)?;
     leader_2.wait_for_bootstrap()?;
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node(
-        PASSIVE,
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
-    )?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -133,8 +122,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
             Duration::from_secs(3),
         )?;
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
 
     controller
@@ -180,12 +168,10 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
 
     controller.monitor_nodes();
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;

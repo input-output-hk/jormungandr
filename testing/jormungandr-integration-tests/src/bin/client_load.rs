@@ -37,7 +37,7 @@ pub struct ClientLoadCommand {
     pub pace: u64,
 
     #[structopt(short = "d", long = "storage")]
-    pub initial_storage: Option<PathBuf>,
+    pub initial_storage: PathBuf,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "r", long = "duration")]

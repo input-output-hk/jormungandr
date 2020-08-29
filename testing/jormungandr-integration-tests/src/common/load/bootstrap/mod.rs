@@ -67,7 +67,7 @@ pub struct ClientLoadConfig {
     address: String,
     ip: String,
     pace: u64,
-    initial_storage: Option<PathBuf>,
+    initial_storage: PathBuf,
 }
 
 impl ClientLoadConfig {
@@ -78,7 +78,7 @@ impl ClientLoadConfig {
         address: String,
         ip: String,
         pace: u64,
-        initial_storage: Option<PathBuf>,
+        initial_storage: PathBuf,
     ) -> Self {
         Self {
             block0_hash,

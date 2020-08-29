@@ -2,7 +2,7 @@ use jormungandr_lib::interfaces::{
     Explorer, LayersConfig, Mempool, NodeConfig, Policy, TopicsOfInterest, TrustedPeer,
 };
 
-use super::{LeadershipMode, PersistenceMode};
+use super::LeadershipMode;
 use crate::testing::node::Version;
 use std::path::PathBuf;
 
@@ -17,7 +17,6 @@ pub struct SpawnParams {
     pub trusted_peers: Option<Vec<TrustedPeer>>,
     pub preferred_layer: Option<LayersConfig>,
     pub leadership_mode: LeadershipMode,
-    pub persistence_mode: PersistenceMode,
     pub max_connections: Option<u32>,
     pub max_inbound_connections: Option<u32>,
     pub alias: String,
@@ -37,7 +36,6 @@ impl SpawnParams {
             jormungandr: None,
             alias: alias.to_owned(),
             leadership_mode: LeadershipMode::Leader,
-            persistence_mode: PersistenceMode::Persistent,
             public_address: None,
             trusted_peers: None,
             listen_address: None,
@@ -65,10 +63,6 @@ impl SpawnParams {
 
     pub fn get_leadership_mode(&self) -> LeadershipMode {
         self.leadership_mode
-    }
-
-    pub fn get_persistence_mode(&self) -> PersistenceMode {
-        self.persistence_mode
     }
 
     pub fn get_version(&self) -> &Option<Version> {
@@ -150,18 +144,8 @@ impl SpawnParams {
         self
     }
 
-    pub fn in_memory(&mut self) -> &mut Self {
-        self.persistence_mode = PersistenceMode::InMemory;
-        self
-    }
-
     pub fn leadership_mode(&mut self, leadership_mode: LeadershipMode) -> &mut Self {
         self.leadership_mode = leadership_mode;
-        self
-    }
-
-    pub fn persistence_mode(&mut self, persistence_mode: PersistenceMode) -> &mut Self {
-        self.persistence_mode = persistence_mode;
         self
     }
 

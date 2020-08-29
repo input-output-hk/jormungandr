@@ -221,7 +221,12 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
+    pub fn build(&mut self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
+        if self.node_config_builder.storage.is_none() {
+            self.node_config_builder
+                .with_storage(temp_dir.child("storage").path().to_path_buf());
+        }
+
         let mut node_config = self.node_config_builder.build();
 
         //remove id from trusted peers

@@ -1,10 +1,7 @@
 use crate::test::non_functional::*;
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
-    scenario::repository::ScenarioResult,
-    test::utils::SyncWaitParams,
-    test::Result,
-    Context,
+    node::LeadershipMode, scenario::repository::ScenarioResult, test::utils::SyncWaitParams,
+    test::Result, Context,
 };
 use jormungandr_testing_utils::testing::{ensure_nodes_are_in_sync, FragmentVerifier};
 use rand_chacha::ChaChaRng;
@@ -49,40 +46,24 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let core =
-        controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let core = controller.spawn_node(CORE_NODE, LeadershipMode::Leader)?;
 
     controller.monitor_nodes();
     core.wait_for_bootstrap()?;
 
-    let relay1 = controller.spawn_node(
-        RELAY_NODE_1,
-        LeadershipMode::Passive,
-        PersistenceMode::InMemory,
-    )?;
-    let relay2 = controller.spawn_node(
-        RELAY_NODE_2,
-        LeadershipMode::Passive,
-        PersistenceMode::InMemory,
-    )?;
+    let relay1 = controller.spawn_node(RELAY_NODE_1, LeadershipMode::Passive)?;
+    let relay2 = controller.spawn_node(RELAY_NODE_2, LeadershipMode::Passive)?;
 
     relay2.wait_for_bootstrap()?;
     relay1.wait_for_bootstrap()?;
 
-    let leader1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader5 =
-        controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader6 =
-        controller.spawn_node(LEADER_6, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader7 =
-        controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader1 = controller.spawn_node(LEADER_1, LeadershipMode::Leader)?;
+    let leader2 = controller.spawn_node(LEADER_2, LeadershipMode::Leader)?;
+    let leader3 = controller.spawn_node(LEADER_3, LeadershipMode::Leader)?;
+    let leader4 = controller.spawn_node(LEADER_4, LeadershipMode::Leader)?;
+    let leader5 = controller.spawn_node(LEADER_5, LeadershipMode::Leader)?;
+    let leader6 = controller.spawn_node(LEADER_6, LeadershipMode::Leader)?;
+    let leader7 = controller.spawn_node(LEADER_7, LeadershipMode::Leader)?;
 
     leader7.wait_for_bootstrap()?;
     leader6.wait_for_bootstrap()?;

@@ -5,7 +5,7 @@ use chain_core::property::FromStr;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
-        network_builder::{LeadershipMode, PersistenceMode},
+        network_builder::LeadershipMode,
         node::{download_last_n_releases, get_jormungandr_bin},
         FragmentNode, SyncNode,
     },
@@ -43,15 +43,13 @@ pub fn legacy_current_node_fragment_propagation(
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
 
     let passive = controller.spawn_legacy_node(
         controller
             .new_spawn_params(PASSIVE)
             .leadership_mode(LeadershipMode::Passive)
-            .persistence_mode(PersistenceMode::InMemory)
             .jormungandr(legacy_app),
         &version,
     )?;
@@ -100,14 +98,12 @@ pub fn current_node_legacy_fragment_propagation(
         controller
             .new_spawn_params(LEADER)
             .leadership_mode(LeadershipMode::Leader)
-            .persistence_mode(PersistenceMode::InMemory)
             .jormungandr(legacy_app),
         &version,
     )?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
 
     send_all_fragment_types(&mut controller, &passive, Some(version));
@@ -147,12 +143,10 @@ pub fn current_node_fragment_propagation(
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader = controller.spawn_node(LEADER, LeadershipMode::Leader)?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
+    let passive = controller.spawn_node(PASSIVE, LeadershipMode::Passive)?;
     passive.wait_for_bootstrap()?;
 
     send_all_fragment_types(&mut controller, &passive, None);

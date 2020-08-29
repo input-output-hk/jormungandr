@@ -19,14 +19,12 @@ pub fn copy_initial_storage_if_used(
     storage_folder: &str,
     temp_dir: &TempDir,
 ) {
-    if let Some(storage) = &config.initial_storage {
-        let client_storage: PathBuf = temp_dir.child(storage_folder.to_string()).path().into();
-        if client_storage.exists() {
-            fs::remove_dir_all(&client_storage).expect("cannot remove existing client storage");
-        }
-        fs::create_dir(&client_storage).expect("cannot create client storage");
-        file::copy_folder(storage, &client_storage, true);
+    let client_storage: PathBuf = temp_dir.child(storage_folder.to_string()).path().into();
+    if client_storage.exists() {
+        fs::remove_dir_all(&client_storage).expect("cannot remove existing client storage");
     }
+    fs::create_dir(&client_storage).expect("cannot create client storage");
+    file::copy_folder(&config.initial_storage, &client_storage, true);
 }
 
 pub fn start_node(

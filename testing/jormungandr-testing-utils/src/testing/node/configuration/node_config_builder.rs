@@ -118,7 +118,7 @@ impl NodeConfigBuilder {
 
     pub fn build(&self) -> NodeConfig {
         NodeConfig {
-            storage: self.storage.clone(),
+            storage: self.storage.as_ref().unwrap().clone(),
             log: self.log.clone(),
             rest: self.rest.clone(),
             p2p: self.p2p.clone(),

@@ -1,5 +1,5 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
+    node::LeadershipMode,
     test::{
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
         Result,
@@ -80,23 +80,19 @@ fn test_legacy_release(
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader3 = controller.spawn_node(LEADER_3, LeadershipMode::Leader)?;
     leader3.wait_for_bootstrap()?;
     let leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app),
         &version,
     )?;
     leader1.wait_for_bootstrap()?;
-    let leader2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader2 = controller.spawn_node(LEADER_2, LeadershipMode::Leader)?;
 
     leader2.wait_for_bootstrap()?;
-    let leader4 =
-        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let leader4 = controller.spawn_node(LEADER_4, LeadershipMode::Leader)?;
     leader4.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -185,31 +181,18 @@ fn test_legacy_disruption_release(
     let mut leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
         &version,
     )?;
     leader1.wait_for_bootstrap()?;
 
-    let leader2 = controller.spawn_node(
-        LEADER_2,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
+    let leader2 = controller.spawn_node(LEADER_2, LeadershipMode::Leader)?;
     leader2.wait_for_bootstrap()?;
 
-    let leader3 = controller.spawn_node(
-        LEADER_3,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
+    let leader3 = controller.spawn_node(LEADER_3, LeadershipMode::Leader)?;
     leader3.wait_for_bootstrap()?;
 
-    let mut leader4 = controller.spawn_node(
-        LEADER_4,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
+    let mut leader4 = controller.spawn_node(LEADER_4, LeadershipMode::Leader)?;
     leader4.wait_for_bootstrap()?;
 
     let mut wallet1 = controller.wallet("unassigned1")?;
@@ -219,8 +202,7 @@ fn test_legacy_disruption_release(
         .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
-    leader4 =
-        controller.restart_node(leader4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    leader4 = controller.restart_node(leader4, LeadershipMode::Leader)?;
 
     let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]);
     controller
@@ -231,7 +213,6 @@ fn test_legacy_disruption_release(
     leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app),
         &version,
     )?;
@@ -306,7 +287,6 @@ pub fn newest_node_enters_legacy_network(
     let leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
         &version,
     )?;
@@ -315,7 +295,6 @@ pub fn newest_node_enters_legacy_network(
     let leader2 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_2)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
         &version,
     )?;
@@ -324,7 +303,6 @@ pub fn newest_node_enters_legacy_network(
     let leader3 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_3)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
         &version,
     )?;
@@ -339,11 +317,7 @@ pub fn newest_node_enters_legacy_network(
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
     // new node enters the network
-    let leader4 = controller.spawn_node(
-        LEADER_4,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
+    let leader4 = controller.spawn_node(LEADER_4, LeadershipMode::Leader)?;
     leader4.wait_for_bootstrap()?;
 
     // force newest node to keep up and talk to legacy nodes
@@ -370,7 +344,6 @@ pub fn newest_node_enters_legacy_network(
     let old_leader4 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_4)
-            .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
         &version,
     )?;

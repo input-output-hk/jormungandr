@@ -20,12 +20,6 @@ pub enum LeadershipMode {
     Passive,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum PersistenceMode {
-    Persistent,
-    InMemory,
-}
-
 #[derive(Debug, Clone)]
 pub enum NodeBlock0 {
     Hash(HeaderId),
