@@ -1,0 +1,14 @@
+query LastBlock{	
+    status { 
+        latestBlock {  
+            id,  
+            chainLength,  
+            date {  
+                epoch {  
+                    id  
+                },
+                slot  
+            } 
+        }  
+    }
+}

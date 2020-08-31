@@ -1,0 +1,387 @@
+type Address {
+  """The base32 representation of an address"""
+  id: String!
+  delegation: Pool!
+  transactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
+}
+
+type BftLeader {
+  id: PublicKey!
+}
+
+"""A Block"""
+type Block {
+  """The Block unique identifier"""
+  id: String!
+
+  """Date the Block was included in the blockchain"""
+  date: BlockDate!
+
+  """The transactions contained in the block"""
+  transactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
+  previousBlock: Block!
+  chainLength: ChainLength!
+  leader: Leader
+  totalInput: Value!
+  totalOutput: Value!
+  treasury: Treasury
+}
+
+type BlockConnection {
+  pageInfo: PageInfo!
+  edges: [BlockEdge!]!
+
+  """
+  A count of the total number of objects in this connection, ignoring pagination.
+  """
+  totalCount: BlockCount!
+}
+
+scalar BlockCount
+
+"""Block's date, composed of an Epoch and a Slot"""
+type BlockDate {
+  epoch: Epoch!
+  slot: Slot!
+}
+
+type BlockEdge {
+  node: Block!
+
+  """A cursor for use in pagination"""
+  cursor: IndexCursor!
+}
+
+union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolUpdate | PoolRetirement | VotePlan | VoteCast | VoteTally
+
+scalar ChainLength
+
+type Epoch {
+  id: EpochNumber!
+
+  """Not yet implemented"""
+  stakeDistribution: StakeDistribution!
+
+  """Get a paginated view of all the blocks in this epoch"""
+  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection
+  firstBlock: Block
+  lastBlock: Block
+  totalBlocks: BlockCount!
+}
+
+scalar EpochNumber
+
+scalar ExternalProposalId
+
+type FeeSettings {
+  constant: Value!
+  coefficient: Value!
+  certificate: Value!
+  certificatePoolRegistration: Value!
+  certificateStakeDelegation: Value!
+  certificateOwnerStakeDelegation: Value!
+  certificateVotePlan: Value!
+  certificateVoteCast: Value!
+}
+
+"""Non-opaque cursor that can be used for offset-based pagination"""
+scalar IndexCursor
+
+union Leader = Pool | BftLeader
+
+scalar NonZero
+
+type OwnerStakeDelegation {
+  pools: [Pool!]!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: IndexCursor
+  endCursor: IndexCursor
+}
+
+enum PayloadType {
+  PUBLIC
+}
+
+type Pool {
+  id: PoolId!
+  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
+  registration: PoolRegistration!
+  retirement: PoolRetirement
+}
+
+type PoolConnection {
+  pageInfo: PageInfo!
+  edges: [PoolEdge!]!
+
+  """
+  A count of the total number of objects in this connection, ignoring pagination.
+  """
+  totalCount: PoolCount!
+}
+
+scalar PoolCount
+
+type PoolEdge {
+  node: Pool!
+
+  """A cursor for use in pagination"""
+  cursor: IndexCursor!
+}
+
+scalar PoolId
+
+type PoolRegistration {
+  pool: Pool!
+
+  """
+  Beginning of validity for this pool, this is used
+  to keep track of the period of the expected key and the expiry
+  """
+  startValidity: TimeOffsetSeconds!
+
+  """Management threshold for owners, this need to be <= #owners and > 0"""
+  managementThreshold: Int!
+
+  """Owners of this pool"""
+  owners: [PublicKey!]!
+  operators: [PublicKey!]!
+  rewards: TaxType!
+
+  """Reward account"""
+  rewardAccount: Address
+}
+
+type PoolRetirement {
+  poolId: PoolId!
+  retirementTime: TimeOffsetSeconds!
+}
+
+type PoolStakeDistribution {
+  pool: Pool!
+  delegatedStake: Value!
+}
+
+type PoolUpdate {
+  poolId: PoolId!
+  startValidity: TimeOffsetSeconds!
+}
+
+type Proposal {
+  externalId: ExternalProposalId!
+
+  """
+  get the vote options range
+  
+  this is the available range of choices to make for the given
+  proposal. all casted votes for this proposals ought to be in
+  within the given range
+  """
+  options: VoteOptionRange!
+}
+
+scalar PublicKey
+
+type Query {
+  block(id: String!): Block!
+  blockByChainLength(length: ChainLength!): Block
+
+  """query all the blocks in a paginated view"""
+  allBlocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
+  transaction(id: String!): Transaction!
+  epoch(id: EpochNumber!): Epoch!
+  address(bech32: String!): Address!
+  stakePool(id: PoolId!): Pool!
+  allStakePools(first: Int, last: Int, before: IndexCursor, after: IndexCursor): PoolConnection!
+  status: Status!
+  votePlan(id: String!): VotePlanStatus!
+  allVotePlans(first: Int, last: Int, before: IndexCursor, after: IndexCursor): VotePlanConnection!
+}
+
+type Ratio {
+  numerator: Value!
+  denominator: NonZero!
+}
+
+scalar Slot
+
+type StakeDelegation {
+  account: Address!
+  pools: [Pool!]!
+}
+
+type StakeDistribution {
+  pools: [PoolStakeDistribution!]!
+}
+
+type Status {
+  currentEpoch: Epoch!
+  latestBlock: Block!
+  feeSettings: FeeSettings!
+}
+
+type TallyPublicStatus {
+  results: [Weight!]!
+  options: VoteOptionRange!
+}
+
+union TallyStatus = TallyPublicStatus
+
+type TaxType {
+  """what get subtracted as fixed value"""
+  fixed: Value!
+
+  """Ratio of tax after fixed amout subtracted"""
+  ratio: Ratio!
+
+  """Max limit of tax"""
+  maxLimit: NonZero
+}
+
+scalar TimeOffsetSeconds
+
+"""A transaction in the blockchain"""
+type Transaction {
+  """The hash that identifies the transaction"""
+  id: String!
+
+  """The block this transaction is in"""
+  block: Block!
+  inputs: [TransactionInput!]!
+  outputs: [TransactionOutput!]!
+  certificate: Certificate
+}
+
+type TransactionConnection {
+  pageInfo: PageInfo!
+  edges: [TransactionEdge!]!
+
+  """
+  A count of the total number of objects in this connection, ignoring pagination.
+  """
+  totalCount: TransactionCount!
+}
+
+scalar TransactionCount
+
+type TransactionEdge {
+  node: Transaction!
+
+  """A cursor for use in pagination"""
+  cursor: IndexCursor!
+}
+
+type TransactionInput {
+  amount: Value!
+  address: Address!
+}
+
+type TransactionOutput {
+  amount: Value!
+  address: Address!
+}
+
+type Treasury {
+  rewards: Value!
+  treasury: Value!
+  treasuryTax: TaxType!
+}
+
+scalar Value
+
+type VoteCast {
+  votePlan: VotePlanId!
+  proposalIndex: Int!
+}
+
+"""
+Vote option range
+
+provide a range of available choices for a given proposal. Usual value would
+be `[0, 3[` (or `0..3` in rust's range syntax), meaning there are 3 options
+available: `0`, `1` and `2`
+"""
+type VoteOptionRange {
+  """the start of the vote option range, starting from 0 usually"""
+  start: Int!
+
+  """the exclusive upper bound of the option range. minimal value is 1"""
+  end: Int!
+}
+
+type VotePayloadPublicStatus {
+  choice: Int!
+}
+
+union VotePayloadStatus = VotePayloadPublicStatus
+
+type VotePlan {
+  """the vote start validity"""
+  voteStart: BlockDate!
+
+  """
+  the duration within which it is possible to vote for one of the proposals
+  of this voting plan.
+  """
+  voteEnd: BlockDate!
+
+  """
+  the committee duration is the time allocated to the committee to open
+  the ballots and publish the results on chain
+  """
+  committeeEnd: BlockDate!
+  payloadType: PayloadType!
+
+  """the proposals to vote for"""
+  proposals: [Proposal!]!
+}
+
+type VotePlanConnection {
+  pageInfo: PageInfo!
+  edges: [VotePlanEdge!]!
+
+  """
+  A count of the total number of objects in this connection, ignoring pagination.
+  """
+  totalCount: VotePlanCount!
+}
+
+scalar VotePlanCount
+
+type VotePlanEdge {
+  node: VotePlanStatus!
+  cursor: IndexCursor!
+}
+
+scalar VotePlanId
+
+type VotePlanStatus {
+  id: VotePlanId!
+  voteStart: BlockDate!
+  voteEnd: BlockDate!
+  committeeEnd: BlockDate!
+  payloadType: PayloadType!
+  proposals: [VoteProposalStatus!]!
+}
+
+type VoteProposalStatus {
+  proposalId: ExternalProposalId!
+  options: VoteOptionRange!
+  tally: TallyStatus
+  votes: [VoteStatus!]!
+}
+
+type VoteStatus {
+  address: Address!
+  payload: VotePayloadStatus!
+}
+
+type VoteTally {
+  votePlan: VotePlanId!
+}
+
+scalar Weight
+
