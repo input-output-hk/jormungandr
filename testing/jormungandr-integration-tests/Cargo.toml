@@ -39,7 +39,7 @@ thiserror = "1.0"
 url = "2.1.1"
 yaml-rust = "0.4.4"
 indicatif = "0.15.0"
-fs_extra = "1.1.0"
+fs_extra = "1.2.0"
 
 [dependencies.reqwest]
 version = "0.10.7"
