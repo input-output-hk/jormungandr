@@ -2,8 +2,8 @@ use crate::common::{
     jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils::Wait, startup,
     transaction_utils::TransactionHash,
 };
-
-use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::ActiveSlotCoefficient};
+use std::str::FromStr;
 use std::time::Duration;
 
 #[test]
@@ -37,8 +37,10 @@ pub fn explorer_test() {
     let explorer_transaction = explorer
         .get_transaction(fragment_id)
         .expect("non existing transaction");
+
     assert_eq!(
-        fragment_id, explorer_transaction.id,
+        fragment_id,
+        Hash::from_str(&explorer_transaction.data.unwrap().transaction.id).unwrap(),
         "incorrect fragment id"
     );
 }
