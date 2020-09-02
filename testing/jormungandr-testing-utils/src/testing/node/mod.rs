@@ -1,12 +1,12 @@
 mod benchmark;
 pub mod configuration;
-mod explorer;
 pub mod grpc;
 mod legacy;
 mod logger;
 mod rest;
 mod verifier;
 
+pub mod explorer;
 pub use benchmark::*;
 pub use explorer::{Explorer, ExplorerError};
 pub use legacy::{

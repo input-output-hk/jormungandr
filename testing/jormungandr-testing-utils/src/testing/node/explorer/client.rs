@@ -1,6 +1,7 @@
-use super::GraphQLQuery;
+use super::{last_block, LastBlock};
+use graphql_client::QueryBody;
+use serde::Serialize;
 use thiserror::Error;
-
 pub struct GraphQLClient {
     base_url: String,
 }
@@ -17,11 +18,15 @@ impl GraphQLClient {
         GraphQLClient { base_url }
     }
 
-    pub fn run(
+    pub fn run<T: Serialize>(
         &self,
-        query: GraphQLQuery,
+        query: QueryBody<T>,
     ) -> Result<reqwest::blocking::Response, GraphQLClientError> {
-        println!("running query: {:?}, against: {}", query, self.base_url);
+        println!(
+            "running query: {:?}, against: {}",
+            query.query, self.base_url
+        );
+
         reqwest::blocking::Client::new()
             .post(&self.base_url)
             .json(&query)
