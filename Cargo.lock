@@ -929,7 +929,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d2f06b9cac1506ece98fe3231e3cc9c4410ec3d5b1f24ae1c8946f0742cdefc"
 dependencies = [
  "backtrace",
- "version_check 0.9.2",
+ "version_check",
 ]
 
 [[package]]
@@ -1190,7 +1190,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
 dependencies = [
  "typenum",
- "version_check 0.9.2",
+ "version_check",
 ]
 
 [[package]]
@@ -1367,8 +1367,8 @@ dependencies = [
  "bytes 0.5.6",
  "headers-core",
  "http",
- "mime 0.3.16",
- "sha-1",
+ "mime",
+ "sha-1 0.8.2",
  "time",
 ]
 
@@ -1474,7 +1474,7 @@ dependencies = [
  "log 0.4.11",
  "rustls 0.18.1",
  "tokio",
- "tokio-rustls 0.14.0",
+ "tokio-rustls",
  "webpki",
 ]
 
@@ -1616,7 +1616,7 @@ dependencies = [
  "hex",
  "jormungandr-lib",
  "maplit",
- "mime 0.3.16",
+ "mime",
  "openapiv3",
  "predicates",
  "rand 0.7.3",
@@ -2082,30 +2082,9 @@ dependencies = [
 
 [[package]]
 name = "mime"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba626b8a6de5da682e1caa06bdb42a335aee5a84db8e5046a3e8ab17ba0a3ae0"
-dependencies = [
- "log 0.3.9",
-]
-
-[[package]]
-name = "mime"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a60c7ce501c71e03a9c9c0d35b861413ae925bd979cc7a4e30d060069aaac8d"
-
-[[package]]
-name = "mime_guess"
-version = "1.8.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "216929a5ee4dd316b1702eedf5e74548c123d370f47841ceaac38ca154690ca3"
-dependencies = [
- "mime 0.2.6",
- "phf 0.7.24",
- "phf_codegen 0.7.24",
- "unicase 1.4.2",
-]
 
 [[package]]
 name = "mime_guess"
@@ -2113,8 +2092,8 @@ version = "2.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2684d4c2e97d99848d30b324b00c8fcc7e5c897b7cbb5819b09e7c90e8baf212"
 dependencies = [
- "mime 0.3.16",
- "unicase 2.6.0",
+ "mime",
+ "unicase",
 ]
 
 [[package]]
@@ -2229,15 +2208,15 @@ checksum = "1255076139a83bb467426e7f8d0134968a8118844faa755985e077cf31850333"
 
 [[package]]
 name = "multipart"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "136eed74cadb9edd2651ffba732b19a450316b680e4f48d6c79e905799e19d01"
+checksum = "8209c33c951f07387a8497841122fc6f712165e3f9bda3e6be4645b58188f676"
 dependencies = [
  "buf_redux",
  "httparse",
  "log 0.4.11",
- "mime 0.2.6",
- "mime_guess 1.8.8",
+ "mime",
+ "mime_guess",
  "quick-error",
  "rand 0.6.5",
  "safemem",
@@ -2453,30 +2432,11 @@ dependencies = [
 
 [[package]]
 name = "phf"
-version = "0.7.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3da44b85f8e8dfaec21adae67f95d93244b2ecf6ad2a692320598dcc8e6dd18"
-dependencies = [
- "phf_shared 0.7.24",
-]
-
-[[package]]
-name = "phf"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dfb61232e34fcb633f43d12c58f83c1df82962dcdfa565a4e866ffc17dafe12"
 dependencies = [
- "phf_shared 0.8.0",
-]
-
-[[package]]
-name = "phf_codegen"
-version = "0.7.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b03e85129e324ad4166b06b2c7491ae27fe3ec353af72e72cd1654c7225d517e"
-dependencies = [
- "phf_generator 0.7.24",
- "phf_shared 0.7.24",
+ "phf_shared",
 ]
 
 [[package]]
@@ -2485,18 +2445,8 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cbffee61585b0411840d3ece935cce9cb6321f01c45477d30066498cd5e1a815"
 dependencies = [
- "phf_generator 0.8.0",
- "phf_shared 0.8.0",
-]
-
-[[package]]
-name = "phf_generator"
-version = "0.7.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09364cc93c159b8b06b1f4dd8a4398984503483891b0c26b867cf431fb132662"
-dependencies = [
- "phf_shared 0.7.24",
- "rand 0.6.5",
+ "phf_generator",
+ "phf_shared",
 ]
 
 [[package]]
@@ -2505,18 +2455,8 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17367f0cc86f2d25802b2c26ee58a7b23faeccf78a396094c13dced0d0182526"
 dependencies = [
- "phf_shared 0.8.0",
+ "phf_shared",
  "rand 0.7.3",
-]
-
-[[package]]
-name = "phf_shared"
-version = "0.7.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234f71a15de2288bcb7e3b6515828d22af7ec8598ee6d24c3b526fa0a80b67a0"
-dependencies = [
- "siphasher 0.2.3",
- "unicase 1.4.2",
 ]
 
 [[package]]
@@ -2525,7 +2465,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c00cf8b9eafe68dde5e9eaa2cef8ee84a9336a47d566ec55ca16589633b65af7"
 dependencies = [
- "siphasher 0.3.3",
+ "siphasher",
 ]
 
 [[package]]
@@ -2639,7 +2579,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
- "version_check 0.9.2",
+ "version_check",
 ]
 
 [[package]]
@@ -2650,7 +2590,7 @@ checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
 dependencies = [
  "proc-macro2",
  "quote",
- "version_check 0.9.2",
+ "version_check",
 ]
 
 [[package]]
@@ -3063,8 +3003,8 @@ dependencies = [
  "js-sys",
  "lazy_static",
  "log 0.4.11",
- "mime 0.3.16",
- "mime_guess 2.0.3",
+ "mime",
+ "mime_guess",
  "percent-encoding 2.1.0",
  "pin-project-lite",
  "rustls 0.18.1",
@@ -3072,7 +3012,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "tokio",
- "tokio-rustls 0.14.0",
+ "tokio-rustls",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -3309,6 +3249,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha-1"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "170a36ea86c864a3f16dd2687712dd6646f7019f301e57537c7f4dc9f5916770"
+dependencies = [
+ "block-buffer 0.9.0",
+ "cfg-if",
+ "cpuid-bool",
+ "digest 0.9.0",
+ "opaque-debug 0.3.0",
+]
+
+[[package]]
 name = "sha1"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3354,12 +3307,6 @@ name = "signature"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29f060a7d147e33490ec10da418795238fd7545bba241504d6b31a409f2e6210"
-
-[[package]]
-name = "siphasher"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b8de496cf83d4ed58b6be86c3a275b8602f6ffe98d3024a869e124147a9a3ac"
 
 [[package]]
 name = "siphasher"
@@ -3894,18 +3841,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15cb62a0d2770787abc96e99c1cd98fcf17f94959f3af63ca85bdfb203f051b4"
-dependencies = [
- "futures-core",
- "rustls 0.17.0",
- "tokio",
- "webpki",
-]
-
-[[package]]
-name = "tokio-rustls"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "228139ddd4fea3fa345a29233009635235833e52807af7ea6448ead03890d6a9"
@@ -3945,11 +3880,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8b8fe88007ebc363512449868d7da4389c9400072a3f666f212c7280082882a"
+checksum = "6d9e878ad426ca286e4dcae09cbd4e1973a7f8987d97570e2469703dd7f5720c"
 dependencies = [
- "futures 0.3.5",
+ "futures-util",
  "log 0.4.11",
  "pin-project",
  "tokio",
@@ -4246,11 +4181,11 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "tungstenite"
-version = "0.10.1"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfea31758bf674f990918962e8e5f07071a3161bd7c4138ed23e416e1ac4264e"
+checksum = "f0308d80d86700c5878b9ef6321f020f29b1bb9d5ff3cab25e75e23f3a492a23"
 dependencies = [
- "base64 0.11.0",
+ "base64 0.12.3",
  "byteorder",
  "bytes 0.5.6",
  "http",
@@ -4258,7 +4193,7 @@ dependencies = [
  "input_buffer",
  "log 0.4.11",
  "rand 0.7.3",
- "sha-1",
+ "sha-1 0.9.1",
  "url",
  "utf-8",
 ]
@@ -4284,20 +4219,11 @@ checksum = "373c8a200f9e67a0c95e62a4f52fbf80c23b4381c05a17845531982fa99e6b33"
 
 [[package]]
 name = "unicase"
-version = "1.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f4765f83163b74f957c797ad9253caf97f103fb064d3999aea9568d09fc8a33"
-dependencies = [
- "version_check 0.1.5",
-]
-
-[[package]]
-name = "unicase"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "50f37be617794602aabbeee0be4f259dc1778fabe05e2d67ee8f79326d5cb4f6"
 dependencies = [
- "version_check 0.9.2",
+ "version_check",
 ]
 
 [[package]]
@@ -4408,8 +4334,8 @@ dependencies = [
  "chrono",
  "jsonway",
  "percent-encoding 2.1.0",
- "phf 0.8.0",
- "phf_codegen 0.8.0",
+ "phf",
+ "phf_codegen",
  "publicsuffix",
  "regex",
  "serde",
@@ -4429,12 +4355,6 @@ name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
-
-[[package]]
-name = "version_check"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "914b1a6776c4c929a602fafd8bc742e06365d4bcbe48c30f9cca5824f70dc9dd"
 
 [[package]]
 name = "version_check"
@@ -4490,9 +4410,9 @@ dependencies = [
 
 [[package]]
 name = "warp"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df341dee97c9ae29dfa5e0b0fbbbf620e0d6a36686389bedf83b3daeb8b0d0ac"
+checksum = "f41be6df54c97904af01aa23e613d4521eed7ab23537cede692d4058f6449407"
 dependencies = [
  "bytes 0.5.6",
  "futures 0.3.5",
@@ -4500,8 +4420,8 @@ dependencies = [
  "http",
  "hyper",
  "log 0.4.11",
- "mime 0.3.16",
- "mime_guess 2.0.3",
+ "mime",
+ "mime_guess",
  "multipart",
  "pin-project",
  "scoped-tls",
@@ -4509,7 +4429,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "tokio",
- "tokio-rustls 0.13.1",
+ "tokio-rustls",
  "tokio-tungstenite",
  "tower-service",
  "tracing",
