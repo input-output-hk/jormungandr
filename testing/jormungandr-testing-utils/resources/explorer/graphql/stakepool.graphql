@@ -1,0 +1,12 @@
+query StakePool($id: PoolId!, $first: Int!){ 
+    stakePool(id: $id) {
+        id,
+        blocks(first: $first) {
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+}
