@@ -4,13 +4,19 @@ use crate::common::{
     jormungandr::{ConfigurationBuilder, JormungandrProcess},
     startup,
 };
+
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
 };
-use jormungandr_testing_utils::testing::{
-    benchmark_consumption, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
+use jormungandr_testing_utils::{
+    testing::{
+        benchmark_consumption, benchmark_endurance, node::explorer::load::ExplorerRequestGen,
+        Endurance, EnduranceBenchmarkRun, FragmentSender, FragmentSenderSetup, Thresholds,
+    },
+    wallet::Wallet,
 };
+use jortestkit::load::{Configuration, Monitor};
 use std::{str::FromStr, time::Duration};
 
 #[test]
@@ -97,16 +103,56 @@ fn check_explorer_and_rest_are_in_sync(
 
     let explorer = jormungandr.explorer();
     let block = explorer
-        .get_last_block()
-        .map_err(NodeStuckError::InternalExplorerError)?;
+        .last_block()
+        .map_err(NodeStuckError::InternalExplorerError)?
+        .data
+        .unwrap()
+        .status
+        .latest_block;
 
-    if block_tip == block.id() {
+    if block_tip == Hash::from_str(&block.id).unwrap() {
         Ok(())
     } else {
         Err(NodeStuckError::ExplorerTipIsOutOfSync {
-            actual: block.id(),
+            actual: Hash::from_str(&block.id).unwrap(),
             expected: block_tip,
             logs: jormungandr.logger.get_log_content(),
         })
     }
+}
+
+#[test]
+pub fn explorer_load_test() {
+    let stake_pool_owners: Vec<Wallet> =
+        std::iter::from_fn(|| Some(startup::create_new_account_address()))
+            .take(100)
+            .collect();
+    let addresses: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+        .take(100)
+        .collect();
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &stake_pool_owners,
+        &addresses,
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(60)
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(4)
+            .with_epoch_stability_depth(10)
+            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+    )
+    .unwrap();
+
+    let mut request_gen = ExplorerRequestGen::new(jormungandr.explorer());
+    request_gen
+        .do_setup(addresses.iter().map(|x| x.address().to_string()).collect())
+        .unwrap();
+    let config = Configuration::duration(
+        100,
+        std::time::Duration::from_secs(60),
+        100,
+        Monitor::Progress(100),
+    );
+    let stats = jortestkit::load::start_sync(request_gen, config, "Explorer load test");
+    assert!((stats.calculate_passrate() as u32) > 95);
 }
