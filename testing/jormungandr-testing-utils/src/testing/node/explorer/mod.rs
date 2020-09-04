@@ -4,7 +4,7 @@ use self::{
         address, all_blocks, all_stake_pools, all_vote_plans, block_by_chain_length, epoch,
         last_block, stake_pool, status, transaction_by_id, Address, AllBlocks, AllStakePools,
         AllVotePlans, BlockByChainLength, Epoch, LastBlock, StakePool, Status, TransactionById,
-    },
+    }
 };
 use graphql_client::GraphQLQuery;
 use graphql_client::*;
@@ -12,6 +12,7 @@ use jormungandr_lib::crypto::hash::Hash;
 use std::str::FromStr;
 mod client;
 mod data;
+pub mod load;
 use data::PoolId;
 use jortestkit::file;
 use std::path::Path;
@@ -28,6 +29,7 @@ pub enum ExplorerError {
     ReqwestError(#[from] reqwest::Error),
 }
 
+#[derive(Clone)]
 pub struct Explorer {
     client: GraphQLClient,
     print_log: bool,
@@ -79,12 +81,9 @@ impl Explorer {
             last: limit,
         });
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
-        //   println!("{:?}",response.text()?);
         let response_body = response.json()?;
         self.print_log(&response_body);
-
         Ok(response_body)
-        //   panic!()
     }
 
     pub fn last_block(&self) -> Result<Response<last_block::ResponseData>, ExplorerError> {

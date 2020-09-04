@@ -1,6 +1,8 @@
 use graphql_client::QueryBody;
 use serde::Serialize;
 use thiserror::Error;
+
+#[derive(Clone)]
 pub struct GraphQLClient {
     base_url: String,
 }
