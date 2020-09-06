@@ -44,11 +44,19 @@ impl ExplorerRequestGen {
     }
 
     pub fn next_address(&mut self) -> Option<&String> {
+        if self.addresses.len() == 0 {
+            return None;
+        }
+
         let next_address = self.next_usize() % self.addresses.len();
         self.addresses.get(next_address)
     }
 
     pub fn next_pool_id(&mut self) -> Option<&String> {
+        if self.stake_pools.len() == 0 {
+            return None;
+        }
+
         let next_stake_pool_id = self.next_usize() % self.stake_pools.len();
         self.stake_pools.get(next_stake_pool_id)
     }
