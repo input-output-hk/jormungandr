@@ -1,10 +1,10 @@
-use jortestkit::load::RequestFailure;
-use jortestkit::load::Id;
-use jortestkit::load::RequestGenerator;
 use crate::testing::node::Explorer;
 use crate::testing::node::ExplorerError;
-use rand_core::OsRng;
+use jortestkit::load::Id;
+use jortestkit::load::RequestFailure;
+use jortestkit::load::RequestGenerator;
 use rand::RngCore;
+use rand_core::OsRng;
 
 #[derive(Clone)]
 pub struct ExplorerRequestGen {
@@ -95,25 +95,34 @@ impl RequestGenerator for ExplorerRequestGen {
             4 => {
                 let epoch_nr = self.next_usize_in_range(1, 30) as u32;
                 let limit = self.next_usize_in_range(1, 30) as i64;
-                self.explorer.epoch(epoch_nr,limit).map(|_| ()).map_err(|e| {
-                    RequestFailure::General(format!("Explorer - Epoch: {}", e.to_string()))
-                })?;
+                self.explorer
+                    .epoch(epoch_nr, limit)
+                    .map(|_| ())
+                    .map_err(|e| {
+                        RequestFailure::General(format!("Explorer - Epoch: {}", e.to_string()))
+                    })?;
             }
             5 => {
                 let explorer = self.explorer.clone();
                 let limit = self.next_usize_in_range(1, 1000) as i64;
                 if let Some(pool_id) = self.next_pool_id() {
-                     explorer.stake_pool(pool_id.to_string(),limit.into()).map(|_| ()).map_err(|e| {
-                        RequestFailure::General(format!("Explorer - StakePool: {}", e.to_string()))
-                    })?;
-                } else {
                     explorer
-                        .status()
+                        .stake_pool(pool_id.to_string(), limit.into())
                         .map(|_| ())
-                        .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))?;
+                        .map_err(|e| {
+                            RequestFailure::General(format!(
+                                "Explorer - StakePool: {}",
+                                e.to_string()
+                            ))
+                        })?;
+                } else {
+                    explorer.status().map(|_| ()).map_err(|e| {
+                        RequestFailure::General(format!("Status: {}", e.to_string()))
+                    })?;
                 }
             }
-            6 => self.explorer
+            6 => self
+                .explorer
                 .status()
                 .map(|_| ())
                 .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))?,
@@ -130,10 +139,9 @@ impl RequestGenerator for ExplorerRequestGen {
                         RequestFailure::General(format!("Explorer - Address: {}", e.to_string()))
                     })?;
                 } else {
-                    explorer
-                        .status()
-                        .map(|_| ())
-                        .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))?;
+                    explorer.status().map(|_| ()).map_err(|e| {
+                        RequestFailure::General(format!("Status: {}", e.to_string()))
+                    })?;
                 }
             }
             _ => unreachable!(),

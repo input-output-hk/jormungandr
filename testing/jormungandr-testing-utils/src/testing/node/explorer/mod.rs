@@ -4,7 +4,7 @@ use self::{
         address, all_blocks, all_stake_pools, all_vote_plans, block_by_chain_length, epoch,
         last_block, stake_pool, status, transaction_by_id, Address, AllBlocks, AllStakePools,
         AllVotePlans, BlockByChainLength, Epoch, LastBlock, StakePool, Status, TransactionById,
-    }
+    },
 };
 use graphql_client::GraphQLQuery;
 use graphql_client::*;
@@ -15,10 +15,10 @@ mod data;
 pub mod load;
 use data::PoolId;
 use jortestkit::file;
+use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
-use serde::Serialize;
 
 #[derive(Error, Debug)]
 pub enum ExplorerError {
@@ -57,10 +57,7 @@ impl Explorer {
             return;
         }
 
-        println!(
-            "running query: {:?}, against: {}",
-            query.query, self.uri()
-        );
+        println!("running query: {:?}, against: {}", query.query, self.uri());
     }
 
     pub fn address<S: Into<String>>(
