@@ -9,9 +9,9 @@ use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use reqwest::{
     blocking::Response,
-    header::{HeaderMap, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, HOST},
+    header::{HeaderMap, HeaderValue, CONTENT_TYPE},
 };
-use std::{collections::HashMap, fs::File, io::Write, net::SocketAddr};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Settings {

@@ -1,0 +1,10 @@
+query AllStakePools($first: Int!){ 
+    allStakePools(first: $first) {
+        edges{
+            node {
+                id
+            }
+        }
+        totalCount
+    }
+}

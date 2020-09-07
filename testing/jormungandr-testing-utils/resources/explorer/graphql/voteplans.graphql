@@ -1,0 +1,29 @@
+query AllVotePlans($first: Int!){ 
+    allVotePlans(first: $first) {
+        edges{
+            node {
+                    id,
+                    voteStart{
+                        epoch{
+                            id
+                        }
+                        slot
+                    }
+                    voteEnd{
+                        epoch{
+                            id
+                        }
+                        slot
+                    }
+                    committeeEnd {
+                        epoch{
+                            id
+                        }
+                        slot
+                    }
+                    payloadType,
+                }
+        }
+        totalCount
+    }
+}

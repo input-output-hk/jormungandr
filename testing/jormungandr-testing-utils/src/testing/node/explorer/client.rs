@@ -1,4 +1,3 @@
-use super::{last_block, LastBlock};
 use graphql_client::QueryBody;
 use serde::Serialize;
 use thiserror::Error;
@@ -16,6 +15,10 @@ impl GraphQLClient {
     pub fn new<S: Into<String>>(base_address: S) -> GraphQLClient {
         let base_url = format!("http://{}/explorer/graphql", base_address.into());
         GraphQLClient { base_url }
+    }
+
+    pub fn base_url(&self) -> String {
+        self.base_url.to_string()
     }
 
     pub fn run<T: Serialize>(
