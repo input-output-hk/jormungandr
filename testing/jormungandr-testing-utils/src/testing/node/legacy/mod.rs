@@ -34,9 +34,6 @@ pub fn download_last_n_releases(n: u32) -> Vec<Release> {
 
 pub fn get_jormungandr_bin(release: &Release, temp_dir: &impl PathChild) -> PathBuf {
     let github_api = GitHubApi::new();
-    println!("{:?}", os_info::get());
-    println!("{:?}", release);
-
     let asset = github_api
         .get_asset_for_current_os_by_version(release.version())
         .unwrap()
