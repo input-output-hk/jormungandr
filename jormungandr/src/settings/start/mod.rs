@@ -25,12 +25,14 @@ pub enum Error {
     ExpectedBlock0Info,
     #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]
     ListenAddressNotValid,
+    #[error("A storage path must be specified")]
+    NoStoragePath,
 }
 
 /// Overall Settings for node
 pub struct Settings {
     pub network: network::Configuration,
-    pub storage: Option<PathBuf>,
+    pub storage: PathBuf,
     pub block_0: Block0Info,
     pub secrets: Vec<PathBuf>,
     pub rest: Option<Rest>,
@@ -131,9 +133,9 @@ impl RawSettings {
             command_arguments.storage.as_ref(),
             config.as_ref().and_then(|cfg| cfg.storage.as_ref()),
         ) {
-            (Some(path), _) => Some(path.clone()),
-            (None, Some(path)) => Some(path.clone()),
-            (None, None) => None,
+            (Some(path), _) => path.clone(),
+            (None, Some(path)) => path.clone(),
+            (None, None) => return Err(Error::NoStoragePath),
         };
 
         let mut secrets = command_arguments.secret.clone();

@@ -41,8 +41,7 @@ p2p:
 
 Description of the fields:
 
-- `storage`: (optional) Path to the storage. If omitted, the
-  blockchain is stored in memory only.
+- `storage`: (required) Path to the storage.
 - `log`: (optional) Logging configuration:
   - `level`: log messages minimum severity. If not configured anywhere, defaults to "info". Possible values: "off", "critical", "error", "warn", "info", "debug", "trace".
   - `format`: Log output format, `plain` or `json`.
