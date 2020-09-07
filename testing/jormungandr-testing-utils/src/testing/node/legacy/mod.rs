@@ -38,6 +38,7 @@ pub fn get_jormungandr_bin(release: &Release, temp_dir: &impl PathChild) -> Path
         .get_asset_for_current_os_by_version(release.version())
         .unwrap()
         .unwrap();
+
     let url = Url::parse(&asset.download_url()).expect("cannot parse url");
     let file_name = url
         .path_segments()
