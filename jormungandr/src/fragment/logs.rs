@@ -1,4 +1,4 @@
-use crate::fragment::FragmentId;
+use crate::{fragment::FragmentId, intercom::NotifierMsg, utils::async_msg::MessageBox};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus},
@@ -8,12 +8,14 @@ use std::collections::HashMap;
 
 pub struct Logs {
     entries: LruCache<Hash, FragmentLog>,
+    notifier: MessageBox<NotifierMsg>,
 }
 
 impl Logs {
-    pub fn new(max_entries: usize) -> Self {
+    pub fn new(max_entries: usize, notifier: MessageBox<NotifierMsg>) -> Self {
         Logs {
             entries: LruCache::new(max_entries),
+            notifier,
         }
     }
 
@@ -49,6 +51,8 @@ impl Logs {
     }
 
     pub fn modify(&mut self, fragment_id: FragmentId, status: FragmentStatus) {
+        self.notify(&status, fragment_id.clone());
+
         let fragment_id: Hash = fragment_id.into();
         match self.entries.get_mut(&fragment_id) {
             Some(entry) => {
@@ -97,5 +101,21 @@ impl Logs {
 
     pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a FragmentLog> {
         self.entries.iter().map(|(_, v)| v)
+    }
+
+    fn notify(&mut self, status: &FragmentStatus, fragment_id: FragmentId) {
+        let msg = match &status {
+            FragmentStatus::InABlock { date: _, block: _ } => {
+                Some(NotifierMsg::FragmentInBlock(fragment_id.clone()))
+            }
+            FragmentStatus::Rejected { reason: _ } => {
+                Some(NotifierMsg::FragmentRejected(fragment_id.clone()))
+            }
+            FragmentStatus::Pending => None,
+        };
+
+        if let Some(msg) = msg {
+            let _ = self.notifier.try_send(msg);
+        }
     }
 }
