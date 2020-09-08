@@ -104,19 +104,36 @@ pub async fn get_fragments_logs(context: &Context) -> Result<Vec<FragmentLog>, E
     reply_future.await.map_err(Into::into)
 }
 
-pub async fn handle_subscription(
+pub async fn handle_block_subscription(
     ws: warp::ws::Ws,
     context: &Context,
 ) -> Result<impl warp::Reply, Error> {
     let full_context = context.try_full()?;
     let notifier: crate::notifier::NotifierContext = full_context.notifier.clone();
 
-    Ok(ws.on_upgrade(move |socket| add_connection(notifier, socket)))
+    Ok(ws.on_upgrade(move |socket| add_block_connection(notifier, socket)))
 }
 
-async fn add_connection(
+pub async fn handle_mempool_subscription(
+    ws: warp::ws::Ws,
+    context: &Context,
+) -> Result<impl warp::Reply, Error> {
+    let full_context = context.try_full()?;
+    let notifier: crate::notifier::NotifierContext = full_context.notifier.clone();
+
+    Ok(ws.on_upgrade(move |socket| add_mempool_connection(notifier, socket)))
+}
+
+async fn add_block_connection(
     mut notifier: crate::notifier::NotifierContext,
     socket: warp::ws::WebSocket,
 ) {
-    notifier.new_connection(socket).await;
+    notifier.new_block_connection(socket).await;
+}
+
+async fn add_mempool_connection(
+    mut notifier: crate::notifier::NotifierContext,
+    socket: warp::ws::WebSocket,
+) {
+    notifier.new_mempool_connection(socket).await;
 }

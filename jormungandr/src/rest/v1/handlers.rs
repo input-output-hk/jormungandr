@@ -43,12 +43,22 @@ pub async fn get_fragments_logs(context: ContextLock) -> Result<impl Reply, Reje
         .map(|r| warp::reply::json(&r))
 }
 
-pub async fn handle_subscription(
+pub async fn handle_block_subscription(
     ws: warp::ws::Ws,
     context: ContextLock,
 ) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
-    logic::handle_subscription(ws, &context)
+    logic::handle_block_subscription(ws, &context)
+        .await
+        .map_err(warp::reject::custom)
+}
+
+pub async fn handle_mempool_subscription(
+    ws: warp::ws::Ws,
+    context: ContextLock,
+) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::handle_mempool_subscription(ws, &context)
         .await
         .map_err(warp::reject::custom)
 }

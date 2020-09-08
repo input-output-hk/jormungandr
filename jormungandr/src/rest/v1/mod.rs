@@ -37,13 +37,25 @@ pub fn filter(
         root.and(post.or(status).or(logs)).boxed()
     };
 
-    let notifier = warp::path!("notifier")
-        .and(warp::ws())
-        .and(with_context)
-        .and_then(handlers::handle_subscription)
-        .boxed();
+    let notifier = {
+        let root = warp::path!("notifier" / ..);
 
-    let routes = fragments.or(notifier);
+        let block_sub = warp::path!("blocks")
+            .and(warp::ws())
+            .and(with_context.clone())
+            .and_then(handlers::handle_block_subscription)
+            .boxed();
+
+        let mempool_sub = warp::path!("mempool")
+            .and(warp::ws())
+            .and(with_context.clone())
+            .and_then(handlers::handle_mempool_subscription)
+            .boxed();
+
+        root.and(block_sub.or(mempool_sub))
+    };
+
+    let routes = notifier.or(fragments);
 
     root.and(routes).recover(handle_rejection).boxed()
 }
