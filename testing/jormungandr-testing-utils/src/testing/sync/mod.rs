@@ -13,8 +13,8 @@ pub use report::{MeasurementReportInterval, MeasurementReporter};
 pub use wait::SyncWaitParams;
 
 pub fn ensure_node_is_in_sync_with_others(
-    target_node: &dyn SyncNode,
-    other_nodes: Vec<&dyn SyncNode>,
+    target_node: &(dyn SyncNode + Sync + Send),
+    other_nodes: Vec<&(dyn SyncNode + Sync + Send)>,
     sync_wait: Thresholds<Speed>,
     info: &str,
 ) -> Result<(), SyncNodeError> {

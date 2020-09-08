@@ -1,3 +1,3 @@
 mod node;
 
-pub use node::RemoteJormungandr;
+pub use node::{RemoteJormungandr, RemoteJormungandrBuilder};
