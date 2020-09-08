@@ -169,7 +169,7 @@ impl Prepare for NodeConfig {
         NodeConfig {
             rest: Rest::prepare(context),
             p2p: P2p::prepare(context),
-            storage: context.child_directory("storage").path().to_path_buf(),
+            storage: Some(context.child_directory("storage").path().to_path_buf()),
             log: None,
             mempool: Some(Mempool::prepare(context)),
             explorer: Explorer::prepare(context),

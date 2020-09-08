@@ -559,7 +559,7 @@ impl Node {
         ]));
 
         let path_to_storage = dir.join(NODE_STORAGE);
-        node_settings.config.storage = path_to_storage;
+        node_settings.config.storage = Some(path_to_storage);
 
         serde_yaml::to_writer(
             std::fs::File::create(&config_file).map_err(|e| Error::CannotCreateFile {

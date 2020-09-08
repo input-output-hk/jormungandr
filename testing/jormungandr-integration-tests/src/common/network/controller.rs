@@ -135,7 +135,7 @@ impl Controller {
             output: LogOutput::File(log_file_path.clone()),
         }]));
 
-        let path_to_storage = dir.child("storage").path().into();
+        let path_to_storage = Some(dir.child("storage").path().into());
         config.storage = path_to_storage;
         dir.create_dir_all()?;
 

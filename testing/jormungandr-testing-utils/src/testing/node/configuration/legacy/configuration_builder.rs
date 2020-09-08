@@ -84,7 +84,7 @@ impl LegacyNodeConfigConverter {
             .collect();
 
         NodeConfig {
-            storage: source.storage.clone(),
+            storage: source.storage.clone().unwrap(),
             log: source.log.clone(),
             rest: Rest {
                 listen: source.rest.listen,
@@ -139,7 +139,7 @@ impl LegacyNodeConfigConverter {
             .collect();
 
         NodeConfig {
-            storage: source.storage.clone(),
+            storage: source.storage.clone().unwrap(),
             log: source.log.clone(),
             rest: Rest {
                 listen: source.rest.listen,

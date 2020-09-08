@@ -175,7 +175,8 @@ pub struct TrustedPeer {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NodeConfig {
-    pub storage: PathBuf,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage: Option<PathBuf>,
     pub rest: Rest,
     pub p2p: P2p,
     pub log: Option<Log>,
