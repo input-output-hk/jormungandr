@@ -213,6 +213,18 @@ impl Wallet {
             .map_err(WalletError::FragmentError)
     }
 
+    pub fn transaction_to_many(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        address: &[Address],
+        value: Value,
+    ) -> Result<Fragment, WalletError> {
+        FragmentBuilder::new(block0_hash, fees)
+            .transaction_to_many(&self, address, value)
+            .map_err(WalletError::FragmentError)
+    }
+
     pub fn issue_pool_retire_cert(
         &mut self,
         block0_hash: &Hash,

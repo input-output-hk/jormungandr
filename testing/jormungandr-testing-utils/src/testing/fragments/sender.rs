@@ -10,6 +10,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentStatus, Value},
@@ -86,7 +87,21 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_full_delegation<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_transaction_to_many<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        from: &mut Wallet,
+        to: &[Wallet],
+        via: &A,
+        value: Value,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let addresses: Vec<Address> = to.iter().map(|x| x.address()).collect();
+        let fragment =
+            from.transaction_to_many(&self.block0_hash, &self.fees, &addresses, value)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_full_delegation<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         to: &StakePool,
