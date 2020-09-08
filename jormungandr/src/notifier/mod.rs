@@ -1,7 +1,7 @@
 use crate::intercom::NotifierMsg as Message;
 use crate::utils::async_msg::{MessageBox, MessageQueue};
 use crate::utils::task::TokioServiceInfo;
-use chain_impl_mockchain::header::HeaderId;
+use chain_impl_mockchain::{fragment::FragmentId, header::HeaderId};
 use futures::{select, SinkExt, StreamExt};
 use jormungandr_lib::interfaces::notifier::JsonMessage;
 use slog::Logger;
@@ -17,20 +17,44 @@ const MAX_CONNECTIONS_DEFAULT: usize = 255;
 const MAX_CONNECTIONS_ERROR_CLOSE_CODE: u16 = 4000;
 const MAX_CONNECTIONS_ERROR_REASON: &str = "MAX CONNECTIONS reached";
 
+// FIXME: arbitrary value, needs more thinking
+const MEMPOOL_MESSAGE_QUEUE_LEN: usize = 128;
+
 pub struct Notifier {
     connection_counter: Arc<AtomicUsize>,
     max_connections: usize,
     tip_sender: Arc<watch::Sender<HeaderId>>,
     tip_receiver: watch::Receiver<HeaderId>,
     block_sender: Arc<broadcast::Sender<HeaderId>>,
+    mempool_sender: Arc<broadcast::Sender<MemPoolMessage>>,
+}
+
+#[derive(Clone)]
+pub enum MemPoolMessage {
+    FragmentAccepted(FragmentId),
+    FragmentRejected(FragmentId),
+}
+
+pub enum NewConnection {
+    BlockConnection {
+        tip_receiver: watch::Receiver<HeaderId>,
+        block_sender: Arc<broadcast::Sender<HeaderId>>,
+    },
+    MemPoolConnection {
+        mempool_sender: Arc<broadcast::Sender<MemPoolMessage>>,
+    },
 }
 
 #[derive(Clone)]
 pub struct NotifierContext(pub MessageBox<Message>);
 
 impl NotifierContext {
-    pub async fn new_connection(&mut self, ws: warp::ws::WebSocket) {
-        &mut self.0.send(Message::NewConnection(ws)).await;
+    pub async fn new_block_connection(&mut self, ws: warp::ws::WebSocket) {
+        &mut self.0.send(Message::NewBlockConnection(ws)).await;
+    }
+
+    pub async fn new_mempool_connection(&mut self, ws: warp::ws::WebSocket) {
+        &mut self.0.send(Message::NewMempoolConnection(ws)).await;
     }
 }
 
@@ -38,6 +62,7 @@ impl Notifier {
     pub fn new(max_connections: Option<usize>, current_tip: HeaderId) -> Notifier {
         let (tip_sender, tip_receiver) = watch::channel(current_tip);
         let (block_sender, _block_receiver) = broadcast::channel(16);
+        let (mempool_sender, _mempool_receiver) = broadcast::channel(MEMPOOL_MESSAGE_QUEUE_LEN);
 
         Notifier {
             connection_counter: Arc::new(AtomicUsize::new(0)),
@@ -45,6 +70,7 @@ impl Notifier {
             tip_sender: Arc::new(tip_sender),
             tip_receiver,
             block_sender: Arc::new(block_sender),
+            mempool_sender: Arc::new(mempool_sender),
         }
     }
 
@@ -55,6 +81,7 @@ impl Notifier {
             .for_each(move |input| {
                 let tip_sender = Arc::clone(&self.tip_sender);
                 let block_sender = Arc::clone(&self.block_sender);
+                let mempool_sender = Arc::clone(&self.mempool_sender);
                 let logger = info.logger().clone();
 
                 match input {
@@ -72,8 +99,25 @@ impl Notifier {
                             }
                         });
                     }
-                    Message::NewConnection(ws) => {
-                        trace!(logger, "processing notifier new connection");
+                    Message::FragmentRejected(fragment_id) => {
+                        info.spawn("notifier broadcast fragment rejection", async move {
+                            if let Err(_err) =
+                                mempool_sender.send(MemPoolMessage::FragmentRejected(fragment_id))
+                            {
+                                ()
+                            }
+                        });
+                    }
+                    Message::FragmentInBlock(fragment_id) => {
+                        info.spawn("notifier broadcast fragment accepted", async move {
+                            if let Err(_err) =
+                                mempool_sender.send(MemPoolMessage::FragmentAccepted(fragment_id))
+                            {
+                                ()
+                            }
+                        });
+                    }
+                    Message::NewBlockConnection(ws) => {
                         let info2 = Arc::clone(&info);
 
                         let connection_counter = Arc::clone(&self.connection_counter);
@@ -81,13 +125,34 @@ impl Notifier {
                         let tip_receiver = self.tip_receiver.clone();
 
                         info.spawn("notifier process new messages", async move {
-                            Self::new_connection(
-                                info2,
+                            Self::check_max_and_spawn(
                                 max_connections,
                                 connection_counter,
-                                tip_receiver,
-                                block_sender,
                                 ws,
+                                |ws| {
+                                    Self::spawn_block_connection(
+                                        info2,
+                                        ws,
+                                        tip_receiver,
+                                        block_sender,
+                                    )
+                                },
+                            )
+                            .await;
+                        });
+                    }
+                    Message::NewMempoolConnection(ws) => {
+                        let info2 = Arc::clone(&info);
+
+                        let connection_counter = Arc::clone(&self.connection_counter);
+                        let max_connections = self.max_connections;
+
+                        info.spawn("notifier new mempool subscription", async move {
+                            Self::check_max_and_spawn(
+                                max_connections,
+                                connection_counter,
+                                ws,
+                                |ws| Self::spawn_mempool_connection(info2, ws, mempool_sender),
                             )
                             .await;
                         });
@@ -99,23 +164,39 @@ impl Notifier {
             .await;
     }
 
-    pub async fn new_connection(
-        info: Arc<TokioServiceInfo>,
+    pub async fn check_max_and_spawn<F: futures::Future<Output = ()>>(
         max_connections: usize,
         connection_counter: Arc<AtomicUsize>,
-        tip_receiver: watch::Receiver<HeaderId>,
-        block_sender: Arc<broadcast::Sender<HeaderId>>,
         mut ws: warp::ws::WebSocket,
+        spawn_handler: impl FnOnce(warp::ws::WebSocket) -> F,
     ) {
         let counter = connection_counter.load(Ordering::Acquire);
 
         if counter < max_connections {
             connection_counter.store(counter + 1, Ordering::Release);
 
-            let mut tip_receiver = tip_receiver.fuse();
-            let mut block_receiver = block_sender.subscribe().fuse();
+            spawn_handler(ws).await
+        } else {
+            let close_msg = warp::ws::Message::close_with(
+                MAX_CONNECTIONS_ERROR_CLOSE_CODE,
+                MAX_CONNECTIONS_ERROR_REASON,
+            );
+            if ws.send(close_msg).await.is_ok() {
+                let _ = ws.close().await;
+            }
+        }
+    }
 
-            info.spawn("notifier connection", (move || async move {
+    async fn spawn_block_connection(
+        info: Arc<TokioServiceInfo>,
+        mut ws: warp::ws::WebSocket,
+        tip_receiver: watch::Receiver<HeaderId>,
+        block_sender: Arc<broadcast::Sender<HeaderId>>,
+    ) {
+        let mut tip_receiver = tip_receiver.fuse();
+        let mut block_receiver = block_sender.subscribe().fuse();
+
+        info.spawn("notifier connection", (move || async move {
                 loop {
                     select! {
                         msg = tip_receiver.next() => {
@@ -132,9 +213,7 @@ impl Notifier {
                             // drop messages, I think ignoring that case and continuing with the rest is
                             // fine
                             if let Some(Ok(msg)) = msg {
-                                let warp_msg = warp::ws::Message::text(JsonMessage::NewBlock(msg.into()));
-
-                                if let Err(_disconnected) = ws.send(warp_msg).await {
+                                if let Err(_disconnected) = ws.send(warp::ws::Message::text(JsonMessage::NewBlock(msg.into()))).await {
                                     break;
                                 }
                             }
@@ -145,13 +224,42 @@ impl Notifier {
 
                 futures::future::ready(())
             })().await);
-        } else {
-            let close_msg = warp::ws::Message::close_with(
-                MAX_CONNECTIONS_ERROR_CLOSE_CODE,
-                MAX_CONNECTIONS_ERROR_REASON,
-            );
-            if ws.send(close_msg).await.is_ok() {
-                let _ = ws.close().await;
+    }
+
+    async fn spawn_mempool_connection(
+        info: Arc<TokioServiceInfo>,
+        mut ws: warp::ws::WebSocket,
+        mempool_sender: Arc<broadcast::Sender<MemPoolMessage>>,
+    ) {
+        let mut mempool_receiver = mempool_sender.subscribe();
+
+        info.spawn(
+            "notifier mempool connection",
+            async {
+                loop {
+                    if let Ok(msg) = mempool_receiver.recv().await {
+                        let msg: JsonMessage = msg.into();
+                        if let Err(_disconnected) = ws.send(warp::ws::Message::text(msg)).await {
+                            break;
+                        }
+                    }
+                }
+
+                futures::future::ready(())
+            }
+            .await,
+        );
+    }
+}
+
+impl Into<JsonMessage> for MemPoolMessage {
+    fn into(self) -> JsonMessage {
+        match self {
+            MemPoolMessage::FragmentAccepted(fragment_id) => {
+                JsonMessage::FragmentAccepted(fragment_id.into())
+            }
+            MemPoolMessage::FragmentRejected(fragment_id) => {
+                JsonMessage::FragmentRejected(fragment_id.into())
             }
         }
     }

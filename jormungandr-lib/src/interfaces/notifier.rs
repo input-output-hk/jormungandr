@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 pub enum JsonMessage {
     NewBlock(Hash),
     NewTip(Hash),
+    FragmentAccepted(Hash),
+    FragmentRejected(Hash),
 }
 
 impl Into<String> for JsonMessage {

@@ -108,12 +108,36 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let stats_counter = StatsCounter::default();
 
+    let event_notifier = {
+        let (msgbox, queue) = async_msg::channel(NOTIFIER_TASK_QUEUE_LEN);
+
+        let max_connections = bootstrapped_node
+            .settings
+            .rest
+            .and_then(|settings| settings.notifier)
+            .and_then(|settings| settings.max_connections);
+
+        let blockchain_tip = blockchain_tip.clone();
+        let current_tip = block_on(async { blockchain_tip.get_ref().await.header().id() });
+
+        let notifier = notifier::Notifier::new(max_connections, current_tip);
+
+        let context = notifier::NotifierContext(msgbox.clone());
+
+        services.spawn_future("notifier", move |info| async move {
+            notifier.start(info, queue).await
+        });
+
+        (msgbox, context)
+    };
+
     {
         let stats_counter = stats_counter.clone();
         let process = fragment::Process::new(
             bootstrapped_node.settings.mempool.pool_max_entries.into(),
             bootstrapped_node.settings.mempool.log_max_entries.into(),
             network_msgbox.clone(),
+            event_notifier.0.clone(),
         );
 
         services.spawn_try_future("fragment", move |info| {
@@ -142,29 +166,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         } else {
             None
         }
-    };
-
-    let event_notifier = {
-        let (msgbox, queue) = async_msg::channel(NOTIFIER_TASK_QUEUE_LEN);
-
-        let max_connections = bootstrapped_node
-            .settings
-            .rest
-            .and_then(|settings| settings.notifier)
-            .and_then(|settings| settings.max_connections);
-
-        let blockchain_tip = blockchain_tip.clone();
-        let current_tip = block_on(async { blockchain_tip.get_ref().await.header().id() });
-
-        let notifier = notifier::Notifier::new(max_connections, current_tip);
-
-        let context = notifier::NotifierContext(msgbox.clone());
-
-        services.spawn_future("notifier", move |info| async move {
-            notifier.start(info, queue).await
-        });
-
-        (msgbox, context)
     };
 
     {
