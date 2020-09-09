@@ -26,6 +26,7 @@ impl<'a> fmt::Debug for VerifyStrategy<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct FragmentSenderSetup<'a> {
     pub resend_on_error: Option<u8>,
     pub sync_nodes: Vec<&'a (dyn SyncNode + Sync + Send)>,

@@ -74,6 +74,22 @@ impl<'a> FragmentSender<'a> {
         }
     }
 
+    pub fn block0_hash(&self) -> Hash {
+        self.block0_hash.clone()
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.fees.clone()
+    }
+
+    pub fn clone_with_setup(&self, setup: FragmentSenderSetup<'a>) -> Self {
+        Self {
+            fees: self.fees(),
+            block0_hash: self.block0_hash(),
+            setup,
+        }
+    }
+
     pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
