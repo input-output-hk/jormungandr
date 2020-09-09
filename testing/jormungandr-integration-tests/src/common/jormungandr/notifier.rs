@@ -17,7 +17,7 @@ pub enum NotifierError {
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> Url {
-    Url::parse(&format!("ws://{}/api/v1/notifier", addr)).unwrap()
+    Url::parse(&format!("ws://{}/api/v1/notifier/", addr)).unwrap()
 }
 
 /// Specialized rest api
@@ -42,11 +42,26 @@ impl JormungandrNotifier {
         }
     }
 
-    pub fn new_client<F>(&mut self, mut for_each: F) -> Result<(), ()>
+    pub fn new_block_client<F>(&mut self, for_each: F) -> Result<(), ()>
     where
         F: FnMut(NotifierMessage) -> bool + Send + 'static,
     {
-        let url = self.url.clone();
+        let url = self.url.clone().join("blocks").unwrap();
+        self.new_client(for_each, url)
+    }
+
+    pub fn new_mempool_client<F>(&mut self, for_each: F) -> Result<(), ()>
+    where
+        F: FnMut(NotifierMessage) -> bool + Send + 'static,
+    {
+        let url = self.url.clone().join("mempool").unwrap();
+        self.new_client(for_each, url)
+    }
+
+    fn new_client<F>(&mut self, mut for_each: F, url: Url) -> Result<(), ()>
+    where
+        F: FnMut(NotifierMessage) -> bool + Send + 'static,
+    {
         let (mut socket, _response) = connect(url).expect("Can't connect to notifier websocket");
 
         // TODO: handle error?
