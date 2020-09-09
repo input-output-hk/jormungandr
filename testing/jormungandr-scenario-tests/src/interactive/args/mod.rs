@@ -62,7 +62,7 @@ impl<'a> UserInteractionController<'a> {
         &mut self.controller
     }
 
-    pub fn send_transaction<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &mut self,
         from_str: &str,
         to_str: &str,
