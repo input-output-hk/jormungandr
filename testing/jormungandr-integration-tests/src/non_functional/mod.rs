@@ -20,6 +20,8 @@ Long running test for dumping rewards each epoch
 */
 pub mod rewards;
 
+pub mod fragment;
+
 use crate::common::{
     jcli_wrapper,
     jormungandr::{JormungandrError, JormungandrProcess},
