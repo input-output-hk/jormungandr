@@ -35,16 +35,6 @@ enum MemPoolMessage {
     FragmentRejected(FragmentId),
 }
 
-enum NewConnection {
-    BlockConnection {
-        tip_receiver: watch::Receiver<HeaderId>,
-        block_sender: Arc<broadcast::Sender<HeaderId>>,
-    },
-    MemPoolConnection {
-        mempool_sender: Arc<broadcast::Sender<MemPoolMessage>>,
-    },
-}
-
 #[derive(Clone)]
 pub struct NotifierContext(pub MessageBox<Message>);
 
