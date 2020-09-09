@@ -30,12 +30,12 @@ pub struct Notifier {
 }
 
 #[derive(Clone)]
-pub enum MemPoolMessage {
+enum MemPoolMessage {
     FragmentAccepted(FragmentId),
     FragmentRejected(FragmentId),
 }
 
-pub enum NewConnection {
+enum NewConnection {
     BlockConnection {
         tip_receiver: watch::Receiver<HeaderId>,
         block_sender: Arc<broadcast::Sender<HeaderId>>,
