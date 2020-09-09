@@ -12,8 +12,10 @@ use jormungandr_lib::crypto::hash::Hash;
 use std::str::FromStr;
 mod client;
 mod data;
+pub mod load;
 use data::PoolId;
 use jortestkit::file;
+use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -28,6 +30,7 @@ pub enum ExplorerError {
     ReqwestError(#[from] reqwest::Error),
 }
 
+#[derive(Clone)]
 pub struct Explorer {
     client: GraphQLClient,
     print_log: bool,
@@ -49,6 +52,14 @@ impl Explorer {
         self.print_log = false;
     }
 
+    pub fn print_request<T: Serialize>(&self, query: &QueryBody<T>) {
+        if self.print_log == false {
+            return;
+        }
+
+        println!("running query: {:?}, against: {}", query.query, self.uri());
+    }
+
     pub fn address<S: Into<String>>(
         &self,
         bech32_address: S,
@@ -56,6 +67,7 @@ impl Explorer {
         let query = Address::build_query(address::Variables {
             bech32: bech32_address.into(),
         });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body: Response<address::ResponseData> = response.json()?;
         self.print_log(&response_body);
@@ -67,6 +79,7 @@ impl Explorer {
         limit: i64,
     ) -> Result<Response<all_stake_pools::ResponseData>, ExplorerError> {
         let query = AllStakePools::build_query(all_stake_pools::Variables { first: limit });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
@@ -78,17 +91,16 @@ impl Explorer {
             first: 0,
             last: limit,
         });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
-        //   println!("{:?}",response.text()?);
         let response_body = response.json()?;
         self.print_log(&response_body);
-
         Ok(response_body)
-        //   panic!()
     }
 
     pub fn last_block(&self) -> Result<Response<last_block::ResponseData>, ExplorerError> {
         let query = LastBlock::build_query(last_block::Variables);
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
@@ -102,6 +114,7 @@ impl Explorer {
         let query = BlockByChainLength::build_query(block_by_chain_length::Variables {
             length: length.to_string(),
         });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
@@ -117,6 +130,7 @@ impl Explorer {
             id: epoch_number.to_string(),
             blocks_limit: limit,
         });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
@@ -129,6 +143,7 @@ impl Explorer {
         limit: i64,
     ) -> Result<Response<stake_pool::ResponseData>, ExplorerError> {
         let query = StakePool::build_query(stake_pool::Variables { id, first: limit });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
@@ -137,6 +152,7 @@ impl Explorer {
 
     pub fn status(&self) -> Result<Response<status::ResponseData>, ExplorerError> {
         let query = Status::build_query(status::Variables);
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
@@ -148,6 +164,7 @@ impl Explorer {
         limit: i64,
     ) -> Result<Response<all_vote_plans::ResponseData>, ExplorerError> {
         let query = AllVotePlans::build_query(all_vote_plans::Variables { first: limit });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
@@ -161,6 +178,7 @@ impl Explorer {
         let query = TransactionById::build_query(transaction_by_id::Variables {
             id: hash.to_string(),
         });
+        self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body: Response<transaction_by_id::ResponseData> = response.json()?;
         self.print_log(&response_body);
