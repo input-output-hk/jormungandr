@@ -1,3 +1,4 @@
+use super::JormungandrError;
 use crate::common::jcli_wrapper;
 use assert_fs::{fixture::ChildPath, TempDir};
 use chain_impl_mockchain::fee::LinearFee;
@@ -12,8 +13,7 @@ use jormungandr_testing_utils::testing::{
     },
     JormungandrParams, SyncNode, TestConfig,
 };
-
-use super::JormungandrError;
+use jormungandr_testing_utils::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
 use std::net::SocketAddr;
 use std::process::Child;
 use std::str::FromStr;
@@ -149,7 +149,15 @@ impl JormungandrProcess {
         }
     }
 
-    pub(super) fn steal_temp_dir(&mut self) -> Option<TempDir> {
+    pub fn to_remote(&self) -> RemoteJormungandr {
+        let mut builder = RemoteJormungandrBuilder::new(self.alias.clone());
+        builder
+            .with_rest(self.rest_socket_addr.clone())
+            .with_logger(self.logger.log_file_path.clone());
+        builder.build()
+    }
+
+    pub fn steal_temp_dir(&mut self) -> Option<TempDir> {
         self.temp_dir.take()
     }
 

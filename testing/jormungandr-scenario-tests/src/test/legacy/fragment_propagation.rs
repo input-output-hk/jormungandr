@@ -172,7 +172,7 @@ fn get_legacy_data(title: &str, context: &mut Context<ChaChaRng>) -> (PathBuf, V
     (legacy_app, version)
 }
 
-fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized>(
+fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Sync + Send>(
     controller: &mut Controller,
     passive: &A,
     version: Option<Version>,

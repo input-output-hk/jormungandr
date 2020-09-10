@@ -10,6 +10,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentStatus, Value},
@@ -73,7 +74,23 @@ impl<'a> FragmentSender<'a> {
         }
     }
 
-    pub fn send_transaction<A: FragmentNode + SyncNode + Sized>(
+    pub fn block0_hash(&self) -> Hash {
+        self.block0_hash.clone()
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.fees.clone()
+    }
+
+    pub fn clone_with_setup(&self, setup: FragmentSenderSetup<'a>) -> Self {
+        Self {
+            fees: self.fees(),
+            block0_hash: self.block0_hash(),
+            setup,
+        }
+    }
+
+    pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         to: &Wallet,
@@ -86,7 +103,21 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_full_delegation<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_transaction_to_many<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        from: &mut Wallet,
+        to: &[Wallet],
+        via: &A,
+        value: Value,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let addresses: Vec<Address> = to.iter().map(|x| x.address()).collect();
+        let fragment =
+            from.transaction_to_many(&self.block0_hash, &self.fees, &addresses, value)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_full_delegation<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         to: &StakePool,
@@ -97,7 +128,7 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_split_delegation<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_split_delegation<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         distribution: &[(&StakePool, u8)],
@@ -109,7 +140,7 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_owner_delegation<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_owner_delegation<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         to: &StakePool,
@@ -120,7 +151,7 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_pool_registration<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_pool_registration<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         to: &StakePool,
@@ -131,7 +162,7 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_pool_update<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_pool_update<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         to: &StakePool,
@@ -144,7 +175,7 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_pool_retire<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_pool_retire<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         to: &StakePool,
@@ -155,7 +186,7 @@ impl<'a> FragmentSender<'a> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_transactions<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_transactions<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         n: u32,
         mut wallet1: &mut Wallet,
@@ -173,7 +204,9 @@ impl<'a> FragmentSender<'a> {
         Ok(())
     }
 
-    pub fn send_transactions_with_iteration_delay<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_transactions_with_iteration_delay<
+        A: FragmentNode + SyncNode + Sized + Sync + Send,
+    >(
         &self,
         n: u32,
         mut wallet1: &mut Wallet,
@@ -193,7 +226,7 @@ impl<'a> FragmentSender<'a> {
         Ok(())
     }
 
-    pub fn send_transactions_round_trip<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_transactions_round_trip<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         n: u32,
         mut wallet1: &mut Wallet,
@@ -212,7 +245,7 @@ impl<'a> FragmentSender<'a> {
         Ok(())
     }
 
-    fn verify<A: FragmentNode + SyncNode + Sized>(
+    fn verify<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         check: &MemPoolCheck,
         node: &A,
@@ -242,7 +275,7 @@ impl<'a> FragmentSender<'a> {
         Ok(())
     }
 
-    pub fn send_fragment<A: FragmentNode + SyncNode + Sized>(
+    pub fn send_fragment<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         sender: &mut Wallet,
         fragment: Fragment,
@@ -297,7 +330,7 @@ impl<'a> FragmentSender<'a> {
         }
     }
 
-    fn wait_for_node_sync_if_enabled<A: FragmentNode + SyncNode + Sized>(
+    fn wait_for_node_sync_if_enabled<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         node: &A,
     ) -> Result<(), SyncNodeError> {

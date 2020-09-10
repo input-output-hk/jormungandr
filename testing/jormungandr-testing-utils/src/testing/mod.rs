@@ -9,9 +9,9 @@ mod verify;
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentSender,
     AdversaryFragmentSenderError, AdversaryFragmentSenderSetup, FragmentBuilder,
-    FragmentBuilderError, FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError,
-    FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentVerifier, FragmentVerifierError,
-    MemPoolCheck, VerifyStrategy,
+    FragmentBuilderError, FragmentGenerator, FragmentNode, FragmentNodeError, FragmentSender,
+    FragmentSenderError, FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentStatusProvider,
+    FragmentVerifier, FragmentVerifierError, MemPoolCheck, VerifyStrategy,
 };
 pub use jortestkit::archive::decompress;
 pub use jortestkit::github::{GitHubApi, GitHubApiError, Release};
@@ -22,7 +22,7 @@ pub use jortestkit::measurement::{
     EnduranceBenchmarkFinish, EnduranceBenchmarkRun, NamedProcess, ResourcesUsage, Speed,
     SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
 };
-pub use remote::RemoteJormungandr;
+pub use remote::{RemoteJormungandr, RemoteJormungandrBuilder};
 pub use sync::{
     ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
     MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,

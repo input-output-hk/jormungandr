@@ -1,7 +1,7 @@
 use super::FragmentBuilderError;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::{
-    fee::LinearFee,
+    fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
     transaction::{InputOutputBuilder, NoExtra, Payload, TxBuilder},
 };
@@ -17,11 +17,29 @@ pub fn transaction_to(
     address: Address,
     value: Value,
 ) -> Result<Fragment, FragmentBuilderError> {
-    let mut iobuilder = InputOutputBuilder::empty();
-    iobuilder.add_output(address.into(), value.into()).unwrap();
+    transaction_to_many(block0_hash, fees, from, &[address], value)
+}
 
-    let payload_data = NoExtra.payload_data();
-    from.add_input(payload_data.borrow(), &mut iobuilder, fees)?;
+pub fn transaction_to_many(
+    block0_hash: &Hash,
+    fees: &LinearFee,
+    from: &Wallet,
+    addresses: &[Address],
+    value: Value,
+) -> Result<Fragment, FragmentBuilderError> {
+    let mut iobuilder = InputOutputBuilder::empty();
+
+    for address in addresses {
+        iobuilder
+            .add_output(address.clone().into(), value.into())
+            .unwrap();
+    }
+
+    let value_u64: u64 = value.into();
+    let input_without_fees: Value = (value_u64 * addresses.len() as u64).into();
+    let input_value = fees.calculate(None, 1, addresses.len() as u8) + input_without_fees.into();
+    let input = from.add_input_with_value(input_value.unwrap().into());
+    iobuilder.add_input(&input).unwrap();
 
     let ios = iobuilder.build();
     let txbuilder = TxBuilder::new()

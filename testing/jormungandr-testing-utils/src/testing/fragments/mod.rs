@@ -7,7 +7,7 @@ pub use self::{
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     sender::{FragmentSender, FragmentSenderError},
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
-    transaction::transaction_to,
+    transaction::{transaction_to, transaction_to_many},
     verifier::{FragmentVerifier, FragmentVerifierError},
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
@@ -24,11 +24,13 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
+pub use load::{FragmentGenerator, FragmentStatusProvider};
 use thiserror::Error;
 
 mod adversary;
 mod export;
 mod initial_certificates;
+mod load;
 mod node;
 mod sender;
 mod setup;
@@ -71,6 +73,15 @@ impl FragmentBuilder {
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
         transaction_to(&self.block0_hash, &self.fees, from, address, value)
+    }
+
+    pub fn transaction_to_many(
+        &self,
+        from: &Wallet,
+        addresses: &[Address],
+        value: Value,
+    ) -> Result<Fragment, FragmentBuilderError> {
+        transaction_to_many(&self.block0_hash, &self.fees, from, addresses, value)
     }
 
     pub fn full_delegation_cert_for_block0(wallet: &Wallet, pool_id: PoolId) -> Initial {
