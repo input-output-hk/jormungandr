@@ -152,6 +152,7 @@ pub fn explorer_load_test() {
         std::time::Duration::from_secs(60),
         100,
         Monitor::Progress(100),
+        0,
     );
     let stats = jortestkit::load::start_sync(request_gen, config, "Explorer load test");
     assert!((stats.calculate_passrate() as u32) > 95);

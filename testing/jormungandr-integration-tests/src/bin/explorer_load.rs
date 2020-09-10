@@ -63,6 +63,7 @@ impl ExplorerLoadCommand {
             std::time::Duration::from_secs(self.duration),
             self.pace,
             self.build_monitor(),
+            0,
         );
         let stats = jortestkit::load::start_sync(request_gen, config, "Explorer load test");
         if self.measure {
