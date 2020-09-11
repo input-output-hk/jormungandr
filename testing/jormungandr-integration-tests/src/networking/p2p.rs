@@ -1,7 +1,6 @@
 use crate::common::{
     jormungandr::process::JormungandrProcess,
     network::{self, params, wallet},
-    process_utils,
 };
 
 use jormungandr_lib::{
@@ -10,6 +9,7 @@ use jormungandr_lib::{
     },
     time::Duration,
 };
+use jortestkit::process as process_utils;
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
 

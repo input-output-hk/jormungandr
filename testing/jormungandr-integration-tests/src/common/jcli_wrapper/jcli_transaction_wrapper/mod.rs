@@ -1,11 +1,8 @@
 #![allow(dead_code)]
 
 pub mod jcli_transaction_commands;
-
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::{
-    data::witness::Witness, jcli_wrapper, process_utils::output_extensions::ProcessOutput,
-};
+use crate::common::{data::witness::Witness, jcli_wrapper};
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
@@ -16,7 +13,9 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{LegacyUTxO, UTxOInfo, Value},
 };
+use jormungandr_testing_utils::testing::process::ProcessOutput;
 use jormungandr_testing_utils::wallet::Wallet;
+use jortestkit::process::output_extensions::ProcessOutput as _;
 use std::path::{Path, PathBuf};
 
 pub struct JCLITransactionWrapper {
