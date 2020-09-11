@@ -1,5 +1,6 @@
-use crate::common::{jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils, startup};
+use crate::common::{jcli_wrapper, jormungandr::ConfigurationBuilder, startup};
 use jormungandr_lib::interfaces::LeadershipLogStatus;
+use jortestkit::process::sleep;
 
 #[test]
 pub fn test_leadership_logs_parent_hash_is_correct() {
@@ -7,7 +8,7 @@ pub fn test_leadership_logs_parent_hash_is_correct() {
     let (jormungandr, _) =
         startup::start_stake_pool(&[faucet], &[], &mut ConfigurationBuilder::new()).unwrap();
 
-    process_utils::sleep(5);
+    sleep(5);
 
     let rest_address = jormungandr.rest_uri();
     let leadership_logs = jcli_wrapper::assert_rest_get_leadership_log(&rest_address);

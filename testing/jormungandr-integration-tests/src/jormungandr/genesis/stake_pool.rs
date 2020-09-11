@@ -4,7 +4,6 @@ use crate::common::{
         jcli_transaction_wrapper::JCLITransactionWrapper,
     },
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
-    process_utils::Wait,
     startup,
 };
 
@@ -15,6 +14,7 @@ use jormungandr_lib::{
     interfaces::{InitialUTxO, Ratio, TaxType, Value},
 };
 use jormungandr_testing_utils::wallet::Wallet;
+use jortestkit::process::Wait;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;

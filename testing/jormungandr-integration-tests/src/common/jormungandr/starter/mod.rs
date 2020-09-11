@@ -3,10 +3,8 @@ pub use commands::{get_command, CommandBuilder};
 
 use super::ConfigurationBuilder;
 use crate::common::{
-    configuration::get_jormungandr_app,
-    jcli_wrapper::jcli_commands,
+    configuration::get_jormungandr_app, jcli_wrapper::jcli_commands,
     jormungandr::process::JormungandrProcess,
-    process_utils::{self, output_extensions::ProcessOutput, ProcessError},
 };
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{fixture::FixtureError, TempDir};
@@ -21,6 +19,7 @@ use jormungandr_testing_utils::{
     },
     Version,
 };
+use jortestkit::process::{self as process_utils, output_extensions::ProcessOutput, ProcessError};
 use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;

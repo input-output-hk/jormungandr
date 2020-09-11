@@ -14,11 +14,14 @@ pub mod jcli_transaction_wrapper;
 pub use jcli_transaction_wrapper::JCLITransactionWrapper;
 
 use super::configuration;
-use super::process_utils::{self, output_extensions::ProcessOutput, Wait};
 use crate::common::jormungandr::JormungandrProcess;
 use assert_fs::prelude::*;
 use assert_fs::{fixture::ChildPath, NamedTempFile};
 use chain_addr::Discrimination;
+use jormungandr_testing_utils::testing::process::ProcessOutput as _;
+use jortestkit::process::{
+    output_extensions::ProcessOutput, run_process_until_response_matches, Wait,
+};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -403,7 +406,7 @@ pub fn wait_until_transaction_processed(
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> Result<(), Error> {
-    process_utils::run_process_until_response_matches(
+    run_process_until_response_matches(
         jcli_commands::get_rest_message_log_command(&jormungandr.rest_uri()),
         |output| {
             let content = output.as_lossy_string();
@@ -497,7 +500,7 @@ pub fn send_transactions_and_wait_until_in_block(
 pub fn wait_until_all_transactions_processed(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), Error> {
-    process_utils::run_process_until_response_matches(
+    run_process_until_response_matches(
         jcli_commands::get_rest_message_log_command(&jormungandr.rest_uri()),
         |output| {
             let content = output.as_lossy_string();

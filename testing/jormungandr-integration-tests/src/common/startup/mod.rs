@@ -2,7 +2,6 @@ use crate::common::{
     configuration::SecretModelFactory,
     jcli_wrapper,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
-    process_utils,
 };
 use chain_crypto::{AsymmetricKey, Ed25519};
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
@@ -17,6 +16,7 @@ use jormungandr_testing_utils::{
     testing::{signed_delegation_cert, signed_stake_pool_cert},
     wallet::Wallet,
 };
+use jortestkit::process as process_utils;
 
 use assert_fs::fixture::{ChildPath, PathChild, TempDir};
 use assert_fs::prelude::*;

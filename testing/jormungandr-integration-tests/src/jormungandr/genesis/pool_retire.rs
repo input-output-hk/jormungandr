@@ -1,8 +1,8 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils, startup,
-    transaction_utils::TransactionHash,
+    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use jormungandr_lib::time::SystemTime;
+use jortestkit::process::sleep;
 #[test]
 pub fn test_pool_update() {
     let mut faucet = startup::create_new_account_address();
@@ -10,7 +10,7 @@ pub fn test_pool_update() {
         startup::start_stake_pool(&[faucet.clone()], &[], &mut ConfigurationBuilder::new())
             .unwrap();
 
-    process_utils::sleep(5);
+    sleep(5);
     let created_block_count = jormungandr.logger.get_created_blocks_hashes().len();
 
     assert!(created_block_count > 0);

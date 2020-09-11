@@ -1,7 +1,7 @@
 use super::commands::CertificateCommands;
 
-use crate::common::process_utils::output_extensions::ProcessOutput;
 use jormungandr_lib::interfaces::TaxType;
+use jortestkit::process::output_extensions::ProcessOutput;
 
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::prelude::*;
