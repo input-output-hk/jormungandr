@@ -2,6 +2,7 @@ pub mod file;
 mod fragments;
 pub mod network_builder;
 pub mod node;
+pub mod process;
 mod remote;
 pub mod sync;
 mod verify;
