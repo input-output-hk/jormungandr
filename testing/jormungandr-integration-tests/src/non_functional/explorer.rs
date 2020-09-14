@@ -12,7 +12,7 @@ use jormungandr_lib::{
 use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption, benchmark_endurance, node::explorer::load::ExplorerRequestGen,
-        Endurance, EnduranceBenchmarkRun, FragmentSender, FragmentSenderSetup, Thresholds,
+        Endurance, EnduranceBenchmarkRun, Thresholds,
     },
     wallet::Wallet,
 };
