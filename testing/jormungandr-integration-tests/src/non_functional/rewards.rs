@@ -1,12 +1,11 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils, startup,
-    transaction_utils::TransactionHash,
+    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_testing_utils::testing::{
     benchmark_consumption, benchmark_endurance, ResourcesUsage,
 };
+use jortestkit::process as process_utils;
 use std::time::Duration;
 
 #[test]

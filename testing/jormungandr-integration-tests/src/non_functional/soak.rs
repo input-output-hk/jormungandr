@@ -1,10 +1,9 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, process_utils::Wait, startup,
-    transaction_utils::TransactionHash,
+    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool};
 use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
+use jortestkit::process::Wait;
 use std::time::Duration;
 
 #[cfg(feature = "soak-non-functional")]

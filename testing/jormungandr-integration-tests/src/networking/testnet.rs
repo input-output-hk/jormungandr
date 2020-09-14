@@ -5,7 +5,6 @@ use crate::{
         configuration::JormungandrParams,
         jcli_wrapper,
         jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
-        process_utils::WaitBuilder,
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
 };
@@ -19,6 +18,7 @@ use jormungandr_testing_utils::{
     wallet::Wallet,
     Version,
 };
+use jortestkit::process::WaitBuilder;
 use std::{env, path::PathBuf, time::Duration};
 
 #[derive(Clone, Debug)]
