@@ -186,7 +186,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_leader_disruption_overlap",
         passive_leader_disruption_overlap,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_overlap",
@@ -276,19 +276,19 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(5),
         |ctx| legacy::disruption_last_nth_release(ctx, 5),
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(4),
         |ctx| legacy::disruption_last_nth_release(ctx, 4),
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(3),
         |ctx| legacy::disruption_last_nth_release(ctx, 3),
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
@@ -320,14 +320,14 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "point_to_point_disruption_overlap",
         point_to_point_disruption_overlap,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new("real_network", real_network, vec![Tag::Long]));
     repository.push(Scenario::new(
         "mesh_disruption",
         mesh_disruption,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
