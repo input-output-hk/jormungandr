@@ -15,7 +15,7 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, E
     if let Some(dir) = &setting.storage {
         std::fs::create_dir_all(dir).map_err(|err| Error::IO {
             source: err,
-            reason: ErrorKind::SQLite,
+            reason: ErrorKind::BlockStorage,
         })?;
 
         info!(logger, "storing blockchain in '{:?}'", dir);

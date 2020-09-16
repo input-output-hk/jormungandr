@@ -10,8 +10,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ErrorKind {
-    #[error("SQLite file")]
-    SQLite,
+    #[error("block storage")]
+    BlockStorage,
     #[error("Block0")]
     Block0,
 }
