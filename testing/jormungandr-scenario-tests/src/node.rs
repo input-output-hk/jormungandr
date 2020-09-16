@@ -9,8 +9,8 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
-        EnclaveLeaderId, FragmentLog, Log, LogEntry, LogOutput, NodeState, NodeStatsDto,
-        PeerRecord, PeerStats,
+        EnclaveLeaderId, FragmentLog, LeadershipLog, Log, LogEntry, LogOutput, NodeState,
+        NodeStatsDto, PeerRecord, PeerStats,
     },
 };
 pub use jormungandr_testing_utils::testing::{
@@ -389,6 +389,15 @@ impl NodeController {
     pub fn log_stats(&self) {
         self.progress_bar
             .log_info(format!("node stats ({:?})", self.stats()));
+    }
+
+    pub fn leadership_log(&self) -> Result<Vec<LeadershipLog>> {
+        Ok(self.rest_client.leaders_log()?)
+    }
+
+    pub fn log_leadership_log(&self) {
+        self.progress_bar
+            .log_info(format!("{:?}", self.leadership_log().unwrap()));
     }
 
     pub fn wait_for_bootstrap(&self) -> Result<()> {

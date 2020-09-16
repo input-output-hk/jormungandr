@@ -9,7 +9,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord,
-        PeerStats, StakeDistributionDto, VotePlanStatus,
+        PeerStats, StakeDistributionDto, VotePlanStatus, LeadershipLog,
     },
 };
 use legacy::Settings;
@@ -152,6 +152,10 @@ impl JormungandrRest {
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
         self.inner.fragment_logs()
+    }
+
+    pub fn leaders_log(&self) -> Result<Vec<LeadershipLog>, RestError> {
+        serde_json::from_str(&self.inner.leaders_log()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>, RestError> {
