@@ -2596,6 +2596,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pool"
+version = "0.1.0"
+dependencies = [
+ "chain-impl-mockchain",
+ "lru 0.5.3",
+ "thiserror",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

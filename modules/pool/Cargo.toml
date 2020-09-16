@@ -1,0 +1,12 @@
+[package]
+name = "pool"
+version = "0.1.0"
+authors = ["Yevhenii Babichenko <eugene.babichenko@iohk.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chain-impl-mockchain = { path = "../../chain-deps/chain-impl-mockchain" }
+lru = "0.5.3"
+thiserror = "1.0"
