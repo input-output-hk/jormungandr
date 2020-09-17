@@ -214,7 +214,7 @@ impl GlobalState {
     // How many client connections to bump when a new one is about to be
     // established
     fn num_clients_to_bump(&self) -> usize {
-        let count = self.stats_counter.peer_connected_cnt_sadd();
+        let count = self.stats_counter.peer_connected_cnt().saturating_add(1);
         if count > self.config.max_inbound_connections {
             count - self.config.max_inbound_connections
         } else {

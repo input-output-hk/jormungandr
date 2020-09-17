@@ -71,13 +71,6 @@ impl StatsCounter {
         self.stats.peers_connected_cnt.load(Ordering::Relaxed)
     }
 
-    pub fn peer_connected_cnt_sadd(&self) -> usize {
-        self.stats
-            .peers_connected_cnt
-            .load(Ordering::Relaxed)
-            .saturating_add(1)
-    }
-
     pub fn uptime_sec(&self) -> u64 {
         self.stats.start_time.elapsed().as_secs()
     }
