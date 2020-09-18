@@ -50,9 +50,12 @@ impl PeerData {
     }
 
     fn server_comms(&mut self) -> &mut PeerComms {
-        // This method is called when a subscription request is received
-        // by the server, normally at the beginning of the peer connecting
+        // This method is called when a handshake or subscription request is
+        // received by the server, normally after when the peer connects
         // as a client. Cancel client connection if it is pending.
+        //
+        // TODO: remove client-server connection resolution logic
+        // since we tabulate peer entries per address rather than node ID.
         self.connecting = None;
         self.comms.clear_pending();
         &mut self.comms

@@ -8,11 +8,13 @@ use super::{
 use crate::blockcfg as app_data;
 use crate::intercom::{self, BlockMsg, ClientMsg};
 use crate::utils::async_msg::MessageBox;
+use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
+use chain_network::data::p2p::{AuthenticatedNodeId, NodeId, Peer, Peers};
 use chain_network::data::{
-    Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, Header, Peer, Peers,
+    Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse, Header,
 };
-use chain_network::error::{self as net_error, Error};
+use chain_network::error::{Code as ErrorCode, Error};
 
 use async_trait::async_trait;
 use futures::prelude::*;
@@ -51,10 +53,59 @@ impl NodeService {
     }
 }
 
+#[async_trait]
 impl Node for NodeService {
     type BlockService = Self;
     type FragmentService = Self;
     type GossipService = Self;
+
+    async fn handshake(&self, peer: Peer, nonce: &[u8]) -> Result<HandshakeResponse, Error> {
+        let block0_id = BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap();
+        let keypair = &self.global_state.keypair;
+        let node_id = NodeId::try_from(keypair.public_key().as_ref()).unwrap();
+        let signature = keypair.private_key().sign(nonce);
+        let auth = node_id.authenticated(signature.as_ref()).unwrap();
+
+        let addr = Address::new(peer.addr()).unwrap();
+        let nonce = self.global_state.peers.generate_auth_nonce(addr).await;
+
+        Ok(HandshakeResponse {
+            block0_id,
+            auth,
+            nonce: nonce.into(),
+        })
+    }
+
+    /// Handles client ID authentication.
+    async fn client_auth(&self, peer: Peer, auth: AuthenticatedNodeId) -> Result<(), Error> {
+        let addr = Address::new(peer.addr()).unwrap();
+        let nonce = self.global_state.peers.get_auth_nonce(addr).await;
+        let nonce = nonce.ok_or_else(|| {
+            Error::new(
+                ErrorCode::FailedPrecondition,
+                "nonce is missing, perform Handshake first",
+            )
+        })?;
+        let public_key = PublicKey::<Ed25519>::from_binary(auth.id().as_bytes()).map_err(|e| {
+            Error::new(
+                ErrorCode::InvalidArgument,
+                format!("invalid node ID: {}", e),
+            )
+        })?;
+        let signature = Signature::<[u8], Ed25519>::from_binary(auth.signature()).map_err(|e| {
+            Error::new(
+                ErrorCode::InvalidArgument,
+                format!("invalid signature data: {}", e),
+            )
+        })?;
+        if let Verification::Failed = signature.verify(&public_key, &nonce) {
+            return Err(Error::new(
+                ErrorCode::InvalidArgument,
+                "node ID signature verification failed",
+            ));
+        }
+        Ok(())
+    }
 
     fn block_service(&self) -> Option<&Self::BlockService> {
         Some(self)
@@ -76,7 +127,7 @@ async fn send_message<T>(mut mbox: MessageBox<T>, msg: T, logger: Logger) -> Res
             "failed to enqueue message for processing";
             "reason" => %e,
         );
-        Error::new(net_error::Code::Internal, e)
+        Error::new(ErrorCode::Internal, e)
     })
 }
 
@@ -94,10 +145,6 @@ impl BlockService for NodeService {
     type PullHeadersStream = ResponseStream<app_data::Header>;
     type GetHeadersStream = ResponseStream<app_data::Header>;
     type SubscriptionStream = SubscriptionStream<BlockEventSubscription>;
-
-    fn block0(&self) -> BlockId {
-        BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap()
-    }
 
     async fn tip(&self) -> Result<Header, Error> {
         let logger = self.logger().new(o!("request" => "Tip"));
@@ -228,7 +275,7 @@ impl FragmentService for NodeService {
     type SubscriptionStream = SubscriptionStream<FragmentSubscription>;
 
     async fn get_fragments(&self, _ids: FragmentIds) -> Result<Self::GetFragmentsStream, Error> {
-        Err(net_error::Error::unimplemented())
+        Err(Error::unimplemented())
     }
 
     async fn fragment_subscription(

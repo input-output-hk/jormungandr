@@ -69,6 +69,10 @@ mod keepalive_durations {
     pub const HTTP2: Duration = Duration::from_secs(120);
 }
 
+mod security_params {
+    pub const NONCE_LEN: usize = 32;
+}
+
 use self::client::ConnectError;
 use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
@@ -80,6 +84,8 @@ use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TokioServiceInfo,
 };
+use chain_crypto::algorithms::Ed25519;
+use chain_crypto::KeyPair;
 use chain_network::data::gossip::Gossip;
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
@@ -144,6 +150,7 @@ pub struct GlobalState {
     stats_counter: StatsCounter,
     topology: P2pTopology,
     peers: Peers,
+    keypair: KeyPair<Ed25519>,
     logger: Logger,
 }
 
@@ -161,7 +168,9 @@ impl GlobalState {
 
         let mut rng_seed = [0; 32];
         rand::thread_rng().fill(&mut rng_seed);
-        let prng = ChaChaRng::from_seed(rng_seed);
+        let mut prng = ChaChaRng::from_seed(rng_seed);
+
+        let keypair = KeyPair::generate(&mut prng);
 
         let topology = P2pTopology::new(
             &config,
@@ -175,6 +184,7 @@ impl GlobalState {
             stats_counter,
             topology,
             peers,
+            keypair,
             logger,
         }
     }

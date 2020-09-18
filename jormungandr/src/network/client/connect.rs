@@ -1,10 +1,11 @@
-use super::super::{
-    grpc,
-    p2p::{comm::PeerComms, Address},
-    Channels, ConnectionState,
-};
 use super::{Client, ClientBuilder, InboundSubscriptions};
 use crate::blockcfg::HeaderHash;
+use crate::network::{
+    grpc,
+    p2p::{comm::PeerComms, Address},
+    security_params::NONCE_LEN,
+    Channels, ConnectionState,
+};
 use chain_core::mempack::{self, ReadBuf, Readable};
 use chain_network::error::{self as net_error, HandshakeError};
 use chain_network::grpc::legacy;
@@ -13,6 +14,7 @@ use futures::channel::oneshot;
 use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::ready;
+use rand::Rng;
 
 use std::convert::TryInto;
 use std::pin::Pin;
@@ -44,14 +46,21 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             grpc::connect(&peer).await
         }
         .map_err(ConnectError::Transport)?;
-        let block0 = grpc_client
-            .handshake()
+
+        let mut nonce = [0u8; NONCE_LEN];
+        rand::thread_rng().fill(&mut nonce);
+
+        let response = grpc_client
+            .handshake(&nonce[..])
             .await
             .map_err(ConnectError::Handshake)?;
-        let mut buf = ReadBuf::from(block0.as_bytes());
+        let mut buf = ReadBuf::from(response.block0_id.as_bytes());
         let block0_hash = HeaderHash::read(&mut buf).map_err(ConnectError::DecodeBlock0)?;
         let expected = state.global.block0_hash;
         match_block0(expected, block0_hash)?;
+
+        // TODO: verify the peer ID signature and send client auth
+
         let mut comms = PeerComms::new();
         let (block_sub, fragment_sub, gossip_sub) = future::try_join3(
             grpc_client
