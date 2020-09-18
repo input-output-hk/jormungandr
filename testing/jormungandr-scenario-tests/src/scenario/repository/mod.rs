@@ -31,14 +31,17 @@ pub struct ScenariosRepository {
     repository: Vec<Scenario>,
     scenario: String,
     tag: Tag,
+    // adds all unstable tests as ignored
+    report_unstable: bool,
 }
 
 impl ScenariosRepository {
-    pub fn new<S: Into<String>>(scenario: S, tag: Tag) -> Self {
+    pub fn new<S: Into<String>>(scenario: S, tag: Tag, report_unstable: bool) -> Self {
         Self {
             repository: scenarios_repository(),
             scenario: scenario.into(),
             tag,
+            report_unstable,
         }
     }
 
@@ -91,6 +94,14 @@ impl ScenariosRepository {
                 &mut context,
             ));
         }
+
+        if self.report_unstable {
+            for scenario in self.scenarios_tagged_by(Tag::Unstable) {
+                let scenario_result = ScenarioResult::ignored();
+                println!("Scenario '{}' {}", scenario.name(), scenario_result);
+                suite_result.push(scenario_result);
+            }
+        }
         suite_result
     }
 
@@ -125,6 +136,7 @@ impl ScenariosRepository {
 pub enum ScenarioStatus {
     Passed,
     Failed(String),
+    Ignored,
 }
 
 fn scenarios_repository() -> Vec<Scenario> {
@@ -151,7 +163,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "leader_restart",
         leader_restart,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "passive_node_is_updated",
@@ -186,7 +198,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_leader_disruption_overlap",
         passive_leader_disruption_overlap,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_overlap",
@@ -294,13 +306,13 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(2),
         |ctx| legacy::disruption_last_nth_release(ctx, 2),
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(1),
         |ctx| legacy::disruption_last_nth_release(ctx, 1),
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Unstable],
     ));
 
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
@@ -327,7 +339,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "mesh_disruption",
         mesh_disruption,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Unstable],
     ));
 
     repository.push(Scenario::new(

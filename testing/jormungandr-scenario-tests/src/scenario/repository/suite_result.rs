@@ -17,15 +17,19 @@ impl ScenarioSuiteResult {
     }
 
     pub fn is_failed(&self) -> bool {
-        self.results.iter().any(|x| x.is_failed())
+        self.count_failed() > 0
     }
 
     pub fn count_passed(&self) -> usize {
-        self.results.iter().filter(|x| !x.is_failed()).count()
+        self.results.iter().filter(|x| x.is_passed()).count()
     }
 
     pub fn count_failed(&self) -> usize {
         self.results.iter().filter(|x| x.is_failed()).count()
+    }
+
+    pub fn count_ignored(&self) -> usize {
+        self.results.iter().filter(|x| x.is_ignored()).count()
     }
 
     fn result_as_string(&self) -> &'static str {
@@ -38,10 +42,11 @@ impl ScenarioSuiteResult {
 
     pub fn result_string(&self) -> String {
         format!(
-            "test result: {}. {} passed; {} failed; 0 ignored; 0 measured; 0 filtered out",
+            "test result: {}. {} passed; {} failed; {} ignored; 0 measured; 0 filtered out",
             self.result_as_string(),
             self.count_passed(),
-            self.count_failed()
+            self.count_failed(),
+            self.count_ignored()
         )
     }
 
