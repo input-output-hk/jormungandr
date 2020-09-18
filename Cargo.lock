@@ -1600,7 +1600,7 @@ checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
 
 [[package]]
 name = "jcli"
-version = "0.9.1"
+version = "0.10.0-dev"
 dependencies = [
  "assert_fs",
  "bech32",
@@ -1634,7 +1634,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr"
-version = "0.9.1"
+version = "0.10.0-dev"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -1693,7 +1693,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-integration-tests"
-version = "0.9.1"
+version = "0.10.0-dev"
 dependencies = [
  "assert_cmd",
  "assert_fs",
@@ -1736,7 +1736,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-lib"
-version = "0.9.1"
+version = "0.10.0-dev"
 dependencies = [
  "bech32",
  "bincode",
@@ -1766,7 +1766,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-scenario-tests"
-version = "0.9.1"
+version = "0.10.0-dev"
 dependencies = [
  "assert_fs",
  "chain-addr",
@@ -1803,7 +1803,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr-testing-utils"
-version = "0.9.1"
+version = "0.10.0-dev"
 dependencies = [
  "assert_fs",
  "base64 0.12.3",
