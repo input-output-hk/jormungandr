@@ -67,7 +67,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         .await
         .map_err(ConnectError::Subscription)?;
         let inbound = InboundSubscriptions {
-            node_id: Address::new(peer.connection).unwrap(),
+            peer_address: Address::new(peer.connection).unwrap(),
             block_events: block_sub,
             fragments: fragment_sub,
             gossip: gossip_sub,
