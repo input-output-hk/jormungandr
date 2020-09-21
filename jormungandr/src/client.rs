@@ -8,6 +8,7 @@ use chain_core::property::HasHeader;
 use futures::prelude::*;
 use tokio::time::timeout;
 
+use std::convert::TryInto;
 use std::time::Duration;
 
 const PROCESS_TIMEOUT_GET_BLOCK_TIP: u64 = 5;
@@ -101,12 +102,14 @@ async fn handle_get_headers_range(
     to: HeaderHash,
     handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
-    let res = storage.find_closest_ancestor(checkpoints, to).await;
+    let res = storage.find_closest_ancestor(checkpoints, to);
     match res {
         Ok(maybe_ancestor) => {
             let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
             storage
-                .send_branch_with(to, depth, handle, |block| block.header())
+                .send_branch_with(to, depth.map(|v| v.try_into().unwrap()), handle, |block| {
+                    block.header()
+                })
                 .await
         }
         Err(e) => {
@@ -123,7 +126,7 @@ async fn handle_get_blocks(
 ) -> Result<(), ReplySendError> {
     let mut sink = handle.start_sending();
     for id in ids {
-        let res = match storage.get(id).await {
+        let res = match storage.get(id.clone()) {
             Ok(Some(block)) => Ok(block),
             Ok(None) => Err(Error::not_found(format!(
                 "block {} is not known to this node",
@@ -147,7 +150,7 @@ async fn handle_get_headers(
 ) -> Result<(), ReplySendError> {
     let mut sink = handle.start_sending();
     for id in ids {
-        let res = match storage.get(id).await {
+        let res = match storage.get(id.clone()) {
             Ok(Some(block)) => Ok(block.header()),
             Ok(None) => Err(Error::not_found(format!(
                 "block {} is not known to this node",
@@ -174,13 +177,16 @@ async fn handle_pull_blocks_to_tip(
     let tip_hash = tip.hash();
     let res = storage
         .find_closest_ancestor(checkpoints, tip_hash)
-        .await
         .map(move |maybe_ancestor| {
             let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
             (tip_hash, depth)
         });
     match res {
-        Ok((to, depth)) => storage.send_branch(to, depth, handle).await,
+        Ok((to, depth)) => {
+            storage
+                .send_branch(to, depth.map(|v| v.try_into().unwrap()), handle)
+                .await
+        }
         Err(e) => {
             handle.reply_error(e.into());
             Ok(())

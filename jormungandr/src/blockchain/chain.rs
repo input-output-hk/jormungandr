@@ -346,7 +346,6 @@ impl Blockchain {
         let block_exists = self
             .storage
             .block_exists(header_hash)
-            .await
             .map_err(|e| Error::with_chain(e, "cannot check if the block is in the storage"))?;
 
         if maybe_ref.is_none() {
@@ -511,7 +510,7 @@ impl Blockchain {
     ) -> Result<AppliedBlock> {
         let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
 
-        let res = self.storage.put_block(block).await;
+        let res = self.storage.put_block(&block);
 
         match res {
             Ok(()) | Err(StorageError::BlockAlreadyPresent) => {
@@ -611,7 +610,6 @@ impl Blockchain {
         let already_exist = self
             .storage
             .block_exists(block0_id.clone())
-            .await
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
 
         if already_exist {
@@ -621,12 +619,10 @@ impl Blockchain {
         let block0_branch = self.apply_block0(&block0).await?;
 
         self.storage
-            .put_block(block0)
-            .await
+            .put_block(&block0)
             .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))?;
         self.storage
-            .put_tag(MAIN_BRANCH_TAG.to_owned(), block0_id)
-            .await
+            .put_tag(MAIN_BRANCH_TAG, block0_id)
             .map_err(|e| Error::with_chain(e, "Cannot put block0's hash in the HEAD tag"))?;
         Ok(block0_branch)
     }
@@ -650,7 +646,6 @@ impl Blockchain {
         let already_exist = self
             .storage
             .block_exists(block0_id.clone())
-            .await
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
 
         if !already_exist {
@@ -659,8 +654,7 @@ impl Blockchain {
 
         let opt = self
             .storage
-            .get_tag(MAIN_BRANCH_TAG.to_owned())
-            .await
+            .get_tag(MAIN_BRANCH_TAG)
             .map_err(|e| Error::with_chain(e, "Cannot get hash of the HEAD tag"))?;
 
         let head_hash = if let Some(id) = opt {
@@ -674,7 +668,6 @@ impl Blockchain {
         let mut block_stream = self
             .storage
             .stream_from_to(block0_id, head_hash)
-            .await
             .map(Box::pin)
             .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))?;
 

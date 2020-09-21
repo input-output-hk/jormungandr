@@ -318,8 +318,7 @@ pub async fn process_new_ref(
 
                 blockchain
                     .storage()
-                    .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-                    .await
+                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)
                     .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
 
                 tip.update_ref(candidate).await;
@@ -333,8 +332,7 @@ pub async fn process_new_ref(
 
                 blockchain
                     .storage()
-                    .put_tag(MAIN_BRANCH_TAG.to_owned(), candidate_hash)
-                    .await
+                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)
                     .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
 
                 let branch = blockchain.branches_mut().apply_or_create(candidate).await;

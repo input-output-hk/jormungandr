@@ -1,17 +1,17 @@
 use crate::{
     blockcfg, blockchain,
+    blockchain::StorageError,
     diagnostic::DiagnosticError,
     explorer, network, secure,
     settings::{self, logging},
 };
-use chain_storage::Error as StorageError;
 use std::io;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ErrorKind {
-    #[error("SQLite file")]
-    SQLite,
+    #[error("block storage")]
+    BlockStorage,
     #[error("Block0")]
     Block0,
 }
