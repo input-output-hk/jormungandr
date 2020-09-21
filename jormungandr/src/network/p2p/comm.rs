@@ -472,11 +472,6 @@ impl Peers {
         map.clear()
     }
 
-    pub async fn insert_peer(&self, id: Address, comms: PeerComms) {
-        let mut map = self.inner().await;
-        map.insert_peer(id, comms)
-    }
-
     pub async fn add_connecting(
         &self,
         id: Address,

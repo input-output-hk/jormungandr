@@ -111,12 +111,6 @@ impl PeerMap {
         self.ensure_peer(id).server_comms()
     }
 
-    pub fn insert_peer(&mut self, id: Address, comms: PeerComms) {
-        self.evict_if_full();
-        let data = PeerData::new(comms);
-        self.map.insert(id, data);
-    }
-
     pub fn add_connecting(&mut self, id: Address, handle: ConnectHandle) -> &mut PeerComms {
         let data = self.ensure_peer(id);
         data.connecting = Some(handle);
