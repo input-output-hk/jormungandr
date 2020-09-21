@@ -8,8 +8,8 @@ use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
-        AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, NodeStatsDto, PeerRecord,
-        PeerStats, StakeDistributionDto, VotePlanStatus, LeadershipLog,
+        AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto,
+        PeerRecord, PeerStats, StakeDistributionDto, VotePlanStatus,
     },
 };
 use legacy::Settings;
