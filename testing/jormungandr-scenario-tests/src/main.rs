@@ -85,6 +85,10 @@ struct CommandArgs {
     /// level for all nodes
     #[structopt(long = "log-level", default_value = "info")]
     log_level: String,
+
+    /// report statuses for all unstable tests
+    #[structopt(long = "report-unstable")]
+    report_unstable: bool,
 }
 
 fn main() {
@@ -113,7 +117,11 @@ fn main() {
     );
 
     introduction(&context);
-    let scenarios_repo = ScenariosRepository::new(command_args.scenario, command_args.tag);
+    let scenarios_repo = ScenariosRepository::new(
+        command_args.scenario,
+        command_args.tag,
+        command_args.report_unstable,
+    );
     let scenario_suite_result = scenarios_repo.run(&context);
     println!("{}", scenario_suite_result.result_string());
 

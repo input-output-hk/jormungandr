@@ -19,14 +19,34 @@ impl ScenarioResult {
         }
     }
 
+    pub fn ignored() -> Self {
+        ScenarioResult {
+            scenario_status: ScenarioStatus::Ignored,
+        }
+    }
+
     pub fn scenario_status(&self) -> &ScenarioStatus {
         &self.scenario_status
     }
 
     pub fn is_failed(&self) -> bool {
         match *self.scenario_status() {
-            ScenarioStatus::Passed => false,
             ScenarioStatus::Failed { .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_ignored(&self) -> bool {
+        match *self.scenario_status() {
+            ScenarioStatus::Ignored => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_passed(&self) -> bool {
+        match *self.scenario_status() {
+            ScenarioStatus::Passed => true,
+            _ => false,
         }
     }
 
@@ -47,6 +67,7 @@ impl fmt::Display for ScenarioResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.scenario_status() {
             ScenarioStatus::Passed => write!(f, "passed"),
+            ScenarioStatus::Ignored => write!(f, "ignored"),
             ScenarioStatus::Failed(reason) => write!(f, "failed, due to '{}'", &reason),
         }
     }
