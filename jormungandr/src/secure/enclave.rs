@@ -29,7 +29,7 @@ pub struct Schedule {
     enclave: Arc<Enclave>,
     leadership: Arc<Leadership>,
     current_slot: u32,
-    nb_slots: u32,
+    stop_at_slot: u32,
     current_slot_data: Vec<LeaderEvent>,
 }
 
@@ -157,11 +157,13 @@ impl Schedule {
         slot_start: u32,
         nb_slots: u32,
     ) -> Self {
+        let stop_at_slot = slot_start + nb_slots;
+
         Self {
             enclave,
             leadership,
             current_slot: slot_start,
-            nb_slots,
+            stop_at_slot,
             current_slot_data: Vec::new(),
         }
     }
@@ -171,7 +173,7 @@ impl Schedule {
             return;
         }
 
-        while self.current_slot < self.nb_slots && self.current_slot_data.is_empty() {
+        while self.current_slot < self.stop_at_slot && self.current_slot_data.is_empty() {
             let leaders = &self.enclave.leaders_data.read().await.leaders;
             let date = self.leadership.date_at_slot(self.current_slot);
             for (id, leader) in leaders {
