@@ -102,19 +102,28 @@ fn transaction_by_id(explorer: &Explorer, fragment_id: FragmentId) {
 
 fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
     let blocks = explorer.blocks(1000).unwrap();
+
     // we are skipping first block because log doesn't contains genesis block
-    assert_eq!(
-        blocks_from_logs,
-        blocks
-            .data
-            .unwrap()
-            .all_blocks
-            .edges
-            .iter()
-            .skip(1)
-            .map(|x| Hash::from_str(&x.node.id).unwrap())
-            .collect::<Vec<Hash>>(),
-        "blocks are empty"
+    let explorer_blocks = blocks
+        .data
+        .unwrap()
+        .all_blocks
+        .edges
+        .iter()
+        .skip(1)
+        .map(|x| Hash::from_str(&x.node.id).unwrap())
+        .collect::<Vec<Hash>>();
+
+    let mut common_blocks = blocks_from_logs.clone();
+    common_blocks.retain(|x| !explorer_blocks.contains(x));
+
+    // we can have at least one non duplicated block
+    // due to explorer delay to logs content
+    assert!(
+        common_blocks.len() <= 1,
+        "blocks differents: Explorer {:?} vs Logs {:?}",
+        explorer_blocks,
+        blocks_from_logs
     );
 }
 
