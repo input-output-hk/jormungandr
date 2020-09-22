@@ -259,4 +259,29 @@ impl Storage {
             distance: closest_found,
         }))
     }
+
+    pub fn gc(&self, threshold_depth: u32, main_branch_tip: &[u8]) -> Result<(), Error> {
+        let main_info = self.storage.get_block_info(main_branch_tip)?;
+        let threshold_length = main_info.chain_length() - threshold_depth;
+
+        let tips_ids = self.storage.get_tips_ids()?;
+
+        for id in tips_ids {
+            let info = self.storage.get_block_info(id.as_ref())?;
+
+            if info.chain_length() > threshold_length {
+                continue;
+            }
+
+            self.storage.prune_branch(id.as_ref())?;
+        }
+
+        let to_block_info = self
+            .storage
+            .get_nth_ancestor(main_branch_tip, threshold_depth)?;
+        self.storage
+            .flush_to_permanent_store(to_block_info.id().as_ref())?;
+
+        Ok(())
+    }
 }
