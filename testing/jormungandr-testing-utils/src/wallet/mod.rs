@@ -14,7 +14,7 @@ use chain_impl_mockchain::{
         InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
         TransactionSignDataHash, Witness,
     },
-    value::Value as ValueLib,
+    value::Value as ValueLib, certificate::{Proposal, VotePlan}, vote::Choice,
 };
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
@@ -291,6 +291,36 @@ impl Wallet {
     ) -> Result<Fragment, WalletError> {
         Ok(FragmentBuilder::new(block0_hash, fees).delegation_remove(&self))
     }
+    
+    pub fn issue_vote_plan_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        vote_plan: &VotePlan
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).vote_plan(&self, vote_plan))
+    }
+
+    pub fn issue_vote_cast_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        vote_plan: &VotePlan,
+        proposal_index: u8,
+        choice: &Choice
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).vote_cast(&self,vote_plan,proposal_index,choice))
+    }
+
+    pub fn issue_vote_tally_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        vote_plan: &VotePlan,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).vote_tally(&self,vote_plan))
+    }
+ 
 }
 
 impl Into<WalletLib> for Wallet {
