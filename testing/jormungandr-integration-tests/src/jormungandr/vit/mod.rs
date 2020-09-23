@@ -76,12 +76,12 @@ pub fn test_get_initial_vote_plan() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
-    let vote_plans = jcli_wrapper::assert_get_active_vote_plans(&jormungandr.rest_uri());
-
+    let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
     assert!(vote_plans.len() == 1);
 
     let vote_plan = vote_plans.get(0).unwrap();
-    let actual_vote_plan_id = vote_plan["id"].as_str().unwrap().to_string();
-
-    assert_eq!(actual_vote_plan_id, expected_vote_plan.to_id().to_string());
+    assert_eq!(
+        vote_plan.id.to_string(),
+        expected_vote_plan.to_id().to_string()
+    );
 }
