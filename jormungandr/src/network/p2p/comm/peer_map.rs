@@ -25,14 +25,6 @@ pub enum CommStatus<'a> {
 }
 
 impl PeerData {
-    fn new(comms: PeerComms) -> Self {
-        PeerData {
-            comms,
-            stats: PeerStats::default(),
-            connecting: None,
-        }
-    }
-
     fn update_comm_status(&mut self) -> CommStatus<'_> {
         if let Some(ref mut handle) = self.connecting {
             match handle.try_complete() {
