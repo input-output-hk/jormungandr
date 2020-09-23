@@ -6,6 +6,7 @@ mod debug;
 mod key;
 mod rest;
 mod transaction;
+mod vote;
 
 pub mod utils;
 
@@ -52,6 +53,8 @@ pub enum JCliCommand {
     AutoCompletion(auto_completion::AutoCompletion),
     /// Utilities that perform specialized tasks
     Utils(utils::Utils),
+    /// Vote related operations
+    Votes(vote::Vote),
 }
 
 impl JCli {
@@ -83,6 +86,7 @@ impl JCliCommand {
             Certificate(certificate) => certificate.exec()?,
             AutoCompletion(auto_completion) => auto_completion.exec::<Self>()?,
             Utils(utils) => utils.exec()?,
+            Votes(vote) => vote.exec().map_err(Box::new)?,
         };
         Ok(())
     }
