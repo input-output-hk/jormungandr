@@ -101,7 +101,7 @@ impl Node for NodeService {
         if let Verification::Failed = signature.verify(&public_key, &nonce) {
             return Err(Error::new(
                 ErrorCode::InvalidArgument,
-                "node ID signature verification failed",
+                "signature verification failed for peer node ID",
             ));
         }
         self.global_state.peers.set_node_id(addr, auth.into()).await;

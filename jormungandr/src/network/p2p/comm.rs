@@ -294,6 +294,7 @@ impl PeerComms {
         self.gossip.update(newer.gossip);
         self.block_solicitations.update(newer.block_solicitations);
         self.chain_pulls.update(newer.chain_pulls);
+        self.auth = newer.auth;
     }
 
     pub fn clear_pending(&mut self) {

@@ -7,6 +7,8 @@ use crate::network::{
     Channels, ConnectionState,
 };
 use chain_core::mempack::{self, ReadBuf, Readable};
+use chain_crypto::{Ed25519, KeyPair, PublicKey, Signature, Verification};
+use chain_network::data::{AuthenticatedNodeId, NodeId};
 use chain_network::error::{self as net_error, HandshakeError};
 use chain_network::grpc::legacy;
 
@@ -16,7 +18,7 @@ use futures::prelude::*;
 use futures::ready;
 use rand::Rng;
 
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -30,6 +32,7 @@ use std::task::{Context, Poll};
 pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
+    let keypair = state.global.keypair.clone();
     let legacy_node_id = state.global.config.legacy_node_id;
     let logger = state.logger.clone();
     let cf = async move {
@@ -50,18 +53,27 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         let mut nonce = [0u8; NONCE_LEN];
         rand::thread_rng().fill(&mut nonce);
 
-        let response = grpc_client
+        let hr = grpc_client
             .handshake(&nonce[..])
             .await
             .map_err(ConnectError::Handshake)?;
-        let mut buf = ReadBuf::from(response.block0_id.as_bytes());
+        let mut buf = ReadBuf::from(hr.block0_id.as_bytes());
         let block0_hash = HeaderHash::read(&mut buf).map_err(ConnectError::DecodeBlock0)?;
         let expected = state.global.block0_hash;
         match_block0(expected, block0_hash)?;
 
-        // TODO: verify the peer ID signature and send client auth
+        // Validate the server's node ID
+        let peer_id = validate_peer_auth(hr.auth, &nonce)?;
+
+        // Send client authentication
+        let auth = authenticate_client_node_id(&keypair, &hr.nonce);
+        grpc_client
+            .client_auth(auth)
+            .await
+            .map_err(ConnectError::ClientAuth)?;
 
         let mut comms = PeerComms::new();
+        comms.set_node_id(peer_id);
         let (block_sub, fragment_sub, gossip_sub) = future::try_join3(
             grpc_client
                 .clone()
@@ -97,6 +109,25 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         task: cf.boxed(),
     };
     (handle, future)
+}
+
+// Validate the server peer's node ID
+fn validate_peer_auth(auth: AuthenticatedNodeId, nonce: &[u8]) -> Result<NodeId, ConnectError> {
+    let public_key = PublicKey::<Ed25519>::from_binary(auth.id().as_bytes())
+        .map_err(ConnectError::InvalidNodeId)?;
+    let signature = Signature::<[u8], Ed25519>::from_binary(auth.signature())
+        .map_err(ConnectError::InvalidNodeSignature)?;
+    if let Verification::Failed = signature.verify(&public_key, &nonce) {
+        return Err(ConnectError::PeerSignatureVerificationFailed);
+    }
+    Ok(auth.into())
+}
+
+// Sign the client's node ID using the server nonce
+fn authenticate_client_node_id(keypair: &KeyPair<Ed25519>, nonce: &[u8]) -> AuthenticatedNodeId {
+    let node_id = NodeId::try_from(keypair.public_key().as_ref()).unwrap();
+    let signature = keypair.private_key().sign(nonce);
+    node_id.authenticated(signature.as_ref()).unwrap()
 }
 
 /// Handle used to monitor the P2P client in process of
@@ -147,6 +178,14 @@ pub enum ConnectError {
         expected: HeaderHash,
         peer_responded: HeaderHash,
     },
+    #[error("invalid node ID in server Handshake response")]
+    InvalidNodeId(#[source] chain_crypto::PublicKeyError),
+    #[error("invalid signature data in server Handshake response")]
+    InvalidNodeSignature(#[source] chain_crypto::SignatureError),
+    #[error("signature verification failed for peer node ID")]
+    PeerSignatureVerificationFailed,
+    #[error("client authentication failed")]
+    ClientAuth(#[source] net_error::Error),
     #[error("subscription request failed")]
     Subscription(#[source] net_error::Error),
 }
