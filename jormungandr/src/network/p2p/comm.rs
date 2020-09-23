@@ -274,11 +274,15 @@ impl PeerComms {
         nonce
     }
 
-    pub fn get_auth_nonce(&self) -> Option<[u8; NONCE_LEN]> {
+    pub fn auth_nonce(&self) -> Option<[u8; NONCE_LEN]> {
         match self.auth {
             PeerAuth::ServerNonce(nonce) => Some(nonce.clone()),
             _ => None,
         }
+    }
+
+    pub fn set_node_id(&mut self, id: NodeId) {
+        self.auth = PeerAuth::Authenticated(id);
     }
 
     pub fn update(&mut self, newer: PeerComms) {
@@ -537,7 +541,13 @@ impl Peers {
     pub async fn get_auth_nonce(&self, peer: Address) -> Option<[u8; NONCE_LEN]> {
         let mut map = self.inner().await;
         let comms = map.server_comms(peer);
-        comms.get_auth_nonce()
+        comms.auth_nonce()
+    }
+
+    pub async fn set_node_id(&self, peer: Address, id: NodeId) {
+        let mut map = self.inner().await;
+        let comms = map.server_comms(peer);
+        comms.set_node_id(id);
     }
 
     pub async fn subscribe_to_block_events(&self, peer: Address) -> BlockEventSubscription {

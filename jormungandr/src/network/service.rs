@@ -79,7 +79,7 @@ impl Node for NodeService {
     /// Handles client ID authentication.
     async fn client_auth(&self, peer: Peer, auth: AuthenticatedNodeId) -> Result<(), Error> {
         let addr = Address::new(peer.addr()).unwrap();
-        let nonce = self.global_state.peers.get_auth_nonce(addr).await;
+        let nonce = self.global_state.peers.get_auth_nonce(addr.clone()).await;
         let nonce = nonce.ok_or_else(|| {
             Error::new(
                 ErrorCode::FailedPrecondition,
@@ -104,6 +104,7 @@ impl Node for NodeService {
                 "node ID signature verification failed",
             ));
         }
+        self.global_state.peers.set_node_id(addr, auth.into()).await;
         Ok(())
     }
 
