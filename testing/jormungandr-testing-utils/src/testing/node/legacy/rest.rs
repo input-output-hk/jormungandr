@@ -189,6 +189,10 @@ impl BackwardCompatibleRest {
         self.get("network/p2p/view")?.text()
     }
 
+    pub fn leaders_log(&self) -> Result<String, reqwest::Error> {
+        self.get("leaders/logs")?.text()
+    }
+
     pub fn tip(&self) -> Result<Hash, RestError> {
         let tip = self.get("tip")?.text()?;
         tip.parse().map_err(RestError::HashParseError)

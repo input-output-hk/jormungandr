@@ -14,7 +14,9 @@ use crate::{
     test::{
         comm::leader_leader::*,
         comm::passive_leader::*,
-        features::{leader_promotion::*, p2p::*},
+        features::{
+            leader_promotion::*, leadership_log::leader_restart_preserves_leadership_log, p2p::*,
+        },
         legacy,
         network::real::real_network,
         network::topology::scenarios::*,
@@ -204,6 +206,11 @@ fn scenarios_repository() -> Vec<Scenario> {
         "leader_leader_disruption_overlap",
         leader_leader_disruption_overlap,
         vec![Tag::Short],
+    ));
+    repository.push(Scenario::new(
+        "leader_restart_preserves_leadership_log",
+        leader_restart_preserves_leadership_log,
+        vec![Tag::Short, Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_no_overlap",
