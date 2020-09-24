@@ -587,6 +587,7 @@ impl Peers {
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
+        let logger = self.logger.clone();
         let mut map = self.inner().await;
         let mut reached_node_ids = HashSet::new();
         let unreached_nodes = nodes
@@ -599,6 +600,12 @@ impl Peers {
                     // Avoid propagating more than once to the same node
                     if let Some(id) = &node_id {
                         if reached_node_ids.contains(id) {
+                            debug!(
+                                logger,
+                                "node ID has been reached via another peer connection, omitting";
+                                "peer" => %node,
+                                "node_id" => ?id,
+                            );
                             return false;
                         }
                     }
@@ -612,7 +619,7 @@ impl Peers {
                         }
                         Err(e) => {
                             debug!(
-                                self.logger,
+                                logger,
                                 "propagation to peer failed, unsubscribing peer";
                                 "peer" => %node,
                                 "reason" => %e.kind()
