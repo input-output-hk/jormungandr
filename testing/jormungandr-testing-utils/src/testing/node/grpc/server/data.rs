@@ -1,23 +1,32 @@
 use super::ProtocolVersion;
+use chain_crypto::{Ed25519, KeyPair, PublicKey, Signature, Verification};
 use chain_impl_mockchain::{
     block::{BlockDate, Header},
     key::Hash,
     testing::{GenesisPraosBlockBuilder, StakePoolBuilder},
 };
 use chain_time::{Epoch, TimeEra};
+use rand::Rng;
+
+const AUTH_NONCE_LEN: usize = 32;
 
 pub struct MockServerData {
     genesis_hash: Hash,
     tip: Header,
     protocol: ProtocolVersion,
+    keypair: KeyPair<Ed25519>,
+    auth_nonce: [u8; AUTH_NONCE_LEN],
 }
 
 impl MockServerData {
     pub fn new(genesis_hash: Hash, tip: Header, protocol: ProtocolVersion) -> Self {
+        let keypair = KeyPair::generate(&mut rand::thread_rng());
         Self {
             genesis_hash,
             tip,
             protocol,
+            keypair,
+            auth_nonce: [0; AUTH_NONCE_LEN],
         }
     }
 
@@ -31,6 +40,30 @@ impl MockServerData {
 
     pub fn protocol(&self) -> &ProtocolVersion {
         &self.protocol
+    }
+
+    pub fn node_id(&self) -> &[u8] {
+        self.keypair.public_key().as_ref()
+    }
+
+    pub fn node_signature(&self, nonce: &[u8]) -> Vec<u8> {
+        let signature = self.keypair.private_key().sign(nonce);
+        signature.as_ref().to_vec()
+    }
+
+    pub fn generate_auth_nonce(&mut self) -> &[u8] {
+        rand::thread_rng().fill(&mut self.auth_nonce[..]);
+        &self.auth_nonce
+    }
+
+    pub fn validate_peer_node_id(&self, node_id: &[u8], signature: &[u8]) -> bool {
+        let public_key = PublicKey::<Ed25519>::from_binary(node_id).expect("invalid node ID");
+        let signature =
+            Signature::<[u8], Ed25519>::from_binary(signature).expect("invalid signature");
+        match signature.verify(&public_key, &self.auth_nonce) {
+            Verification::Success => true,
+            Verification::Failed => false,
+        }
     }
 
     pub fn genesis_hash_mut(&mut self) -> &mut Hash {

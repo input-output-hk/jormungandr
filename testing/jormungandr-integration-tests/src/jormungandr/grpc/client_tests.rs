@@ -8,6 +8,7 @@ use crate::common::{
 use super::setup::{Config, Fixture};
 
 use chain_core::property::FromStr;
+use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 use chain_impl_mockchain::{
     block::Header,
     chaintypes::ConsensusVersion,
@@ -22,6 +23,7 @@ use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_testing_utils::testing::node::grpc::client::MockClientError;
 
 use assert_fs::TempDir;
+use rand::Rng;
 
 // L1001 Handshake sanity
 #[tokio::test]
@@ -29,7 +31,9 @@ pub async fn handshake_sanity() {
     let fixture = Fixture::new();
     let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
-    let handshake_response = client.handshake().await;
+    let mut auth_nonce = [0u8; 32];
+    rand::thread_rng().fill(&mut auth_nonce[..]);
+    let handshake_response = client.handshake(&auth_nonce).await;
 
     assert_eq!(
         *config.genesis_block_hash(),
@@ -37,6 +41,16 @@ pub async fn handshake_sanity() {
         "Genesis Block"
     );
     assert_eq!(handshake_response.version, 1, "Protocol version");
+
+    let public_key =
+        PublicKey::<Ed25519>::from_binary(&handshake_response.node_id).expect("invalid node ID");
+    let signature = Signature::<[u8], Ed25519>::from_binary(&handshake_response.signature)
+        .expect("invalid signature");
+
+    assert_eq!(
+        signature.verify(&public_key, &auth_nonce),
+        Verification::Success,
+    );
 }
 
 // L1006 Tip request

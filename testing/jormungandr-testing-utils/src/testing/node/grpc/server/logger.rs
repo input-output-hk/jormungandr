@@ -11,6 +11,7 @@ pub struct MockLogger {
 pub enum MethodType {
     Init,
     Handshake,
+    ClientAuth,
     PullBlocksToTip,
     Tip,
     GetBlocks,
