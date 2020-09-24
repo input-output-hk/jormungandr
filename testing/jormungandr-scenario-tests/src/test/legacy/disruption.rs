@@ -19,7 +19,6 @@ use rand_chacha::ChaChaRng;
 use super::{LEADER_1, LEADER_2, LEADER_3, LEADER_4};
 use std::borrow::Cow;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 fn ordinal_suffix(n: u32) -> &'static str {
     match n {

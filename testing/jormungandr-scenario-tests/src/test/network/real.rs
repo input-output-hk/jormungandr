@@ -10,13 +10,9 @@ use crate::{
     },
     Context, NodeController,
 };
-use chain_core::property::FromStr;
-use jormungandr_testing_utils::{
-    testing::{
-        network_builder::{Blockchain, TopologyBuilder, WalletTemplate},
-        node::{download_last_n_releases, get_jormungandr_bin},
-    },
-    Version,
+use jormungandr_testing_utils::testing::{
+    network_builder::{Blockchain, TopologyBuilder, WalletTemplate},
+    node::{download_last_n_releases, get_jormungandr_bin},
 };
 
 use rand_chacha::ChaChaRng;
@@ -155,9 +151,10 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         )?);
     }
 
-    let last_release = releases.last().unwrap();
     let releases = download_last_n_releases(1);
+    let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release, controller.working_directory());
+    let version = last_release.version();
 
     let mut legacy_leaders = vec![];
 
@@ -169,7 +166,7 @@ pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
                     .leadership_mode(LeadershipMode::Leader)
                     .persistence_mode(PersistenceMode::InMemory)
                     .jormungandr(legacy_app.clone()),
-                &last_release.version(),
+                &version,
             )?,
         );
     }

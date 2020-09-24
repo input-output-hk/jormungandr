@@ -1,7 +1,6 @@
 use super::{LEADER, PASSIVE};
 use crate::scenario::{repository::ScenarioResult, Context, Controller};
 use crate::test::Result;
-use chain_core::property::FromStr;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
