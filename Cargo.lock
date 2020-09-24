@@ -1872,6 +1872,7 @@ dependencies = [
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "reqwest",
+ "semver 0.10.0",
  "serde",
  "serde_derive",
  "serde_json",
