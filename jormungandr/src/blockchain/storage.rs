@@ -262,7 +262,10 @@ impl Storage {
 
     pub fn gc(&self, threshold_depth: u32, main_branch_tip: &[u8]) -> Result<(), Error> {
         let main_info = self.storage.get_block_info(main_branch_tip)?;
-        let threshold_length = main_info.chain_length() - threshold_depth;
+        let threshold_length = match main_info.chain_length().checked_sub(threshold_depth) {
+            Some(result) => result,
+            None => return Ok(()),
+        };
 
         let tips_ids = self.storage.get_tips_ids()?;
 
