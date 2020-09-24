@@ -1,8 +1,11 @@
 use super::UserInteractionController;
 use crate::{style, test::Result};
-use jormungandr_testing_utils::testing::{
-    network_builder::{LeadershipMode, PersistenceMode, SpawnParams},
-    node::download_last_n_releases,
+use jormungandr_testing_utils::{
+    testing::{
+        network_builder::{LeadershipMode, PersistenceMode, SpawnParams},
+        node::download_last_n_releases,
+    },
+    Version,
 };
 use jortestkit::console::InteractiveCommandError;
 use structopt::StructOpt;
@@ -41,7 +44,7 @@ impl SpawnPassiveNode {
             LeadershipMode::Passive,
             self.storage,
             &self.alias,
-            self.legacy.clone(),
+            self.legacy.as_ref().map(|x| Version::parse(&x).unwrap()),
             self.wait,
         )
     }
@@ -64,7 +67,7 @@ fn spawn_node(
     leadership_mode: LeadershipMode,
     storage: bool,
     alias: &str,
-    legacy: Option<String>,
+    legacy: Option<Version>,
     wait: bool,
 ) -> Result<()> {
     let persistence_mode = {
@@ -84,13 +87,12 @@ fn spawn_node(
         let releases = download_last_n_releases(5);
         let legacy_release = releases
             .iter()
-            .find(|x| x.version().eq_ignore_ascii_case(&version))
+            .find(|x| x.version() == version)
             .ok_or(InteractiveCommandError::UserError(version.to_string()))?;
 
-        let node = controller.controller_mut().spawn_legacy_node(
-            &mut spawn_params,
-            &legacy_release.version().parse().unwrap(),
-        )?;
+        let node = controller
+            .controller_mut()
+            .spawn_legacy_node(&mut spawn_params, &legacy_release.version())?;
         println!(
             "{}",
             style::info.apply_to(format!("node '{}' spawned", alias))
@@ -143,7 +145,7 @@ impl SpawnLeaderNode {
             LeadershipMode::Leader,
             self.storage,
             &self.alias,
-            self.legacy.clone(),
+            self.legacy.as_ref().map(|x| Version::parse(&x).unwrap()),
             self.wait,
         )
     }

@@ -312,8 +312,8 @@ impl Starter {
         expected_msg_in_logs: &str,
     ) -> Result<(), StartupError> {
         let (params, temp_dir) = self.build_configuration()?;
-        if let Some(version) = self.legacy {
-            ConfiguredStarter::legacy(self, version, params, temp_dir)?
+        if let Some(version) = self.legacy.as_ref() {
+            ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?
                 .start_with_fail_in_logs(expected_msg_in_logs)
         } else {
             ConfiguredStarter::new(self, params, temp_dir)
@@ -323,8 +323,8 @@ impl Starter {
 
     pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
         let (params, temp_dir) = self.build_configuration()?;
-        if let Some(version) = self.legacy {
-            ConfiguredStarter::legacy(self, version, params, temp_dir)?.start_async()
+        if let Some(version) = self.legacy.as_ref() {
+            ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?.start_async()
         } else {
             ConfiguredStarter::new(self, params, temp_dir).start_async()
         }
@@ -333,8 +333,8 @@ impl Starter {
     pub fn start(&mut self) -> Result<JormungandrProcess, StartupError> {
         let (params, temp_dir) = self.build_configuration()?;
         let benchmark = self.start_benchmark_run();
-        let process = if let Some(version) = self.legacy {
-            ConfiguredStarter::legacy(self, version, params, temp_dir)?.start()?
+        let process = if let Some(version) = self.legacy.as_ref() {
+            ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?.start()?
         } else {
             ConfiguredStarter::new(self, params, temp_dir).start()?
         };
@@ -344,8 +344,8 @@ impl Starter {
 
     pub fn start_fail(&mut self, expected_msg: &str) {
         let (params, temp_dir) = self.build_configuration().unwrap();
-        if let Some(version) = self.legacy {
-            ConfiguredStarter::legacy(self, version, params, temp_dir)
+        if let Some(version) = self.legacy.as_ref() {
+            ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)
                 .unwrap()
                 .start_fail(expected_msg)
         } else {

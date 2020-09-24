@@ -14,7 +14,6 @@ use jormungandr_testing_utils::{
         node::{download_last_n_releases, get_jormungandr_bin},
         FragmentSender,
     },
-    Version,
 };
 
 use assert_fs::TempDir;
@@ -26,7 +25,6 @@ pub fn test_legacy_node_all_fragments() {
 
     let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
     let jormungandr = get_jormungandr_bin(&legacy_release, &temp_dir);
-    let version = Version::from_str(&legacy_release.version()).unwrap();
 
     let mut first_stake_pool_owner = startup::create_new_account_address();
     let mut second_stake_pool_owner = startup::create_new_account_address();
@@ -44,7 +42,7 @@ pub fn test_legacy_node_all_fragments() {
 
     let jormungandr = Starter::new()
         .jormungandr_app(jormungandr)
-        .legacy(version)
+        .legacy(legacy_release.version())
         .config(config)
         .start()
         .expect("cannot start legacy jormungandr");
