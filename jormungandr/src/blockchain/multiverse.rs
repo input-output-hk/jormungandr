@@ -43,7 +43,7 @@ impl Multiverse<Ledger> {
     /// TODO: this function is only working for the `Ledger` at the moment
     ///       we need to generalize the `chain_impl_mockchain` to handle
     ///       the garbage collection for any `T`
-    pub async fn purge(&self) {
+    pub async fn gc(&self) {
         let mut guard = self.inner.write().await;
         guard.gc()
     }

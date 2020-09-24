@@ -68,6 +68,7 @@ impl Process {
         mut input: MessageQueue<BlockMsg>,
     ) {
         self.start_branch_reprocessing(&service_info);
+        self.start_garbage_collector(&service_info);
         let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
         let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
         while let Some(msg) = input.next().await {
@@ -193,6 +194,20 @@ impl Process {
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
             move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
+        )
+    }
+
+    fn start_garbage_collector(&self, info: &TokioServiceInfo) {
+        let blockchain = self.blockchain.clone();
+
+        async fn blockchain_gc(blockchain: Blockchain) {
+            blockchain.gc().await
+        }
+
+        info.run_periodic(
+            "collect stale branches",
+            self.garbage_collection_interval,
+            move || blockchain_gc(blockchain.clone()),
         )
     }
 

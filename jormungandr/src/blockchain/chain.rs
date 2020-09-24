@@ -298,6 +298,10 @@ impl Blockchain {
         &mut self.branches
     }
 
+    pub async fn gc(&self) {
+        self.ledgers.gc().await;
+    }
+
     /// create and store a reference of this leader to the new
     async fn create_and_store_reference(
         &self,
