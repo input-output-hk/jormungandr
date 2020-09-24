@@ -299,12 +299,9 @@ impl Blockchain {
     }
 
     pub async fn gc(&self, tip: Arc<Ref>) -> Result<()> {
-        self.ledgers.gc().await;
-        self.storage.gc(
-            tip.epoch_ledger_parameters().epoch_stability_depth,
-            tip.hash().as_ref(),
-        )?;
-
+        let depth = tip.epoch_ledger_parameters().epoch_stability_depth;
+        self.ledgers.gc(depth).await;
+        self.storage.gc(depth, tip.hash().as_ref())?;
         Ok(())
     }
 
