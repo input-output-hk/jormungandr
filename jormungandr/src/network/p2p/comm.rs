@@ -12,6 +12,7 @@ use futures::stream;
 use rand::Rng;
 use slog::Logger;
 
+use std::collections::HashSet;
 use std::fmt;
 use std::mem;
 use std::net::SocketAddr;
@@ -267,11 +268,11 @@ impl PeerComms {
             || self.gossip.is_client()
     }
 
-    pub fn generate_auth_nonce(&mut self) -> [u8; NONCE_LEN] {
-        let mut nonce = [0u8; NONCE_LEN];
-        rand::thread_rng().fill(&mut nonce[..]);
-        self.auth = PeerAuth::ServerNonce(nonce.clone());
-        nonce
+    pub fn node_id(&self) -> Option<NodeId> {
+        match self.auth {
+            PeerAuth::Authenticated(id) => Some(id.clone()),
+            _ => None,
+        }
     }
 
     pub fn auth_nonce(&self) -> Option<[u8; NONCE_LEN]> {
@@ -279,6 +280,13 @@ impl PeerComms {
             PeerAuth::ServerNonce(nonce) => Some(nonce.clone()),
             _ => None,
         }
+    }
+
+    pub fn generate_auth_nonce(&mut self) -> [u8; NONCE_LEN] {
+        let mut nonce = [0u8; NONCE_LEN];
+        rand::thread_rng().fill(&mut nonce[..]);
+        self.auth = PeerAuth::ServerNonce(nonce.clone());
+        nonce
     }
 
     pub fn set_node_id(&mut self, id: NodeId) {
@@ -574,12 +582,28 @@ impl Peers {
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
         let mut map = self.inner().await;
+        let mut reached_node_ids = HashSet::new();
         let unreached_nodes = nodes
             .into_iter()
-            .filter(|node| {
+            .filter(move |node| {
                 if let Some(mut entry) = map.entry(node.clone()) {
-                    match f(entry.update_comm_status()) {
-                        Ok(()) => false,
+                    let comm_status = entry.update_comm_status();
+                    let node_id = comm_status.node_id();
+
+                    // Avoid propagating more than once to the same node
+                    if let Some(id) = &node_id {
+                        if reached_node_ids.contains(id) {
+                            return false;
+                        }
+                    }
+
+                    match f(comm_status) {
+                        Ok(()) => {
+                            if let Some(id) = node_id {
+                                reached_node_ids.insert(id);
+                            }
+                            false
+                        }
                         Err(e) => {
                             debug!(
                                 self.logger,

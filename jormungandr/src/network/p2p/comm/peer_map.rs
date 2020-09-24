@@ -5,6 +5,7 @@ use crate::network::{
         Address,
     },
 };
+use chain_network::data::NodeId;
 use linked_hash_map::LinkedHashMap;
 
 pub struct PeerMap {
@@ -55,6 +56,13 @@ impl PeerData {
 }
 
 impl<'a> CommStatus<'a> {
+    pub fn node_id(&self) -> Option<NodeId> {
+        match self {
+            CommStatus::Established(comms) => comms.node_id(),
+            CommStatus::Connecting(_) => None,
+        }
+    }
+
     fn comms(self) -> &'a mut PeerComms {
         match self {
             CommStatus::Connecting(comms) => comms,
