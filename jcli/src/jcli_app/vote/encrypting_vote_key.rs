@@ -6,8 +6,8 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct BuildEncryptingVoteKey {
-    pub input: Vec<String>,
     pub threshold: usize,
+    pub input: Vec<String>,
 }
 
 impl BuildEncryptingVoteKey {
