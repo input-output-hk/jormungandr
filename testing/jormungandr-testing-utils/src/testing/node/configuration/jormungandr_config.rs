@@ -116,10 +116,17 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
     }
 
     pub fn epoch_duration(&self) -> std::time::Duration {
-        let slot_duration: u8 = self.block0_configuration
-            .blockchain_configuration.slot_duration.into(); 
+        let slot_duration: u8 = self
+            .block0_configuration
+            .blockchain_configuration
+            .slot_duration
+            .into();
 
-        let slots_per_epoch: u32 = self.block0_configuration.blockchain_configuration.slots_per_epoch.into();
+        let slots_per_epoch: u32 = self
+            .block0_configuration
+            .blockchain_configuration
+            .slots_per_epoch
+            .into();
         std::time::Duration::from_secs(slot_duration as u64 * slots_per_epoch as u64)
     }
 

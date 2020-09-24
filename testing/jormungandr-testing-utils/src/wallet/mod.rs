@@ -7,6 +7,7 @@ use crate::{
     testing::{FragmentBuilder, FragmentBuilderError},
 };
 use chain_impl_mockchain::{
+    certificate::{Proposal, VotePlan},
     fee::FeeAlgorithm,
     key::EitherEd25519SecretKey,
     testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},
@@ -14,11 +15,12 @@ use chain_impl_mockchain::{
         InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
         TransactionSignDataHash, Witness,
     },
-    value::Value as ValueLib, certificate::{Proposal, VotePlan}, vote::{CommitteeId, Choice},
+    value::Value as ValueLib,
+    vote::{Choice, CommitteeId},
 };
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
-    interfaces::{Address, Initial, InitialUTxO, Value, CommitteeIdDef},
+    interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, Value},
 };
 
 use chain_addr::Discrimination;
@@ -291,12 +293,12 @@ impl Wallet {
     ) -> Result<Fragment, WalletError> {
         Ok(FragmentBuilder::new(block0_hash, fees).delegation_remove(&self))
     }
-    
+
     pub fn issue_vote_plan_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
-        vote_plan: &VotePlan
+        vote_plan: &VotePlan,
     ) -> Result<Fragment, WalletError> {
         Ok(FragmentBuilder::new(block0_hash, fees).vote_plan(&self, vote_plan))
     }
@@ -307,9 +309,14 @@ impl Wallet {
         fees: &LinearFee,
         vote_plan: &VotePlan,
         proposal_index: u8,
-        choice: &Choice
+        choice: &Choice,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).vote_cast(&self,vote_plan,proposal_index,choice))
+        Ok(FragmentBuilder::new(block0_hash, fees).vote_cast(
+            &self,
+            vote_plan,
+            proposal_index,
+            choice,
+        ))
     }
 
     pub fn issue_vote_tally_cert(
@@ -318,14 +325,14 @@ impl Wallet {
         fees: &LinearFee,
         vote_plan: &VotePlan,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).vote_tally(&self,vote_plan))
+        Ok(FragmentBuilder::new(block0_hash, fees).vote_tally(&self, vote_plan))
     }
 
     pub fn to_committee_id(&self) -> CommitteeIdDef {
         CommitteeIdDef::from(CommitteeId::from(
             self.address().1.public_key().unwrap().clone(),
         ))
-    } 
+    }
 }
 
 impl Into<WalletLib> for Wallet {

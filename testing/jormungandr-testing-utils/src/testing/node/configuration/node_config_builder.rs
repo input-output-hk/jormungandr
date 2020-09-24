@@ -9,8 +9,7 @@ use jormungandr_lib::{
     time::Duration,
 };
 
-
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct NodeConfigBuilder {
     pub storage: Option<PathBuf>,
     pub log: Option<Log>,

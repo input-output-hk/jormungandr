@@ -12,13 +12,14 @@ pub use self::{
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{
-    certificate::{PoolId, VotePlan, VoteCast, Proposal, VoteTally},
+    certificate::{PoolId, Proposal, VoteCast, VotePlan, VoteTally},
     fee::LinearFee,
     fragment::Fragment,
     testing::{
         data::{StakePool as StakePoolLib, Wallet as WalletLib},
         scenario::FragmentFactory,
-    }, vote::{Choice, Payload},
+    },
+    vote::{Choice, Payload},
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -176,18 +177,30 @@ impl FragmentBuilder {
 
     pub fn vote_plan(&self, wallet: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let inner_wallet = wallet.clone().into();
-        self.fragment_factory().vote_plan(&inner_wallet, vote_plan.clone())
+        self.fragment_factory()
+            .vote_plan(&inner_wallet, vote_plan.clone())
     }
 
-    pub fn vote_cast(&self, wallet: &Wallet, vote_plan: &VotePlan, proposal_index: u8, choice: &Choice) -> Fragment {
+    pub fn vote_cast(
+        &self,
+        wallet: &Wallet,
+        vote_plan: &VotePlan,
+        proposal_index: u8,
+        choice: &Choice,
+    ) -> Fragment {
         let inner_wallet = wallet.clone().into();
-        let vote_cast =  VoteCast::new(vote_plan.to_id(), proposal_index as u8, Payload::public(choice.clone()));
+        let vote_cast = VoteCast::new(
+            vote_plan.to_id(),
+            proposal_index as u8,
+            Payload::public(choice.clone()),
+        );
         self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
     }
 
     pub fn vote_tally(&self, wallet: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let inner_wallet = wallet.clone().into();
         let vote_tally = VoteTally::new_public(vote_plan.to_id());
-        self.fragment_factory().vote_tally(&inner_wallet, vote_tally)
+        self.fragment_factory()
+            .vote_tally(&inner_wallet, vote_tally)
     }
 }

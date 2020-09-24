@@ -9,7 +9,12 @@ use crate::{
     wallet::Wallet,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment, vote::Choice, certificate::{VotePlan, Proposal}};
+use chain_impl_mockchain::{
+    certificate::{Proposal, VotePlan},
+    fee::LinearFee,
+    fragment::Fragment,
+    vote::Choice,
+};
 use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -205,7 +210,13 @@ impl<'a> FragmentSender<'a> {
         choice: &Choice,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_vote_cast_cert(&self.block0_hash, &self.fees, vote_plan, proposal_index, choice)?;
+        let fragment = from.issue_vote_cast_cert(
+            &self.block0_hash,
+            &self.fees,
+            vote_plan,
+            proposal_index,
+            choice,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
