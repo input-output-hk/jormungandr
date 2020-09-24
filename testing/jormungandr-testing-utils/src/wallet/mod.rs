@@ -14,11 +14,11 @@ use chain_impl_mockchain::{
         InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
         TransactionSignDataHash, Witness,
     },
-    value::Value as ValueLib, certificate::{Proposal, VotePlan}, vote::Choice,
+    value::Value as ValueLib, certificate::{Proposal, VotePlan}, vote::{CommitteeId, Choice},
 };
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
-    interfaces::{Address, Initial, InitialUTxO, Value},
+    interfaces::{Address, Initial, InitialUTxO, Value, CommitteeIdDef},
 };
 
 use chain_addr::Discrimination;
@@ -320,7 +320,12 @@ impl Wallet {
     ) -> Result<Fragment, WalletError> {
         Ok(FragmentBuilder::new(block0_hash, fees).vote_tally(&self,vote_plan))
     }
- 
+
+    pub fn to_committee_id(&self) -> CommitteeIdDef {
+        CommitteeIdDef::from(CommitteeId::from(
+            self.address().1.public_key().unwrap().clone(),
+        ))
+    } 
 }
 
 impl Into<WalletLib> for Wallet {
