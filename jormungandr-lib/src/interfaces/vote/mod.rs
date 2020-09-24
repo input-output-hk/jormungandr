@@ -174,7 +174,7 @@ where
     Ok(proposals)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct VotePlanStatus {
     pub id: Hash,
     #[serde(with = "PayloadTypeDef")]
@@ -188,7 +188,7 @@ pub struct VotePlanStatus {
     pub proposals: Vec<VoteProposalStatus>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Tally {
     Public { result: TallyResult },
 }
@@ -200,12 +200,18 @@ pub struct TallyResult {
     options: Range<u8>,
 }
 
+impl TallyResult {
+    pub fn results(&self) -> Vec<u64> {
+        self.results.clone()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Payload {
     Public { choice: u8 },
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct VoteProposalStatus {
     pub index: u8,
     pub proposal_id: Hash,

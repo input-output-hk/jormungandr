@@ -13,11 +13,15 @@ use jormungandr_lib::interfaces::{
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};
-use jormungandr_testing_utils::testing::{
-    Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
+use jormungandr_testing_utils::{
+    testing::{
+        Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
+    },
+    wallet::Wallet,
 };
 use std::path::PathBuf;
 
+#[derive(Clone, Debug)]
 pub struct ConfigurationBuilder {
     funds: Vec<Initial>,
     certs: Vec<Initial>,
