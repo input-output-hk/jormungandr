@@ -71,6 +71,11 @@ impl ConfigurationBuilder {
         }
     }
 
+    pub fn with_committees(&mut self, wallets: &[&Wallet]) -> &mut Self {
+        self.committee_ids = wallets.iter().map(|w| w.to_committee_id()).collect();
+        self
+    }
+
     pub fn with_slots_per_epoch(&mut self, slots_per_epoch: u32) -> &mut Self {
         self.slots_per_epoch = NumberOfSlotsPerEpoch::new(slots_per_epoch).unwrap();
         self
