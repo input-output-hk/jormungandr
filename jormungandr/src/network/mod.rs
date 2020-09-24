@@ -251,7 +251,7 @@ impl ConnectionState {
         ConnectionState {
             timeout: peer.timeout,
             connection: peer.connection.clone(),
-            logger: global.logger().new(o!("peer_addr" => peer.connection)),
+            logger: global.logger().new(o!("peer" => peer.connection)),
             global,
         }
     }
@@ -486,19 +486,19 @@ fn connect_and_propagate(
             debug!(
                 state.logger(),
                 "ignoring P2P node without an IP address" ;
-                "address" => %node
+                "peer" => %node
             );
             return;
         }
     };
     options.evict_clients = state.num_clients_to_bump();
     if Some(&node) == state.node_address() {
-        error!(state.logger(), "topology tells the node to connect to itself, ignoring"; "address" => %node);
+        error!(state.logger(), "topology tells the node to connect to itself, ignoring"; "peer" => %node);
         return;
     }
     let peer = Peer::new(addr);
     let conn_state = ConnectionState::new(state.clone(), &peer);
-    let conn_logger = conn_state.logger().new(o!("address" => node.to_string()));
+    let conn_logger = conn_state.logger().new(o!("peer" => node.to_string()));
     info!(conn_logger, "connecting to peer");
     let (handle, connecting) = client::connect(conn_state, channels);
     let spawn_state = state.clone();

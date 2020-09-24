@@ -608,7 +608,7 @@ impl Peers {
                             debug!(
                                 self.logger,
                                 "propagation to peer failed, unsubscribing peer";
-                                "address" => %node,
+                                "peer" => %node,
                                 "reason" => %e.kind()
                             );
                             entry.remove();
@@ -663,7 +663,7 @@ impl Peers {
         debug!(
             self.logger,
             "sending gossip";
-            "node_id" => %target,
+            "peer" => %target,
         );
         let mut map = self.inner().await;
         if let Some(mut entry) = map.entry(target) {
@@ -678,7 +678,7 @@ impl Peers {
                 debug!(
                     self.logger,
                     "gossip propagation to peer failed, unsubscribing peer";
-                    "node_id" => %entry.address(),
+                    "peer" => %entry.address(),
                     "reason" => %e.kind(),
                 );
                 entry.remove();
