@@ -554,6 +554,12 @@ impl Peers {
     }
 
     pub async fn set_node_id(&self, peer: Address, id: NodeId) {
+        debug!(
+            self.logger,
+            "authenticated client peer node";
+            "peer" => %peer,
+            "node_id" => ?id,
+        );
         let mut map = self.inner().await;
         let comms = map.server_comms(peer);
         comms.set_node_id(id);

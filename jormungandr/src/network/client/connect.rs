@@ -65,6 +65,8 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         // Validate the server's node ID
         let peer_id = validate_peer_auth(hr.auth, &nonce)?;
 
+        debug!(logger, "authenticated server peer node"; "node_id" => ?peer_id);
+
         // Send client authentication
         let auth = authenticate_client_node_id(&keypair, &hr.nonce);
         grpc_client
