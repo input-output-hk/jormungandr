@@ -168,8 +168,7 @@ fn get_legacy_data(title: &str, context: &mut Context<ChaChaRng>) -> (PathBuf, V
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(title));
-    let version = Version::from_str(&last_release.version()).unwrap();
-    (legacy_app, version)
+    (legacy_app, last_release.version())
 }
 
 fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Sync + Send>(

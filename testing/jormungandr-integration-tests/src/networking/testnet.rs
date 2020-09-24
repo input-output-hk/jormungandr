@@ -277,8 +277,7 @@ fn get_legacy_app(temp_dir: &TempDir) -> (PathBuf, Version) {
     let releases = download_last_n_releases(1);
     let last_release = releases.iter().next().unwrap();
     let jormungandr = get_jormungandr_bin(&last_release, temp_dir);
-    let version: Version = last_release.version().parse().unwrap();
-    (jormungandr, version)
+    (jormungandr, last_release.version())
 }
 
 #[test]

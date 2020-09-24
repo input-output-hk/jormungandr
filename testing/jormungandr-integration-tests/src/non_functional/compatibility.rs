@@ -12,7 +12,7 @@ use jormungandr_testing_utils::{
 };
 use std::str::FromStr;
 
-fn test_connectivity_between_master_and_legacy_app(version: String, temp_dir: &TempDir) {
+fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &TempDir) {
     println!("Testing version: {}", version);
 
     let mut sender = startup::create_new_account_address();
@@ -35,11 +35,9 @@ fn test_connectivity_between_master_and_legacy_app(version: String, temp_dir: &T
         .with_block_hash(leader_config.genesis_block_hash().clone())
         .build(temp_dir);
 
-    let version = Version::from_str(&version).unwrap();
-
     let trusted_jormungandr = Starter::new()
         .config(trusted_node_config)
-        .legacy(version)
+        .legacy(version.clone())
         .passive()
         .start()
         .unwrap();
@@ -87,7 +85,7 @@ pub fn test_upgrade_downgrade() {
     }
 }
 
-fn test_upgrade_and_downgrade_from_legacy_to_master(version: String, temp_dir: &TempDir) {
+fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: &TempDir) {
     println!("Testing version: {}", version);
 
     let mut sender = startup::create_new_account_address();
@@ -101,13 +99,10 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: String, temp_dir: &
         .with_storage(&temp_dir.child("storage"))
         .build(temp_dir);
 
-    let version = Version::from_str(&version).unwrap();
-
     // build some storage data on legacy node
-
     let legacy_jormungandr = Starter::new()
         .config(config.clone())
-        .legacy(version)
+        .legacy(version.clone())
         .start()
         .unwrap();
 

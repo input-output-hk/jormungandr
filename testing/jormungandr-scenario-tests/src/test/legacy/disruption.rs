@@ -42,8 +42,7 @@ pub fn last_nth_release(context: Context<ChaChaRng>, n: u32) -> Result<ScenarioR
     let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(&*title));
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_release(context, legacy_app, version, title)
+    test_legacy_release(context, legacy_app, last_release.version(), title)
 }
 
 fn test_legacy_release(
@@ -143,8 +142,7 @@ pub fn disruption_last_nth_release(context: Context<ChaChaRng>, n: u32) -> Resul
     let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(&*title));
-    let version = Version::from_str(&last_release.version()).unwrap();
-    test_legacy_disruption_release(context, legacy_app, version, title)
+    test_legacy_disruption_release(context, legacy_app, last_release.version(), title)
 }
 
 fn test_legacy_disruption_release(
@@ -273,7 +271,6 @@ pub fn newest_node_enters_legacy_network(
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(&*title));
-    let version = Version::from_str(&last_release.version()).unwrap();
 
     let scenario_settings = prepare_scenario! {
         &title,
@@ -308,7 +305,7 @@ pub fn newest_node_enters_legacy_network(
             .new_spawn_params(LEADER_1)
             .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
-        &version,
+        &last_release.version(),
     )?;
     leader1.wait_for_bootstrap()?;
 
@@ -317,7 +314,7 @@ pub fn newest_node_enters_legacy_network(
             .new_spawn_params(LEADER_2)
             .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
-        &version,
+        &last_release.version(),
     )?;
     leader2.wait_for_bootstrap()?;
 
@@ -326,7 +323,7 @@ pub fn newest_node_enters_legacy_network(
             .new_spawn_params(LEADER_3)
             .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
-        &version,
+        &last_release.version(),
     )?;
     leader3.wait_for_bootstrap()?;
 
@@ -372,7 +369,7 @@ pub fn newest_node_enters_legacy_network(
             .new_spawn_params(LEADER_4)
             .persistence_mode(PersistenceMode::Persistent)
             .jormungandr(legacy_app.clone()),
-        &version,
+        &last_release.version(),
     )?;
     old_leader4.wait_for_bootstrap()?;
 
