@@ -7,7 +7,7 @@ use assert_fs::TempDir;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{Proposal, Proposals, PushProposal, VoteAction, VotePlan},
-    ledger::governance::TreasuryGovernanceAction,
+    ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
     testing::VoteTestGen,
     value::Value,
     vote::{Choice, CommitteeId, Options, PayloadType},
@@ -99,8 +99,8 @@ pub fn test_get_initial_vote_plan() {
 use chain_core::property::BlockDate as _;
 
 fn proposal_with_3_options() -> Proposal {
-    let action = VoteAction::Treasury {
-        action: TreasuryGovernanceAction::TransferToRewards { value: Value(10) },
+    let action = VoteAction::Parameters {
+        action: ParametersGovernanceAction::RewardAdd { value: Value(10) },
     };
 
     Proposal::new(
@@ -156,6 +156,7 @@ pub fn test_vote_flow_bft() {
         .with_committees(&wallets)
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])
+        .with_explorer()
         .with_slot_duration(1)
         .build(&temp_dir);
 
@@ -176,6 +177,12 @@ pub fn test_vote_flow_bft() {
         .send_vote_cast(&mut bob, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
 
+    println!("Before (Status): {:?}", jormungandr.explorer().status());
+    println!(
+        "Before (Last Block): {:?}",
+        jormungandr.explorer().last_block()
+    );
+
     std::thread::sleep(epoch_duration);
     transaction_sender
         .send_vote_tally(&mut clarice, &vote_plan, &jormungandr)
@@ -186,6 +193,13 @@ pub fn test_vote_flow_bft() {
     assert_first_proposal_has_votes(
         2 * initial_fund_per_wallet,
         jormungandr.rest().vote_plan_statuses().unwrap(),
+    );
+    std::thread::sleep(epoch_duration);
+
+    println!("After (Status): {:?}", jormungandr.explorer().status());
+    println!(
+        "After (Last Block): {:?}",
+        jormungandr.explorer().last_block()
     );
 }
 

@@ -52,6 +52,10 @@ impl Explorer {
         self.print_log = false;
     }
 
+    pub fn enable_logs(&mut self) {
+        self.print_log = true;
+    }
+
     pub fn print_request<T: Serialize>(&self, query: &QueryBody<T>) {
         if self.print_log == false {
             return;

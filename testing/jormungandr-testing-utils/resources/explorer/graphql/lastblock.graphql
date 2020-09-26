@@ -8,6 +8,10 @@ query LastBlock{
                     id  
                 },
                 slot  
+            },
+            treasury {
+                rewards,
+                treasury
             } 
         }  
     }
