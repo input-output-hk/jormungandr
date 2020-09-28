@@ -1,4 +1,3 @@
-use chain_vote::gang::GroupElement;
 use chain_vote::gargamel::PublicKey;
 use chain_vote::{
     committee::MemberSecretKey, MemberCommunicationKey, MemberCommunicationPublicKey, MemberState,

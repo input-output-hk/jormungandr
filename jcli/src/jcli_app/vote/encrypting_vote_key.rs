@@ -24,7 +24,7 @@ fn key_from_string(key: &str) -> chain_vote::MemberCommunicationPublicKey {
     // TODO: remove unwrap and bubble up error
     let raw_key = hex::decode(key).unwrap();
     chain_vote::MemberCommunicationPublicKey::from_public_key(chain_vote::gargamel::PublicKey {
-        pk: chain_vote::gang::GroupElement::from_bytes(&raw_key).unwrap(),
+        pk: chain_vote::CRS::from_bytes(&raw_key).unwrap(),
     })
 }
 
@@ -33,7 +33,7 @@ fn generate_states(
     members_keys: &[chain_vote::MemberCommunicationPublicKey],
 ) -> chain_vote::committee::ElectionPublicKey {
     let mut rng = ChaCha20Rng::from_entropy();
-    let csr = chain_vote::gang::GroupElement::random(&mut rng);
+    let csr = chain_vote::CRS::random(&mut rng);
     let participants: Vec<chain_vote::committee::MemberPublicKey> = (0..members_keys.len())
         .map(|i| chain_vote::MemberState::new(&mut rng, threshold, &csr, &members_keys, i))
         .map(|state| state.public_key())

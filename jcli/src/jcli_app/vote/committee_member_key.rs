@@ -1,4 +1,3 @@
-use chain_vote::gang::GroupElement;
 use chain_vote::gargamel::PublicKey;
 use chain_vote::{committee::MemberSecretKey, MemberCommunicationPublicKey, MemberState};
 use rand_chacha::rand_core::SeedableRng;
@@ -46,7 +45,7 @@ fn generate_committee_member_keys(
     keys: &[MemberCommunicationPublicKey],
 ) -> MemberState {
     let mut rng = ChaCha20Rng::from_entropy();
-    let crs = chain_vote::gang::GroupElement::random(&mut rng);
+    let crs = chain_vote::CRS::random(&mut rng);
     MemberState::new(&mut rng, threshold, &crs, keys, my)
 }
 

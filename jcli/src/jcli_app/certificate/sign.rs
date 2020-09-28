@@ -115,7 +115,6 @@ pub(crate) fn committee_vote_tally_sign(
 
             Ok(SignedCertificate::VoteTally(vote_tally, proof))
         }
-        PayloadType::Private => unimplemented!("Private votes are not supported yet"),
     }
 }
 

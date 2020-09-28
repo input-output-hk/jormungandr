@@ -466,7 +466,6 @@ dependencies = [
  "chain-ser",
  "chain-test-utils",
  "chain-time",
- "chain-vote",
  "ed25519-bip32",
  "hex",
  "imhamt",
@@ -532,7 +531,7 @@ name = "chain-vote"
 version = "0.1.0"
 dependencies = [
  "cryptoxide",
- "eccoxide",
+ "eccoxide 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1",
 ]
 
@@ -882,6 +881,17 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 name = "eccoxide"
 version = "0.1.0"
 source = "git+https://github.com/vincenthz/eccoxide#1d9faacea4ca6cc9d8e0b9acc7bfe7009a6214d2"
+dependencies = [
+ "lazy_static",
+ "num-bigint",
+ "num-traits",
+]
+
+[[package]]
+name = "eccoxide"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd94430d57f1f931d2b1e8e8a2267547a5fca34218d9289c8bf306da433d7afc"
 dependencies = [
  "lazy_static",
  "num-bigint",
@@ -1626,7 +1636,7 @@ dependencies = [
  "chain-time",
  "chain-vote",
  "clap",
- "eccoxide",
+ "eccoxide 0.1.0 (git+https://github.com/vincenthz/eccoxide)",
  "ed25519-bip32",
  "gtmpl",
  "hex",
