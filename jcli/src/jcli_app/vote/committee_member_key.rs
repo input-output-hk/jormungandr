@@ -1,5 +1,5 @@
 use chain_vote::gargamel::PublicKey;
-use chain_vote::{committee::MemberSecretKey, MemberCommunicationPublicKey, MemberState};
+use chain_vote::{MemberCommunicationPublicKey, MemberState};
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use structopt::StructOpt;
