@@ -531,7 +531,7 @@ name = "chain-vote"
 version = "0.1.0"
 dependencies = [
  "cryptoxide",
- "eccoxide 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "eccoxide",
  "rand_core 0.5.1",
 ]
 
@@ -876,16 +876,6 @@ name = "dtoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
-
-[[package]]
-name = "eccoxide"
-version = "0.1.0"
-source = "git+https://github.com/vincenthz/eccoxide#1d9faacea4ca6cc9d8e0b9acc7bfe7009a6214d2"
-dependencies = [
- "lazy_static",
- "num-bigint",
- "num-traits",
-]
 
 [[package]]
 name = "eccoxide"
@@ -1636,7 +1626,7 @@ dependencies = [
  "chain-time",
  "chain-vote",
  "clap",
- "eccoxide 0.1.0 (git+https://github.com/vincenthz/eccoxide)",
+ "eccoxide",
  "ed25519-bip32",
  "gtmpl",
  "hex",

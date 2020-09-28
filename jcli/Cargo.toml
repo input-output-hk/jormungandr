@@ -35,7 +35,7 @@ openapiv3 = "0.3.2"
 valico = "3.4.0"
 ed25519-bip32 = "0.3"
 thiserror = "1.0"
-eccoxide = { git = "https://github.com/vincenthz/eccoxide", optional = true }
+eccoxide = { version = "0.1", optional = true }
 
 [dependencies.clap]
 version = "2.33"
