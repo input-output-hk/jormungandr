@@ -582,7 +582,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         .map_err(Into::into);
 
         let result = futures::select! {
-            result = prepare_block0_fut.fuse() => return result,
+            result = prepare_block0_fut.fuse() => result,
             result = shutdown_rx.fuse() => match result {
                 Ok(()) => return Err(start_up::Error::Interrupted),
                 Err(_) => panic!("failed to wait for GET /shutdown"),
