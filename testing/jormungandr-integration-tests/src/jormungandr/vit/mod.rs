@@ -7,17 +7,18 @@ use assert_fs::TempDir;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{Proposal, Proposals, PushProposal, VoteAction, VotePlan},
-    ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
+    ledger::governance::ParametersGovernanceAction,
+    milli::Milli,
     testing::VoteTestGen,
     value::Value,
     vote::{Choice, CommitteeId, Options, PayloadType},
 };
 use jormungandr_lib::{
     crypto::key::KeyPair,
-    interfaces::{CommitteeIdDef, Tally, VotePlanStatus},
+    interfaces::{ActiveSlotCoefficient, CommitteeIdDef, Tally, VotePlanStatus},
 };
 use jormungandr_testing_utils::{
-    testing::{vote_plan_cert, FragmentSender, FragmentSenderSetup},
+    testing::{node::Explorer, vote_plan_cert, FragmentSender, FragmentSenderSetup},
     wallet::Wallet,
 };
 use rand::rngs::OsRng;
@@ -98,9 +99,11 @@ pub fn test_get_initial_vote_plan() {
 
 use chain_core::property::BlockDate as _;
 
-fn proposal_with_3_options() -> Proposal {
+fn proposal_with_3_options(rewards_increase: u64) -> Proposal {
     let action = VoteAction::Parameters {
-        action: ParametersGovernanceAction::RewardAdd { value: Value(10) },
+        action: ParametersGovernanceAction::RewardAdd {
+            value: Value(rewards_increase),
+        },
     };
 
     Proposal::new(
@@ -110,31 +113,33 @@ fn proposal_with_3_options() -> Proposal {
     )
 }
 
-fn proposals() -> Proposals {
+fn proposals(rewards_increase: u64) -> Proposals {
     let mut proposals = Proposals::new();
     for _ in 0..3 {
         assert_eq!(
             PushProposal::Success,
-            proposals.push(proposal_with_3_options()),
+            proposals.push(proposal_with_3_options(rewards_increase)),
             "generate_proposal method is only for correct data preparation"
         );
     }
     proposals
 }
 
-fn vote_plan_with_3_proposals() -> VotePlan {
+fn vote_plan_with_3_proposals(rewards_increase: u64) -> VotePlan {
     VotePlan::new(
+        BlockDate::from_epoch_slot_id(0, 0),
         BlockDate::from_epoch_slot_id(1, 0),
         BlockDate::from_epoch_slot_id(2, 0),
-        BlockDate::from_epoch_slot_id(3, 0),
-        proposals(),
+        proposals(rewards_increase),
         PayloadType::Public,
     )
 }
 
 #[test]
 pub fn test_vote_flow_bft() {
-    let favorable_choice = Choice::new(0);
+    let favorable_choice = Choice::new(1);
+
+    let rewards_increase = 10;
     let initial_fund_per_wallet = 1_000_000;
     let temp_dir = TempDir::new().unwrap();
 
@@ -143,7 +148,7 @@ pub fn test_vote_flow_bft() {
     let mut bob = Wallet::new_account(&mut rng);
     let mut clarice = Wallet::new_account(&mut rng);
 
-    let vote_plan = vote_plan_with_3_proposals();
+    let vote_plan = vote_plan_with_3_proposals(rewards_increase);
     let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
     let wallets = [&alice, &bob, &clarice];
     let config = ConfigurationBuilder::new()
@@ -161,15 +166,14 @@ pub fn test_vote_flow_bft() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let epoch_duration = config.epoch_duration();
-
+   
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
         FragmentSenderSetup::resend_3_times(),
     );
 
-    std::thread::sleep(epoch_duration);
+  
     transaction_sender
         .send_vote_cast(&mut alice, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
@@ -177,30 +181,53 @@ pub fn test_vote_flow_bft() {
         .send_vote_cast(&mut bob, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
 
-    println!("Before (Status): {:?}", jormungandr.explorer().status());
-    println!(
-        "Before (Last Block): {:?}",
-        jormungandr.explorer().last_block()
-    );
+  
+    let rewards_before = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
 
-    std::thread::sleep(epoch_duration);
+     wait_for_epoch(1, jormungandr.explorer().clone());
+
     transaction_sender
         .send_vote_tally(&mut clarice, &vote_plan, &jormungandr)
         .unwrap();
 
-    std::thread::sleep(epoch_duration);
+    wait_for_epoch(2, jormungandr.explorer().clone());
+
 
     assert_first_proposal_has_votes(
         2 * initial_fund_per_wallet,
         jormungandr.rest().vote_plan_statuses().unwrap(),
     );
-    std::thread::sleep(epoch_duration);
 
-    println!("After (Status): {:?}", jormungandr.explorer().status());
-    println!(
-        "After (Last Block): {:?}",
-        jormungandr.explorer().last_block()
-    );
+    let rewards_after = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
+    assert!(
+        rewards_after == (rewards_before + rewards_increase),
+        "Vote was unsuccessful"
+    )
 }
 
 fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanStatus>) {
@@ -215,46 +242,41 @@ fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanS
     match proposal.tally.as_ref().unwrap() {
         Tally::Public { result } => {
             let results = result.results();
-            assert_eq!(*results.get(0).unwrap(), stake);
-            assert_eq!(*results.get(1).unwrap(), 0);
+            assert_eq!(*results.get(0).unwrap(), 0);
+            assert_eq!(*results.get(1).unwrap(), stake);
             assert_eq!(*results.get(2).unwrap(), 0);
         }
     }
 }
 
-#[ignore]
 #[test]
 pub fn test_vote_flow_praos() {
-    let favorable_choice = Choice::new(0);
-    let initial_fund_per_wallet = 1_000_000;
+    let yes_choice = Choice::new(1);
+    let no_choice = Choice::new(2);
     let temp_dir = TempDir::new().unwrap();
+    let rewards_increase = 10;
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account(&mut rng);
     let mut bob = Wallet::new_account(&mut rng);
     let mut clarice = Wallet::new_account(&mut rng);
 
-    let vote_plan = vote_plan_with_3_proposals();
+    let vote_plan = vote_plan_with_3_proposals(rewards_increase);
 
     let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
-    let wallets = [&alice, &bob, &clarice];
     let mut config = ConfigurationBuilder::new();
     config
-        .with_funds(
-            wallets
-                .iter()
-                .map(|x| x.into_initial_fund(1_000_000))
-                .collect(),
-        )
-        .with_committees(&wallets)
+        .with_committees(&[&alice, &bob, &clarice])
         .with_slots_per_epoch(60)
+        .with_consensus_genesis_praos_active_slot_coeff(
+            ActiveSlotCoefficient::new(Milli::from_millis(1_000)).unwrap(),
+        )
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(1);
 
-    let epoch_duration = config.clone().build(&temp_dir).epoch_duration();
-    let (jormungandr, stake_pools) = start_stake_pool(
-        &[alice.clone(), bob.clone(), clarice.clone()],
-        &[],
+    let (jormungandr, _stake_pools) = start_stake_pool(
+        &[alice.clone(), bob.clone()],
+        &[clarice.clone()],
         &mut config,
     )
     .unwrap();
@@ -265,23 +287,75 @@ pub fn test_vote_flow_praos() {
         FragmentSenderSetup::resend_3_times(),
     );
 
-    std::thread::sleep(epoch_duration);
     transaction_sender
-        .send_vote_cast(&mut alice, &vote_plan, 0, &favorable_choice, &jormungandr)
+        .send_vote_cast(&mut alice, &vote_plan, 0, &yes_choice, &jormungandr)
         .unwrap();
     transaction_sender
-        .send_vote_cast(&mut bob, &vote_plan, 0, &favorable_choice, &jormungandr)
+        .send_vote_cast(&mut bob, &vote_plan, 0, &yes_choice, &jormungandr)
         .unwrap();
-
-    std::thread::sleep(epoch_duration);
     transaction_sender
-        .send_vote_tally(&mut clarice, &vote_plan, &jormungandr)
+        .send_vote_cast(&mut clarice, &vote_plan, 0, &no_choice, &jormungandr)
         .unwrap();
 
-    std::thread::sleep(epoch_duration);
+    let rewards_before = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
 
-    assert_first_proposal_has_votes(
-        2 * initial_fund_per_wallet,
-        jormungandr.rest().vote_plan_statuses().unwrap(),
-    );
+    wait_for_epoch(1, jormungandr.explorer().clone());
+
+    transaction_sender
+        .send_vote_tally(&mut alice, &vote_plan, &jormungandr)
+        .unwrap();
+
+    wait_for_epoch(2, jormungandr.explorer().clone());
+
+    let rewards_after = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
+    assert_eq!(
+        rewards_after,
+        (rewards_before + rewards_increase - 100_000 * 2),
+        "Vote was unsuccessful"
+    )
+}
+
+fn wait_for_epoch(epoch_id: u64, mut explorer: Explorer) {
+    explorer.disable_logs();
+    while explorer
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .date
+        .epoch
+        .id
+        .parse::<u64>()
+        .unwrap()
+        < epoch_id
+    {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
 }
