@@ -166,14 +166,13 @@ pub fn test_vote_flow_bft() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-   
+
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
         FragmentSenderSetup::resend_3_times(),
     );
 
-  
     transaction_sender
         .send_vote_cast(&mut alice, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
@@ -181,7 +180,6 @@ pub fn test_vote_flow_bft() {
         .send_vote_cast(&mut bob, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
 
-  
     let rewards_before = jormungandr
         .explorer()
         .status()
@@ -196,14 +194,13 @@ pub fn test_vote_flow_bft() {
         .parse::<u64>()
         .unwrap();
 
-     wait_for_epoch(1, jormungandr.explorer().clone());
+    wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
         .send_vote_tally(&mut clarice, &vote_plan, &jormungandr)
         .unwrap();
 
     wait_for_epoch(2, jormungandr.explorer().clone());
-
 
     assert_first_proposal_has_votes(
         2 * initial_fund_per_wallet,
