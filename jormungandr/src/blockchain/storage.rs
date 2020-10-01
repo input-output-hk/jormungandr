@@ -267,6 +267,13 @@ impl Storage {
             None => return Ok(()),
         };
 
+        debug!(
+            self.logger,
+            "pruning all branches below stability depth {} (chain length: {})",
+            threshold_depth,
+            threshold_length
+        );
+
         let tips_ids = self.storage.get_tips_ids()?;
 
         for id in tips_ids {
@@ -277,6 +284,7 @@ impl Storage {
             }
 
             self.storage.prune_branch(id.as_ref())?;
+            debug!(self.logger, "removed branch with head {}", id);
         }
 
         let to_block_info = self
@@ -284,6 +292,11 @@ impl Storage {
             .get_nth_ancestor(main_branch_tip, threshold_depth)?;
         self.storage
             .flush_to_permanent_store(to_block_info.id().as_ref())?;
+        debug!(
+            self.logger,
+            "flushed all blocks up to {} to the permanent store",
+            to_block_info.id()
+        );
 
         Ok(())
     }
