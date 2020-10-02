@@ -7,8 +7,7 @@ use crate::network::{
     Channels, ConnectionState,
 };
 use chain_core::mempack::{self, ReadBuf, Readable};
-use chain_crypto::{Ed25519, KeyPair, PublicKey, Signature, Verification};
-use chain_network::data::{AuthenticatedNodeId, NodeId};
+use chain_network::data::{AuthenticatedNodeId, NodeId, NodeKeyPair};
 use chain_network::error::{self as net_error, HandshakeError};
 use chain_network::grpc::legacy;
 
@@ -68,7 +67,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         debug!(logger, "authenticated server peer node"; "node_id" => ?peer_id);
 
         // Send client authentication
-        let auth = authenticate_client_node_id(&keypair, &hr.nonce);
+        let auth = keypair.sign(&hr.nonce);
         grpc_client
             .client_auth(auth)
             .await
@@ -115,21 +114,9 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
 
 // Validate the server peer's node ID
 fn validate_peer_auth(auth: AuthenticatedNodeId, nonce: &[u8]) -> Result<NodeId, ConnectError> {
-    let public_key = PublicKey::<Ed25519>::from_binary(auth.id().as_bytes())
-        .map_err(ConnectError::InvalidNodeId)?;
-    let signature = Signature::<[u8], Ed25519>::from_binary(auth.signature())
-        .map_err(ConnectError::InvalidNodeSignature)?;
-    if let Verification::Failed = signature.verify(&public_key, &nonce) {
-        return Err(ConnectError::PeerSignatureVerificationFailed);
-    }
+    auth.verify(&nonce)
+        .map_err(ConnectError::PeerSignatureVerificationFailed)?;
     Ok(auth.into())
-}
-
-// Sign the client's node ID using the server nonce
-fn authenticate_client_node_id(keypair: &KeyPair<Ed25519>, nonce: &[u8]) -> AuthenticatedNodeId {
-    let node_id = NodeId::try_from(keypair.public_key().as_ref()).unwrap();
-    let signature = keypair.private_key().sign(nonce);
-    node_id.authenticated(signature.as_ref()).unwrap()
 }
 
 /// Handle used to monitor the P2P client in process of
@@ -185,7 +172,7 @@ pub enum ConnectError {
     #[error("invalid signature data in server Handshake response")]
     InvalidNodeSignature(#[source] chain_crypto::SignatureError),
     #[error("signature verification failed for peer node ID")]
-    PeerSignatureVerificationFailed,
+    PeerSignatureVerificationFailed(#[source] net_error::Error),
     #[error("client authentication failed")]
     ClientAuth(#[source] net_error::Error),
     #[error("subscription request failed")]

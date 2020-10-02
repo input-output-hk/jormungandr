@@ -84,9 +84,8 @@ use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
     task::TokioServiceInfo,
 };
-use chain_crypto::algorithms::Ed25519;
-use chain_crypto::KeyPair;
 use chain_network::data::gossip::Gossip;
+use chain_network::data::NodeKeyPair;
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
@@ -150,7 +149,7 @@ pub struct GlobalState {
     stats_counter: StatsCounter,
     topology: P2pTopology,
     peers: Peers,
-    keypair: KeyPair<Ed25519>,
+    keypair: NodeKeyPair,
     logger: Logger,
 }
 
@@ -170,7 +169,7 @@ impl GlobalState {
         rand::thread_rng().fill(&mut rng_seed);
         let mut prng = ChaChaRng::from_seed(rng_seed);
 
-        let keypair = KeyPair::generate(&mut prng);
+        let keypair = NodeKeyPair::generate(&mut prng);
 
         let topology = P2pTopology::new(
             &config,

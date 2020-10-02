@@ -8,9 +8,8 @@ use super::{
 use crate::blockcfg as app_data;
 use crate::intercom::{self, BlockMsg, ClientMsg};
 use crate::utils::async_msg::MessageBox;
-use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
-use chain_network::data::p2p::{AuthenticatedNodeId, NodeId, Peer, Peers};
+use chain_network::data::p2p::{AuthenticatedNodeId, Peer, Peers};
 use chain_network::data::{
     Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse, Header,
 };
@@ -62,10 +61,7 @@ impl Node for NodeService {
     async fn handshake(&self, peer: Peer, nonce: &[u8]) -> Result<HandshakeResponse, Error> {
         let block0_id = BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap();
         let keypair = &self.global_state.keypair;
-        let node_id = NodeId::try_from(keypair.public_key().as_ref()).unwrap();
-        let signature = keypair.private_key().sign(nonce);
-        let auth = node_id.authenticated(signature.as_ref()).unwrap();
-
+        let auth = keypair.sign(nonce);
         let addr = Address::new(peer.addr()).unwrap();
         let nonce = self.global_state.peers.generate_auth_nonce(addr).await;
 
@@ -86,24 +82,7 @@ impl Node for NodeService {
                 "nonce is missing, perform Handshake first",
             )
         })?;
-        let public_key = PublicKey::<Ed25519>::from_binary(auth.id().as_bytes()).map_err(|e| {
-            Error::new(
-                ErrorCode::InvalidArgument,
-                format!("invalid node ID: {}", e),
-            )
-        })?;
-        let signature = Signature::<[u8], Ed25519>::from_binary(auth.signature()).map_err(|e| {
-            Error::new(
-                ErrorCode::InvalidArgument,
-                format!("invalid signature data: {}", e),
-            )
-        })?;
-        if let Verification::Failed = signature.verify(&public_key, &nonce) {
-            return Err(Error::new(
-                ErrorCode::InvalidArgument,
-                "signature verification failed for peer node ID",
-            ));
-        }
+        auth.verify(&nonce[..])?;
         self.global_state.peers.set_node_id(addr, auth.into()).await;
         Ok(())
     }

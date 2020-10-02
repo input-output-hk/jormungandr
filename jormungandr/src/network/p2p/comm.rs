@@ -269,7 +269,7 @@ impl PeerComms {
     }
 
     pub fn node_id(&self) -> Option<NodeId> {
-        match self.auth {
+        match &self.auth {
             PeerAuth::Authenticated(id) => Some(id.clone()),
             _ => None,
         }
