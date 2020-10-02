@@ -12,6 +12,7 @@ use chain_impl_mockchain::{
 use core::ops::Range;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+use typed_bytes::ByteBuilder;
 
 #[derive(
     Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, serde::Deserialize,
@@ -19,6 +20,7 @@ use std::collections::HashMap;
 #[serde(remote = "PayloadType", rename_all = "snake_case")]
 enum PayloadTypeDef {
     Public,
+    Private,
 }
 
 #[derive(Deserialize)]
@@ -34,6 +36,11 @@ pub struct VotePlanDef {
     committee_end: BlockDate,
     #[serde(deserialize_with = "deserialize_proposals", getter = "proposals")]
     proposals: Proposals,
+    #[serde(
+        deserialize_with = "deserialize_committee_member_public_keys",
+        getter = "committee_member_public_keys"
+    )]
+    committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
 }
 
 #[derive(Deserialize)]
@@ -90,8 +97,18 @@ impl From<VotePlanDef> for VotePlan {
             vpd.committee_end,
             vpd.proposals,
             vpd.payload_type,
+            vpd.committee_member_public_keys,
         )
     }
+}
+
+fn deserialize_committee_member_public_keys<'de, D>(
+    deserializer: D,
+) -> Result<Vec<chain_vote::MemberPublicKey>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Vec::new())
 }
 
 impl From<VoteProposalDef> for Proposal {
@@ -191,6 +208,7 @@ pub struct VotePlanStatus {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Tally {
     Public { result: TallyResult },
+    Private { private_tally: PrivateTally },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -200,15 +218,26 @@ pub struct TallyResult {
     options: Range<u8>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 impl TallyResult {
     pub fn results(&self) -> Vec<u64> {
         self.results.clone()
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PrivateTally(Vec<u8>);
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Payload {
-    Public { choice: u8 },
+    Public {
+        choice: u8,
+    },
+    // We serialize deserialize the bytes directly
+    Private {
+        encrypted_vote: Vec<u8>,
+        proof: Vec<u8>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -226,14 +255,24 @@ impl From<vote::Payload> for Payload {
             vote::Payload::Public { choice } => Self::Public {
                 choice: choice.as_byte(),
             },
+            vote::Payload::Private {
+                encrypted_vote,
+                proof,
+            } => Self::Private {
+                encrypted_vote: encrypted_vote.iter().flat_map(|ct| ct.to_bytes()).collect(),
+                proof: proof
+                    .serialize_in::<u8>(ByteBuilder::new())
+                    .finalize_as_vec(),
+            },
         }
     }
 }
 
 impl Payload {
-    pub fn choice(&self) -> u8 {
+    pub fn choice(&self) -> Option<u8> {
         match self {
-            Payload::Public { choice } => *choice,
+            Payload::Public { choice } => Some(*choice),
+            Payload::Private { .. } => None,
         }
     }
 }
@@ -252,6 +291,9 @@ impl From<vote::Tally> for Tally {
         match this {
             vote::Tally::Public { result } => Tally::Public {
                 result: result.into(),
+            },
+            vote::Tally::Private { tally } => Tally::Private {
+                private_tally: PrivateTally(tally.to_bytes()),
             },
         }
     }

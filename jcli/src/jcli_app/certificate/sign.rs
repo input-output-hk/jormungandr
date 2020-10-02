@@ -97,25 +97,23 @@ pub(crate) fn committee_vote_tally_sign(
 ) -> Result<SignedCertificate, Error> {
     use chain_impl_mockchain::vote::PayloadType;
 
-    match vote_tally.tally_type() {
-        PayloadType::Public => {
-            if keys_str.len() > 1 {
-                return Err(Error::ExpectingOnlyOneSigningKey {
-                    got: keys_str.len(),
-                });
-            }
-            let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
-            let id = private_key.to_public().as_ref().try_into().unwrap();
-
-            let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
-                private_key.sign_slice(&d.0)
-            });
-
-            let proof = TallyProof::Public { id, signature };
-
-            Ok(SignedCertificate::VoteTally(vote_tally, proof))
-        }
+    if keys_str.len() > 1 {
+        return Err(Error::ExpectingOnlyOneSigningKey {
+            got: keys_str.len(),
+        });
     }
+    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+    let id = private_key.to_public().as_ref().try_into().unwrap();
+
+    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(&d.0)
+    });
+
+    let proof = match vote_tally.tally_type() {
+        PayloadType::Public => TallyProof::Public { id, signature },
+        PayloadType::Private => TallyProof::Private { id, signature },
+    };
+    Ok(SignedCertificate::VoteTally(vote_tally, proof))
 }
 
 pub(crate) fn committee_vote_plan_sign(

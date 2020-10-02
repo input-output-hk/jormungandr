@@ -627,28 +627,34 @@ fn apply_block_to_vote_plans(
                 Certificate::VoteCast(vote_cast) => {
                     use chain_impl_mockchain::vote::Payload;
                     let voter = tx.inputs[0].address.clone();
-                    let choice = match vote_cast.payload() {
-                        Payload::Public { choice } => choice,
-                    };
-                    vote_plans
-                        .update(vote_cast.vote_plan(), |vote_plan| {
-                            let mut proposals = vote_plan.proposals.clone();
-                            proposals[vote_cast.proposal_index() as usize].votes = proposals
-                                [vote_cast.proposal_index() as usize]
-                                .votes
-                                .insert_or_update(voter, Arc::new(choice.clone()), |_| {
-                                    Ok::<_, std::convert::Infallible>(Some(Arc::new(
-                                        choice.clone(),
-                                    )))
-                                })
-                                .unwrap();
-                            let vote_plan = ExplorerVotePlan {
-                                proposals,
-                                ..(**vote_plan).clone()
-                            };
-                            Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
-                        })
-                        .unwrap()
+                    match vote_cast.payload() {
+                        Payload::Public { choice } => vote_plans
+                            .update(vote_cast.vote_plan(), |vote_plan| {
+                                let mut proposals = vote_plan.proposals.clone();
+                                proposals[vote_cast.proposal_index() as usize].votes = proposals
+                                    [vote_cast.proposal_index() as usize]
+                                    .votes
+                                    .insert_or_update(voter, Arc::new(choice.clone()), |_| {
+                                        Ok::<_, std::convert::Infallible>(Some(Arc::new(
+                                            choice.clone(),
+                                        )))
+                                    })
+                                    .unwrap();
+                                let vote_plan = ExplorerVotePlan {
+                                    proposals,
+                                    ..(**vote_plan).clone()
+                                };
+                                Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                            })
+                            .unwrap(),
+                        Payload::Private {
+                            encrypted_vote,
+                            proof,
+                        } => {
+                            // TODO: what to do exactly in this case?
+                            unimplemented!("Private payload are not implemented in explorer")
+                        }
+                    }
                 }
                 Certificate::VoteTally(vote_tally) => {
                     use chain_impl_mockchain::vote::PayloadType;
@@ -683,6 +689,18 @@ fn apply_block_to_vote_plans(
                                                 .to_vec(),
                                             options: proposal.options.clone(),
                                         },
+                                        PayloadType::Private => {
+                                            let tally = &proposals_from_state[index]
+                                                .tally
+                                                .clone()
+                                                .unwrap()
+                                                .private()
+                                                .cloned()
+                                                .unwrap();
+                                            ExplorerVoteTally::Private {
+                                                tally: tally.to_bytes(),
+                                            }
+                                        }
                                     });
                                     proposal
                                 })

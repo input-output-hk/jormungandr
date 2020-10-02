@@ -119,6 +119,9 @@ pub enum ExplorerVoteTally {
         results: Vec<Weight>,
         options: Options,
     },
+    Private {
+        tally: Vec<u8>,
+    },
 }
 
 pub struct ExplorerBlockBuildingContext<'a> {
