@@ -9,7 +9,10 @@ use chain_impl_mockchain::{
     value::Value,
     vote::{self, Options, PayloadType},
 };
+use chain_vote::MemberPublicKey;
 use core::ops::Range;
+use serde::de::{SeqAccess, Visitor};
+use serde::export::Formatter;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use typed_bytes::ByteBuilder;
@@ -21,6 +24,46 @@ use typed_bytes::ByteBuilder;
 enum PayloadTypeDef {
     Public,
     Private,
+}
+
+struct DeserializableMemberPublicKey(chain_vote::MemberPublicKey);
+
+impl<'de> Deserialize<'de> for DeserializableMemberPublicKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct PublicKeyVisitor;
+        impl<'de> Visitor<'de> for PublicKeyVisitor {
+            type Value = DeserializableMemberPublicKey;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter
+                    .write_str("Expected a compatible hex representation of required public key")
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                let content = hex::decode(&v).map_err(|err| {
+                    serde::de::Error::custom(format!(
+                        "Invalid public key hex representation {}, with err: {}",
+                        &v, err
+                    ))
+                })?;
+                Ok(DeserializableMemberPublicKey(
+                    MemberPublicKey::from_bytes(&content).ok_or_else(|| {
+                        serde::de::Error::custom(format!(
+                            "Invalid public key with hex representation {}",
+                            &v
+                        ))
+                    })?,
+                ))
+            }
+        }
+        deserializer.deserialize_string(PublicKeyVisitor {})
+    }
 }
 
 #[derive(Deserialize)]
@@ -108,7 +151,27 @@ fn deserialize_committee_member_public_keys<'de, D>(
 where
     D: Deserializer<'de>,
 {
-    Ok(Vec::new())
+    struct PublicKeysSeqVisitor;
+    impl<'de> Visitor<'de> for PublicKeysSeqVisitor {
+        type Value = Vec<DeserializableMemberPublicKey>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("Invalid sequence of hex encoded public keys")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, <A as SeqAccess<'de>>::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(0));
+            while let Some(key) = seq.next_element()? {
+                result.push(key);
+            }
+            Ok(result)
+        }
+    }
+    let keys = deserializer.deserialize_seq(PublicKeysSeqVisitor {})?;
+    Ok(keys.iter().map(|key| key.0.clone()).collect())
 }
 
 impl From<VoteProposalDef> for Proposal {
