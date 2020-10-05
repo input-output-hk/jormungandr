@@ -11,6 +11,8 @@ use thiserror::Error;
 use std::convert::identity;
 use std::path::Path;
 
+const MINIMUM_BLOCKS_TO_FLUSH: usize = 256;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("block not found")]
@@ -290,11 +292,13 @@ impl Storage {
         let to_block_info = self
             .storage
             .get_nth_ancestor(main_branch_tip, threshold_depth)?;
-        self.storage
-            .flush_to_permanent_store(to_block_info.id().as_ref())?;
+        let blocks_flushed = self
+            .storage
+            .flush_to_permanent_store(to_block_info.id().as_ref(), MINIMUM_BLOCKS_TO_FLUSH)?;
         debug!(
             self.logger,
-            "flushed all blocks up to {} to the permanent store",
+            "flushed all blocks ({}) up to {} to the permanent store",
+            blocks_flushed,
             to_block_info.id()
         );
 
