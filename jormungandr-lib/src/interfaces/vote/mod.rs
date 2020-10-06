@@ -42,6 +42,13 @@ impl<'de> Deserialize<'de> for DeserializableMemberPublicKey {
                     .write_str("Expected a compatible hex representation of required public key")
             }
 
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                self.visit_string(value.to_string())
+            }
+
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
@@ -62,7 +69,7 @@ impl<'de> Deserialize<'de> for DeserializableMemberPublicKey {
                 ))
             }
         }
-        deserializer.deserialize_string(PublicKeyVisitor {})
+        deserializer.deserialize_string(PublicKeyVisitor)
     }
 }
 
@@ -388,5 +395,34 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
             payload: this.payload,
             proposals: this.proposals.into_iter().map(|p| p.into()).collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::interfaces::vote::{
+        deserialize_committee_member_public_keys, DeserializableMemberPublicKey,
+    };
+    use chain_vote::MemberPublicKey;
+    use rand_chacha::rand_core::SeedableRng;
+
+    #[test]
+    fn test_deserialize_member_public_keys() {
+        let mut rng = rand_chacha::ChaChaRng::from_entropy();
+        let crs = chain_vote::CRS::random(&mut rng);
+        let comm_key = chain_vote::MemberCommunicationKey::new(&mut rng);
+
+        let member_key =
+            chain_vote::MemberState::new(&mut rng, 1, &crs, &[comm_key.to_public()], 0);
+        let pk = member_key.public_key();
+        let pks = vec![hex::encode(pk.to_bytes())];
+        let json = serde_json::to_string(&pks).unwrap();
+
+        let result: Vec<DeserializableMemberPublicKey> = serde_json::from_str(&json).unwrap();
+        assert_eq!(result[0].0, pk);
+
+        let mut json_deserializer = serde_json::Deserializer::from_str(&json);
+        let result = deserialize_committee_member_public_keys(&mut json_deserializer).unwrap();
+        assert_eq!(result[0], pk);
     }
 }
