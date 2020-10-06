@@ -17,7 +17,6 @@ use jormungandr_testing_utils::{
 };
 
 use assert_fs::TempDir;
-use std::str::FromStr;
 
 #[test]
 pub fn test_legacy_node_all_fragments() {

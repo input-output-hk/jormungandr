@@ -115,6 +115,21 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
             .linear_fees
     }
 
+    pub fn epoch_duration(&self) -> std::time::Duration {
+        let slot_duration: u8 = self
+            .block0_configuration
+            .blockchain_configuration
+            .slot_duration
+            .into();
+
+        let slots_per_epoch: u32 = self
+            .block0_configuration
+            .blockchain_configuration
+            .slots_per_epoch
+            .into();
+        std::time::Duration::from_secs(slot_duration as u64 * slots_per_epoch as u64)
+    }
+
     pub fn get_p2p_listen_port(&self) -> u16 {
         let address = self.node_config.p2p_listen_address().to_string();
         let tokens: Vec<&str> = address.split('/').collect();

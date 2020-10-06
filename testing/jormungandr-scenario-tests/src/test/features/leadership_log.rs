@@ -1,11 +1,10 @@
 use crate::{
-    node::NodeController,
     node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
 };
 
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use jortestkit::process::sleep;
 use rand_chacha::ChaChaRng;
@@ -38,7 +37,7 @@ pub fn leader_restart_preserves_leadership_log(
 
     let now = SystemTime::now();
 
-    let mut leader_1 = controller.spawn_node(
+    let leader_1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,

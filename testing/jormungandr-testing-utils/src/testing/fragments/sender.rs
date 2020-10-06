@@ -9,7 +9,12 @@ use crate::{
     wallet::Wallet,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use chain_impl_mockchain::{
+    certificate::{Proposal, VotePlan},
+    fee::LinearFee,
+    fragment::Fragment,
+    vote::Choice,
+};
 use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -182,6 +187,47 @@ impl<'a> FragmentSender<'a> {
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let fragment = from.issue_pool_retire_cert(&self.block0_hash, &self.fees, to)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_vote_plan<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        from: &mut Wallet,
+        vote_plan: &VotePlan,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_vote_plan_cert(&self.block0_hash, &self.fees, vote_plan)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_vote_cast<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        from: &mut Wallet,
+        vote_plan: &VotePlan,
+        proposal_index: u8,
+        choice: &Choice,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_vote_cast_cert(
+            &self.block0_hash,
+            &self.fees,
+            vote_plan,
+            proposal_index,
+            choice,
+        )?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_vote_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        from: &mut Wallet,
+        vote_plan: &VotePlan,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_vote_tally_cert(&self.block0_hash, &self.fees, vote_plan)?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }

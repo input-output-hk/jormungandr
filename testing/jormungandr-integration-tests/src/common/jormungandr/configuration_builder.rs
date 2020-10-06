@@ -13,11 +13,15 @@ use jormungandr_lib::interfaces::{
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};
-use jormungandr_testing_utils::testing::{
-    Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
+use jormungandr_testing_utils::{
+    testing::{
+        Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
+    },
+    wallet::Wallet,
 };
 use std::path::PathBuf;
 
+#[derive(Clone, Debug)]
 pub struct ConfigurationBuilder {
     funds: Vec<Initial>,
     certs: Vec<Initial>,
@@ -65,6 +69,11 @@ impl ConfigurationBuilder {
             committee_ids: vec![],
             leader_key_pair: None,
         }
+    }
+
+    pub fn with_committees(&mut self, wallets: &[&Wallet]) -> &mut Self {
+        self.committee_ids = wallets.iter().map(|w| w.to_committee_id()).collect();
+        self
     }
 
     pub fn with_slots_per_epoch(&mut self, slots_per_epoch: u32) -> &mut Self {
