@@ -88,7 +88,8 @@ pub struct VotePlanDef {
     proposals: Proposals,
     #[serde(
         deserialize_with = "deserialize_committee_member_public_keys",
-        getter = "committee_member_public_keys"
+        getter = "committee_member_public_keys",
+        default = "Vec::new"
     )]
     committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
 }
