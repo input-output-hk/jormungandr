@@ -962,8 +962,7 @@ graphql_union!(TallyStatus: Context |&self| {
     instance_resolvers: |_| {
         &TallyPublicStatus => match *self {
             TallyStatus::Public(ref c) => Some(c),
-            // TODO: resolve this union for private
-            TallyStatus::Private(_) => unimplemented!("..."),
+            TallyStatus::Private(_) => None,
         },
     }
 });
