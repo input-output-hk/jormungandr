@@ -1,3 +1,4 @@
+use crate::wallet::WalletProxyController;
 use crate::{
     legacy::{LegacyNode, LegacyNodeController, LegacySettings},
     prepare_command,
@@ -7,9 +8,16 @@ use crate::{
     },
     style, Node, NodeBlock0, NodeController,
 };
-
+use crate::{VitStation, VitStationController, VitStationControllerError};
+use crate::{WalletProxy, WalletProxyError};
+use assert_fs::fixture::ChildPath;
+use assert_fs::prelude::*;
 use chain_impl_mockchain::header::HeaderId;
+use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
+use iapyx::WalletBackend;
+use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::node::RestSettings;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
@@ -23,10 +31,6 @@ use jormungandr_testing_utils::{
     wallet::Wallet,
     Version,
 };
-
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
-use indicatif::{MultiProgress, ProgressBar};
 
 use std::{
     path::{Path, PathBuf},
@@ -56,6 +60,7 @@ pub struct Controller {
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 
     topology: Topology,
+    blockchain: Blockchain,
 }
 
 impl ControllerBuilder {
@@ -118,6 +123,7 @@ impl ControllerBuilder {
             self.settings.unwrap(),
             context,
             working_directory,
+            self.blockchain.unwrap(),
             self.topology.unwrap(),
         )
     }
@@ -155,6 +161,7 @@ impl Controller {
         settings: Settings,
         context: ContextChaCha,
         working_directory: ChildPath,
+        blockchain: Blockchain,
         topology: Topology,
     ) -> Result<Self> {
         use chain_core::property::Serialize as _;
@@ -175,6 +182,7 @@ impl Controller {
             progress_bar,
             progress_bar_thread: None,
             working_directory,
+            blockchain,
             topology,
         })
     }
@@ -193,6 +201,14 @@ impl Controller {
 
     pub fn nodes(&self) -> impl Iterator<Item = (&NodeAlias, &NodeSetting)> {
         self.settings.nodes.iter()
+    }
+
+    pub fn vote_plan(&self, alias: &str) -> Result<VotePlanDef> {
+        if let Some(vote_plan) = self.blockchain.vote_plan(alias) {
+            Ok(vote_plan.clone().into())
+        } else {
+            Err(ErrorKind::VotePlanNotFound(alias.to_owned()).into())
+        }
     }
 
     pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
@@ -231,8 +247,86 @@ impl Controller {
         }
     }
 
+    /// iapyx wallet is a mock mobile wallet
+    /// it uses some production code while handling wallet operation
+    // therefore controller has separate method to build such wallet
+    pub fn iapyx_wallet(
+        &self,
+        wallet: &str,
+        mnemonics: &str,
+        wallet_proxy: &WalletProxyController,
+    ) -> Result<iapyx::Controller> {
+        let settings = RestSettings {
+            use_https_for_post: false,
+            enable_debug: true,
+            certificate: None,
+        };
+
+        let backend = WalletBackend::new_from_addresses(
+            wallet_proxy.settings().address(),
+            wallet_proxy.settings().base_address().to_string(),
+            wallet_proxy.settings().base_address().to_string(),
+            settings,
+        );
+
+        Ok(iapyx::Controller::recover_with_backend(backend, mnemonics, &[]).unwrap())
+    }
+
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
         SpawnParams::new(node_alias)
+    }
+
+    pub fn spawn_vit_station(&self) -> Result<VitStationController> {
+        let (alias, settings) = self
+            .settings
+            .vit_stations
+            .iter()
+            .next()
+            .ok_or(VitStationControllerError::NoVitStationDefinedInSettings)?;
+
+        let pb = ProgressBar::new_spinner();
+        let pb = self.progress_bar.add(pb);
+
+        let vit_station = VitStation::spawn(
+            &self.context,
+            pb,
+            alias,
+            settings.clone(),
+            self.blockchain.vote_plans(),
+            &self.block0_file.as_path(),
+            &self.working_directory.path(),
+        )
+        .unwrap();
+        Ok(vit_station.controller())
+    }
+
+    pub fn spawn_wallet_proxy(&self, node_alias: &str) -> Result<WalletProxyController> {
+        let (alias, settings) = self
+            .settings
+            .wallet_proxies
+            .iter()
+            .next()
+            .ok_or(WalletProxyError::NoWalletProxiesDefinedInSettings)?;
+        let node_setting = if let Some(node_setting) = self.settings.nodes.get(node_alias) {
+            node_setting
+        } else {
+            bail!(ErrorKind::NodeNotFound(node_alias.to_string()))
+        };
+
+        let pb = ProgressBar::new_spinner();
+        let pb = self.progress_bar.add(pb);
+
+        let wallet_proxy = WalletProxy::spawn(
+            &self.context,
+            pb,
+            alias,
+            settings.clone(),
+            node_setting,
+            &self.block0_file.as_path(),
+            &self.working_directory.path(),
+        )
+        .unwrap();
+        Ok(wallet_proxy.controller())
     }
 
     pub fn spawn_legacy_node(

@@ -118,19 +118,19 @@ impl<RNG: RngCore> Context<RNG> {
     pub fn generate_new_rest_listen_address(&mut self) -> SocketAddr {
         use std::net::{IpAddr, Ipv4Addr};
 
-        let port_number = self
-            .next_available_rest_port_number
-            .fetch_add(1, atomic::Ordering::SeqCst);
+        let port_number = self.generate_new_unique_port();
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port_number)
+    }
+
+    pub fn generate_new_unique_port(&mut self) -> u16 {
+        self.next_available_rest_port_number
+            .fetch_add(1, atomic::Ordering::SeqCst)
     }
 
     pub fn generate_new_grpc_public_address(&mut self) -> poldercast::Address {
         use std::net::{IpAddr, Ipv4Addr};
 
-        let port_number = self
-            .next_available_grpc_port_number
-            .fetch_add(1, atomic::Ordering::SeqCst);
-
+        let port_number = self.generate_new_unique_port();
         let address = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
         format!("/ip4/{}/tcp/{}", address, port_number)

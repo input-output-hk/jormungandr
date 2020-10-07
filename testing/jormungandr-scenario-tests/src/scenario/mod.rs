@@ -30,6 +30,9 @@ error_chain! {
         Io(std::io::Error);
         Reqwest(reqwest::Error);
         BlockFormatError(chain_core::mempack::ReadError);
+        VitStationControllerError(crate::VitStationControllerError);
+        IapyxWalletError(iapyx::ControllerError);
+        WalletProxyError(crate::WalletProxyError);
     }
 
     errors {
@@ -44,6 +47,10 @@ error_chain! {
         StakePoolNotFound(node: String) {
             description("StakePool was not found"),
             display("StakePool '{}' was not found. Used before or never initialize", node)
+        }
+        VotePlanNotFound(name: String) {
+            description("Vote plan was not found"),
+            display("Vote plan '{}' was not found", name)
         }
     }
 }
@@ -64,6 +71,15 @@ macro_rules! prepare_scenario {
             initials = [
                 $(account $initial_wallet_name:tt with $initial_wallet_funds:tt $(delegates to $initial_wallet_delegate_to:tt)* ),+ $(,)*
             ] $(,)*
+            $(committees = [ $($committe_wallet_name:tt),* $(,)* ] $(,)*)?
+            $(legacy = [
+                $($legacy_wallet_name:tt address $legacy_wallet_address:tt mnemonics $legacy_wallet_mnemonics:tt with $initial_legacy_funds:tt,)+
+            ],)?
+            $(vote_plans = [
+                $($fund_name:tt from $fund_owner:tt through epochs $vote_start:tt->$vote_tally:tt->$vote_end:tt contains proposals = [
+                    $(proposal adds $action_value:tt to $action_target:tt with $proposal_options_count:tt vote options),+ $(,)*
+                ]
+            )*],)?
         }
     ) => {{
         let mut builder = $crate::scenario::ControllerBuilder::new($title);
@@ -111,6 +127,57 @@ macro_rules! prepare_scenario {
 
             blockchain.add_wallet(wallet);
         )*
+
+        $(
+           $(
+            blockchain.add_committee($committe_wallet_name.to_owned());
+           )*
+        )?
+
+
+        $(
+            $(
+                let value: u64 = $initial_legacy_funds as u64;
+                let legacy_wallet = jormungandr_testing_utils::testing::network_builder::LegacyWalletTemplate::new($legacy_wallet_name,value.into(),$legacy_wallet_address.to_owned(),$legacy_wallet_mnemonics.to_owned());
+                blockchain.add_legacy_wallet(legacy_wallet);
+            )*
+        )?
+
+
+        $(
+            $(
+                let mut vote_plan_builder = chain_impl_mockchain::testing::scenario::template::VotePlanDefBuilder::new($fund_name);
+                vote_plan_builder.owner($fund_owner);
+
+                let vote_start: u32 = $vote_start.to_owned() as u32;
+                let vote_tally: u32 = $vote_tally.to_owned() as u32;
+                let vote_end: u32 = $vote_end.to_owned() as u32;
+
+                vote_plan_builder.vote_phases(vote_start,vote_tally,vote_end);
+
+                $(
+                    let mut proposal_builder = chain_impl_mockchain::testing::scenario::template::ProposalDefBuilder::new(chain_impl_mockchain::testing::VoteTestGen::external_proposal_id());
+                    proposal_builder.options($proposal_options_count.into());
+
+                    let action_target = $action_target.to_owned();
+
+                    match action_target.as_str() {
+                        "rewards" => {
+                            proposal_builder.action_rewards_add($action_value as u64)
+                        },
+                        "treasury" => {
+                            proposal_builder.action_trasfer_to_rewards($action_value as u64)
+                        },
+                        _ => proposal_builder.action_off_chain(),
+                    };
+
+                    vote_plan_builder.with_proposal(&mut proposal_builder);
+                )*
+
+                blockchain.add_vote_plan(vote_plan_builder.build());
+            )*
+        )?
+
         builder.set_blockchain(blockchain);
 
         builder.build_settings($context);

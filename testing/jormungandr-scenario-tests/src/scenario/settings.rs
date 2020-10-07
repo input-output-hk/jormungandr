@@ -1,14 +1,18 @@
+use crate::vit_station::VitStationSettings;
 use crate::{scenario::Context, style};
 use jormungandr_lib::{
     interfaces::{Explorer, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest},
     time::Duration,
 };
+use jormungandr_testing_utils::testing::network_builder::WalletProxySettings;
 use jormungandr_testing_utils::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting, Settings,
     Topology as TopologyTemplate, WalletTemplate, WalletType,
 };
 use rand_core::{CryptoRng, RngCore};
+use std::collections::HashMap;
 use std::io::Write;
+use vit_servicing_station_tests::common::startup::server::ServerSettingsBuilder;
 
 pub trait Prepare: Clone + Send + 'static {
     fn prepare<RNG>(context: &mut Context<RNG>) -> Self
@@ -18,6 +22,21 @@ pub trait Prepare: Clone + Send + 'static {
 
 pub trait PrepareNodeSettings: Clone + Send {
     fn prepare<RNG>(alias: NodeAlias, context: &mut Context<RNG>, template: &NodeTemplate) -> Self
+    where
+        RNG: RngCore + CryptoRng;
+}
+
+pub trait PrepareVitServerSettings: Clone + Send {
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore + CryptoRng;
+}
+
+pub trait PrepareWalletProxySettings: Clone + Send {
+    fn prepare<RNG>(
+        context: &mut Context<RNG>,
+        vit_stations: &HashMap<NodeAlias, VitStationSettings>,
+    ) -> Self
     where
         RNG: RngCore + CryptoRng;
 }
@@ -122,6 +141,7 @@ impl PrepareSettings for Settings {
         RNG: RngCore + CryptoRng,
     {
         let nodes = topology
+            .clone()
             .into_iter()
             .map(|(alias, template)| {
                 (
@@ -131,7 +151,21 @@ impl PrepareSettings for Settings {
             })
             .collect();
 
-        Settings::new(nodes, blockchain, context.random())
+        let mut vit_stations = HashMap::new();
+        let vit_station = VitStationSettings::prepare(context);
+        vit_stations.insert("vit_station".to_string(), vit_station);
+
+        let mut wallet_proxies = HashMap::new();
+        let wallet_proxy_setting = WalletProxySettings::prepare(context, &vit_stations);
+        wallet_proxies.insert("wallet proxy".to_string(), wallet_proxy_setting);
+
+        Settings::new(
+            nodes,
+            blockchain,
+            vit_stations,
+            wallet_proxies,
+            context.random(),
+        )
     }
 }
 
@@ -146,6 +180,18 @@ impl PrepareNodeSettings for NodeSetting {
             secret: NodeSecret::prepare(context),
             node_topology: template.clone(),
         }
+    }
+}
+
+impl PrepareVitServerSettings for VitStationSettings {
+    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let mut settings_builder: ServerSettingsBuilder = Default::default();
+        settings_builder
+            .with_localhost_address(context.generate_new_unique_port() as u32)
+            .build()
     }
 }
 
