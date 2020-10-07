@@ -7,7 +7,6 @@ use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
-use rand::RngCore;
 use rand_core::OsRng;
 
 pub struct FragmentGenerator<'a> {

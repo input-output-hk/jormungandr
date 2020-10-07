@@ -3,7 +3,7 @@ use crate::wallet::Wallet;
 use chain_impl_mockchain::{
     fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
-    transaction::{InputOutputBuilder, NoExtra, Payload, TxBuilder},
+    transaction::{InputOutputBuilder, TxBuilder},
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
