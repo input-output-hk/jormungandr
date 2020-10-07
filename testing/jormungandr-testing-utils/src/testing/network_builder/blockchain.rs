@@ -1,5 +1,6 @@
-use super::{NodeAlias, WalletAlias, WalletTemplate};
+use super::{LegacyWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
@@ -11,6 +12,9 @@ pub struct Blockchain {
     slots_per_epoch: NumberOfSlotsPerEpoch,
     slot_duration: SlotDuration,
     leaders: Vec<NodeAlias>,
+    committees: Vec<WalletAlias>,
+    vote_plans: Vec<VotePlanDef>,
+    legacy_wallets: Vec<LegacyWalletTemplate>,
     wallets: HashMap<WalletAlias, WalletTemplate>,
     kes_update_speed: KESUpdateSpeed,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
@@ -28,11 +32,45 @@ impl Blockchain {
             consensus,
             leaders: Vec::new(),
             wallets: HashMap::new(),
+            committees: Vec::new(),
+            vote_plans: Vec::new(),
+            legacy_wallets: Vec::new(),
             slots_per_epoch,
             slot_duration,
             kes_update_speed,
             consensus_genesis_praos_active_slot_coeff,
         }
+    }
+
+    pub fn committees(&self) -> Vec<WalletAlias> {
+        self.committees.clone()
+    }
+
+    pub fn legacy_wallets(&self) -> Vec<LegacyWalletTemplate> {
+        self.legacy_wallets.clone()
+    }
+
+    pub fn vote_plans(&self) -> Vec<VotePlanDef> {
+        self.vote_plans.clone()
+    }
+
+    pub fn vote_plan(&self, alias: &str) -> Option<VotePlanDef> {
+        self.vote_plans()
+            .iter()
+            .cloned()
+            .find(|x| x.alias() == alias)
+    }
+
+    pub fn add_committee<S: Into<NodeAlias>>(&mut self, alias: S) {
+        self.committees.push(alias.into())
+    }
+
+    pub fn add_legacy_wallet(&mut self, legacy_wallet: LegacyWalletTemplate) {
+        self.legacy_wallets.push(legacy_wallet);
+    }
+
+    pub fn add_vote_plan(&mut self, vote_plan_template: VotePlanDef) {
+        self.vote_plans.push(vote_plan_template);
     }
 
     pub fn add_leader<S: Into<NodeAlias>>(&mut self, alias: S) {

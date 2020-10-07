@@ -1,19 +1,33 @@
+use super::LegacyWalletTemplate;
 use crate::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, Random, Wallet, WalletAlias,
     WalletTemplate, WalletType,
 };
+use crate::testing::node::RestSettings;
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
-use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
+use chain_impl_mockchain::{
+    certificate::VotePlan,
+    chaintypes::ConsensusVersion,
+    fee::LinearFee,
+    testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
+    vote::CommitteeId,
+};
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
-        ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, GenesisPraos,
-        Initial, InitialUTxO, NodeConfig, NodeSecret,
+        try_initials_vec_from_messages, ActiveSlotCoefficient, Bft, Block0Configuration,
+        BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial, InitialUTxO, LegacyUTxO,
+        NodeConfig, NodeSecret, OldAddress,
     },
 };
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
+use std::net::SocketAddr;
+use std::str::FromStr;
+use vit_servicing_station_lib::server::settings::ServiceSettings;
+
+pub type VotePlanAlias = String;
 
 /// contains all the data to start or interact with a node
 #[derive(Debug, Clone)]
@@ -56,21 +70,67 @@ impl NodeSetting {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct WalletProxySettings {
+    pub proxy_address: SocketAddr,
+    pub vit_station_address: SocketAddr,
+    pub node_backend_address: Option<SocketAddr>,
+}
+
+impl WalletProxySettings {
+    pub fn base_address(&self) -> SocketAddr {
+        self.proxy_address.clone()
+    }
+
+    pub fn base_vit_address(&self) -> SocketAddr {
+        self.vit_station_address.clone()
+    }
+
+    pub fn base_node_backend_address(&self) -> Option<SocketAddr> {
+        self.node_backend_address.clone()
+    }
+
+    pub fn address(&self) -> String {
+        format!("http://{}", self.base_address())
+    }
+
+    pub fn vit_address(&self) -> String {
+        format!("http://{}", self.base_vit_address())
+    }
+
+    pub fn node_backend_address(&self) -> String {
+        format!(
+            "http://{}/api/v0",
+            self.base_node_backend_address().unwrap()
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct Settings {
     pub nodes: HashMap<NodeAlias, NodeSetting>,
 
+    pub vit_stations: HashMap<NodeAlias, ServiceSettings>,
+
+    pub wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
+
     pub wallets: HashMap<WalletAlias, Wallet>,
+
+    pub legacy_wallets: HashMap<WalletAlias, LegacyWalletTemplate>,
 
     pub block0: Block0Configuration,
 
     pub stake_pools: HashMap<NodeAlias, StakePool>,
+
+    pub vote_plans: HashMap<VotePlanAlias, VotePlan>,
 }
 
 impl Settings {
     pub fn new<RNG>(
         nodes: HashMap<NodeAlias, NodeSetting>,
         blockchain: BlockchainTemplate,
+        vit_stations: HashMap<NodeAlias, ServiceSettings>,
+        wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
         rng: &mut Random<RNG>,
     ) -> Self
     where
@@ -87,14 +147,60 @@ impl Settings {
                 ),
                 initial: Vec::new(),
             },
+            vit_stations,
+            wallet_proxies: wallet_proxies,
+            legacy_wallets: HashMap::new(),
             stake_pools: HashMap::new(),
+            vote_plans: HashMap::new(),
         };
 
         settings.populate_trusted_peers();
-        settings.populate_block0_blockchain_configuration(&blockchain, rng);
         settings.populate_block0_blockchain_initials(blockchain.wallets(), rng);
+        settings.populate_block0_blockchain_configuration(&blockchain, rng);
+        settings.populate_block0_blockchain_legacy(blockchain.legacy_wallets(), rng);
+        settings.populate_block0_blockchain_vote_plans(blockchain.vote_plans());
+
+        println!("{:?}", settings);
 
         settings
+    }
+
+    fn populate_block0_blockchain_legacy<RNG>(
+        &mut self,
+        legacy_wallets: Vec<LegacyWalletTemplate>,
+        rng: &mut Random<RNG>,
+    ) where
+        RNG: RngCore + CryptoRng,
+    {
+        for template in legacy_wallets {
+            let legacy_fragment = Initial::LegacyFund(vec![LegacyUTxO {
+                address: template.address().parse().unwrap(),
+                value: *template.value(),
+            }]);
+
+            self.legacy_wallets
+                .insert(template.alias().clone(), template.clone());
+            self.block0.initial.push(legacy_fragment);
+        }
+    }
+
+    fn populate_block0_blockchain_vote_plans(&mut self, vote_plans: Vec<VotePlanDef>) {
+        let mut vote_plans_fragments = Vec::new();
+        for vote_plan_def in vote_plans {
+            let owner = self.wallets.get(&vote_plan_def.owner()).expect(&format!(
+                "Owner {} of {} is unknown wallet ",
+                vote_plan_def.owner(),
+                vote_plan_def.alias()
+            ));
+            let vote_plan: VotePlan = vote_plan_def.into();
+            vote_plans_fragments.push(create_initial_vote_plan(
+                &vote_plan,
+                &[owner.clone().into()],
+            ));
+        }
+        self.block0
+            .initial
+            .extend(try_initials_vec_from_messages(vote_plans_fragments.iter()).unwrap())
     }
 
     fn populate_block0_blockchain_configuration<RNG>(
@@ -128,8 +234,20 @@ impl Settings {
             }
             leader_ids
         };
+        blockchain_configuration.committees = {
+            let mut committees = Vec::new();
+            for committee in blockchain.committees() {
+                let wallet = self
+                    .wallets
+                    .get(&committee)
+                    .expect(&format!("committee not defined {}", committee));
+                committees.push(CommitteeIdDef::from(wallet.committee_id()));
+            }
+            committees
+        };
         blockchain_configuration.slots_per_epoch = *blockchain.slots_per_epoch();
         blockchain_configuration.slot_duration = *blockchain.slot_duration();
+        blockchain_configuration.treasury = Some(1_000_000.into());
         // TODO blockchain_configuration.linear_fees = ;
         blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
         blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
