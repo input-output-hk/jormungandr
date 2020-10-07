@@ -4,6 +4,7 @@ pub mod grpc;
 mod legacy;
 mod logger;
 mod rest;
+pub mod time;
 mod verifier;
 
 pub mod explorer;

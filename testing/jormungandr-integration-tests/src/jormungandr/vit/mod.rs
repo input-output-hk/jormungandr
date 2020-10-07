@@ -18,7 +18,7 @@ use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, CommitteeIdDef, Tally, VotePlanStatus},
 };
 use jormungandr_testing_utils::{
-    testing::{node::Explorer, vote_plan_cert, FragmentSender, FragmentSenderSetup},
+    testing::{node::Explorer, time, vote_plan_cert, FragmentSender, FragmentSenderSetup},
     wallet::Wallet,
 };
 use rand::rngs::OsRng;
@@ -310,13 +310,13 @@ pub fn test_vote_flow_praos() {
         .parse::<u64>()
         .unwrap();
 
-    wait_for_epoch(1, jormungandr.explorer().clone());
+    time::wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
         .send_vote_tally(&mut alice, &vote_plan, &jormungandr)
         .unwrap();
 
-    wait_for_epoch(2, jormungandr.explorer().clone());
+    time::wait_for_epoch(2, jormungandr.explorer().clone());
 
     let rewards_after = jormungandr
         .explorer()
@@ -337,24 +337,4 @@ pub fn test_vote_flow_praos() {
         (rewards_before + rewards_increase - 100_000 * 2),
         "Vote was unsuccessful"
     )
-}
-
-fn wait_for_epoch(epoch_id: u64, mut explorer: Explorer) {
-    explorer.disable_logs();
-    while explorer
-        .status()
-        .unwrap()
-        .data
-        .unwrap()
-        .status
-        .latest_block
-        .date
-        .epoch
-        .id
-        .parse::<u64>()
-        .unwrap()
-        < epoch_id
-    {
-        std::thread::sleep(std::time::Duration::from_secs(1));
-    }
 }
