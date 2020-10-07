@@ -16,7 +16,7 @@ use jormungandr_lib::interfaces::{AccountState, FragmentLog, VotePlanStatus};
 use jormungandr_testing_utils::testing::node::Explorer;
 use jormungandr_testing_utils::testing::node::RestSettings;
 use node::{RestError as NodeRestError, WalletNodeRestClient};
-use proxy::{Error as ProxyError, ProxyClient};
+pub use proxy::{ProxyClientError, ProxyClient, ProxyServerStub, ProxyServerError};
 use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;
@@ -31,21 +31,26 @@ pub struct WalletBackend {
 }
 
 impl WalletBackend {
-    pub fn new(address: String, node_rest_settings: RestSettings) -> Self {
+    pub fn new_from_addresses(proxy_address: String, node_address: String, vit_address: String, node_rest_settings: RestSettings) -> Self {
         let mut backend = Self {
             node_client: WalletNodeRestClient::new(
-                format!("http://{}/api", address),
+                format!("http://{}/api",node_address),
                 node_rest_settings.clone(),
             ),
-            vit_client: VitStationRestClient::new(address.clone()),
-            proxy_client: ProxyClient::new(format!("http://{}/api/v0", address)),
-            explorer_client: Explorer::new(address),
+            vit_client: VitStationRestClient::new(vit_address.clone()),
+            proxy_client: ProxyClient::new(proxy_address),
+            explorer_client: Explorer::new(node_address),
         };
 
         if node_rest_settings.enable_debug {
             backend.enable_logs()
         }
         backend
+    }
+
+
+    pub fn new(address: String, node_rest_settings: RestSettings) -> Self {
+        Self::new_from_addresses(address.clone(),address.clone(),address.clone(), node_rest_settings)
     }
 
     pub fn send_fragment(&self, transaction: Vec<u8>) -> Result<FragmentId, WalletBackendError> {
@@ -100,7 +105,7 @@ impl WalletBackend {
     ) -> Result<bool, WalletBackendError> {
         Ok(fragment_ids.iter().all(|x| {
             let hash = jormungandr_lib::crypto::hash::Hash::from_str(&x.to_string()).unwrap();
-            self.explorer_client.get_transaction(hash).is_ok()
+            self.explorer_client.transaction(hash).is_ok()
         }))
     }
 
@@ -155,7 +160,7 @@ pub enum WalletBackendError {
     #[error("node rest error")]
     NodeConnectionError(#[from] NodeRestError),
     #[error("node rest error")]
-    ProxyConnectionError(#[from] ProxyError),
+    ProxyConnectionError(#[from] ProxyClientError),
     #[error("io error")]
     IOError(#[from] std::io::Error),
     #[error("block0 retrieve error")]

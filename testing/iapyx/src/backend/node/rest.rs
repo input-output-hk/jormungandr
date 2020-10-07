@@ -24,7 +24,7 @@ impl WalletNodeRestClient {
 
     pub fn send_fragment(&self, body: Vec<u8>) -> Result<(), RestError> {
         let result = self.rest_client.send_raw_fragment(body);
-        println!("{:?}", result);
+        println!("Request{:?}", result);
         Ok(())
     }
 
