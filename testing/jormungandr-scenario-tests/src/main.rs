@@ -4,12 +4,14 @@ extern crate error_chain;
 mod legacy;
 mod node;
 mod programs;
+mod vit_station;
 #[macro_use]
 mod scenario;
 mod example_scenarios;
 mod interactive;
 mod slog;
 mod test;
+mod wallet;
 
 use node::{Node, NodeBlock0, NodeController};
 use programs::prepare_command;
@@ -19,7 +21,10 @@ use scenario::{
     Context, ProgressBarMode, Seed,
 };
 
+use vit_station::{VitStation, VitStationController, VitStationControllerError};
+
 pub use jortestkit::console::style;
+pub use wallet::{Error as WalletProxyError, WalletProxy};
 
 use std::path::PathBuf;
 use structopt::StructOpt;
