@@ -9,12 +9,27 @@ use chain_impl_mockchain::{
 };
 use hdkeygen::account::AccountId;
 use jormungandr_lib::interfaces::AccountIdentifier;
-use std::collections::HashMap;
+use std::collections::{HashMap,HashSet};
 use std::str::FromStr;
 use wallet::Settings;
 use wallet_core::Conversion;
 use wallet_core::Wallet as Inner;
-pub use wallet_core::{Error as WalletError, Proposal};
+use wallet_core::{Proposal};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("cannot recover from mnemonics: {0}")]
+    CannotRecover(String),
+    #[error("cannot retrieve funds: {0}")]
+    CannotRetrieveFunds(String),
+    #[error("backend error")]
+    BackendError(#[from] crate::backend::WalletBackendError),
+    #[error("cannot send vote")]
+    CannotSendVote(String),
+}
+
+
 
 pub struct Wallet {
     proposals: Vec<Proposal>,
@@ -22,15 +37,15 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    pub fn generate(words_length: Type) -> Result<Self, WalletError> {
+    pub fn generate(words_length: Type) -> Result<Self, Error> {
         let entropy = Entropy::generate(words_length, rand::random);
         let mnemonics = entropy.to_mnemonics().to_string(&dictionary::ENGLISH);
         Self::recover(&mnemonics, b"iapyx")
     }
 
-    pub fn recover(mnemonics: &str, password: &[u8]) -> Result<Self, WalletError> {
+    pub fn recover(mnemonics: &str, password: &[u8]) -> Result<Self, Error> {
         Ok(Self {
-            inner: Inner::recover(mnemonics, password)?,
+            inner: Inner::recover(mnemonics, password).map_err(|e| Error::CannotRecover(e.to_string()))?,
             proposals: vec![],
         })
     }
@@ -43,8 +58,8 @@ impl Wallet {
         self.inner.id()
     }
 
-    pub fn retrieve_funds(&mut self, block0_bytes: &[u8]) -> Result<wallet::Settings, WalletError> {
-        self.inner.retrieve_funds(block0_bytes)
+    pub fn retrieve_funds(&mut self, block0_bytes: &[u8]) -> Result<wallet::Settings, Error> {
+        self.inner.retrieve_funds(block0_bytes).map_err(|e| Error::CannotRetrieveFunds(e.to_string()))
     }
 
     pub fn convert(&mut self, settings: Settings) -> Conversion {
@@ -65,7 +80,7 @@ impl Wallet {
     }
 
     pub fn confirm_all_transactions(&mut self) {
-        for (id, _) in self.pending_transactions().clone() {
+        for id in self.pending_transactions().clone() {
             self.confirm_transaction(id)
         }
     }
@@ -74,8 +89,8 @@ impl Wallet {
         self.inner.confirm_transaction(id);
     }
 
-    pub fn pending_transactions(&self) -> &HashMap<FragmentId, Vec<Input>> {
-        &self.inner.pending_transactions()
+    pub fn pending_transactions(&self) -> HashSet<FragmentId> {
+        self.inner.pending_transactions().clone()
     }
 
     pub fn remove_pending_transaction(&mut self, id: &FragmentId) -> Option<Vec<Input>> {
@@ -95,8 +110,8 @@ impl Wallet {
         settings: Settings,
         proposal: &Proposal,
         choice: Choice,
-    ) -> Result<Box<[u8]>, WalletError> {
-        self.inner.vote(settings, proposal, choice)
+    ) -> Result<Box<[u8]>, Error> {
+        self.inner.vote(settings, proposal, choice).map_err(|e| Error::CannotSendVote(e.to_string()))
     }
 
     pub fn set_proposals(&mut self, proposals: Vec<Proposal>) {

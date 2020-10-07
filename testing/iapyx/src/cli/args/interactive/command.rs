@@ -50,7 +50,7 @@ impl IapyxCommand {
                 if let Some(controller) = model.controller.as_mut() {
                     let fragment_ids = controller
                         .pending_transactions()
-                        .keys()
+                        .iter()
                         .map(|x| x.to_string())
                         .collect::<Vec<String>>();
                     println!("===================");
@@ -258,7 +258,7 @@ impl Convert {
                     "Conversion transactions ids: [{:?}]",
                     controller
                         .pending_transactions()
-                        .keys()
+                        .iter()
                         .cloned()
                         .collect::<Vec<FragmentId>>()
                 );

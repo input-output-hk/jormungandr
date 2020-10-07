@@ -79,7 +79,7 @@ pub struct Proposer {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Proposal {
     #[serde(alias = "internalId")]
-    pub internal_id: String,
+    pub internal_id: u32,
     #[serde(alias = "proposalId")]
     pub proposal_id: String,
     //  #[serde(alias = "category")]

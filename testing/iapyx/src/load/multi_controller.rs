@@ -8,6 +8,10 @@ use std::iter;
 use thiserror::Error;
 use wallet::Settings;
 use wallet_core::{Choice, Value};
+
+
+unsafe impl Send for Wallet {}
+
 pub struct MultiController {
     backend: WalletBackend,
     wallets: Vec<Wallet>,
@@ -131,7 +135,7 @@ impl MultiController {
 #[derive(Debug, Error)]
 pub enum MultiControllerError {
     #[error("wallet error")]
-    WalletError(#[from] crate::wallet::WalletError),
+    WalletError(#[from] crate::wallet::Error),
     #[error("wallet error")]
     BackendError(#[from] crate::backend::WalletBackendError),
 }
