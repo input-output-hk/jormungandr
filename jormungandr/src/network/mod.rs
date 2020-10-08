@@ -69,6 +69,10 @@ mod keepalive_durations {
     pub const HTTP2: Duration = Duration::from_secs(120);
 }
 
+mod security_params {
+    pub const NONCE_LEN: usize = 32;
+}
+
 use self::client::ConnectError;
 use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
@@ -81,6 +85,7 @@ use crate::utils::{
     task::TokioServiceInfo,
 };
 use chain_network::data::gossip::Gossip;
+use chain_network::data::NodeKeyPair;
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use slog::Logger;
@@ -144,6 +149,7 @@ pub struct GlobalState {
     stats_counter: StatsCounter,
     topology: P2pTopology,
     peers: Peers,
+    keypair: NodeKeyPair,
     logger: Logger,
 }
 
@@ -161,7 +167,9 @@ impl GlobalState {
 
         let mut rng_seed = [0; 32];
         rand::thread_rng().fill(&mut rng_seed);
-        let prng = ChaChaRng::from_seed(rng_seed);
+        let mut prng = ChaChaRng::from_seed(rng_seed);
+
+        let keypair = NodeKeyPair::generate(&mut prng);
 
         let topology = P2pTopology::new(
             &config,
@@ -175,6 +183,7 @@ impl GlobalState {
             stats_counter,
             topology,
             peers,
+            keypair,
             logger,
         }
     }
@@ -214,7 +223,7 @@ impl GlobalState {
     // How many client connections to bump when a new one is about to be
     // established
     fn num_clients_to_bump(&self) -> usize {
-        let count = self.stats_counter.peer_connected_cnt_sadd();
+        let count = self.stats_counter.peer_connected_cnt().saturating_add(1);
         if count > self.config.max_inbound_connections {
             count - self.config.max_inbound_connections
         } else {
@@ -241,7 +250,7 @@ impl ConnectionState {
         ConnectionState {
             timeout: peer.timeout,
             connection: peer.connection.clone(),
-            logger: global.logger().new(o!("peer_addr" => peer.connection)),
+            logger: global.logger().new(o!("peer" => peer.connection)),
             global,
         }
     }
@@ -476,19 +485,19 @@ fn connect_and_propagate(
             debug!(
                 state.logger(),
                 "ignoring P2P node without an IP address" ;
-                "address" => %node
+                "peer" => %node
             );
             return;
         }
     };
     options.evict_clients = state.num_clients_to_bump();
     if Some(&node) == state.node_address() {
-        error!(state.logger(), "topology tells the node to connect to itself, ignoring"; "address" => %node);
+        error!(state.logger(), "topology tells the node to connect to itself, ignoring"; "peer" => %node);
         return;
     }
     let peer = Peer::new(addr);
     let conn_state = ConnectionState::new(state.clone(), &peer);
-    let conn_logger = conn_state.logger().new(o!("address" => node.to_string()));
+    let conn_logger = conn_state.logger().new(o!("peer" => node.to_string()));
     info!(conn_logger, "connecting to peer");
     let (handle, connecting) = client::connect(conn_state, channels);
     let spawn_state = state.clone();

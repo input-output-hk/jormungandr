@@ -80,9 +80,11 @@ impl JormungandrClient {
         format!("http://{}:{}", self.host, self.port)
     }
 
-    pub async fn handshake(&self) -> HandshakeResponse {
+    pub async fn handshake(&self, nonce: &[u8]) -> HandshakeResponse {
         let mut client = NodeClient::connect(self.address()).await.unwrap();
-        let request = tonic::Request::new(HandshakeRequest {});
+        let request = tonic::Request::new(HandshakeRequest {
+            nonce: nonce.to_vec(),
+        });
 
         client.handshake(request).await.unwrap().into_inner()
     }
@@ -134,7 +136,7 @@ impl JormungandrClient {
     }
 
     pub async fn get_genesis_block_hash(&self) -> Hash {
-        Hash::from_str(&hex::encode(self.handshake().await.block0)).unwrap()
+        Hash::from_str(&hex::encode(self.handshake(&[]).await.block0)).unwrap()
     }
 
     pub async fn pull_blocks_to_tip(&self, from: Hash) -> Result<Vec<LibBlock>, MockClientError> {

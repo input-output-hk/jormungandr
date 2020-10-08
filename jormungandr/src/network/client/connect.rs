@@ -1,11 +1,13 @@
-use super::super::{
-    grpc,
-    p2p::{comm::PeerComms, Address},
-    Channels, ConnectionState,
-};
 use super::{Client, ClientBuilder, InboundSubscriptions};
 use crate::blockcfg::HeaderHash;
+use crate::network::{
+    grpc,
+    p2p::{comm::PeerComms, Address},
+    security_params::NONCE_LEN,
+    Channels, ConnectionState,
+};
 use chain_core::mempack::{self, ReadBuf, Readable};
+use chain_network::data::{AuthenticatedNodeId, NodeId, NodeKeyPair};
 use chain_network::error::{self as net_error, HandshakeError};
 use chain_network::grpc::legacy;
 
@@ -13,8 +15,9 @@ use futures::channel::oneshot;
 use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::ready;
+use rand::Rng;
 
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -28,6 +31,7 @@ use std::task::{Context, Poll};
 pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
+    let keypair = state.global.keypair.clone();
     let legacy_node_id = state.global.config.legacy_node_id;
     let logger = state.logger.clone();
     let cf = async move {
@@ -44,15 +48,33 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             grpc::connect(&peer).await
         }
         .map_err(ConnectError::Transport)?;
-        let block0 = grpc_client
-            .handshake()
+
+        let mut nonce = [0u8; NONCE_LEN];
+        rand::thread_rng().fill(&mut nonce);
+
+        let hr = grpc_client
+            .handshake(&nonce[..])
             .await
             .map_err(ConnectError::Handshake)?;
-        let mut buf = ReadBuf::from(block0.as_bytes());
+        let mut buf = ReadBuf::from(hr.block0_id.as_bytes());
         let block0_hash = HeaderHash::read(&mut buf).map_err(ConnectError::DecodeBlock0)?;
         let expected = state.global.block0_hash;
         match_block0(expected, block0_hash)?;
+
+        // Validate the server's node ID
+        let peer_id = validate_peer_auth(hr.auth, &nonce)?;
+
+        debug!(logger, "authenticated server peer node"; "node_id" => ?peer_id);
+
+        // Send client authentication
+        let auth = keypair.sign(&hr.nonce);
+        grpc_client
+            .client_auth(auth)
+            .await
+            .map_err(ConnectError::ClientAuth)?;
+
         let mut comms = PeerComms::new();
+        comms.set_node_id(peer_id);
         let (block_sub, fragment_sub, gossip_sub) = future::try_join3(
             grpc_client
                 .clone()
@@ -67,7 +89,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         .await
         .map_err(ConnectError::Subscription)?;
         let inbound = InboundSubscriptions {
-            node_id: Address::new(peer.connection).unwrap(),
+            peer_address: Address::new(peer.connection).unwrap(),
             block_events: block_sub,
             fragments: fragment_sub,
             gossip: gossip_sub,
@@ -88,6 +110,13 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         task: cf.boxed(),
     };
     (handle, future)
+}
+
+// Validate the server peer's node ID
+fn validate_peer_auth(auth: AuthenticatedNodeId, nonce: &[u8]) -> Result<NodeId, ConnectError> {
+    auth.verify(&nonce)
+        .map_err(ConnectError::PeerSignatureVerificationFailed)?;
+    Ok(auth.into())
 }
 
 /// Handle used to monitor the P2P client in process of
@@ -138,6 +167,14 @@ pub enum ConnectError {
         expected: HeaderHash,
         peer_responded: HeaderHash,
     },
+    #[error("invalid node ID in server Handshake response")]
+    InvalidNodeId(#[source] chain_crypto::PublicKeyError),
+    #[error("invalid signature data in server Handshake response")]
+    InvalidNodeSignature(#[source] chain_crypto::SignatureError),
+    #[error("signature verification failed for peer node ID")]
+    PeerSignatureVerificationFailed(#[source] net_error::Error),
+    #[error("client authentication failed")]
+    ClientAuth(#[source] net_error::Error),
     #[error("subscription request failed")]
     Subscription(#[source] net_error::Error),
 }

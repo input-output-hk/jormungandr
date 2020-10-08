@@ -19,7 +19,7 @@ rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
-poldercast = "0.13.1"
+poldercast = "0.13.4"
 hex = "0.4"
 bech32 = "0.7"
 multiaddr = "0.3.1"

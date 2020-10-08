@@ -1,11 +1,13 @@
 pub use builder::node::{
     node_server::{Node, NodeServer},
     {
-        Block, BlockEvent, BlockIds, Fragment, FragmentIds, Gossip, HandshakeRequest,
-        HandshakeResponse, Header, PeersRequest, PeersResponse, PullBlocksToTipRequest,
-        PullHeadersRequest, PushHeadersResponse, TipRequest, TipResponse, UploadBlocksResponse,
+        Block, BlockEvent, BlockIds, ClientAuthRequest, ClientAuthResponse, Fragment, FragmentIds,
+        Gossip, HandshakeRequest, HandshakeResponse, Header, PeersRequest, PeersResponse,
+        PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest, TipResponse,
+        UploadBlocksResponse,
     },
 };
+
 use slog::Drain;
 use std::fmt;
 use std::{fs::OpenOptions, path::Path};
@@ -87,18 +89,40 @@ impl Node for JormungandrServerImpl {
 
     async fn handshake(
         &self,
-        _request: Request<HandshakeRequest>,
+        request: Request<HandshakeRequest>,
     ) -> Result<Response<HandshakeResponse>, Status> {
         info!(self.log,"Handshake method recieved";"method" => MethodType::Handshake.to_string());
 
-        let data = self.data.read().await;
+        let request = request.into_inner();
+        let client_nonce = &request.nonce;
+
+        let mut data = self.data.write().await;
+        let signature = data.node_signature(client_nonce);
+        let nonce = data.generate_auth_nonce().to_vec();
 
         let reply = HandshakeResponse {
             version: data.protocol().clone() as u32,
             block0: data.genesis_hash().as_ref().to_vec(),
+            node_id: data.node_id().to_vec(),
+            signature,
+            nonce,
         };
 
         Ok(Response::new(reply))
+    }
+
+    async fn client_auth(
+        &self,
+        request: tonic::Request<ClientAuthRequest>,
+    ) -> Result<tonic::Response<ClientAuthResponse>, tonic::Status> {
+        let request = request.into_inner();
+        info!(self.log, "ClientAuth request recieved"; "method" => MethodType::ClientAuth.to_string());
+        let data = self.data.read().await;
+        if !data.validate_peer_node_id(&request.node_id, &request.signature) {
+            return Err(Status::invalid_argument("invalid node ID or signature"));
+        }
+        let response = ClientAuthResponse {};
+        Ok(Response::new(response))
     }
 
     async fn tip(

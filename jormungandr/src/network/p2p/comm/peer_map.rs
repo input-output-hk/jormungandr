@@ -5,6 +5,7 @@ use crate::network::{
         Address,
     },
 };
+use chain_network::data::NodeId;
 use linked_hash_map::LinkedHashMap;
 
 pub struct PeerMap {
@@ -25,14 +26,6 @@ pub enum CommStatus<'a> {
 }
 
 impl PeerData {
-    fn new(comms: PeerComms) -> Self {
-        PeerData {
-            comms,
-            stats: PeerStats::default(),
-            connecting: None,
-        }
-    }
-
     fn update_comm_status(&mut self) -> CommStatus<'_> {
         if let Some(ref mut handle) = self.connecting {
             match handle.try_complete() {
@@ -50,9 +43,12 @@ impl PeerData {
     }
 
     fn server_comms(&mut self) -> &mut PeerComms {
-        // This method is called when a subscription request is received
-        // by the server, normally at the beginning of the peer connecting
+        // This method is called when a handshake or subscription request is
+        // received by the server, normally after when the peer connects
         // as a client. Cancel client connection if it is pending.
+        //
+        // TODO: remove client-server connection resolution logic
+        // since we tabulate peer entries per address rather than node ID.
         self.connecting = None;
         self.comms.clear_pending();
         &mut self.comms
@@ -60,6 +56,13 @@ impl PeerData {
 }
 
 impl<'a> CommStatus<'a> {
+    pub fn node_id(&self) -> Option<NodeId> {
+        match self {
+            CommStatus::Established(comms) => comms.node_id(),
+            CommStatus::Connecting(_) => None,
+        }
+    }
+
     fn comms(self) -> &'a mut PeerComms {
         match self {
             CommStatus::Connecting(comms) => comms,
@@ -109,12 +112,6 @@ impl PeerMap {
 
     pub fn server_comms(&mut self, id: Address) -> &mut PeerComms {
         self.ensure_peer(id).server_comms()
-    }
-
-    pub fn insert_peer(&mut self, id: Address, comms: PeerComms) {
-        self.evict_if_full();
-        let data = PeerData::new(comms);
-        self.map.insert(id, data);
     }
 
     pub fn add_connecting(&mut self, id: Address, handle: ConnectHandle) -> &mut PeerComms {

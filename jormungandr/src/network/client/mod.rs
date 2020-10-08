@@ -68,22 +68,22 @@ impl Client {
     ) -> Self {
         let logger = builder
             .logger
-            .new(o!("node_id" => inbound.node_id.to_string()));
+            .new(o!("peer_address" => inbound.peer_address.to_string()));
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
-            inbound.node_id.clone(),
+            inbound.peer_address.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "block_events", "direction" => "in")),
         );
         let fragment_sink = FragmentProcessor::new(
             builder.channels.transaction_box,
-            inbound.node_id.clone(),
+            inbound.peer_address.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "fragments", "direction" => "in")),
         );
         let gossip_sink = GossipProcessor::new(
-            inbound.node_id.clone(),
+            inbound.peer_address.clone(),
             global_state.clone(),
             logger.new(o!("stream" => "gossip", "direction" => "in")),
         );
@@ -107,7 +107,7 @@ impl Client {
 }
 
 struct InboundSubscriptions {
-    pub node_id: Address,
+    pub peer_address: Address,
     pub block_events: BlockSubscription,
     pub fragments: FragmentSubscription,
     pub gossip: GossipSubscription,
