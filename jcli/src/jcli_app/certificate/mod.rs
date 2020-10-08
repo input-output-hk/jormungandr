@@ -22,6 +22,7 @@ mod sign;
 mod weighted_pool_ids;
 
 pub(crate) use self::sign::{
+    committee_encrypted_vote_tally_sign, committee_private_vote_tally_sign,
     committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
     stake_delegation_account_binding_sign,
 };
@@ -222,6 +223,8 @@ fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certific
                 SignedCertificate::PoolUpdate(pu, _) => Certificate::PoolUpdate(pu),
                 SignedCertificate::VotePlan(vp, _) => Certificate::VotePlan(vp),
                 SignedCertificate::VoteTally(vt, _) => Certificate::VoteTally(vt),
+                SignedCertificate::EncryptedVoteTally(vt, _) => Certificate::EncryptedVoteTally(vt),
+                SignedCertificate::PrivateVoteTally(vt, _) => Certificate::PrivateVoteTally(vt),
             };
 
             Ok(interfaces::Certificate(cert))
