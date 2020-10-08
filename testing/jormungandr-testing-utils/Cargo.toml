@@ -33,7 +33,7 @@ chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 custom_debug = "0.5"
 thiserror = "1.0"
-poldercast = "0.13.1"
+poldercast = "0.13.4"
 sysinfo = { version = "0.15.2" }
 slog = { version = "^2.5.1", features = [ "max_level_trace", "release_max_level_trace" ] }
 slog-async = "2.5.0"
