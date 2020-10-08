@@ -9,7 +9,7 @@ tonic = "0.3"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros"] }
 futures      = "0.3.6"
-base64 = "0.12"
+base64 = "0.13"
 hex = "0.4.2"
 chain-addr      = { path = "../../chain-deps/chain-addr" }
 chain-core      = { path = "../../chain-deps/chain-core" }
