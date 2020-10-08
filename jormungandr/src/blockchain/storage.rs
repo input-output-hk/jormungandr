@@ -286,7 +286,12 @@ impl Storage {
             }
 
             self.storage.prune_branch(id.as_ref())?;
-            debug!(self.logger, "removed branch with head {}", id);
+
+            debug!(
+                self.logger,
+                "removed branch with head {}",
+                HeaderHash::hash_bytes(id.as_ref())
+            );
         }
 
         let to_block_info = self
@@ -295,11 +300,12 @@ impl Storage {
         let blocks_flushed = self
             .storage
             .flush_to_permanent_store(to_block_info.id().as_ref(), MINIMUM_BLOCKS_TO_FLUSH)?;
+
         debug!(
             self.logger,
             "flushed all blocks ({}) up to {} to the permanent store",
             blocks_flushed,
-            to_block_info.id()
+            HeaderHash::hash_bytes(to_block_info.id().as_ref())
         );
 
         Ok(())
