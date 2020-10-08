@@ -282,14 +282,13 @@ pub enum Tally {
     Private { private_tally: PrivateTally },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct TallyResult {
     results: Vec<u64>,
 
     options: Range<u8>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 impl TallyResult {
     pub fn results(&self) -> Vec<u64> {
         self.results.clone()
