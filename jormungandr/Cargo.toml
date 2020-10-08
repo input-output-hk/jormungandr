@@ -49,7 +49,7 @@ slog-journald = { version = "2.1.1", optional = true }
 slog-json = "2.3.0"
 slog-term = "2.6.0"
 structopt = "^0.3"
-thiserror = "1.0.20"
+thiserror = "1.0.21"
 tokio = { version = "0.2.22", features = ["rt-threaded", "time", "sync", "stream", "signal", "test-util", "blocking"] }
 tonic = "0.3"
 async-trait = "0.1"
