@@ -20,7 +20,7 @@ chain-time           = { path = "../../chain-deps/chain-time" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { path = "../jortestkit" }
-poldercast = "0.13.1"
+poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "b3382754c27fc9681a10394bf489009991085a5c" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"

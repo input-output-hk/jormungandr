@@ -35,7 +35,7 @@ assert_fs = "1.0"
 predicates = "1.0"
 assert_cmd = "1.0.1"
 regex = "1.3"
-poldercast = "0.13.1"
+poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "b3382754c27fc9681a10394bf489009991085a5c" }
 thiserror = "1.0"
 url = "2.1.1"
 yaml-rust = "0.4.4"

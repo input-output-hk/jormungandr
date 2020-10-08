@@ -19,7 +19,7 @@ rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
-poldercast = "0.13.1"
+poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "b3382754c27fc9681a10394bf489009991085a5c" }
 hex = "0.4"
 bech32 = "0.7"
 multiaddr = "0.3.1"
