@@ -1852,7 +1852,7 @@ dependencies = [
  "jormungandr-lib",
  "jortestkit",
  "lazy_static",
- "os_info",
+ "os_info 3.0.0",
  "poldercast",
  "prost",
  "rand 0.7.3",
@@ -1900,7 +1900,7 @@ dependencies = [
  "humantime",
  "indicatif",
  "lazy_static",
- "os_info",
+ "os_info 2.0.8",
  "predicates",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -2371,6 +2371,16 @@ name = "os_info"
 version = "2.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2cc1b4330bb29087e791ae2a5cf56be64fb8946a4ff5aec2ba11c6ca51f5d60"
+dependencies = [
+ "log 0.4.11",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "os_info"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09300db72fca7d425d1f51b76b881fdcc63241fdc952b5cd013f8a6f8c01e6d5"
 dependencies = [
  "log 0.4.11",
  "winapi 0.3.9",
