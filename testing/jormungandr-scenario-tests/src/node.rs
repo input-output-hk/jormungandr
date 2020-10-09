@@ -80,7 +80,7 @@ pub enum Error {
     InvalidNetworkStats(#[source] serde_json::Error),
     #[error("leaders ids in an invalid format")]
     InvalidEnclaveLeaderIds(#[source] serde_json::Error),
-    #[error("node '{alias}' failed to start after {} s", .duration.as_secs())]
+    #[error("node '{alias}' failed to start after {} s. Logs: {:?}", .duration.as_secs())]
     NodeFailedToBootstrap {
         alias: String,
         duration: Duration,
