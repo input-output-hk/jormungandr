@@ -132,6 +132,7 @@ fn vote_plan_with_3_proposals(rewards_increase: u64) -> VotePlan {
         BlockDate::from_epoch_slot_id(2, 0),
         proposals(rewards_increase),
         PayloadType::Public,
+        vec![],
     )
 }
 
@@ -243,6 +244,7 @@ fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanS
             assert_eq!(*results.get(1).unwrap(), stake);
             assert_eq!(*results.get(2).unwrap(), 0);
         }
+        Tally::Private { .. } => unimplemented!("Private tally testing is not implemented"),
     }
 }
 
