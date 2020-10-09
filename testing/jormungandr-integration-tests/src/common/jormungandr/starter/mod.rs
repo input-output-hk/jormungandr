@@ -500,7 +500,7 @@ where
             }
 
             if retry_counter < 0 {
-                panic!("Jormungandr node cannot start due despite retry attempts. see logs for more details");
+                panic!("Jormungandr node cannot start despites retry attempts. see logs for more details");
             }
 
             self.temp_dir = jormungandr.steal_temp_dir();
