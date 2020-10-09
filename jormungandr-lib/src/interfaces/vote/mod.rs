@@ -362,7 +362,7 @@ impl From<vote::Tally> for Tally {
             vote::Tally::Public { result } => Tally::Public {
                 result: result.into(),
             },
-            vote::Tally::Private { tally } => Tally::Private {
+            vote::Tally::Private { tally, result } => Tally::Private {
                 private_tally: PrivateTally(tally.to_bytes()),
             },
         }

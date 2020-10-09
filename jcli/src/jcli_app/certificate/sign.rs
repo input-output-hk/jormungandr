@@ -173,12 +173,7 @@ pub(crate) fn committee_private_vote_tally_sign(
     let proof = match vote_tally.tally_type() {
         // TODO: vote tally can only be private, add a proper error here
         PayloadType::Public => return Err(Error::ExpectedSignedOrNotCertificate),
-        // TODO: how to pass the shares here...?
-        PayloadType::Private => TallyProof::Private {
-            id,
-            signature,
-            shares: vec![],
-        },
+        PayloadType::Private => TallyProof::Private { id, signature },
     };
     Ok(SignedCertificate::PrivateVoteTally(vote_tally, proof))
 }
