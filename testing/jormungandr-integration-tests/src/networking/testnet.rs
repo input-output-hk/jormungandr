@@ -10,7 +10,8 @@ use crate::{
 };
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::TrustedPeer;
+use jormungandr_lib::interfaces::Log;
+use jormungandr_lib::interfaces::{LogEntry, LogOutput, TrustedPeer};
 use jormungandr_testing_utils::{
     testing::node::{
         download_last_n_releases, get_jormungandr_bin, storage_loading_benchmark_from_log,
@@ -112,6 +113,11 @@ impl TestnetConfig {
         ConfigurationBuilder::new()
             .with_block_hash(self.block0_hash())
             .with_storage(&temp_dir.child("storage"))
+            .with_log(Log(vec![LogEntry {
+                format: "json".to_string(),
+                level: "info".to_string(),
+                output: LogOutput::File(temp_dir.child("leader.log").path().to_path_buf()),
+            }]))
             .with_trusted_peers(self.trusted_peers.clone())
             .with_public_address(format!("/ip4/{}/tcp/{}", self.public_ip, self.public_port))
             .build(temp_dir)
@@ -121,6 +127,11 @@ impl TestnetConfig {
         ConfigurationBuilder::new()
             .with_block_hash(self.block0_hash())
             .with_storage(&temp_dir.child("storage"))
+            .with_log(Log(vec![LogEntry {
+                format: "json".to_string(),
+                level: "info".to_string(),
+                output: LogOutput::File(temp_dir.child("passive.log").path().to_path_buf()),
+            }]))
             .with_trusted_peers(self.trusted_peers.clone())
             .build(temp_dir)
     }
