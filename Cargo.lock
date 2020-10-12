@@ -540,6 +540,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chain-vote"
+version = "0.1.0"
+dependencies = [
+ "cryptoxide",
+ "eccoxide",
+ "rand_core 0.5.1",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -884,6 +893,17 @@ name = "dtoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
+
+[[package]]
+name = "eccoxide"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd94430d57f1f931d2b1e8e8a2267547a5fca34218d9289c8bf306da433d7afc"
+dependencies = [
+ "lazy_static",
+ "num-bigint",
+ "num-traits",
+]
 
 [[package]]
 name = "ed25519"
@@ -1630,6 +1650,7 @@ dependencies = [
  "chain-crypto",
  "chain-impl-mockchain",
  "chain-time",
+ "chain-vote",
  "clap",
  "ed25519-bip32",
  "gtmpl",
@@ -2277,6 +2298,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a31937dea023539c72ddae0e3571deadc1414b300483fa7aaec176168cfa9d2"
 dependencies = [
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7f3fc75e3697059fb1bc465e3d8cca6cf92f56854f201158b3f9c77d5a3cfa0"
+dependencies = [
+ "autocfg 1.0.1",
+ "num-integer",
+ "num-traits",
 ]
 
 [[package]]
