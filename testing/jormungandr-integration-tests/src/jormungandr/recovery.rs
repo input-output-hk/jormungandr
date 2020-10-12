@@ -146,7 +146,7 @@ pub fn test_node_recovers_kill_signal() {
     std::thread::sleep(std::time::Duration::from_secs(5));
     let jormungandr = Starter::new()
         .config(config)
-        .role(Role::Passive)
+        .role(Role::Leader)
         .start()
         .unwrap();
     std::thread::sleep(std::time::Duration::from_secs(5));
