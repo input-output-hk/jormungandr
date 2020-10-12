@@ -45,7 +45,7 @@ impl Multiverse<Ledger> {
     ///       the garbage collection for any `T`
     pub async fn purge(&self) {
         let mut guard = self.inner.write().await;
-        guard.gc()
+        // guard.gc()
     }
 }
 
