@@ -237,13 +237,13 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "legacy_current_node_fragment_propagation",
         legacy::legacy_current_node_fragment_propagation,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         "current_node_legacy_fragment_propagation",
         legacy::current_node_legacy_fragment_propagation,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
@@ -295,31 +295,31 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(5),
         |ctx| legacy::disruption_last_nth_release(ctx, 5),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(4),
         |ctx| legacy::disruption_last_nth_release(ctx, 4),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(3),
         |ctx| legacy::disruption_last_nth_release(ctx, 3),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(2),
         |ctx| legacy::disruption_last_nth_release(ctx, 2),
-        vec![Tag::Unstable],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::disruption_last_nth_release_title(1),
         |ctx| legacy::disruption_last_nth_release(ctx, 1),
-        vec![Tag::Unstable],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
