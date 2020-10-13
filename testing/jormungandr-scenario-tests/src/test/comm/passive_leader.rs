@@ -4,7 +4,7 @@ use crate::{
     test::Result,
     Context, ScenarioResult,
 };
-
+use jormungandr_lib::interfaces::Policy;
 use std::time::Duration;
 
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
@@ -95,15 +95,21 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
 
-    let leader_2 = controller.spawn_node(
-        LEADER_2,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
+    let policy = Policy {
+        quarantine_duration: Some(Duration::new(5, 0).into()),
+        quarantine_whitelist: None,
+    };
+
+    let leader_2 = controller.spawn_node_custom(
+        controller
+            .new_spawn_params(LEADER_2)
+            .policy(policy.clone())
+            .leader(),
     )?;
     leader_2.wait_for_bootstrap()?;
 
-    let leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
+    let leader = controller
+        .spawn_node_custom(controller.new_spawn_params(LEADER).policy(policy).leader())?;
     leader.wait_for_bootstrap()?;
 
     let passive = controller.spawn_node(
