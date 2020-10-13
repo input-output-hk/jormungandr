@@ -118,8 +118,8 @@ fn prepare_real_scenario(
 
 pub fn real_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let relay_nodes_count = 3;
-    let leaders_per_relay = 10;
-    let legacies_per_relay = 1;
+    let leaders_per_relay = 11;
+    let legacies_per_relay = 0;
 
     let scenario_settings = prepare_real_scenario(
         "Real-Network",
