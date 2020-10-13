@@ -265,31 +265,31 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         legacy::last_nth_release_title(5),
         |ctx| legacy::last_nth_release(ctx, 5),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::last_nth_release_title(4),
         |ctx| legacy::last_nth_release(ctx, 4),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::last_nth_release_title(3),
         |ctx| legacy::last_nth_release(ctx, 3),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::last_nth_release_title(2),
         |ctx| legacy::last_nth_release(ctx, 2),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         legacy::last_nth_release_title(1),
         |ctx| legacy::last_nth_release(ctx, 1),
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
