@@ -710,8 +710,8 @@ impl Node {
     }
 }
 
-use std::fmt::Display;
 use jormungandr_testing_utils::testing::node::Explorer;
+use std::fmt::Display;
 
 impl ProgressBarController {
     pub fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {

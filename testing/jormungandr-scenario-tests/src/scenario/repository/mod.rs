@@ -17,7 +17,7 @@ use crate::{
         features::{
             explorer::passive_node_explorer, leader_promotion::*,
             leadership_log::leader_restart_preserves_leadership_log, p2p::*,
-            stake_pool::retire::retire_stake_pool_explorer
+            stake_pool::retire::retire_stake_pool_explorer,
         },
         legacy,
         network::real::real_network,
@@ -128,7 +128,7 @@ impl ScenariosRepository {
         let scenario_to_run = scenario.method();
 
         println!("Running '{}' scenario", scenario.name());
-        
+
         let result = Ok(Ok(scenario_to_run(context.clone().derive()).unwrap()));
         //let result = std::panic::catch_unwind(|| scenario_to_run(context.clone().derive()));
         let scenario_result = ScenarioResult::from_result(result);
@@ -249,8 +249,6 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short, Tag::Unstable],
     ));
 
-
-    
     repository.push(Scenario::new(
         "current_node_legacy_fragment_propagation",
         legacy::current_node_legacy_fragment_propagation,

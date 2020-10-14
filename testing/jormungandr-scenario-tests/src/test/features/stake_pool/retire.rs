@@ -4,7 +4,7 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
-use jormungandr_lib::interfaces::{EnclaveLeaderId,Explorer};
+use jormungandr_lib::interfaces::{EnclaveLeaderId, Explorer};
 use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
@@ -37,45 +37,67 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader_1 =
-        controller.spawn_node_custom(controller.new_spawn_params(LEADER_1).leader().in_memory().explorer(Explorer {enabled: true}))?;
+    let leader_1 = controller.spawn_node_custom(
+        controller
+            .new_spawn_params(LEADER_1)
+            .leader()
+            .in_memory()
+            .explorer(Explorer { enabled: true }),
+    )?;
     leader_1.wait_for_bootstrap()?;
-    
+
     let leader_2 =
-    controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_2.wait_for_bootstrap()?;
 
     let leader_3 =
-    controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_3.wait_for_bootstrap()?;
 
     let leader_4 =
-    controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+        controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_4.wait_for_bootstrap()?;
-    
+
     controller.monitor_nodes();
 
-
-    
     std::thread::sleep(std::time::Duration::from_secs(10));
-  
+
     let explorer = leader_1.explorer();
     let stake_pool_3 = controller.stake_pool(LEADER_3)?;
-    
-    let stake_pool_state_before = explorer.stake_pool(stake_pool_3.info().to_id().to_string(),0)?;
-    utils::assert(stake_pool_state_before.data.unwrap().stake_pool.retirement.is_none(),"retirement field in explorer should be empty")?;
+
+    let stake_pool_state_before =
+        explorer.stake_pool(stake_pool_3.info().to_id().to_string(), 0)?;
+    utils::assert(
+        stake_pool_state_before
+            .data
+            .unwrap()
+            .stake_pool
+            .retirement
+            .is_none(),
+        "retirement field in explorer should be empty",
+    )?;
 
     let mut wallet_3 = controller.wallet("leader_3")?;
-    controller.fragment_sender().send_pool_retire(&mut wallet_3, &stake_pool_3, &leader_4)?;
+    controller
+        .fragment_sender()
+        .send_pool_retire(&mut wallet_3, &stake_pool_3, &leader_4)?;
 
     std::thread::sleep(std::time::Duration::from_secs(70));
-  
+
     let created_block_count = leader_3.logger().get_created_blocks_hashes().len();
     let start_time_no_block = std::time::SystemTime::now();
-    
+
     // proof 1: explorer shows as retired
-    let stake_pool_state_after = explorer.stake_pool(stake_pool_3.id().to_string(),0)?;
-    utils::assert(stake_pool_state_after.data.unwrap().stake_pool.retirement.is_none(), "retirement field in explorer should not be empty")?;
+    let stake_pool_state_after = explorer.stake_pool(stake_pool_3.id().to_string(), 0)?;
+    utils::assert(
+        stake_pool_state_after
+            .data
+            .unwrap()
+            .stake_pool
+            .retirement
+            .is_none(),
+        "retirement field in explorer should not be empty",
+    )?;
 
     // proof 2: minted block count not increased
     let created_blocks_count_after_retire = leader_3.logger().get_created_blocks_hashes().len();
@@ -83,13 +105,18 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     //proof 3: no more minted blocks hashes in logs
     std::thread::sleep(std::time::Duration::from_secs(60));
-    utils::assert(leader_3
-        .logger()
-        .get_created_blocks_hashes_after(start_time_no_block.into())
-        .is_empty(), "leader 3 should not create any block after retirement")?;
+    utils::assert(
+        leader_3
+            .logger()
+            .get_created_blocks_hashes_after(start_time_no_block.into())
+            .is_empty(),
+        "leader 3 should not create any block after retirement",
+    )?;
 
-    utils::assert(leader_3.logger().contains_error().unwrap(),&leader_3.logger().get_log_content())?;
-
+    utils::assert(
+        leader_3.logger().contains_error().unwrap(),
+        &leader_3.logger().get_log_content(),
+    )?;
 
     leader_1.shutdown()?;
     leader_2.shutdown()?;
