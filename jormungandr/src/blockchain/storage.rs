@@ -11,6 +11,8 @@ use thiserror::Error;
 use std::convert::identity;
 use std::path::Path;
 
+const MINIMUM_BLOCKS_TO_FLUSH: usize = 256;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("block not found")]
@@ -258,5 +260,54 @@ impl Storage {
             header_hash,
             distance: closest_found,
         }))
+    }
+
+    pub fn gc(&self, threshold_depth: u32, main_branch_tip: &[u8]) -> Result<(), Error> {
+        let main_info = self.storage.get_block_info(main_branch_tip)?;
+        let threshold_length = match main_info.chain_length().checked_sub(threshold_depth) {
+            Some(result) => result,
+            None => return Ok(()),
+        };
+
+        debug!(
+            self.logger,
+            "pruning all branches below stability depth {} (chain length: {})",
+            threshold_depth,
+            threshold_length
+        );
+
+        let tips_ids = self.storage.get_tips_ids()?;
+
+        for id in tips_ids {
+            let info = self.storage.get_block_info(id.as_ref())?;
+
+            if info.chain_length() > threshold_length {
+                continue;
+            }
+
+            self.storage.prune_branch(id.as_ref())?;
+
+            debug!(
+                self.logger,
+                "removed branch with head {}",
+                HeaderHash::hash_bytes(id.as_ref())
+            );
+        }
+
+        let to_block_info = self
+            .storage
+            .get_nth_ancestor(main_branch_tip, threshold_depth)?;
+        let blocks_flushed = self
+            .storage
+            .flush_to_permanent_store(to_block_info.id().as_ref(), MINIMUM_BLOCKS_TO_FLUSH)?;
+
+        debug!(
+            self.logger,
+            "flushed all blocks ({}) up to {} to the permanent store",
+            blocks_flushed,
+            HeaderHash::hash_bytes(to_block_info.id().as_ref())
+        );
+
+        Ok(())
     }
 }

@@ -298,6 +298,13 @@ impl Blockchain {
         &mut self.branches
     }
 
+    pub async fn gc(&self, tip: Arc<Ref>) -> Result<()> {
+        let depth = tip.epoch_ledger_parameters().epoch_stability_depth;
+        self.ledgers.gc(depth).await;
+        self.storage.gc(depth, tip.hash().as_ref())?;
+        Ok(())
+    }
+
     /// create and store a reference of this leader to the new
     async fn create_and_store_reference(
         &self,
