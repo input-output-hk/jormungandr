@@ -378,4 +378,8 @@ pub fn topics_of_interest_influences_node_sync_ability() {
         fast_client_block_recv_cnt >= slow_client_block_recv_cnt,
         "node with high block topic of interest should have more recieved blocks fast:{} vs slow:{}",fast_client_block_recv_cnt,slow_client_block_recv_cnt
     );
+
+    server.assert_no_errors_in_log();
+    fast_client.assert_no_errors_in_log();
+    slow_client.assert_no_errors_in_log();
 }

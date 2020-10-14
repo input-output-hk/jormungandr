@@ -1,8 +1,11 @@
 use crate::common::{
+    configuration::JormungandrParams,
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
-    configuration::JormungandrParams
 };
+use assert_fs::fixture::FixtureError;
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
 use chain_impl_mockchain::{fee::LinearFee, header::HeaderId};
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -13,9 +16,6 @@ use jormungandr_testing_utils::testing::{
     FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
 };
 use jormungandr_testing_utils::{testing::network_builder::NodeSetting, wallet::Wallet};
-use assert_fs::fixture::FixtureError;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use std::path::PathBuf;
 use thiserror::Error;
 
