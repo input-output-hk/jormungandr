@@ -97,7 +97,7 @@ pub fn test_node_recovers_from_node_restart() {
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
     jormungandr.stop();
 
-    std::thread::sleep(std::time::Duration::from_secs(5));
+    std::thread::sleep(std::time::Duration::from_secs(1));
 
     let jormungandr = Starter::new()
         .config(config)
@@ -105,7 +105,7 @@ pub fn test_node_recovers_from_node_restart() {
         .start()
         .unwrap();
 
-    std::thread::sleep(std::time::Duration::from_secs(5));
+    std::thread::sleep(std::time::Duration::from_secs(1));
     let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 
     assert_eq!(
@@ -143,13 +143,13 @@ pub fn test_node_recovers_kill_signal() {
     );
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
     jormungandr.stop();
-    std::thread::sleep(std::time::Duration::from_secs(5));
+    std::thread::sleep(std::time::Duration::from_secs(1));
     let jormungandr = Starter::new()
         .config(config)
         .role(Role::Leader)
         .start()
         .unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(5));
+    std::thread::sleep(std::time::Duration::from_secs(1));
     let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 
     assert_eq!(
