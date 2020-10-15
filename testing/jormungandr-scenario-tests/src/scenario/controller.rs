@@ -252,7 +252,6 @@ impl Controller {
     // therefore controller has separate method to build such wallet
     pub fn iapyx_wallet(
         &self,
-        wallet: &str,
         mnemonics: &str,
         wallet_proxy: &WalletProxyController,
     ) -> Result<iapyx::Controller> {

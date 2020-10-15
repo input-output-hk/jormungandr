@@ -1,7 +1,6 @@
 use crate::WalletBackend;
 use crate::{Proposal, Wallet};
 use bip39::Type;
-use chain_crypto::{bech32::Bech32, Ed25519, PublicKey};
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_testing_utils::testing::node::RestSettings;
 use std::iter;
@@ -43,7 +42,7 @@ impl MultiController {
         password: &[u8],
         backend_settings: RestSettings,
     ) -> Result<Self, MultiControllerError> {
-        let mut backend = WalletBackend::new(wallet_backend_address.to_string(), backend_settings);
+        let backend = WalletBackend::new(wallet_backend_address.to_string(), backend_settings);
         let settings = backend.settings()?;
         let wallets = mnemonics
             .iter()

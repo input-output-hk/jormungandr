@@ -7,7 +7,7 @@ use crate::{
     testing::{FragmentBuilder, FragmentBuilderError},
 };
 use chain_impl_mockchain::{
-    certificate::{Proposal, VotePlan},
+    certificate::VotePlan,
     fee::FeeAlgorithm,
     key::EitherEd25519SecretKey,
     testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},

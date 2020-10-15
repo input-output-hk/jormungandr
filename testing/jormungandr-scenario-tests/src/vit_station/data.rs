@@ -3,7 +3,7 @@ use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 use std::path::PathBuf;
 use vit_servicing_station_lib::db::models::vote_options::VoteOptions;
-use vit_servicing_station_tests::common::data::{Generator, Snapshot};
+use vit_servicing_station_tests::common::data::Generator;
 use vit_servicing_station_tests::common::startup::db::DbBuilder;
 
 pub struct DbGenerator {
@@ -20,12 +20,12 @@ impl DbGenerator {
     }
 
     pub fn build(self, db_file: &PathBuf) {
-        std::fs::File::create(&db_file);
+        std::fs::File::create(&db_file).unwrap();
 
-        let mut snapshot = Generator::new().snapshot();
+        let snapshot = Generator::new().snapshot();
         let mut snapshot_proposals = snapshot.proposals().clone();
 
-        for (index, vote_plan) in self.vote_plans.iter().enumerate() {
+        for (_, vote_plan) in self.vote_plans.iter().enumerate() {
             for (index, proposal) in vote_plan.proposals().iter().enumerate() {
                 let mut proposal_snapshot = snapshot_proposals.get_mut(index).unwrap();
 

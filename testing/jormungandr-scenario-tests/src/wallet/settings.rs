@@ -1,14 +1,11 @@
 use crate::scenario::settings::PrepareWalletProxySettings;
 use crate::vit_station::VitStationSettings;
 use crate::wallet::NodeAlias;
-use crate::wallet::NodeSetting;
 use crate::Context;
-use jormungandr_testing_utils::testing::network_builder::Topology as TopologyTemplate;
 pub use jormungandr_testing_utils::testing::network_builder::WalletProxySettings;
 use rand::CryptoRng;
 use rand::RngCore;
 use std::collections::HashMap;
-use std::net::SocketAddr;
 
 impl PrepareWalletProxySettings for WalletProxySettings {
     fn prepare<RNG>(

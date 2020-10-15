@@ -1,5 +1,4 @@
 use crate::{
-    node::NodeController,
     node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
@@ -7,15 +6,12 @@ use crate::{
 use jormungandr_lib::interfaces::Explorer;
 use jormungandr_testing_utils::testing::network_builder::SpawnParams;
 use jormungandr_testing_utils::testing::node::time;
-use jortestkit::process::sleep;
 use rand_chacha::ChaChaRng;
-use std::time::{Duration, SystemTime};
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 const LEADER_3: &str = "Leader3";
 const LEADER_4: &str = "Leader4";
 const WALLET_NODE: &str = "Wallet_Node";
-use chain_impl_mockchain::vote::Choice;
 
 const DAVID_ADDRESS: &str = "DdzFFzCqrhsktawSMCWJJy3Dpp9BCjYPVecgsMb5U2G7d1ErUUmwSZvfSY3Yjn5njNadfwvebpVNS5cD4acEKSQih2sR76wx2kF4oLXT";
 const DAVID_MNEMONICS: &str =
@@ -70,10 +66,8 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
 
     let mut controller = scenario_settings.build(context)?;
 
-    let now = SystemTime::now();
-
     // bootstrap network
-    let mut leader_1 = controller.spawn_node_custom(
+    let leader_1 = controller.spawn_node_custom(
         SpawnParams::new(LEADER_1)
             .leader()
             .persistence_mode(PersistenceMode::Persistent)
@@ -120,7 +114,7 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
     let wallet_proxy = controller.spawn_wallet_proxy(WALLET_NODE)?;
 
     // start mainnet walets
-    let mut david = controller.iapyx_wallet("David", DAVID_MNEMONICS, &wallet_proxy)?;
+    let mut david = controller.iapyx_wallet(DAVID_MNEMONICS, &wallet_proxy)?;
     david.retrieve_funds()?;
     david.convert_and_send()?;
 
@@ -129,15 +123,15 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
     // start voting
     david.vote_for(fund1_vote_plan.id(), 0, Vote::YES as u8)?;
 
-    let mut edgar = controller.iapyx_wallet("Edgar", EDGAR_MNEMONICS, &wallet_proxy)?;
+    let mut edgar = controller.iapyx_wallet(EDGAR_MNEMONICS, &wallet_proxy)?;
     edgar.retrieve_funds()?;
-    edgar.convert_and_send();
+    edgar.convert_and_send()?;
 
     edgar.vote_for(fund1_vote_plan.id(), 0, Vote::YES as u8)?;
 
-    let mut filip = controller.iapyx_wallet("Filip", FILIP_MNEMONICS, &wallet_proxy)?;
+    let mut filip = controller.iapyx_wallet(FILIP_MNEMONICS, &wallet_proxy)?;
     filip.retrieve_funds()?;
-    filip.convert_and_send();
+    filip.convert_and_send()?;
 
     filip.vote_for(fund1_vote_plan.id(), 0, Vote::NO as u8)?;
 

@@ -1,29 +1,8 @@
 #![allow(dead_code)]
 
 use crate::wallet::WalletProxySettings;
-use crate::VitStationController;
-use crate::WalletProxy;
-use chain_impl_mockchain::{
-    block::Block,
-    fragment::{Fragment, FragmentId},
-    header::HeaderId,
-};
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{
-        EnclaveLeaderId, FragmentLog, LeadershipLog, Log, LogEntry, LogOutput, NodeState,
-        NodeStatsDto, PeerRecord, PeerStats,
-    },
-};
-use std::net::SocketAddr;
-use vit_servicing_station_tests::common::clients::RestClient;
-use vit_servicing_station_tests::common::startup::db::DbBuilder;
-use vit_servicing_station_tests::common::startup::server::BootstrapCommandBuilder;
 
 use crate::node::Status;
-use assert_fs::TempDir;
-use chain_impl_mockchain::certificate::VotePlan;
-use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
@@ -37,18 +16,9 @@ pub use jormungandr_testing_utils::testing::{
 
 use crate::node::ProgressBarController;
 pub type VitStationSettings = vit_servicing_station_lib::server::settings::ServiceSettings;
-use futures::executor::block_on;
-use indicatif::ProgressBar;
-use rand_core::RngCore;
-use vit_servicing_station_lib::db::models::vote_options::VoteOptions;
-use vit_servicing_station_lib::server::settings::dump_settings_to_file;
 
-use std::collections::HashMap;
-use std::io::{self, BufRead, BufReader};
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::Child;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 /// send query to a running node
 pub struct WalletProxyController {

@@ -1,27 +1,8 @@
 mod controller;
 mod settings;
-use crate::NodeController;
-use crate::VitStationController;
-use chain_impl_mockchain::{
-    block::Block,
-    fragment::{Fragment, FragmentId},
-    header::HeaderId,
-};
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{
-        EnclaveLeaderId, FragmentLog, LeadershipLog, Log, LogEntry, LogOutput, NodeState,
-        NodeStatsDto, PeerRecord, PeerStats,
-    },
-};
-use std::net::SocketAddr;
-use vit_servicing_station_tests::common::clients::RestClient;
-use vit_servicing_station_tests::common::startup::db::DbBuilder;
-use vit_servicing_station_tests::common::startup::server::BootstrapCommandBuilder;
 
-use assert_fs::TempDir;
-use chain_impl_mockchain::certificate::VotePlan;
-use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
+use chain_impl_mockchain::fragment::FragmentId;
+
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
@@ -34,22 +15,16 @@ pub use jormungandr_testing_utils::testing::{
 };
 
 use crate::node::ProgressBarController;
-pub type VitStationSettings = vit_servicing_station_lib::server::settings::ServiceSettings;
-use futures::executor::block_on;
 use indicatif::ProgressBar;
 use rand_core::RngCore;
-use vit_servicing_station_lib::db::models::vote_options::VoteOptions;
-use vit_servicing_station_lib::server::settings::dump_settings_to_file;
 
-use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Child, Command};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::node::Status;
-use crate::{scenario::ProgressBarMode, style, Context};
+use crate::{node::Status, style, Context};
 
 pub use controller::WalletProxyController;
 pub use jormungandr_testing_utils::testing::network_builder::WalletProxySettings;
@@ -148,8 +123,6 @@ impl WalletProxy {
     }
 
     pub fn controller(self) -> WalletProxyController {
-        let rest_uri = uri_from_socket_addr(self.settings.base_address());
-
         WalletProxyController::new(
             self.alias().clone(),
             self.progress_bar.clone(),

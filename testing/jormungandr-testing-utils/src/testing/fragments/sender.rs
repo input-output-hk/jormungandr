@@ -10,7 +10,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
-    certificate::{Proposal, VotePlan},
+    certificate::{VotePlan},
     fee::LinearFee,
     fragment::Fragment,
     vote::Choice,

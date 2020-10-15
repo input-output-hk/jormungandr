@@ -9,7 +9,7 @@ use chain_impl_mockchain::{
 };
 use hdkeygen::account::AccountId;
 use jormungandr_lib::interfaces::AccountIdentifier;
-use std::collections::{HashMap,HashSet};
+use std::collections::{HashSet};
 use std::str::FromStr;
 use wallet::Settings;
 use wallet_core::Conversion;

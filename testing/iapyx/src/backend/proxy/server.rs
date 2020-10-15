@@ -1,9 +1,5 @@
-use warp::{hyper::body::Bytes, Filter, Rejection, Reply};
-use warp_reverse_proxy::reverse_proxy_filter;
 use thiserror::Error;
-use hyper::StatusCode;
 use std::net::SocketAddr;
-use url::{Url, ParseError};
 
 #[derive(Debug, Error)]
 pub enum Error {

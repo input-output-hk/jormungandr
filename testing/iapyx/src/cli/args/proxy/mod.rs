@@ -1,12 +1,7 @@
 use structopt::StructOpt;
 use thiserror::Error;
-use crate::backend::ProxyServerError;
 use crate::backend::ProxyServerStub;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
 use std::path::PathBuf;
-use jortestkit::file;
 
 #[derive(Error, Debug)]
 pub enum IapyxProxyCommandError {
@@ -38,7 +33,7 @@ impl IapyxProxyCommand {
         let node_address = self.node_address.clone();
         let block0_path = self.block0_path.clone();
 
-        Ok(ProxyServerStub::new(proxy_address,vit_address,node_address,file::get_file_as_byte_vec(&block0_path))?)
+        Ok(ProxyServerStub::new(proxy_address,vit_address,node_address,jortestkit::file::get_file_as_byte_vec(&block0_path))?)
     }
 }
 

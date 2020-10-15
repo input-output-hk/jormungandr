@@ -3,7 +3,6 @@ use crate::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, Random, Wallet, WalletAlias,
     WalletTemplate, WalletType,
 };
-use crate::testing::node::RestSettings;
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
@@ -11,20 +10,18 @@ use chain_impl_mockchain::{
     chaintypes::ConsensusVersion,
     fee::LinearFee,
     testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
-    vote::CommitteeId,
 };
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
         try_initials_vec_from_messages, ActiveSlotCoefficient, Bft, Block0Configuration,
         BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial, InitialUTxO, LegacyUTxO,
-        NodeConfig, NodeSecret, OldAddress,
+        NodeConfig, NodeSecret
     },
 };
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
-use std::str::FromStr;
 use vit_servicing_station_lib::server::settings::ServiceSettings;
 
 pub type VotePlanAlias = String;
