@@ -1,4 +1,4 @@
-use super::{Error, OutputFile, Seed};
+use crate::jcli_app::vote::{Error, OutputFile, Seed};
 use chain_vote::gargamel::PublicKey;
 use chain_vote::{MemberCommunicationPublicKey, MemberState};
 use rand::rngs::OsRng;
@@ -41,18 +41,6 @@ pub struct Generate {
     output_file: OutputFile,
 }
 
-fn parse_member_communication_key(key: &str) -> Result<MemberCommunicationPublicKey, Error> {
-    let raw_key = hex::decode(key)?;
-    let pk = PublicKey::from_bytes(&raw_key).ok_or(Error::InvalidPublicKey)?;
-    Ok(MemberCommunicationPublicKey::from_public_key(pk))
-}
-
-fn parse_crs(crs: &str) -> Result<chain_vote::CRS, Error> {
-    let bytes = hex::decode(crs)?;
-
-    chain_vote::CRS::from_bytes(&bytes).ok_or(Error::InvalidCrs)
-}
-
 #[derive(StructOpt)]
 pub struct ToPublic {
     /// the source private key to extract the public key from
@@ -68,7 +56,7 @@ pub struct ToPublic {
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub enum CommitteeMemberKey {
+pub enum MemberKey {
     /// generate a private key
     Generate(Generate),
     /// get the public key out of a given private key
@@ -132,15 +120,27 @@ impl ToPublic {
     }
 }
 
-impl CommitteeMemberKey {
+impl MemberKey {
     pub fn exec(self) -> Result<(), super::Error> {
         match self {
-            CommitteeMemberKey::Generate(args) => args.exec(),
-            CommitteeMemberKey::ToPublic(args) => args.exec(),
+            MemberKey::Generate(args) => args.exec(),
+            MemberKey::ToPublic(args) => args.exec(),
         }
     }
 }
 
 fn read_hex<P: AsRef<Path>>(path: &Option<P>) -> Result<Vec<u8>, Error> {
     hex::decode(crate::jcli_app::utils::io::read_line(path)?).map_err(Into::into)
+}
+
+fn parse_member_communication_key(key: &str) -> Result<MemberCommunicationPublicKey, Error> {
+    let raw_key = hex::decode(key)?;
+    let pk = PublicKey::from_bytes(&raw_key).ok_or(Error::InvalidPublicKey)?;
+    Ok(MemberCommunicationPublicKey::from_public_key(pk))
+}
+
+fn parse_crs(crs: &str) -> Result<chain_vote::CRS, Error> {
+    let bytes = hex::decode(crs)?;
+
+    chain_vote::CRS::from_bytes(&bytes).ok_or(Error::InvalidCrs)
 }

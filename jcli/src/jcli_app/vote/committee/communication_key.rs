@@ -1,4 +1,4 @@
-use super::{Error, OutputFile, Seed};
+use crate::jcli_app::vote::{Error, OutputFile, Seed};
 use chain_vote::MemberCommunicationKey;
 use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
@@ -37,7 +37,7 @@ pub struct ToPublic {
 
 #[derive(StructOpt, Debug)]
 #[structopt(rename_all = "kebab-case")]
-pub enum CommitteeCommunicationKey {
+pub enum CommunicationKey {
     /// generate a private key
     Generate(Generate),
     /// get the public key out of a given private key
@@ -76,11 +76,11 @@ impl ToPublic {
     }
 }
 
-impl CommitteeCommunicationKey {
+impl CommunicationKey {
     pub fn exec(self) -> Result<(), super::Error> {
         match self {
-            CommitteeCommunicationKey::Generate(args) => args.exec(),
-            CommitteeCommunicationKey::ToPublic(args) => args.exec(),
+            CommunicationKey::Generate(args) => args.exec(),
+            CommunicationKey::ToPublic(args) => args.exec(),
         }
     }
 }
