@@ -27,8 +27,6 @@ pub enum Error {
     InvalidSecretKey,
     #[error("invalid common reference string")]
     InvalidCrs,
-    #[error("expected at least one committee key")]
-    EmptyCommittee,
     #[error("threshold should be in range (0..{committee_members:?}] and is {threshold:?}")]
     InvalidThreshold {
         threshold: usize,

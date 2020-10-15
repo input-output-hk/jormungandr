@@ -13,29 +13,29 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 pub struct Generate {
+    #[structopt(long, short, name = "THRESHOLD", parse(try_from_str))]
+    threshold: usize,
+
+    /// the common reference string
+    #[structopt(long, name = "CRS", parse(try_from_str = parse_crs))]
+    crs: chain_vote::CRS,
+
+    #[structopt(long, short, name = "COMMUNICATION_KEYS",
+        parse(try_from_str = parse_member_communication_key),
+        required = true,
+    )]
+    keys: Vec<MemberCommunicationPublicKey>,
+
+    /// the committee member index (my)
+    #[structopt(long, short, name = "INDEX", parse(try_from_str))]
+    index: u64,
+
     /// optional seed to generate the key, for the same entropy the same key
     /// will be generated (32 bytes in hexadecimal). This seed will be fed to
     /// ChaChaRNG and allow pseudo random key generation. Do not use if you
     /// are not sure.
     #[structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))]
     seed: Option<Seed>,
-
-    /// the committee member index (my)
-    index: u64,
-
-    /// the common reference string
-    #[structopt(parse(try_from_str = parse_crs))]
-    crs: chain_vote::CRS,
-
-    threshold: usize,
-
-    #[structopt(
-        long = "communication_keys",
-        short = "c",
-        name = "COMMUNICATION_KEYS",
-        parse(try_from_str = parse_member_communication_key)
-    )]
-    communication_keys: Vec<MemberCommunicationPublicKey>,
 
     #[structopt(flatten)]
     output_file: OutputFile,
@@ -65,19 +65,14 @@ pub enum MemberKey {
 
 impl Generate {
     fn exec(self) -> Result<(), Error> {
-        let mut rng = if let Some(seed) = self.seed {
-            ChaCha20Rng::from_seed(seed.0)
-        } else {
-            ChaCha20Rng::from_rng(OsRng)?
+        let mut rng = match self.seed {
+            Some(seed) => ChaCha20Rng::from_seed(seed.0),
+            None => ChaCha20Rng::from_rng(OsRng)?,
         };
-
-        if self.communication_keys.is_empty() {
-            return Err(Error::EmptyCommittee);
-        }
 
         // this things are asserted in MemberState::new, but it's better to not
         // panic here
-        let n = self.communication_keys.len();
+        let n = self.keys.len();
         if self.threshold == 0 || self.threshold > n {
             return Err(Error::InvalidThreshold {
                 threshold: self.threshold,
@@ -92,7 +87,7 @@ impl Generate {
             &mut rng,
             self.threshold,
             &self.crs,
-            &self.communication_keys,
+            &self.keys,
             self.index.try_into().unwrap(),
         );
 
