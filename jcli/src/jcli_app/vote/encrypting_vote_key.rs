@@ -33,5 +33,5 @@ fn parse_member_key(key: &str) -> Result<chain_vote::committee::MemberPublicKey,
         .and_then(|raw_key| {
             chain_vote::gargamel::PublicKey::from_bytes(&raw_key).ok_or(Error::InvalidPublicKey)
         })
-        .map(chain_vote::committee::MemberPublicKey::from_public_key)
+        .map(chain_vote::committee::MemberPublicKey::from)
 }
