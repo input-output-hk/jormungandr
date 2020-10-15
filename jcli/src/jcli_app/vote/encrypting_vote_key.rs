@@ -8,8 +8,8 @@ pub struct EncryptingVoteKey {
     #[structopt(
         parse(try_from_str = parse_member_key),
         required = true,
-        short = "m",
-        long = "member-keys"
+        short = "k",
+        long = "keys"
     )]
     member_keys: Vec<chain_vote::committee::MemberPublicKey>,
 
