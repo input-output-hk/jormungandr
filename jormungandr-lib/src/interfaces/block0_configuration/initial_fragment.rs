@@ -190,9 +190,6 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
         certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
             Fragment::EncryptedVoteTally(empty_auth_tx(c, a))
         }
-        certificate::SignedCertificate::PrivateVoteTally(c, a) => {
-            Fragment::PrivateVoteTally(empty_auth_tx(c, a))
-        }
     }
 }
 

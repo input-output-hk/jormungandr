@@ -1,6 +1,9 @@
 use crate::{
     crypto::hash::Hash,
-    interfaces::{account_identifier::AccountIdentifier, blockdate::BlockDateDef, value::ValueDef},
+    interfaces::{
+        account_identifier::AccountIdentifier, blockdate::BlockDateDef, stake::Stake,
+        value::ValueDef,
+    },
 };
 use chain_impl_mockchain::{
     certificate::{ExternalProposalId, Proposal, Proposals, VoteAction, VotePlan},
@@ -12,7 +15,6 @@ use chain_impl_mockchain::{
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
 use serde::de::{SeqAccess, Visitor};
-use serde::export::Formatter;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use typed_bytes::ByteBuilder;
@@ -279,7 +281,7 @@ pub struct VotePlanStatus {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Tally {
     Public { result: TallyResult },
-    Private { private_tally: PrivateTally },
+    Private { state: PrivateTallyState },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
@@ -296,7 +298,18 @@ impl TallyResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PrivateTally(Vec<u8>);
+pub struct EncryptedTally(Vec<u8>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PrivateTallyState {
+    Encrypted {
+        encrypted_tally: EncryptedTally,
+        total_stake: Stake,
+    },
+    Decrypted {
+        result: TallyResult,
+    },
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Payload {
@@ -362,8 +375,19 @@ impl From<vote::Tally> for Tally {
             vote::Tally::Public { result } => Tally::Public {
                 result: result.into(),
             },
-            vote::Tally::Private { tally, result } => Tally::Private {
-                private_tally: PrivateTally(tally.to_bytes()),
+            vote::Tally::Private { state } => Tally::Private {
+                state: match state {
+                    vote::PrivateTallyState::Encrypted {
+                        encrypted_tally,
+                        total_stake,
+                    } => PrivateTallyState::Encrypted {
+                        encrypted_tally: EncryptedTally(encrypted_tally.to_bytes()),
+                        total_stake: total_stake.into(),
+                    },
+                    vote::PrivateTallyState::Decrypted { result } => PrivateTallyState::Decrypted {
+                        result: result.into(),
+                    },
+                },
             },
         }
     }
@@ -403,7 +427,6 @@ mod test {
     use crate::interfaces::vote::{
         deserialize_committee_member_public_keys, DeserializableMemberPublicKey,
     };
-    use chain_vote::MemberPublicKey;
     use rand_chacha::rand_core::SeedableRng;
 
     #[test]

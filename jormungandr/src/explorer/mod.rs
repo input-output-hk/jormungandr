@@ -713,63 +713,6 @@ fn apply_block_to_vote_plans(
                         })
                         .unwrap()
                 }
-                Certificate::PrivateVoteTally(vote_tally) => {
-                    use chain_impl_mockchain::vote::PayloadType;
-                    vote_plans
-                        .update(vote_tally.id(), |vote_plan| {
-                            let proposals_from_state =
-                                futures::executor::block_on(blockchain_tip.get_ref())
-                                    .active_vote_plans()
-                                    .into_iter()
-                                    .find_map(|vps| {
-                                        if vps.id != vote_plan.id {
-                                            return None;
-                                        }
-                                        Some(vps.proposals)
-                                    })
-                                    .unwrap();
-                            let proposals = vote_plan
-                                .proposals
-                                .clone()
-                                .into_iter()
-                                .enumerate()
-                                .map(|(index, mut proposal)| {
-                                    proposal.tally = Some(match vote_tally.tally_type() {
-                                        PayloadType::Public => ExplorerVoteTally::Public {
-                                            results: proposals_from_state[index]
-                                                .tally
-                                                .clone()
-                                                .unwrap()
-                                                .public()
-                                                .unwrap()
-                                                .results()
-                                                .to_vec(),
-                                            options: proposal.options.clone(),
-                                        },
-                                        PayloadType::Private => {
-                                            let tally = &proposals_from_state[index]
-                                                .tally
-                                                .clone()
-                                                .unwrap()
-                                                .private()
-                                                .cloned()
-                                                .unwrap();
-                                            ExplorerVoteTally::Private {
-                                                tally: tally.to_bytes(),
-                                            }
-                                        }
-                                    });
-                                    proposal
-                                })
-                                .collect();
-                            let vote_plan = ExplorerVotePlan {
-                                proposals,
-                                ..(**vote_plan).clone()
-                            };
-                            Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
-                        })
-                        .unwrap()
-                }
                 _ => vote_plans,
             }
         }
