@@ -15,7 +15,7 @@ use structopt::StructOpt;
 #[structopt(rename_all = "kebab-case")]
 pub struct TallyDecryptionShare {
     /// The path to hex-encoded encrypted tally state. If this parameter is not
-    /// soecified, the encrypted tally state will be read from the standard
+    /// specified, the encrypted tally state will be read from the standard
     /// input.
     encrypted_tally: Option<PathBuf>,
     /// The path to hex-encoded decryption key.
