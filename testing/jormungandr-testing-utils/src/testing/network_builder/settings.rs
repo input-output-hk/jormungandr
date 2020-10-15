@@ -16,7 +16,7 @@ use jormungandr_lib::{
     interfaces::{
         try_initials_vec_from_messages, ActiveSlotCoefficient, Bft, Block0Configuration,
         BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial, InitialUTxO, LegacyUTxO,
-        NodeConfig, NodeSecret
+        NodeConfig, NodeSecret,
     },
 };
 use rand_core::{CryptoRng, RngCore};

@@ -10,10 +10,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
-    certificate::{VotePlan},
-    fee::LinearFee,
-    fragment::Fragment,
-    vote::Choice,
+    certificate::VotePlan, fee::LinearFee, fragment::Fragment, vote::Choice,
 };
 use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
