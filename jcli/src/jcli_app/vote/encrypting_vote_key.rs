@@ -1,10 +1,9 @@
 use super::Error;
-use chain_vote::EncryptingVoteKey;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct MakeEncryptingVoteKey {
+pub struct EncryptingVoteKey {
     #[structopt(
         parse(try_from_str = parse_member_key)
     )]
@@ -20,12 +19,13 @@ fn parse_member_key(key: &str) -> Result<chain_vote::committee::MemberPublicKey,
         .map(chain_vote::committee::MemberPublicKey::from_public_key)
 }
 
-impl MakeEncryptingVoteKey {
+impl EncryptingVoteKey {
     pub fn exec(&self) -> Result<(), Error> {
         if self.member_keys.is_empty() {
             Err(Error::EncryptingVoteKeyFromEmpty)
         } else {
-            let election_public_key = EncryptingVoteKey::from_participants(&self.member_keys);
+            let election_public_key =
+                chain_vote::EncryptingVoteKey::from_participants(&self.member_keys);
 
             println!("{}", hex::encode(election_public_key.to_bytes()));
             Ok(())

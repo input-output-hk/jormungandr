@@ -49,7 +49,7 @@ pub enum Vote {
     /// Build a committee member key
     CommitteeMemberKey(committee_member_key::CommitteeMemberKey),
     /// Build an encryption vote key
-    MakeEncryptingVoteKey(encrypting_vote_key::MakeEncryptingVoteKey),
+    EncryptingVoteKey(encrypting_vote_key::EncryptingVoteKey),
     /// Build an encryption vote key
     CRS(common_reference_string::CRS),
 }
@@ -59,7 +59,7 @@ impl Vote {
         match self {
             Vote::CommitteeCommunicationKey(cmd) => cmd.exec(),
             Vote::CommitteeMemberKey(cmd) => cmd.exec(),
-            Vote::MakeEncryptingVoteKey(cmd) => cmd.exec(),
+            Vote::EncryptingVoteKey(cmd) => cmd.exec(),
             Vote::CRS(cmd) => cmd.exec(),
         }
     }
