@@ -27,8 +27,6 @@ pub enum Error {
     InvalidSecretKey,
     #[error("invalid common reference string")]
     InvalidCrs,
-    #[error("must provide at least one member key to build encrypting vote key")]
-    EncryptingVoteKeyFromEmpty,
     #[error("expected at least one committee key")]
     EmptyCommittee,
     #[error("threshold should be in range (0..{committee_members:?}] and is {threshold:?}")]
