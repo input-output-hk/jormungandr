@@ -133,7 +133,7 @@ commands:
         default: ''
       cargo_behavior:
         type: string
-        default: --locked --offline --verbose
+        default: --verbose
     steps:
       - checkout
       - run: git submodule sync
