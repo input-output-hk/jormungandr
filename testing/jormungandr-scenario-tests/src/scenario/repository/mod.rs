@@ -37,15 +37,17 @@ pub struct ScenariosRepository {
     tag: Tag,
     // adds all unstable tests as ignored
     report_unstable: bool,
+    print_panics: bool
 }
 
 impl ScenariosRepository {
-    pub fn new<S: Into<String>>(scenario: S, tag: Tag, report_unstable: bool) -> Self {
+    pub fn new<S: Into<String>>(scenario: S, tag: Tag, report_unstable: bool, print_panics: bool) -> Self {
         Self {
             repository: scenarios_repository(),
             scenario: scenario.into(),
             tag,
             report_unstable,
+            print_panics
         }
     }
 
@@ -129,8 +131,13 @@ impl ScenariosRepository {
 
         println!("Running '{}' scenario", scenario.name());
 
-        let result = Ok(Ok(scenario_to_run(context.clone().derive()).unwrap()));
-        //let result = std::panic::catch_unwind(|| scenario_to_run(context.clone().derive()));
+        let result = {
+            if self.print_panics {
+                Ok(Ok(scenario_to_run(context.clone().derive()).unwrap()))
+            } else {
+                std::panic::catch_unwind(|| scenario_to_run(context.clone().derive()))
+            }
+        };
         let scenario_result = ScenarioResult::from_result(result);
         println!("Scenario '{}' {}", scenario.name(), scenario_result);
         scenario_result
