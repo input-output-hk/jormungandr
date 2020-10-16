@@ -1683,7 +1683,7 @@ dependencies = [
  "lru",
  "multiaddr",
  "nix 0.19.0",
- "pin-project 1.0.0",
+ "pin-project 1.0.1",
  "poldercast",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -2526,11 +2526,11 @@ dependencies = [
 
 [[package]]
 name = "pin-project"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d8ba72884f707ee1b9daf3e3f4692d84202df5c767552a8a0bb4615e9ad5d5"
+checksum = "ee41d838744f60d959d7074e3afb6b35c7456d0f61cad38a24e35e6553f73841"
 dependencies = [
- "pin-project-internal 1.0.0",
+ "pin-project-internal 1.0.1",
 ]
 
 [[package]]
@@ -2546,9 +2546,9 @@ dependencies = [
 
 [[package]]
 name = "pin-project-internal"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3bdf2be66f09649de0c194e9e7204df2fe9e9251834c25e94a0f502ba19cf2b"
+checksum = "81a4ffa594b66bff340084d4081df649a7dc049ac8d7fc458d8e628bfbbb2f86"
 dependencies = [
  "proc-macro2",
  "quote",
