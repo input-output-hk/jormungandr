@@ -37,17 +37,22 @@ pub struct ScenariosRepository {
     tag: Tag,
     // adds all unstable tests as ignored
     report_unstable: bool,
-    print_panics: bool
+    print_panics: bool,
 }
 
 impl ScenariosRepository {
-    pub fn new<S: Into<String>>(scenario: S, tag: Tag, report_unstable: bool, print_panics: bool) -> Self {
+    pub fn new<S: Into<String>>(
+        scenario: S,
+        tag: Tag,
+        report_unstable: bool,
+        print_panics: bool,
+    ) -> Self {
         Self {
             repository: scenarios_repository(),
             scenario: scenario.into(),
             tag,
             report_unstable,
-            print_panics
+            print_panics,
         }
     }
 

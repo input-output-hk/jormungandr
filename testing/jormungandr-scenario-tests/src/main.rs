@@ -125,7 +125,7 @@ fn main() {
         command_args.scenario,
         command_args.tag,
         command_args.report_unstable,
-        command_args.print_panics
+        command_args.print_panics,
     );
     let scenario_suite_result = scenarios_repo.run(&context);
     println!("{}", scenario_suite_result.result_string());

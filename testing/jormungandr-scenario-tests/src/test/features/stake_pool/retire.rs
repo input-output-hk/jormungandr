@@ -84,7 +84,6 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
         .fragment_sender()
         .send_transaction(&mut david, &spo_3, &leader_1, 100.into())?;
 
-
     controller
         .fragment_sender()
         .send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)?;
@@ -108,7 +107,10 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     // proof 2: minted block count not increased
     let created_blocks_count_after_retire = leader_3.logger().get_created_blocks_hashes().len();
-    utils::assert(created_blocks_count_after_retire == created_block_count,"after retirement there are no new block minted");
+    utils::assert(
+        created_blocks_count_after_retire == created_block_count,
+        "after retirement there are no new block minted",
+    );
 
     //proof 3: no more minted blocks hashes in logs
     std::thread::sleep(std::time::Duration::from_secs(60));

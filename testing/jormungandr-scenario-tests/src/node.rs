@@ -205,10 +205,6 @@ impl NodeController {
         NamedProcess::new(self.alias().to_string(), self.process_id as usize)
     }
 
-    pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.settings.config.rest.listen.clone().to_string())
-    }
-
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {
         self.progress_bar.log_info(format!("GET '{}'", path));
 
@@ -710,7 +706,6 @@ impl Node {
     }
 }
 
-use jormungandr_testing_utils::testing::node::Explorer;
 use std::fmt::Display;
 
 impl ProgressBarController {
