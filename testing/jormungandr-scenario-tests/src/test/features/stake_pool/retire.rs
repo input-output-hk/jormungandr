@@ -4,7 +4,7 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
-use jormungandr_lib::interfaces::{EnclaveLeaderId, Explorer};
+use jormungandr_lib::interfaces::{EnclaveLeaderId, Explorer, Value};
 use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
@@ -27,10 +27,10 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "leader_1" with  2_000_000_000 delegates to LEADER_1,
-                account "leader_2" with  2_000_000_000 delegates to LEADER_2,
-                account "leader_3" with  2_000_000_000 delegates to LEADER_3,
-                account "leader_4" with  2_000_000_000 delegates to LEADER_4,
+                account "alice" with  2_000_000_000 delegates to LEADER_1,
+                account "bob" with  2_000_000_000 delegates to LEADER_2,
+                account "clarice" with  2_000_000_000 delegates to LEADER_3,
+                account "david" with  2_000_000_000 delegates to LEADER_4,
             ],
         }
     };
@@ -60,7 +60,7 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     controller.monitor_nodes();
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    std::thread::sleep(std::time::Duration::from_secs(30));
 
     let explorer = leader_1.explorer();
     let stake_pool_3 = controller.stake_pool(LEADER_3)?;
@@ -77,10 +77,17 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
         "retirement field in explorer should be empty",
     )?;
 
-    let mut wallet_3 = controller.wallet("leader_3")?;
+    let mut david = controller.wallet("david")?;
+    let mut spo_3 = stake_pool_3.owner().clone();
+
     controller
         .fragment_sender()
-        .send_pool_retire(&mut wallet_3, &stake_pool_3, &leader_4)?;
+        .send_transaction(&mut david, &spo_3, &leader_1, 100.into())?;
+
+
+    controller
+        .fragment_sender()
+        .send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)?;
 
     std::thread::sleep(std::time::Duration::from_secs(70));
 
@@ -101,7 +108,7 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     // proof 2: minted block count not increased
     let created_blocks_count_after_retire = leader_3.logger().get_created_blocks_hashes().len();
-    assert!(created_blocks_count_after_retire > created_block_count);
+    utils::assert(created_blocks_count_after_retire == created_block_count,"after retirement there are no new block minted");
 
     //proof 3: no more minted blocks hashes in logs
     std::thread::sleep(std::time::Duration::from_secs(60));
@@ -111,11 +118,6 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
             .get_created_blocks_hashes_after(start_time_no_block.into())
             .is_empty(),
         "leader 3 should not create any block after retirement",
-    )?;
-
-    utils::assert(
-        leader_3.logger().contains_error().unwrap(),
-        &leader_3.logger().get_log_content(),
     )?;
 
     leader_1.shutdown()?;
