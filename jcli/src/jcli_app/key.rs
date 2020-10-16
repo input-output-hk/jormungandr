@@ -1,4 +1,5 @@
 use crate::jcli_app::utils::io;
+use crate::jcli_app::utils::output_file::{self, OutputFile};
 use bech32::{self, u5, FromBase32, ToBase32};
 use chain_crypto::{
     bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519,
@@ -34,12 +35,8 @@ pub enum Error {
     Rand(#[from] rand::Error),
     #[error("invalid seed length, expected 32 bytes but received {seed_len}")]
     InvalidSeed { seed_len: usize },
-    #[error("invalid output file path '{path}'")]
-    InvalidOutput {
-        #[source]
-        source: std::io::Error,
-        path: PathBuf,
-    },
+    #[error(transparent)]
+    InvalidOutput(#[from] output_file::Error),
     #[error("unrecognized private key bech32 HRP: '{hrp}'")]
     UnknownBech32PrivKeyHrp { hrp: String },
     #[error("unrecognized public key bech32 HRP: '{hrp}'")]
@@ -185,22 +182,6 @@ pub struct Derive {
 
     #[structopt(flatten)]
     child_key: OutputFile,
-}
-
-#[derive(StructOpt, Debug)]
-struct OutputFile {
-    /// output the key to the given file or to stdout if not provided
-    #[structopt(name = "OUTPUT_FILE")]
-    output: Option<PathBuf>,
-}
-
-impl OutputFile {
-    fn open(&self) -> Result<impl Write, Error> {
-        io::open_file_write(&self.output).map_err(|source| Error::InvalidOutput {
-            source,
-            path: self.output.clone().unwrap_or_default(),
-        })
-    }
 }
 
 arg_enum! {
