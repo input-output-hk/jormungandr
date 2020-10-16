@@ -20,7 +20,7 @@ pub use jormungandr_testing_utils::testing::{
     },
     node::{
         grpc::{client::MockClientError, JormungandrClient},
-        uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest, RestError,
+        uri_from_socket_addr, JormungandrLogger, JormungandrRest, RestError,
     },
     FragmentNode, MemPoolCheck, NamedProcess,
 };
@@ -303,10 +303,6 @@ impl NodeController {
             .iter()
             .map(|x| x.header.hash())
             .collect())
-    }
-
-    pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.settings.config.rest.listen.clone().to_string())
     }
 
     pub fn genesis_block_hash(&self) -> Result<HeaderId> {
