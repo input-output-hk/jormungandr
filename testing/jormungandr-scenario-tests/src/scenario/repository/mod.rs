@@ -15,7 +15,8 @@ use crate::{
         comm::leader_leader::*,
         comm::passive_leader::*,
         features::{
-            leader_promotion::*, leadership_log::leader_restart_preserves_leadership_log, p2p::*,
+            explorer::passive_node_explorer, leader_promotion::*,
+            leadership_log::leader_restart_preserves_leadership_log, p2p::*,
         },
         legacy,
         network::real::real_network,
@@ -334,6 +335,12 @@ fn scenarios_repository() -> Vec<Scenario> {
         "max_connections",
         max_connections,
         vec![Tag::Short, Tag::Unstable],
+    ));
+
+    repository.push(Scenario::new(
+        "passive_node_explorer",
+        passive_node_explorer,
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(

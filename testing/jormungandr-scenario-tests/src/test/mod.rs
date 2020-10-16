@@ -20,6 +20,7 @@ error_chain! {
         FragmentVerifier(jormungandr_testing_utils::testing::FragmentVerifierError);
         VerificationFailed(jormungandr_testing_utils::testing::VerificationError);
         MonitorResourcesError(jormungandr_testing_utils::testing::ConsumptionBenchmarkError);
+        ExplorerError(jormungandr_testing_utils::testing::node::ExplorerError);
     }
 
     links {

@@ -19,7 +19,7 @@ pub use jormungandr_testing_utils::testing::{
     },
     node::{
         grpc::{client::MockClientError, JormungandrClient},
-        uri_from_socket_addr, JormungandrLogger, JormungandrRest, RestError,
+        uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest, RestError,
     },
     FragmentNode, MemPoolCheck, NamedProcess,
 };
@@ -199,6 +199,10 @@ impl NodeController {
 
     pub fn as_named_process(&self) -> NamedProcess {
         NamedProcess::new(self.alias().to_string(), self.process_id as usize)
+    }
+
+    pub fn explorer(&self) -> Explorer {
+        Explorer::new(self.settings.config.rest.listen.clone().to_string())
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {
