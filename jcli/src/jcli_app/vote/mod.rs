@@ -1,3 +1,4 @@
+use crate::jcli_app::utils::output_file::{self, OutputFile};
 mod committee;
 mod common_reference_string;
 mod encrypting_vote_key;
@@ -15,12 +16,8 @@ pub enum Error {
     Rand(#[from] rand::Error),
     #[error("invalid seed length, expected 32 bytes but received {seed_len}")]
     InvalidSeed { seed_len: usize },
-    #[error("invalid output file path '{path}'")]
-    InvalidOutput {
-        #[source]
-        source: std::io::Error,
-        path: std::path::PathBuf,
-    },
+    #[error(transparent)]
+    InvalidOutput(#[from] output_file::Error),
     #[error("invalid public key")]
     InvalidPublicKey,
     #[error("invalid secret key")]
@@ -72,24 +69,5 @@ impl std::str::FromStr for Seed {
         let mut bytes = [0; 32];
         bytes.copy_from_slice(&vec);
         Ok(Seed(bytes))
-    }
-}
-
-// FIXME: Duplicated with key.rs
-#[derive(StructOpt, Debug)]
-struct OutputFile {
-    /// output the key to the given file or to stdout if not provided
-    #[structopt(name = "OUTPUT_FILE")]
-    output: Option<std::path::PathBuf>,
-}
-
-impl OutputFile {
-    fn open(&self) -> Result<impl std::io::Write, Error> {
-        crate::jcli_app::utils::io::open_file_write(&self.output).map_err(|source| {
-            Error::InvalidOutput {
-                source,
-                path: self.output.clone().unwrap_or_default(),
-            }
-        })
     }
 }
