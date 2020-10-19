@@ -340,7 +340,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_node_explorer",
         passive_node_explorer,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(

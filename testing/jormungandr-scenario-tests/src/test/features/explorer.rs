@@ -70,7 +70,7 @@ pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<Scenario
     )?;
 
     // give some time to update explorer
-    jortestkit::process::sleep(10);
+    jortestkit::process::sleep(60);
 
     let transaction_id = passive
         .explorer()
