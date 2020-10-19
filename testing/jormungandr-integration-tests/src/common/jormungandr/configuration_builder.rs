@@ -8,10 +8,10 @@ use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo,
-    Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
-    NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
-    Value,
+    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, Initial,
+    InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
+    NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
+    FeesGoTo
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};
@@ -150,6 +150,11 @@ impl ConfigurationBuilder {
 
     pub fn with_rest_tls_config(&mut self, tls: Tls) -> &mut Self {
         self.node_config_builder.with_rest_tls_config(tls);
+        self
+    }
+
+    pub fn with_rest_cors_config(&mut self, cors: Cors) -> &mut Self {
+        self.node_config_builder.with_rest_cors_config(cors);
         self
     }
 
