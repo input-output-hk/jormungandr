@@ -87,6 +87,13 @@ impl AsRef<str> for CorsOrigin {
     }
 }
 
+impl From<String> for CorsOrigin {
+    fn from(from_str: String) -> Self {
+        Self(from_str)
+    }
+}
+
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2p {
     /// The public address to which other peers may connect to
