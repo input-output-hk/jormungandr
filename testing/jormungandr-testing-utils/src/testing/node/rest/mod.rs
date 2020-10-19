@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::{fs::File, net::SocketAddr, path::Path};
 use thiserror::Error;
+use reqwest::blocking::Response;
 
 #[derive(Debug, Error)]
 pub enum RestError {
@@ -130,6 +131,10 @@ impl JormungandrRest {
         serde_json::from_str(stats).map_err(RestError::CannotDeserialize)
     }
 
+    pub fn stats_raw(&self) -> Result<Response,reqwest::Error> {
+        self.inner.stats_raw()
+    }
+
     pub fn account_state(&self, wallet: &Wallet) -> Result<AccountState, RestError> {
         serde_json::from_str(&self.inner.account_state(wallet)?)
             .map_err(RestError::CannotDeserialize)
@@ -229,6 +234,10 @@ impl JormungandrRest {
     pub fn vote_plan_statuses(&self) -> Result<Vec<VotePlanStatus>, RestError> {
         serde_json::from_str(&self.inner.vote_plan_statuses()?)
             .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
+        self.inner.set_origin(origin);
     }
 
     pub fn vote_plan_account_info(
