@@ -1,4 +1,5 @@
 pub mod bft;
+pub mod cors;
 pub mod explorer;
 pub mod fragments;
 pub mod genesis;
