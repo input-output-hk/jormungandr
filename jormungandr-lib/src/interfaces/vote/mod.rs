@@ -287,7 +287,6 @@ pub enum Tally {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct TallyResult {
     results: Vec<u64>,
-
     options: Range<u8>,
 }
 
@@ -365,6 +364,16 @@ impl From<vote::TallyResult> for TallyResult {
         Self {
             results: this.results().iter().map(|v| (*v).into()).collect(),
             options: this.options().choice_range().clone(),
+        }
+    }
+}
+
+impl From<chain_vote::TallyResult> for TallyResult {
+    fn from(this: chain_vote::TallyResult) -> Self {
+        // TODO: is it safe to unwrap here?
+        Self {
+            results: this.votes.iter().map(|w| w.unwrap().into()).collect(),
+            options: this.options,
         }
     }
 }
