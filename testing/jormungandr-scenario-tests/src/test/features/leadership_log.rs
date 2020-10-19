@@ -60,10 +60,9 @@ pub fn leader_restart_preserves_leadership_log(
     leader_2.wait_for_bootstrap()?;
 
     // logs during epoch 0 should be empty
-    utils::assert_equals(
-        &leader_2.leadership_log()?.len(),
-        &0,
-        "leadeship log should be empty",
+    utils::assert(
+        leader_2.leadership_log()?.len() > 0,
+        "leadeship log should NOT be empty in current epoch",
     )?;
 
     while now.elapsed().unwrap().as_secs() < 250 {
@@ -71,10 +70,9 @@ pub fn leader_restart_preserves_leadership_log(
     }
 
     // logs during epoch 0 should be empty
-    utils::assert_equals(
-        &(leader_2.leadership_log()?.len() > 0),
-        &true,
-        "leadeship log should NOT be empty",
+    utils::assert(
+        leader_2.leadership_log()?.len() > 0,
+        "leadeship log should NOT be empty in new epoch",
     )?;
 
     leader_2.shutdown()?;
