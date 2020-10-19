@@ -120,7 +120,8 @@ pub enum ExplorerVoteTally {
         options: Options,
     },
     Private {
-        tally: Vec<u8>,
+        results: Option<Vec<Weight>>,
+        options: Options,
     },
 }
 

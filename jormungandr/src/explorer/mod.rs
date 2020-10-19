@@ -683,24 +683,23 @@ fn apply_block_to_vote_plans(
                                                 .tally
                                                 .clone()
                                                 .unwrap()
-                                                .public()
+                                                .result()
                                                 .unwrap()
                                                 .results()
                                                 .to_vec(),
                                             options: proposal.options.clone(),
                                         },
-                                        PayloadType::Private => {
-                                            let tally = &proposals_from_state[index]
+                                        PayloadType::Private => ExplorerVoteTally::Private {
+                                            results: proposals_from_state[index]
                                                 .tally
                                                 .clone()
                                                 .unwrap()
-                                                .private()
-                                                .cloned()
-                                                .unwrap();
-                                            ExplorerVoteTally::Private {
-                                                tally: tally.to_bytes(),
-                                            }
-                                        }
+                                                .result()
+                                                .map(|tally_results| {
+                                                    tally_results.results().to_vec()
+                                                }),
+                                            options: proposal.options.clone(),
+                                        },
                                     });
                                     proposal
                                 })

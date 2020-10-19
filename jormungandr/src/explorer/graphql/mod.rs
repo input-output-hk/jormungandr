@@ -942,13 +942,18 @@ impl TallyPublicStatus {
 
 #[derive(Clone)]
 pub struct TallyPrivateStatus {
-    tally: Vec<u8>,
+    results: Option<Vec<Weight>>,
+    options: VoteOptionRange,
 }
 
 #[juniper::object(Context = Context)]
 impl TallyPrivateStatus {
-    fn tally(&self) -> String {
-        hex::encode(&self.tally)
+    fn results(&self) -> Option<&[Weight]> {
+        self.results.as_ref().map(AsRef::as_ref)
+    }
+
+    fn options(&self) -> &VoteOptionRange {
+        &self.options
     }
 }
 
@@ -1022,8 +1027,12 @@ impl VotePlanStatus {
                                 options: options.into(),
                             })
                         }
-                        super::indexing::ExplorerVoteTally::Private { tally } => {
-                            TallyStatus::Private(TallyPrivateStatus { tally })
+                        super::indexing::ExplorerVoteTally::Private { results, options } => {
+                            TallyStatus::Private(TallyPrivateStatus {
+                                results: results
+                                    .map(|res| res.into_iter().map(Into::into).collect()),
+                                options: options.into(),
+                            })
                         }
                     }),
                     votes: proposal

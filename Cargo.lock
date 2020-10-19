@@ -1616,6 +1616,7 @@ dependencies = [
  "chain-network",
  "chain-storage",
  "chain-time",
+ "chain-vote",
  "error-chain",
  "futures 0.3.6",
  "hex",
