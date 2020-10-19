@@ -796,7 +796,7 @@ dependencies = [
 name = "chain-vote"
 version = "0.1.0"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.2.1",
  "eccoxide",
  "rand_core 0.5.1",
 ]
@@ -2387,7 +2387,7 @@ dependencies = [
  "dialoguer",
  "flate2",
  "fs_extra",
- "futures 0.1.30",
+ "futures 0.1.29",
  "hex",
  "humantime",
  "indicatif",

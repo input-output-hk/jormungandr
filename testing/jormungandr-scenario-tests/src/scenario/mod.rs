@@ -166,7 +166,7 @@ macro_rules! prepare_scenario {
                             proposal_builder.action_rewards_add($action_value as u64)
                         },
                         "treasury" => {
-                            proposal_builder.action_trasfer_to_rewards($action_value as u64)
+                            proposal_builder.action_transfer_to_rewards($action_value as u64)
                         },
                         _ => proposal_builder.action_off_chain(),
                     };
