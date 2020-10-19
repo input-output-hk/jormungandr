@@ -197,12 +197,12 @@ impl NodeController {
         self.settings.config.p2p.public_address.clone()
     }
 
-    pub fn as_named_process(&self) -> NamedProcess {
-        NamedProcess::new(self.alias().to_string(), self.process_id as usize)
+    pub fn explorer(&self) -> Explorer {
+        Explorer::new(self.settings.config.rest.listen.to_string())
     }
 
-    pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.settings.config.rest.listen.clone().to_string())
+    pub fn as_named_process(&self) -> NamedProcess {
+        NamedProcess::new(self.alias().to_string(), self.process_id as usize)
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {

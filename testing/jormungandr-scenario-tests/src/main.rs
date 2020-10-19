@@ -89,6 +89,10 @@ struct CommandArgs {
     /// report statuses for all unstable tests
     #[structopt(long = "report-unstable")]
     report_unstable: bool,
+
+    /// does not silence panics in tests
+    #[structopt(long = "print_panics")]
+    print_panics: bool,
 }
 
 fn main() {
@@ -121,6 +125,7 @@ fn main() {
         command_args.scenario,
         command_args.tag,
         command_args.report_unstable,
+        command_args.print_panics,
     );
     let scenario_suite_result = scenarios_repo.run(&context);
     println!("{}", scenario_suite_result.result_string());

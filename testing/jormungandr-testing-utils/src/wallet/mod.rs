@@ -25,9 +25,6 @@ use jormungandr_lib::{
 
 use chain_addr::Discrimination;
 use chain_crypto::{Ed25519, Signature};
-use rand_core::{CryptoRng, RngCore};
-use thiserror::Error;
-
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
@@ -39,6 +36,8 @@ pub use chain_impl_mockchain::{
     milli::Milli,
     transaction::{Input, TransactionBindingAuthData, UnspecifiedAccountIdentifier},
 };
+use rand_core::{CryptoRng, RngCore};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum WalletError {

@@ -1,5 +1,6 @@
 use graphql_client::QueryBody;
 use serde::Serialize;
+use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Clone)]
@@ -27,6 +28,10 @@ impl GraphQLClient {
         &self,
         query: QueryBody<T>,
     ) -> Result<reqwest::blocking::Response, GraphQLClientError> {
+        println!(
+            "running query: {:#?}, against: {}",
+            query.query, self.base_url
+        );
         reqwest::blocking::Client::new()
             .post(&self.base_url)
             .json(&query)
