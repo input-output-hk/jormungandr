@@ -17,6 +17,7 @@ use core::ops::Range;
 use serde::de::{SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+use std::convert::TryInto;
 use typed_bytes::ByteBuilder;
 
 #[derive(
@@ -370,10 +371,9 @@ impl From<vote::TallyResult> for TallyResult {
 
 impl From<chain_vote::TallyResult> for TallyResult {
     fn from(this: chain_vote::TallyResult) -> Self {
-        // TODO: is it safe to unwrap here?
         Self {
-            results: this.votes.iter().map(|w| w.unwrap().into()).collect(),
-            options: (this.options.start as u8..this.options.end as u8),
+            results: this.votes.iter().map(|w| w.unwrap_or(0).into()).collect(),
+            options: (this.options.start.try_into().unwrap()..this.options.end.try_into().unwrap()),
         }
     }
 }
