@@ -373,7 +373,7 @@ impl From<chain_vote::TallyResult> for TallyResult {
         // TODO: is it safe to unwrap here?
         Self {
             results: this.votes.iter().map(|w| w.unwrap().into()).collect(),
-            options: this.options,
+            options: (this.options.start as u8..this.options.end as u8),
         }
     }
 }
