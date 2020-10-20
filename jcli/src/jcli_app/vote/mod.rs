@@ -1,6 +1,7 @@
 use crate::jcli_app::utils::output_file::{self, OutputFile};
 mod committee;
 mod common_reference_string;
+mod decryption_share;
 mod encrypting_vote_key;
 
 use structopt::StructOpt;
@@ -31,6 +32,14 @@ pub enum Error {
     },
     #[error("invalid committee member index")]
     InvalidCommitteMemberIndex,
+    #[error("failed to read encrypted tally bytes")]
+    EncryptedTallyRead,
+    #[error("failed to read decryption key bytes")]
+    DecryptionKeyRead,
+    #[error(transparent)]
+    FormatError(#[from] crate::jcli_app::utils::output_format::Error),
+    #[error(transparent)]
+    JsonError(#[from] serde_json::Error),
 }
 
 #[derive(StructOpt)]
@@ -42,6 +51,8 @@ pub enum Vote {
     EncryptingVoteKey(encrypting_vote_key::EncryptingVoteKey),
     /// Build an encryption vote key
     CRS(common_reference_string::CRS),
+    /// Create decryption share for private voting tally.
+    TallyDecryptionShare(decryption_share::TallyDecryptionShare),
 }
 
 impl Vote {
@@ -50,6 +61,7 @@ impl Vote {
             Vote::Committee(cmd) => cmd.exec(),
             Vote::EncryptingVoteKey(cmd) => cmd.exec(),
             Vote::CRS(cmd) => cmd.exec(),
+            Vote::TallyDecryptionShare(cmd) => cmd.exec(),
         }
     }
 }
