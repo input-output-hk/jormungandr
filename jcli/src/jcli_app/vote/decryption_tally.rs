@@ -9,7 +9,7 @@ use structopt::StructOpt;
 /// The outputs are provided as hex-encoded byte sequences.
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct TallyGenrateDecryptionShare {
+pub struct TallyGenerateDecryptionShare {
     /// The path to hex-encoded encrypted tally state. If this parameter is not
     /// specified, the encrypted tally state will be read from the standard
     /// input.
@@ -28,7 +28,7 @@ struct Output {
     share: String,
 }
 
-impl TallyGenrateDecryptionShare {
+impl TallyGenerateDecryptionShare {
     pub fn exec(&self) -> Result<(), Error> {
         let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
         let encrypted_tally_bytes = hex::decode(encrypted_tally_hex)?;
