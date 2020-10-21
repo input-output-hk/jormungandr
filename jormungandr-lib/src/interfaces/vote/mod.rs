@@ -165,7 +165,7 @@ impl From<VotePlanDef> for VotePlan {
     }
 }
 
-pub mod serde_committee_member_public_keys {
+mod serde_committee_member_public_keys {
     use crate::interfaces::vote::SerdeMemberPublicKey;
     use serde::de::{SeqAccess, Visitor};
     use serde::ser::SerializeSeq;
