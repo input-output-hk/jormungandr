@@ -37,6 +37,8 @@ pub enum Error {
     EncryptedTallyRead,
     #[error("failed to read decryption key bytes")]
     DecryptionKeyRead,
+    #[error("failed to read share bytes")]
+    DecryptionShareRead,
     #[error(transparent)]
     FormatError(#[from] crate::jcli_app::utils::output_format::Error),
     #[error(transparent)]
