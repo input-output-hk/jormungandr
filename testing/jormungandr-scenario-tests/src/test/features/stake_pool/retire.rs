@@ -110,7 +110,7 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
     utils::assert(
         created_blocks_count_after_retire == created_block_count,
         "after retirement there are no new block minted",
-    );
+    )?;
 
     //proof 3: no more minted blocks hashes in logs
     std::thread::sleep(std::time::Duration::from_secs(60));

@@ -131,7 +131,7 @@ impl WalletBackend {
                         active_votes.push(SimpleVoteStatus {
                             chain_proposal_id: vit_proposal.chain_proposal_id_as_str(),
                             proposal_title: vit_proposal.proposal_title.clone(),
-                            choice: vit_proposal.get_option_text(payload.choice()),
+                            choice: vit_proposal.get_option_text(payload.choice().unwrap().clone()),
                         });
                     }
                 }
