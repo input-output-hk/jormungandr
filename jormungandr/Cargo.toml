@@ -15,7 +15,7 @@ edition = "2018"
 arc-swap = "^0.4.7"
 juniper = "0.14.2"
 bincode = "1.2.1"
-bytes = "0.5"
+bytes = "0.6"
 bech32 = "0.7"
 chain-addr = { path = "../chain-deps/chain-addr" }
 chain-core      = { path = "../chain-deps/chain-core" }
