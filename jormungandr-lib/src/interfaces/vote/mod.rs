@@ -15,7 +15,7 @@ use chain_impl_mockchain::{
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
 use serde::de::{SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use typed_bytes::ByteBuilder;
@@ -29,16 +29,16 @@ enum PayloadTypeDef {
     Private,
 }
 
-struct DeserializableMemberPublicKey(chain_vote::MemberPublicKey);
+struct SerdeMemberPublicKey(chain_vote::MemberPublicKey);
 
-impl<'de> Deserialize<'de> for DeserializableMemberPublicKey {
+impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
     {
         struct PublicKeyVisitor;
         impl<'de> Visitor<'de> for PublicKeyVisitor {
-            type Value = DeserializableMemberPublicKey;
+            type Value = SerdeMemberPublicKey;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter
@@ -62,7 +62,7 @@ impl<'de> Deserialize<'de> for DeserializableMemberPublicKey {
                         &v, err
                     ))
                 })?;
-                Ok(DeserializableMemberPublicKey(
+                Ok(SerdeMemberPublicKey(
                     MemberPublicKey::from_bytes(&content).ok_or_else(|| {
                         serde::de::Error::custom(format!(
                             "Invalid public key with hex representation {}",
@@ -73,6 +73,15 @@ impl<'de> Deserialize<'de> for DeserializableMemberPublicKey {
             }
         }
         deserializer.deserialize_string(PublicKeyVisitor)
+    }
+}
+
+impl Serialize for SerdeMemberPublicKey {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&hex::encode(&self.0.to_bytes()))
     }
 }
 
@@ -90,7 +99,7 @@ pub struct VotePlanDef {
     #[serde(deserialize_with = "deserialize_proposals", getter = "proposals")]
     proposals: Proposals,
     #[serde(
-        deserialize_with = "deserialize_committee_member_public_keys",
+        deserialize_with = "serde_committee_member_public_keys::deserialize",
         getter = "committee_member_public_keys",
         default = "Vec::new"
     )]
@@ -156,33 +165,54 @@ impl From<VotePlanDef> for VotePlan {
     }
 }
 
-fn deserialize_committee_member_public_keys<'de, D>(
-    deserializer: D,
-) -> Result<Vec<chain_vote::MemberPublicKey>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct PublicKeysSeqVisitor;
-    impl<'de> Visitor<'de> for PublicKeysSeqVisitor {
-        type Value = Vec<DeserializableMemberPublicKey>;
+mod serde_committee_member_public_keys {
+    use crate::interfaces::vote::SerdeMemberPublicKey;
+    use serde::de::{SeqAccess, Visitor};
+    use serde::ser::SerializeSeq;
+    use serde::{Deserializer, Serialize, Serializer};
 
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("Invalid sequence of hex encoded public keys")
-        }
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<Vec<chain_vote::MemberPublicKey>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct PublicKeysSeqVisitor;
+        impl<'de> Visitor<'de> for PublicKeysSeqVisitor {
+            type Value = Vec<SerdeMemberPublicKey>;
 
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, <A as SeqAccess<'de>>::Error>
-        where
-            A: SeqAccess<'de>,
-        {
-            let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(0));
-            while let Some(key) = seq.next_element()? {
-                result.push(key);
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("Invalid sequence of hex encoded public keys")
             }
-            Ok(result)
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, <A as SeqAccess<'de>>::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(0));
+                while let Some(key) = seq.next_element()? {
+                    result.push(key);
+                }
+                Ok(result)
+            }
         }
+        let keys = deserializer.deserialize_seq(PublicKeysSeqVisitor {})?;
+        Ok(keys.iter().map(|key| key.0.clone()).collect())
     }
-    let keys = deserializer.deserialize_seq(PublicKeysSeqVisitor {})?;
-    Ok(keys.iter().map(|key| key.0.clone()).collect())
+
+    pub fn serialize<S>(
+        keys: &Vec<chain_vote::MemberPublicKey>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(keys.len()))?;
+        for key in keys {
+            seq.serialize_element(&SerdeMemberPublicKey(key.clone()));
+        }
+        seq.end()
+    }
 }
 
 impl From<VoteProposalDef> for Proposal {
@@ -276,6 +306,8 @@ pub struct VotePlanStatus {
     pub vote_end: BlockDate,
     #[serde(with = "BlockDateDef")]
     pub committee_end: BlockDate,
+    #[serde(with = "serde_committee_member_public_keys")]
+    pub committee_member_keys: Vec<MemberPublicKey>,
     pub proposals: Vec<VoteProposalStatus>,
 }
 
@@ -441,6 +473,7 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
             vote_end: this.vote_end,
             committee_end: this.committee_end,
             payload: this.payload,
+            committee_member_keys: this.committee_public_keys,
             proposals: this.proposals.into_iter().map(|p| p.into()).collect(),
         }
     }
@@ -448,9 +481,7 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
 
 #[cfg(test)]
 mod test {
-    use crate::interfaces::vote::{
-        deserialize_committee_member_public_keys, DeserializableMemberPublicKey,
-    };
+    use crate::interfaces::vote::{serde_committee_member_public_keys, SerdeMemberPublicKey};
     use rand_chacha::rand_core::SeedableRng;
 
     #[test]
@@ -465,11 +496,12 @@ mod test {
         let pks = vec![hex::encode(pk.to_bytes())];
         let json = serde_json::to_string(&pks).unwrap();
 
-        let result: Vec<DeserializableMemberPublicKey> = serde_json::from_str(&json).unwrap();
+        let result: Vec<SerdeMemberPublicKey> = serde_json::from_str(&json).unwrap();
         assert_eq!(result[0].0, pk);
 
         let mut json_deserializer = serde_json::Deserializer::from_str(&json);
-        let result = deserialize_committee_member_public_keys(&mut json_deserializer).unwrap();
+        let result =
+            serde_committee_member_public_keys::deserialize(&mut json_deserializer).unwrap();
         assert_eq!(result[0], pk);
     }
 }
