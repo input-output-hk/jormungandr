@@ -14,13 +14,16 @@ pub struct TallyDecryptWithAllShares {
     /// input.
     #[structopt(long = "tally")]
     encrypted_tally: Option<PathBuf>,
+    /// The minimum number of shares needed for decryption
     #[structopt(long = "threshold", default_value = "3")]
     threshold: usize,
+    /// Maximum supported number of votes
     #[structopt(long = "maxvotes")]
     max_votes: u64,
+    /// Computing table cache size, usually total_votes/number_of_options
     #[structopt(long = "table_size")]
     table_size: usize,
-    /// The path to encoded necessare shares. If this parameter is not
+    /// The path to encoded necessary shares. If this parameter is not
     /// specified, the shares will be read from the standard input.
     #[structopt(long = "shares")]
     shares: Option<PathBuf>,
