@@ -343,8 +343,23 @@ impl From<vote::Payload> for Payload {
                 proof,
             } => Self::Private {
                 encrypted_vote: encrypted_vote.iter().flat_map(|ct| ct.to_bytes()).collect(),
-                proof: proof
-                    .serialize_in::<u8>(ByteBuilder::new())
+                // TODO: Use iter instead of bytes here
+                proof: ByteBuilder::<u8>::new()
+                    .u64(proof.len() as u64)
+                    .bytes(
+                        &proof
+                            .ibas()
+                            .flat_map(|iba| iba.to_bytes())
+                            .collect::<Vec<u8>>(),
+                    )
+                    .bytes(&proof.ds().flat_map(|ds| ds.to_bytes()).collect::<Vec<u8>>())
+                    .bytes(
+                        &proof
+                            .zwvs()
+                            .flat_map(|zwvs| zwvs.to_bytes())
+                            .collect::<Vec<u8>>(),
+                    )
+                    .bytes(&proof.r().to_bytes())
                     .finalize_as_vec(),
             },
         }
@@ -373,7 +388,7 @@ impl From<chain_vote::TallyResult> for TallyResult {
     fn from(this: chain_vote::TallyResult) -> Self {
         Self {
             results: this.votes.iter().map(|w| w.unwrap_or(0).into()).collect(),
-            options: (this.options.start.try_into().unwrap()..this.options.end.try_into().unwrap()),
+            options: (0..this.votes.len().try_into().unwrap()),
         }
     }
 }
