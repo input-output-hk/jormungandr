@@ -1,7 +1,8 @@
 use crate::jcli_app::utils::output_file::{self, OutputFile};
 mod committee;
 mod common_reference_string;
-mod decryption_share;
+mod decrypt_shares;
+mod decryption_tally;
 mod encrypting_vote_key;
 
 use structopt::StructOpt;
@@ -52,7 +53,7 @@ pub enum Vote {
     /// Build an encryption vote key
     CRS(common_reference_string::CRS),
     /// Create decryption share for private voting tally.
-    TallyDecryptionShare(decryption_share::TallyDecryptionShare),
+    TallyDecryptionShare(decryption_tally::TallyGenrateDecryptionShare),
 }
 
 impl Vote {
