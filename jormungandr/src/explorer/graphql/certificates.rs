@@ -17,6 +17,7 @@ pub enum Certificate {
     VotePlan(VotePlan),
     VoteCast(VoteCast),
     VoteTally(VoteTally),
+    EncryptedVoteTally(EncryptedVoteTally),
 }
 
 pub struct StakeDelegation(certificate::StakeDelegation);
@@ -35,6 +36,8 @@ pub struct VotePlan(certificate::VotePlan);
 pub struct VoteCast(certificate::VoteCast);
 
 pub struct VoteTally(certificate::VoteTally);
+
+pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
 
 graphql_union!(Certificate: Context |&self| {
     // the left hand side of the `instance_resolvers` match-like pub structure is the one
@@ -284,6 +287,9 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::VotePlan(c) => Ok(Certificate::VotePlan(VotePlan(c))),
             certificate::Certificate::VoteCast(c) => Ok(Certificate::VoteCast(VoteCast(c))),
             certificate::Certificate::VoteTally(c) => Ok(Certificate::VoteTally(VoteTally(c))),
+            certificate::Certificate::EncryptedVoteTally(c) => {
+                Ok(Certificate::EncryptedVoteTally(EncryptedVoteTally(c)))
+            }
         }
     }
 }

@@ -121,6 +121,7 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::VotePlan(ref tx) => is_transaction_valid(tx),
         Fragment::VoteCast(ref tx) => is_transaction_valid(tx),
         Fragment::VoteTally(ref tx) => is_transaction_valid(tx),
+        Fragment::EncryptedVoteTally(ref tx) => is_transaction_valid(tx),
     }
 }
 

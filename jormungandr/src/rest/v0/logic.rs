@@ -198,7 +198,8 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
                 Fragment::Initial(_)
                 | Fragment::OldUtxoDeclaration(_)
                 | Fragment::UpdateProposal(_)
-                | Fragment::UpdateVote(_) => return Ok(()),
+                | Fragment::UpdateVote(_)
+                | Fragment::EncryptedVoteTally(_) => return Ok(()),
             }?;
             block_tx_count += 1;
             block_input_sum = (block_input_sum + total_input)?;

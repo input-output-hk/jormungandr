@@ -1,6 +1,6 @@
 use super::Error;
 use crate::jcli_app::utils::{io, OutputFormat};
-use chain_vote::{OpeningVoteKey, Tally};
+use chain_vote::{EncryptedTally, OpeningVoteKey};
 use serde::Serialize;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -33,7 +33,7 @@ impl TallyDecryptionShare {
         let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
         let encrypted_tally_bytes = hex::decode(encrypted_tally_hex)?;
         let encrypted_tally =
-            Tally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
+            EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
 
         let decryption_key = {
             let data = io::read_line(&Some(&self.decryption_key))?;

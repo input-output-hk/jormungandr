@@ -28,6 +28,7 @@ use self::scalars::{
     PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId, Weight,
 };
 
+use crate::explorer::indexing::ExplorerVoteTally;
 use crate::explorer::{ExplorerDB, Settings};
 
 #[derive(Clone)]
@@ -940,13 +941,34 @@ impl TallyPublicStatus {
 }
 
 #[derive(Clone)]
+pub struct TallyPrivateStatus {
+    results: Option<Vec<Weight>>,
+    options: VoteOptionRange,
+}
+
+#[juniper::object(Context = Context)]
+impl TallyPrivateStatus {
+    fn results(&self) -> Option<&[Weight]> {
+        self.results.as_ref().map(AsRef::as_ref)
+    }
+
+    fn options(&self) -> &VoteOptionRange {
+        &self.options
+    }
+}
+
+#[derive(Clone)]
 pub enum TallyStatus {
     Public(TallyPublicStatus),
+    Private(TallyPrivateStatus),
 }
 
 graphql_union!(TallyStatus: Context |&self| {
     instance_resolvers: |_| {
-        &TallyPublicStatus => match *self { TallyStatus::Public(ref c) => Some(c) },
+        &TallyPublicStatus => match *self {
+            TallyStatus::Public(ref c) => Some(c),
+            TallyStatus::Private(_) => None,
+        },
     }
 });
 
@@ -1002,6 +1024,13 @@ impl VotePlanStatus {
                         super::indexing::ExplorerVoteTally::Public { results, options } => {
                             TallyStatus::Public(TallyPublicStatus {
                                 results: results.into_iter().map(Into::into).collect(),
+                                options: options.into(),
+                            })
+                        }
+                        super::indexing::ExplorerVoteTally::Private { results, options } => {
+                            TallyStatus::Private(TallyPrivateStatus {
+                                results: results
+                                    .map(|res| res.into_iter().map(Into::into).collect()),
                                 options: options.into(),
                             })
                         }

@@ -3,6 +3,7 @@ use crate::jcli_app::{
     utils::key_parser::{self, parse_ed25519_secret_key},
 };
 use chain_crypto::{Ed25519, PublicKey};
+use chain_impl_mockchain::certificate::{EncryptedVoteTally, EncryptedVoteTallyProof};
 use chain_impl_mockchain::{
     certificate::{
         Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
@@ -77,6 +78,10 @@ impl Sign {
                 let txbuilder = Transaction::block0_payload_builder(&vt);
                 committee_vote_tally_sign(vt, &keys_str, txbuilder)?
             }
+            Certificate::EncryptedVoteTally(vt) => {
+                let txbuilder = Transaction::block0_payload_builder(&vt);
+                committee_encrypted_vote_tally_sign(vt, &keys_str, txbuilder)?
+            }
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
@@ -97,25 +102,45 @@ pub(crate) fn committee_vote_tally_sign(
 ) -> Result<SignedCertificate, Error> {
     use chain_impl_mockchain::vote::PayloadType;
 
-    match vote_tally.tally_type() {
-        PayloadType::Public => {
-            if keys_str.len() > 1 {
-                return Err(Error::ExpectingOnlyOneSigningKey {
-                    got: keys_str.len(),
-                });
-            }
-            let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
-            let id = private_key.to_public().as_ref().try_into().unwrap();
-
-            let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
-                private_key.sign_slice(&d.0)
-            });
-
-            let proof = TallyProof::Public { id, signature };
-
-            Ok(SignedCertificate::VoteTally(vote_tally, proof))
-        }
+    if keys_str.len() > 1 {
+        return Err(Error::ExpectingOnlyOneSigningKey {
+            got: keys_str.len(),
+        });
     }
+    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+    let id = private_key.to_public().as_ref().try_into().unwrap();
+
+    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(&d.0)
+    });
+
+    let proof = match vote_tally.tally_type() {
+        PayloadType::Public => TallyProof::Public { id, signature },
+        // TODO: vote tally can only be public, add a proper error here
+        PayloadType::Private => return Err(Error::ExpectedSignedOrNotCertificate),
+    };
+    Ok(SignedCertificate::VoteTally(vote_tally, proof))
+}
+
+pub(crate) fn committee_encrypted_vote_tally_sign(
+    vote_tally: EncryptedVoteTally,
+    keys_str: &[String],
+    builder: TxBuilderState<SetAuthData<EncryptedVoteTally>>,
+) -> Result<SignedCertificate, Error> {
+    if keys_str.len() > 1 {
+        return Err(Error::ExpectingOnlyOneSigningKey {
+            got: keys_str.len(),
+        });
+    }
+    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+    let id = private_key.to_public().as_ref().try_into().unwrap();
+
+    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(&d.0)
+    });
+
+    let proof = EncryptedVoteTallyProof { id, signature };
+    Ok(SignedCertificate::EncryptedVoteTally(vote_tally, proof))
 }
 
 pub(crate) fn committee_vote_plan_sign(

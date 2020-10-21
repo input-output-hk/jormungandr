@@ -50,6 +50,9 @@ impl SignedCertificate {
             certificate::SignedCertificate::VoteTally(c, _) => {
                 Certificate(certificate::Certificate::VoteTally(c))
             }
+            certificate::SignedCertificate::EncryptedVoteTally(c, _) => {
+                Certificate(certificate::Certificate::EncryptedVoteTally(c))
+            }
         }
     }
 }
@@ -88,6 +91,10 @@ impl property::Serialize for Certificate {
             }
             certificate::Certificate::VoteTally(c) => {
                 writer.write_all(&[8])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::EncryptedVoteTally(c) => {
+                writer.write_all(&[9])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };
@@ -174,6 +181,11 @@ impl property::Serialize for SignedCertificate {
             }
             certificate::SignedCertificate::VoteTally(c, a) => {
                 writer.write_all(&[8])?;
+                writer.write_all(c.serialize().as_slice())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
+                writer.write_all(&[9])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }

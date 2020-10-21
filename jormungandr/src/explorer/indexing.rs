@@ -119,6 +119,10 @@ pub enum ExplorerVoteTally {
         results: Vec<Weight>,
         options: Options,
     },
+    Private {
+        results: Option<Vec<Weight>>,
+        options: Options,
+    },
 }
 
 pub struct ExplorerBlockBuildingContext<'a> {
