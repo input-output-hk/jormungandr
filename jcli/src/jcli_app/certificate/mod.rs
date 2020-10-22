@@ -11,6 +11,7 @@ use thiserror::Error;
 
 mod get_stake_pool_id;
 mod get_vote_plan_id;
+mod new_encrypted_vote_tally;
 mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
@@ -144,6 +145,8 @@ pub enum NewArgs {
     VotePlan(new_vote_plan::VotePlanRegistration),
     /// create a new vote tally certificate
     VoteTally(new_vote_tally::VoteTallyRegistration),
+    /// create a new encrypted vote tally certificate
+    EncryptedVoteTally(new_encrypted_vote_tally::EncryptedVoteTallyRegistration),
     /// create a vote cast certificate
     VoteCast(new_vote_cast::VoteCastCmd),
 }
@@ -176,6 +179,7 @@ impl NewArgs {
             NewArgs::VotePlan(args) => args.exec()?,
             NewArgs::VoteTally(args) => args.exec()?,
             NewArgs::VoteCast(args) => args.exec()?,
+            NewArgs::EncryptedVoteTally(args) => args.exec()?,
         }
         Ok(())
     }
