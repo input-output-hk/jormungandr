@@ -3,7 +3,7 @@ use chain_impl_mockchain::certificate::{Certificate, EncryptedVoteTally, VotePla
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-/// create a vote tally certificate
+/// create an encrypted vote tally certificate
 ///
 /// voteplan id needs to be provided
 #[derive(StructOpt)]
