@@ -26,7 +26,7 @@ pub struct WalletProxyController {
     settings: WalletProxySettings,
     status: Arc<Mutex<Status>>,
     process: Child,
-    client: ProxyClient
+    client: ProxyClient,
 }
 
 impl WalletProxyController {
@@ -37,7 +37,6 @@ impl WalletProxyController {
         status: Arc<Mutex<Status>>,
         process: Child,
     ) -> Self {
-
         let address = settings.address();
         Self {
             alias,
@@ -45,7 +44,7 @@ impl WalletProxyController {
             settings,
             status,
             process,
-            client: ProxyClient::new(address)
+            client: ProxyClient::new(address),
         }
     }
 

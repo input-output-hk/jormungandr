@@ -138,9 +138,8 @@ impl Into<wallet_core::Proposal> for Proposal {
         let bytes = &bytes[..vote_plan_id.len()]; // panics if not enough data
         vote_plan_id.copy_from_slice(bytes);
 
-        wallet_core::Proposal::new(
+        wallet_core::Proposal::new_public(
             VotePlanId::try_from(vote_plan_id).unwrap(),
-            PayloadType::Public,
             chain_proposal_index,
             Options::new_length(self.chain_vote_options.0.len() as u8).unwrap(),
         )
