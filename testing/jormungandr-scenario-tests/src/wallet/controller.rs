@@ -16,10 +16,9 @@ pub use jormungandr_testing_utils::testing::{
 
 use crate::node::ProgressBarController;
 pub type VitStationSettings = vit_servicing_station_lib::server::settings::ServiceSettings;
-
+use iapyx::ProxyClient;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
-
 /// send query to a running node
 pub struct WalletProxyController {
     alias: NodeAlias,
@@ -27,6 +26,7 @@ pub struct WalletProxyController {
     settings: WalletProxySettings,
     status: Arc<Mutex<Status>>,
     process: Child,
+    client: ProxyClient
 }
 
 impl WalletProxyController {
@@ -37,12 +37,15 @@ impl WalletProxyController {
         status: Arc<Mutex<Status>>,
         process: Child,
     ) -> Self {
+
+        let address = settings.address();
         Self {
             alias,
             progress_bar,
             settings,
             status,
             process,
+            client: ProxyClient::new(address)
         }
     }
 
@@ -56,6 +59,10 @@ impl WalletProxyController {
 
     pub fn check_running(&self) -> bool {
         self.status() == Status::Running
+    }
+
+    pub fn block0(&self) -> Vec<u8> {
+        self.client.block0().unwrap()
     }
 
     pub fn address(&self) -> String {
