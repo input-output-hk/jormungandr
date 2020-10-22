@@ -362,15 +362,33 @@ mod serde_hex_bytes {
             {
                 self.visit_str(&v)
             }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(v.to_vec())
+            }
         }
-        deserializer.deserialize_string(ByteStringVisitor {})
+
+        let visitor = ByteStringVisitor {};
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_string(visitor)
+        } else {
+            deserializer.deserialize_bytes(visitor)
+        }
     }
 
     pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_str(&hex::encode(bytes))
+        if serializer.is_human_readable() {
+            serializer.serialize_str(&hex::encode(bytes))
+        } else {
+            serializer.serialize_bytes(bytes)
+        }
     }
 }
 
