@@ -195,11 +195,11 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
                 Fragment::VotePlan(tx) => totals(tx),
                 Fragment::VoteCast(tx) => totals(tx),
                 Fragment::VoteTally(tx) => totals(tx),
+                Fragment::EncryptedVoteTally(tx) => totals(tx),
                 Fragment::Initial(_)
                 | Fragment::OldUtxoDeclaration(_)
                 | Fragment::UpdateProposal(_)
-                | Fragment::UpdateVote(_)
-                | Fragment::EncryptedVoteTally(_) => return Ok(()),
+                | Fragment::UpdateVote(_) => return Ok(()),
             }?;
             block_tx_count += 1;
             block_input_sum = (block_input_sum + total_input)?;
