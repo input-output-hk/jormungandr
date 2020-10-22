@@ -47,6 +47,7 @@ create table voteplans
     chain_vote_end_time BIGINT NOT NULL,
     chain_committee_end_time BIGINT NOT NULL,
     chain_voteplan_payload VARCHAR NOT NULL,
+    chain_vote_encryption_key VARCHAR NOT NULL,
     fund_id INTEGER NOT NULL
 );
 
@@ -66,8 +67,8 @@ SELECT
     voteplans.chain_vote_start_time,
     voteplans.chain_vote_end_time,
     voteplans.chain_committee_end_time,
+    voteplans.chain_vote_encryption_key,
     voteplans.fund_id
 FROM
     proposals
         INNER JOIN voteplans ON proposals.chain_voteplan_id = voteplans.chain_voteplan_id
-
