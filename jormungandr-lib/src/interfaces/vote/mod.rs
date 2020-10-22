@@ -330,7 +330,7 @@ impl TallyResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct EncryptedTally(#[serde(with = "serde_bytes")] Vec<u8>);
+pub struct EncryptedTally(#[serde(with = "serde_hex_bytes")] Vec<u8>);
 
 mod serde_hex_bytes {
     use crate::interfaces::vote::EncryptedTally;
