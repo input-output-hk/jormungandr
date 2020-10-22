@@ -141,6 +141,12 @@ impl Readable for Certificate {
                 let cert = certificate::VoteTally::read(buf)?;
                 Ok(Certificate(certificate::Certificate::VoteTally(cert)))
             }
+            9 => {
+                let cert = certificate::EncryptedVoteTally::read(buf)?;
+                Ok(Certificate(certificate::Certificate::EncryptedVoteTally(
+                    cert,
+                )))
+            }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
@@ -243,6 +249,13 @@ impl Readable for SignedCertificate {
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::VoteTally(cert, auth),
+                ))
+            }
+            9 => {
+                let cert = certificate::EncryptedVoteTally::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::EncryptedVoteTally(cert, auth),
                 ))
             }
             t => Err(ReadError::UnknownTag(t as u32)),
