@@ -346,7 +346,7 @@ mod serde_hex_bytes {
             type Value = Vec<u8>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid hex encoded encrypted tally")
+                formatter.write_str("Invalid hex encoded bytes")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -362,6 +362,15 @@ mod serde_hex_bytes {
             {
                 self.visit_str(&v)
             }
+        }
+
+        struct ByteArrayVisitor;
+        impl<'de> Visitor<'de> for ByteArrayVisitor {
+            type Value = Vec<u8>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("Invalid bytes data")
+            }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
             where
@@ -371,12 +380,10 @@ mod serde_hex_bytes {
             }
         }
 
-        let visitor = ByteStringVisitor {};
-
         if deserializer.is_human_readable() {
-            deserializer.deserialize_string(visitor)
+            deserializer.deserialize_string(ByteStringVisitor {})
         } else {
-            deserializer.deserialize_bytes(visitor)
+            deserializer.deserialize_bytes(ByteArrayVisitor {})
         }
     }
 
