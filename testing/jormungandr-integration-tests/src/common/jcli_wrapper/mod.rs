@@ -42,6 +42,7 @@ pub enum Error {
     },
 }
 
+/*
 pub fn assert_genesis_encode(genesis_yaml_file_path: &Path, output_file: &ChildPath) {
     jcli_commands::get_genesis_encode_command(genesis_yaml_file_path, output_file.path())
         .assert()
@@ -80,7 +81,7 @@ pub fn assert_genesis_hash_fails(path_to_output_block: &Path, expected_msg: &str
         .assert()
         .failure()
         .stderr(predicates::str::contains(expected_msg));
-}
+}*/
 
 pub fn assert_rest_stats(host: &str) -> BTreeMap<String, String> {
     jcli_commands::get_rest_stats_command(&host)
@@ -132,7 +133,7 @@ pub fn assert_rest_utxo_get_not_found(host: &str, fragment_id_bech32: &str, outp
         .failure()
         .stderr(predicates::str::contains("404 Not Found"));
 }
-
+/*
 pub fn assert_get_address_info(address: &str) -> BTreeMap<String, String> {
     jcli_commands::get_address_info_command_default(&address)
         .assert()
@@ -183,7 +184,7 @@ pub fn assert_address_account(public_key: &str, discrimination: Discrimination) 
         .get_output()
         .as_single_line()
 }
-
+*/
 pub fn assert_post_transaction(transactions_message: &str, host: &str) -> Hash {
     let transaction_file = NamedTempFile::new("transaction.hash").unwrap();
     transaction_file.write_str(transactions_message).unwrap();
@@ -240,7 +241,7 @@ pub fn assert_get_active_vote_plans(host: &str) -> Vec<Value> {
         .as_lossy_string();
     serde_yaml::from_str(&content).expect("JCLI returned malformed VotePlan")
 }
-
+/*
 pub fn assert_key_generate_default() -> String {
     jcli_commands::get_key_generate_command_default()
         .assert()
@@ -319,7 +320,7 @@ pub fn assert_key_to_bytes_fails(
         .failure()
         .stderr(predicates::str::contains(expected_msg));
 }
-
+*/
 pub fn assert_rest_get_leadership_log(host: &str) -> Vec<LeadershipLog> {
     let content = jcli_commands::get_rest_leaders_logs_command(&host)
         .assert()

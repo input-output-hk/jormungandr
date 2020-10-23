@@ -1,4 +1,5 @@
 use crate::common::{
+    jcli::JCli,
     jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
@@ -58,6 +59,7 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
 
 #[test]
 pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
+    let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
     let sender = startup::create_new_utxo_address();
@@ -74,14 +76,14 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
     let utxo = config.block0_utxo_for_address(&sender);
-    let block0_hash = jcli_wrapper::assert_genesis_hash(config.genesis_block_path());
+    let block0_hash = jcli.genesis().hash(config.genesis_block_path());
     let first_transaction = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
         *utxo.associated_fund(),
         &middle_man,
         *utxo.associated_fund(),
         &sender,
-        &block0_hash,
+        &block0_hash.to_string(),
     );
 
     let first_transaction_id =
@@ -94,7 +96,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         &receiver,
         100.into(),
         &middle_man,
-        &block0_hash,
+        &block0_hash.to_string(),
     );
     jcli_wrapper::assert_transaction_in_block(&second_transaction, &jormungandr);
 }
@@ -410,6 +412,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
 #[test]
 pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
     let temp_dir = TempDir::new().unwrap();
+    let jcli: JCli = Default::default();
 
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
@@ -421,7 +424,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path());
+    let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
     let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
         &utxo,
@@ -429,7 +432,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
         &receiver,
         99.into(),
         &sender,
-        &block0_hash,
+        &block0_hash.to_string(),
     );
     jcli_wrapper::assert_transaction_rejected(
         &transaction_message,
@@ -441,7 +444,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
 #[test]
 pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
     let temp_dir = TempDir::new().unwrap();
-
+    let jcli: JCli = Default::default();
     let sender = startup::create_new_utxo_address();
     let receiver = startup::create_new_utxo_address();
     let config = ConfigurationBuilder::new()
@@ -451,7 +454,10 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         }])
         .build(&temp_dir);
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let block0_hash = jcli_wrapper::assert_genesis_hash(&config.genesis_block_path());
+    let block0_hash = jcli
+        .genesis()
+        .hash(&config.genesis_block_path())
+        .to_string();
     let transaction_message = JCLITransactionWrapper::build_transaction(
         &FAKE_INPUT_TRANSACTION_ID,
         0,

@@ -1,5 +1,7 @@
 use crate::common::{
-    configuration, jcli_wrapper,
+    configuration,
+    jcli::JCli,
+    jcli_wrapper,
     jormungandr::JormungandrProcess,
     startup::{build_genesis_block, create_new_key_pair},
 };
@@ -281,7 +283,10 @@ impl ConfigurationBuilder {
         let path_to_output_block = build_genesis_block(&block0_config, temp_dir);
         let genesis_block_hash = match self.block0_hash {
             Some(ref value) => value.clone(),
-            None => jcli_wrapper::assert_genesis_hash(&path_to_output_block),
+            None => {
+                let jcli: JCli = Default::default();
+                jcli.genesis().hash(&path_to_output_block).to_string()
+            }
         };
 
         fn write_secret(secret: &NodeSecret, output_file: ChildPath) -> PathBuf {

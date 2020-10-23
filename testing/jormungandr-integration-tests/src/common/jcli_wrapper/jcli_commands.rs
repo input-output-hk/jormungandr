@@ -5,7 +5,7 @@ use super::Discrimination;
 
 use std::path::Path;
 use std::process::Command;
-
+/*
 /// Get genesis encode command.
 ///
 /// # Arguments
@@ -58,7 +58,7 @@ pub fn get_genesis_hash_command(path_to_output_block: &Path) -> Command {
         .arg(path_to_output_block);
     command
 }
-
+*/
 /// Get rest stat command.
 pub fn get_rest_stats_command(host: &str) -> Command {
     let mut command = get_jcli_command();
@@ -202,11 +202,11 @@ fn add_discrimination(command: &mut Command, discrimination: Discrimination) {
 }
 
 /// Get address single command.
-pub fn get_genesis_init_command() -> Command {
+/*pub fn get_genesis_init_command() -> Command {
     let mut command = get_jcli_command();
     command.arg("genesis").arg("init");
     command
-}
+}*/
 
 /// Get address single command.
 pub fn get_address_delegation_command(

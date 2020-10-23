@@ -2,7 +2,7 @@
 
 pub mod jcli_transaction_commands;
 use self::jcli_transaction_commands::TransactionCommands;
-use crate::common::{data::witness::Witness, jcli_wrapper};
+use crate::common::{data::witness::Witness, jcli::JCli, jcli_wrapper};
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
@@ -321,7 +321,8 @@ impl JCLITransactionWrapper {
     }
 
     pub fn create_witness_default(&self, addr_type: &str, spending_key: Option<u32>) -> Witness {
-        let private_key = jcli_wrapper::assert_key_generate_default();
+        let jcli: JCli = Default::default();
+        let private_key = jcli.key().generate_default();
         self.create_witness_from_key(&private_key, &addr_type, spending_key)
     }
 
