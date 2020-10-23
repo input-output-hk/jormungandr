@@ -330,7 +330,74 @@ impl TallyResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct EncryptedTally(Vec<u8>);
+pub struct EncryptedTally(#[serde(with = "serde_hex_bytes")] Vec<u8>);
+
+mod serde_hex_bytes {
+    use crate::interfaces::vote::EncryptedTally;
+    use serde::de::{Error, Visitor};
+    use serde::{Deserializer, Serialize, Serializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ByteStringVisitor;
+        impl<'de> Visitor<'de> for ByteStringVisitor {
+            type Value = Vec<u8>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("Invalid hex encoded bytes")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                hex::decode(v).map_err(|e| E::custom(format!("{}", e)))
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                self.visit_str(&v)
+            }
+        }
+
+        struct ByteArrayVisitor;
+        impl<'de> Visitor<'de> for ByteArrayVisitor {
+            type Value = Vec<u8>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("Invalid bytes data")
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(v.to_vec())
+            }
+        }
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_string(ByteStringVisitor {})
+        } else {
+            deserializer.deserialize_bytes(ByteArrayVisitor {})
+        }
+    }
+
+    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if serializer.is_human_readable() {
+            serializer.serialize_str(&hex::encode(bytes))
+        } else {
+            serializer.serialize_bytes(bytes)
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrivateTallyState {
