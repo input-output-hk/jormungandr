@@ -146,7 +146,7 @@ pub enum NewArgs {
     /// create a new vote tally certificate
     VoteTally(new_vote_tally::VoteTallyRegistration),
     /// create a new encrypted vote tally certificate
-    EncryptedVoteTally(new_encrypted_vote_tally::EncryptedVoteTallyRegistration),
+    EncryptedVoteTally(new_encrypted_vote_tally::EncryptedVoteTally),
     /// create a vote cast certificate
     VoteCast(new_vote_cast::VoteCastCmd),
 }

@@ -1,5 +1,6 @@
 use crate::jcli_app::certificate::{write_cert, Error};
-use chain_impl_mockchain::certificate::{Certificate, EncryptedVoteTally, VotePlanId};
+use chain_impl_mockchain::certificate;
+use chain_impl_mockchain::certificate::{Certificate, VotePlanId};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -8,7 +9,7 @@ use structopt::StructOpt;
 /// voteplan id needs to be provided
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct EncryptedVoteTallyRegistration {
+pub struct EncryptedVoteTally {
     /// vote plan id
     ///
     /// the vote plan identifier on the blockchain
@@ -20,9 +21,9 @@ pub struct EncryptedVoteTallyRegistration {
     pub output: Option<PathBuf>,
 }
 
-impl EncryptedVoteTallyRegistration {
+impl EncryptedVoteTally {
     pub fn exec(self) -> Result<(), Error> {
-        let vote_tally = EncryptedVoteTally::new(self.id);
+        let vote_tally = certificate::EncryptedVoteTally::new(self.id);
         let cert = Certificate::EncryptedVoteTally(vote_tally);
         write_cert(self.output.as_deref(), cert.into())
     }
