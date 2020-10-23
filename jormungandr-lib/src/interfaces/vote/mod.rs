@@ -218,7 +218,7 @@ mod serde_committee_member_public_keys {
     use crate::interfaces::vote::SerdeMemberPublicKey;
     use serde::de::{SeqAccess, Visitor};
     use serde::ser::SerializeSeq;
-    use serde::{Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(
         deserializer: D,
@@ -382,9 +382,8 @@ impl TallyResult {
 pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
 mod serde_base64_bytes {
-    use crate::interfaces::vote::EncryptedTally;
     use serde::de::{Error, Visitor};
-    use serde::{Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
     where
