@@ -10,7 +10,7 @@ edition = "2018"
 tonic = "0.3"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros"] }
-futures = "0.3.6"
+futures = "0.3.7"
 base64 = "0.13"
 bech32 = "0.7"
 bytesize = "1.0.1"
