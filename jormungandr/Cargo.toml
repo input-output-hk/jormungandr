@@ -28,7 +28,7 @@ chain-vote = { path = "../chain-deps/chain-vote" }
 cardano-legacy-address = { path = "../chain-deps/cardano-legacy-address" }
 imhamt = { path = "../chain-deps/imhamt" }
 error-chain = "0.12"
-futures = "0.3.6"
+futures = "0.3.7"
 hex = "0.4"
 http = "0.2.1"
 humantime = "2.0"
