@@ -72,7 +72,7 @@ tokio = { version = "^0.2", features = ["full" ] }
 versionisator = "1.0.2"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.79"
+libc = "0.2.80"
 nix = "0.19.0"
 slog-syslog = "0.12.0"
 
