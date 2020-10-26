@@ -8,16 +8,16 @@ use structopt::StructOpt;
 #[structopt(rename_all = "kebab-case")]
 pub enum Tally {
     /// Create decryption share for private voting tally.
-    TallyDecryptionShare(decryption_tally::TallyGenerateDecryptionShare),
+    GenerateDecryptionShare(decryption_tally::TallyGenerateDecryptionShare),
     /// Decrypt a tally with shares
-    TallyDecryptWithShares(decrypt_shares::TallyDecryptWithAllShares),
+    DecryptWithShares(decrypt_shares::TallyDecryptWithAllShares),
 }
 
 impl Tally {
     pub fn exec(self) -> Result<(), Error> {
         match self {
-            Tally::TallyDecryptionShare(cmd) => cmd.exec(),
-            Tally::TallyDecryptWithShares(cmd) => cmd.exec(),
+            Tally::GenerateDecryptionShare(cmd) => cmd.exec(),
+            Tally::DecryptWithShares(cmd) => cmd.exec(),
         }
     }
 }
