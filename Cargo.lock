@@ -1767,7 +1767,7 @@ dependencies = [
  "chain-crypto",
  "chain-impl-mockchain",
  "chain-time",
- "console 0.11.3",
+ "console 0.12.0",
  "custom_debug",
  "dialoguer",
  "error-chain",
