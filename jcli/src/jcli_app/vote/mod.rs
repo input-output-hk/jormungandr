@@ -1,9 +1,8 @@
 use crate::jcli_app::utils::output_file::{self, OutputFile};
 mod committee;
 mod common_reference_string;
-mod decrypt_shares;
-mod decryption_tally;
 mod encrypting_vote_key;
+mod tally;
 
 use structopt::StructOpt;
 use thiserror::Error;
@@ -55,7 +54,7 @@ pub enum Vote {
     /// Build an encryption vote key
     CRS(common_reference_string::CRS),
     /// Create decryption share for private voting tally.
-    TallyDecryptionShare(decryption_tally::TallyGenerateDecryptionShare),
+    Tally(tally::Tally),
 }
 
 impl Vote {
@@ -64,7 +63,7 @@ impl Vote {
             Vote::Committee(cmd) => cmd.exec(),
             Vote::EncryptingVoteKey(cmd) => cmd.exec(),
             Vote::CRS(cmd) => cmd.exec(),
-            Vote::TallyDecryptionShare(cmd) => cmd.exec(),
+            Vote::Tally(cmd) => cmd.exec(),
         }
     }
 }
