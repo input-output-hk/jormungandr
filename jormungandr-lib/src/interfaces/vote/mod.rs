@@ -428,7 +428,7 @@ pub struct VoteProposalStatus {
     pub proposal_id: Hash,
     pub options: Range<u8>,
     pub tally: Option<Tally>,
-    pub total_votes: usize,
+    pub votes_cast: usize,
 }
 
 impl From<vote::Payload> for Payload {
@@ -523,7 +523,7 @@ impl From<vote::VoteProposalStatus> for VoteProposalStatus {
             proposal_id: this.proposal_id.into(),
             options: this.options.choice_range().clone(),
             tally: this.tally.map(|t| t.into()),
-            total_votes: this.votes.size(),
+            votes_cast: this.votes.size(),
         }
     }
 }
