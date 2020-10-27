@@ -1,5 +1,5 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
@@ -53,6 +53,7 @@ pub fn explorer_schema_diff_test() {
 
 #[test]
 pub fn explorer_sanity_test() {
+    let jcli: JCli = Default::default();
     let mut faucet = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
@@ -75,12 +76,14 @@ pub fn explorer_sanity_test() {
         .encode();
 
     let wait = Wait::new(Duration::from_secs(3), 20);
-    let fragment_id =
-        jcli_wrapper::assert_transaction_in_block_with_wait(&transaction, &jormungandr, &wait);
+    let fragment_id = jcli
+        .fragment_sender(&jormungandr)
+        .send(&transaction)
+        .assert_in_block_with_wait(&wait);
 
     let explorer = jormungandr.explorer();
 
-    transaction_by_id(&explorer, fragment_id.into_hash());
+    transaction_by_id(&explorer, fragment_id.into());
     blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
     stake_pools(&explorer, &initial_stake_pools);
     stake_pool(&explorer, &initial_stake_pools);

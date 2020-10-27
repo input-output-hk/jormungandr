@@ -1,6 +1,4 @@
-use crate::common::{
-    jcli_wrapper::certificate::wrapper::JCLICertificateWrapper, startup::create_new_key_pair,
-};
+use crate::common::{jcli::JCli, startup::create_new_key_pair};
 use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
@@ -13,12 +11,13 @@ use std::str::FromStr;
 
 #[test]
 pub fn jcli_creates_correct_retirement_certificate() {
+    let jcli: JCli = Default::default();
+
     let owner = create_new_key_pair::<Ed25519>();
     let kes = create_new_key_pair::<SumEd25519_12>();
     let vrf = create_new_key_pair::<Curve25519_2HashDH>();
 
-    let certificate_wrapper = JCLICertificateWrapper::new();
-    let certificate = certificate_wrapper.assert_new_stake_pool_registration(
+    let certificate = jcli.certificate().new_stake_pool_registration(
         &kes.identifier().to_bech32_str(),
         &vrf.identifier().to_bech32_str(),
         0,
@@ -31,14 +30,15 @@ pub fn jcli_creates_correct_retirement_certificate() {
 
     let input_file = temp_dir.child("certificate");
     input_file.write_str(&certificate).unwrap();
-    let stake_pool_id = certificate_wrapper.assert_get_stake_pool_id(input_file.path());
+    let stake_pool_id = jcli.certificate().stake_pool_id(input_file.path());
 
-    let expected_certificate = certificate_wrapper.assert_new_stake_pool_retirement(&stake_pool_id);
+    let expected_certificate = jcli.certificate().new_stake_pool_retirement(&stake_pool_id);
     let actual_certificate = assert_new_stake_pool_retirement(&stake_pool_id);
     let retirement_cert_file = temp_dir.child("retirement_certificate");
     retirement_cert_file.write_str(&actual_certificate).unwrap();
-    let stake_pool_id_from_retirement =
-        certificate_wrapper.assert_get_stake_pool_id(retirement_cert_file.path());
+    let stake_pool_id_from_retirement = jcli
+        .certificate()
+        .stake_pool_id(retirement_cert_file.path());
     assert_eq!(expected_certificate, actual_certificate);
     assert_eq!(stake_pool_id, stake_pool_id_from_retirement);
 }

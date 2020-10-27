@@ -1,5 +1,4 @@
-use crate::common::{jcli::JCli, jcli_wrapper};
-
+use crate::common::jcli::JCli;
 use assert_fs::prelude::*;
 use assert_fs::NamedTempFile;
 

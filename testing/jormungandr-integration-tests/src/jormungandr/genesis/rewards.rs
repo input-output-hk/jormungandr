@@ -1,4 +1,4 @@
-use crate::common::{jcli_wrapper, jormungandr::ConfigurationBuilder, startup};
+use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::{
@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 #[test]
 pub fn collect_reward() {
+    let jcli: JCli = Default::default();
     let stake_pool_owners = [
         startup::create_new_account_address(),
         startup::create_new_account_address(),
@@ -33,7 +34,9 @@ pub fn collect_reward() {
     let stake_pools_data: Vec<StakePoolStats> = stake_pools
         .iter()
         .map(|x| {
-            jcli_wrapper::assert_rest_get_stake_pool(&x.id().to_string(), &jormungandr.rest_uri())
+            jcli.rest()
+                .v0()
+                .stake_pool(x.id().to_string(), jormungandr.rest_uri())
         })
         .collect();
 
@@ -58,6 +61,8 @@ pub fn collect_reward() {
 
 #[test]
 pub fn reward_history() {
+    let jcli: JCli = Default::default();
+
     let stake_pool_owners = [
         startup::create_new_account_address(),
         startup::create_new_account_address(),
@@ -120,10 +125,9 @@ pub fn reward_history() {
         .map(|x| {
             (
                 Hash::from_str(&x.id().to_string()).unwrap(),
-                jcli_wrapper::assert_rest_get_stake_pool(
-                    &x.id().to_string(),
-                    &jormungandr.rest_uri(),
-                ),
+                jcli.rest()
+                    .v0()
+                    .stake_pool(x.id().to_string(), jormungandr.rest_uri()),
             )
         })
         .collect();

@@ -1,6 +1,6 @@
 use super::NodeStuckError;
 use crate::common::{
-    jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
+    jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess},
     startup,
 };
@@ -23,6 +23,7 @@ use std::{str::FromStr, time::Duration};
 pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
     let mut sender = startup::create_new_account_address();
     let mut receiver = startup::create_new_account_address();
+    let jcli: JCli = Default::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -48,13 +49,14 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             .start();
 
     loop {
-        let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string())
-                .assert_add_account(&sender.address().to_string(), &output_value.into())
-                .assert_add_output(&receiver.address().to_string(), output_value.into())
-                .assert_finalize()
-                .seal_with_witness_for_address(&sender)
-                .assert_to_message();
+        let transaction = jcli
+            .transaction_builder(jormungandr.genesis_block_hash())
+            .new_transaction()
+            .add_account(&sender.address().to_string(), &output_value.into())
+            .add_output(&receiver.address().to_string(), output_value.into())
+            .finalize()
+            .seal_with_witness_for_address(&sender)
+            .to_message();
 
         sender.confirm_transaction();
 
@@ -96,10 +98,8 @@ fn finish_test_prematurely(error_message: String, benchmark: EnduranceBenchmarkR
 fn check_explorer_and_rest_are_in_sync(
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
-    let block_tip = Hash::from_str(&jcli_wrapper::assert_rest_get_block_tip(
-        &jormungandr.rest_uri(),
-    ))
-    .unwrap();
+    let jcli: JCli = Default::default();
+    let block_tip = Hash::from_str(&jcli.rest().v0().tip(&jormungandr.rest_uri())).unwrap();
 
     let explorer = jormungandr.explorer();
     let block = explorer

@@ -1,6 +1,5 @@
 use crate::common::{
     configuration::SecretModelFactory,
-    jcli_wrapper,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
 };
 use chain_crypto::{AsymmetricKey, Ed25519};

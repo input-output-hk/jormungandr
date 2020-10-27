@@ -1,4 +1,4 @@
-use crate::common::{jcli::JCli, jcli_wrapper};
+use crate::common::jcli::JCli;
 
 #[test]
 pub fn test_key_to_public() {

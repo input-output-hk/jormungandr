@@ -1,5 +1,5 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool};
 use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
@@ -9,6 +9,7 @@ use std::time::Duration;
 #[cfg(feature = "soak-non-functional")]
 #[test]
 pub fn test_blocks_are_being_created_for_48_hours() {
+    let jcli: JCli = Default::default();
     let duration_48_hours = Duration::from_secs(172_800);
 
     let mut receiver = startup::create_new_account_address();
@@ -50,21 +51,23 @@ pub fn test_blocks_are_being_created_for_48_hours() {
             .encode();
 
         let wait: Wait = Wait::new(Duration::from_secs(10), 10);
-        let fragment_id =
-            jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_uri());
-        if let Err(err) =
-            jcli_wrapper::wait_until_transaction_processed(fragment_id, &jormungandr, &wait)
-        {
-            let message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
-                err,
-                fragment_id,
-                jcli_wrapper::assert_get_rest_message_log(&jormungandr.rest_uri()),
-                jormungandr.logger.get_log_content()
-            );
-            benchmark_endurance.exception(message.clone()).print();
-            benchmark_consumption.exception(message.clone()).print();
-            panic!(message);
-        }
+
+        let checker = jcli.fragment_sender(&jormungandr).send(&new_transaction);
+        let fragment_id = checker.fragment_id();
+        match checker.wait_until_processed(&wait) {
+            Ok(fragment_id) => fragment_id,
+            Err(err) => {
+                let message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
+                            err,
+                            fragment_id,
+                            jcli.rest().v0().message().logs(jormungandr.rest_uri()),
+                            jormungandr.logger.get_log_content()
+                        );
+                benchmark_endurance.exception(message.clone()).print();
+                benchmark_consumption.exception(message.clone()).print();
+                panic!(message);
+            }
+        };
         sender.confirm_transaction();
 
         benchmark_consumption.snapshot().unwrap();

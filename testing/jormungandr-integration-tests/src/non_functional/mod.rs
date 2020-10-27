@@ -23,7 +23,7 @@ pub mod rewards;
 pub mod fragment;
 
 use crate::common::{
-    jcli_wrapper,
+    jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
 };
 use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
@@ -51,7 +51,7 @@ pub enum NodeStuckError {
     #[error("error in logs found")]
     InternalJormungandrError(#[from] JormungandrError),
     #[error("jcli error")]
-    InternalJcliError(#[from] jcli_wrapper::Error),
+    InternalJcliError(#[from] jcli::Error),
     #[error("exploer error")]
     InternalExplorerError(#[from] ExplorerError),
 }
@@ -60,15 +60,16 @@ pub fn send_transaction_and_ensure_block_was_produced(
     transation_messages: &[String],
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
-    let block_tip_before_transaction =
-        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_uri());
+    let jcli: JCli = Default::default();
+    let block_tip_before_transaction = jcli.rest().v0().tip(&jormungandr.rest_uri());
     let block_counter_before_transaction = jormungandr.logger.get_created_blocks_counter();
 
-    jcli_wrapper::send_transactions_and_wait_until_in_block(&transation_messages, &jormungandr)
+    jcli.fragment_sender(&jormungandr)
+        .send_many(transation_messages)
+        .wait_until_all_processed()
         .map_err(NodeStuckError::InternalJcliError)?;
 
-    let block_tip_after_transaction =
-        jcli_wrapper::assert_rest_get_block_tip(&jormungandr.rest_uri());
+    let block_tip_after_transaction = jcli.rest().v0().tip(jormungandr.rest_uri());
     let block_counter_after_transaction = jormungandr.logger.get_created_blocks_counter();
 
     if block_tip_before_transaction == block_tip_after_transaction {
@@ -108,8 +109,11 @@ pub fn check_funds_transferred_to(
     value: Value,
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
-    let account_state =
-        jcli_wrapper::assert_rest_account_get_stats(address, &jormungandr.rest_uri());
+    let jcli: JCli = Default::default();
+    let account_state = jcli
+        .rest()
+        .v0()
+        .account_stats(address, &jormungandr.rest_uri());
 
     if *account_state.value() != value {
         return Err(NodeStuckError::FundsNotTransfered {

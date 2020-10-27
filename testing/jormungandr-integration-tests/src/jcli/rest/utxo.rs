@@ -1,5 +1,5 @@
 use crate::common::{
-    jcli_wrapper,
+    jcli::JCli,
     jormungandr::{starter::Starter, ConfigurationBuilder},
     startup,
 };
@@ -9,6 +9,7 @@ use assert_fs::TempDir;
 
 #[test]
 pub fn test_correct_utxos_are_read_from_node() {
+    let jcli: JCli = Default::default();
     let sender_utxo_address = startup::create_new_utxo_address();
     let receiver_utxo_address = startup::create_new_utxo_address();
 
@@ -33,8 +34,14 @@ pub fn test_correct_utxos_are_read_from_node() {
     let rest_addr = jormungandr.rest_uri();
 
     let sender_block0_utxo = config.block0_utxo_for_address(&sender_utxo_address);
-    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &sender_block0_utxo);
+    jcli.rest()
+        .v0()
+        .utxo()
+        .assert_contains(&sender_block0_utxo, &rest_addr);
 
     let receiver_block0_utxo = config.block0_utxo_for_address(&receiver_utxo_address);
-    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_addr, &receiver_block0_utxo);
+    jcli.rest()
+        .v0()
+        .utxo()
+        .assert_contains(&receiver_block0_utxo, &rest_addr);
 }

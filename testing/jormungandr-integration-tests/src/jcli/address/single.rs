@@ -1,4 +1,4 @@
-use crate::common::{jcli::JCli, jcli_wrapper};
+use crate::common::jcli::JCli;
 use assert_cmd::assert::OutputAssertExt;
 use chain_addr::Discrimination;
 
@@ -12,7 +12,9 @@ pub fn test_utxo_address_made_of_ed25519_extended_key() {
     let public_key = jcli.key().to_public(&private_key);
     println!("public key: {}", &public_key);
 
-    let utxo_address = jcli.address().single(&public_key, Discrimination::Test);
+    let utxo_address = jcli
+        .address()
+        .single(&public_key, None, Discrimination::Test);
     assert_ne!(utxo_address, "", "generated utxo address is empty");
 }
 
@@ -60,7 +62,9 @@ pub fn test_delegation_address_is_the_same_as_public() {
     let public_key = jcli.key().to_public(&private_key);
     println!("public key: {}", &public_key);
 
-    let delegation_address = jcli.address().delegation(&public_key, &public_key);
+    let delegation_address =
+        jcli.address()
+            .delegation(&public_key, &public_key, Discrimination::Test);
     assert_ne!(
         delegation_address, "",
         "generated delegation address is empty"
@@ -104,11 +108,9 @@ pub fn test_single_address_for_prod_discrimination() {
     let public_key = jcli.key().to_public(&private_key);
     println!("public key: {}", &public_key);
 
-    let delegation_address = jcli_wrapper::assert_address_delegation(
-        &public_key,
-        &public_key,
-        Discrimination::Production,
-    );
+    let delegation_address =
+        jcli.address()
+            .delegation(&public_key, &public_key, Discrimination::Production);
     assert_ne!(delegation_address, "", "generated single address is empty");
 }
 
@@ -126,11 +128,9 @@ pub fn test_account_address_for_prod_discrimination() {
     let public_key = jcli.key().to_public(&private_key);
     println!("public key: {}", &public_key);
 
-    let delegation_address = jcli_wrapper::assert_address_delegation(
-        &public_key,
-        &public_key,
-        Discrimination::Production,
-    );
+    let delegation_address =
+        jcli.address()
+            .delegation(&public_key, &public_key, Discrimination::Production);
     assert_ne!(delegation_address, "", "generated account address is empty");
 }
 #[test]
@@ -146,12 +146,12 @@ pub fn test_utxo_address_made_of_incorrect_ed25519_extended_key() {
     public_key.push('A');
 
     // Assertion changed due to issue #306. After fix please change it to correct one
-    jcli_wrapper::jcli_commands::get_address_single_command(&public_key, Discrimination::Test)
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains(
-            "Failed to parse bech32, invalid data format",
-        ));
+    jcli.address().single_expect_fail(
+        &public_key,
+        None,
+        Discrimination::Test,
+        "Failed to parse bech32, invalid data format",
+    );
 }
 
 #[test]
@@ -167,16 +167,12 @@ pub fn test_delegation_address_made_of_random_string() {
     let delegation_key = "adfasdfasdfdasfasdfadfasdf";
 
     // Assertion changed due to issue #306. After fix please change it to correct one
-    jcli_wrapper::jcli_commands::get_address_delegation_command(
-        &public_key,
-        &delegation_key,
+    jcli.address().delegation_expect_fail(
+        public_key,
+        delegation_key,
         Discrimination::Test,
-    )
-    .assert()
-    .failure()
-    .stderr(predicates::str::contains(
         "Failed to parse bech32, invalid data format",
-    ));
+    );
 }
 
 #[test]
@@ -197,14 +193,10 @@ pub fn test_delegation_address_made_of_incorrect_public_ed25519_extended_key() {
     public_key.push('A');
 
     // Assertion changed due to issue #306. After fix please change it to correct one
-    jcli_wrapper::jcli_commands::get_address_delegation_command(
-        &public_key,
-        &delegation_key,
+    jcli.address().delegation_expect_fail(
+        public_key,
+        delegation_key,
         Discrimination::Test,
-    )
-    .assert()
-    .failure()
-    .stderr(predicates::str::contains(
         "Failed to parse bech32, invalid data format",
-    ));
+    );
 }

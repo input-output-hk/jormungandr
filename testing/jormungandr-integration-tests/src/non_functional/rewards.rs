@@ -1,5 +1,5 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_testing_utils::testing::{
@@ -10,6 +10,7 @@ use std::time::Duration;
 
 #[test]
 pub fn collect_reward_for_15_minutes() {
+    let jcli: JCli = Default::default();
     let duration_48_hours = Duration::from_secs(900);
 
     let mut sender = startup::create_new_account_address();
@@ -56,7 +57,10 @@ pub fn collect_reward_for_15_minutes() {
             .unwrap()
             .encode();
 
-        jcli_wrapper::assert_post_transaction(&new_transaction, &jormungandr.rest_uri());
+        jcli.rest()
+            .v0()
+            .message()
+            .post(&new_transaction, jormungandr.rest_uri());
         sender.confirm_transaction();
 
         benchmark_consumption.snapshot().unwrap();

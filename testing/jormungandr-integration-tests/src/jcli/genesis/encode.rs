@@ -1,7 +1,6 @@
 use crate::common::{
     configuration::{Block0ConfigurationBuilder, JormungandrParams},
     jcli::JCli,
-    jcli_wrapper,
     jormungandr::ConfigurationBuilder,
     startup,
 };
@@ -105,7 +104,9 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
 
     let private_key = jcli.key().generate_default();
     let public_key = jcli.key().to_public(&private_key);
-    let test_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
+    let test_address = jcli
+        .address()
+        .single(&public_key, None, Discrimination::Test);
 
     let mut fixture = Fixture::new();
     let block0_configuration = fixture.config_mut();

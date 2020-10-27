@@ -1,4 +1,4 @@
-use crate::common::{jcli::JCli, jcli_wrapper};
+use crate::common::jcli::JCli;
 use chain_addr::Discrimination;
 
 #[test]
@@ -7,7 +7,7 @@ pub fn test_info_unknown_address_public_key() {
 
     let account_address = "48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8";
     jcli.address()
-        .info_expect_fail(&account_address, "invalid internal encoding");
+        .info_expect_fail(account_address, "invalid internal encoding");
 }
 
 #[test]
@@ -16,7 +16,9 @@ pub fn test_info_account_address() {
 
     let private_key = jcli.key().generate("ed25519Extended");
     let public_key = jcli.key().to_public(&private_key);
-    let account_address = jcli.address().account(&public_key);
+    let account_address = jcli
+        .address()
+        .account(&public_key, None, Discrimination::Test);
     let info = jcli.address().info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),
@@ -34,7 +36,7 @@ pub fn test_info_account_address_for_prod() {
     let public_key = jcli.key().to_public(&private_key);
     let account_address = jcli
         .address()
-        .account(&public_key, Discrimination::Production);
+        .account(&public_key, None, Discrimination::Production);
     let info = jcli.address().info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),

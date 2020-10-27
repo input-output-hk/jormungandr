@@ -1,7 +1,6 @@
 use crate::common::{
     configuration,
     jcli::JCli,
-    jcli_wrapper,
     jormungandr::JormungandrProcess,
     startup::{build_genesis_block, create_new_key_pair},
 };

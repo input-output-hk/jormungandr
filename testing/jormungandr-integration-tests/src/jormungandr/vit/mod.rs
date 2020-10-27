@@ -1,6 +1,6 @@
 use crate::common::startup::start_stake_pool;
 use crate::common::{
-    jcli_wrapper,
+    jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
 };
 use assert_fs::TempDir;
@@ -43,6 +43,7 @@ where
 #[test]
 pub fn test_get_committee_id() {
     let temp_dir = TempDir::new().unwrap();
+    let jcli: JCli = Default::default();
 
     let mut rng = OsRng;
     let (_, mut expected_committee_ids) = generate_wallets_and_committee(&mut rng);
@@ -63,8 +64,11 @@ pub fn test_get_committee_id() {
         )),
     );
 
-    let actual_committee_ids =
-        jcli_wrapper::assert_get_active_voting_committees(&jormungandr.rest_uri());
+    let actual_committee_ids = jcli
+        .rest()
+        .v0()
+        .vote()
+        .active_voting_committees(&jormungandr.rest_uri());
 
     assert_eq!(expected_committee_ids, actual_committee_ids);
 }
