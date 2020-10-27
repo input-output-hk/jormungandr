@@ -102,7 +102,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         &receiver,
     );
     jcli.fragment_sender(&jormungandr)
-        .send(&first_transaction)
+        .send(&second_transaction)
         .assert_in_block();
 }
 

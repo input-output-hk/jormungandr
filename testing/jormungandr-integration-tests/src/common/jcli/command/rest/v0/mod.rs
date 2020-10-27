@@ -11,8 +11,6 @@ pub use utxo::UtxOCommand;
 pub use vote::VoteCommand;
 
 use crate::common::jcli::command::TransactionCommand;
-use assert_cmd::assert::OutputAssertExt;
-use jortestkit::prelude::ProcessOutput;
 use std::process::Command;
 
 pub struct V0Command {

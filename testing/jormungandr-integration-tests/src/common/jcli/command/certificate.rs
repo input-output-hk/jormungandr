@@ -3,8 +3,6 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::common::configuration;
-
 use jormungandr_lib::interfaces::TaxType;
 
 #[derive(Debug)]

@@ -12,16 +12,8 @@ use vote::Vote;
 
 use crate::common::jcli::command::rest::V0Command;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::assert::PathAssert;
-use assert_fs::fixture::ChildPath;
-use chain_addr::Discrimination;
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{AccountState, LeadershipLog, SettingsDto, StakePoolStats},
-};
+use jormungandr_lib::interfaces::{AccountState, LeadershipLog, SettingsDto, StakePoolStats};
 use jortestkit::prelude::ProcessOutput;
-use std::str::FromStr;
-use std::{collections::BTreeMap, path::Path};
 pub struct RestV0 {
     v0_command: V0Command,
 }
@@ -51,7 +43,7 @@ impl RestV0 {
         Vote::new(self.v0_command.vote())
     }
 
-    pub fn settings<S: Into<String>>(mut self, host: S) -> SettingsDto {
+    pub fn settings<S: Into<String>>(self, host: S) -> SettingsDto {
         let content = self
             .v0_command
             .settings(host)
@@ -63,7 +55,7 @@ impl RestV0 {
         serde_yaml::from_str(&content).expect("Failed to parse settings")
     }
 
-    pub fn stake_pools<S: Into<String>>(mut self, host: S) -> Vec<String> {
+    pub fn stake_pools<S: Into<String>>(self, host: S) -> Vec<String> {
         let content = self
             .v0_command
             .stake_pools(host)
@@ -76,7 +68,7 @@ impl RestV0 {
     }
 
     pub fn stake_pool<S: Into<String>, P: Into<String>>(
-        mut self,
+        self,
         stake_pool_id: S,
         host: P,
     ) -> StakePoolStats {
@@ -91,7 +83,7 @@ impl RestV0 {
         serde_yaml::from_str(&content).expect("Failed to parse stak pool stats")
     }
 
-    pub fn leadership_log<S: Into<String>>(mut self, host: S) -> Vec<LeadershipLog> {
+    pub fn leadership_log<S: Into<String>>(self, host: S) -> Vec<LeadershipLog> {
         let content = self
             .v0_command
             .leadership_log(host)
@@ -104,7 +96,7 @@ impl RestV0 {
         serde_yaml::from_str(&content).unwrap()
     }
 
-    pub fn tip<S: Into<String>>(mut self, host: S) -> String {
+    pub fn tip<S: Into<String>>(self, host: S) -> String {
         self.v0_command
             .tip(host)
             .build()
@@ -114,7 +106,7 @@ impl RestV0 {
             .as_single_line()
     }
 
-    pub fn tip_expect_fail<S: Into<String>>(mut self, host: S, expected_msg: &str) {
+    pub fn tip_expect_fail<S: Into<String>>(self, host: S, expected_msg: &str) {
         self.v0_command
             .tip(host)
             .build()
@@ -124,7 +116,7 @@ impl RestV0 {
     }
 
     pub fn account_stats<S: Into<String>, P: Into<String>>(
-        mut self,
+        self,
         address: S,
         host: P,
     ) -> AccountState {
@@ -139,7 +131,7 @@ impl RestV0 {
         serde_yaml::from_str(&content).unwrap()
     }
 
-    pub fn shutdown<S: Into<String>>(mut self, host: S) {
+    pub fn shutdown<S: Into<String>>(self, host: S) {
         self.v0_command.shutdown(host).build().assert().success();
     }
 }

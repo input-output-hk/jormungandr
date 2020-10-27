@@ -1,7 +1,6 @@
 use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
-use jormungandr_lib::{crypto::hash::Hash, interfaces::LeadershipLogStatus};
+use jormungandr_lib::interfaces::LeadershipLogStatus;
 use jortestkit::process::sleep;
-use std::str::FromStr;
 
 #[test]
 pub fn test_leadership_logs_parent_hash_is_correct() {

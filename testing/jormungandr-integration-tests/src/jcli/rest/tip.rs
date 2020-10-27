@@ -1,5 +1,4 @@
 use crate::common::{configuration::NodeConfigBuilder, jcli::JCli, jormungandr::starter::Starter};
-use assert_cmd::assert::OutputAssertExt;
 
 #[test]
 pub fn test_correct_id_is_returned_for_block_tip_if_only_genesis_block_exists() {

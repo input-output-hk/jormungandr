@@ -1,6 +1,4 @@
-use assert_cmd::assert::OutputAssertExt;
-use jortestkit::prelude::ProcessOutput;
-use std::{path::Path, process::Command};
+use std::process::Command;
 
 pub struct BlockCommand {
     command: Command,

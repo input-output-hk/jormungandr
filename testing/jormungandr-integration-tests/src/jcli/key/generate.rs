@@ -1,5 +1,4 @@
 use crate::common::jcli::JCli;
-use assert_cmd::assert::OutputAssertExt;
 
 #[test]
 pub fn test_ed25519_key_generation() {

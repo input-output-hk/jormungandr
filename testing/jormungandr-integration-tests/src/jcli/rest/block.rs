@@ -1,5 +1,5 @@
 use crate::common::{jcli::JCli, jormungandr::starter::Starter};
-use assert_cmd::assert::OutputAssertExt;
+
 #[test]
 pub fn test_non_empty_hash_is_returned_for_block0() {
     let jcli: JCli = Default::default();

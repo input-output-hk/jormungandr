@@ -8,7 +8,6 @@ use jormungandr_lib::{crypto::hash::Hash, interfaces::InitialUTxO};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use jortestkit::process::Wait;
 
 #[test]
 pub fn two_nodes_communication() {
@@ -56,8 +55,6 @@ pub fn two_nodes_communication() {
             *utxo.associated_fund(),
             &reciever,
         );
-
-    let wait = Wait::new(std::time::Duration::from_secs(60), 20);
 
     jcli.fragment_sender(&trusted_jormungandr)
         .send(&transaction_message)

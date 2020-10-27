@@ -2,11 +2,9 @@ mod decode;
 mod encode;
 mod hash;
 
-use assert_cmd::assert::OutputAssertExt;
 pub use decode::GenesisDecodeCommand;
 pub use encode::GenesisEncodeCommand;
 pub use hash::GenesisHashCommand;
-use jortestkit::prelude::ProcessOutput;
 use std::process::Command;
 pub struct GenesisCommand {
     command: Command,

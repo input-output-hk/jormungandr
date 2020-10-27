@@ -3,11 +3,9 @@ use crate::common::{
     jcli::{JCli, JCliCommand},
     jormungandr::JormungandrProcess,
 };
-use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::interfaces::FragmentLog;
 use jortestkit::prelude::ProcessOutput;
 use jortestkit::process::run_process_until_response_matches;
-use jortestkit::process::Wait;
 use std::process::Command;
 
 pub struct FragmentsCheck<'a> {

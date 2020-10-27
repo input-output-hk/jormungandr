@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::process::Command;
 pub struct InfoCommand {
     command: Command,

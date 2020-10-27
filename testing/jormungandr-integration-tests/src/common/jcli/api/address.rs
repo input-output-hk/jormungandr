@@ -1,12 +1,9 @@
-use crate::common::jcli::command::{AddressCommand, GenesisCommand};
+use crate::common::jcli::command::AddressCommand;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::assert::PathAssert;
-use assert_fs::fixture::ChildPath;
 use chain_addr::Discrimination;
-use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::prelude::ProcessOutput;
-use std::str::FromStr;
-use std::{collections::BTreeMap, path::Path};
+use std::collections::BTreeMap;
+
 pub struct Address {
     address_command: AddressCommand,
 }
@@ -138,7 +135,7 @@ impl Address {
     }
 
     pub fn delegation<S: Into<String>, P: Into<String>>(
-        mut self,
+        self,
         public_key: S,
         delegation_key: P,
         discrimination: Discrimination,
@@ -160,7 +157,7 @@ impl Address {
     }
 
     pub fn delegation_expect_fail<S: Into<String>, P: Into<String>>(
-        mut self,
+        self,
         public_key: S,
         delegation_key: P,
         discrimination: Discrimination,

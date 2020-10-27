@@ -1,19 +1,9 @@
 #![allow(dead_code)]
 
-use crate::common::{data::witness::Witness, jcli::JCli};
-use assert_cmd::assert::OutputAssertExt;
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
-use chain_core::property::Deserialize;
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{LegacyUTxO, TaxType, UTxOInfo, Value},
-};
-use jormungandr_testing_utils::testing::process::ProcessOutput;
-use jormungandr_testing_utils::wallet::Wallet;
-use jortestkit::{file, process::output_extensions::ProcessOutput as _};
+use crate::common::jcli::JCli;
+use assert_fs::{prelude::*, TempDir};
+use jormungandr_lib::interfaces::TaxType;
+use jortestkit::file;
 use std::path::{Path, PathBuf};
 
 pub struct CertificateBuilder {
@@ -56,7 +46,7 @@ impl CertificateBuilder {
     }
 
     pub fn new_signed_stake_pool_delegation(
-        mut self,
+        self,
         stake_pool_id: &str,
         stake_key_pub: &str,
         stake_key_file: &Path,
@@ -83,7 +73,7 @@ impl CertificateBuilder {
     }
 
     pub fn new_signed_vote_plan<P: AsRef<Path>, Q: AsRef<Path>>(
-        mut self,
+        self,
         proposal_file: P,
         stake_key_file: Q,
     ) -> PathBuf {

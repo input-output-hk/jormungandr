@@ -1,14 +1,10 @@
 use crate::common::jcli::command::rest::v0::UtxOCommand;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::assert::PathAssert;
-use assert_fs::fixture::ChildPath;
-use chain_addr::Discrimination;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::UTxOInfo;
 use jormungandr_lib::interfaces::UTxOOutputInfo;
 use jortestkit::prelude::ProcessOutput;
 use std::str::FromStr;
-use std::{collections::BTreeMap, path::Path};
 pub struct UtxO {
     utxo_command: UtxOCommand,
 }
