@@ -14,6 +14,8 @@ pub enum Error {
     #[error("invalid Hexadecimal")]
     Hex(#[from] hex::FromHexError),
     #[error("error while using random source")]
+    Base64(#[from] base64::DecodeError),
+    #[error("error while decoding base64 source")]
     Rand(#[from] rand::Error),
     #[error("invalid seed length, expected 32 bytes but received {seed_len}")]
     InvalidSeed { seed_len: usize },

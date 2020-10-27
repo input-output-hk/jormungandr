@@ -31,7 +31,7 @@ struct Output {
 impl TallyGenerateDecryptionShare {
     pub fn exec(&self) -> Result<(), Error> {
         let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
-        let encrypted_tally_bytes = hex::decode(encrypted_tally_hex)?;
+        let encrypted_tally_bytes = base64::decode(encrypted_tally_hex)?;
         let encrypted_tally =
             EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
 
@@ -46,8 +46,8 @@ impl TallyGenerateDecryptionShare {
         let output = self
             .output_format
             .format_json(serde_json::to_value(Output {
-                state: hex::encode(state.to_bytes()),
-                share: hex::encode(share.to_bytes()),
+                state: base64::encode(state.to_bytes()),
+                share: base64::encode(share.to_bytes()),
             })?)?;
         println!("{}", output);
 

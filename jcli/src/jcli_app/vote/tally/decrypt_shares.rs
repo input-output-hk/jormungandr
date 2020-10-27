@@ -39,7 +39,7 @@ struct Output {
 impl TallyDecryptWithAllShares {
     pub fn exec(&self) -> Result<(), Error> {
         let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
-        let encrypted_tally_bytes = hex::decode(encrypted_tally_hex)?;
+        let encrypted_tally_bytes = base64::decode(encrypted_tally_hex)?;
         let encrypted_tally =
             EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
 
@@ -50,7 +50,7 @@ impl TallyDecryptWithAllShares {
             for _ in 0..self.threshold {
                 let mut buff = String::new();
                 &shares_file.read_line(&mut buff);
-                chain_vote::TallyDecryptShare::from_bytes(&hex::decode(buff)?)
+                chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
                     .ok_or(Error::DecryptionShareRead)?;
             }
             shares

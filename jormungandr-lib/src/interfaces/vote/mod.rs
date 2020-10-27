@@ -330,9 +330,9 @@ impl TallyResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct EncryptedTally(#[serde(with = "serde_hex_bytes")] Vec<u8>);
+pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
-mod serde_hex_bytes {
+mod serde_base64_bytes {
     use crate::interfaces::vote::EncryptedTally;
     use serde::de::{Error, Visitor};
     use serde::{Deserializer, Serialize, Serializer};
@@ -346,14 +346,14 @@ mod serde_hex_bytes {
             type Value = Vec<u8>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid hex encoded bytes")
+                formatter.write_str("Invalid base64 encoded bytes")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
             where
                 E: Error,
             {
-                hex::decode(v).map_err(|e| E::custom(format!("{}", e)))
+                base64::decode(v).map_err(|e| E::custom(format!("{}", e)))
             }
 
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
@@ -392,7 +392,7 @@ mod serde_hex_bytes {
         S: Serializer,
     {
         if serializer.is_human_readable() {
-            serializer.serialize_str(&hex::encode(bytes))
+            serializer.serialize_str(&base64::encode(bytes))
         } else {
             serializer.serialize_bytes(bytes)
         }
