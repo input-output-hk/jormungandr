@@ -116,6 +116,7 @@ impl WalletBackend {
         let vote_plan_statuses = self.vote_plan_statuses().unwrap();
         let proposals = self.proposals().unwrap();
 
+        /*
         let mut active_votes = Vec::new();
         for vote_plan_status in vote_plan_statuses {
             for proposal in vote_plan_status.proposals {
@@ -138,6 +139,8 @@ impl WalletBackend {
             }
         }
         Ok(active_votes)
+        */
+        unimplemented!()
     }
 
     pub fn settings(&self) -> Result<Settings, WalletBackendError> {
