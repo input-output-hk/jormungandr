@@ -1730,6 +1730,7 @@ dependencies = [
 name = "jormungandr-lib"
 version = "0.10.0-alpha.1"
 dependencies = [
+ "base64 0.13.0",
  "bech32",
  "bincode",
  "cardano-legacy-address",
