@@ -9,11 +9,11 @@ use std::path::Path;
 use std::str::FromStr;
 const DEFAULT_KEY_TYPE: &str = "Ed25519Extended";
 
-pub struct JCliKey {
+pub struct Key {
     key_command: KeyCommand,
 }
 
-impl JCliKey {
+impl Key {
     pub fn new(key_command: KeyCommand) -> Self {
         Self { key_command }
     }

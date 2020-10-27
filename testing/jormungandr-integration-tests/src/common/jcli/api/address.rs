@@ -7,11 +7,11 @@ use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::prelude::ProcessOutput;
 use std::str::FromStr;
 use std::{collections::BTreeMap, path::Path};
-pub struct JCliAddress {
+pub struct Address {
     address_command: AddressCommand,
 }
 
-impl JCliAddress {
+impl Address {
     pub fn new(address_command: AddressCommand) -> Self {
         Self { address_command }
     }
@@ -29,8 +29,8 @@ impl JCliAddress {
 
     pub fn account<S: Into<String>>(
         self,
-        prefix: Option<S>,
         public_key: S,
+        prefix: Option<S>,
         discrimination: Discrimination,
     ) -> String {
         let mut address_command = self.address_command.account();
@@ -54,8 +54,9 @@ impl JCliAddress {
 
     pub fn account_expect_fail<S: Into<String>>(
         self,
-        prefix: Option<S>,
         public_key: S,
+        prefix: Option<S>,
+        discrimination: Discrimination,
         expected_msg: &str,
     ) {
         let mut address_command = self.address_command.account();
@@ -88,8 +89,8 @@ impl JCliAddress {
 
     pub fn single<S: Into<String>>(
         self,
-        prefix: Option<S>,
         public_key: S,
+        prefix: Option<S>,
         discrimination: Discrimination,
     ) -> String {
         let mut address_command = self.address_command.single();
@@ -111,6 +112,31 @@ impl JCliAddress {
             .as_single_line()
     }
 
+    pub fn single_expect_fail<S: Into<String>>(
+        self,
+        public_key: S,
+        prefix: Option<S>,
+        discrimination: Discrimination,
+        expected_msg: &str,
+    ) {
+        let mut address_command = self.address_command.single();
+
+        if let Some(prefix) = prefix {
+            address_command = address_command.prefix(prefix.into());
+        }
+
+        if discrimination == Discrimination::Test {
+            address_command = address_command.test_discrimination();
+        }
+
+        address_command
+            .public_key(public_key)
+            .build()
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_msg));
+    }
+
     pub fn delegation<S: Into<String>, P: Into<String>>(
         mut self,
         public_key: S,
@@ -118,10 +144,6 @@ impl JCliAddress {
         discrimination: Discrimination,
     ) -> String {
         let mut address_command = self.address_command.single();
-
-        if let Some(prefix) = prefix {
-            address_command = address_command.prefix(prefix.into());
-        }
 
         if discrimination == Discrimination::Test {
             address_command = address_command.test_discrimination();
@@ -135,5 +157,27 @@ impl JCliAddress {
             .success()
             .get_output()
             .as_single_line()
+    }
+
+    pub fn delegation_expect_fail<S: Into<String>, P: Into<String>>(
+        mut self,
+        public_key: S,
+        delegation_key: P,
+        discrimination: Discrimination,
+        expected_msg: &str,
+    ) {
+        let mut address_command = self.address_command.single();
+
+        if discrimination == Discrimination::Test {
+            address_command = address_command.test_discrimination();
+        }
+
+        address_command
+            .public_key(public_key)
+            .delegation_key(delegation_key)
+            .build()
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(expected_msg));
     }
 }

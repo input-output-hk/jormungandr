@@ -6,11 +6,11 @@ use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::prelude::ProcessOutput;
 use std::path::Path;
 use std::str::FromStr;
-pub struct JCliGenesis {
+pub struct Genesis {
     genesis_command: GenesisCommand,
 }
 
-impl JCliGenesis {
+impl Genesis {
     pub fn new(genesis_command: GenesisCommand) -> Self {
         Self { genesis_command }
     }
