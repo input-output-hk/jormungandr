@@ -1,4 +1,3 @@
-use crate::testing::fragments::StakePool;
 use crate::testing::FragmentSender;
 use crate::testing::FragmentSenderSetup;
 use crate::testing::RemoteJormungandr;
@@ -7,13 +6,11 @@ use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
-use rand::RngCore;
 use rand_core::OsRng;
 
 pub struct FragmentGenerator<'a> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
-    stake_pools: Vec<StakePool>,
     fragment_sender: FragmentSender<'a>,
     rand: OsRng,
     split_marker: usize,
@@ -28,7 +25,6 @@ impl<'a> FragmentGenerator<'a> {
     ) -> Self {
         Self {
             wallets: Vec::new(),
-            stake_pools: Vec::new(),
             fragment_sender: FragmentSender::new(block_hash, fees, fragment_sender_setup),
             rand: OsRng,
             jormungandr: jormungandr,

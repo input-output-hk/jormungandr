@@ -79,7 +79,7 @@ pub struct Proposer {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Proposal {
     #[serde(alias = "internalId")]
-    pub internal_id: String,
+    pub internal_id: u32,
     #[serde(alias = "proposalId")]
     pub proposal_id: String,
     //  #[serde(alias = "category")]
@@ -138,9 +138,8 @@ impl Into<wallet_core::Proposal> for Proposal {
         let bytes = &bytes[..vote_plan_id.len()]; // panics if not enough data
         vote_plan_id.copy_from_slice(bytes);
 
-        wallet_core::Proposal::new(
+        wallet_core::Proposal::new_public(
             VotePlanId::try_from(vote_plan_id).unwrap(),
-            PayloadType::Public,
             chain_proposal_index,
             Options::new_length(self.chain_vote_options.0.len() as u8).unwrap(),
         )

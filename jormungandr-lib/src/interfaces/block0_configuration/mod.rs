@@ -17,7 +17,9 @@ pub use self::default_values::*;
 pub use self::epoch_stability_depth::EpochStabilityDepth;
 pub use self::fees_go_to::FeesGoTo;
 pub use self::initial_config::BlockchainConfiguration;
-pub use self::initial_fragment::{Initial, InitialUTxO, LegacyUTxO};
+pub use self::initial_fragment::{
+    try_initials_vec_from_messages, Initial, InitialUTxO, LegacyUTxO,
+};
 pub use self::kes_update_speed::KESUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;

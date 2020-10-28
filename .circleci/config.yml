@@ -35,7 +35,7 @@ jobs:
       - run:
           name: Fetch dependencies and update cargo registry index
           command: |
-            cargo fetch --locked
+            cargo fetch
             git -C /usr/local/cargo/registry/index/github.com-1ecc6299db9ec823 \
                 show-ref -s refs/remotes/origin/master |
               tee .circleci/crates.io-index.head
@@ -133,7 +133,7 @@ commands:
         default: ''
       cargo_behavior:
         type: string
-        default: --locked --offline --verbose
+        default: --verbose
     steps:
       - checkout
       - run: git submodule sync

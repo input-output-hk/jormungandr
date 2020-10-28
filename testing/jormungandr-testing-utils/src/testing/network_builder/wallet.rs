@@ -4,7 +4,7 @@ use crate::wallet::{
 };
 use chain_impl_mockchain::{
     certificate::PoolId, fee::LinearFee, fragment::Fragment,
-    transaction::UnspecifiedAccountIdentifier,
+    transaction::UnspecifiedAccountIdentifier, vote::CommitteeId,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -68,6 +68,43 @@ impl WalletTemplate {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct LegacyWalletTemplate {
+    alias: WalletAlias,
+    address: String,
+    value: Value,
+    mnemonics: String,
+}
+
+impl LegacyWalletTemplate {
+    #[inline]
+    pub fn new<S: Into<WalletAlias>>(
+        alias: S,
+        value: Value,
+        address: String,
+        mnemonics: String,
+    ) -> Self {
+        Self {
+            alias: alias.into(),
+            value,
+            address,
+            mnemonics,
+        }
+    }
+
+    pub fn alias(&self) -> &WalletAlias {
+        &self.alias
+    }
+
+    pub fn value(&self) -> &Value {
+        &self.value
+    }
+
+    pub fn address(&self) -> String {
+        self.address.clone()
+    }
+}
+
 /// wallet to utilise when testing jormungandr
 ///
 /// This can be used for a faucet
@@ -108,6 +145,10 @@ impl Wallet {
         self.inner.address()
     }
 
+    pub fn committee_id(&self) -> CommitteeId {
+        CommitteeId::from(self.address().1.public_key().unwrap().clone())
+    }
+
     pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
         self.inner.stake_key()
     }
@@ -145,5 +186,14 @@ impl Wallet {
 impl Into<Inner> for Wallet {
     fn into(self) -> Inner {
         self.inner
+    }
+}
+
+pub type WalletLib = chain_impl_mockchain::testing::data::Wallet;
+
+impl Into<WalletLib> for Wallet {
+    fn into(self) -> WalletLib {
+        let inner: Inner = self.into();
+        inner.into()
     }
 }

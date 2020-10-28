@@ -7,16 +7,16 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wallet-core = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
-wallet = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
+wallet-core = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
+wallet = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
 hex = "0.4"
-bip39 = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
-chain-core = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
-chain-addr = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
-chain-ser = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
-hdkeygen = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-wallet-libs" }
+bip39 = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
+chain-crypto = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
+chain-core = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
+chain-addr = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
+chain-ser = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
+hdkeygen = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-wallet-libs", branch="master"}
 rand = "0.7"
 rand_core = "0.5"
 cryptoxide = "0.2.0"
@@ -33,6 +33,10 @@ regex = "*"
 dialoguer = "0.6.2"
 structopt = "0.3"
 console = "0.11"
+warp = "0.2.5"
+warp-reverse-proxy = "0.1.0"
+tokio = { version = "0.2", features = ["macros"] }
+url = "2.1.1"
 
 [dependencies.reqwest]
 version = "0.10.6"

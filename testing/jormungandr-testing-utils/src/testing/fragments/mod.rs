@@ -12,7 +12,7 @@ pub use self::{
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{
-    certificate::{PoolId, Proposal, VoteCast, VotePlan, VoteTally},
+    certificate::{PoolId, VoteCast, VotePlan, VoteTally},
     fee::LinearFee,
     fragment::Fragment,
     testing::{

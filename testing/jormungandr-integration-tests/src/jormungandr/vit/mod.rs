@@ -18,7 +18,7 @@ use jormungandr_lib::{
     interfaces::{ActiveSlotCoefficient, CommitteeIdDef, Tally, VotePlanStatus},
 };
 use jormungandr_testing_utils::{
-    testing::{node::Explorer, vote_plan_cert, FragmentSender, FragmentSenderSetup},
+    testing::{node::time::wait_for_epoch, vote_plan_cert, FragmentSender, FragmentSenderSetup},
     wallet::Wallet,
 };
 use rand::rngs::OsRng;
@@ -252,7 +252,6 @@ fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanS
 pub fn test_vote_flow_praos() {
     let yes_choice = Choice::new(1);
     let no_choice = Choice::new(2);
-    let temp_dir = TempDir::new().unwrap();
     let rewards_increase = 10;
 
     let mut rng = OsRng;
@@ -337,24 +336,4 @@ pub fn test_vote_flow_praos() {
         (rewards_before + rewards_increase - 100_000 * 2),
         "Vote was unsuccessful"
     )
-}
-
-fn wait_for_epoch(epoch_id: u64, mut explorer: Explorer) {
-    explorer.disable_logs();
-    while explorer
-        .status()
-        .unwrap()
-        .data
-        .unwrap()
-        .status
-        .latest_block
-        .date
-        .epoch
-        .id
-        .parse::<u64>()
-        .unwrap()
-        < epoch_id
-    {
-        std::thread::sleep(std::time::Duration::from_secs(1));
-    }
 }

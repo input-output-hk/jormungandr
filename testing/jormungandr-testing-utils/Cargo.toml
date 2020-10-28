@@ -24,6 +24,7 @@ chain-time           = { path = "../../chain-deps/chain-time" }
 cardano-legacy-address = { path = "../../chain-deps/cardano-legacy-address" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { path = "../jortestkit"}
+vit-servicing-station-lib = { git = "https://github.com/input-output-hk/vit-servicing-station", branch = "master" }
 typed-bytes = { path = "../../chain-deps/typed-bytes" }
 rand = "0.7"
 rand_core = "0.5"

@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 use wallet::{AccountId, Settings};
 use wallet_core::{Choice, Conversion, Proposal, Value};
+use std::collections::HashSet;
 
 pub struct Controller {
     backend: WalletBackend,
@@ -17,6 +18,7 @@ pub struct Controller {
 }
 
 impl Controller {
+
     pub fn generate(
         proxy_address: String,
         words_length: Type,
@@ -31,6 +33,20 @@ impl Controller {
         })
     }
 
+
+    pub fn recover_with_backend(
+        backend: WalletBackend,
+        mnemonics: &str,
+        password: &[u8],
+    ) -> Result<Self, ControllerError> {
+        let settings = backend.settings()?;
+        Ok(Self {
+            backend,
+            wallet: Wallet::recover(mnemonics, password)?,
+            settings,
+        })
+    }
+
     pub fn recover(
         proxy_address: String,
         mnemonics: &str,
@@ -38,12 +54,7 @@ impl Controller {
         backend_settings: RestSettings,
     ) -> Result<Self, ControllerError> {
         let backend = WalletBackend::new(proxy_address, backend_settings);
-        let settings = backend.settings()?;
-        Ok(Self {
-            backend,
-            wallet: Wallet::recover(mnemonics, password)?,
-            settings,
-        })
+        Self::recover_with_backend(backend,mnemonics,password)
     }
 
     pub fn switch_backend(&mut self, proxy_address: String, backend_settings: RestSettings) {
@@ -89,8 +100,8 @@ impl Controller {
         self.wallet.confirm_transaction(id)
     }
 
-    pub fn pending_transactions(&self) -> &HashMap<FragmentId, Vec<Input>> {
-        &self.wallet.pending_transactions()
+    pub fn pending_transactions(&self) -> HashSet<FragmentId> {
+        self.wallet.pending_transactions()
     }
 
     pub fn wait_for_pending_transactions(
@@ -99,7 +110,7 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         let mut limit = 60;
         loop {
-            let ids: Vec<FragmentId> = self.pending_transactions().keys().cloned().collect();
+            let ids: Vec<FragmentId> = self.pending_transactions().iter().cloned().collect();
 
             if limit <= 0 {
                 return Err(ControllerError::TransactionsWerePendingForTooLong { fragments: ids });
@@ -152,6 +163,28 @@ impl Controller {
         self.backend.account_state(self.id()).map_err(Into::into)
     }
 
+    pub fn vote_for(&mut self,
+        vote_plan_id: String,
+        proposal_index: u32,
+        choice: u8,
+    ) -> Result<FragmentId, ControllerError> {
+
+        let proposals = self.get_proposals()?;
+        let proposal = proposals.iter()
+                .filter(|x| x.chain_voteplan_id == vote_plan_id && x.chain_proposal_index == proposal_index as i64)
+                .next()
+                .ok_or(ControllerError::CannotFindProposal{
+            vote_plan_name: vote_plan_id.to_string(),
+            proposal_index
+        })?;
+
+        let transaction =
+            self.wallet
+                .vote(self.settings.clone(), &proposal.clone().into(), Choice::new(choice))?;
+        Ok(self.backend.send_fragment(transaction.to_vec())?)
+    }
+
+
     pub fn vote(
         &mut self,
         proposal: &VitProposal,
@@ -202,9 +235,14 @@ impl Controller {
 #[derive(Debug, Error)]
 pub enum ControllerError {
     #[error("wallet error")]
-    WalletError(#[from] crate::wallet::WalletError),
+    WalletError(#[from] crate::wallet::Error),
     #[error("backend error")]
     BackendError(#[from] crate::backend::WalletBackendError),
+    #[error("cannot find proposal: voteplan({vote_plan_name}) index({proposal_index})")]
+    CannotFindProposal{
+        vote_plan_name: String,
+        proposal_index: u32
+    },
     #[error("transactions with ids [{fragments:?}] were pending for too long")]
     TransactionsWerePendingForTooLong { fragments: Vec<FragmentId> },
 }

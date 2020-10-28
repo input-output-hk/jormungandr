@@ -17,7 +17,7 @@ use crate::{
         features::{
             explorer::passive_node_explorer, leader_promotion::*,
             leadership_log::leader_restart_preserves_leadership_log, p2p::*,
-            stake_pool::retire::retire_stake_pool_explorer,
+            stake_pool::retire::retire_stake_pool_explorer, vote::vote_e2e_flow,
         },
         legacy,
         network::{
@@ -249,6 +249,12 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_node_promotion",
         passive_node_promotion,
+        vec![Tag::Short],
+    ));
+
+    repository.push(Scenario::new(
+        "vote_e2e_flow",
+        vote_e2e_flow,
         vec![Tag::Short],
     ));
 

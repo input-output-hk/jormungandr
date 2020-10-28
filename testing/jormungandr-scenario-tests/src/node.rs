@@ -13,13 +13,14 @@ use jormungandr_lib::{
         NodeStatsDto, PeerRecord, PeerStats,
     },
 };
+use jormungandr_testing_utils::testing::node::Explorer;
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
     },
     node::{
         grpc::{client::MockClientError, JormungandrClient},
-        uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest, RestError,
+        uri_from_socket_addr, JormungandrLogger, JormungandrRest, RestError,
     },
     FragmentNode, MemPoolCheck, NamedProcess,
 };
