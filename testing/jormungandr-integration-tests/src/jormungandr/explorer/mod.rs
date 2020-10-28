@@ -33,20 +33,22 @@ pub fn explorer_schema_diff_test() {
     let schema_temp_dir = TempDir::new().unwrap();
     let actual_schema_path = schema_temp_dir.child("new_schema.graphql");
 
-    Command::new("../jormungandr-testing-utils/resources/explorer/graphql/generate_schema.sh")
-        .args(&[
-            jormungandr.explorer().uri(),
-            actual_schema_path
-                .path()
-                .as_os_str()
-                .to_str()
-                .unwrap()
-                .to_string(),
-        ])
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
+    std::process::Command::new(
+        "../jormungandr-testing-utils/resources/explorer/graphql/generate_schema.sh",
+    )
+    .args(&[
+        jormungandr.explorer().uri(),
+        actual_schema_path
+            .path()
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string(),
+    ])
+    .spawn()
+    .unwrap()
+    .wait()
+    .unwrap();
 
     jormungandr_testing_utils::testing::node::explorer::compare_schema(actual_schema_path.path());
 }
