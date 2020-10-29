@@ -7,6 +7,7 @@ use assert_fs::TempDir;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{Proposal, Proposals, PushProposal, VoteAction, VotePlan},
+    chaintypes::ConsensusType,
     ledger::governance::ParametersGovernanceAction,
     milli::Milli,
     testing::VoteTestGen,
@@ -15,7 +16,9 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::{
     crypto::key::KeyPair,
-    interfaces::{ActiveSlotCoefficient, CommitteeIdDef, Tally, VotePlanStatus},
+    interfaces::{
+        ActiveSlotCoefficient, CommitteeIdDef, FeesGoTo, KESUpdateSpeed, Tally, VotePlanStatus,
+    },
 };
 use jormungandr_testing_utils::{
     testing::{node::time::wait_for_epoch, vote_plan_cert, FragmentSender, FragmentSenderSetup},
@@ -101,6 +104,7 @@ pub fn test_get_initial_vote_plan() {
     );
 }
 
+use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
 
 fn proposal_with_3_options(rewards_increase: u64) -> Proposal {
@@ -340,4 +344,44 @@ pub fn test_vote_flow_praos() {
         (rewards_before + rewards_increase - 100_000 * 2),
         "Vote was unsuccessful"
     )
+}
+
+#[test]
+pub fn jcli_e2e_flow() {
+    let jcli: JCli = Default::default();
+    let temp_dir = TempDir::new().unwrap();
+
+    let yes_choice = Choice::new(1);
+    let no_choice = Choice::new(2);
+    let rewards_increase = 10;
+
+    let mut rng = OsRng;
+    let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
+    let mut bob = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
+    let mut clarice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
+
+    let vote_plan = vote_plan_with_3_proposals(rewards_increase);
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(vec![
+            alice.into_initial_fund(1_000_000),
+            bob.into_initial_fund(1_000_000),
+            clarice.into_initial_fund(1_000_000),
+        ])
+        .with_block0_consensus(ConsensusType::Bft)
+        .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
+        .with_fees_go_to(FeesGoTo::Rewards)
+        .with_treasury(Value::zero().into())
+        .with_total_rewards_supply(Value::zero().into())
+        .with_discrimination(Discrimination::Production)
+        .with_committees(&[&alice, &bob, &clarice])
+        .with_slots_per_epoch(60)
+        .with_consensus_genesis_praos_active_slot_coeff(
+            ActiveSlotCoefficient::new(Milli::from_millis(100)).unwrap(),
+        )
+        .with_slot_duration(20)
+        .with_slots_per_epoch(10)
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new().config(config).start().unwrap();
 }
