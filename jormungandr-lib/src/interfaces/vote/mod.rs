@@ -209,7 +209,7 @@ mod serde_committee_member_public_keys {
     {
         let mut seq = serializer.serialize_seq(Some(keys.len()))?;
         for key in keys {
-            seq.serialize_element(&SerdeMemberPublicKey(key.clone()));
+            seq.serialize_element(&SerdeMemberPublicKey(key.clone()))?;
         }
         seq.end()
     }
