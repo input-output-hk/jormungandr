@@ -26,11 +26,13 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
-use futures::{executor::block_on, future::TryFutureExt};
+use futures::executor::block_on;
+use futures::future;
+use futures::prelude::*;
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
-use tokio::signal::ctrl_c;
+use tokio::signal;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -279,7 +281,23 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    services.spawn_try_future("sigint_listener", move |_info| ctrl_c().map_err(|_| ()));
+    services.spawn_try_future("sigint_listener", move |_info| {
+        signal::ctrl_c().map_err(|_| ())
+    });
+
+    #[cfg(unix)]
+    services.spawn_future("sigterm_listener", move |info| {
+        use signal::unix::SignalKind;
+
+        let signal = match signal::unix::signal(SignalKind::terminate()) {
+            Ok(signal) => signal,
+            Err(e) => {
+                warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
+                return future::ready(()).left_future();
+            }
+        };
+        signal.into_future().map(|_| ()).right_future()
+    });
 
     match services.wait_any_finished() {
         Err(err) => {
@@ -408,7 +426,7 @@ async fn bootstrap_internal(
 
     let (shutdown_tx, shutdown_rx) = channel();
     spawn(
-        ctrl_c()
+        signal::ctrl_c()
             .map_ok(|()| {
                 shutdown_tx
                     .send(())
