@@ -3,42 +3,94 @@ use chain_impl_mockchain::{
     certificate::{Certificate, VoteCast, VotePlanId},
     vote::{Choice, Payload},
 };
+use rand_chacha::rand_core::SeedableRng;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-/// create a vote cast certificate
 #[derive(StructOpt)]
-pub struct VoteCastCmd {
+pub struct PublicVoteCast {
     /// the vote plan identified on the blockchain
-    pub vote_plan_id: VotePlanId,
+    vote_plan_id: VotePlanId,
 
     /// the number of proposal in the vote plan you vote for
-    pub proposal_index: u8,
+    proposal_index: u8,
 
     /// the number of choice within the proposal you vote for
-    pub choice: u8,
-
-    /// should be used for vote plans with public votes
-    #[structopt(long = "public")]
-    pub public: bool,
+    choice: u8,
 
     /// write the output to the given file or print it to the standard output if not defined
     #[structopt(long = "output")]
-    pub output: Option<PathBuf>,
+    output: Option<PathBuf>,
 }
 
-impl VoteCastCmd {
+#[derive(StructOpt)]
+pub struct PrivateVoteCast {
+    /// the vote plan identified on the blockchain
+    vote_plan_id: VotePlanId,
+
+    /// the number of proposal in the vote plan you vote for
+    proposal_index: u8,
+
+    /// size of voting options
+    options: usize,
+
+    /// the number of choice within the proposal you vote for
+    choice: u8,
+
+    /// key to encrypt the vote with
+    encrypting_key: String,
+
+    /// write the output to the given file or print it to the standard output if not defined
+    #[structopt(long = "output")]
+    output: Option<PathBuf>,
+}
+
+/// create a vote cast certificate
+#[derive(StructOpt)]
+pub enum VoteCastCmd {
+    Public(PublicVoteCast),
+    Private(PrivateVoteCast),
+}
+
+impl PublicVoteCast {
     pub fn exec(self) -> Result<(), Error> {
-        let payload = if self.public {
-            Payload::Public {
-                choice: Choice::new(self.choice),
-            }
-        } else {
-            unimplemented!("private votes are not supported yet");
+        let payload = Payload::Public {
+            choice: Choice::new(self.choice),
         };
 
         let vote_cast = VoteCast::new(self.vote_plan_id, self.proposal_index, payload);
         let cert = Certificate::VoteCast(vote_cast);
         write_cert(self.output.as_deref(), cert.into())
+    }
+}
+
+impl PrivateVoteCast {
+    pub fn exec(self) -> Result<(), Error> {
+        let mut rng = rand_chacha::ChaChaRng::from_entropy();
+
+        let key_bin = base64::decode(self.encrypting_key).map_err(Error::Base64)?;
+        let key =
+            chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)?;
+
+        let vote = chain_vote::Vote::new(self.options, self.choice as usize);
+        let (encrypted_vote, proof) = chain_vote::encrypt_vote(&mut rng, &key, vote);
+
+        let payload = Payload::Private {
+            encrypted_vote,
+            proof,
+        };
+
+        let vote_cast = VoteCast::new(self.vote_plan_id, self.proposal_index, payload);
+        let cert = Certificate::VoteCast(vote_cast);
+        write_cert(self.output.as_deref(), cert.into())
+    }
+}
+
+impl VoteCastCmd {
+    pub fn exec(self) -> Result<(), Error> {
+        match self {
+            VoteCastCmd::Public(vote_cast) => vote_cast.exec(),
+            VoteCastCmd::Private(vote_cast) => vote_cast.exec(),
+        }
     }
 }
