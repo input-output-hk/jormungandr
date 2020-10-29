@@ -3,10 +3,9 @@ use jortestkit::process::output_extensions::ProcessOutput;
 
 use crate::common::jcli::command::CertificateCommand;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::prelude::*;
-use assert_fs::{NamedTempFile, TempDir};
+use assert_fs::{prelude::*, NamedTempFile};
 use jormungandr_testing_utils::testing::file;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 #[derive(Debug)]
 pub struct Certificate {
     command: CertificateCommand,
@@ -17,7 +16,7 @@ impl Certificate {
         Self { command }
     }
 
-    pub fn new_vote_plan<P: AsRef<Path>>(mut self, proposal_file: P) -> String {
+    pub fn new_vote_plan<P: AsRef<Path>>(self, proposal_file: P) -> String {
         self.command
             .vote(proposal_file)
             .build()
@@ -28,7 +27,7 @@ impl Certificate {
     }
 
     pub fn new_stake_delegation<S: Into<String>, P: Into<String>>(
-        mut self,
+        self,
         stake_pool_id: S,
         delegation_id: P,
     ) -> String {
@@ -43,7 +42,7 @@ impl Certificate {
     }
 
     pub fn new_stake_pool_registration(
-        mut self,
+        self,
         kes_key: &str,
         vrf_key: &str,
         start_validity: u32,
@@ -68,7 +67,7 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn stake_pool_id<P: AsRef<Path>>(mut self, input_file: P) -> String {
+    pub fn stake_pool_id<P: AsRef<Path>>(self, input_file: P) -> String {
         println!("Running get stake pool id...");
         let temp_file = NamedTempFile::new("stake_pool.id").unwrap();
         self.command
@@ -81,7 +80,7 @@ impl Certificate {
     }
 
     pub fn sign<P: AsRef<Path>, Q: AsRef<Path>, R: AsRef<Path>>(
-        mut self,
+        self,
         signing_key: P,
         input_file: Q,
         output_file: R,
@@ -96,7 +95,7 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn new_stake_pool_retirement(mut self, stake_pool_id: &str) -> String {
+    pub fn new_stake_pool_retirement(self, stake_pool_id: &str) -> String {
         println!("Running create retirement certification...");
         self.command
             .retire(stake_pool_id, 0u64)

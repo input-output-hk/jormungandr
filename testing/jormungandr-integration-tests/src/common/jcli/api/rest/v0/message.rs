@@ -1,16 +1,10 @@
 use crate::common::jcli::command::rest::v0::MessageCommand;
-use crate::common::jcli::command::{AddressCommand, GenesisCommand};
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::assert::PathAssert;
-use assert_fs::fixture::FileWriteStr;
-use assert_fs::{fixture::ChildPath, NamedTempFile};
-use chain_addr::Discrimination;
+use assert_fs::{fixture::FileWriteStr, NamedTempFile};
 use chain_impl_mockchain::fragment::FragmentId;
-use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
+use jormungandr_lib::interfaces::FragmentLog;
 use jormungandr_testing_utils::testing::process::ProcessOutput as _;
 use jortestkit::prelude::ProcessOutput;
-use std::str::FromStr;
-use std::{collections::BTreeMap, path::Path};
 
 pub struct Message {
     message_command: MessageCommand,

@@ -1,5 +1,4 @@
 use crate::common::jcli::JCli;
-use assert_cmd::assert::OutputAssertExt;
 use chain_addr::Discrimination;
 
 #[test]

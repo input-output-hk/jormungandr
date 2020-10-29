@@ -8,8 +8,6 @@ pub use generate::KeyGenerateCommand;
 pub use to_bytes::KeyToBytesCommand;
 pub use to_public::KeyToPublicCommand;
 
-use assert_cmd::assert::OutputAssertExt;
-use jortestkit::prelude::ProcessOutput;
 use std::process::Command;
 
 pub struct KeyCommand {

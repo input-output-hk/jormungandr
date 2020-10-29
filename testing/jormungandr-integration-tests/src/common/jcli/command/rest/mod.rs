@@ -2,8 +2,6 @@ pub mod v0;
 
 pub use v0::V0Command;
 
-use assert_cmd::assert::OutputAssertExt;
-use jortestkit::prelude::ProcessOutput;
 use std::process::Command;
 
 pub struct RestCommand {

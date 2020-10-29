@@ -10,8 +10,6 @@ pub use services::Error;
 use super::jormungandr::JormungandrProcess;
 use crate::common::configuration;
 use api::{Address, Certificate, Genesis, Key, Rest, Transaction};
-use assert_fs::TempDir;
-use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::crypto::hash::Hash;
 use services::{CertificateBuilder, FragmentSender, FragmentsCheck, TransactionBuilder};
 use std::{
@@ -83,7 +81,7 @@ impl JCli {
         TransactionBuilder::new(self.clone(), genesis_hash)
     }
 
-    pub fn certificate_builder(&self, genesis_hash: Hash) -> CertificateBuilder {
+    pub fn certificate_builder(&self) -> CertificateBuilder {
         CertificateBuilder::new(self.clone())
     }
 

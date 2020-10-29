@@ -1,5 +1,4 @@
-use crate::common::configuration;
-use chain_impl_mockchain::{fee::LinearFee, value::Value};
+use chain_impl_mockchain::fee::LinearFee;
 use std::path::Path;
 use std::process::Command;
 
@@ -90,7 +89,6 @@ impl TransactionCommand {
         linear_fees: &LinearFee,
         staging_file: P,
     ) -> Self {
-        let mut command = Command::new(configuration::get_jcli_app());
         self.command
             .arg("finalize")
             .arg(address)

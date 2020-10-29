@@ -1,5 +1,3 @@
-use assert_cmd::assert::OutputAssertExt;
-use jortestkit::prelude::ProcessOutput;
 use std::process::Command;
 
 pub struct UtxOCommand {

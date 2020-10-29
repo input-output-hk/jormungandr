@@ -1,11 +1,5 @@
 use super::{FragmentCheck, FragmentsCheck};
-use crate::common::{
-    jcli::{JCli, JCliCommand},
-    jormungandr::JormungandrProcess,
-};
-use chain_impl_mockchain::fragment::FragmentId;
-use jormungandr_lib::interfaces::FragmentLog;
-use jortestkit::process::Wait;
+use crate::common::{jcli::JCli, jormungandr::JormungandrProcess};
 
 pub struct FragmentSender<'a> {
     jcli: JCli,

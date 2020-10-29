@@ -1,19 +1,15 @@
 #![allow(dead_code)]
 
 use crate::common::{data::witness::Witness, jcli::JCli};
-use assert_cmd::assert::OutputAssertExt;
 use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{prelude::*, TempDir};
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{LegacyUTxO, UTxOInfo, Value},
 };
-use jormungandr_testing_utils::testing::process::ProcessOutput;
 use jormungandr_testing_utils::wallet::Wallet;
-use jortestkit::process::output_extensions::ProcessOutput as _;
 use std::path::{Path, PathBuf};
 
 pub struct TransactionBuilder {
@@ -40,7 +36,7 @@ impl TransactionBuilder {
     }
 
     pub fn build_transaction_from_utxo(
-        mut self,
+        self,
         utxo: &UTxOInfo,
         input_amount: Value,
         sender: &Wallet,
@@ -61,7 +57,7 @@ impl TransactionBuilder {
     }
 
     pub fn build_transaction(
-        mut self,
+        self,
         transaction_id: &Hash,
         transaction_index: u8,
         output_amount: Value,
@@ -226,18 +222,14 @@ impl TransactionBuilder {
     }
 
     pub fn make_witness(&mut self, witness: &Witness) -> &mut Self {
-        self.jcli
-            .transaction()
-            .make_witness(witness, self.staging_file_path());
+        self.jcli.transaction().make_witness(witness);
         self
     }
 
     pub fn make_witness_expect_fail(&mut self, witness: &Witness, expected_msg: &str) -> &mut Self {
-        self.jcli.transaction().make_witness_expect_fail(
-            witness,
-            self.staging_file_path(),
-            expected_msg,
-        );
+        self.jcli
+            .transaction()
+            .make_witness_expect_fail(witness, expected_msg);
         self
     }
 

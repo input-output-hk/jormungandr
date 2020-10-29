@@ -1,12 +1,8 @@
 use crate::common::jcli::command::KeyCommand;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::fixture::ChildPath;
-use assert_fs::fixture::FileWriteStr;
-use assert_fs::{assert::PathAssert, NamedTempFile};
-use jormungandr_lib::crypto::hash::Hash;
+use assert_fs::{fixture::FileWriteStr, NamedTempFile};
 use jortestkit::prelude::ProcessOutput;
 use std::path::Path;
-use std::str::FromStr;
 const DEFAULT_KEY_TYPE: &str = "Ed25519Extended";
 
 pub struct Key {

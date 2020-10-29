@@ -1,10 +1,5 @@
-use crate::common::{
-    data::witness::Witness,
-    jcli::{command::TransactionCommand, JCli},
-};
+use crate::common::{data::witness::Witness, jcli::command::TransactionCommand};
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
@@ -15,7 +10,7 @@ use jormungandr_lib::{
 use jormungandr_testing_utils::testing::process::ProcessOutput;
 use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::process::output_extensions::ProcessOutput as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub struct Transaction {
     command: TransactionCommand,
@@ -26,7 +21,7 @@ impl Transaction {
         Self { command }
     }
 
-    pub fn new_transaction<P: AsRef<Path>>(mut self, staging_file: P) {
+    pub fn new_transaction<P: AsRef<Path>>(self, staging_file: P) {
         self.command
             .new_transaction(staging_file)
             .build()
@@ -35,7 +30,7 @@ impl Transaction {
     }
 
     pub fn add_input<P: AsRef<Path>>(
-        mut self,
+        self,
         tx_id: &Hash,
         tx_index: u8,
         amount: &str,
@@ -49,7 +44,7 @@ impl Transaction {
     }
 
     pub fn add_input_expect_fail<P: AsRef<Path>>(
-        mut self,
+        self,
         tx_id: &Hash,
         tx_index: u8,
         amount: &str,
@@ -65,7 +60,7 @@ impl Transaction {
     }
 
     pub fn add_input_from_utxo_with_value<P: AsRef<Path>>(
-        mut self,
+        self,
         utxo: &UTxOInfo,
         amount: Value,
         staging_file: P,
@@ -78,7 +73,7 @@ impl Transaction {
         )
     }
 
-    pub fn add_input_from_utxo<P: AsRef<Path>>(mut self, utxo: &UTxOInfo, staging_file: P) {
+    pub fn add_input_from_utxo<P: AsRef<Path>>(self, utxo: &UTxOInfo, staging_file: P) {
         self.add_input(
             &utxo.transaction_id(),
             utxo.index_in_transaction(),
@@ -87,11 +82,7 @@ impl Transaction {
         );
     }
 
-    pub fn add_certificate<S: Into<String>, P: AsRef<Path>>(
-        mut self,
-        certificate: S,
-        staging_file: P,
-    ) {
+    pub fn add_certificate<S: Into<String>, P: AsRef<Path>>(self, certificate: S, staging_file: P) {
         self.command
             .add_certificate(certificate, staging_file)
             .build()
@@ -99,12 +90,7 @@ impl Transaction {
             .success();
     }
 
-    pub fn add_account<P: AsRef<Path>>(
-        mut self,
-        account_addr: &str,
-        amount: &str,
-        staging_file: P,
-    ) {
+    pub fn add_account<P: AsRef<Path>>(self, account_addr: &str, amount: &str, staging_file: P) {
         self.command
             .add_account(&account_addr, amount, staging_file)
             .build()
@@ -113,7 +99,7 @@ impl Transaction {
     }
 
     pub fn add_account_expect_fail<P: AsRef<Path>>(
-        mut self,
+        self,
         account_addr: &str,
         amount: &str,
         staging_file: P,
@@ -127,7 +113,7 @@ impl Transaction {
             .stderr(predicates::str::contains(expected_msg));
     }
 
-    pub fn add_account_from_legacy<P: AsRef<Path>>(mut self, fund: &LegacyUTxO, staging_file: P) {
+    pub fn add_account_from_legacy<P: AsRef<Path>>(self, fund: &LegacyUTxO, staging_file: P) {
         self.add_account(
             &fund.address.to_string(),
             &fund.value.to_string(),
@@ -135,7 +121,7 @@ impl Transaction {
         )
     }
 
-    pub fn add_output<P: AsRef<Path>>(mut self, addr: &str, amount: Value, staging_file: P) {
+    pub fn add_output<P: AsRef<Path>>(self, addr: &str, amount: Value, staging_file: P) {
         self.command
             .add_output(&addr, &amount.to_string(), staging_file)
             .build()
@@ -143,7 +129,7 @@ impl Transaction {
             .success();
     }
 
-    pub fn finalize<P: AsRef<Path>>(mut self, staging_file: P) {
+    pub fn finalize<P: AsRef<Path>>(self, staging_file: P) {
         self.command
             .finalize(staging_file)
             .build()
@@ -152,7 +138,7 @@ impl Transaction {
     }
 
     pub fn finalize_with_fee<P: AsRef<Path>>(
-        mut self,
+        self,
         address: &str,
         linear_fee: &LinearFee,
         staging_file: P,
@@ -164,7 +150,7 @@ impl Transaction {
             .success();
     }
 
-    pub fn finalize_expect_fail<P: AsRef<Path>>(mut self, staging_file: P, expected_part: &str) {
+    pub fn finalize_expect_fail<P: AsRef<Path>>(self, staging_file: P, expected_part: &str) {
         self.command
             .finalize(staging_file)
             .build()
@@ -173,7 +159,7 @@ impl Transaction {
             .stderr(predicates::str::contains(expected_part));
     }
 
-    pub fn auth<P: AsRef<Path>, Q: AsRef<Path>>(mut self, key: P, staging_file: Q) {
+    pub fn auth<P: AsRef<Path>, Q: AsRef<Path>>(self, key: P, staging_file: Q) {
         self.command
             .auth(key, staging_file)
             .build()
@@ -181,7 +167,7 @@ impl Transaction {
             .success();
     }
 
-    pub fn make_witness<P: AsRef<Path>>(mut self, witness: &Witness, staging_file: P) {
+    pub fn make_witness(self, witness: &Witness) {
         self.command
             .make_witness(
                 &witness.block_hash.to_hex(),
@@ -196,12 +182,7 @@ impl Transaction {
             .success();
     }
 
-    pub fn make_witness_expect_fail<P: AsRef<Path>>(
-        mut self,
-        witness: &Witness,
-        staging_file: P,
-        expected_msg: &str,
-    ) {
+    pub fn make_witness_expect_fail(self, witness: &Witness, expected_msg: &str) {
         self.command
             .make_witness(
                 &witness.block_hash.to_hex(),
@@ -218,7 +199,7 @@ impl Transaction {
     }
 
     pub fn create_witness_from_wallet<P: AsRef<Path>>(
-        mut self,
+        self,
         staging_dir: &TempDir,
         genesis_hash: Hash,
         wallet: &Wallet,
@@ -253,7 +234,7 @@ impl Transaction {
     }
 
     pub fn create_witness_from_key<P: AsRef<Path>>(
-        mut self,
+        self,
         staging_dir: &TempDir,
         genesis_hash: Hash,
         private_key: &str,
@@ -273,7 +254,7 @@ impl Transaction {
     }
 
     pub fn add_witness_expect_fail<P: AsRef<Path>>(
-        mut self,
+        self,
         witness: &Witness,
         staging_file: P,
         expected_part: &str,
@@ -286,7 +267,7 @@ impl Transaction {
             .stderr(predicates::str::contains(expected_part));
     }
 
-    pub fn add_witness<P: AsRef<Path>>(mut self, witness: &Witness, staging_file: P) {
+    pub fn add_witness<P: AsRef<Path>>(self, witness: &Witness, staging_file: P) {
         self.command
             .add_witness(&witness.file, staging_file)
             .build()
@@ -294,11 +275,11 @@ impl Transaction {
             .success();
     }
 
-    pub fn seal<P: AsRef<Path>>(mut self, staging_file: P) {
+    pub fn seal<P: AsRef<Path>>(self, staging_file: P) {
         self.command.seal(staging_file).build().assert().success();
     }
 
-    pub fn to_message<P: AsRef<Path>>(mut self, staging_file: P) -> String {
+    pub fn to_message<P: AsRef<Path>>(self, staging_file: P) -> String {
         self.command
             .to_message(staging_file)
             .build()
@@ -308,7 +289,7 @@ impl Transaction {
             .as_single_line()
     }
 
-    pub fn to_message_expect_fail<P: AsRef<Path>>(mut self, staging_file: P, expected_msg: &str) {
+    pub fn to_message_expect_fail<P: AsRef<Path>>(self, staging_file: P, expected_msg: &str) {
         self.command
             .to_message(staging_file)
             .build()
@@ -317,7 +298,7 @@ impl Transaction {
             .stderr(predicates::str::contains(expected_msg));
     }
 
-    pub fn id<P: AsRef<Path>>(mut self, staging_file: P) -> Hash {
+    pub fn id<P: AsRef<Path>>(self, staging_file: P) -> Hash {
         self.command
             .id(staging_file)
             .build()
@@ -327,7 +308,7 @@ impl Transaction {
             .as_hash()
     }
 
-    pub fn info<P: AsRef<Path>>(mut self, format: &str, staging_file: P) -> String {
+    pub fn info<P: AsRef<Path>>(self, format: &str, staging_file: P) -> String {
         self.command
             .info(format, staging_file)
             .build()
@@ -337,7 +318,7 @@ impl Transaction {
             .as_single_line()
     }
 
-    pub fn fragment_id<P: AsRef<Path>>(mut self, staging_file: P) -> Hash {
+    pub fn fragment_id<P: AsRef<Path>>(self, staging_file: P) -> Hash {
         let fragment_hex = self.to_message(staging_file);
         let fragment_bytes = hex::decode(&fragment_hex).expect("Failed to parse message hex");
         Fragment::deserialize(fragment_bytes.as_slice())
