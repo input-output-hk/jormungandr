@@ -27,16 +27,24 @@ pub struct Wallet {
 
     /// the identifier of delegated account
     delegations: Vec<AccountIdentifier>,
+
+    discrimination: Discrimination,
 }
 
 impl Wallet {
-    pub fn generate<RNG>(rng: &mut RNG) -> Self
+    pub fn generate<RNG>(rng: &mut RNG, discrimination: Discrimination) -> Self
     where
         RNG: CryptoRng + RngCore,
     {
         let mut seed = [0; 32];
         rng.fill_bytes(&mut seed);
-        seed.into()
+        Self {
+            signing_keys: Vec::new(),
+            seed,
+            rng: ChaChaRng::from_seed(seed),
+            delegations: Vec::new(),
+            discrimination,
+        }
     }
 
     pub fn generate_new_signing_key(&mut self, delegation: AccountIdentifier) -> &SpendingKey {
@@ -50,14 +58,17 @@ impl Wallet {
         &self.delegations.get(i).unwrap()
     }
 
-    pub fn address(&self, discrimination: Discrimination) -> Address {
-        self.address_nth(0, discrimination)
+    pub fn address(&self) -> Address {
+        self.address_nth(0)
     }
 
-    pub fn address_nth(&self, i: usize, discrimination: Discrimination) -> Address {
+    pub fn address_nth(&self, i: usize) -> Address {
         self.signing_key(i)
             .identifier()
-            .to_group_address(discrimination, self.delegation(i).clone().to_inner().into())
+            .to_group_address(
+                self.discrimination,
+                self.delegation(i).clone().to_inner().into(),
+            )
             .into()
     }
 
@@ -87,16 +98,5 @@ impl Wallet {
         Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, |d| {
             self.last_signing_key().as_ref().sign(d)
         })
-    }
-}
-
-impl From<[u8; 32]> for Wallet {
-    fn from(seed: [u8; 32]) -> Self {
-        Wallet {
-            signing_keys: Vec::new(),
-            seed,
-            rng: ChaChaRng::from_seed(seed),
-            delegations: Vec::new(),
-        }
     }
 }

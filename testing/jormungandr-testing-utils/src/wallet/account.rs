@@ -30,10 +30,12 @@ pub struct Wallet {
     /// the counter as we know of this value needs to be in sync
     /// with what is in the blockchain
     internal_counter: account::SpendingCounter,
+
+    discrimination: Discrimination,
 }
 
 impl Wallet {
-    pub fn generate<RNG>(rng: &mut RNG) -> Self
+    pub fn generate<RNG>(rng: &mut RNG, discrimination: Discrimination) -> Self
     where
         RNG: CryptoRng + RngCore,
     {
@@ -43,6 +45,7 @@ impl Wallet {
             signing_key,
             identifier,
             internal_counter: account::SpendingCounter::zero(),
+            discrimination,
         }
     }
 
@@ -53,6 +56,7 @@ impl Wallet {
             signing_key,
             identifier,
             internal_counter: spending_counter.unwrap_or_else(|| 0).into(),
+            discrimination: Discrimination::Test,
         }
     }
 
@@ -60,8 +64,8 @@ impl Wallet {
         writeln!(w, "{}", self.signing_key().to_bech32_str())
     }
 
-    pub fn address(&self, discrimination: Discrimination) -> Address {
-        self.identifier().to_address(discrimination).into()
+    pub fn address(&self) -> Address {
+        self.identifier().to_address(self.discrimination).into()
     }
 
     pub fn increment_counter(&mut self) {

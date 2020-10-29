@@ -64,7 +64,17 @@ impl Wallet {
     where
         RNG: CryptoRng + RngCore,
     {
-        Wallet::Account(account::Wallet::generate(rng))
+        Self::new_account_with_discrimination(rng, Discrimination::Test)
+    }
+
+    pub fn new_account_with_discrimination<RNG>(
+        rng: &mut RNG,
+        discrimination: Discrimination,
+    ) -> Wallet
+    where
+        RNG: CryptoRng + RngCore,
+    {
+        Wallet::Account(account::Wallet::generate(rng, discrimination))
     }
 
     pub fn from_existing_account(
@@ -88,14 +98,35 @@ impl Wallet {
     where
         RNG: CryptoRng + RngCore,
     {
-        Wallet::UTxO(utxo::Wallet::generate(rng))
+        Self::new_account_with_discrimination(rng, Discrimination::Test)
+    }
+
+    pub fn new_utxo_with_discrimination<RNG>(
+        rng: &mut RNG,
+        discrimination: Discrimination,
+    ) -> Wallet
+    where
+        RNG: CryptoRng + RngCore,
+    {
+        Wallet::UTxO(utxo::Wallet::generate(rng, discrimination))
     }
 
     pub fn new_delegation<RNG>(delegation_identifier: &AccountIdentifier, rng: &mut RNG) -> Wallet
     where
         RNG: CryptoRng + RngCore,
     {
-        let mut delegation = delegation::Wallet::generate(rng);
+        Self::new_delegation_with_discrimination(delegation_identifier, rng, Discrimination::Test)
+    }
+
+    pub fn new_delegation_with_discrimination<RNG>(
+        delegation_identifier: &AccountIdentifier,
+        rng: &mut RNG,
+        discrimination: Discrimination,
+    ) -> Wallet
+    where
+        RNG: CryptoRng + RngCore,
+    {
+        let mut delegation = delegation::Wallet::generate(rng, discrimination);
         delegation.generate_new_signing_key(delegation_identifier.clone());
         Wallet::Delegation(delegation)
     }
@@ -109,9 +140,9 @@ impl Wallet {
 
     pub fn address(&self) -> Address {
         match self {
-            Wallet::Account(account) => account.address(Discrimination::Test),
-            Wallet::UTxO(utxo) => utxo.address(Discrimination::Test),
-            Wallet::Delegation(delegation) => delegation.address(Discrimination::Test),
+            Wallet::Account(account) => account.address(),
+            Wallet::UTxO(utxo) => utxo.address(),
+            Wallet::Delegation(delegation) => delegation.address(),
         }
     }
 
@@ -340,17 +371,17 @@ impl Into<WalletLib> for Wallet {
             Wallet::Account(account) => AddressData::new(
                 account.signing_key().as_ref().clone(),
                 Some(account.internal_counter()),
-                account.address(Discrimination::Test).into(),
+                account.address().into(),
             ),
             Wallet::UTxO(utxo) => AddressData::new(
                 EitherEd25519SecretKey::Normal(utxo.last_signing_key().as_ref().clone()),
                 None,
-                utxo.address(Discrimination::Test).into(),
+                utxo.address().into(),
             ),
             Wallet::Delegation(delegation) => AddressData::new(
                 EitherEd25519SecretKey::Normal(delegation.last_signing_key().as_ref().clone()),
                 None,
-                delegation.address(Discrimination::Test).into(),
+                delegation.address().into(),
             ),
         };
         let address_data_value = AddressDataValue::new(address_data, ValueLib(0));
