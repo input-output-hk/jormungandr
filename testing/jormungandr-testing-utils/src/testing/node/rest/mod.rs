@@ -1,8 +1,10 @@
-use crate::{
-    testing::node::{legacy, RestSettings},
-    testing::MemPoolCheck,
-    wallet::Wallet,
-};
+mod raw;
+mod settings;
+
+pub use raw::RawRest;
+pub use settings::RestSettings;
+
+use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
 use assert_fs::fixture::ChildPath;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
@@ -12,7 +14,6 @@ use jormungandr_lib::{
         PeerRecord, PeerStats, StakeDistributionDto, VotePlanStatus,
     },
 };
-use legacy::Settings;
 use std::collections::HashMap;
 use std::io::Read;
 use std::{fs::File, net::SocketAddr, path::Path};
@@ -26,6 +27,8 @@ pub enum RestError {
     RequestError(#[from] reqwest::Error),
     #[error("hash parse error")]
     HashParseError(#[from] chain_crypto::hash::Error),
+    #[error("error while polling endpoint")]
+    PollError(#[from] jortestkit::process::WaitError),
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
@@ -45,7 +48,7 @@ impl JormungandrRest {
         }
     }
 
-    pub fn new_with_custom_settings(uri: String, settings: Settings) -> Self {
+    pub fn new_with_custom_settings(uri: String, settings: RestSettings) -> Self {
         Self {
             inner: legacy::BackwardCompatibleRest::new(uri, settings),
         }
@@ -57,6 +60,10 @@ impl JormungandrRest {
 
     pub fn enable_logger(&mut self) {
         self.inner.enable_logger();
+    }
+
+    pub fn raw(&self) -> &RawRest {
+        self.inner.raw()
     }
 
     pub fn new_with_cert(uri: String, cert_file: &ChildPath) -> Self {
