@@ -136,12 +136,13 @@ pub fn real_praos_network(context: Context<ChaChaRng>) -> Result<ScenarioResult>
         legacies_per_relay,
         context,
         ConsensusVersion::GenesisPraos,
+        PersistenceMode::Persistent,
         name,
     )
 }
 
 pub fn real_bft_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
-    let relay_nodes_count = 5;
+    let relay_nodes_count = 3;
     let leaders_per_relay = 11;
     let legacies_per_relay = 0;
     let name = "real_bft_Network".to_owned();
@@ -152,6 +153,7 @@ pub fn real_bft_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         legacies_per_relay,
         context,
         ConsensusVersion::Bft,
+        PersistenceMode::Persistent,
         name,
     )
 }
@@ -162,6 +164,7 @@ pub fn real_network(
     legacies_per_relay: u32,
     context: Context<ChaChaRng>,
     consensus: ConsensusVersion,
+    persistence_mode: PersistenceMode,
     name: String,
 ) -> Result<ScenarioResult> {
     let scenario_settings = prepare_real_scenario(
@@ -174,15 +177,14 @@ pub fn real_network(
     );
     let mut controller = scenario_settings.build(context)?;
 
-    let core =
-        controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
+    let core = controller.spawn_node(CORE_NODE, LeadershipMode::Leader, persistence_mode)?;
 
     let mut relays = vec![];
     for i in 0..relay_nodes_count {
         relays.push(controller.spawn_node(
             &relay_name(i + 1),
             LeadershipMode::Leader,
-            PersistenceMode::InMemory,
+            persistence_mode,
         )?);
     }
 
@@ -191,7 +193,7 @@ pub fn real_network(
         leaders.push(controller.spawn_node(
             &leader_name(i + 1),
             LeadershipMode::Leader,
-            PersistenceMode::InMemory,
+            persistence_mode,
         )?);
     }
 
@@ -208,7 +210,7 @@ pub fn real_network(
                 controller
                     .new_spawn_params(&legacy_name(i + 1))
                     .leadership_mode(LeadershipMode::Leader)
-                    .persistence_mode(PersistenceMode::InMemory)
+                    .persistence_mode(persistence_mode)
                     .jormungandr(legacy_app.clone()),
                 &version,
             )?,
