@@ -3,7 +3,8 @@ pub use commands::{get_command, CommandBuilder};
 
 use super::ConfigurationBuilder;
 use crate::common::{
-    configuration::get_jormungandr_app, jcli_wrapper::jcli_commands,
+    configuration::get_jormungandr_app,
+    jcli::{JCli, JCliCommand},
     jormungandr::process::JormungandrProcess,
 };
 use assert_cmd::assert::OutputAssertExt;
@@ -25,7 +26,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::{
-    process::Child,
+    process::{Child, Command},
     time::{Duration, Instant},
 };
 use thiserror::Error;
@@ -117,20 +118,27 @@ impl<'a, Conf: TestConfig> StartupVerification for RestStartupVerification<'a, C
     }
 
     fn if_succeed(&self) -> bool {
-        let output = jcli_commands::get_rest_stats_command(&self.config.rest_uri())
+        let jcli: JCli = Default::default();
+
+        let output = JCliCommand::new(Command::new(jcli.path()))
+            .rest()
+            .v0()
+            .node()
+            .stats(&self.config.rest_uri())
+            .build()
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .unwrap()
             .wait_with_output()
-            .expect("failed to execute get_rest_stats command");
+            .expect("failed to execute get_rest_stats command")
+            .try_as_single_node_yaml();
 
-        let content_result = output.try_as_single_node_yaml();
-        if content_result.is_err() {
+        if output.is_err() {
             return false;
         }
 
-        match content_result.unwrap().get("uptime") {
+        match output.unwrap().get("uptime") {
             Some(uptime) => {
                 uptime
                     .parse::<i32>()

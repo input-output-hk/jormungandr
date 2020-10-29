@@ -1,6 +1,5 @@
 use crate::common::{
-    jcli_wrapper,
-    jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper,
+    jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Role, Starter},
     startup,
 };
@@ -33,13 +32,17 @@ fn take_snapshot(
     jormungandr: &JormungandrProcess,
     utxo_info: UTxOInfo,
 ) -> LedgerSnapshot {
+    let jcli: JCli = Default::default();
     let rest_uri = jormungandr.rest_uri();
-    let settings = jcli_wrapper::assert_get_rest_settings(&rest_uri);
-    let account = jcli_wrapper::assert_rest_account_get_stats(
-        &account_receiver.address().to_string(),
-        &rest_uri,
-    );
-    jcli_wrapper::assert_rest_utxo_get_returns_same_utxo(&rest_uri, &utxo_info);
+    let settings = jcli.rest().v0().settings(&rest_uri);
+    let account = jcli
+        .rest()
+        .v0()
+        .account_stats(account_receiver.address().to_string(), &rest_uri);
+    jcli.rest()
+        .v0()
+        .utxo()
+        .assert_contains(&utxo_info, &rest_uri);
 
     LedgerSnapshot::new(settings, utxo_info, account)
 }
@@ -51,19 +54,22 @@ pub fn do_simple_transaction(
     utxo_receiver: &Wallet,
     jormungandr: &JormungandrProcess,
 ) -> UTxOInfo {
+    let jcli: JCli = Default::default();
     const TX_VALUE: u64 = 50;
-    let mut tx =
-        JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string());
+    let mut tx = jcli.transaction_builder(jormungandr.genesis_block_hash());
     let transaction_message = tx
-        .assert_add_input_from_utxo(utxo_sender)
-        .assert_add_output(&account_receiver.address().to_string(), TX_VALUE.into())
-        .assert_add_output(&utxo_receiver.address().to_string(), TX_VALUE.into())
-        .assert_finalize()
+        .new_transaction()
+        .add_input_from_utxo(utxo_sender)
+        .add_output(&account_receiver.address().to_string(), TX_VALUE.into())
+        .add_output(&utxo_receiver.address().to_string(), TX_VALUE.into())
+        .finalize()
         .seal_with_witness_for_address(&sender)
-        .assert_to_message();
-    let tx_id = tx.get_fragment_id();
+        .to_message();
+    let tx_id = tx.fragment_id();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction_message, &jormungandr);
+    jcli.fragment_sender(&jormungandr)
+        .send(&transaction_message)
+        .assert_in_block();
 
     UTxOInfo::new(tx_id, 1, utxo_receiver.address(), TX_VALUE.into())
 }

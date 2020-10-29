@@ -1,5 +1,5 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 
 use chain_impl_mockchain::rewards::TaxType;
@@ -10,6 +10,7 @@ use assert_fs::TempDir;
 #[test]
 pub fn update_pool_fees_is_not_allowed() {
     let temp_dir = TempDir::new().unwrap();
+    let jcli: JCli = Default::default();
 
     let mut stake_pool_owner = startup::create_new_account_address();
 
@@ -39,9 +40,7 @@ pub fn update_pool_fees_is_not_allowed() {
         .unwrap()
         .encode();
 
-    jcli_wrapper::assert_transaction_rejected(
-        &transaction,
-        &jormungandr,
-        "Pool update doesnt currently allow fees update",
-    );
+    jcli.fragment_sender(&jormungandr)
+        .send(&transaction)
+        .assert_rejected("Pool update doesnt currently allow fees update");
 }

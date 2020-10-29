@@ -1,5 +1,5 @@
 use super::JormungandrError;
-use crate::common::jcli_wrapper;
+use crate::common::jcli::JCli;
 use assert_fs::{fixture::ChildPath, TempDir};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
@@ -65,7 +65,8 @@ impl JormungandrProcess {
     }
 
     pub fn shutdown(&self) {
-        jcli_wrapper::assert_rest_shutdown(&self.rest_uri());
+        let jcli: JCli = Default::default();
+        jcli.rest().v0().shutdown(self.rest_uri());
     }
 
     pub fn address(&self) -> poldercast::Address {

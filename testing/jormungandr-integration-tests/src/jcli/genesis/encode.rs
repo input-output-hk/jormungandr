@@ -1,6 +1,6 @@
 use crate::common::{
     configuration::{Block0ConfigurationBuilder, JormungandrParams},
-    jcli_wrapper,
+    jcli::JCli,
     jormungandr::ConfigurationBuilder,
     startup,
 };
@@ -57,16 +57,18 @@ impl Fixture {
 
     fn assert_encode(&self) {
         let yaml_file = self.write_config("genesis.yaml");
-        jcli_wrapper::assert_genesis_encode(yaml_file.path(), &self.temp_dir.child("block-0.bin"));
+        let jcli: JCli = Default::default();
+        jcli.genesis()
+            .encode(yaml_file.path(), &self.temp_dir.child("block-0.bin"));
     }
 
     fn assert_encode_fails(&self, expected_msg: &str) {
+        let jcli: JCli = Default::default();
+
         let yaml_file = self.write_config("genesis.yaml");
-        jcli_wrapper::assert_genesis_encode_fails(
-            yaml_file.path(),
-            &self.temp_dir.child("block0-failure.bin"),
-            expected_msg,
-        );
+
+        jcli.genesis()
+            .encode_expect_fail(yaml_file.path(), expected_msg);
     }
 }
 
@@ -98,9 +100,13 @@ pub fn test_genesis_for_production_is_successfully_built() {
 
 #[test]
 pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_build() {
-    let private_key = jcli_wrapper::assert_key_generate_default();
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let test_address = jcli_wrapper::assert_address_single(&public_key, Discrimination::Test);
+    let jcli: JCli = Default::default();
+
+    let private_key = jcli.key().generate_default();
+    let public_key = jcli.key().to_public(&private_key);
+    let test_address = jcli
+        .address()
+        .single(&public_key, None, Discrimination::Test);
 
     let mut fixture = Fixture::new();
     let block0_configuration = fixture.config_mut();
@@ -181,22 +187,27 @@ pub fn test_genesis_decode_bijection() {
 
     let expected_yaml_file = fixture.write_config("expected-genesis.yaml");
     let actual_yaml_file = fixture.temp_dir().child("actual-genesis.yaml");
+    let jcli: JCli = Default::default();
 
-    jcli_wrapper::assert_genesis_decode(params.genesis_block_path(), &actual_yaml_file);
+    jcli.clone()
+        .genesis()
+        .decode(params.genesis_block_path(), &actual_yaml_file);
     actual_yaml_file.assert(crate::predicate::file_text_content_is_same_as(
         expected_yaml_file.path(),
     ));
 
     let block0_after = fixture.temp_dir().child("block-0-after.bin");
-    jcli_wrapper::assert_genesis_encode(actual_yaml_file.path(), &block0_after);
+    jcli.clone()
+        .genesis()
+        .encode(actual_yaml_file.path(), &block0_after);
 
     block0_after.assert(crate::predicate::file_binary_content_is_same_as(
         params.genesis_block_path(),
     ));
 
-    let right_hash = jcli_wrapper::assert_genesis_hash(block0_after.path());
+    let right_hash = jcli.genesis().hash(block0_after.path());
 
-    assert_eq!(params.genesis_block_hash(), right_hash);
+    assert_eq!(params.genesis_block_hash(), right_hash.to_string());
 }
 
 #[test]

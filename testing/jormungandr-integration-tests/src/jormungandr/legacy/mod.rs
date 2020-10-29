@@ -1,6 +1,6 @@
 use crate::common::transaction_utils::TransactionHash;
 use crate::common::{
-    jcli_wrapper,
+    jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
@@ -21,6 +21,7 @@ use assert_fs::TempDir;
 #[test]
 pub fn test_legacy_node_all_fragments() {
     let temp_dir = TempDir::new().unwrap();
+    let jcli: JCli = Default::default();
 
     let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
     let jormungandr = get_jormungandr_bin(&legacy_release, &temp_dir);
@@ -122,9 +123,9 @@ pub fn test_legacy_node_all_fragments() {
         .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
         .expect("error while sending owner delegation cert");
 
-    let stake_pool_owner_info = jcli_wrapper::assert_rest_account_get_stats(
-        &first_stake_pool_owner.address().to_string(),
-        &jormungandr.rest_uri(),
+    let stake_pool_owner_info = jcli.rest().v0().account_stats(
+        first_stake_pool_owner.address().to_string(),
+        jormungandr.rest_uri(),
     );
     let stake_pool_owner_delegation: DelegationType =
         stake_pool_owner_info.delegation().clone().into();
@@ -146,10 +147,10 @@ pub fn test_legacy_node_all_fragments() {
         .send_fragment(&mut full_delegator, fragment, &jormungandr)
         .unwrap();
 
-    let full_delegator_info = jcli_wrapper::assert_rest_account_get_stats(
-        &full_delegator.address().to_string(),
-        &jormungandr.rest_uri(),
-    );
+    let full_delegator_info = jcli
+        .rest()
+        .v0()
+        .account_stats(full_delegator.address().to_string(), jormungandr.rest_uri());
     let full_delegator_delegation: DelegationType = full_delegator_info.delegation().clone().into();
     assert_eq!(
         full_delegator_delegation,
@@ -169,9 +170,9 @@ pub fn test_legacy_node_all_fragments() {
         .send_fragment(&mut split_delegator, fragment, &jormungandr)
         .unwrap();
 
-    let split_delegator = jcli_wrapper::assert_rest_account_get_stats(
-        &split_delegator.address().to_string(),
-        &jormungandr.rest_uri(),
+    let split_delegator = jcli.rest().v0().account_stats(
+        split_delegator.address().to_string(),
+        jormungandr.rest_uri(),
     );
     let delegation_ratio = DelegationRatio::new(
         2,
@@ -206,7 +207,9 @@ pub fn test_legacy_node_all_fragments() {
         )
         .unwrap();
 
-    jcli_wrapper::assert_transaction_in_block(&fragment.encode(), &jormungandr);
+    jcli.fragment_sender(&jormungandr)
+        .send(&fragment.encode())
+        .assert_in_block();
     first_stake_pool_owner.confirm_transaction();
 
     // 7. send pool retire certificate

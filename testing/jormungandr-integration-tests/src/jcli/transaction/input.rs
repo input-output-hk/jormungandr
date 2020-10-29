@@ -1,4 +1,4 @@
-use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
+use crate::common::jcli::JCli;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::testing::file as file_utils;
 
@@ -13,28 +13,38 @@ const FAKE_GENESIS_HASH: &str = "19c9852ca0a68f15d0f7de5d1a26acd67a3a3251640c606
 
 #[test]
 pub fn test_cannot_create_input_with_negative_amount() {
-    JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH).assert_add_input_fail(
-        &FAKE_INPUT_TRANSACTION_ID,
-        0,
-        "-100",
-        "Found argument '-1' which wasn't expected",
-    );
+    let jcli: JCli = Default::default();
+    jcli.transaction_builder(Hash::from_hex(FAKE_GENESIS_HASH).unwrap())
+        .new_transaction()
+        .add_input_expect_fail(
+            &FAKE_INPUT_TRANSACTION_ID,
+            0,
+            "-100",
+            "Found argument '-1' which wasn't expected",
+        );
 }
 
 #[test]
 pub fn test_cannot_create_input_with_too_big_utxo_amount() {
-    JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH).assert_add_input_fail(
-        &FAKE_INPUT_TRANSACTION_ID,
-        0,
-        "100000000000000000000",
-        "error: Invalid value for '<VALUE>': number too large to fit in target type",
-    );
+    let jcli: JCli = Default::default();
+    jcli.transaction_builder(Hash::from_hex(FAKE_GENESIS_HASH).unwrap())
+        .new_transaction()
+        .add_input_expect_fail(
+            &FAKE_INPUT_TRANSACTION_ID,
+            0,
+            "100000000000000000000",
+            "error: Invalid value for '<VALUE>': number too large to fit in target type",
+        );
 }
 
 #[test]
 #[cfg(not(target_os = "linux"))]
 pub fn test_cannot_create_input_when_staging_file_is_readonly() {
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let jcli: JCli = Default::default();
+    let mut transaction_wrapper =
+        jcli.transaction_builder(Hash::from_hex(FAKE_GENESIS_HASH).unwrap());
+
+    transaction_wrapper.new_transaction();
     file_utils::make_readonly(&transaction_wrapper.staging_file_path());
-    transaction_wrapper.assert_add_input_fail(&FAKE_INPUT_TRANSACTION_ID, 0, "100", "denied");
+    transaction_wrapper.add_input_expect_fail(&FAKE_INPUT_TRANSACTION_ID, 0, "100", "denied");
 }

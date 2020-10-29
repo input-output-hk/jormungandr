@@ -1,18 +1,25 @@
-use crate::common::jcli_wrapper;
+use crate::common::jcli::JCli;
 use chain_addr::Discrimination;
 
 #[test]
 pub fn test_info_unknown_address_public_key() {
+    let jcli: JCli = Default::default();
+
     let account_address = "48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8";
-    jcli_wrapper::assert_get_address_info_fails(&account_address, "invalid internal encoding");
+    jcli.address()
+        .info_expect_fail(account_address, "invalid internal encoding");
 }
 
 #[test]
 pub fn test_info_account_address() {
-    let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let account_address = jcli_wrapper::assert_address_account(&public_key, Discrimination::Test);
-    let info = jcli_wrapper::assert_get_address_info(&account_address);
+    let jcli: JCli = Default::default();
+
+    let private_key = jcli.key().generate("ed25519Extended");
+    let public_key = jcli.key().to_public(&private_key);
+    let account_address = jcli
+        .address()
+        .account(&public_key, None, Discrimination::Test);
+    let info = jcli.address().info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),
         "testing",
@@ -23,11 +30,14 @@ pub fn test_info_account_address() {
 
 #[test]
 pub fn test_info_account_address_for_prod() {
-    let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
-    let account_address =
-        jcli_wrapper::assert_address_account(&public_key, Discrimination::Production);
-    let info = jcli_wrapper::assert_get_address_info(&account_address);
+    let jcli: JCli = Default::default();
+
+    let private_key = jcli.key().generate("ed25519Extended");
+    let public_key = jcli.key().to_public(&private_key);
+    let account_address = jcli
+        .address()
+        .account(&public_key, None, Discrimination::Production);
+    let info = jcli.address().info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),
         "production",
@@ -38,14 +48,17 @@ pub fn test_info_account_address_for_prod() {
 
 #[test]
 pub fn test_info_delegation_address() {
-    let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
-    let public_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+    let jcli: JCli = Default::default();
 
-    let private_key = jcli_wrapper::assert_key_generate("ed25519Extended");
-    let delegation_key = jcli_wrapper::assert_key_to_public_default(&private_key);
+    let private_key = jcli.key().generate("ed25519Extended");
+    let public_key = jcli.key().to_public(&private_key);
+
+    let private_key = jcli.key().generate("ed25519Extended");
+    let delegation_key = jcli.key().to_public(&private_key);
     let account_address =
-        jcli_wrapper::assert_address_delegation(&public_key, &delegation_key, Discrimination::Test);
-    let info = jcli_wrapper::assert_get_address_info(&account_address);
+        jcli.address()
+            .delegation(&public_key, &delegation_key, Discrimination::Test);
+    let info = jcli.address().info(&account_address);
     assert_eq!(
         info.get("discrimination").unwrap(),
         "testing",

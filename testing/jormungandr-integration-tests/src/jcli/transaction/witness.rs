@@ -1,9 +1,10 @@
 use crate::common::data::witness::Witness;
-use crate::common::file_utils;
-use crate::common::jcli_wrapper;
-use crate::common::jcli_wrapper::jcli_transaction_wrapper::JCLITransactionWrapper;
 use crate::common::startup;
 use std::path::PathBuf;
+use crate::common::jcli::JCli;
+use jortestkit::file::make_readonly;
+use chain_impl_mockchain::key::Hash;
+use assert_fs::TempDir;
 
 const FAKE_INPUT_TRANSACTION_ID: &str =
     "19c9852ca0a68f15d0f7de5d1a26acd67a3a3251640c6066bdb91d22e2000193";
@@ -75,10 +76,11 @@ pub fn test_make_witness_with_unknown_type_fails() {
 #[test]
 pub fn test_make_witness_with_invalid_private_key_fails() {
     let reciever = startup::create_new_utxo_address();
+    let jcli: JCli = Default::default();
 
     let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
 
-    let mut private_key = jcli_wrapper::assert_key_generate_default();
+    let mut private_key = jcli.key().generate_default();
     private_key.push('3');
 
     let witness = Witness::new(
@@ -98,9 +100,10 @@ pub fn test_make_witness_with_invalid_private_key_fails() {
 
 #[test]
 pub fn test_make_witness_with_non_existing_private_key_file_fails() {
+    let jcli: JCli = Default::default();
     let reciever = startup::create_new_utxo_address();
     let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let private_key = jcli_wrapper::assert_key_generate_default();
+    let private_key = jcli.key().generate_default();
 
     let mut witness = Witness::new(
         FAKE_GENESIS_HASH,
@@ -120,9 +123,10 @@ pub fn test_make_witness_with_non_existing_private_key_file_fails() {
 #[test]
 #[cfg(not(target_os = "linux"))]
 pub fn test_make_witness_with_readonly_private_key_file_fails() {
+    let jcli: JCli = Default::default();
     let reciever = startup::create_new_utxo_address();
     let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let private_key = jcli_wrapper::assert_key_generate_default();
+    let private_key = jcli.key().generate_default();
 
     let witness = Witness::new(
         FAKE_GENESIS_HASH,
@@ -131,7 +135,7 @@ pub fn test_make_witness_with_readonly_private_key_file_fails() {
         &private_key,
         &0,
     );
-    file_utils::make_readonly(&witness.file);
+    make_readonly(&witness.file);
     transaction_wrapper
         .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
         .assert_add_output(&reciever.address, &100)
@@ -141,9 +145,10 @@ pub fn test_make_witness_with_readonly_private_key_file_fails() {
 
 #[test]
 pub fn test_make_witness_with_wrong_block_hash_fails() {
+    let jcli: JCli = Default::default();
     let reciever = startup::create_new_utxo_address();
     let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let private_key = jcli_wrapper::assert_key_generate_default();
+    let private_key = jcli.key().generate_default();
 
     let witness = Witness::new(
         "FAKE_GENESIS_HASH",
@@ -153,19 +158,22 @@ pub fn test_make_witness_with_wrong_block_hash_fails() {
         &0,
     );
     transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
+        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, 0, 100.into())
+        .assert_add_output(&reciever.address(), 100.into())
         .assert_finalize()
         .assert_make_witness_fails(&witness, "invalid hex encoding for hash value");
 }
 
 #[test]
 pub fn test_make_witness_with_wrong_transaction_id_hash_fails() {
+    let jcli: JCli = Default::default();
+    let temp_dir = TempDir::new().unwrap();
     let reciever = startup::create_new_utxo_address();
     let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let private_key = jcli_wrapper::assert_key_generate_default();
+    let private_key = jcli.key().generate_default();
 
     let witness = Witness::new(
+        &temp_dir,
         FAKE_GENESIS_HASH,
         "FAKE_INPUT_TRANSACTION_ID",
         "utxo",
@@ -173,8 +181,8 @@ pub fn test_make_witness_with_wrong_transaction_id_hash_fails() {
         &0,
     );
     transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
+        .assert_add_input(Hash::from_str(&FAKE_INPUT_TRANSACTION_ID).unwrap(),0, 100.into())
+        .assert_add_output(&reciever.address(), 100.into())
         .assert_finalize()
         .assert_make_witness_fails(&witness, "invalid hex encoding for hash value");
 }

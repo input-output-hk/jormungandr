@@ -1,11 +1,12 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
 
 #[test]
 pub fn accounts_funds_are_updated_after_transaction() {
+    let jcli: JCli = Default::default();
     let receiver = startup::create_new_account_address();
     let mut sender = startup::create_new_account_address();
     let fee = LinearFee::new(1, 1, 1);
@@ -26,14 +27,14 @@ pub fn accounts_funds_are_updated_after_transaction() {
     )
     .unwrap();
 
-    let sender_account_state_before = jcli_wrapper::assert_rest_account_get_stats(
-        &sender.address().to_string(),
-        &jormungandr.rest_uri(),
-    );
-    let receiever_account_state_before = jcli_wrapper::assert_rest_account_get_stats(
-        &receiver.address().to_string(),
-        &jormungandr.rest_uri(),
-    );
+    let sender_account_state_before = jcli
+        .rest()
+        .v0()
+        .account_stats(sender.address().to_string(), jormungandr.rest_uri());
+    let receiever_account_state_before = jcli
+        .rest()
+        .v0()
+        .account_stats(&receiver.address().to_string(), &jormungandr.rest_uri());
 
     let sender_value_before = sender_account_state_before.value();
     let receiver_value_before = receiever_account_state_before.value();
@@ -48,17 +49,20 @@ pub fn accounts_funds_are_updated_after_transaction() {
         .unwrap()
         .encode();
 
-    jcli_wrapper::assert_transaction_in_block(&new_transaction, &jormungandr);
+    jcli.fragment_sender(&jormungandr)
+        .send(&new_transaction)
+        .assert_in_block();
+
     sender.confirm_transaction();
 
-    let sender_account_state = jcli_wrapper::assert_rest_account_get_stats(
-        &sender.address().to_string(),
-        &jormungandr.rest_uri(),
-    );
-    let receiver_account_state = jcli_wrapper::assert_rest_account_get_stats(
-        &receiver.address().to_string(),
-        &jormungandr.rest_uri(),
-    );
+    let sender_account_state = jcli
+        .rest()
+        .v0()
+        .account_stats(sender.address().to_string(), &jormungandr.rest_uri());
+    let receiver_account_state = jcli
+        .rest()
+        .v0()
+        .account_stats(receiver.address().to_string(), &jormungandr.rest_uri());
 
     let sender_value_before_u64: u64 = sender_value_before.clone().into();
     let receiver_value_before_u64: u64 = receiver_value_before.clone().into();

@@ -1,6 +1,5 @@
 use crate::common::{
     configuration::SecretModelFactory,
-    jcli_wrapper,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
 };
 use chain_crypto::{AsymmetricKey, Ed25519};
@@ -18,6 +17,7 @@ use jormungandr_testing_utils::{
 };
 use jortestkit::process as process_utils;
 
+use super::jcli::JCli;
 use assert_fs::fixture::{ChildPath, PathChild, TempDir};
 use assert_fs::prelude::*;
 use std::path::PathBuf;
@@ -29,7 +29,9 @@ pub fn build_genesis_block(
     let config_file = temp_dir.child("genesis.yaml");
     write_block0_config(&block0_config, &config_file);
     let output_block_file = temp_dir.child("block-0.bin");
-    jcli_wrapper::assert_genesis_encode(config_file.path(), &output_block_file);
+    let jcli: JCli = Default::default();
+    jcli.genesis()
+        .encode(config_file.path(), &output_block_file);
 
     output_block_file.path().into()
 }

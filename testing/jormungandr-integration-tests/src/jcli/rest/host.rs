@@ -1,26 +1,24 @@
-use crate::common::jcli_wrapper;
+use crate::common::jcli::JCli;
 use assert_cmd::assert::OutputAssertExt;
 
 #[test]
 
 pub fn test_correct_error_is_returned_for_incorrect_host_syntax() {
+    let jcli: JCli = Default::default();
     let incorrect_host = "not_a_correct_syntax";
 
-    jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_host)
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains(
-            "Invalid value for '--host <host>': relative URL without a base",
-        ));
+    jcli.rest().v0().tip_expect_fail(
+        incorrect_host,
+        "Invalid value for '--host <host>': relative URL without a base",
+    );
 }
 
 #[test]
 pub fn test_correct_error_is_returned_for_incorrect_host_address() {
+    let jcli: JCli = Default::default();
     // Port 9 is standard port discarding all requests
     let incorrect_host = "http://127.0.0.1:9/api";
-
-    jcli_wrapper::jcli_commands::get_rest_block_tip_command(&incorrect_host)
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains("tcp connect error"));
+    jcli.rest()
+        .v0()
+        .tip_expect_fail(incorrect_host, "tcp connect error");
 }

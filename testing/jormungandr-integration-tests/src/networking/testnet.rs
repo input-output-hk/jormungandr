@@ -3,7 +3,7 @@
 use crate::{
     common::{
         configuration::JormungandrParams,
-        jcli_wrapper,
+        jcli::JCli,
         jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
     },
     jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
@@ -146,11 +146,12 @@ impl TestnetConfig {
 }
 
 fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> Wallet {
+    let jcli: JCli = Default::default();
     let actor_account = Wallet::from_existing_account(&private_key, None);
-    let account_state = jcli_wrapper::assert_rest_account_get_stats(
-        &actor_account.address().to_string(),
-        &jormungandr.rest_uri(),
-    );
+    let account_state = jcli
+        .rest()
+        .v0()
+        .account_stats(actor_account.address().to_string(), jormungandr.rest_uri());
     Wallet::from_existing_account(&private_key, Some(account_state.counter()))
 }
 

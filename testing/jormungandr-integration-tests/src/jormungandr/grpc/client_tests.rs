@@ -1,5 +1,5 @@
 use crate::common::{
-    jcli_wrapper,
+    jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
     transaction_utils::TransactionHash,
@@ -312,6 +312,7 @@ pub async fn upload_block_nonexisting_stake_pool() {
 #[tokio::test]
 pub async fn get_fragments() {
     let temp_dir = TempDir::new().unwrap();
+    let jcli: JCli = Default::default();
 
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
@@ -336,10 +337,10 @@ pub async fn get_fragments() {
         .unwrap()
         .encode();
 
-    let fragment_id = jcli_wrapper::assert_transaction_in_block(&transaction, &server);
+    let fragment_id = jcli
+        .fragment_sender(&server)
+        .send(&transaction)
+        .assert_in_block();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
-    println!(
-        "{:?}",
-        client.get_fragments(vec![fragment_id.into_hash()]).await
-    );
+    println!("{:?}", client.get_fragments(vec![fragment_id.into()]).await);
 }

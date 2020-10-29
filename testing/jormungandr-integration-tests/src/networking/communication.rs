@@ -1,17 +1,19 @@
 use crate::common::{
-    jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
+    jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };
 
-use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::InitialUTxO};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
+use jortestkit::process::Wait;
 
 #[test]
 pub fn two_nodes_communication() {
     let temp_dir = TempDir::new().unwrap();
+    let jcli: JCli = Default::default();
 
     let sender = startup::create_new_utxo_address();
     let reciever = startup::create_new_utxo_address();
@@ -44,14 +46,20 @@ pub fn two_nodes_communication() {
         .unwrap();
 
     let utxo = leader_config.block0_utxo_for_address(&sender);
-    let transaction_message = JCLITransactionWrapper::build_transaction_from_utxo(
-        &utxo,
-        *utxo.associated_fund(),
-        &sender,
-        *utxo.associated_fund(),
-        &reciever,
-        trusted_node_config.genesis_block_hash(),
-    );
+    let block0_hash = Hash::from_hex(trusted_node_config.genesis_block_hash()).unwrap();
+    let transaction_message = jcli
+        .transaction_builder(block0_hash)
+        .build_transaction_from_utxo(
+            &utxo,
+            *utxo.associated_fund(),
+            &sender,
+            *utxo.associated_fund(),
+            &reciever,
+        );
 
-    jcli_wrapper::assert_post_transaction(&transaction_message, &trusted_jormungandr.rest_uri());
+    let wait = Wait::new(std::time::Duration::from_secs(60), 20);
+
+    jcli.fragment_sender(&trusted_jormungandr)
+        .send(&transaction_message)
+        .assert_in_block();
 }

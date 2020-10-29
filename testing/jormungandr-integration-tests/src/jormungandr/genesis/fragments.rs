@@ -1,4 +1,4 @@
-use crate::common::{jcli_wrapper, jormungandr::ConfigurationBuilder, startup};
+use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
@@ -14,6 +14,7 @@ use std::time::Duration;
 
 #[test]
 pub fn test_all_fragments() {
+    let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
     let mut faucet = startup::create_new_account_address();
@@ -66,9 +67,9 @@ pub fn test_all_fragments() {
         .send_owner_delegation(&mut stake_pool_owner, &stake_pool, &jormungandr)
         .unwrap();
 
-    let stake_pool_owner_info = jcli_wrapper::assert_rest_account_get_stats(
-        &stake_pool_owner.address().to_string(),
-        &jormungandr.rest_uri(),
+    let stake_pool_owner_info = jcli.rest().v0().account_stats(
+        stake_pool_owner.address().to_string(),
+        jormungandr.rest_uri(),
     );
     let stake_pool_owner_delegation: DelegationType =
         stake_pool_owner_info.delegation().clone().into();
@@ -81,10 +82,10 @@ pub fn test_all_fragments() {
         .send_full_delegation(&mut full_delegator, &stake_pool, &jormungandr)
         .unwrap();
 
-    let full_delegator_info = jcli_wrapper::assert_rest_account_get_stats(
-        &full_delegator.address().to_string(),
-        &jormungandr.rest_uri(),
-    );
+    let full_delegator_info = jcli
+        .rest()
+        .v0()
+        .account_stats(full_delegator.address().to_string(), jormungandr.rest_uri());
     let full_delegator_delegation: DelegationType = full_delegator_info.delegation().clone().into();
     assert_eq!(
         full_delegator_delegation,
@@ -99,9 +100,9 @@ pub fn test_all_fragments() {
         )
         .unwrap();
 
-    let split_delegator = jcli_wrapper::assert_rest_account_get_stats(
-        &split_delegator.address().to_string(),
-        &jormungandr.rest_uri(),
+    let split_delegator = jcli.rest().v0().account_stats(
+        split_delegator.address().to_string(),
+        jormungandr.rest_uri(),
     );
     let delegation_ratio = DelegationRatio::new(
         2,

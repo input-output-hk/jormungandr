@@ -1,8 +1,4 @@
-use crate::common::{
-    jcli_wrapper::{self, jcli_transaction_wrapper::JCLITransactionWrapper},
-    jormungandr::ConfigurationBuilder,
-    startup,
-};
+use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
 use jormungandr_testing_utils::{
@@ -54,6 +50,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
     efficiency_benchmark_def: &mut EfficiencyBenchmarkDef,
 ) -> EfficiencyBenchmarkFinish {
     let mut sender = startup::create_new_account_address();
+    let jcli: JCli = Default::default();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
@@ -71,14 +68,14 @@ fn send_100_transaction_in_10_packs_for_recievers(
         let transation_messages: Vec<String> = receivers
             .iter()
             .map(|receiver| {
-                let message = JCLITransactionWrapper::new_transaction(
-                    &jormungandr.genesis_block_hash().to_string(),
-                )
-                .assert_add_account(&sender.address().to_string(), &output_value.into())
-                .assert_add_output(&receiver.address().to_string(), output_value.into())
-                .assert_finalize()
-                .seal_with_witness_for_address(&sender)
-                .assert_to_message();
+                let message = jcli
+                    .transaction_builder(jormungandr.genesis_block_hash())
+                    .new_transaction()
+                    .add_account(&sender.address().to_string(), &output_value.into())
+                    .add_output(&receiver.address().to_string(), output_value.into())
+                    .finalize()
+                    .seal_with_witness_for_address(&sender)
+                    .to_message();
                 sender.confirm_transaction();
                 message
             })
@@ -102,6 +99,7 @@ pub fn test_100_transaction_is_processed_simple() {
     let transaction_max_count = 100;
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
+    let jcli: JCli = Default::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -120,13 +118,14 @@ pub fn test_100_transaction_is_processed_simple() {
         .start();
 
     for i in 0..transaction_max_count {
-        let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string())
-                .assert_add_account(&sender.address().to_string(), &output_value.into())
-                .assert_add_output(&receiver.address().to_string(), output_value.into())
-                .assert_finalize()
-                .seal_with_witness_for_address(&sender)
-                .assert_to_message();
+        let transaction = jcli
+            .transaction_builder(jormungandr.genesis_block_hash())
+            .new_transaction()
+            .add_account(&sender.address().to_string(), &output_value.into())
+            .add_output(&receiver.address().to_string(), output_value.into())
+            .finalize()
+            .seal_with_witness_for_address(&sender)
+            .to_message();
 
         sender.confirm_transaction();
         println!("Sending transaction no. {}", i + 1);
@@ -145,13 +144,16 @@ pub fn test_100_transaction_is_processed_simple() {
         benchmark.increment();
     }
     benchmark.stop().print();
-    jcli_wrapper::check_all_transaction_log_shows_in_block(&jormungandr).expect("cannot read logs");
+    jcli.fragments_checker(&jormungandr)
+        .check_log_shows_in_block()
+        .expect("cannot read logs");
 }
 
 #[test]
 pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     let mut sender = startup::create_new_account_address();
     let mut receiver = startup::create_new_account_address();
+    let jcli: JCli = Default::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -171,13 +173,14 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
         .start();
 
     loop {
-        let transaction =
-            JCLITransactionWrapper::new_transaction(&jormungandr.genesis_block_hash().to_string())
-                .assert_add_account(&sender.address().to_string(), &output_value.into())
-                .assert_add_output(&receiver.address().to_string(), output_value.into())
-                .assert_finalize()
-                .seal_with_witness_for_address(&sender)
-                .assert_to_message();
+        let transaction = jcli
+            .transaction_builder(jormungandr.genesis_block_hash())
+            .new_transaction()
+            .add_account(&sender.address().to_string(), &output_value.into())
+            .add_output(&receiver.address().to_string(), output_value.into())
+            .finalize()
+            .seal_with_witness_for_address(&sender)
+            .to_message();
 
         sender.confirm_transaction();
         if let Err(err) =

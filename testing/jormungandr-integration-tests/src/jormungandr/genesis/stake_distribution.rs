@@ -1,5 +1,5 @@
 use crate::common::{
-    jcli_wrapper, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
@@ -10,6 +10,7 @@ use std::str::FromStr;
 
 #[test]
 pub fn stake_distribution() {
+    let jcli: JCli = Default::default();
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
@@ -54,7 +55,9 @@ pub fn stake_distribution() {
         .unwrap()
         .encode();
 
-    jcli_wrapper::assert_transaction_in_block(&transaction, &jormungandr);
+    jcli.fragment_sender(&jormungandr)
+        .send(&transaction)
+        .assert_in_block();
 
     startup::sleep_till_next_epoch(10, jormungandr.block0_configuration());
 
@@ -69,16 +72,16 @@ pub fn stake_distribution() {
         .clone()
         .into();
 
-    jcli_wrapper::assert_rest_account_get_stats(
-        &stake_pool_owner_1.address().to_string(),
-        &jormungandr.rest_uri(),
+    jcli.rest().v0().account_stats(
+        stake_pool_owner_1.address().to_string(),
+        jormungandr.rest_uri(),
     );
 
     startup::sleep_till_epoch(3, 10, &jormungandr.block0_configuration());
 
-    jcli_wrapper::assert_rest_account_get_stats(
-        &stake_pool_owner_1.address().to_string(),
-        &jormungandr.rest_uri(),
+    jcli.rest().v0().account_stats(
+        stake_pool_owner_1.address().to_string(),
+        jormungandr.rest_uri(),
     );
 
     assert_distribution(

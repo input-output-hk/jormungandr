@@ -4,7 +4,7 @@ extern crate serde_derive;
 
 pub mod configuration;
 pub mod data;
-pub mod jcli_wrapper;
+pub mod jcli;
 pub mod jormungandr;
 pub mod load;
 pub mod network;
