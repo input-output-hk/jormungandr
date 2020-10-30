@@ -27,7 +27,6 @@ use crate::{
     utils::{async_msg, task::Services},
 };
 use futures::executor::block_on;
-use futures::future;
 use futures::prelude::*;
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
@@ -281,24 +280,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    services.spawn_try_future("sigint_listener", move |_info| {
-        signal::ctrl_c().map_err(|_| ())
-    });
-
-    #[cfg(unix)]
-    services.spawn_future("sigterm_listener", move |info| {
-        use signal::unix::SignalKind;
-
-        let signal = match signal::unix::signal(SignalKind::terminate()) {
-            Ok(signal) => signal,
-            Err(e) => {
-                warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
-                return future::pending().left_future();
-            }
-        };
-        signal.into_future().map(|_| ()).right_future()
-    });
-
     match services.wait_any_finished() {
         Err(err) => {
             crit!(
@@ -523,6 +504,24 @@ pub struct InitializedNode {
     pub services: Services,
 }
 
+#[cfg(unix)]
+fn init_os_signal_watchers(services: &mut Services) {
+    use signal::unix::SignalKind;
+
+    services.spawn_future("sigterm_watcher", move |info| {
+        match signal::unix::signal(SignalKind::terminate()) {
+            Ok(signal) => signal.into_future().map(|_| ()).left_future(),
+            Err(e) => {
+                warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
+                future::pending().right_future()
+            }
+        }
+    });
+}
+
+#[cfg(not(unix))]
+fn init_os_signal_watchers(_services: &mut Services) {}
+
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
 
@@ -547,6 +546,11 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let settings = raw_settings.try_into_settings(&init_logger)?;
     let mut services = Services::new(logger.clone());
+
+    services.spawn_try_future("sigint_watcher", move |_info| {
+        signal::ctrl_c().map_err(|_| ())
+    });
+    init_os_signal_watchers(&mut services);
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
