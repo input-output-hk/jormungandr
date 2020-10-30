@@ -1,4 +1,5 @@
 use crate::jcli_app::vote::{Error, OutputFile, Seed};
+use bech32::{FromBase32, ToBase32};
 use chain_vote::MemberCommunicationKey;
 use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
@@ -8,6 +9,9 @@ use std::{
     path::{Path, PathBuf},
 };
 use structopt::StructOpt;
+
+pub const COMMUNICATION_SK_HRP: &str = "p256k1_communicationsk";
+pub const COMMUNICATION_PK_HRP: &str = "p256k1_communicationpk";
 
 #[derive(StructOpt, Debug)]
 pub struct Generate {
@@ -55,22 +59,39 @@ impl Generate {
         let key = MemberCommunicationKey::new(&mut rng);
 
         let mut output = self.output_file.open()?;
-        writeln!(output, "{}", hex::encode(key.to_bytes()))?;
+        writeln!(
+            output,
+            "{}",
+            bech32::encode(COMMUNICATION_SK_HRP, key.to_bytes().to_base32())
+                .map_err(Error::Bech32)?
+        )?;
         Ok(())
     }
 }
 
 impl ToPublic {
     fn exec(self) -> Result<(), Error> {
-        let bytes = read_hex(&self.input_key)?;
+        let line = crate::jcli_app::utils::io::read_line(&self.input_key)?;
+        let (hrp, bytes) = bech32::decode(&line).map_err(Error::Bech32)?;
 
-        let key =
-            chain_vote::gargamel::SecretKey::from_bytes(&bytes).ok_or(Error::InvalidSecretKey)?;
+        if hrp != COMMUNICATION_SK_HRP {
+            return Err(Error::InvalidSecretKey);
+        }
+
+        let key = chain_vote::gargamel::SecretKey::from_bytes(
+            &Vec::<u8>::from_base32(&bytes).map_err(|_| Error::InvalidSecretKey)?,
+        )
+        .ok_or(Error::InvalidSecretKey)?;
 
         let kp = chain_vote::gargamel::Keypair::from_secretkey(key);
 
         let mut output = self.output_file.open()?;
-        writeln!(output, "{}", hex::encode(kp.public_key.to_bytes()))?;
+        writeln!(
+            output,
+            "{}",
+            bech32::encode(COMMUNICATION_PK_HRP, kp.public_key.to_bytes().to_base32())
+                .map_err(Error::Bech32)?
+        )?;
 
         Ok(())
     }
@@ -83,8 +104,4 @@ impl CommunicationKey {
             CommunicationKey::ToPublic(args) => args.exec(),
         }
     }
-}
-
-fn read_hex<P: AsRef<Path>>(path: &Option<P>) -> Result<Vec<u8>, Error> {
-    hex::decode(crate::jcli_app::utils::io::read_line(path)?).map_err(Into::into)
 }

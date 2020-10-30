@@ -1,4 +1,6 @@
 use crate::jcli_app::vote::{Error, OutputFile};
+use bech32::{FromBase32, ToBase32};
+use jormungandr_lib::interfaces::MEMBER_PUBLIC_KEY_BECH32_HRP;
 use std::io::Write as _;
 use structopt::StructOpt;
 
@@ -23,15 +25,30 @@ impl EncryptingVoteKey {
             chain_vote::EncryptingVoteKey::from_participants(&self.member_keys);
 
         let mut output = self.output_file.open()?;
-        writeln!(output, "{}", hex::encode(election_public_key.to_bytes())).map_err(Error::from)
+        writeln!(
+            output,
+            "{}",
+            bech32::encode(
+                MEMBER_PUBLIC_KEY_BECH32_HRP,
+                election_public_key.to_bytes().to_base32()
+            )
+            .map_err(Error::Bech32)?
+        )
+        .map_err(Error::from)
     }
 }
 
 fn parse_member_key(key: &str) -> Result<chain_vote::committee::MemberPublicKey, Error> {
-    hex::decode(key)
+    bech32::decode(key)
         .map_err(Error::from)
-        .and_then(|raw_key| {
-            chain_vote::gargamel::PublicKey::from_bytes(&raw_key).ok_or(Error::InvalidPublicKey)
+        .and_then(|(hrp, raw_key)| {
+            if hrp != MEMBER_PUBLIC_KEY_BECH32_HRP {
+                return Err(Error::InvalidPublicKey);
+            }
+            chain_vote::gargamel::PublicKey::from_bytes(
+                &Vec::<u8>::from_base32(&raw_key).map_err(|_| Error::InvalidPublicKey)?,
+            )
+            .ok_or(Error::InvalidPublicKey)
         })
         .map(chain_vote::committee::MemberPublicKey::from)
 }

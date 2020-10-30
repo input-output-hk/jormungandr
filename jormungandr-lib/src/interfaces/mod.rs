@@ -63,4 +63,5 @@ pub use self::utxo_info::{UTxOInfo, UTxOOutputInfo};
 pub use self::value::{Value, ValueDef};
 pub use self::vote::{
     Payload, Tally, TallyResult, VotePlanDef, VotePlanStatus, VoteProposalStatus,
+    MEMBER_PUBLIC_KEY_BECH32_HRP,
 };

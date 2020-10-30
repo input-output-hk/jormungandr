@@ -34,7 +34,7 @@ enum PayloadTypeDef {
 
 struct SerdeMemberPublicKey(chain_vote::MemberPublicKey);
 
-const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "votepk1";
+pub const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "p256k1_votepk";
 
 impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
