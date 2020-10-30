@@ -344,7 +344,7 @@ dependencies = [
 [[package]]
 name = "bip39"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "cryptoxide 0.1.3",
  "thiserror",
@@ -475,9 +475,9 @@ checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "bytecount"
-version = "0.4.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b92204551573580e078dc80017f36a213eb77a0450e4ddd8cfa0f3f2d1f0178f"
+checksum = "b0017894339f586ccb943b01b9555de56770c11cda818e7e3d8bd93f4ed7f46e"
 
 [[package]]
 name = "byteorder"
@@ -541,7 +541,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "cbor_event",
  "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
@@ -551,11 +551,10 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.6.4"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5d1b4d380e1bab994591a24c2bdd1b054f64b60bef483a8c598c7c345bc3bbe"
+checksum = "b8de60b887edf6d74370fc8eb177040da4847d971d6234c7b13a6da324ef0caf"
 dependencies = [
- "error-chain",
  "semver 0.9.0",
  "serde",
  "serde_derive",
@@ -601,7 +600,7 @@ dependencies = [
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "bech32",
  "cfg-if 1.0.0",
@@ -620,7 +619,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
 ]
@@ -648,7 +647,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "bech32",
  "cfg-if 1.0.0",
@@ -695,7 +694,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-wallet-libs)",
  "cfg-if 1.0.0",
@@ -733,7 +732,7 @@ dependencies = [
 [[package]]
 name = "chain-path-derivation"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "thiserror",
 ]
@@ -745,7 +744,7 @@ version = "0.1.0"
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 
 [[package]]
 name = "chain-storage"
@@ -777,7 +776,7 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "cfg-if 1.0.0",
  "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
@@ -796,7 +795,7 @@ dependencies = [
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "cryptoxide 0.2.1",
  "eccoxide",
@@ -1634,9 +1633,9 @@ checksum = "aaf91faf136cb47367fa430cd46e37a788775e7fa104f8b4bcb3861dc389b724"
 
 [[package]]
 name = "glob"
-version = "0.2.11"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8be18de09a56b60ed0edf84bc9df007e30040691af7acd1c41874faac5895bfb"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "globset"
@@ -1779,7 +1778,7 @@ checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
 [[package]]
 name = "hdkeygen"
 version = "0.2.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "bip39",
  "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-wallet-libs)",
@@ -1963,7 +1962,7 @@ dependencies = [
  "jortestkit 0.1.0",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "regex 0.2.11",
+ "regex 1.4.1",
  "reqwest",
  "serde",
  "serde_json",
@@ -2013,7 +2012,7 @@ version = "0.1.0"
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 
 [[package]]
 name = "indexmap"
@@ -2621,9 +2620,9 @@ checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 
 [[package]]
 name = "memchr"
-version = "2.3.3"
+version = "2.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
+checksum = "0ee1c47aaa256ecabcaea351eae4a9b01ef39ed810004e298d2511ed284b1525"
 
 [[package]]
 name = "memmap"
@@ -2921,9 +2920,9 @@ dependencies = [
 
 [[package]]
 name = "num-integer"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d59457e662d541ba17869cf51cf177c0b5f0cbf476c66bdc90bf1edac4f875b"
+checksum = "d2cc698a63b549a70bc047073d2949cce27cd1c7b0a4a862d08a8031bc2801db"
 dependencies = [
  "autocfg 1.0.1",
  "num-traits",
@@ -2931,9 +2930,9 @@ dependencies = [
 
 [[package]]
 name = "num-traits"
-version = "0.2.12"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac267bcc07f48ee5f8935ab0d24f316fb722d7a1292e2913f0cc196b29ffd611"
+checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg 1.0.1",
 ]
@@ -3351,9 +3350,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-hack"
-version = "0.5.18"
+version = "0.5.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99c605b9a0adc77b7211c6b1f722dcb613d68d66859a44f3d485a6da332b0598"
+checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro-nested"
@@ -3508,19 +3507,6 @@ dependencies = [
  "log 0.4.11",
  "parking_lot 0.11.0",
  "scheduled-thread-pool",
-]
-
-[[package]]
-name = "rand"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
-dependencies = [
- "fuchsia-cprng",
- "libc",
- "rand_core 0.3.1",
- "rdrand",
- "winapi 0.3.9",
 ]
 
 [[package]]
@@ -4149,17 +4135,16 @@ checksum = "fa8f3741c7372e75519bd9346068370c9cdaabcc1f9599cbcf2a2719352286b7"
 
 [[package]]
 name = "skeptic"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6fb8ed853fdc19ce09752d63f3a2e5b5158aeb261520cd75eb618bd60305165"
+checksum = "7a6deb8efaf3ad8fd784139db8bbd51806bfbcee87c7be7578e9c930981fb808"
 dependencies = [
  "bytecount",
  "cargo_metadata",
  "error-chain",
  "glob",
  "pulldown-cmark",
- "serde_json",
- "tempdir",
+ "tempfile",
  "walkdir",
 ]
 
@@ -4290,7 +4275,7 @@ version = "0.1.0"
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 
 [[package]]
 name = "spin"
@@ -4355,7 +4340,7 @@ checksum = "343f3f510c2915908f155e94f17220b19ccfacf2a64a2a5d8004f2c3e311e7fd"
 [[package]]
 name = "symmetric-cipher"
 version = "0.5.0-pre4"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "cryptoxide 0.2.1",
  "rand 0.7.3",
@@ -4454,16 +4439,6 @@ dependencies = [
  "libc",
  "redox_syscall",
  "xattr",
-]
-
-[[package]]
-name = "tempdir"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
-dependencies = [
- "rand 0.4.6",
- "remove_dir_all",
 ]
 
 [[package]]
@@ -5046,7 +5021,7 @@ version = "0.1.0"
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 
 [[package]]
 name = "typenum"
@@ -5333,7 +5308,7 @@ dependencies = [
 [[package]]
 name = "wallet"
 version = "0.5.0-pre4"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "bip39",
  "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-wallet-libs)",
@@ -5355,7 +5330,7 @@ dependencies = [
 [[package]]
 name = "wallet-core"
 version = "0.5.0-pre4"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#62886f55e1a3d2c60b60abe97eee7f1e0dac0c86"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "bip39",
  "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-wallet-libs)",
