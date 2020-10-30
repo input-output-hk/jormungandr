@@ -2246,6 +2246,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tonic",
+ "tungstenite",
  "url",
  "yaml-rust",
 ]
