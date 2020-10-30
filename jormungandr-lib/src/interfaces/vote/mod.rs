@@ -606,7 +606,7 @@ mod test {
         let member_key =
             chain_vote::MemberState::new(&mut rng, 1, &crs, &[comm_key.to_public()], 0);
         let pk = member_key.public_key();
-        let pks = vec![bech32::encode("p256k1_votepk", pk.to_bytes().to_base32()).unwrap()];
+        let pks = vec![bech32::encode("p256k1_memberpk", pk.to_bytes().to_base32()).unwrap()];
         let json = serde_json::to_string(&pks).unwrap();
 
         let result: Vec<SerdeMemberPublicKey> = serde_json::from_str(&json).unwrap();
