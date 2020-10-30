@@ -5,6 +5,7 @@ use crate::{
         value::ValueDef,
     },
 };
+use bech32::{FromBase32, ToBase32};
 use chain_impl_mockchain::{
     certificate::{ExternalProposalId, Proposal, Proposals, VoteAction, VotePlan},
     header::BlockDate,
@@ -15,6 +16,8 @@ use chain_impl_mockchain::{
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
 use serde::de::{SeqAccess, Visitor};
+use serde::export::Formatter;
+use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -31,18 +34,20 @@ enum PayloadTypeDef {
 
 struct SerdeMemberPublicKey(chain_vote::MemberPublicKey);
 
+const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "votepk1";
+
 impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
     {
-        struct PublicKeyVisitor;
-        impl<'de> Visitor<'de> for PublicKeyVisitor {
+        struct Bech32Visitor;
+        impl<'de> Visitor<'de> for Bech32Visitor {
             type Value = SerdeMemberPublicKey;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter
-                    .write_str("Expected a compatible hex representation of required public key")
+                    .write_str("Expected a compatible bech32 representation of required public key")
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -56,23 +61,61 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
             where
                 E: serde::de::Error,
             {
-                let content = hex::decode(&v).map_err(|err| {
+                let (hrp, content) = bech32::decode(&v).map_err(|err| {
                     serde::de::Error::custom(format!(
-                        "Invalid public key hex representation {}, with err: {}",
+                        "Invalid public key bech32 representation {}, with err: {}",
                         &v, err
                     ))
                 })?;
+
+                let content = Vec::<u8>::from_base32(&content).map_err(|e| {
+                    serde::de::Error::custom(format!(
+                        "Invalid public key bech32 representation {}, with err: {}",
+                        &v, e
+                    ))
+                })?;
+
+                if hrp != MEMBER_PUBLIC_KEY_BECH32_HRP {
+                    return Err(serde::de::Error::custom(format!(
+                        "Invalid public key bech32 public hrp {}, expecting {}",
+                        hrp, MEMBER_PUBLIC_KEY_BECH32_HRP,
+                    )));
+                }
+
                 Ok(SerdeMemberPublicKey(
                     MemberPublicKey::from_bytes(&content).ok_or_else(|| {
                         serde::de::Error::custom(format!(
-                            "Invalid public key with hex representation {}",
+                            "Invalid public key with bech32 representation {}",
                             &v
                         ))
                     })?,
                 ))
             }
         }
-        deserializer.deserialize_string(PublicKeyVisitor)
+
+        struct BytesVisitor;
+        impl<'de> Visitor<'de> for BytesVisitor {
+            type Value = SerdeMemberPublicKey;
+
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("Invalid binary data for member public key")
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(SerdeMemberPublicKey(MemberPublicKey::from_bytes(v).ok_or(
+                    E::custom("Invalid binary data for member public key"),
+                )?))
+            }
+        }
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_string(Bech32Visitor)
+        } else {
+            deserializer.deserialize_bytes(BytesVisitor)
+        }
     }
 }
 
@@ -81,7 +124,14 @@ impl Serialize for SerdeMemberPublicKey {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&hex::encode(&self.0.to_bytes()))
+        if serializer.is_human_readable() {
+            serializer.serialize_str(
+                &bech32::encode(MEMBER_PUBLIC_KEY_BECH32_HRP, &self.0.to_bytes().to_base32())
+                    .map_err(|e| <S as Serializer>::Error::custom(format!("{}", e)))?,
+            )
+        } else {
+            serializer.serialize_bytes(&self.0.to_bytes())
+        }
     }
 }
 
