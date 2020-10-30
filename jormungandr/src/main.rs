@@ -293,7 +293,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             Ok(signal) => signal,
             Err(e) => {
                 warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
-                return future::ready(()).left_future();
+                return future::pending().left_future();
             }
         };
         signal.into_future().map(|_| ()).right_future()
