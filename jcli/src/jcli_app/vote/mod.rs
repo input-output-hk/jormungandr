@@ -1,4 +1,6 @@
 use crate::jcli_app::utils::output_file::{self, OutputFile};
+
+mod bech32_constants;
 mod committee;
 mod common_reference_string;
 mod encrypting_vote_key;

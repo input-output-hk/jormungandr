@@ -34,7 +34,7 @@ enum PayloadTypeDef {
 
 struct SerdeMemberPublicKey(chain_vote::MemberPublicKey);
 
-pub const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "p256k1_votepk";
+pub const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "p256k1_memberpk";
 
 impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
@@ -46,8 +46,7 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
             type Value = SerdeMemberPublicKey;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter
-                    .write_str("Expected a compatible bech32 representation of required public key")
+                formatter.write_str("A compatible bech32 representation of required public key")
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -595,6 +594,7 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
 #[cfg(test)]
 mod test {
     use crate::interfaces::vote::{serde_committee_member_public_keys, SerdeMemberPublicKey};
+    use bech32::ToBase32;
     use rand_chacha::rand_core::SeedableRng;
 
     #[test]
@@ -606,7 +606,7 @@ mod test {
         let member_key =
             chain_vote::MemberState::new(&mut rng, 1, &crs, &[comm_key.to_public()], 0);
         let pk = member_key.public_key();
-        let pks = vec![hex::encode(pk.to_bytes())];
+        let pks = vec![bech32::encode("p256k1_votepk", pk.to_bytes().to_base32()).unwrap()];
         let json = serde_json::to_string(&pks).unwrap();
 
         let result: Vec<SerdeMemberPublicKey> = serde_json::from_str(&json).unwrap();

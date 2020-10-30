@@ -10,9 +10,6 @@ use std::{
 };
 use structopt::StructOpt;
 
-pub const COMMUNICATION_SK_HRP: &str = "p256k1_communicationsk";
-pub const COMMUNICATION_PK_HRP: &str = "p256k1_communicationpk";
-
 #[derive(StructOpt, Debug)]
 pub struct Generate {
     #[structopt(flatten)]
@@ -62,8 +59,11 @@ impl Generate {
         writeln!(
             output,
             "{}",
-            bech32::encode(COMMUNICATION_SK_HRP, key.to_bytes().to_base32())
-                .map_err(Error::Bech32)?
+            bech32::encode(
+                crate::jcli_app::vote::bech32_constants::COMMUNICATION_SK_HRP,
+                key.to_bytes().to_base32()
+            )
+            .map_err(Error::Bech32)?
         )?;
         Ok(())
     }
@@ -74,7 +74,7 @@ impl ToPublic {
         let line = crate::jcli_app::utils::io::read_line(&self.input_key)?;
         let (hrp, bytes) = bech32::decode(&line).map_err(Error::Bech32)?;
 
-        if hrp != COMMUNICATION_SK_HRP {
+        if hrp != crate::jcli_app::vote::bech32_constants::COMMUNICATION_SK_HRP {
             return Err(Error::InvalidSecretKey);
         }
 
@@ -89,8 +89,11 @@ impl ToPublic {
         writeln!(
             output,
             "{}",
-            bech32::encode(COMMUNICATION_PK_HRP, kp.public_key.to_bytes().to_base32())
-                .map_err(Error::Bech32)?
+            bech32::encode(
+                crate::jcli_app::vote::bech32_constants::COMMUNICATION_PK_HRP,
+                kp.public_key.to_bytes().to_base32()
+            )
+            .map_err(Error::Bech32)?
         )?;
 
         Ok(())
