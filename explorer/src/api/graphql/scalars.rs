@@ -48,6 +48,7 @@ pub struct ExternalProposalId(pub String);
 #[derive(Clone, juniper::GraphQLEnum)]
 pub enum PayloadType {
     Public,
+    Private,
 }
 
 #[derive(Clone, juniper::GraphQLScalarValue)]
@@ -187,6 +188,7 @@ impl From<vote::PayloadType> for PayloadType {
     fn from(payload_type: vote::PayloadType) -> Self {
         match payload_type {
             vote::PayloadType::Public => Self::Public,
+            vote::PayloadType::Private => Self::Private,
         }
     }
 }
