@@ -1,0 +1,52 @@
+[package]
+authors = ["dev@iohk.io"]
+description = "explorer service for jormungandr"
+documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
+edition = "2018"
+homepage = "https://github.com/input-output-hk/jormungandr#README.md"
+license = "MIT OR Apache-2.0"
+name = "explorer"
+repository = "https://github.com/input-output-hk/jormungandr"
+version = "0.9.1"
+
+[dependencies]
+async-tungstenite = {version = "0.7.1", features = ["tokio-runtime", "real-async-tls"]}
+backoff = {version = "0.2.1", features = ["tokio"]}
+futures = "0.3.5"
+futures-channel = "0.3.5"
+futures-util = "0.3.5"
+juniper = "0.14.2"
+serde = {version = "1.0.114", features = ["derive"]}
+serde_json = "1.0.56"
+serde_yaml = "0.8.13"
+slog = {version = "^2.5.1", features = ["max_level_trace", "release_max_level_trace"]}
+slog-async = "2.5.0"
+slog-gelf = {version = "0.1.2", optional = true}
+slog-journald = {version = "2.1.1", optional = true}
+slog-json = "2.3.0"
+slog-term = "2.6.0"
+sloggers = "1.0.1"
+structopt = "0.3.15"
+thiserror = "1.0.20"
+tokio = {version = "0.2.21", features = ["macros", "io-std", "sync", "stream", "signal"]}
+url = "2.1.1"
+warp = {version = "0.2.3", features = ["tls"]}
+
+cardano-legacy-address = {path = "../chain-deps/cardano-legacy-address"}
+chain-addr = {path = "../chain-deps/chain-addr"}
+chain-core = {path = "../chain-deps/chain-core"}
+chain-crypto = {path = "../chain-deps/chain-crypto"}
+chain-impl-mockchain = {path = "../chain-deps/chain-impl-mockchain"}
+chain-ser = {path = "../chain-deps/chain-ser"}
+chain-time = {path = "../chain-deps/chain-time"}
+imhamt = {path = "../chain-deps/imhamt"}
+jormungandr-lib = {path = "../jormungandr-lib"}
+
+[dependencies.tungstenite]
+default-features = false
+version = "0.11.0"
+
+[dependencies.reqwest]
+default-features = false
+features = ["rustls-tls"]
+version = "0.10.6"
