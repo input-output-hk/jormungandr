@@ -463,9 +463,10 @@ pub enum Payload {
     Public {
         choice: u8,
     },
-    // We serialize deserialize the bytes directly
     Private {
+        #[serde(with = "serde_base64_bytes")]
         encrypted_vote: Vec<u8>,
+        #[serde(with = "serde_base64_bytes")]
         proof: Vec<u8>,
     },
 }
@@ -490,24 +491,7 @@ impl From<vote::Payload> for Payload {
                 proof,
             } => Self::Private {
                 encrypted_vote: encrypted_vote.iter().flat_map(|ct| ct.to_bytes()).collect(),
-                // TODO: Use iter instead of bytes here
-                proof: ByteBuilder::<u8>::new()
-                    .u64(proof.len() as u64)
-                    .bytes(
-                        &proof
-                            .ibas()
-                            .flat_map(|iba| iba.to_bytes())
-                            .collect::<Vec<u8>>(),
-                    )
-                    .bytes(&proof.ds().flat_map(|ds| ds.to_bytes()).collect::<Vec<u8>>())
-                    .bytes(
-                        &proof
-                            .zwvs()
-                            .flat_map(|zwvs| zwvs.to_bytes())
-                            .collect::<Vec<u8>>(),
-                    )
-                    .bytes(&proof.r().to_bytes())
-                    .finalize_as_vec(),
+                proof: proof.serialize().into(),
             },
         }
     }
