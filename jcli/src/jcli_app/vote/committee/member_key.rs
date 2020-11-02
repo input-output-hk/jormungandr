@@ -1,4 +1,5 @@
 use crate::jcli_app::vote::{Error, OutputFile, Seed};
+use bech32::{FromBase32, ToBase32};
 use chain_vote::gargamel::PublicKey;
 use chain_vote::{MemberCommunicationPublicKey, MemberState};
 use rand::rngs::OsRng;
@@ -94,22 +95,42 @@ impl Generate {
         let key = ms.secret_key();
 
         let mut output = self.output_file.open()?;
-        writeln!(output, "{}", hex::encode(key.to_bytes()))?;
+        writeln!(
+            output,
+            "{}",
+            bech32::encode(
+                crate::jcli_app::vote::bech32_constants::MEMBER_SK_HRP,
+                key.to_bytes().to_base32()
+            )
+            .map_err(Error::Bech32)?
+        )?;
         Ok(())
     }
 }
 
 impl ToPublic {
     fn exec(self) -> Result<(), Error> {
-        let key = read_hex(&self.input_key)?;
+        let line = crate::jcli_app::utils::io::read_line(&self.input_key)?;
+        let (hrp, key) = bech32::decode(&line).map_err(Error::Bech32)?;
 
-        let key =
-            chain_vote::gargamel::SecretKey::from_bytes(&key).ok_or(Error::InvalidSecretKey)?;
+        if hrp != crate::jcli_app::vote::bech32_constants::MEMBER_SK_HRP {
+            return Err(Error::InvalidSecretKey);
+        }
+
+        let key = chain_vote::gargamel::SecretKey::from_bytes(
+            &Vec::<u8>::from_base32(&key).map_err(|_| Error::InvalidSecretKey)?,
+        )
+        .ok_or(Error::InvalidSecretKey)?;
 
         let pk = chain_vote::gargamel::Keypair::from_secretkey(key).public_key;
 
         let mut output = self.output_file.open()?;
-        writeln!(output, "{}", hex::encode(pk.to_bytes()))?;
+        let key = bech32::encode(
+            crate::jcli_app::vote::bech32_constants::MEMBER_PK_HRP,
+            pk.to_bytes().to_base32(),
+        )
+        .map_err(Error::Bech32)?;
+        writeln!(output, "{}", key)?;
 
         Ok(())
     }
@@ -124,13 +145,15 @@ impl MemberKey {
     }
 }
 
-fn read_hex<P: AsRef<Path>>(path: &Option<P>) -> Result<Vec<u8>, Error> {
-    hex::decode(crate::jcli_app::utils::io::read_line(path)?).map_err(Into::into)
-}
-
 fn parse_member_communication_key(key: &str) -> Result<MemberCommunicationPublicKey, Error> {
-    let raw_key = hex::decode(key)?;
-    let pk = PublicKey::from_bytes(&raw_key).ok_or(Error::InvalidPublicKey)?;
+    let (hrp, raw_key) = bech32::decode(key).map_err(Error::Bech32)?;
+
+    if hrp != crate::jcli_app::vote::bech32_constants::COMMUNICATION_PK_HRP {
+        return Err(Error::InvalidPublicKey);
+    }
+
+    let pk = PublicKey::from_bytes(&Vec::<u8>::from_base32(&raw_key).map_err(Error::Bech32)?)
+        .ok_or(Error::InvalidPublicKey)?;
     Ok(MemberCommunicationPublicKey::from_public_key(pk))
 }
 

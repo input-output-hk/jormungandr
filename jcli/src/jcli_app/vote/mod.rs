@@ -1,4 +1,6 @@
 use crate::jcli_app::utils::output_file::{self, OutputFile};
+
+mod bech32_constants;
 mod committee;
 mod common_reference_string;
 mod encrypting_vote_key;
@@ -15,6 +17,8 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("error while using random source")]
     Base64(#[from] base64::DecodeError),
+    #[error("error while using random source")]
+    Bech32(#[from] bech32::Error),
     #[error("error while decoding base64 source")]
     Rand(#[from] rand::Error),
     #[error("invalid seed length, expected 32 bytes but received {seed_len}")]
