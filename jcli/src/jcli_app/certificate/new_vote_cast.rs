@@ -1,4 +1,6 @@
 use crate::jcli_app::certificate::{write_cert, Error};
+use crate::jcli_app::utils;
+use bech32::FromBase32;
 use chain_impl_mockchain::{
     certificate::{Certificate, VoteCast, VotePlanId},
     vote::{Choice, Payload},
@@ -38,7 +40,7 @@ pub struct PrivateVoteCast {
     choice: u8,
 
     /// key to encrypt the vote with
-    encrypting_key: String,
+    encrypting_key_path: Option<PathBuf>,
 
     /// write the output to the given file or print it to the standard output if not defined
     #[structopt(long = "output")]
@@ -67,8 +69,16 @@ impl PublicVoteCast {
 impl PrivateVoteCast {
     pub fn exec(self) -> Result<(), Error> {
         let mut rng = rand_chacha::ChaChaRng::from_entropy();
-
-        let key_bin = base64::decode(self.encrypting_key).map_err(Error::Base64)?;
+        let key_line = utils::io::read_line(&self.encrypting_key_path)?;
+        let (hrp, data) = bech32::decode(&key_line).map_err(Error::InvalidBech32)?;
+        if hrp != crate::jcli_app::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP {
+            return Err(Error::InvalidBech32Key {
+                expected: crate::jcli_app::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP
+                    .to_string(),
+                actual: hrp,
+            });
+        }
+        let key_bin = Vec::<u8>::from_base32(&data)?;
         let key =
             chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)?;
 

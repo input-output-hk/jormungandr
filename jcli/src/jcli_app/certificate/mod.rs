@@ -97,6 +97,8 @@ pub enum Error {
     Base64(#[source] base64::DecodeError),
     #[error("invalid vote encrypting key")]
     VoteEncryptingKey,
+    #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
+    InvalidBech32Key { expected: String, actual: String },
 }
 
 #[allow(clippy::large_enum_variant)]
