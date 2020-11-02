@@ -94,7 +94,7 @@ impl<'de> Deserialize<'de> for KESUpdateSpeed {
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(
                     formatter,
-                    "Number of seconds between 2 KES update (valid values are between {} ({}) and {} ({}))",
+                    "number of seconds between 2 KES updates (valid values are between {} ({}) and {} ({}))",
                     MINIMUM_KES_SPEED_UPDATE_IN_SECONDS, KESUpdateSpeed::MINIMUM,
                     MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS, KESUpdateSpeed::MAXIMUM,
                 )

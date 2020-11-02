@@ -41,7 +41,11 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
             type Value = SerdeMemberPublicKey;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("A compatible bech32 representation of required public key")
+                write!(
+                    formatter,
+                    "a Bech32 representation of member public key with prefix {}",
+                    MEMBER_PUBLIC_KEY_BECH32_HRP
+                )
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -92,7 +96,7 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
             type Value = SerdeMemberPublicKey;
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid binary data for member public key")
+                formatter.write_str("binary data for member public key")
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -226,7 +230,7 @@ mod serde_committee_member_public_keys {
             type Value = Vec<SerdeMemberPublicKey>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid sequence of hex encoded public keys")
+                formatter.write_str("a sequence of member public keys")
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, <A as SeqAccess<'de>>::Error>
@@ -275,7 +279,7 @@ where
         type Value = ExternalProposalId;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("external proposal id in a hexadecimal form")
+            formatter.write_str("an external proposal id in hexadecimal form")
         }
 
         fn visit_str<E>(self, value: &str) -> Result<ExternalProposalId, E>
@@ -299,7 +303,7 @@ where
         type Value = Options;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("options number must be an integer less than 256")
+            formatter.write_str("a number of options from 0 to 255")
         }
 
         fn visit_u64<E>(self, value: u64) -> Result<Options, E>
@@ -331,7 +335,7 @@ where
     for proposal in proposals_list.0.into_iter() {
         match proposals.push(proposal.0) {
             chain_impl_mockchain::certificate::PushProposal::Full { .. } => {
-                panic!("too much proposals")
+                panic!("too many proposals")
             }
             _ => {}
         }
@@ -389,7 +393,7 @@ mod serde_base64_bytes {
             type Value = Vec<u8>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid base64 encoded bytes")
+                formatter.write_str("base64 encoded binary data")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -412,7 +416,7 @@ mod serde_base64_bytes {
             type Value = Vec<u8>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid bytes data")
+                formatter.write_str("binary data")
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>

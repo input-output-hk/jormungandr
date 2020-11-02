@@ -357,7 +357,7 @@ impl<'de> Deserialize<'de> for SecondsSinceUnixEpoch {
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(
                     formatter,
-                    "Seconds since unix epoch up to '{}' ({})",
+                    "seconds since unix epoch up to '{}' ({})",
                     SecondsSinceUnixEpoch::MAX,
                     SystemTime::from(SecondsSinceUnixEpoch::MAX),
                 )
@@ -403,7 +403,7 @@ impl<'de> Deserialize<'de> for SystemTime {
         impl<'de> Visitor<'de> for SystemTimeVisitor {
             type Value = SystemTime;
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("SystemTime in ISO8601 format")
+                formatter.write_str("system time in ISO8601 format")
             }
 
             fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
@@ -487,7 +487,7 @@ impl<'de> Deserialize<'de> for LocalDateTime {
         impl<'de> Visitor<'de> for LocalDateTimeVisitor {
             type Value = LocalDateTime;
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("local date time, in RFC2822 format")
+                formatter.write_str("local date and time, in RFC2822 format")
             }
 
             fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>

@@ -98,7 +98,7 @@ impl<'de> Deserialize<'de> for NumberOfSlotsPerEpoch {
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(
                     formatter,
-                    "Number of slots per epoch (between {} and {})",
+                    "number of slots per epoch (between {} and {})",
                     NumberOfSlotsPerEpoch::MINIMUM,
                     NumberOfSlotsPerEpoch::MAXIMUM,
                 )
