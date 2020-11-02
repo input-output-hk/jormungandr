@@ -7,7 +7,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 dependencies = [
  "lazy_static",
- "regex 1.4.1",
+ "regex 1.4.2",
 ]
 
 [[package]]
@@ -183,7 +183,7 @@ dependencies = [
  "multer",
  "once_cell",
  "parking_lot 0.10.2",
- "regex 1.4.1",
+ "regex 1.4.2",
  "serde",
  "serde_json",
  "slab",
@@ -893,7 +893,7 @@ dependencies = [
  "encode_unicode",
  "lazy_static",
  "libc",
- "regex 1.4.1",
+ "regex 1.4.2",
  "terminal_size",
  "termios",
  "unicode-width",
@@ -910,7 +910,7 @@ dependencies = [
  "encode_unicode",
  "lazy_static",
  "libc",
- "regex 1.4.1",
+ "regex 1.4.2",
  "terminal_size",
  "unicode-width",
  "winapi 0.3.9",
@@ -1326,7 +1326,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
  "log 0.4.11",
- "regex 1.4.1",
+ "regex 1.4.2",
 ]
 
 [[package]]
@@ -1647,7 +1647,7 @@ dependencies = [
  "bstr",
  "fnv",
  "log 0.4.11",
- "regex 1.4.1",
+ "regex 1.4.2",
 ]
 
 [[package]]
@@ -1962,7 +1962,7 @@ dependencies = [
  "jortestkit 0.1.0",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "regex 1.4.1",
+ "regex 0.2.11",
  "reqwest",
  "serde",
  "serde_json",
@@ -1998,7 +1998,7 @@ dependencies = [
  "lazy_static",
  "log 0.4.11",
  "memchr",
- "regex 1.4.1",
+ "regex 1.4.2",
  "same-file",
  "thread_local 1.0.1",
  "walkdir",
@@ -2034,7 +2034,7 @@ dependencies = [
  "console 0.13.0",
  "lazy_static",
  "number_prefix",
- "regex 1.4.1",
+ "regex 1.4.2",
 ]
 
 [[package]]
@@ -2233,7 +2233,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
- "regex 1.4.1",
+ "regex 1.4.2",
  "reqwest",
  "serde",
  "serde_derive",
@@ -2308,7 +2308,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
- "regex 1.4.1",
+ "regex 1.4.2",
  "reqwest",
  "serde",
  "serde_derive",
@@ -2353,7 +2353,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
- "regex 1.4.1",
+ "regex 1.4.2",
  "reqwest",
  "semver 0.11.0",
  "serde",
@@ -2769,7 +2769,7 @@ dependencies = [
  "lazy_static",
  "log 0.4.11",
  "mime",
- "regex 1.4.1",
+ "regex 1.4.2",
  "twoway 0.2.1",
 ]
 
@@ -3088,7 +3088,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c705f256449c60da65e11ff6626e0c16a0a0b96aaa348de61376b249bc340f41"
 dependencies = [
- "regex 1.4.1",
+ "regex 1.4.2",
 ]
 
 [[package]]
@@ -3296,7 +3296,7 @@ dependencies = [
  "float-cmp",
  "normalize-line-endings",
  "predicates-core",
- "regex 1.4.1",
+ "regex 1.4.2",
 ]
 
 [[package]]
@@ -3438,7 +3438,7 @@ dependencies = [
  "error-chain",
  "idna",
  "lazy_static",
- "regex 1.4.1",
+ "regex 1.4.2",
  "url",
 ]
 
@@ -3732,13 +3732,13 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.4.1"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8963b85b8ce3074fecffde43b4b0dded83ce2f367dc8d363afc56679f3ee820b"
+checksum = "38cf2c13ed4745de91a5eb834e11c00bcc3709e773173b2ce4c56c9fbde04b9c"
 dependencies = [
  "aho-corasick 0.7.14",
  "memchr",
- "regex-syntax 0.6.20",
+ "regex-syntax 0.6.21",
  "thread_local 1.0.1",
 ]
 
@@ -3762,9 +3762,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.20"
+version = "0.6.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cab7a364d15cde1e505267766a2d3c4e22a843e1a601f0fa7564c0f82ced11c"
+checksum = "3b181ba2dcf07aaccad5448e8ead58db5b742cf85dfe035e2227f137a539a189"
 
 [[package]]
 name = "remove_dir_all"
@@ -5180,7 +5180,7 @@ dependencies = [
  "phf",
  "phf_codegen",
  "publicsuffix",
- "regex 1.4.1",
+ "regex 1.4.2",
  "serde",
  "serde_json",
  "url",
