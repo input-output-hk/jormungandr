@@ -6,6 +6,7 @@ pub mod process;
 mod remote;
 pub mod sync;
 mod verify;
+mod vit;
 
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentSender,
@@ -28,6 +29,7 @@ pub use sync::{
     ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
     MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
 };
+pub use vit::VotePlanExtension;
 
 pub use jortestkit::web::download_file;
 
