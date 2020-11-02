@@ -77,7 +77,7 @@ impl CertificateBuilder {
         proposal_file: P,
         stake_key_file: Q,
     ) -> PathBuf {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().unwrap().into_persistent();
         let cert = self.jcli.certificate().new_vote_plan(proposal_file);
 
         let cert_file = temp_dir.child("vote_plan.cert");

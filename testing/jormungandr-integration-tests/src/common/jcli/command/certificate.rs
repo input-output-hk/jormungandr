@@ -3,6 +3,7 @@
 use std::path::Path;
 use std::process::Command;
 
+use chain_impl_mockchain::vote::PayloadType;
 use jormungandr_lib::interfaces::TaxType;
 
 #[derive(Debug)]
@@ -44,6 +45,34 @@ impl CertificateCommand {
             .arg("new")
             .arg("vote-plan")
             .arg(proposal_file.as_ref());
+        self
+    }
+
+    pub fn vote_tally<S: Into<String>>(mut self, vote_plan_id: S) -> Self {
+        self.command
+            .arg("new")
+            .arg("vote-tally")
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id.into());
+        self
+    }
+
+    pub fn vote_cast(
+        mut self,
+        vote_plan_id: String,
+        proposal_idx: usize,
+        choice: u8,
+        vote_type: PayloadType,
+    ) -> Self {
+        self.command.arg("new").arg("vote-cast");
+
+        if let PayloadType::Public = vote_type {
+            self.command.arg("--public");
+        }
+        self.command
+            .arg(vote_plan_id)
+            .arg(proposal_idx.to_string())
+            .arg(choice.to_string());
         self
     }
 
@@ -91,6 +120,18 @@ impl CertificateCommand {
     ) -> Self {
         self.command
             .arg("get-stake-pool-id")
+            .arg(input_file.as_ref())
+            .arg(output_file.as_ref());
+        self
+    }
+
+    pub fn vote_plan_id<P: AsRef<Path>, Q: AsRef<Path>>(
+        mut self,
+        input_file: P,
+        output_file: Q,
+    ) -> Self {
+        self.command
+            .arg("get-vote-plan-id")
             .arg(input_file.as_ref())
             .arg(output_file.as_ref());
         self
