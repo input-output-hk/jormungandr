@@ -16,7 +16,9 @@ use serde::de::Visitor;
 use serde::export::Formatter;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 use std::convert::TryInto;
+use std::str;
 
 #[derive(
     Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, serde::Deserialize,
@@ -273,9 +275,11 @@ fn deserialize_external_proposal_id<'de, D>(deserializer: D) -> Result<ExternalP
 where
     D: Deserializer<'de>,
 {
-    struct ExternalProposalIdVisitor;
+    use serde::de::Error;
 
-    impl<'de> serde::de::Visitor<'de> for ExternalProposalIdVisitor {
+    struct StringVisitor;
+
+    impl<'de> Visitor<'de> for StringVisitor {
         type Value = ExternalProposalId;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -284,13 +288,34 @@ where
 
         fn visit_str<E>(self, value: &str) -> Result<ExternalProposalId, E>
         where
-            E: serde::de::Error,
+            E: Error,
         {
-            Ok(std::str::FromStr::from_str(value).unwrap())
+            str::parse(value).map_err(Error::custom)
         }
     }
 
-    deserializer.deserialize_str(ExternalProposalIdVisitor)
+    struct BinaryVisitor;
+
+    impl<'de> Visitor<'de> for BinaryVisitor {
+        type Value = ExternalProposalId;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("an external proposal id in the binary form")
+        }
+
+        fn visit_bytes<E>(self, value: &[u8]) -> Result<ExternalProposalId, E>
+        where
+            E: Error,
+        {
+            value.try_into().map_err(Error::custom)
+        }
+    }
+
+    if deserializer.is_human_readable() {
+        deserializer.deserialize_str(StringVisitor)
+    } else {
+        deserializer.deserialize_bytes(BinaryVisitor)
+    }
 }
 
 fn deserialize_choices<'de, D>(deserializer: D) -> Result<Options, D::Error>
