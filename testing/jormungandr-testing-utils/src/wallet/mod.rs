@@ -37,6 +37,7 @@ pub use chain_impl_mockchain::{
     transaction::{Input, TransactionBindingAuthData, UnspecifiedAccountIdentifier},
 };
 use rand_core::{CryptoRng, RngCore};
+use std::{fs::File, path::Path};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -129,6 +130,11 @@ impl Wallet {
         let mut delegation = delegation::Wallet::generate(rng, discrimination);
         delegation.generate_new_signing_key(delegation_identifier.clone());
         Wallet::Delegation(delegation)
+    }
+
+    pub fn save_to_path<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        let file = File::create(path).unwrap();
+        self.save_to(&file)
     }
 
     pub fn save_to<W: std::io::Write>(&self, w: W) -> std::io::Result<()> {
