@@ -91,6 +91,11 @@ pub struct Configuration {
     /// Whether to skip bootstrap, not recommended in normal settings. useful to true for self-node
     pub skip_bootstrap: bool,
 
+    /// The current node is the first node in the blockchain. This will not bootstrap if there is only block0 in the
+    /// blockchain. Otherwise (more than one block and need to catch up) the node will continue to the usual bootstrap
+    /// process.
+    pub seeding_node: bool,
+
     pub http_fetch_block0_service: Vec<String>,
 
     /// A pre-0.9 node ID to put in "node-id-bin" metadata when subscribing

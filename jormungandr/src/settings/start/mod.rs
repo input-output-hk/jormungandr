@@ -197,17 +197,29 @@ fn generate_network(
 ) -> Result<network::Configuration, Error> {
     use jormungandr_lib::multiaddr::{multiaddr_resolve_dns, multiaddr_to_socket_addr};
 
-    let (mut p2p, http_fetch_block0_service, skip_bootstrap, bootstrap_from_trusted_peers) =
-        if let Some(cfg) = config {
-            (
-                cfg.p2p.clone(),
-                cfg.http_fetch_block0_service.clone(),
-                cfg.skip_bootstrap.unwrap_or(false),
-                cfg.bootstrap_from_trusted_peers.unwrap_or(false),
-            )
-        } else {
-            (config::P2pConfig::default(), Vec::new(), false, false)
-        };
+    let (
+        mut p2p,
+        http_fetch_block0_service,
+        skip_bootstrap,
+        bootstrap_from_trusted_peers,
+        seeding_node,
+    ) = if let Some(cfg) = config {
+        (
+            cfg.p2p.clone(),
+            cfg.http_fetch_block0_service.clone(),
+            cfg.skip_bootstrap.unwrap_or(false),
+            cfg.bootstrap_from_trusted_peers.unwrap_or(false),
+            cfg.seeding_node,
+        )
+    } else {
+        (
+            config::P2pConfig::default(),
+            Vec::new(),
+            false,
+            false,
+            false,
+        )
+    };
 
     if p2p.trusted_peers.is_some() {
         if let Some(peers) = p2p.trusted_peers.as_mut() {
@@ -302,6 +314,7 @@ fn generate_network(
         http_fetch_block0_service,
         bootstrap_from_trusted_peers,
         skip_bootstrap,
+        seeding_node,
         legacy_node_id: Some(legacy_node_id),
     };
 

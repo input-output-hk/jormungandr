@@ -99,6 +99,12 @@ Note:
 
 ## Advanced
 
+### Seeding mode
+
+When starting a new blockchain you would want to set `seeding_mode: true` for your node. This will
+skip the bootstrap until the first block after `block0` is created. After that this setting will
+require a proper bootstrap like any other node without `skip_bootstrap: true`.
+
 ### Rewards report
 
 Starting the node `jormungandr` with the command line option `--rewards-report-all` will

@@ -43,6 +43,8 @@ pub struct Config {
 
     pub bootstrap_from_trusted_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,
+    #[serde(default)]
+    pub seeding_node: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

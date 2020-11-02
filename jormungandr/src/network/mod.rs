@@ -659,6 +659,11 @@ where
         return Ok(true);
     }
 
+    if config.seeding_node && &branch.get_ref().await.hash() == blockchain.block0() {
+        warn!(logger, "this node is set into the seeding mode and its blockchain is empty; starting a new blockchain!");
+        return Ok(true);
+    }
+
     if config.trusted_peers.is_empty() {
         error!(
             logger,
