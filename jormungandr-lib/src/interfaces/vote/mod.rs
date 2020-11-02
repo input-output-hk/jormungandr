@@ -1,9 +1,6 @@
 use crate::{
     crypto::hash::Hash,
-    interfaces::{
-        account_identifier::AccountIdentifier, blockdate::BlockDateDef, stake::Stake,
-        value::ValueDef,
-    },
+    interfaces::{blockdate::BlockDateDef, stake::Stake, value::ValueDef},
 };
 use bech32::{FromBase32, ToBase32};
 use chain_impl_mockchain::{
@@ -15,13 +12,11 @@ use chain_impl_mockchain::{
 };
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
-use serde::de::{SeqAccess, Visitor};
+use serde::de::Visitor;
 use serde::export::Formatter;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
 use std::convert::TryInto;
-use typed_bytes::ByteBuilder;
 
 #[derive(
     Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, serde::Deserialize,
