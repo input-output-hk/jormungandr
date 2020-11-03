@@ -33,8 +33,6 @@ pub enum Error {
     // when Blockchain can pre-validate headers without up-to-date ledger.
     #[error("block headers do not form a valid chain: {0}")]
     HeaderChainVerificationFailed(#[from] HeaderChainVerifyError),
-    #[error("unexpected header stream failure")]
-    Unexpected,
 }
 
 mod chain_landing {
