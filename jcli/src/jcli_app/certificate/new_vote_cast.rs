@@ -12,12 +12,15 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 pub struct PublicVoteCast {
     /// the vote plan identified on the blockchain
+    #[structopt(long = "vote-plan-id")]
     vote_plan_id: VotePlanId,
 
     /// the number of proposal in the vote plan you vote for
+    #[structopt(long = "proposal-index")]
     proposal_index: u8,
 
     /// the number of choice within the proposal you vote for
+    #[structopt(long = "choice")]
     choice: u8,
 
     /// write the output to the given file or print it to the standard output if not defined
@@ -28,18 +31,23 @@ pub struct PublicVoteCast {
 #[derive(StructOpt)]
 pub struct PrivateVoteCast {
     /// the vote plan identified on the blockchain
+    #[structopt(long = "vote-plan-id")]
     vote_plan_id: VotePlanId,
 
     /// the number of proposal in the vote plan you vote for
+    #[structopt(long = "proposal-index")]
     proposal_index: u8,
 
     /// size of voting options
+    #[structopt(long = "options-size")]
     options: usize,
 
     /// the number of choice within the proposal you vote for
+    #[structopt(long = "choice")]
     choice: u8,
 
     /// key to encrypt the vote with
+    #[structopt(long = "key-path")]
     encrypting_key_path: Option<PathBuf>,
 
     /// write the output to the given file or print it to the standard output if not defined
