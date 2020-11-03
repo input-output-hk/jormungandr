@@ -1,9 +1,6 @@
 use crate::{
     crypto::hash::Hash,
-    interfaces::{
-        account_identifier::AccountIdentifier, blockdate::BlockDateDef, stake::Stake,
-        value::ValueDef,
-    },
+    interfaces::{blockdate::BlockDateDef, stake::Stake, value::ValueDef},
 };
 use bech32::{FromBase32, ToBase32};
 use chain_impl_mockchain::{
@@ -15,13 +12,13 @@ use chain_impl_mockchain::{
 };
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
-use serde::de::{SeqAccess, Visitor};
+use serde::de::Visitor;
 use serde::export::Formatter;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
+
 use std::convert::TryInto;
-use typed_bytes::ByteBuilder;
+use std::str;
 
 #[derive(
     Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, serde::Deserialize,
@@ -46,7 +43,11 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
             type Value = SerdeMemberPublicKey;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("A compatible bech32 representation of required public key")
+                write!(
+                    formatter,
+                    "a Bech32 representation of member public key with prefix {}",
+                    MEMBER_PUBLIC_KEY_BECH32_HRP
+                )
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -97,7 +98,7 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
             type Value = SerdeMemberPublicKey;
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid binary data for member public key")
+                formatter.write_str("binary data for member public key")
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -218,7 +219,7 @@ mod serde_committee_member_public_keys {
     use crate::interfaces::vote::SerdeMemberPublicKey;
     use serde::de::{SeqAccess, Visitor};
     use serde::ser::SerializeSeq;
-    use serde::{Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(
         deserializer: D,
@@ -231,7 +232,7 @@ mod serde_committee_member_public_keys {
             type Value = Vec<SerdeMemberPublicKey>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid sequence of hex encoded public keys")
+                formatter.write_str("a sequence of member public keys")
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, <A as SeqAccess<'de>>::Error>
@@ -274,24 +275,47 @@ fn deserialize_external_proposal_id<'de, D>(deserializer: D) -> Result<ExternalP
 where
     D: Deserializer<'de>,
 {
-    struct ExternalProposalIdVisitor;
+    use serde::de::Error;
 
-    impl<'de> serde::de::Visitor<'de> for ExternalProposalIdVisitor {
+    struct StringVisitor;
+
+    impl<'de> Visitor<'de> for StringVisitor {
         type Value = ExternalProposalId;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("external proposal id in a hexadecimal form")
+            formatter.write_str("an external proposal id in hexadecimal form")
         }
 
         fn visit_str<E>(self, value: &str) -> Result<ExternalProposalId, E>
         where
-            E: serde::de::Error,
+            E: Error,
         {
-            Ok(std::str::FromStr::from_str(value).unwrap())
+            str::parse(value).map_err(Error::custom)
         }
     }
 
-    deserializer.deserialize_str(ExternalProposalIdVisitor)
+    struct BinaryVisitor;
+
+    impl<'de> Visitor<'de> for BinaryVisitor {
+        type Value = ExternalProposalId;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("an external proposal id in the binary form")
+        }
+
+        fn visit_bytes<E>(self, value: &[u8]) -> Result<ExternalProposalId, E>
+        where
+            E: Error,
+        {
+            value.try_into().map_err(Error::custom)
+        }
+    }
+
+    if deserializer.is_human_readable() {
+        deserializer.deserialize_str(StringVisitor)
+    } else {
+        deserializer.deserialize_bytes(BinaryVisitor)
+    }
 }
 
 fn deserialize_choices<'de, D>(deserializer: D) -> Result<Options, D::Error>
@@ -304,7 +328,7 @@ where
         type Value = Options;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("options number must be an integer less than 256")
+            formatter.write_str("a number of options from 0 to 255")
         }
 
         fn visit_u64<E>(self, value: u64) -> Result<Options, E>
@@ -336,7 +360,7 @@ where
     for proposal in proposals_list.0.into_iter() {
         match proposals.push(proposal.0) {
             chain_impl_mockchain::certificate::PushProposal::Full { .. } => {
-                panic!("too much proposals")
+                panic!("too many proposals")
             }
             _ => {}
         }
@@ -382,9 +406,8 @@ impl TallyResult {
 pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
 mod serde_base64_bytes {
-    use crate::interfaces::vote::EncryptedTally;
     use serde::de::{Error, Visitor};
-    use serde::{Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
     where
@@ -395,7 +418,7 @@ mod serde_base64_bytes {
             type Value = Vec<u8>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid base64 encoded bytes")
+                formatter.write_str("base64 encoded binary data")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -418,7 +441,7 @@ mod serde_base64_bytes {
             type Value = Vec<u8>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("Invalid bytes data")
+                formatter.write_str("binary data")
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -464,9 +487,10 @@ pub enum Payload {
     Public {
         choice: u8,
     },
-    // We serialize deserialize the bytes directly
     Private {
+        #[serde(with = "serde_base64_bytes")]
         encrypted_vote: Vec<u8>,
+        #[serde(with = "serde_base64_bytes")]
         proof: Vec<u8>,
     },
 }
@@ -491,24 +515,7 @@ impl From<vote::Payload> for Payload {
                 proof,
             } => Self::Private {
                 encrypted_vote: encrypted_vote.iter().flat_map(|ct| ct.to_bytes()).collect(),
-                // TODO: Use iter instead of bytes here
-                proof: ByteBuilder::<u8>::new()
-                    .u64(proof.len() as u64)
-                    .bytes(
-                        &proof
-                            .ibas()
-                            .flat_map(|iba| iba.to_bytes())
-                            .collect::<Vec<u8>>(),
-                    )
-                    .bytes(&proof.ds().flat_map(|ds| ds.to_bytes()).collect::<Vec<u8>>())
-                    .bytes(
-                        &proof
-                            .zwvs()
-                            .flat_map(|zwvs| zwvs.to_bytes())
-                            .collect::<Vec<u8>>(),
-                    )
-                    .bytes(&proof.r().to_bytes())
-                    .finalize_as_vec(),
+                proof: proof.serialize().into(),
             },
         }
     }

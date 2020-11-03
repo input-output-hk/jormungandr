@@ -158,11 +158,7 @@ where
     type Value = SecretKey<A>;
 
     fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "Expecting a secret key for algorithm {}",
-            A::SECRET_BECH32_HRP
-        )
+        write!(fmt, "a secret key for algorithm {}", A::SECRET_BECH32_HRP)
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -203,11 +199,7 @@ where
     type Value = PublicKey<A>;
 
     fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "Expecting a public key for algorithm {}",
-            A::PUBLIC_BECH32_HRP
-        )
+        write!(fmt, "a public key for algorithm {}", A::PUBLIC_BECH32_HRP)
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -251,11 +243,7 @@ where
     type Value = Signature<T, A>;
 
     fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            fmt,
-            "Expecting a signature for algorithm {}",
-            A::SIGNATURE_BECH32_HRP
-        )
+        write!(fmt, "a signature for algorithm {}", A::SIGNATURE_BECH32_HRP)
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -296,7 +284,7 @@ impl<'de> Visitor<'de> for HashVisitor {
     type Value = Blake2b256;
 
     fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "Expecting a Blake2b256 Hash",)
+        write!(fmt, "a Blake2b256 Hash",)
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>

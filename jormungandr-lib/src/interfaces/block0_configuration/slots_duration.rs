@@ -99,7 +99,7 @@ impl<'de> Deserialize<'de> for SlotDuration {
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(
                     formatter,
-                    "Number of seconds between the creation of 2 blocks (between {} ({}) and {} ({}))",
+                    "number of seconds between the creation of 2 blocks (between {} ({}) and {} ({}))",
                     MINIMUM_SLOT_DURATION, SlotDuration::MINIMUM,
                     MAXIMUM_SLOT_DURATION, SlotDuration::MAXIMUM,
                 )

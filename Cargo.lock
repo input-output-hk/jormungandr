@@ -788,7 +788,7 @@ name = "chain-vote"
 version = "0.1.0"
 dependencies = [
  "cryptoxide 0.2.1",
- "eccoxide",
+ "eccoxide 0.3.0",
  "rand_core 0.5.1",
 ]
 
@@ -798,7 +798,7 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-wallet-libs?branch=master#2105718064abc04ee5fa298bfe05325f1e3de214"
 dependencies = [
  "cryptoxide 0.2.1",
- "eccoxide",
+ "eccoxide 0.1.0",
  "rand_core 0.5.1",
 ]
 
@@ -1264,6 +1264,15 @@ dependencies = [
  "lazy_static",
  "num-bigint",
  "num-traits",
+]
+
+[[package]]
+name = "eccoxide"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e308e24782dbcdccf10983be0e3e24f307a7e535a711d2514b05719a7eaf5eb4"
+dependencies = [
+ "lazy_static",
 ]
 
 [[package]]
