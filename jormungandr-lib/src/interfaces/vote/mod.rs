@@ -1,9 +1,6 @@
 use crate::{
     crypto::hash::Hash,
-    interfaces::{
-        account_identifier::AccountIdentifier, blockdate::BlockDateDef, stake::Stake,
-        value::ValueDef,
-    },
+    interfaces::{blockdate::BlockDateDef, stake::Stake, value::ValueDef},
 };
 use bech32::{FromBase32, ToBase32};
 use chain_impl_mockchain::{
@@ -15,11 +12,10 @@ use chain_impl_mockchain::{
 };
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
-use serde::de::{SeqAccess, Visitor};
+use serde::de::Visitor;
 use serde::export::Formatter;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
 use std::convert::TryInto;
 use typed_bytes::ByteBuilder;
 
@@ -218,7 +214,7 @@ mod serde_committee_member_public_keys {
     use crate::interfaces::vote::SerdeMemberPublicKey;
     use serde::de::{SeqAccess, Visitor};
     use serde::ser::SerializeSeq;
-    use serde::{Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(
         deserializer: D,
@@ -382,9 +378,8 @@ impl TallyResult {
 pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
 mod serde_base64_bytes {
-    use crate::interfaces::vote::EncryptedTally;
     use serde::de::{Error, Visitor};
-    use serde::{Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
     where
