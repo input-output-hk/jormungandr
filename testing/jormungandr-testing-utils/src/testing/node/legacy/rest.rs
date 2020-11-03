@@ -46,10 +46,12 @@ impl BackwardCompatibleRest {
 
     pub fn disable_logger(&mut self) {
         self.settings.enable_debug = false;
+        self.raw.update_settings(self.settings.clone());
     }
 
     pub fn enable_logger(&mut self) {
         self.settings.enable_debug = true;
+        self.raw.update_settings(self.settings.clone());
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {

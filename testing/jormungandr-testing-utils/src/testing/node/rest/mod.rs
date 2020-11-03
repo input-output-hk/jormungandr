@@ -1,6 +1,8 @@
+mod load;
 mod raw;
 mod settings;
 
+pub use load::RestRequestGen;
 pub use raw::RawRest;
 pub use settings::RestSettings;
 
