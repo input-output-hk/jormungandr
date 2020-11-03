@@ -5,6 +5,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, EpochRewardsInfo, StakePoolStats, Value as LibValue},
 };
+use jormungandr_testing_utils::testing::node::time;
 use std::str::FromStr;
 
 #[test]
@@ -26,10 +27,13 @@ pub fn collect_reward() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(3),
+            .with_slot_duration(3)
+            .with_total_rewards_supply(1_000_000.into())
+            .with_explorer(),
     )
     .unwrap();
-    startup::sleep_till_next_epoch(10, &jormungandr.block0_configuration());
+
+    time::wait_for_epoch(2, jormungandr.explorer());
 
     let stake_pools_data: Vec<StakePoolStats> = stake_pools
         .iter()

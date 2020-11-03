@@ -245,6 +245,7 @@ pub fn test_vote_flow_praos() {
             ActiveSlotCoefficient::new(Milli::from_millis(1_000)).unwrap(),
         )
         .with_certs(vec![vote_plan_cert])
+        .with_total_rewards_supply(1_000_000.into())
         .with_slot_duration(1);
 
     let (jormungandr, _stake_pools) = start_stake_pool(
