@@ -93,6 +93,12 @@ pub enum Error {
     NotVotePlanCertificate,
     #[error("invalid vote plan certificate configuration")]
     VotePlanConfig(#[source] serde_yaml::Error),
+    #[error("invalid base64 encoded bytes")]
+    Base64(#[source] base64::DecodeError),
+    #[error("invalid vote encrypting key")]
+    VoteEncryptingKey,
+    #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
+    InvalidBech32Key { expected: String, actual: String },
 }
 
 #[allow(clippy::large_enum_variant)]
