@@ -368,7 +368,6 @@ async fn process_and_propagate_new_ref(
     mut network_msg_box: MessageBox<NetworkMsg>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
-    let hash = header.hash();
     debug!(logger, "processing the new block and propagating");
 
     process_new_ref(logger, blockchain, tip, new_block_ref).await?;
@@ -766,6 +765,5 @@ fn chain_header_error_into_reply(err: candidate::Error) -> intercom::Error {
         MissingParentBlock(_) => intercom::Error::failed_precondition(err.to_string()),
         BrokenHeaderChain(_) => intercom::Error::invalid_argument(err.to_string()),
         HeaderChainVerificationFailed(e) => intercom::Error::invalid_argument(e),
-        _ => intercom::Error::failed(err.to_string()),
     }
 }
