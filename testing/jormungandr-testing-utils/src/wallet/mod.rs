@@ -99,7 +99,7 @@ impl Wallet {
     where
         RNG: CryptoRng + RngCore,
     {
-        Self::new_account_with_discrimination(rng, Discrimination::Test)
+        Self::new_utxo_with_discrimination(rng, Discrimination::Test)
     }
 
     pub fn new_utxo_with_discrimination<RNG>(
