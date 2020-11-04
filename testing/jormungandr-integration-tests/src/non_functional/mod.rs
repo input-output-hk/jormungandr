@@ -16,6 +16,11 @@ Long running test for self node (48 h)
 pub mod soak;
 
 /*
+  Quick load test for rest api
+*/
+pub mod rest;
+
+/*
 Long running test for dumping rewards each epoch
 */
 pub mod rewards;
