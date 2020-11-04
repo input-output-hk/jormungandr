@@ -63,23 +63,23 @@ impl ExplorerRequestGen {
 }
 
 impl RequestGenerator for ExplorerRequestGen {
-    fn next(&mut self) -> Result<Option<Id>, RequestFailure> {
-        match self.next_usize() % 7 {
+    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+        let result = match self.next_usize() % 7 {
             0 => {
                 let limit = self.next_usize_in_range(1, 1000) as i64;
-                self.explorer.stake_pools(limit).map_err(|e| {
+                self.explorer.stake_pools(limit).map(|_| ()).map_err(|e| {
                     RequestFailure::General(format!("Explorer - StakePools: {}", e.to_string()))
-                })?;
+                })
             }
             1 => {
                 let limit = self.next_usize_in_range(1, 1000) as i64;
-                self.explorer.blocks(limit).map_err(|e| {
+                self.explorer.blocks(limit).map(|_| ()).map_err(|e| {
                     RequestFailure::General(format!("Explorer- Blocks: {}", e.to_string()))
-                })?;
+                })
             }
             2 => self.explorer.last_block().map(|_| ()).map_err(|e| {
                 RequestFailure::General(format!("Explorer - LastBlock: {}", e.to_string()))
-            })?,
+            }),
             3 => {
                 let limit = self.next_usize_in_range(1, 30) as u32;
                 self.explorer
@@ -90,7 +90,7 @@ impl RequestGenerator for ExplorerRequestGen {
                             "Explorer - BlockAtChainLength: {}",
                             e.to_string()
                         ))
-                    })?;
+                    })
             }
             4 => {
                 let epoch_nr = self.next_usize_in_range(1, 30) as u32;
@@ -100,7 +100,7 @@ impl RequestGenerator for ExplorerRequestGen {
                     .map(|_| ())
                     .map_err(|e| {
                         RequestFailure::General(format!("Explorer - Epoch: {}", e.to_string()))
-                    })?;
+                    })
             }
             5 => {
                 let explorer = self.explorer.clone();
@@ -114,38 +114,40 @@ impl RequestGenerator for ExplorerRequestGen {
                                 "Explorer - StakePool: {}",
                                 e.to_string()
                             ))
-                        })?;
+                        })
                 } else {
-                    explorer.status().map(|_| ()).map_err(|e| {
-                        RequestFailure::General(format!("Status: {}", e.to_string()))
-                    })?;
+                    explorer
+                        .status()
+                        .map(|_| ())
+                        .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))
                 }
             }
             6 => self
                 .explorer
                 .status()
                 .map(|_| ())
-                .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))?,
+                .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string()))),
             7 => {
                 let limit = self.next_usize_in_range(1, 1000) as i64;
                 self.explorer.vote_plans(limit).map(|_| ()).map_err(|e| {
                     RequestFailure::General(format!("Explorer - VotePlans: {}", e.to_string()))
-                })?;
+                })
             }
             8 => {
                 let explorer = self.explorer.clone();
                 if let Some(pool_id) = self.next_address() {
                     explorer.address(pool_id).map(|_| ()).map_err(|e| {
                         RequestFailure::General(format!("Explorer - Address: {}", e.to_string()))
-                    })?;
+                    })
                 } else {
-                    explorer.status().map(|_| ()).map_err(|e| {
-                        RequestFailure::General(format!("Status: {}", e.to_string()))
-                    })?;
+                    explorer
+                        .status()
+                        .map(|_| ())
+                        .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))
                 }
             }
             _ => unreachable!(),
-        }
-        Ok(None)
+        };
+        result.map(|()| vec![None])
     }
 }
