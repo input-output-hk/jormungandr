@@ -184,6 +184,15 @@ impl JormungandrRest {
         Ok(())
     }
 
+    pub fn send_fragment_batch(
+        &self,
+        fragments: Vec<Fragment>,
+    ) -> Result<Vec<MemPoolCheck>, RestError> {
+        self.inner
+            .send_fragment_batch(fragments)
+            .map_err(Into::into)
+    }
+
     pub fn vote_plan_statuses(&self) -> Result<Vec<VotePlanStatus>, RestError> {
         serde_json::from_str(&self.inner.vote_plan_statuses()?)
             .map_err(RestError::CannotDeserialize)
