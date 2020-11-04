@@ -7,9 +7,11 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct GetVotePlanId {
-    /// read the certificate from
+    /// file to read the certificate from (defaults to stdin)
+    #[structopt(long, parse(from_os_str), value_name = "PATH")]
     pub input: Option<PathBuf>,
-    /// write the id to
+    /// file to write the output to (defaults to stdout)
+    #[structopt(long, parse(from_os_str), value_name = "PATH")]
     pub output: Option<PathBuf>,
 }
 
