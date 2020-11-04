@@ -3,32 +3,36 @@ use crate::testing::FragmentSenderSetup;
 use crate::testing::RemoteJormungandr;
 use crate::wallet::LinearFee;
 use crate::wallet::Wallet;
-use chain_impl_mockchain::fragment::FragmentId;
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
+use std::iter;
 
-pub struct FragmentGenerator<'a> {
+pub struct BatchFragmentGenerator<'a> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
     fragment_sender: FragmentSender<'a>,
     rand: OsRng,
     split_marker: usize,
+    batch_size: u8,
 }
 
-impl<'a> FragmentGenerator<'a> {
+impl<'a> BatchFragmentGenerator<'a> {
     pub fn new(
         fragment_sender_setup: FragmentSenderSetup<'a>,
         jormungandr: RemoteJormungandr,
         block_hash: Hash,
         fees: LinearFee,
+        batch_size: u8,
     ) -> Self {
         Self {
             wallets: Vec::new(),
             fragment_sender: FragmentSender::new(block_hash, fees, fragment_sender_setup),
             rand: OsRng,
-            jormungandr: jormungandr,
+            jormungandr,
             split_marker: 0,
+            batch_size,
         }
     }
 
@@ -73,22 +77,53 @@ impl<'a> FragmentGenerator<'a> {
         }
     }
 
-    pub fn send_transaction(&mut self) -> Result<FragmentId, RequestFailure> {
+    pub fn generate_transaction(&mut self) -> Result<Fragment, RequestFailure> {
         self.increment_split_marker();
         let (senders, recievers) = self.wallets.split_at_mut(self.split_marker);
         let mut sender = senders.get_mut(senders.len() - 1).unwrap();
         let reciever = recievers.get(0).unwrap();
 
+        let fragment = sender
+            .transaction_to(
+                &self.fragment_sender.block0_hash(),
+                &self.fragment_sender.fees(),
+                reciever.address(),
+                1.into(),
+            )
+            .map_err(|e| RequestFailure::General(format!("{:?}", e)));
+        sender.confirm_transaction();
+        fragment
+    }
+
+    pub fn batch_size(&self) -> u8 {
+        self.batch_size
+    }
+
+    pub fn generate_batch_transaction(&mut self) -> Result<Vec<Fragment>, RequestFailure> {
+        let mut transactions = vec![];
+
+        for _ in 0..self.batch_size {
+            transactions.push(self.generate_transaction()?);
+        }
+        Ok(transactions)
+    }
+
+    pub fn send_batch(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+        let transactions = self.generate_batch_transaction()?;
         self.fragment_sender
-            .send_transaction(&mut sender, &reciever, &self.jormungandr, 1.into())
-            .map(|x| x.fragment_id().clone())
+            .send_batch_fragments(transactions, &self.jormungandr)
+            .map(|checks| {
+                checks
+                    .iter()
+                    .map(|x| Some(x.fragment_id().to_string()))
+                    .collect()
+            })
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }
 }
 
-impl RequestGenerator for FragmentGenerator<'_> {
+impl RequestGenerator for BatchFragmentGenerator<'_> {
     fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
-        self.send_transaction()
-            .map(|fragment_id| vec![Some(fragment_id.to_string())])
+        self.send_batch()
     }
 }
