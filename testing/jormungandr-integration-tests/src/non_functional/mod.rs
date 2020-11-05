@@ -1,30 +1,35 @@
-#![cfg(feature = "sanity-non-functional")]
-
+#[cfg(feature = "sanity-non-functional")]
 pub mod compatibility;
 /*
  Explorer soak test. Run node for ~15 minutes and verify explorer is in sync with node rest
 */
+#[cfg(feature = "sanity-non-functional")]
 pub mod explorer;
 /*
  Sanity performance tests. Quick tests to check overall node performance.
  Run some transaction for ~15 minutes or specified no of transactions (100)
 */
+#[cfg(feature = "sanity-non-functional")]
 pub mod sanity;
 /*
 Long running test for self node (48 h)
 */
+#[cfg(feature = "soak-non-functional")]
 pub mod soak;
 
 /*
   Quick load test for rest api
 */
+#[cfg(feature = "sanity-non-functional")]
 pub mod rest;
 
 /*
 Long running test for dumping rewards each epoch
 */
+#[cfg(feature = "sanity-non-functional")]
 pub mod rewards;
 
+#[cfg(feature = "sanity-non-functional")]
 pub mod fragment;
 
 use crate::common::{
