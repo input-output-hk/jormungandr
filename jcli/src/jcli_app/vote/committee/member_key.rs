@@ -10,6 +10,8 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 pub struct Generate {
+    /// threshold number of the committee members sufficient for
+    /// decrypting the tally
     #[structopt(long, short, name = "THRESHOLD", parse(try_from_str))]
     threshold: usize,
 
@@ -17,13 +19,14 @@ pub struct Generate {
     #[structopt(long, name = "CRS", parse(try_from_str = parse_crs))]
     crs: chain_vote::CRS,
 
+    /// communication keys of the other committee members
     #[structopt(long, short, name = "COMMUNICATION_KEYS",
         parse(try_from_str = parse_member_communication_key),
         required = true,
     )]
     keys: Vec<MemberCommunicationPublicKey>,
 
-    /// the committee member index (my)
+    /// index of the committee member this key is generated for
     #[structopt(long, short, name = "INDEX", parse(try_from_str))]
     index: u64,
 
@@ -40,10 +43,9 @@ pub struct Generate {
 
 #[derive(StructOpt)]
 pub struct ToPublic {
-    /// the source private key to extract the public key from
-    ///
-    /// if no value passed, the private key will be read from the
-    /// standard input
+    /// The file with the private key to extract the public key from.
+    /// If no value passed, the private key will be read from the
+    /// standard input.
     #[structopt(long = "input")]
     input_key: Option<PathBuf>,
 

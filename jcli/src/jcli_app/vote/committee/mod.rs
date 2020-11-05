@@ -7,9 +7,9 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum Committee {
-    /// generate a private key
+    /// commands for managing committee member communication keys
     CommunicationKey(communication_key::CommunicationKey),
-    /// get the public key out of a given private key
+    /// commands for managing committee member stake keys
     MemberKey(member_key::MemberKey),
 }
 

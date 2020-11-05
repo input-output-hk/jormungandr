@@ -22,10 +22,9 @@ pub struct Generate {
 
 #[derive(StructOpt, Debug)]
 pub struct ToPublic {
-    /// the source private key to extract the public key from
-    ///
-    /// if no value passed, the private key will be read from the
-    /// standard input
+    /// The file with the private key to extract the public key from.
+    /// If no value passed, the private key will be read from the
+    /// standard input.
     #[structopt(long = "input")]
     input_key: Option<PathBuf>,
 

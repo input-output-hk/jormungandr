@@ -53,13 +53,13 @@ pub enum Error {
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub enum Vote {
-    // Committee commands
+    /// Create committee member keys
     Committee(committee::Committee),
     /// Build an encryption vote key
     EncryptingVoteKey(encrypting_vote_key::EncryptingVoteKey),
-    /// Build an encryption vote key
+    /// Create a common reference string
     CRS(common_reference_string::CRS),
-    /// Create decryption share for private voting tally.
+    /// Create decryption share for private voting tally
     Tally(tally::Tally),
 }
 
