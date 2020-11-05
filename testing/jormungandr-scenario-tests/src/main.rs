@@ -102,7 +102,6 @@ struct CommandArgs {
     /// lists tests under tag
     #[structopt(long = "list-only")]
     list_only: Option<String>,
-
 }
 
 fn main() {
@@ -139,8 +138,15 @@ fn main() {
     );
 
     if let Some(tag_to_list) = command_args.list_only {
-        println!("Scenarios under tag: {}",tag_to_list.to_uppercase());
-        println!("{:#?}",scenarios_repo.scenarios_tagged_by(parse_tag_from_str(&tag_to_list).unwrap()).iter().map(|sc| sc.name()).collect::<Vec<String>>());
+        println!("Scenarios under tag: {}", tag_to_list.to_uppercase());
+        println!(
+            "{:#?}",
+            scenarios_repo
+                .scenarios_tagged_by(parse_tag_from_str(&tag_to_list).unwrap())
+                .iter()
+                .map(|sc| sc.name())
+                .collect::<Vec<String>>()
+        );
         std::process::exit(0);
     }
 
