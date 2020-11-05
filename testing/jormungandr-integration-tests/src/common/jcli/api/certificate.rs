@@ -44,13 +44,15 @@ impl Certificate {
         choice: Choice,
         payload_type: PayloadType,
     ) -> String {
-        self.command
-            .vote_cast(
-                vote_plan_id.into(),
-                proposal_idx,
-                choice.as_byte(),
-                payload_type,
-            )
+        let command = match payload_type {
+            PayloadType::Public => {
+                self.command
+                    .public_vote_cast(vote_plan_id.into(), proposal_idx, choice.as_byte())
+            }
+            PayloadType::Private => unimplemented!(),
+        };
+
+        command
             .build()
             .assert()
             .success()

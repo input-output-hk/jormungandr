@@ -1,10 +1,8 @@
 #![allow(dead_code)]
 
+use jormungandr_lib::interfaces::TaxType;
 use std::path::Path;
 use std::process::Command;
-
-use chain_impl_mockchain::vote::PayloadType;
-use jormungandr_lib::interfaces::TaxType;
 
 #[derive(Debug)]
 pub struct CertificateCommand {
@@ -57,21 +55,21 @@ impl CertificateCommand {
         self
     }
 
-    pub fn vote_cast(
+    pub fn public_vote_cast(
         mut self,
         vote_plan_id: String,
         proposal_idx: usize,
         choice: u8,
-        vote_type: PayloadType,
     ) -> Self {
-        self.command.arg("new").arg("vote-cast");
-
-        if let PayloadType::Public = vote_type {
-            self.command.arg("--public");
-        }
         self.command
+            .arg("new")
+            .arg("vote-cast")
+            .arg("public")
+            .arg("--vote-plan-id")
             .arg(vote_plan_id)
+            .arg("--proposal-index")
             .arg(proposal_idx.to_string())
+            .arg("--choice")
             .arg(choice.to_string());
         self
     }
