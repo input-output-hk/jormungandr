@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::{
     interfaces::{Log, Mempool},
     time::Duration,

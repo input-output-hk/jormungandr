@@ -190,6 +190,7 @@ impl RawSettings {
     }
 }
 
+#[allow(deprecated)]
 fn generate_network(
     command_arguments: &StartArguments,
     config: &Option<Config>,

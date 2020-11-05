@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::{
     network::p2p::{layers::LayersConfig, topic, Address, PolicyConfig},
     settings::logging::{LogFormat, LogOutput},
