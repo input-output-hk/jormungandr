@@ -4,6 +4,7 @@ use crate::{
     wallet::Wallet,
 };
 use bech32::FromBase32;
+use chain_core::property::Serialize;
 use chain_crypto::PublicKey;
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fragment::Fragment;
@@ -12,6 +13,21 @@ use reqwest::{
     blocking::Response,
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
 };
+use std::fmt;
+
+enum ApiVersion {
+    V0,
+    V1,
+}
+
+impl fmt::Display for ApiVersion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ApiVersion::V0 => write!(f, "v0"),
+            ApiVersion::V1 => write!(f, "v1"),
+        }
+    }
+}
 
 /// struct intends to return raw reqwest response
 /// can be used to verify requests error codes or
@@ -67,17 +83,18 @@ impl RawRest {
         format!("{}/v0/{}", self.uri, path)
     }
 
-    fn path_http_or_https(&self, path: &str) -> String {
+    fn path_http_or_https(&self, path: &str, api_version: ApiVersion) -> String {
         if self.settings.use_https_for_post {
             let url = url::Url::parse(&self.uri).unwrap();
             return format!(
-                "https://{}:443/{}/v0/{}",
+                "https://{}:443/{}/{}/{}",
                 url.domain().unwrap(),
                 url.path_segments().unwrap().next().unwrap(),
+                api_version.to_string(),
                 path
             );
         }
-        format!("{}/v0/{}", self.uri, path)
+        format!("{}/{}/{}", self.uri, api_version, path)
     }
 
     pub fn stake_distribution(&self) -> Result<Response, reqwest::Error> {
@@ -166,7 +183,7 @@ impl RawRest {
         let builder = reqwest::blocking::Client::builder();
         let client = builder.build()?;
         client
-            .post(&self.path_http_or_https(path))
+            .post(&self.path_http_or_https(path, ApiVersion::V0))
             .headers(self.construct_headers())
             .body(body)
             .send()
@@ -186,6 +203,28 @@ impl RawRest {
         body: Vec<u8>,
     ) -> Result<reqwest::blocking::Response, reqwest::Error> {
         self.post("message", body)
+    }
+
+    pub fn send_fragment_batch(
+        &self,
+        fragments: Vec<Fragment>,
+    ) -> Result<Response, reqwest::Error> {
+        let builder = reqwest::blocking::Client::builder();
+        let client = builder.build()?;
+        client
+            .post(&self.path_http_or_https("fragments", ApiVersion::V1))
+            .headers(self.construct_headers())
+            .json(
+                &fragments
+                    .iter()
+                    .map(|x| {
+                        std::str::from_utf8(&x.serialize_as_vec().unwrap())
+                            .unwrap()
+                            .to_string()
+                    })
+                    .collect::<Vec<String>>(),
+            )
+            .send()
     }
 
     pub fn vote_plan_statuses(&self) -> Result<Response, reqwest::Error> {

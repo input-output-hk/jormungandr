@@ -112,6 +112,21 @@ impl FragmentNode for RemoteJormungandr {
             }
         })
     }
+
+    fn send_batch_fragments(
+        &self,
+        fragments: Vec<Fragment>,
+    ) -> Result<Vec<MemPoolCheck>, FragmentNodeError> {
+        self.rest()
+            .send_fragment_batch(fragments.clone())
+            .map_err(|e| FragmentNodeError::CannotSendFragmentBatch {
+                reason: e.to_string(),
+                alias: self.alias().to_string(),
+                fragment_ids: fragments.iter().map(|x| x.id()).collect(),
+                logs: FragmentNode::log_content(self),
+            })
+    }
+
     fn log_pending_fragment(&self, fragment_id: FragmentId) {
         println!("Fragment '{}' is still pending", fragment_id);
     }

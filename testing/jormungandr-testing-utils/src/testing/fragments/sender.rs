@@ -92,6 +92,16 @@ impl<'a> FragmentSender<'a> {
         }
     }
 
+    pub fn send_batch_fragments<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        fragments: Vec<Fragment>,
+        node: &A,
+    ) -> Result<Vec<MemPoolCheck>, FragmentSenderError> {
+        self.wait_for_node_sync_if_enabled(node)
+            .map_err(FragmentSenderError::SyncNodeError)?;
+        node.send_batch_fragments(fragments).map_err(|e| e.into())
+    }
+
     pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,

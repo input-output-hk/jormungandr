@@ -22,6 +22,16 @@ pub enum FragmentNodeError {
     UnknownError,
     #[error("cannot list fragments error due to '{0}'")]
     ListFragmentError(String),
+    #[error(
+        "cannot send one of the fragments {fragment_ids:?} due to '{reason}' to to node '{alias}'"
+    )]
+    CannotSendFragmentBatch {
+        reason: String,
+        alias: String,
+        fragment_ids: Vec<FragmentId>,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
 }
 
 impl FragmentNodeError {
@@ -43,6 +53,10 @@ pub trait FragmentNode {
     fn alias(&self) -> &str;
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError>;
     fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError>;
+    fn send_batch_fragments(
+        &self,
+        fragments: Vec<Fragment>,
+    ) -> Result<Vec<MemPoolCheck>, FragmentNodeError>;
     fn log_pending_fragment(&self, fragment_id: FragmentId);
     fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String);
     fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash);

@@ -9,10 +9,10 @@ mod verify;
 
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentSender,
-    AdversaryFragmentSenderError, AdversaryFragmentSenderSetup, FragmentBuilder,
-    FragmentBuilderError, FragmentGenerator, FragmentNode, FragmentNodeError, FragmentSender,
-    FragmentSenderError, FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentStatusProvider,
-    FragmentVerifier, FragmentVerifierError, MemPoolCheck, VerifyStrategy,
+    AdversaryFragmentSenderError, AdversaryFragmentSenderSetup, BatchFragmentGenerator,
+    FragmentBuilder, FragmentBuilderError, FragmentGenerator, FragmentNode, FragmentNodeError,
+    FragmentSender, FragmentSenderError, FragmentSenderSetup, FragmentSenderSetupBuilder,
+    FragmentStatusProvider, FragmentVerifier, FragmentVerifierError, MemPoolCheck, VerifyStrategy,
 };
 pub use jortestkit::archive::decompress;
 pub use jortestkit::github::{GitHubApi, GitHubApiError, Release};
