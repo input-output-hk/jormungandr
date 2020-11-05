@@ -8,7 +8,7 @@ use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 
-pub struct FragmentGenerator<'a> {
+pub struct SingleFragmentGenerator<'a> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
     fragment_sender: FragmentSender<'a>,
@@ -16,7 +16,7 @@ pub struct FragmentGenerator<'a> {
     split_marker: usize,
 }
 
-impl<'a> FragmentGenerator<'a> {
+impl<'a> SingleFragmentGenerator<'a> {
     pub fn new(
         fragment_sender_setup: FragmentSenderSetup<'a>,
         jormungandr: RemoteJormungandr,
@@ -86,7 +86,7 @@ impl<'a> FragmentGenerator<'a> {
     }
 }
 
-impl RequestGenerator for FragmentGenerator<'_> {
+impl RequestGenerator for SingleFragmentGenerator<'_> {
     fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
         self.send_transaction()
             .map(|fragment_id| vec![Some(fragment_id.to_string())])
