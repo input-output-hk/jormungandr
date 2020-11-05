@@ -22,7 +22,7 @@ impl FragmentNode for NodeController {
 
     fn send_batch_fragments(
         &self,
-        fragments: Vec<Fragment>,
+        _fragments: Vec<Fragment>,
     ) -> std::result::Result<Vec<MemPoolCheck>, FragmentNodeError> {
         //TODO implement
         unimplemented!()

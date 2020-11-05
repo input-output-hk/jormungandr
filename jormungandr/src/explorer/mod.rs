@@ -647,10 +647,7 @@ fn apply_block_to_vote_plans(
                                 Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
                             })
                             .unwrap(),
-                        Payload::Private {
-                            encrypted_vote,
-                            proof,
-                        } => {
+                        Payload::Private { .. } => {
                             // TODO: what to do exactly in this case?
                             unimplemented!("Private payload are not implemented in explorer")
                         }

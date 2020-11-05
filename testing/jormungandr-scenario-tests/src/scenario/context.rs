@@ -150,6 +150,7 @@ impl<RNG: RngCore> Context<RNG> {
 }
 
 impl TestingDirectory {
+    #[allow(dead_code)]
     pub fn path(&self) -> &Path {
         match self {
             TestingDirectory::User(path_buf) => path_buf,

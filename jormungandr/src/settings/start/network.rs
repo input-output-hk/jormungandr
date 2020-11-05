@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::network::p2p::{layers::LayersConfig, Address, PolicyConfig};
 use poldercast::NodeProfile;
 use std::{net::SocketAddr, str, time::Duration};

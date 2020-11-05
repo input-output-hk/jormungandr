@@ -28,7 +28,6 @@ use self::scalars::{
     PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId, Weight,
 };
 
-use crate::explorer::indexing::ExplorerVoteTally;
 use crate::explorer::{ExplorerDB, Settings};
 
 #[derive(Clone)]

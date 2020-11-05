@@ -187,9 +187,6 @@ impl RawRest {
     }
 
     pub fn send_fragment(&self, fragment: Fragment) -> Result<Response, reqwest::Error> {
-        use chain_core::property::Fragment as _;
-        use chain_core::property::Serialize as _;
-
         let raw = fragment.serialize_as_vec().unwrap();
         self.send_raw_fragment(raw)
     }

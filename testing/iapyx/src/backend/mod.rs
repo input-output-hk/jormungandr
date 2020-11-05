@@ -16,7 +16,7 @@ use jormungandr_lib::interfaces::{AccountState, FragmentLog, VotePlanStatus};
 use jormungandr_testing_utils::testing::node::Explorer;
 use jormungandr_testing_utils::testing::node::RestSettings;
 use node::{RestError as NodeRestError, WalletNodeRestClient};
-pub use proxy::{ProxyClientError, ProxyClient, ProxyServerStub, ProxyServerError};
+pub use proxy::{ProxyClient, ProxyClientError, ProxyServerError, ProxyServerStub};
 use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;
@@ -31,10 +31,15 @@ pub struct WalletBackend {
 }
 
 impl WalletBackend {
-    pub fn new_from_addresses(proxy_address: String, node_address: String, vit_address: String, node_rest_settings: RestSettings) -> Self {
+    pub fn new_from_addresses(
+        proxy_address: String,
+        node_address: String,
+        vit_address: String,
+        node_rest_settings: RestSettings,
+    ) -> Self {
         let mut backend = Self {
             node_client: WalletNodeRestClient::new(
-                format!("http://{}/api",node_address),
+                format!("http://{}/api", node_address),
                 node_rest_settings.clone(),
             ),
             vit_client: VitStationRestClient::new(vit_address.clone()),
@@ -48,9 +53,13 @@ impl WalletBackend {
         backend
     }
 
-
     pub fn new(address: String, node_rest_settings: RestSettings) -> Self {
-        Self::new_from_addresses(address.clone(),address.clone(),address.clone(), node_rest_settings)
+        Self::new_from_addresses(
+            address.clone(),
+            address.clone(),
+            address.clone(),
+            node_rest_settings,
+        )
     }
 
     pub fn send_fragment(&self, transaction: Vec<u8>) -> Result<FragmentId, WalletBackendError> {
@@ -111,12 +120,13 @@ impl WalletBackend {
 
     pub fn vote_statuses(
         &self,
-        identifier: AccountIdentifier,
+        _identifier: AccountIdentifier,
     ) -> Result<Vec<SimpleVoteStatus>, WalletBackendError> {
+        /*
         let vote_plan_statuses = self.vote_plan_statuses().unwrap();
         let proposals = self.proposals().unwrap();
 
-        /*
+
         let mut active_votes = Vec::new();
         for vote_plan_status in vote_plan_statuses {
             for proposal in vote_plan_status.proposals {

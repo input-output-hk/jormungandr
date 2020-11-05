@@ -328,6 +328,7 @@ impl Settings {
         }
     }
 
+    #[allow(deprecated)]
     fn populate_trusted_peers(&mut self) {
         //generate public id for all nodes treated as trusted peers
         let mut trusted_peers_aliases = HashSet::new();

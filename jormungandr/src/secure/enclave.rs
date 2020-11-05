@@ -1,6 +1,6 @@
 use crate::blockcfg::{
     BlockDate, HeaderBft, HeaderBftBuilder, HeaderGenesisPraos, HeaderGenesisPraosBuilder,
-    HeaderSetConsensusSignature, SlotId,
+    HeaderSetConsensusSignature,
 };
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;

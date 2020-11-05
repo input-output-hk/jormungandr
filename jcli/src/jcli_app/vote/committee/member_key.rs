@@ -5,11 +5,7 @@ use chain_vote::{MemberCommunicationPublicKey, MemberState};
 use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use std::{
-    convert::TryInto,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{convert::TryInto, io::Write, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

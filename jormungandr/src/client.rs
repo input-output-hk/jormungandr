@@ -12,6 +12,7 @@ use std::convert::TryInto;
 use std::time::Duration;
 
 const PROCESS_TIMEOUT_GET_BLOCK_TIP: u64 = 5;
+#[allow(dead_code)]
 const PROCESS_TIMEOUT_GET_PEERS: u64 = 10;
 const PROCESS_TIMEOUT_GET_HEADERS: u64 = 5 * 60;
 const PROCESS_TIMEOUT_GET_HEADERS_RANGE: u64 = 5 * 60;

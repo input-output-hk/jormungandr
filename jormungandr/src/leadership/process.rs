@@ -21,7 +21,7 @@ use jormungandr_lib::{
     time::SystemTime,
 };
 use slog::Logger;
-use std::{collections::VecDeque, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 use thiserror::Error;
 use tokio::time::{delay_until, timeout_at, Instant as TokioInstant};
 
@@ -268,7 +268,7 @@ impl Module {
     }
     async fn action(mut self) -> Result<Self, LeadershipError> {
         match self.schedule.as_mut() {
-            Some(mut schedule) => match schedule.next().await {
+            Some(schedule) => match schedule.next().await {
                 Some(event) => self.action_entry(event).await,
                 None => self.action_schedule().await,
             },

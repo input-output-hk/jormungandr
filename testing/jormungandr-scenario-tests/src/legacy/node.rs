@@ -462,6 +462,7 @@ impl LegacyNodeController {
         })
     }
 
+    #[allow(deprecated)]
     fn ports_are_opened(&self) -> bool {
         self.port_opened(self.settings.config.rest.listen.port())
             && self.port_opened(

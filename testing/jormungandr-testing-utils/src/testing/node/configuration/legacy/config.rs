@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use jormungandr_lib::interfaces::{
     Explorer, LayersConfig, Log, Mempool, Policy, Rest, TopicsOfInterest,
 };

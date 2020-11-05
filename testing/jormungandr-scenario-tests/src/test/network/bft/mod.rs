@@ -6,8 +6,6 @@ use crate::{
     },
     Context, ScenarioResult,
 };
-use jormungandr_lib::interfaces::Explorer;
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use rand_chacha::ChaChaRng;
 
 const LEADER_1: &str = "Leader1";
@@ -16,6 +14,7 @@ const LEADER_3: &str = "Leader3";
 const LEADER_4: &str = "Leader4";
 const LEADER_5: &str = "Leader5";
 
+#[allow(dead_code)]
 const PASSIVE: &str = "Passive";
 
 pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {

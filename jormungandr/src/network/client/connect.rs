@@ -7,7 +7,7 @@ use crate::network::{
     Channels, ConnectionState,
 };
 use chain_core::mempack::{self, ReadBuf, Readable};
-use chain_network::data::{AuthenticatedNodeId, NodeId, NodeKeyPair};
+use chain_network::data::{AuthenticatedNodeId, NodeId};
 use chain_network::error::{self as net_error, HandshakeError};
 use chain_network::grpc::legacy;
 
@@ -17,7 +17,7 @@ use futures::prelude::*;
 use futures::ready;
 use rand::Rng;
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -150,6 +150,7 @@ pub struct ConnectFuture {
     task: BoxFuture<'static, Result<(Client, PeerComms), ConnectError>>,
 }
 
+#[allow(dead_code)]
 #[derive(thiserror::Error, Debug)]
 pub enum ConnectError {
     #[error("connection has been canceled")]

@@ -7,6 +7,7 @@ use thiserror::Error;
 use tokio::task::{spawn_blocking, JoinError};
 use warp::{reject::Reject, Rejection, Reply};
 
+#[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
