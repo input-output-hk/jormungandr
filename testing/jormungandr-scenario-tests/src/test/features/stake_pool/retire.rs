@@ -1,10 +1,9 @@
 use crate::{
-    node::NodeController,
     node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
 };
-use jormungandr_lib::interfaces::{EnclaveLeaderId, Explorer, Value};
+use jormungandr_lib::interfaces::Explorer;
 use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";

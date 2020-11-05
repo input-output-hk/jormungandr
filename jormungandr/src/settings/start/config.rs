@@ -10,7 +10,7 @@ use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
 
-use std::{collections::BTreeMap, fmt, net::SocketAddr, path::PathBuf, str::FromStr};
+use std::{collections::BTreeMap, fmt, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

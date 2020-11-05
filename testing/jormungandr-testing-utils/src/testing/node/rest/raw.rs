@@ -187,6 +187,7 @@ impl RawRest {
     }
 
     pub fn send_fragment(&self, fragment: Fragment) -> Result<Response, reqwest::Error> {
+        #[allow(unused_imports)]
         use chain_core::property::Fragment as _;
         use chain_core::property::Serialize as _;
 

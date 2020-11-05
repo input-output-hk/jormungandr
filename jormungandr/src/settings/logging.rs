@@ -224,6 +224,7 @@ where
 }
 
 impl LogFormat {
+    #[allow(dead_code)]
     fn require_plain(&self) -> Result<(), Error> {
         match self {
             LogFormat::Plain => Ok(()),

@@ -50,8 +50,10 @@ impl TallyDecryptWithAllShares {
             for _ in 0..self.threshold {
                 let mut buff = String::new();
                 &shares_file.read_line(&mut buff);
-                chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
-                    .ok_or(Error::DecryptionShareRead)?;
+                shares.push(
+                    chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
+                        .ok_or(Error::DecryptionShareRead)?,
+                );
             }
             shares
         };

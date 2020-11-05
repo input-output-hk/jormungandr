@@ -3,11 +3,10 @@ use crate::testing::FragmentSenderSetup;
 use crate::testing::RemoteJormungandr;
 use crate::wallet::LinearFee;
 use crate::wallet::Wallet;
-use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
-use std::iter;
 
 pub struct BatchFragmentGenerator<'a> {
     wallets: Vec<Wallet>,
@@ -80,7 +79,7 @@ impl<'a> BatchFragmentGenerator<'a> {
     pub fn generate_transaction(&mut self) -> Result<Fragment, RequestFailure> {
         self.increment_split_marker();
         let (senders, recievers) = self.wallets.split_at_mut(self.split_marker);
-        let mut sender = senders.get_mut(senders.len() - 1).unwrap();
+        let sender = senders.get_mut(senders.len() - 1).unwrap();
         let reciever = recievers.get(0).unwrap();
 
         let fragment = sender

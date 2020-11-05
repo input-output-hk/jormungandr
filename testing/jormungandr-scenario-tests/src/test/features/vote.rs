@@ -25,6 +25,7 @@ const FILIP_MNEMONICS: &str =
     "neck bulb teach illegal soul cry monitor claw amount boring provide village rival draft stone";
 const FILIP_ADDRESS: &str = "Ae2tdPwUPEZ8og5u4WF5rmSyme5Gvp8RYiLM2u7Vm8CyDQzLN3VYTN895Wk";
 
+#[allow(dead_code)]
 pub enum Vote {
     BLANK = 0,
     YES = 1,

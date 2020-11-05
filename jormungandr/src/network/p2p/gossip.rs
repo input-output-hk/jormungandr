@@ -7,6 +7,7 @@ use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 
+use bincode::Options;
 pub use net_data::{Peer, Peers};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
@@ -158,8 +159,8 @@ impl property::Serialize for Gossip {
     type Error = bincode::Error;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        let mut config = bincode::config();
-        config.limit(limits::MAX_GOSSIP_SIZE);
+        let config = bincode::options();
+        config.with_limit(limits::MAX_GOSSIP_SIZE);
 
         config.serialize_into(writer, &self.0)
     }
@@ -169,8 +170,8 @@ impl property::Deserialize for Gossip {
     type Error = bincode::Error;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let mut config = bincode::config();
-        config.limit(limits::MAX_GOSSIP_SIZE);
+        let config = bincode::options();
+        config.with_limit(limits::MAX_GOSSIP_SIZE);
 
         config.deserialize_from(reader).map(Gossip)
     }
