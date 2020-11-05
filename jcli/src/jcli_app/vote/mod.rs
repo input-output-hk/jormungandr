@@ -59,7 +59,7 @@ pub enum Vote {
     EncryptingVoteKey(encrypting_vote_key::EncryptingVoteKey),
     /// Create a common reference string
     CRS(common_reference_string::CRS),
-    /// Create decryption share for private voting tally
+    /// Perform decryption of private voting tally
     Tally(tally::Tally),
 }
 
