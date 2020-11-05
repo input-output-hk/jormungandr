@@ -114,6 +114,15 @@ impl FragmentNode for LegacyNodeController {
         self.send_fragment(fragment)
             .map_err(|_| FragmentNodeError::UnknownError)
     }
+
+    fn send_batch_fragments(
+        &self,
+        fragments: Vec<Fragment>,
+    ) -> std::result::Result<Vec<MemPoolCheck>, FragmentNodeError> {
+        //TODO implement
+        unimplemented!()
+    }
+
     fn log_pending_fragment(&self, fragment_id: FragmentId) {
         self.progress_bar()
             .log_info(format!("Fragment '{}' is still pending", fragment_id));

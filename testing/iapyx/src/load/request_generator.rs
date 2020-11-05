@@ -47,25 +47,25 @@ impl WalletRequestGen {
         self.multi_controller.vote(wallet_index, &proposal, choice)
     }
 
-    pub fn send_conversion_fragment(&mut self, tx: Vec<u8>) -> Result<Option<Id>, RequestFailure> {
+    pub fn send_conversion_fragment(&mut self, tx: Vec<u8>) -> Result<Vec<Option<Id>>, RequestFailure> {
         let id = self
             .multi_controller
             .backend()
             .send_fragment(tx)
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))?;
         self.multi_controller.confirm_transaction(id);
-        Ok(Some(id.to_string()))
+        Ok(vec![Some(id.to_string())])
     }
 }
 
 impl RequestGenerator for WalletRequestGen {
-    fn next(&mut self) -> Result<Option<Id>, RequestFailure> {
+    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
         if let Some(tx) = self.initial_requests.pop() {
             return self.send_conversion_fragment(tx);
         }
         let id = self
             .random_vote()
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))?;
-        Ok(Some(id.to_string()))
+        Ok(vec![Some(id.to_string())])
     }
 }
