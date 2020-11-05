@@ -6,7 +6,6 @@ use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endura
 use jortestkit::process::Wait;
 use std::time::Duration;
 
-#[cfg(feature = "soak-non-functional")]
 #[test]
 pub fn test_blocks_are_being_created_for_48_hours() {
     let jcli: JCli = Default::default();
