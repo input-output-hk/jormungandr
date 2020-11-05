@@ -6,6 +6,7 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct EncryptingVoteKey {
+    /// Keys of all committee members
     #[structopt(
         parse(try_from_str = parse_member_key),
         required = true,

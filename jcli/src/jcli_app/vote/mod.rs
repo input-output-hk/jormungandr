@@ -55,8 +55,8 @@ pub enum Error {
 pub enum Vote {
     /// Create committee member keys
     Committee(committee::Committee),
-    /// Build an encryption vote key
-    EncryptingVoteKey(encrypting_vote_key::EncryptingVoteKey),
+    /// Build an encryption key from committee member keys
+    EncryptingKey(encrypting_vote_key::EncryptingVoteKey),
     /// Create a common reference string
     CRS(common_reference_string::CRS),
     /// Perform decryption of private voting tally
@@ -67,7 +67,7 @@ impl Vote {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Vote::Committee(cmd) => cmd.exec(),
-            Vote::EncryptingVoteKey(cmd) => cmd.exec(),
+            Vote::EncryptingKey(cmd) => cmd.exec(),
             Vote::CRS(cmd) => cmd.exec(),
             Vote::Tally(cmd) => cmd.exec(),
         }
