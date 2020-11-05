@@ -73,7 +73,7 @@ impl ScenariosRepository {
         }
     }
 
-    fn scenarios_tagged_by(&self, tag: Tag) -> Vec<Scenario> {
+    pub fn scenarios_tagged_by(&self, tag: Tag) -> Vec<Scenario> {
         match tag {
             Tag::All => self.repository.clone(),
             Tag::Unstable => self

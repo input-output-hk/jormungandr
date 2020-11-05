@@ -98,6 +98,11 @@ struct CommandArgs {
     /// does not silence panics in tests
     #[structopt(long = "print_panics")]
     print_panics: bool,
+
+    /// lists tests under tag
+    #[structopt(long = "list-only")]
+    list_only: Option<String>,
+
 }
 
 fn main() {
@@ -132,6 +137,13 @@ fn main() {
         command_args.report_unstable,
         command_args.print_panics,
     );
+
+    if let Some(tag_to_list) = command_args.list_only {
+        println!("Scenarios under tag: {}",tag_to_list.to_uppercase());
+        println!("{:#?}",scenarios_repo.scenarios_tagged_by(parse_tag_from_str(&tag_to_list).unwrap()).iter().map(|sc| sc.name()).collect::<Vec<String>>());
+        std::process::exit(0);
+    }
+
     let scenario_suite_result = scenarios_repo.run(&context);
     println!("{}", scenario_suite_result.result_string());
 
