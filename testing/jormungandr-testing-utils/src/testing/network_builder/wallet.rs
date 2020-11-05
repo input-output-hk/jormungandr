@@ -2,6 +2,7 @@ use super::NodeAlias;
 use crate::wallet::{
     account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
 };
+use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     certificate::PoolId, fee::LinearFee, fragment::Fragment,
     transaction::UnspecifiedAccountIdentifier, vote::CommitteeId,
@@ -126,7 +127,7 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         Wallet {
-            inner: Inner::Account(AccountWallet::generate(rng)),
+            inner: Inner::Account(AccountWallet::generate(rng, Discrimination::Test)),
             template,
         }
     }
@@ -136,7 +137,7 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         Wallet {
-            inner: Inner::UTxO(UtxOWallet::generate(rng)),
+            inner: Inner::UTxO(UtxOWallet::generate(rng, Discrimination::Test)),
             template,
         }
     }

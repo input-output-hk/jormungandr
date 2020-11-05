@@ -15,8 +15,9 @@ use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
-        ConsensusLeaderId, EpochStabilityDepth, Initial, InitialUTxO, KESUpdateSpeed,
+        ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialUTxO, KESUpdateSpeed,
         NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams, SlotDuration, TaxType,
+        Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -99,6 +100,12 @@ impl Block0ConfigurationBuilder {
         self.blockchain_configuration.slot_duration = slot_duration;
         self
     }
+
+    pub fn with_discrimination(&mut self, discrimination: Discrimination) -> &mut Self {
+        self.blockchain_configuration.discrimination = discrimination;
+        self
+    }
+
     pub fn with_epoch_stability_depth(
         &mut self,
         epoch_stability_depth: EpochStabilityDepth,
@@ -112,6 +119,16 @@ impl Block0ConfigurationBuilder {
     ) -> &mut Self {
         self.blockchain_configuration
             .consensus_genesis_praos_active_slot_coeff = consensus_genesis_praos_active_slot_coeff;
+        self
+    }
+
+    pub fn with_treasury(&mut self, treasury: Option<Value>) -> &mut Self {
+        self.blockchain_configuration.treasury = treasury;
+        self
+    }
+
+    pub fn with_total_rewards_supply(&mut self, total_reward_supply: Option<Value>) -> &mut Self {
+        self.blockchain_configuration.total_reward_supply = total_reward_supply;
         self
     }
 
@@ -132,6 +149,11 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_initial(&mut self, initial: Vec<Initial>) -> &mut Self {
         self.initial.extend(initial.iter().cloned());
+        self
+    }
+
+    pub fn with_fees_go_to(&mut self, fees_go_to: Option<FeesGoTo>) -> &mut Self {
+        self.blockchain_configuration.fees_go_to = fees_go_to;
         self
     }
 

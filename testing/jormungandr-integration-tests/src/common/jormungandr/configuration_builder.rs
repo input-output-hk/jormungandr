@@ -8,12 +8,14 @@ use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, Initial,
-    InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
-    NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
+    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo,
+    Initial, InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
+    NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
+    Value,
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};
+use chain_addr::Discrimination;
 use jormungandr_testing_utils::{
     testing::{
         Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
@@ -36,11 +38,15 @@ pub struct ConfigurationBuilder {
     linear_fees: LinearFee,
     consensus_leader_ids: Vec<ConsensusLeaderId>,
     secrets: Vec<NodeSecret>,
+    fees_go_to: Option<FeesGoTo>,
+    total_reward_supply: Option<Value>,
+    treasury: Option<Value>,
     node_config_builder: NodeConfigBuilder,
     rewards_history: bool,
     configure_default_log: bool,
     committee_ids: Vec<CommitteeIdDef>,
     leader_key_pair: Option<KeyPair<Ed25519>>,
+    discrimination: Discrimination,
 }
 
 impl Default for ConfigurationBuilder {
@@ -69,6 +75,10 @@ impl ConfigurationBuilder {
             configure_default_log: true,
             committee_ids: vec![],
             leader_key_pair: None,
+            fees_go_to: None,
+            treasury: None,
+            total_reward_supply: None,
+            discrimination: Discrimination::Test,
         }
     }
 
@@ -128,6 +138,11 @@ impl ConfigurationBuilder {
 
     pub fn with_explorer(&mut self) -> &mut Self {
         self.node_config_builder.with_explorer();
+        self
+    }
+
+    pub fn with_fees_go_to(&mut self, fees_go_to: FeesGoTo) -> &mut Self {
+        self.fees_go_to = Some(fees_go_to);
         self
     }
 
@@ -231,6 +246,21 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_treasury(&mut self, treasury: Value) -> &mut Self {
+        self.treasury = Some(treasury);
+        self
+    }
+
+    pub fn with_total_rewards_supply(&mut self, total_reward_supply: Value) -> &mut Self {
+        self.total_reward_supply = Some(total_reward_supply);
+        self
+    }
+
+    pub fn with_discrimination(&mut self, discrimination: Discrimination) -> &mut Self {
+        self.discrimination = discrimination;
+        self
+    }
+
     pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
         let mut node_config = self.node_config_builder.build();
 
@@ -267,16 +297,20 @@ impl ConfigurationBuilder {
         initial.extend(self.certs.iter().cloned());
 
         let block0_config = Block0ConfigurationBuilder::new()
+            .with_discrimination(self.discrimination)
             .with_initial(initial)
             .with_leaders(leaders_ids)
             .with_block0_consensus(self.block0_consensus)
             .with_kes_update_speed(self.kes_update_speed)
             .with_slots_per_epoch(self.slots_per_epoch)
             .with_slot_duration(self.slot_duration)
+            .with_fees_go_to(self.fees_go_to)
+            .with_treasury(self.treasury)
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
             .with_linear_fees(self.linear_fees)
             .with_committee_ids(self.committee_ids.clone())
+            .with_total_rewards_supply(self.total_reward_supply)
             .build();
 
         let path_to_output_block = build_genesis_block(&block0_config, temp_dir);

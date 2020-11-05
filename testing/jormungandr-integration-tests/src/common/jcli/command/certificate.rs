@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
+use jormungandr_lib::interfaces::TaxType;
 use std::path::Path;
 use std::process::Command;
-
-use jormungandr_lib::interfaces::TaxType;
 
 #[derive(Debug)]
 pub struct CertificateCommand {
@@ -44,6 +43,34 @@ impl CertificateCommand {
             .arg("new")
             .arg("vote-plan")
             .arg(proposal_file.as_ref());
+        self
+    }
+
+    pub fn vote_tally<S: Into<String>>(mut self, vote_plan_id: S) -> Self {
+        self.command
+            .arg("new")
+            .arg("vote-tally")
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id.into());
+        self
+    }
+
+    pub fn public_vote_cast(
+        mut self,
+        vote_plan_id: String,
+        proposal_idx: usize,
+        choice: u8,
+    ) -> Self {
+        self.command
+            .arg("new")
+            .arg("vote-cast")
+            .arg("public")
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id)
+            .arg("--proposal-index")
+            .arg(proposal_idx.to_string())
+            .arg("--choice")
+            .arg(choice.to_string());
         self
     }
 
@@ -91,6 +118,18 @@ impl CertificateCommand {
     ) -> Self {
         self.command
             .arg("get-stake-pool-id")
+            .arg(input_file.as_ref())
+            .arg(output_file.as_ref());
+        self
+    }
+
+    pub fn vote_plan_id<P: AsRef<Path>, Q: AsRef<Path>>(
+        mut self,
+        input_file: P,
+        output_file: Q,
+    ) -> Self {
+        self.command
+            .arg("get-vote-plan-id")
             .arg(input_file.as_ref())
             .arg(output_file.as_ref());
         self

@@ -27,17 +27,28 @@ pub struct Wallet {
     /// utxos with the index in the `signing_keys` so we can later
     /// sign the witness for the next transaction,
     utxos: Vec<(usize, UTxOInfo)>,
+
+    discrimination: Discrimination,
 }
 
 impl Wallet {
-    pub fn generate<RNG>(rng: &mut RNG) -> Self
+    pub fn generate<RNG>(rng: &mut RNG, discrimination: Discrimination) -> Self
     where
         RNG: CryptoRng + RngCore,
     {
         let mut seed = [0; 32];
         rng.fill_bytes(&mut seed);
 
-        seed.into()
+        let mut wallet = Self {
+            signing_keys: Vec::new(),
+            seed,
+            rng: ChaChaRng::from_seed(seed),
+            utxos: Vec::new(),
+            discrimination,
+        };
+        wallet.generate_new_signing_key();
+
+        wallet
     }
 
     pub fn generate_new_signing_key(&mut self) -> &SpendingKey {
@@ -46,14 +57,14 @@ impl Wallet {
         self.last_signing_key()
     }
 
-    pub fn address(&self, discrimination: Discrimination) -> Address {
-        self.address_nth(0, discrimination)
+    pub fn address(&self) -> Address {
+        self.address_nth(0)
     }
 
-    pub fn address_nth(&self, i: usize, discrimination: Discrimination) -> Address {
+    pub fn address_nth(&self, i: usize) -> Address {
         self.signing_key(i)
             .identifier()
-            .to_single_address(discrimination)
+            .to_single_address(self.discrimination)
             .into()
     }
 
@@ -78,20 +89,5 @@ impl Wallet {
         Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, |d| {
             self.last_signing_key().as_ref().sign(d)
         })
-    }
-}
-
-impl From<[u8; 32]> for Wallet {
-    fn from(seed: [u8; 32]) -> Self {
-        let mut wallet = Wallet {
-            signing_keys: Vec::new(),
-            seed,
-            rng: ChaChaRng::from_seed(seed),
-            utxos: Vec::new(),
-        };
-
-        wallet.generate_new_signing_key();
-
-        wallet
     }
 }

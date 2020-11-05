@@ -1,8 +1,7 @@
 use crate::common::jcli::command::rest::v0::VoteCommand;
 use assert_cmd::assert::OutputAssertExt;
-use jormungandr_lib::interfaces::CommitteeIdDef;
+use jormungandr_lib::interfaces::{CommitteeIdDef, VotePlanStatus};
 use jortestkit::prelude::ProcessOutput;
-use serde_json::Value;
 
 pub struct Vote {
     vote_command: VoteCommand,
@@ -25,7 +24,7 @@ impl Vote {
         serde_yaml::from_str(&content).expect("JCLI returned malformed CommitteeIdDef")
     }
 
-    pub fn active_vote_plans<S: Into<String>>(self, host: S) -> Vec<Value> {
+    pub fn active_vote_plans<S: Into<String>>(self, host: S) -> Vec<VotePlanStatus> {
         let content = self
             .vote_command
             .active_vote_plans(host)

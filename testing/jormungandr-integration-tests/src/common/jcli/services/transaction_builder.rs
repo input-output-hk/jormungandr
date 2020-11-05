@@ -35,6 +35,15 @@ impl TransactionBuilder {
         PathBuf::from(self.staging_file().path())
     }
 
+    fn truncate_end_of_line(cert_content: &str) -> String {
+        let mut content = cert_content.clone().to_string();
+        if content.ends_with('\n') {
+            let len = content.len();
+            content.truncate(len - 1);
+        }
+        content.trim().to_string()
+    }
+
     pub fn build_transaction_from_utxo(
         self,
         utxo: &UTxOInfo,
@@ -183,7 +192,7 @@ impl TransactionBuilder {
             .finalize_expect_fail(self.staging_file().path(), expected_part);
     }
 
-    pub fn add_auth(&mut self, key: &Path) -> &mut Self {
+    pub fn add_auth<P: AsRef<Path>>(&mut self, key: P) -> &mut Self {
         self.jcli
             .transaction()
             .auth(key, self.staging_file().path());

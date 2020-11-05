@@ -4,6 +4,7 @@ use jortestkit::process::output_extensions::ProcessOutput;
 use crate::common::jcli::command::CertificateCommand;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{prelude::*, NamedTempFile};
+use chain_impl_mockchain::vote::{Choice, PayloadType};
 use jormungandr_testing_utils::testing::file;
 use std::path::Path;
 #[derive(Debug)]
@@ -19,6 +20,39 @@ impl Certificate {
     pub fn new_vote_plan<P: AsRef<Path>>(self, proposal_file: P) -> String {
         self.command
             .vote(proposal_file)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
+    pub fn new_vote_tally<S: Into<String>>(self, vote_plan_id: S) -> String {
+        self.command
+            .vote_tally(vote_plan_id)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
+    pub fn new_vote_cast<S: Into<String>>(
+        self,
+        vote_plan_id: S,
+        proposal_idx: usize,
+        choice: Choice,
+        payload_type: PayloadType,
+    ) -> String {
+        let command = match payload_type {
+            PayloadType::Public => {
+                self.command
+                    .public_vote_cast(vote_plan_id.into(), proposal_idx, choice.as_byte())
+            }
+            PayloadType::Private => unimplemented!(),
+        };
+
+        command
             .build()
             .assert()
             .success()
@@ -72,6 +106,20 @@ impl Certificate {
         let temp_file = NamedTempFile::new("stake_pool.id").unwrap();
         self.command
             .stake_pool_id(input_file, temp_file.path())
+            .build()
+            .assert()
+            .success();
+        temp_file.assert(crate::predicate::file_exists_and_not_empty());
+        file::read_file(temp_file.path())
+    }
+
+    pub fn vote_plan_id<S: Into<String>>(self, cert: S) -> String {
+        println!("Running get stake pool id...");
+        let input_file = NamedTempFile::new("cert_file").unwrap();
+        input_file.write_str(&cert.into()).unwrap();
+        let temp_file = NamedTempFile::new("vote_plan.id").unwrap();
+        self.command
+            .vote_plan_id(input_file.path(), temp_file.path())
             .build()
             .assert()
             .success();

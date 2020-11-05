@@ -1,8 +1,5 @@
 use super::RestSettings;
-use crate::{
-    testing::{node::RestError, MemPoolCheck},
-    wallet::Wallet,
-};
+use crate::{testing::node::RestError, wallet::Wallet};
 use bech32::FromBase32;
 use chain_core::property::Serialize;
 use chain_crypto::PublicKey;
@@ -194,7 +191,6 @@ impl RawRest {
         use chain_core::property::Serialize as _;
 
         let raw = fragment.serialize_as_vec().unwrap();
-        let fragment_id = fragment.id();
         self.send_raw_fragment(raw)
     }
 

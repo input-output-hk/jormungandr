@@ -165,7 +165,7 @@ impl Settings {
     fn populate_block0_blockchain_legacy<RNG>(
         &mut self,
         legacy_wallets: Vec<LegacyWalletTemplate>,
-        rng: &mut Random<RNG>,
+        _rng: &mut Random<RNG>,
     ) where
         RNG: RngCore + CryptoRng,
     {
