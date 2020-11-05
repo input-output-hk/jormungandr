@@ -291,7 +291,7 @@ pub fn test_vote_flow_praos() {
         .send_vote_tally(&mut alice, &vote_plan, &jormungandr)
         .unwrap();
 
-    wait_for_epoch(2, jormungandr.explorer().clone());
+    wait_for_epoch(3, jormungandr.explorer().clone());
 
     let rewards_after = jormungandr
         .explorer()
