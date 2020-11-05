@@ -77,6 +77,7 @@ pub fn do_simple_transaction(
 #[test]
 pub fn test_node_recovers_from_node_restart() {
     let temp_dir = TempDir::new().unwrap();
+    let jcli: JCli = Default::default();
 
     let sender = startup::create_new_utxo_address();
     let account_receiver = startup::create_new_account_address();
@@ -101,7 +102,7 @@ pub fn test_node_recovers_from_node_restart() {
         &jormungandr,
     );
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
-    jormungandr.stop();
+    jcli.rest().v0().shutdown(jormungandr.rest_uri());
 
     std::thread::sleep(std::time::Duration::from_secs(2));
 
