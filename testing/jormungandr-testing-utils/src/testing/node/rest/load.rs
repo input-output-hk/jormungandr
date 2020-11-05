@@ -55,7 +55,7 @@ impl RestRequestGen {
 }
 
 impl RequestGenerator for RestRequestGen {
-    fn next(&mut self) -> Result<Option<Id>, RequestFailure> {
+    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
         match self.next_usize() % 10 {
             0 => {
                 self.rest_client.p2p_available().map_err(|e| {
@@ -109,6 +109,6 @@ impl RequestGenerator for RestRequestGen {
             }
             _ => unreachable!(),
         }
-        Ok(None)
+        Ok(vec![None])
     }
 }
