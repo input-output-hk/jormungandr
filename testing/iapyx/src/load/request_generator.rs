@@ -47,7 +47,10 @@ impl WalletRequestGen {
         self.multi_controller.vote(wallet_index, &proposal, choice)
     }
 
-    pub fn send_conversion_fragment(&mut self, tx: Vec<u8>) -> Result<Vec<Option<Id>>, RequestFailure> {
+    pub fn send_conversion_fragment(
+        &mut self,
+        tx: Vec<u8>,
+    ) -> Result<Vec<Option<Id>>, RequestFailure> {
         let id = self
             .multi_controller
             .backend()

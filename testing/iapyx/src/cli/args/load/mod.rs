@@ -106,10 +106,16 @@ impl IapyxLoadCommand {
                 std::time::Duration::from_secs(duration),
                 self.pace,
                 self.build_monitor(),
-                0
+                0,
             )
         } else if let Some(count) = self.count {
-            Configuration::requests_per_thread(self.threads, count, self.pace, self.build_monitor(), 0)
+            Configuration::requests_per_thread(
+                self.threads,
+                count,
+                self.pace,
+                self.build_monitor(),
+                0,
+            )
         } else {
             return Err(IapyxLoadCommandError::NoStrategyDefined);
         };
