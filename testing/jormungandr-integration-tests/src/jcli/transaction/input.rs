@@ -1,6 +1,5 @@
 use crate::common::jcli::JCli;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::testing::file as file_utils;
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {
@@ -40,6 +39,7 @@ pub fn test_cannot_create_input_with_too_big_utxo_amount() {
 #[test]
 #[cfg(not(target_os = "linux"))]
 pub fn test_cannot_create_input_when_staging_file_is_readonly() {
+    use jormungandr_testing_utils::testing::file as file_utils;
     let jcli: JCli = Default::default();
     let mut transaction_wrapper =
         jcli.transaction_builder(Hash::from_hex(FAKE_GENESIS_HASH).unwrap());
