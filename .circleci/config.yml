@@ -104,15 +104,32 @@ jobs:
           name: Check rustfmt
           command: cargo fmt -- --check
 
+  clippy:
+    executor: rust-stable
+    environment:
+      RUSTFLAGS: -D warnings
+    steps:
+      - run: git submodule sync
+      - run: git submodule update --init --depth=1
+      - run:
+          name: Print version information
+          command: cargo clippy -- --version
+      - run:
+          name: Check clippy
+          command: cargo clippy
+
   test_debug:
     executor: rust-stable
     environment:
+      RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
     steps:
       - test
 
   test_release:
     executor: rust-stable
+    environment:
+      RUSTFLAGS: -D warnings
     steps:
       - test:
           mode: --release
@@ -120,6 +137,7 @@ jobs:
   test_beta:
     executor: rust-beta
     environment:
+      RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
     steps:
       - test
@@ -190,6 +208,9 @@ workflows:
     jobs:
       - cargo_fetch
       - rustfmt
+      - clippy:
+          requires:
+            - cargo_fetch
       - cargo_audit:
           requires:
             - cargo_fetch
