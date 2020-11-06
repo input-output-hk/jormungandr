@@ -156,7 +156,7 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
     let mut alice = controller.wallet("Alice")?;
     controller.fragment_sender().send_vote_tally(
         &mut alice,
-        &fund1_vote_plan.clone().into(),
+        &fund1_vote_plan.into(),
         &wallet_node,
     )?;
 

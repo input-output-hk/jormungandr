@@ -25,6 +25,12 @@ struct BranchData {
     last_updated: std::time::SystemTime,
 }
 
+impl Default for Branches {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Branches {
     pub fn new() -> Self {
         Branches {

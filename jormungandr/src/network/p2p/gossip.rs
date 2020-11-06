@@ -94,16 +94,13 @@ impl Gossip {
                 // Check using same methods by trying to cast address to ipv4
                 // FIXME: use Ipv6 tests when Ipv6Addr convenience methods get stabilized:
                 // https://github.com/rust-lang/rust/issues/27709
-                match ip.to_ipv4() {
-                    Some(ipv4) => {
-                        if ipv4.is_private() {
-                            return false;
-                        }
-                        if ipv4.is_link_local() {
-                            return false;
-                        }
+                if let Some(ipv4) = ip.to_ipv4() {
+                    if ipv4.is_private() {
+                        return false;
                     }
-                    None => {}
+                    if ipv4.is_link_local() {
+                        return false;
+                    }
                 }
             }
         }

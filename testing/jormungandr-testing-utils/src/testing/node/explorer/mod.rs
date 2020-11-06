@@ -57,7 +57,7 @@ impl Explorer {
     }
 
     pub fn print_request<T: Serialize>(&self, query: &QueryBody<T>) {
-        if self.print_log == false {
+        if !self.print_log {
             return;
         }
 

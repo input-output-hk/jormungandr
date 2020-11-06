@@ -22,7 +22,7 @@ impl PrepareWalletProxySettings for WalletProxySettings {
 
         WalletProxySettings {
             proxy_address: context.generate_new_rest_listen_address(),
-            vit_station_address: vit_station_settings.address.clone(),
+            vit_station_address: vit_station_settings.address,
             node_backend_address: None,
         }
     }

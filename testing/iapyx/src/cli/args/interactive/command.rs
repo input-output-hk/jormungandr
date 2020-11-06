@@ -340,6 +340,7 @@ impl Generate {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum IapyxCommandError {
     #[error("{0}")]

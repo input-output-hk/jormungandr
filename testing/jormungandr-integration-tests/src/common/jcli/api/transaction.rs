@@ -279,6 +279,7 @@ impl Transaction {
         self.command.seal(staging_file).build().assert().success();
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_message<P: AsRef<Path>>(self, staging_file: P) -> String {
         self.command
             .to_message(staging_file)
@@ -289,6 +290,7 @@ impl Transaction {
             .as_single_line()
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_message_expect_fail<P: AsRef<Path>>(self, staging_file: P, expected_msg: &str) {
         self.command
             .to_message(staging_file)

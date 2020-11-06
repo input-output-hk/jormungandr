@@ -7,7 +7,6 @@ use crate::{
 pub use jormungandr_lib::interfaces::{Cors, Rest, Tls};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
-use poldercast;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
 
@@ -284,7 +283,7 @@ impl<'de> Deserialize<'de> for Topic {
                 write!(fmt, "Topic: messages or blocks")
             }
 
-            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -314,7 +313,7 @@ impl<'de> Deserialize<'de> for InterestLevel {
                 write!(fmt, "Interest Level: low, normal or high")
             }
 
-            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {

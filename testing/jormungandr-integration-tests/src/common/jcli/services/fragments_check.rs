@@ -60,7 +60,6 @@ impl<'a> FragmentsCheck<'a> {
     pub fn check_log_shows_in_block(self) -> Result<(), Error> {
         let fragments = self
             .jcli
-            .clone()
             .rest()
             .v0()
             .message()

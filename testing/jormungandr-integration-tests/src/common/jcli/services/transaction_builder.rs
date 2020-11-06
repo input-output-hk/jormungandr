@@ -36,7 +36,7 @@ impl TransactionBuilder {
     }
 
     fn truncate_end_of_line(cert_content: &str) -> String {
-        let mut content = cert_content.clone().to_string();
+        let mut content = cert_content.to_string();
         if content.ends_with('\n') {
             let len = content.len();
             content.truncate(len - 1);

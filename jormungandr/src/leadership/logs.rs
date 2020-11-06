@@ -134,7 +134,7 @@ pub(super) mod internal {
             }
         }
 
-        pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a LeadershipLog> {
+        pub fn logs(&self) -> impl Iterator<Item = &LeadershipLog> {
             self.entries.iter().map(|(_, v)| v)
         }
     }

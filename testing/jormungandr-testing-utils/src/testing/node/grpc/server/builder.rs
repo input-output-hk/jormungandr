@@ -19,12 +19,18 @@ pub struct MockBuilder {
     protocol_version: ProtocolVersion,
 }
 
+impl Default for MockBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockBuilder {
     pub fn new() -> Self {
-        let genesis_hash: Hash = TestGen::hash().into();
+        let genesis_hash: Hash = TestGen::hash();
         Self {
             mock_port: 9999,
-            genesis_hash: genesis_hash.clone(),
+            genesis_hash,
             tip: super::data::header(30, &genesis_hash),
             protocol_version: ProtocolVersion::GenesisPraos,
         }
@@ -52,7 +58,7 @@ impl MockBuilder {
 
     fn build_data(&self) -> Arc<RwLock<MockServerData>> {
         let data = MockServerData::new(
-            self.genesis_hash.clone(),
+            self.genesis_hash,
             self.tip.clone(),
             self.protocol_version.clone(),
         );
@@ -87,5 +93,5 @@ fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockContro
             .await
             .unwrap();
     });
-    MockController::new(temp_dir, logger, shutdown_signal, data.clone(), mock_port)
+    MockController::new(temp_dir, logger, shutdown_signal, data, mock_port)
 }

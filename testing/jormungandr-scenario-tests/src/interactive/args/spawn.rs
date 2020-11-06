@@ -88,7 +88,7 @@ fn spawn_node(
         let legacy_release = releases
             .iter()
             .find(|x| x.version() == version)
-            .ok_or(InteractiveCommandError::UserError(version.to_string()))?;
+            .ok_or_else(|| InteractiveCommandError::UserError(version.to_string()))?;
 
         let node = controller
             .controller_mut()

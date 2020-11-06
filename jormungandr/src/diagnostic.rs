@@ -42,14 +42,14 @@ impl Display for Diagnostic {
             "limit for open files (RLIMIT_NOFILE): {}",
             self.open_files_limit
                 .map(|v| v.to_string())
-                .unwrap_or("N/A".to_string())
+                .unwrap_or_else(|| "N/A".to_string())
         )?;
         write!(
             formatter,
             "; limit for CPU usage (RLIMIT_CPU): {}",
             self.cpu_usage_limit
                 .map(|v| v.to_string())
-                .unwrap_or("N/A".to_string())
+                .unwrap_or_else(|| "N/A".to_string())
         )
     }
 }

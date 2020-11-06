@@ -490,9 +490,9 @@ fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> 
         for address in included_addresses {
             addresses = addresses.insert_or_update_simple(
                 address,
-                Arc::new(PersistentSequence::new().append(id.clone())),
+                Arc::new(PersistentSequence::new().append(id)),
                 |set| {
-                    let new_set = set.append(id.clone());
+                    let new_set = set.append(id);
                     Some(Arc::new(new_set))
                 },
             )
@@ -634,10 +634,8 @@ fn apply_block_to_vote_plans(
                                 proposals[vote_cast.proposal_index() as usize].votes = proposals
                                     [vote_cast.proposal_index() as usize]
                                     .votes
-                                    .insert_or_update(voter, Arc::new(choice.clone()), |_| {
-                                        Ok::<_, std::convert::Infallible>(Some(Arc::new(
-                                            choice.clone(),
-                                        )))
+                                    .insert_or_update(voter, Arc::new(*choice), |_| {
+                                        Ok::<_, std::convert::Infallible>(Some(Arc::new(*choice)))
                                     })
                                     .unwrap();
                                 let vote_plan = ExplorerVotePlan {

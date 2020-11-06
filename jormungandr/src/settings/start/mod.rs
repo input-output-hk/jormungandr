@@ -72,8 +72,8 @@ impl RawSettings {
             });
         }
 
-        let cmd_level = self.command_line.log_level.clone();
-        let cmd_format = self.command_line.log_format.clone();
+        let cmd_level = self.command_line.log_level;
+        let cmd_format = self.command_line.log_format;
         let cmd_output = self.command_line.log_output.clone();
 
         if cmd_level.is_some() || cmd_format.is_some() || cmd_output.is_some() {
@@ -96,7 +96,7 @@ impl RawSettings {
     }
 
     fn rest_config(&self) -> Option<Rest> {
-        let cmd_listen_opt = self.command_line.rest_arguments.listen.clone();
+        let cmd_listen_opt = self.command_line.rest_arguments.listen;
         let config_rest_opt = self.config.as_ref().and_then(|cfg| cfg.rest.as_ref());
         match (config_rest_opt, cmd_listen_opt) {
             (Some(config_rest), Some(cmd_listen)) => Some(Rest {
@@ -153,9 +153,9 @@ impl RawSettings {
             &command_arguments.block_0_hash,
         ) {
             (None, None) => return Err(Error::ExpectedBlock0Info),
-            (Some(path), Some(hash)) => Block0Info::Path(path.clone(), Some(hash.clone())),
+            (Some(path), Some(hash)) => Block0Info::Path(path.clone(), Some(*hash)),
             (Some(path), None) => Block0Info::Path(path.clone(), None),
-            (None, Some(hash)) => Block0Info::Hash(hash.clone()),
+            (None, Some(hash)) => Block0Info::Hash(*hash),
         };
 
         let explorer = command_arguments.explorer_enabled
@@ -181,11 +181,11 @@ impl RawSettings {
             explorer,
             no_blockchain_updates_warning_interval: config
                 .as_ref()
-                .and_then(|config| config.no_blockchain_updates_warning_interval.clone())
+                .and_then(|config| config.no_blockchain_updates_warning_interval)
                 .map(|d| d.into())
-                .unwrap_or(std::time::Duration::from_secs(
-                    DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL,
-                )),
+                .unwrap_or_else(|| {
+                    std::time::Duration::from_secs(DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL)
+                }),
         })
     }
 }
@@ -226,7 +226,7 @@ fn generate_network(
                     let address = poldercast::Address::from(address);
                     Some(config::TrustedPeer {
                         address,
-                        id: peer.id.clone(),
+                        id: peer.id,
                     })
                 }
                 Ok(None) => {
@@ -255,7 +255,7 @@ fn generate_network(
 
     for (topic, interest_level) in p2p
         .topics_of_interest
-        .unwrap_or(config::default_interests())
+        .unwrap_or_else(config::default_interests)
     {
         let sub = poldercast::Subscription {
             topic: topic.0,
@@ -297,7 +297,7 @@ fn generate_network(
         gossip_interval: p2p
             .gossip_interval
             .map(|d| d.into())
-            .unwrap_or(std::time::Duration::from_secs(10)),
+            .unwrap_or_else(|| std::time::Duration::from_secs(10)),
         topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
         max_bootstrap_attempts: p2p.max_bootstrap_attempts,
         http_fetch_block0_service,

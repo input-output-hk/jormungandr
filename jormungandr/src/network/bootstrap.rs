@@ -163,7 +163,7 @@ impl BootstrapInfo {
                 let v = (bytes_diff as f64) / td.as_secs_f64();
                 print_sz(v)
             })
-            .unwrap_or("N/A".to_string());
+            .unwrap_or_else(|_| "N/A".to_string());
 
         self.last_reported = current;
         self.last_bytes_received = self.bytes_received;
@@ -192,7 +192,7 @@ where
     St: Future<Output = Result<(), futures::channel::oneshot::Canceled>> + Unpin + Clone,
 {
     const PROCESS_LOGGING_DISTANCE: u64 = 2500;
-    let block0 = blockchain.block0().clone();
+    let block0 = *blockchain.block0();
 
     let mut bootstrap_info = BootstrapInfo::new();
     let mut maybe_parent_tip = None;

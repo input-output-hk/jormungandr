@@ -7,7 +7,6 @@ use chain_impl_mockchain::{
     value::Value,
     vote::{Options, PayloadType},
 };
-use json;
 
 pub fn proposal_with_3_options(rewards_increase: u64) -> Proposal {
     let action = VoteAction::Parameters {
@@ -19,7 +18,7 @@ pub fn proposal_with_3_options(rewards_increase: u64) -> Proposal {
     Proposal::new(
         VoteTestGen::external_proposal_id(),
         Options::new_length(3).unwrap(),
-        action.clone(),
+        action,
     )
 }
 

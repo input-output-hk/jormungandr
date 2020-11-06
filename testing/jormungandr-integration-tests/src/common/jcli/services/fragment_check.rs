@@ -28,7 +28,7 @@ impl<'a> FragmentCheck<'a> {
     }
 
     pub fn fragment_id(&self) -> FragmentId {
-        self.id.clone()
+        self.id
     }
 
     pub fn assert_in_block(&self) -> FragmentId {
@@ -85,7 +85,7 @@ impl<'a> FragmentCheck<'a> {
                 self.jormungandr.logger.get_log_content()
             ),
         )
-        .map(|()| self.id.clone())
+        .map(|()| self.id)
         .map_err(|_| Error::TransactionNotInBlock {
             message_log: format!(
                 "{:?}",
@@ -95,7 +95,7 @@ impl<'a> FragmentCheck<'a> {
                     .message()
                     .logs(&self.jormungandr.rest_uri())
             ),
-            transaction_id: Hash::from_hash(self.id.clone()),
+            transaction_id: Hash::from_hash(self.id),
             log_content: self.jormungandr.logger.get_log_content(),
         })
     }
@@ -129,7 +129,6 @@ impl<'a> FragmentCheck<'a> {
     pub fn assert_log_shows_rejected(self, expected_msg: &str) {
         let fragments = self
             .jcli
-            .clone()
             .rest()
             .v0()
             .message()

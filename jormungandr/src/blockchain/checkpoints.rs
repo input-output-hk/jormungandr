@@ -16,7 +16,7 @@ impl Checkpoints {
     /// For now the algorithm provide the current block, the parent, the last block of the
     /// previous epoch, the last block of the epoch before that... until the block0.
     pub fn new_from(from: Arc<Ref>) -> Self {
-        let mut checkpoints = vec![from.hash(), from.block_parent_hash().clone()];
+        let mut checkpoints = vec![from.hash(), from.block_parent_hash()];
 
         let mut ignore_prev = 0;
         let mut current_ref = from;

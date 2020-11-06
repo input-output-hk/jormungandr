@@ -536,6 +536,7 @@ impl Module {
         }
     }
 
+    #[allow(clippy::comparison_chain)]
     async fn action_schedule(self) -> Result<Self, LeadershipError> {
         let current_slot_position = self.current_slot_position().unwrap();
 

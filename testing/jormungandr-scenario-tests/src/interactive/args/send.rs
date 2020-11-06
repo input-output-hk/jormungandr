@@ -73,9 +73,9 @@ impl SendTransaction {
             return Ok(());
         }
 
-        Err(InteractiveCommandError::UserError(format!(
-            "alias not found {}",
-            self.via.clone()
-        )))?
+        Err(
+            InteractiveCommandError::UserError(format!("alias not found {}", self.via.clone()))
+                .into(),
+        )
     }
 }

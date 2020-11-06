@@ -141,7 +141,6 @@ impl PrepareSettings for Settings {
         RNG: RngCore + CryptoRng,
     {
         let nodes = topology
-            .clone()
             .into_iter()
             .map(|(alias, template)| {
                 (

@@ -131,10 +131,7 @@ impl<T> CommHandle<T> {
     }
 
     pub fn is_client(&self) -> bool {
-        match self.direction {
-            SubscriptionDirection::Client => true,
-            _ => false,
-        }
+        matches!(self.direction, SubscriptionDirection::Client)
     }
 
     pub fn clear_pending(&mut self) {
@@ -149,14 +146,11 @@ impl<T> CommHandle<T> {
     /// the handle to send a potential pending item over the new subscription.
     pub fn update(&mut self, newer: CommHandle<T>) {
         self.direction = newer.direction;
-        match mem::replace(&mut self.state, newer.state) {
-            SubscriptionState::Pending(item) => {
-                // If there is an error sending the pending item,
-                // it is silently dropped. Logging infrastructure to debug
-                // this would be nice.
-                let _ = self.try_send(item);
-            }
-            _ => {}
+        if let SubscriptionState::Pending(item) = mem::replace(&mut self.state, newer.state) {
+            // If there is an error sending the pending item,
+            // it is silently dropped. Logging infrastructure to debug
+            // this would be nice.
+            let _ = self.try_send(item);
         }
     }
 
@@ -277,7 +271,7 @@ impl PeerComms {
 
     pub fn auth_nonce(&self) -> Option<[u8; NONCE_LEN]> {
         match self.auth {
-            PeerAuth::ServerNonce(nonce) => Some(nonce.clone()),
+            PeerAuth::ServerNonce(nonce) => Some(nonce),
             _ => None,
         }
     }
@@ -285,7 +279,7 @@ impl PeerComms {
     pub fn generate_auth_nonce(&mut self) -> [u8; NONCE_LEN] {
         let mut nonce = [0u8; NONCE_LEN];
         rand::thread_rng().fill(&mut nonce[..]);
-        self.auth = PeerAuth::ServerNonce(nonce.clone());
+        self.auth = PeerAuth::ServerNonce(nonce);
         nonce
     }
 
@@ -428,15 +422,15 @@ impl Default for PeerStats {
 
 impl PeerStats {
     pub fn last_block_received(&self) -> Option<SystemTime> {
-        self.last_block_received.clone()
+        self.last_block_received
     }
 
     pub fn last_fragment_received(&self) -> Option<SystemTime> {
-        self.last_fragment_received.clone()
+        self.last_fragment_received
     }
 
     pub fn last_gossip_received(&self) -> Option<SystemTime> {
-        self.last_gossip_received.clone()
+        self.last_gossip_received
     }
 
     fn update_last_block_received(&mut self, timestamp: SystemTime) {

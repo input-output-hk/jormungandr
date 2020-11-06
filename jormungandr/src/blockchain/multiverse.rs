@@ -7,6 +7,12 @@ pub struct Multiverse<T> {
     inner: Arc<RwLock<MultiverseData<T>>>,
 }
 
+impl<T> Default for Multiverse<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Multiverse<T> {
     pub fn new() -> Self {
         Multiverse {

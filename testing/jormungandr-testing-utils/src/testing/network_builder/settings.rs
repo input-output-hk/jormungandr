@@ -76,15 +76,15 @@ pub struct WalletProxySettings {
 
 impl WalletProxySettings {
     pub fn base_address(&self) -> SocketAddr {
-        self.proxy_address.clone()
+        self.proxy_address
     }
 
     pub fn base_vit_address(&self) -> SocketAddr {
-        self.vit_station_address.clone()
+        self.vit_station_address
     }
 
     pub fn base_node_backend_address(&self) -> Option<SocketAddr> {
-        self.node_backend_address.clone()
+        self.node_backend_address
     }
 
     pub fn address(&self) -> String {
@@ -145,7 +145,7 @@ impl Settings {
                 initial: Vec::new(),
             },
             vit_stations,
-            wallet_proxies: wallet_proxies,
+            wallet_proxies,
             legacy_wallets: HashMap::new(),
             stake_pools: HashMap::new(),
             vote_plans: HashMap::new(),
@@ -184,11 +184,13 @@ impl Settings {
     fn populate_block0_blockchain_vote_plans(&mut self, vote_plans: Vec<VotePlanDef>) {
         let mut vote_plans_fragments = Vec::new();
         for vote_plan_def in vote_plans {
-            let owner = self.wallets.get(&vote_plan_def.owner()).expect(&format!(
-                "Owner {} of {} is unknown wallet ",
-                vote_plan_def.owner(),
-                vote_plan_def.alias()
-            ));
+            let owner = self.wallets.get(&vote_plan_def.owner()).unwrap_or_else(|| {
+                panic!(format!(
+                    "Owner {} of {} is unknown wallet ",
+                    vote_plan_def.owner(),
+                    vote_plan_def.alias()
+                ))
+            });
             let vote_plan: VotePlan = vote_plan_def.into();
             vote_plans_fragments.push(create_initial_vote_plan(
                 &vote_plan,
@@ -237,7 +239,7 @@ impl Settings {
                 let wallet = self
                     .wallets
                     .get(&committee)
-                    .expect(&format!("committee not defined {}", committee));
+                    .unwrap_or_else(|| panic!(format!("committee not defined {}", committee)));
                 committees.push(CommitteeIdDef::from(wallet.committee_id()));
             }
             committees

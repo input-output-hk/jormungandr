@@ -101,13 +101,15 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
                 formatter.write_str("binary data for member public key")
             }
 
+            #[allow(clippy::or_fun_call)]
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                Ok(SerdeMemberPublicKey(MemberPublicKey::from_bytes(v).ok_or(
-                    E::custom("Invalid binary data for member public key"),
-                )?))
+                let pk = MemberPublicKey::from_bytes(v).ok_or(serde::de::Error::custom(
+                    "Invalid binary data for member public key",
+                ))?;
+                Ok(SerdeMemberPublicKey(pk))
             }
         }
 
@@ -251,7 +253,7 @@ mod serde_committee_member_public_keys {
     }
 
     pub fn serialize<S>(
-        keys: &Vec<chain_vote::MemberPublicKey>,
+        keys: &[chain_vote::MemberPublicKey],
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -338,7 +340,7 @@ where
             if value > 255 {
                 return Err(serde::de::Error::custom("expecting a value less than 256"));
             }
-            Options::new_length(value as u8).map_err(|err| serde::de::Error::custom(err))
+            Options::new_length(value as u8).map_err(serde::de::Error::custom)
         }
     }
 
@@ -358,11 +360,10 @@ where
     let proposals_list = ProposalsList::deserialize(deserializer)?;
     let mut proposals = Proposals::new();
     for proposal in proposals_list.0.into_iter() {
-        match proposals.push(proposal.0) {
-            chain_impl_mockchain::certificate::PushProposal::Full { .. } => {
-                panic!("too many proposals")
-            }
-            _ => {}
+        if let chain_impl_mockchain::certificate::PushProposal::Full { .. } =
+            proposals.push(proposal.0)
+        {
+            panic!("too many proposals")
         }
     }
     Ok(proposals)
@@ -459,7 +460,7 @@ mod serde_base64_bytes {
         }
     }
 
-    pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -542,7 +543,7 @@ impl From<vote::TallyResult> for TallyResult {
 impl From<chain_vote::TallyResult> for TallyResult {
     fn from(this: chain_vote::TallyResult) -> Self {
         Self {
-            results: this.votes.iter().map(|w| w.unwrap_or(0).into()).collect(),
+            results: this.votes.iter().map(|w| w.unwrap_or(0)).collect(),
             options: (0..this.votes.len().try_into().unwrap()),
         }
     }

@@ -535,6 +535,7 @@ impl LegacyNode {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn<R: RngCore>(
         jormungandr: &Path,
         context: &Context<R>,
@@ -569,7 +570,7 @@ impl LegacyNode {
             },
             LogEntry {
                 format: format.to_string(),
-                level: level.to_string(),
+                level,
                 output: LogOutput::File(log_file),
             },
         ]));

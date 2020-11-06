@@ -36,7 +36,7 @@ impl RestRequestGen {
     }
 
     pub fn next_address(&mut self) -> Option<&String> {
-        if self.addresses.len() == 0 {
+        if self.addresses.is_empty() {
             return None;
         }
 
@@ -45,7 +45,7 @@ impl RestRequestGen {
     }
 
     pub fn next_pool_id(&mut self) -> Option<&String> {
-        if self.stake_pools.len() == 0 {
+        if self.stake_pools.is_empty() {
             return None;
         }
 

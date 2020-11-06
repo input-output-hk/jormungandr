@@ -67,7 +67,7 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
-    pub fn to_public<S: Into<String>>(self, private_key: S) -> String {
+    pub fn into_public<S: Into<String>>(self, private_key: S) -> String {
         let input_file = NamedTempFile::new("key_to_public.input").unwrap();
         input_file.write_str(&private_key.into()).unwrap();
 
@@ -81,7 +81,7 @@ impl Key {
             .as_single_line()
     }
 
-    pub fn to_public_expect_fail<S: Into<String>>(self, private_key: S, expected_msg_path: &str) {
+    pub fn into_public_expect_fail<S: Into<String>>(self, private_key: S, expected_msg_path: &str) {
         let input_file = NamedTempFile::new("key_to_public.input").unwrap();
         input_file.write_str(&private_key.into()).unwrap();
 
@@ -94,6 +94,7 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_bytes<S: Into<String>, P: AsRef<Path>>(self, private_key: S, output: P) {
         let input = NamedTempFile::new("key_to_bytes.input").unwrap();
         input.write_str(&private_key.into()).unwrap();
@@ -101,6 +102,7 @@ impl Key {
         self.to_bytes_from_file(input.path(), output.as_ref())
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_bytes_from_file<P: AsRef<Path>, Q: AsRef<Path>>(self, input: P, output: Q) {
         self.key_command
             .to_bytes()
@@ -111,6 +113,7 @@ impl Key {
             .success();
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_bytes_expect_fail<P: AsRef<Path>, Q: AsRef<Path>>(
         self,
         input: P,
@@ -127,6 +130,7 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_bytes<P: AsRef<Path>, S: Into<String>>(self, key_type: S, input: P) -> String {
         self.key_command
             .from_bytes()
@@ -139,6 +143,7 @@ impl Key {
             .as_single_line()
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_bytes_expect_fail<P: AsRef<Path>, S: Into<String>>(
         self,
         key_type: S,

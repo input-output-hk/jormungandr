@@ -19,6 +19,7 @@ use thiserror::Error;
 
 type HeaderStream = MessageQueue<Header>;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("the incoming header stream is empty")]

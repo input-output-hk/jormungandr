@@ -14,6 +14,7 @@ impl CertificateBuilder {
     pub fn new(jcli: JCli) -> Self {
         Self { jcli }
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn new_signed_stake_pool_cert(
         &self,
         pool_kes_pk: &str,

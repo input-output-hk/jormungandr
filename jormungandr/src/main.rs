@@ -230,7 +230,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let fragment_msgbox = fragment_msgbox.clone();
 
         services.spawn_try_future("leadership", move |info| {
-            let fut = leadership::Module::new(
+            leadership::Module::new(
                 info,
                 leadership_logs,
                 blockchain_tip,
@@ -241,9 +241,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .and_then(|module| module.run())
             .map_err(|e| {
                 eprint!("leadership error: {}", e);
-            });
-
-            fut
+            })
         });
     }
 
@@ -268,8 +266,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let blockchain_tip = blockchain_tip;
         let no_blockchain_updates_warning_interval = bootstrapped_node
             .settings
-            .no_blockchain_updates_warning_interval
-            .clone();
+            .no_blockchain_updates_warning_interval;
 
         services.spawn_future("stuck_notifier", move |info| {
             stuck_notifier::check_last_block_time(

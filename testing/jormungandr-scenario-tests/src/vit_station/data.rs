@@ -15,6 +15,7 @@ impl DbGenerator {
         Self { vote_plans }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     fn to_vote_plan(vote_plan_def: &VotePlanDef) -> VotePlan {
         vote_plan_def.clone().into()
     }
@@ -23,7 +24,7 @@ impl DbGenerator {
         std::fs::File::create(&db_file).unwrap();
 
         let snapshot = Generator::new().snapshot();
-        let mut snapshot_proposals = snapshot.proposals().clone();
+        let mut snapshot_proposals = snapshot.proposals();
 
         for (_, vote_plan) in self.vote_plans.iter().enumerate() {
             for (index, proposal) in vote_plan.proposals().iter().enumerate() {

@@ -51,7 +51,7 @@ impl Policy {
             quarantine_duration: pc.quarantine_duration.into(),
             max_quarantine: pc
                 .max_quarantine
-                .unwrap_or(DEFAULT_MAX_QUARANTINE_DURATION.into())
+                .unwrap_or_else(|| DEFAULT_MAX_QUARANTINE_DURATION.into())
                 .into(),
             records: LruCache::new(
                 pc.max_num_quarantine_records

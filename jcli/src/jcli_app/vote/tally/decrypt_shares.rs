@@ -49,7 +49,7 @@ impl TallyDecryptWithAllShares {
             let mut shares = Vec::with_capacity(self.threshold);
             for _ in 0..self.threshold {
                 let mut buff = String::new();
-                &shares_file.read_line(&mut buff);
+                shares_file.read_line(&mut buff)?;
                 shares.push(
                     chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
                         .ok_or(Error::DecryptionShareRead)?,

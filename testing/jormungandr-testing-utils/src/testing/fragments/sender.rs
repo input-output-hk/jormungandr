@@ -77,11 +77,11 @@ impl<'a> FragmentSender<'a> {
     }
 
     pub fn block0_hash(&self) -> Hash {
-        self.block0_hash.clone()
+        self.block0_hash
     }
 
     pub fn fees(&self) -> LinearFee {
-        self.fees.clone()
+        self.fees
     }
 
     pub fn clone_with_setup(&self, setup: FragmentSenderSetup<'a>) -> Self {

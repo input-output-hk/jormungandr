@@ -23,6 +23,7 @@ pub struct JormungandrParams<Conf = NodeConfig> {
     log_file_path: PathBuf,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl<Conf: TestConfig> JormungandrParams<Conf> {
     pub fn new<Secs>(
         node_config: Conf,
@@ -145,10 +146,12 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
     }
 
     pub fn block0_utxo(&self) -> Vec<UTxOInfo> {
-        let block0_bytes = std::fs::read(self.genesis_block_path()).expect(&format!(
-            "Failed to load block 0 binary file '{}'",
-            self.genesis_block_path().display()
-        ));
+        let block0_bytes = std::fs::read(self.genesis_block_path()).unwrap_or_else(|_| {
+            panic!(format!(
+                "Failed to load block 0 binary file '{}'",
+                self.genesis_block_path().display()
+            ))
+        });
         mempack::read_from_raw::<Block>(&block0_bytes)
             .unwrap_or_else(|_| {
                 panic!(

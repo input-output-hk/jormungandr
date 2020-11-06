@@ -8,7 +8,7 @@ pub fn test_account_address_made_of_incorrect_ed25519_extended_key() {
     let private_key = jcli.key().generate("ed25519Extended");
     println!("private key: {}", &private_key);
 
-    let mut public_key = jcli.key().to_public(&private_key);
+    let mut public_key = jcli.key().into_public(&private_key);
     println!("public key: {}", &public_key);
 
     public_key.remove(20);
@@ -29,7 +29,7 @@ pub fn test_account_address_made_of_ed25519_extended_key() {
     let private_key = jcli.key().generate("ed25519Extended");
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().to_public(&private_key);
+    let public_key = jcli.key().into_public(&private_key);
     println!("public key: {}", &public_key);
 
     let account_address = jcli

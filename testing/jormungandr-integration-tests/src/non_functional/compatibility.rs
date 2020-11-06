@@ -93,8 +93,8 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
-            sender.into_initial_fund(1_000_000),
-            receiver.into_initial_fund(1_000_000),
+            sender.to_initial_fund(1_000_000),
+            receiver.to_initial_fund(1_000_000),
         ])
         .with_storage(&temp_dir.child("storage"))
         .build(temp_dir);

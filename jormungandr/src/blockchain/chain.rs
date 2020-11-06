@@ -48,7 +48,7 @@ See Internal documentation for more details: doc/internal_design.md
 [`Ref`]: ./struct.Ref.html
 [`Branch`]: ./struct.Branch.html
 */
-
+#![allow(clippy::large_enum_variant)]
 use super::{branch::Branches, reference_cache::RefCache};
 use crate::{
     blockcfg::{
@@ -306,6 +306,7 @@ impl Blockchain {
     }
 
     /// create and store a reference of this leader to the new
+    #[allow(clippy::too_many_arguments)]
     async fn create_and_store_reference(
         &self,
         header_hash: HeaderHash,
@@ -349,7 +350,7 @@ impl Blockchain {
     /// TODO: the case where the block is in storage but not yet in the cache
     ///       is not implemented
     pub async fn get_ref(&self, header_hash: HeaderHash) -> Result<Option<Arc<Ref>>> {
-        let maybe_ref = self.ref_cache.get(header_hash.clone()).await;
+        let maybe_ref = self.ref_cache.get(header_hash).await;
         let block_exists = self
             .storage
             .block_exists(header_hash)
@@ -371,12 +372,12 @@ impl Blockchain {
     /// load the header's parent `Ref`.
     async fn load_header_parent(&self, header: Header, force: bool) -> Result<PreCheckedHeader> {
         let block_id = header.hash();
-        let parent_block_id = header.block_parent_hash().clone();
+        let parent_block_id = header.block_parent_hash();
 
         let maybe_self_ref = if force {
             Ok(None)
         } else {
-            self.get_ref(block_id.clone()).await
+            self.get_ref(block_id).await
         }?;
         let maybe_parent_ref = self.get_ref(parent_block_id).await?;
 
@@ -616,7 +617,7 @@ impl Blockchain {
 
         let already_exist = self
             .storage
-            .block_exists(block0_id.clone())
+            .block_exists(block0_id)
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
 
         if already_exist {
@@ -652,7 +653,7 @@ impl Blockchain {
         let block0_id = block0.header.hash();
         let already_exist = self
             .storage
-            .block_exists(block0_id.clone())
+            .block_exists(block0_id)
             .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
 
         if !already_exist {
@@ -745,7 +746,7 @@ impl Blockchain {
                     let block_process_end = std::time::SystemTime::now();
                     let duration = block_process_end
                         .duration_since(block_process_start)
-                        .unwrap_or(std::time::Duration::from_secs(0));
+                        .unwrap_or_else(|_| std::time::Duration::from_secs(0));
                     block_processing += duration;
                 }
             }
@@ -805,6 +806,7 @@ fn write_reward_info(
     Ok(())
 }
 
+#[allow(clippy::type_complexity)]
 pub fn new_epoch_leadership_from(
     epoch: Epoch,
     parent: Arc<Ref>,

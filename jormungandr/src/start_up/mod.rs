@@ -122,7 +122,7 @@ pub async fn prepare_block_0(
                     if &got != expected_hash {
                         return Err(Error::Block0Mismatch {
                             got,
-                            expected: expected_hash.clone(),
+                            expected: *expected_hash,
                         });
                     }
                 }
