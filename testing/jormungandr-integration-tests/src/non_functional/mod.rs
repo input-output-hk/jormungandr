@@ -32,6 +32,9 @@ pub mod rewards;
 #[cfg(feature = "sanity-non-functional")]
 pub mod fragment;
 
+#[cfg(feature = "sanity-non-functional")]
+pub mod bootstrap;
+
 use crate::common::{
     jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
