@@ -6,24 +6,23 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct GetStakePoolId {
-    /// read the certificate from
+pub struct GetVotePlanId {
+    /// file to read the certificate from (defaults to stdin)
+    #[structopt(long, parse(from_os_str), value_name = "PATH")]
     pub input: Option<PathBuf>,
-    /// write the certificate too
+    /// file to write the output to (defaults to stdout)
+    #[structopt(long, parse(from_os_str), value_name = "PATH")]
     pub output: Option<PathBuf>,
 }
 
-impl GetStakePoolId {
+impl GetVotePlanId {
     pub fn exec(self) -> Result<(), Error> {
         let cert: CertificateType = read_cert_or_signed_cert(self.input.as_deref())?;
         match cert.0 {
-            Certificate::PoolRegistration(stake_pool_info) => {
-                write_output(self.output.as_deref(), stake_pool_info.to_id())
+            Certificate::VotePlan(vote_plan_info) => {
+                write_output(self.output.as_deref(), vote_plan_info.to_id())
             }
-            Certificate::PoolRetirement(stake_pool_info) => {
-                write_output(self.output.as_deref(), stake_pool_info.pool_id)
-            }
-            _ => Err(Error::NotStakePoolRegistration),
+            _ => Err(Error::NotVotePlanCertificate),
         }
     }
 }

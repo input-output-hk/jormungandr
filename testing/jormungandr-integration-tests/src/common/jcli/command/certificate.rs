@@ -117,8 +117,11 @@ impl CertificateCommand {
         output_file: Q,
     ) -> Self {
         self.command
-            .arg("get-stake-pool-id")
+            .arg("show")
+            .arg("stake-pool-id")
+            .arg("--input")
             .arg(input_file.as_ref())
+            .arg("--output")
             .arg(output_file.as_ref());
         self
     }
@@ -129,8 +132,11 @@ impl CertificateCommand {
         output_file: Q,
     ) -> Self {
         self.command
-            .arg("get-vote-plan-id")
+            .arg("show")
+            .arg("vote-plan-id")
+            .arg("--input")
             .arg(input_file.as_ref())
+            .arg("--output")
             .arg(output_file.as_ref());
         self
     }

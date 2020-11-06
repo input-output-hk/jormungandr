@@ -1,3 +1,20 @@
+mod new_encrypted_vote_tally;
+mod new_owner_stake_delegation;
+mod new_stake_delegation;
+mod new_stake_pool_registration;
+mod new_stake_pool_retirement;
+mod new_vote_cast;
+mod new_vote_plan;
+mod new_vote_tally;
+mod show;
+mod sign;
+mod weighted_pool_ids;
+
+pub(crate) use self::sign::{
+    committee_encrypted_vote_tally_sign, committee_vote_plan_sign, committee_vote_tally_sign,
+    pool_owner_sign, stake_delegation_account_binding_sign,
+};
+
 use crate::jcli_app::utils::{io, key_parser};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
@@ -8,24 +25,6 @@ use std::{
 };
 use structopt::StructOpt;
 use thiserror::Error;
-
-mod get_stake_pool_id;
-mod get_vote_plan_id;
-mod new_encrypted_vote_tally;
-mod new_owner_stake_delegation;
-mod new_stake_delegation;
-mod new_stake_pool_registration;
-mod new_stake_pool_retirement;
-mod new_vote_cast;
-mod new_vote_plan;
-mod new_vote_tally;
-mod sign;
-mod weighted_pool_ids;
-
-pub(crate) use self::sign::{
-    committee_encrypted_vote_tally_sign, committee_vote_plan_sign, committee_vote_tally_sign,
-    pool_owner_sign, stake_delegation_account_binding_sign,
-};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -107,13 +106,11 @@ pub enum Error {
 pub enum Certificate {
     /// Build certificate
     New(NewArgs),
-    /// Sign certificate, you can call this command multiple
-    /// time to add multiple signatures if this is required.
+    /// Sign a certificate. You can call this command multiple
+    /// times to add multiple signatures if this is required.
     Sign(sign::Sign),
-    /// get the stake pool id from the given stake pool registration certificate
-    GetStakePoolId(get_stake_pool_id::GetStakePoolId),
-    /// get the vote plan id from the given vote plan certificate
-    GetVotePlanId(get_vote_plan_id::GetVotePlanId),
+    /// Output information encoded into the certificate
+    Show(show::ShowArgs),
     /// Print certificate
     Print(PrintArgs),
 }
@@ -205,8 +202,7 @@ impl Certificate {
             Certificate::New(args) => args.exec()?,
             Certificate::Sign(args) => args.exec()?,
             Certificate::Print(args) => args.exec()?,
-            Certificate::GetStakePoolId(args) => args.exec()?,
-            Certificate::GetVotePlanId(args) => args.exec()?,
+            Certificate::Show(args) => args.exec()?,
         }
 
         Ok(())
