@@ -21,6 +21,7 @@ chain-addr      = { path = "../../chain-deps/chain-addr", features = [ "property
 chain-core      = { path = "../../chain-deps/chain-core" }
 chain-crypto    = { path = "../../chain-deps/chain-crypto", features = [ "property-test-api" ] }
 chain-time           = { path = "../../chain-deps/chain-time" }
+chain-storage           = { path = "../../chain-deps/chain-storage", features = ["with-bench"] }
 cardano-legacy-address = { path = "../../chain-deps/cardano-legacy-address" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { path = "../jortestkit"}
