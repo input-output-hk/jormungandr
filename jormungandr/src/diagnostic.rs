@@ -63,7 +63,6 @@ enum RlimitResource {
 #[cfg(all(unix, not(target_os = "android")))]
 fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     use libc::rlimit;
-    use std::convert::TryInto;
 
     let mut limits = rlimit {
         rlim_cur: 0,
@@ -78,5 +77,5 @@ fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     let retcode = unsafe { libc::getrlimit(resource, &mut limits as *mut rlimit) };
     nix::errno::Errno::result(retcode).map_err(DiagnosticError::UnixError)?;
 
-    Ok(limits.rlim_cur.expect("rlim always converts to a u64"))
+    Ok(limits.rlim_cur)
 }
