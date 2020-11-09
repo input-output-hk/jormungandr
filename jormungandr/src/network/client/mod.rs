@@ -250,7 +250,10 @@ impl Client {
 
     fn upload_blocks(&mut self, block_ids: BlockIds) -> Result<(), ()> {
         let logger = self.logger.new(o!("solicitation" => "UploadBlocks"));
-        debug!(logger, "peer requests {} blocks", block_ids.len());
+        if block_ids.is_empty() {
+            info!(logger, "peer has sent an empty block solicitation");
+            return Err(());
+        }
         let block_ids = block_ids.decode().map_err(|e| {
             info!(
                 logger,
@@ -258,6 +261,12 @@ impl Client {
                 "reason" => %e,
             );
         })?;
+        info!(
+            logger,
+            "peer requests {} blocks starting from {}",
+            block_ids.len(),
+            block_ids[0]
+        );
         let (reply_handle, future) =
             intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
         debug_assert!(self.incoming_solicitation.is_none());
