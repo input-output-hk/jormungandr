@@ -124,7 +124,7 @@ impl Process {
                     "hash" => header.hash().to_string(),
                     "parent" => header.parent_id().to_string(),
                     "date" => header.block_date().to_string(),
-                    "from_node_id" => node_id.to_string()));
+                    "peer" => node_id.to_string()));
 
                 info!(logger, "received block announcement from network");
 
