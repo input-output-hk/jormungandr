@@ -112,6 +112,7 @@ jobs:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init --depth=1
+      - run: cargo install clippy
       - run:
           name: Print version information
           command: cargo clippy -- --version
