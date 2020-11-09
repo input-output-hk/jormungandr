@@ -112,7 +112,7 @@ jobs:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init --depth=1
-      - run: rustup component add clippy-preview
+      - run: rustup component add clippy
       - run:
           name: Print version information
           command: cargo clippy -- --version
