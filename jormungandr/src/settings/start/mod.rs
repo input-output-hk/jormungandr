@@ -203,8 +203,8 @@ fn generate_network(
             (
                 cfg.p2p.clone(),
                 cfg.http_fetch_block0_service.clone(),
-                cfg.skip_bootstrap.unwrap_or(false),
-                cfg.bootstrap_from_trusted_peers.unwrap_or(false),
+                cfg.skip_bootstrap,
+                cfg.bootstrap_from_trusted_peers,
             )
         } else {
             (config::P2pConfig::default(), Vec::new(), false, false)
