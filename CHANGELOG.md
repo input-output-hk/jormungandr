@@ -1,5 +1,11 @@
 # Change Log
 
+## [v0.9.3](https://github.com/input-output-hk/jormungandr/tree/v0.9.3) (2020-09-24)
+
+Rolled in recent fixes, testing improvements, and dependency updates for the Catalyst project
+
+[Full Changelog](https://github.com/input-output-hk/jormungandr/compare/v0.9.1...v0.9.3)
+
 ## [v0.9.1](https://github.com/input-output-hk/jormungandr/tree/v0.9.1) (2020-06-25)
 
 [Full Changelog](https://github.com/input-output-hk/jormungandr/compare/nightly.20200625...v0.9.1)
