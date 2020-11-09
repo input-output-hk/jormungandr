@@ -66,9 +66,7 @@ impl Client {
         inbound: InboundSubscriptions,
         comms: &mut PeerComms,
     ) -> Self {
-        let logger = builder
-            .logger
-            .new(o!("peer_address" => inbound.peer_address.to_string()));
+        let logger = builder.logger;
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
