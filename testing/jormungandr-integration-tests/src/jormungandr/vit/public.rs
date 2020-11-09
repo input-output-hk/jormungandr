@@ -1,5 +1,3 @@
-pub mod private;
-pub mod public;
 use crate::common::startup::start_stake_pool;
 use crate::common::{
     jcli::JCli,
@@ -133,7 +131,7 @@ pub fn test_vote_flow_bft() {
         .with_funds(
             wallets
                 .iter()
-                .map(|x| x.to_initial_fund(initial_fund_per_wallet))
+                .map(|x| x.into_initial_fund(initial_fund_per_wallet))
                 .collect(),
         )
         .with_committees(&wallets)
@@ -324,9 +322,9 @@ pub fn jcli_e2e_flow() {
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![
-            alice.to_initial_fund(1_000_000),
-            bob.to_initial_fund(1_000_000),
-            clarice.to_initial_fund(1_000_000),
+            alice.into_initial_fund(1_000_000),
+            bob.into_initial_fund(1_000_000),
+            clarice.into_initial_fund(1_000_000),
         ])
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
@@ -414,9 +412,7 @@ pub fn jcli_e2e_flow() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let vote_tally_cert = jcli
-        .certificate()
-        .new_vote_tally(vote_plan_id, PayloadType::Public);
+    let vote_tally_cert = jcli.certificate().new_vote_tally(vote_plan_id);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -456,23 +452,6 @@ pub fn jcli_e2e_flow() {
             .first()
             .unwrap()
             .votes_cast,
-        3
-    );
-
-    assert_eq!(
-        jormungandr
-            .explorer()
-            .vote_plans(1)
-            .unwrap()
-            .data
-            .unwrap()
-            .all_vote_plans
-            .edges[0]
-            .node
-            .proposals[0]
-            .votes
-            .edges
-            .len(),
         3
     );
 }
