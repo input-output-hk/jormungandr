@@ -33,7 +33,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
     let peer = state.peer();
     let keypair = state.global.keypair.clone();
     let legacy_node_id = state.global.config.legacy_node_id;
-    let logger = state.logger.clone();
+    let logger = state.logger().clone();
     let cf = async move {
         let mut grpc_client = if let Some(node_id) = legacy_node_id {
             let node_id: legacy::NodeId = node_id.as_ref().try_into().unwrap();

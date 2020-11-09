@@ -246,11 +246,11 @@ pub struct ConnectionState {
 }
 
 impl ConnectionState {
-    fn new(global: GlobalStateR, peer: &Peer) -> Self {
+    fn new(global: GlobalStateR, peer: &Peer, logger: Logger) -> Self {
         ConnectionState {
             timeout: peer.timeout,
             connection: peer.connection.clone(),
-            logger: global.logger().new(o!("peer" => peer.connection)),
+            logger,
             global,
         }
     }
@@ -496,8 +496,8 @@ fn connect_and_propagate(
         return;
     }
     let peer = Peer::new(addr);
-    let conn_state = ConnectionState::new(state.clone(), &peer);
-    let conn_logger = conn_state.logger().new(o!("peer" => node.to_string()));
+    let conn_logger = state.logger().new(o!("peer" => node.to_string()));
+    let conn_state = ConnectionState::new(state.clone(), &peer, conn_logger.clone());
     info!(conn_logger, "connecting to peer");
     let (handle, connecting) = client::connect(conn_state, channels);
     let spawn_state = state.clone();
