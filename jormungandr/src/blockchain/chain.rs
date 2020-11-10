@@ -433,14 +433,14 @@ impl Blockchain {
         let current_date = header.block_date();
         let rewards_report_all = self.rewards_report_all;
 
-        let (
-            parent_ledger_state,
-            epoch_leadership_schedule,
-            epoch_ledger_parameters,
-            epoch_rewards_info,
+        let EpochLeadership {
+            state: parent_ledger_state,
+            leadership: epoch_leadership_schedule,
+            ledger_parameters: epoch_ledger_parameters,
+            rewards_info: epoch_rewards_info,
             time_frame,
-            previous_epoch_state,
-        ) = new_epoch_leadership_from(current_date.epoch, parent, rewards_report_all);
+            previous_state: previous_epoch_state,
+        } = new_epoch_leadership_from(current_date.epoch, parent, rewards_report_all);
 
         if check_header_proof == CheckHeaderProof::Enabled {
             match epoch_leadership_schedule.verify(&header) {
@@ -806,19 +806,20 @@ fn write_reward_info(
     Ok(())
 }
 
-#[allow(clippy::type_complexity)]
+pub struct EpochLeadership {
+    pub state: Arc<Ledger>,
+    pub leadership: Arc<Leadership>,
+    pub ledger_parameters: Arc<LedgerParameters>,
+    pub rewards_info: Option<Arc<EpochRewardsInfo>>,
+    pub time_frame: Arc<TimeFrame>,
+    pub previous_state: Option<Arc<Ref>>,
+}
+
 pub fn new_epoch_leadership_from(
     epoch: Epoch,
     parent: Arc<Ref>,
     rewards_report_all: bool,
-) -> (
-    Arc<Ledger>,
-    Arc<Leadership>,
-    Arc<LedgerParameters>,
-    Option<Arc<EpochRewardsInfo>>,
-    Arc<TimeFrame>,
-    Option<Arc<Ref>>,
-) {
+) -> EpochLeadership {
     let parent_ledger_state = parent.ledger();
     let parent_epoch_leadership_schedule = parent.epoch_leadership_schedule().clone();
     let parent_epoch_ledger_parameters = parent.epoch_ledger_parameters().clone();
@@ -878,22 +879,22 @@ pub fn new_epoch_leadership_from(
         let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
         let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
         let previous_epoch_state = Some(parent);
-        (
-            transition_state,
+        EpochLeadership {
+            state: transition_state,
             leadership,
             ledger_parameters,
-            epoch_rewards_info,
-            parent_time_frame,
-            previous_epoch_state,
-        )
+            rewards_info: epoch_rewards_info,
+            time_frame: parent_time_frame,
+            previous_state: previous_epoch_state,
+        }
     } else {
-        (
-            parent_ledger_state,
-            parent_epoch_leadership_schedule,
-            parent_epoch_ledger_parameters,
-            parent_epoch_rewards_info,
-            parent_time_frame,
-            parent.last_ref_previous_epoch().map(Arc::clone),
-        )
+        EpochLeadership {
+            state: parent_ledger_state,
+            leadership: parent_epoch_leadership_schedule,
+            ledger_parameters: parent_epoch_ledger_parameters,
+            rewards_info: parent_epoch_rewards_info,
+            time_frame: parent_time_frame,
+            previous_state: parent.last_ref_previous_epoch().map(Arc::clone),
+        }
     }
 }
