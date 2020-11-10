@@ -15,7 +15,7 @@ pub fn test_info_account_address() {
     let jcli: JCli = Default::default();
 
     let private_key = jcli.key().generate("ed25519Extended");
-    let public_key = jcli.key().into_public(&private_key);
+    let public_key = jcli.key().into_public_string(&private_key);
     let account_address = jcli
         .address()
         .account(&public_key, None, Discrimination::Test);
@@ -33,7 +33,7 @@ pub fn test_info_account_address_for_prod() {
     let jcli: JCli = Default::default();
 
     let private_key = jcli.key().generate("ed25519Extended");
-    let public_key = jcli.key().into_public(&private_key);
+    let public_key = jcli.key().into_public_string(&private_key);
     let account_address = jcli
         .address()
         .account(&public_key, None, Discrimination::Production);
@@ -51,10 +51,10 @@ pub fn test_info_delegation_address() {
     let jcli: JCli = Default::default();
 
     let private_key = jcli.key().generate("ed25519Extended");
-    let public_key = jcli.key().into_public(&private_key);
+    let public_key = jcli.key().into_public_string(&private_key);
 
     let private_key = jcli.key().generate("ed25519Extended");
-    let delegation_key = jcli.key().into_public(&private_key);
+    let delegation_key = jcli.key().into_public_string(&private_key);
     let account_address =
         jcli.address()
             .delegation(&public_key, &delegation_key, Discrimination::Test);
