@@ -113,8 +113,7 @@ impl Key {
             .success();
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_bytes_expect_fail<P: AsRef<Path>, Q: AsRef<Path>>(
+    pub fn into_bytes_expect_fail<P: AsRef<Path>, Q: AsRef<Path>>(
         self,
         input: P,
         output: Q,
@@ -130,8 +129,7 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_bytes<P: AsRef<Path>, S: Into<String>>(self, key_type: S, input: P) -> String {
+    pub fn into_bytes<P: AsRef<Path>, S: Into<String>>(self, key_type: S, input: P) -> String {
         self.key_command
             .from_bytes()
             .key_type(key_type)

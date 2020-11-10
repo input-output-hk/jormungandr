@@ -28,7 +28,7 @@ fn transform_key_to_bytes_and_back(key_type: &str) {
     let private_key = jcli.key().generate(key_type);
     let byte_key_file = NamedTempFile::new("byte_file").unwrap();
     jcli.key().to_bytes(&private_key, byte_key_file.path());
-    let key_after_transformation = jcli.key().from_bytes(key_type, byte_key_file.path());
+    let key_after_transformation = jcli.key().into_bytes(key_type, byte_key_file.path());
 
     assert_eq!(
         &private_key, &key_after_transformation,
