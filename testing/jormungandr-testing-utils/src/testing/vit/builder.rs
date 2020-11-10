@@ -1,5 +1,13 @@
+use chain_core::property::BlockDate as _;
+use chain_impl_mockchain::{
+    block::BlockDate,
+    certificate::{Proposal, Proposals, VoteAction, VotePlan},
+    testing::VoteTestGen,
+    vote::{Options, PayloadType},
+};
+use chain_vote::MemberPublicKey;
 pub struct VotePlanBuilder {
-    proposals_count: u32,
+    proposals_count: usize,
     action: VoteAction,
     payload: PayloadType,
     member_keys: Vec<MemberPublicKey>,
@@ -11,11 +19,11 @@ impl VotePlanBuilder {
             proposals_count: 3,
             action: VoteAction::OffChain,
             payload: PayloadType::Public,
-            member_keys: vec![],
+            member_keys: Vec::new(),
         }
     }
 
-    pub fn proposals_count(&mut self, proposals_count: u32) -> &mut Self {
+    pub fn proposals_count(&mut self, proposals_count: usize) -> &mut Self {
         self.proposals_count = proposals_count;
         self
     }
@@ -40,37 +48,36 @@ impl VotePlanBuilder {
         self
     }
 
-    pub fn member_public_keys(&mut self, keys: &[MemberPublicKey]) -> &mut Self {
-        self.member_keys.extend(keys.iter());
+    pub fn member_public_keys(&mut self, keys: Vec<MemberPublicKey>) -> &mut Self {
+        for key in keys {
+            self.member_public_key(key);
+        }
         self
     }
 
     pub fn build(&self) -> VotePlan {
-        let proposals: Vec<Proposal> = std::iter::from_fn(|| {
+        let proposal_vec: Vec<Proposal> = std::iter::from_fn(|| {
             Some(Proposal::new(
                 VoteTestGen::external_proposal_id(),
                 Options::new_length(3).unwrap(),
-                self.action_type.clone(),
+                self.action.clone(),
             ))
         })
         .take(self.proposals_count)
         .collect();
+
+        let mut proposals = Proposals::new();
+        for proposal in proposal_vec {
+            let _ = proposals.push(proposal);
+        }
 
         VotePlan::new(
             BlockDate::from_epoch_slot_id(1, 0),
             BlockDate::from_epoch_slot_id(2, 0),
             BlockDate::from_epoch_slot_id(3, 0),
             proposals,
-            self.payload_type,
-            vec![],
+            self.payload,
+            self.member_keys.clone(),
         )
     }
 }
-/*
-    let action = VoteAction::Parameters {
-        action: ParametersGovernanceAction::RewardAdd {
-            value: Value(rewards_increase),
-        },
-    };
-
-*/

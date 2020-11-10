@@ -1,12 +1,4 @@
-use chain_core::property::BlockDate as _;
-use chain_impl_mockchain::{
-    block::BlockDate,
-    certificate::{Proposal, Proposals, PushProposal, VoteAction, VotePlan},
-    ledger::governance::ParametersGovernanceAction,
-    testing::VoteTestGen,
-    value::Value,
-    vote::{Options, PayloadType},
-};
+use chain_impl_mockchain::{certificate::VotePlan, vote::PayloadType};
 mod builder;
 pub use builder::VotePlanBuilder;
 
