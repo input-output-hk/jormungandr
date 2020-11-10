@@ -8,7 +8,6 @@ use thiserror::Error;
 use wallet::Settings;
 use wallet_core::{Choice, Value};
 
-
 unsafe impl Send for Wallet {}
 
 pub struct MultiController {

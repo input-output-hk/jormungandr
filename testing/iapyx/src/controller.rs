@@ -6,10 +6,10 @@ use chain_impl_mockchain::{fragment::FragmentId, transaction::Input};
 use jormungandr_lib::interfaces::{AccountState, FragmentLog, FragmentStatus};
 use jormungandr_testing_utils::testing::node::RestSettings;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use thiserror::Error;
 use wallet::{AccountId, Settings};
 use wallet_core::{Choice, Conversion, Proposal, Value};
-use std::collections::HashSet;
 
 pub struct Controller {
     backend: WalletBackend,
@@ -18,7 +18,6 @@ pub struct Controller {
 }
 
 impl Controller {
-
     pub fn generate(
         proxy_address: String,
         words_length: Type,
@@ -32,7 +31,6 @@ impl Controller {
             settings,
         })
     }
-
 
     pub fn recover_with_backend(
         backend: WalletBackend,
@@ -54,7 +52,7 @@ impl Controller {
         backend_settings: RestSettings,
     ) -> Result<Self, ControllerError> {
         let backend = WalletBackend::new(proxy_address, backend_settings);
-        Self::recover_with_backend(backend,mnemonics,password)
+        Self::recover_with_backend(backend, mnemonics, password)
     }
 
     pub fn switch_backend(&mut self, proxy_address: String, backend_settings: RestSettings) {
@@ -163,27 +161,31 @@ impl Controller {
         self.backend.account_state(self.id()).map_err(Into::into)
     }
 
-    pub fn vote_for(&mut self,
+    pub fn vote_for(
+        &mut self,
         vote_plan_id: String,
         proposal_index: u32,
         choice: u8,
     ) -> Result<FragmentId, ControllerError> {
-
         let proposals = self.get_proposals()?;
-        let proposal = proposals.iter()
-                .filter(|x| x.chain_voteplan_id == vote_plan_id && x.chain_proposal_index == proposal_index as i64)
-                .next()
-                .ok_or(ControllerError::CannotFindProposal{
-            vote_plan_name: vote_plan_id.to_string(),
-            proposal_index
-        })?;
+        let proposal = proposals
+            .iter()
+            .find(|x| {
+                x.chain_voteplan_id == vote_plan_id
+                    && x.chain_proposal_index == proposal_index as i64
+            })
+            .ok_or(ControllerError::CannotFindProposal {
+                vote_plan_name: vote_plan_id.to_string(),
+                proposal_index,
+            })?;
 
-        let transaction =
-            self.wallet
-                .vote(self.settings.clone(), &proposal.clone().into(), Choice::new(choice))?;
+        let transaction = self.wallet.vote(
+            self.settings.clone(),
+            &proposal.clone().into(),
+            Choice::new(choice),
+        )?;
         Ok(self.backend.send_fragment(transaction.to_vec())?)
     }
-
 
     pub fn vote(
         &mut self,
@@ -239,9 +241,9 @@ pub enum ControllerError {
     #[error("backend error")]
     BackendError(#[from] crate::backend::WalletBackendError),
     #[error("cannot find proposal: voteplan({vote_plan_name}) index({proposal_index})")]
-    CannotFindProposal{
+    CannotFindProposal {
         vote_plan_name: String,
-        proposal_index: u32
+        proposal_index: u32,
     },
     #[error("transactions with ids [{fragments:?}] were pending for too long")]
     TransactionsWerePendingForTooLong { fragments: Vec<FragmentId> },

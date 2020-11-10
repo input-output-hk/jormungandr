@@ -42,7 +42,7 @@ impl WalletBackend {
                 format!("http://{}/api", node_address),
                 node_rest_settings.clone(),
             ),
-            vit_client: VitStationRestClient::new(vit_address.clone()),
+            vit_client: VitStationRestClient::new(vit_address),
             proxy_client: ProxyClient::new(proxy_address),
             explorer_client: Explorer::new(node_address),
         };
@@ -57,7 +57,7 @@ impl WalletBackend {
         Self::new_from_addresses(
             address.clone(),
             address.clone(),
-            address.clone(),
+            address,
             node_rest_settings,
         )
     }
@@ -156,9 +156,9 @@ impl WalletBackend {
     pub fn settings(&self) -> Result<Settings, WalletBackendError> {
         let block0 = self.block0()?;
         let mut block0_bytes = ReadBuf::from(&block0);
-        let block0 =
-            Block::read(&mut block0_bytes).map_err(|e| WalletBackendError::Block0ReadError(e))?;
-        Ok(Settings::new(&block0).map_err(|e| WalletBackendError::SettingsReadError(e))?)
+        let block0 = Block::read(&mut block0_bytes).map_err(WalletBackendError::Block0ReadError)?;
+        Ok(Settings::new(&block0)
+            .map_err(|e| WalletBackendError::SettingsReadError(Box::new(e)))?)
     }
 
     pub fn account_exists(&self, id: AccountId) -> Result<bool, WalletBackendError> {
@@ -179,5 +179,5 @@ pub enum WalletBackendError {
     #[error("block0 retrieve error")]
     Block0ReadError(#[from] chain_core::mempack::ReadError),
     #[error("block0 retrieve error")]
-    SettingsReadError(#[from] chain_impl_mockchain::ledger::Error),
+    SettingsReadError(#[from] Box<chain_impl_mockchain::ledger::Error>),
 }

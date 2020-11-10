@@ -9,13 +9,13 @@ use chain_impl_mockchain::{
 };
 use hdkeygen::account::AccountId;
 use jormungandr_lib::interfaces::AccountIdentifier;
-use std::collections::{HashSet};
+use std::collections::HashSet;
 use std::str::FromStr;
+use thiserror::Error;
 use wallet::Settings;
 use wallet_core::Conversion;
+use wallet_core::Proposal;
 use wallet_core::Wallet as Inner;
-use wallet_core::{Proposal};
-use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -28,8 +28,6 @@ pub enum Error {
     #[error("cannot send vote")]
     CannotSendVote(String),
 }
-
-
 
 pub struct Wallet {
     proposals: Vec<Proposal>,
@@ -45,7 +43,8 @@ impl Wallet {
 
     pub fn recover(mnemonics: &str, password: &[u8]) -> Result<Self, Error> {
         Ok(Self {
-            inner: Inner::recover(mnemonics, password).map_err(|e| Error::CannotRecover(e.to_string()))?,
+            inner: Inner::recover(mnemonics, password)
+                .map_err(|e| Error::CannotRecover(e.to_string()))?,
             proposals: vec![],
         })
     }
@@ -59,7 +58,9 @@ impl Wallet {
     }
 
     pub fn retrieve_funds(&mut self, block0_bytes: &[u8]) -> Result<wallet::Settings, Error> {
-        self.inner.retrieve_funds(block0_bytes).map_err(|e| Error::CannotRetrieveFunds(e.to_string()))
+        self.inner
+            .retrieve_funds(block0_bytes)
+            .map_err(|e| Error::CannotRetrieveFunds(e.to_string()))
     }
 
     pub fn convert(&mut self, settings: Settings) -> Conversion {
@@ -90,7 +91,7 @@ impl Wallet {
     }
 
     pub fn pending_transactions(&self) -> HashSet<FragmentId> {
-        self.inner.pending_transactions().clone()
+        self.inner.pending_transactions()
     }
 
     pub fn remove_pending_transaction(&mut self, id: &FragmentId) -> Option<Vec<Input>> {
@@ -111,7 +112,9 @@ impl Wallet {
         proposal: &Proposal,
         choice: Choice,
     ) -> Result<Box<[u8]>, Error> {
-        self.inner.vote(settings, proposal, choice).map_err(|e| Error::CannotSendVote(e.to_string()))
+        self.inner
+            .vote(settings, proposal, choice)
+            .map_err(|e| Error::CannotSendVote(e.to_string()))
     }
 
     pub fn set_proposals(&mut self, proposals: Vec<Proposal>) {

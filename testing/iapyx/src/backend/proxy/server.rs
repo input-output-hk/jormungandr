@@ -1,5 +1,5 @@
-use thiserror::Error;
 use std::net::SocketAddr;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -9,27 +9,27 @@ pub enum Error {
     MalformedVitStationAddress(String),
     #[error("Malformed node rest address: {0}")]
     MalformedNodeRestAddress(String),
-
 }
 
-
-
-pub struct ProxyServerStub{
+pub struct ProxyServerStub {
     address: String,
     vit_address: String,
     node_rest_address: String,
-    block0: Vec<u8>
+    block0: Vec<u8>,
 }
 
-
-impl ProxyServerStub{
-
-    pub fn new(address: String, vit_address: String, node_rest_address: String, block0: Vec<u8>) -> Result<Self, Error> {
-        Ok(Self { 
-            address, 
+impl ProxyServerStub {
+    pub fn new(
+        address: String,
+        vit_address: String,
+        node_rest_address: String,
+        block0: Vec<u8>,
+    ) -> Result<Self, Error> {
+        Ok(Self {
+            address,
             vit_address,
             node_rest_address,
-            block0
+            block0,
         })
     }
 
@@ -54,11 +54,10 @@ impl ProxyServerStub{
     }
 
     pub fn http_vit_address(&self) -> String {
-        format!("http://{}/",self.vit_address)
-    }
-    
-    pub fn http_node_address(&self) -> String {
-        format!("http://{}/",self.node_rest_address)
+        format!("http://{}/", self.vit_address)
     }
 
+    pub fn http_node_address(&self) -> String {
+        format!("http://{}/", self.node_rest_address)
+    }
 }
