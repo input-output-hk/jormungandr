@@ -218,7 +218,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "passive_leader_disruption_overlap",
         passive_leader_disruption_overlap,
-        vec![Tag::Unstable],
+        vec![Tag::Short],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_overlap",
@@ -228,7 +228,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "leader_restart_preserves_leadership_log",
         leader_restart_preserves_leadership_log,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
     repository.push(Scenario::new(
         "leader_leader_disruption_no_overlap",
@@ -255,7 +255,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "vote_e2e_flow",
         vote_e2e_flow,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
@@ -363,7 +363,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "max_connections",
         max_connections,
-        vec![Tag::Short, Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
@@ -389,16 +389,12 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Long],
     ));
 
-    repository.push(Scenario::new(
-        "bft_cascade",
-        bft_cascade,
-        vec![Tag::Short, Tag::Unstable],
-    ));
+    repository.push(Scenario::new("bft_cascade", bft_cascade, vec![Tag::Short]));
 
     repository.push(Scenario::new(
         "mesh_disruption",
         mesh_disruption,
-        vec![Tag::Unstable],
+        vec![Tag::Short],
     ));
 
     repository.push(Scenario::new(
