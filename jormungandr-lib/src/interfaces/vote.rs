@@ -101,14 +101,13 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
                 formatter.write_str("binary data for member public key")
             }
 
-            #[allow(clippy::or_fun_call)]
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                let pk = MemberPublicKey::from_bytes(v).ok_or(serde::de::Error::custom(
-                    "Invalid binary data for member public key",
-                ))?;
+                let pk = MemberPublicKey::from_bytes(v).ok_or_else(|| {
+                    serde::de::Error::custom("Invalid binary data for member public key")
+                })?;
                 Ok(SerdeMemberPublicKey(pk))
             }
         }
