@@ -389,11 +389,7 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Long],
     ));
 
-    repository.push(Scenario::new(
-        "bft_cascade",
-        bft_cascade,
-        vec![Tag::Short],
-    ));
+    repository.push(Scenario::new("bft_cascade", bft_cascade, vec![Tag::Short]));
 
     repository.push(Scenario::new(
         "mesh_disruption",
