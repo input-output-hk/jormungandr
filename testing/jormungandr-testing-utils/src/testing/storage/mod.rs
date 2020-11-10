@@ -1,4 +1,3 @@
-use chain_core::property::BlockId as _;
 use chain_storage::test_utils::Block;
 use chain_storage::test_utils::BlockId;
 use chain_storage::BlockInfo;
