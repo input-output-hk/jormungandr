@@ -1,3 +1,4 @@
+use crate::blockchain::EpochLeadership;
 use crate::{
     blockcfg::{
         Block, BlockDate, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput, Leadership,
@@ -21,6 +22,7 @@ use jormungandr_lib::{
     time::SystemTime,
 };
 use slog::Logger;
+use std::cmp::Ordering;
 use std::{sync::Arc, time::Instant};
 use thiserror::Error;
 use tokio::time::{delay_until, timeout_at, Instant as TokioInstant};
@@ -536,7 +538,6 @@ impl Module {
         }
     }
 
-    #[allow(clippy::comparison_chain)]
     async fn action_schedule(self) -> Result<Self, LeadershipError> {
         let current_slot_position = self.current_slot_position().unwrap();
 
@@ -548,51 +549,55 @@ impl Module {
             "current_slot" => current_slot_position.slot.0,
         ));
 
-        if epoch_tip < current_slot_position.epoch {
-            let (_, leadership, _, _, _, _) = new_epoch_leadership_from(
-                current_slot_position.epoch.0,
-                Arc::clone(&self.tip_ref),
-                false,
-            );
+        match epoch_tip.cmp(&current_slot_position.epoch) {
+            Ordering::Less => {
+                let EpochLeadership { leadership, .. } = new_epoch_leadership_from(
+                    current_slot_position.epoch.0,
+                    Arc::clone(&self.tip_ref),
+                    false,
+                );
 
-            let slot_start = current_slot_position.slot.0 + 1;
-            let nb_slots = leadership.era().slots_per_epoch() - slot_start;
-            let running_ref = leadership;
+                let slot_start = current_slot_position.slot.0 + 1;
+                let nb_slots = leadership.era().slots_per_epoch() - slot_start;
+                let running_ref = leadership;
 
-            debug!(logger, "scheduling events" ;
-                "slot_start" => slot_start,
-                "nb_slots" => nb_slots,
-            );
+                debug!(logger, "scheduling events" ;
+                    "slot_start" => slot_start,
+                    "nb_slots" => nb_slots,
+                );
 
-            self.action_run_schedule(running_ref, slot_start, nb_slots)
-                .await
-        } else if epoch_tip == current_slot_position.epoch {
-            // check for current epoch
-            let slot_start = current_slot_position.slot.0 + 1;
-            let nb_slots = self
-                .tip_ref
-                .epoch_leadership_schedule()
-                .era()
-                .slots_per_epoch()
-                - slot_start;
-            let running_ref = Arc::clone(self.tip_ref.epoch_leadership_schedule());
+                self.action_run_schedule(running_ref, slot_start, nb_slots)
+                    .await
+            }
+            Ordering::Equal => {
+                // check for current epoch
+                let slot_start = current_slot_position.slot.0 + 1;
+                let nb_slots = self
+                    .tip_ref
+                    .epoch_leadership_schedule()
+                    .era()
+                    .slots_per_epoch()
+                    - slot_start;
+                let running_ref = Arc::clone(self.tip_ref.epoch_leadership_schedule());
 
-            debug!(logger, "scheduling events" ;
-                "slot_start" => slot_start,
-                "nb_slots" => nb_slots,
-            );
+                debug!(logger, "scheduling events" ;
+                    "slot_start" => slot_start,
+                    "nb_slots" => nb_slots,
+                );
 
-            self.action_run_schedule(running_ref, slot_start, nb_slots)
-                .await
-        } else {
-            // The only reason this would happen is if we had accepted a block
-            // that is set in the future or our system local date time is off
+                self.action_run_schedule(running_ref, slot_start, nb_slots)
+                    .await
+            }
+            Ordering::Greater => {
+                // The only reason this would happen is if we had accepted a block
+                // that is set in the future or our system local date time is off
 
-            error!(
-                logger,
-                "It seems the current epoch tip is way ahead of its time."
-            );
-            Ok(self)
+                error!(
+                    logger,
+                    "It seems the current epoch tip is way ahead of its time."
+                );
+                Ok(self)
+            }
         }
     }
 
