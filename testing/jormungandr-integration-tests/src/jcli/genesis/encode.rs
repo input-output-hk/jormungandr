@@ -103,7 +103,7 @@ pub fn test_genesis_for_prod_with_initial_funds_for_testing_address_fail_to_buil
     let jcli: JCli = Default::default();
 
     let private_key = jcli.key().generate_default();
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     let test_address = jcli
         .address()
         .single(&public_key, None, Discrimination::Test);

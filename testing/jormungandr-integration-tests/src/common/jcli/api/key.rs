@@ -67,7 +67,7 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
-    pub fn into_public_string<S: Into<String>>(self, private_key: S) -> String {
+    pub fn convert_to_public_string<S: Into<String>>(self, private_key: S) -> String {
         let input_file = NamedTempFile::new("key_to_public.input").unwrap();
         input_file.write_str(&private_key.into()).unwrap();
 
@@ -81,7 +81,11 @@ impl Key {
             .as_single_line()
     }
 
-    pub fn into_public_expect_fail<S: Into<String>>(self, private_key: S, expected_msg_path: &str) {
+    pub fn convert_to_public_string_expect_fail<S: Into<String>>(
+        self,
+        private_key: S,
+        expected_msg_path: &str,
+    ) {
         let input_file = NamedTempFile::new("key_to_public.input").unwrap();
         input_file.write_str(&private_key.into()).unwrap();
 

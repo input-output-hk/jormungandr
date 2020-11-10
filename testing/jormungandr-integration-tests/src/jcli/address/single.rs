@@ -8,7 +8,7 @@ pub fn test_utxo_address_made_of_ed25519_extended_key() {
     let private_key = jcli.key().generate("ed25519Extended");
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let utxo_address = jcli
@@ -28,14 +28,14 @@ pub fn test_delegation_address_made_of_ed25519_extended_seed_key() {
         .generate_with_seed("ed25519Extended", &correct_seed);
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let private_key = jcli
         .key()
         .generate_with_seed("ed25519Extended", &correct_seed);
     println!("private delegation key: {}", &private_key);
-    let delegation_key = jcli.key().into_public_string(&private_key);
+    let delegation_key = jcli.key().convert_to_public_string(&private_key);
     println!("delegation key: {}", &delegation_key);
 
     let delegation_address =
@@ -58,7 +58,7 @@ pub fn test_delegation_address_is_the_same_as_public() {
         .generate_with_seed("ed25519Extended", &correct_seed);
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let delegation_address =
@@ -81,7 +81,7 @@ pub fn test_delegation_address_for_prod_discrimination() {
         .generate_with_seed("ed25519Extended", &correct_seed);
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let delegation_address =
@@ -104,7 +104,7 @@ pub fn test_single_address_for_prod_discrimination() {
         .generate_with_seed("ed25519Extended", &correct_seed);
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let delegation_address =
@@ -124,7 +124,7 @@ pub fn test_account_address_for_prod_discrimination() {
         .generate_with_seed("ed25519Extended", &correct_seed);
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let delegation_address =
@@ -139,7 +139,7 @@ pub fn test_utxo_address_made_of_incorrect_ed25519_extended_key() {
     let private_key = jcli.key().generate("ed25519Extended");
     println!("private key: {}", &private_key);
 
-    let mut public_key = jcli.key().into_public_string(&private_key);
+    let mut public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     public_key.push('A');
@@ -160,7 +160,7 @@ pub fn test_delegation_address_made_of_random_string() {
     let private_key = jcli.key().generate("ed25519Extended");
     println!("private key: {}", &private_key);
 
-    let public_key = jcli.key().into_public_string(&private_key);
+    let public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let delegation_key = "adfasdfasdfdasfasdfadfasdf";
@@ -181,12 +181,12 @@ pub fn test_delegation_address_made_of_incorrect_public_ed25519_extended_key() {
     let private_key = jcli.key().generate("ed25519Extended");
     println!("private key: {}", &private_key);
 
-    let mut public_key = jcli.key().into_public_string(&private_key);
+    let mut public_key = jcli.key().convert_to_public_string(&private_key);
     println!("public key: {}", &public_key);
 
     let private_key = jcli.key().generate("ed25519Extended");
     println!("private delegation key: {}", &private_key);
-    let delegation_key = jcli.key().into_public_string(&private_key);
+    let delegation_key = jcli.key().convert_to_public_string(&private_key);
     println!("delegation key: {}", &delegation_key);
 
     public_key.push('A');
