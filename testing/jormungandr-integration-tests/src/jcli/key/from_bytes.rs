@@ -28,8 +28,10 @@ fn transform_key_to_bytes_and_back(key_type: &str) {
     let private_key = jcli.key().generate(key_type);
     let byte_key_file = NamedTempFile::new("byte_file").unwrap();
     jcli.key()
-        .convert_to_string(&private_key, byte_key_file.path());
-    let key_after_transformation = jcli.key().convert_to_string(key_type, byte_key_file.path());
+        .dump_bytes_to_file(&private_key, byte_key_file.path());
+    let key_after_transformation = jcli
+        .key()
+        .convert_to_bytes_string(key_type, byte_key_file.path());
 
     assert_eq!(
         &private_key, &key_after_transformation,
@@ -44,7 +46,7 @@ pub fn test_from_bytes_for_invalid_key() {
     let byte_key_file = NamedTempFile::new("byte_file").unwrap();
     byte_key_file.write_str(
         "ed25519e_sk1kp80gevhccz8cnst6x97rmlc9n5fls2nmcqcjfn65vdktt0wy9f3zcf76hp7detq9sz8cmhlcyzw5h3ralf98rdwl4wcwcgaaqna3pgz9qgk0").unwrap();
-    jcli.key().convert_to_string_expect_fail(
+    jcli.key().convert_to_bytes_string_expect_fail(
         "ed25519Extended",
         byte_key_file.path(),
         "Odd number of digits",
@@ -57,7 +59,7 @@ pub fn test_from_bytes_for_unknown_key() {
     let byte_key_file = NamedTempFile::new("byte_file").unwrap();
     byte_key_file.write_str(
         "ed25519e_sk1kp80gevhccz8cnst6x97rmlc9n5fls2nmcqcjfn65vdktt0wy9f3zcf76hp7detq9sz8cmhlcyzw5h3ralf98rdwl4wcwcgaaqna3pgz9qgk0").unwrap();
-    jcli.key().convert_to_string_expect_fail(
+    jcli.key().convert_to_bytes_string_expect_fail(
         "ed25519Exten",
         byte_key_file.path(),
         "Invalid value for '--type <key-type>':",
