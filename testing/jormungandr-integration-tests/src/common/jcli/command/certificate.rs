@@ -80,6 +80,28 @@ impl CertificateCommand {
         self
     }
 
+    pub fn private_vote_cast(
+        mut self,
+        choice: u8,
+        options_size: usize,
+        proposal_idx: usize,
+        vote_plan_id: String,
+    ) -> Self {
+        self.command
+            .arg("new")
+            .arg("vote-cast")
+            .arg("private")
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id)
+            .arg("--proposal-index")
+            .arg(proposal_idx.to_string())
+            .arg("--choice")
+            .arg(choice.to_string())
+            .arg("--options_size")
+            .arg(options_size.to_string());
+        self
+    }
+
     pub fn stake_pool_registration<S: Into<String>, Q: Into<String>, R: Into<String>>(
         mut self,
         kes_key: S,
