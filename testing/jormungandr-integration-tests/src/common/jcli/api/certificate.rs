@@ -4,7 +4,7 @@ use jortestkit::process::output_extensions::ProcessOutput;
 use crate::common::jcli::command::CertificateCommand;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{prelude::*, NamedTempFile};
-use chain_impl_mockchain::vote::{Choice, PayloadType};
+use chain_impl_mockchain::vote::Choice;
 use jormungandr_testing_utils::testing::file;
 use std::path::Path;
 #[derive(Debug)]
@@ -41,22 +41,35 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn new_vote_cast<S: Into<String>>(
+    pub fn new_public_vote_cast<S: Into<String>>(
         self,
         vote_plan_id: S,
         proposal_idx: usize,
         choice: Choice,
-        payload_type: PayloadType,
     ) -> String {
-        let command = match payload_type {
-            PayloadType::Public => {
-                self.command
-                    .public_vote_cast(vote_plan_id.into(), proposal_idx, choice.as_byte())
-            }
-            PayloadType::Private => unimplemented!(),
-        };
+        self.command
+            .public_vote_cast(vote_plan_id.into(), proposal_idx, choice.as_byte())
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
 
-        command
+    pub fn new_private_vote_cast<S: Into<String>>(
+        self,
+        vote_plan_id: S,
+        proposal_idx: usize,
+        choice: Choice,
+        option_size: usize,
+    ) -> String {
+        self.command
+            .private_vote_cast(
+                choice.as_byte(),
+                option_size,
+                proposal_idx,
+                vote_plan_id.into(),
+            )
             .build()
             .assert()
             .success()
