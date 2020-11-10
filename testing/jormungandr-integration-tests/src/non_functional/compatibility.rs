@@ -10,7 +10,6 @@ use jormungandr_testing_utils::{
     testing::{node::download_last_n_releases, FragmentSender},
     Version,
 };
-use std::str::FromStr;
 
 fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &TempDir) {
     println!("Testing version: {}", version);
