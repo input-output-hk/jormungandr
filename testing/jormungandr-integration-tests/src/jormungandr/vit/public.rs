@@ -8,12 +8,13 @@ use assert_fs::{
     TempDir,
 };
 use chain_impl_mockchain::{
-    certificate::VotePlan,
+    certificate::VoteAction,
     chaintypes::ConsensusType,
+    ledger::governance::ParametersGovernanceAction,
     milli::Milli,
     testing::VoteTestGen,
     value::Value,
-    vote::{Choice, CommitteeId, PayloadType},
+    vote::{Choice, CommitteeId},
 };
 use jormungandr_lib::{
     crypto::key::KeyPair,
@@ -25,7 +26,7 @@ use jormungandr_testing_utils::testing::VotePlanExtension;
 use jormungandr_testing_utils::{
     testing::{
         node::time::{self, wait_for_epoch},
-        vote_plan_cert, FragmentSender, FragmentSenderSetup,
+        vote_plan_cert, FragmentSender, FragmentSenderSetup, VotePlanBuilder,
     },
     wallet::Wallet,
 };
@@ -124,7 +125,14 @@ pub fn test_vote_flow_bft() {
     let mut bob = Wallet::new_account(&mut rng);
     let mut clarice = Wallet::new_account(&mut rng);
 
-    let vote_plan = VotePlan::new_with_3_proposals(rewards_increase);
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::Parameters {
+            action: ParametersGovernanceAction::RewardAdd {
+                value: Value(rewards_increase),
+            },
+        })
+        .build();
     let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
     let wallets = [&alice, &bob, &clarice];
     let config = ConfigurationBuilder::new()
@@ -234,7 +242,14 @@ pub fn test_vote_flow_praos() {
     let mut bob = Wallet::new_account(&mut rng);
     let mut clarice = Wallet::new_account(&mut rng);
 
-    let vote_plan = VotePlan::new_with_3_proposals(rewards_increase);
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::Parameters {
+            action: ParametersGovernanceAction::RewardAdd {
+                value: Value(rewards_increase),
+            },
+        })
+        .build();
 
     let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
     let mut config = ConfigurationBuilder::new();
@@ -314,7 +329,10 @@ pub fn jcli_e2e_flow() {
     let bob = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
     let clarice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
 
-    let vote_plan = VotePlan::new_with_3_off_chain_proposals();
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::OffChain)
+        .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
     vote_plan_json.write_str(&vote_plan.as_json_str()).unwrap();
@@ -366,9 +384,9 @@ pub fn jcli_e2e_flow() {
     time::wait_for_epoch(1, jormungandr.explorer());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
-    let vote_cast =
-        jcli.certificate()
-            .new_vote_cast(vote_plan_id.clone(), 0, yes_choice, PayloadType::Public);
+    let vote_cast = jcli
+        .certificate()
+        .new_public_vote_cast(vote_plan_id.clone(), 0, yes_choice);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
