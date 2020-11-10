@@ -25,6 +25,7 @@ pub use jortestkit::measurement::{
     EnduranceBenchmarkFinish, EnduranceBenchmarkRun, NamedProcess, ResourcesUsage, Speed,
     SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
 };
+pub use jortestkit::web::download_file;
 pub use remote::{RemoteJormungandr, RemoteJormungandrBuilder};
 pub use storage::{BranchCount, StopCriteria, StorageBuilder};
 pub use sync::{
@@ -32,8 +33,6 @@ pub use sync::{
     MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
 };
 pub use vit::{VotePlanBuilder, VotePlanExtension};
-
-pub use jortestkit::web::download_file;
 
 pub use verify::{assert, assert_equals, Error as VerificationError};
 
