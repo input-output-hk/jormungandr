@@ -1,9 +1,43 @@
-use chain_impl_mockchain::block;
+use chain_impl_mockchain::block::{self, Epoch, SlotId};
+use chain_time::TimeEra;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BlockDate(block::BlockDate);
+
+impl BlockDate {
+    pub fn next_epoch(self) -> Self {
+        self.0.next_epoch().into()
+    }
+
+    pub fn next(self, era: &TimeEra) -> Self {
+        self.0.next(era).into()
+    }
+
+    pub fn slot(&self) -> SlotId {
+        self.0.slot_id.into()
+    }
+
+    pub fn epoch(&self) -> Epoch {
+        self.0.epoch.into()
+    }
+
+    pub fn shift_epoch(&self, epoch_shift: u32) -> Self {
+        let mut block_date: block::BlockDate = self.clone().into();
+        for _ in 0..epoch_shift {
+            block_date = block_date.next_epoch();
+        }
+        block_date.into()
+    }
+
+    pub fn shift_slot(&self, slot_shift: u32, time_era: &TimeEra) -> Self {
+        let mut block_date: block::BlockDate = self.clone().into();
+        for _ in 0..slot_shift {
+            block_date = block_date.next(&time_era);
+        }
+        block_date.into()
+    }
+}
 
 /* ---------------- Display ------------------------------------------------ */
 
