@@ -9,7 +9,7 @@ use tokio::sync::mpsc::{
     error::{RecvError, TrySendError},
     Receiver, Sender,
 };
-use tokio::time::delay_queue::{DelayQueue, Key};
+use tokio_util::time::delay_queue::{DelayQueue, Key};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -184,7 +184,7 @@ where
                 Some(Command::DeclareCompleted { task }) => inner.declare_completed(task),
             }
         }
-        while let Poll::Ready(Some(expired)) = Pin::new(&mut inner.timeouts).poll_next(cx) {
+        while let Poll::Ready(Some(expired)) = Pin::new(&mut inner.timeouts).poll_expired(cx) {
             match expired {
                 Ok(expired) => inner.declare_timed_out(expired.into_inner()),
                 Err(err) => return Poll::Ready(Err(Error::Timer(err))),

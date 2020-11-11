@@ -21,7 +21,6 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-type Handle = Arc<Runtime>;
 /// hold onto the different services created
 pub struct Services {
     logger: Logger,
@@ -69,7 +68,6 @@ pub struct TokioServiceInfo {
     name: &'static str,
     up_time: Instant,
     logger: Logger,
-    handle: Handle,
 }
 
 pub struct TaskMessageBox<Msg>(Sender<Msg>);
@@ -97,10 +95,6 @@ impl Services {
         }
     }
 
-    pub fn runtime_handle(&self) -> Handle {
-        Arc::new(self.runtime)
-    }
-
     /// Spawn the given Future in a new dedicated runtime
     pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
@@ -113,13 +107,11 @@ impl Services {
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
 
-        let handle = self.runtime_handle();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
             logger: logger.clone(),
-            handle,
         };
 
         let handle = self.runtime.spawn(async move {
@@ -146,13 +138,11 @@ impl Services {
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
 
-        let handle = self.runtime_handle();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
             logger: logger.clone(),
-            handle,
         };
 
         let handle = &self.runtime.spawn(async move {
@@ -205,13 +195,11 @@ impl Services {
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
-        let handle = self.runtime_handle();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
             logger,
-            handle,
         };
         self.runtime.block_on(f(future_service_info))
     }
@@ -228,12 +216,6 @@ impl TokioServiceInfo {
     #[inline]
     pub fn name(&self) -> &'static str {
         self.name
-    }
-
-    /// Access the service's handle
-    #[inline]
-    pub fn runtime_handle(&self) -> &Handle {
-        &self.handle
     }
 
     /// access the service's logger
@@ -256,7 +238,7 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.handle.spawn(future);
+        tokio::spawn(future);
     }
 
     /// just like spawn but instead log an error on Result::Err
@@ -268,7 +250,7 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.handle.spawn(async move {
+        tokio::spawn(async move {
             match future.await {
                 Ok(()) => trace!(logger, "{} finished successfully", name),
                 Err(e) => error!(logger, "{} finished with error", name; "error" => ?e),
@@ -283,7 +265,7 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.handle.spawn(async move {
+        tokio::spawn(async move {
             match tokio::time::timeout(timeout, future).await {
                 Err(_) => error!(logger, "task {} timedout", name),
                 Ok(()) => {}
@@ -300,7 +282,7 @@ impl TokioServiceInfo {
     {
         let logger = self.logger.clone();
         trace!(logger, "spawning {}", name);
-        self.handle.spawn(async move {
+        tokio::spawn(async move {
             match tokio::time::timeout(timeout, future).await {
                 Err(_) => error!(logger, "task {} timedout", name),
                 Ok(Err(e)) => error!(logger, "task {} finished with error", name; "error" => ?e),
