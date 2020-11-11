@@ -20,7 +20,7 @@ pub enum Error {
     #[error("command queue closed")]
     CommandQueueClosed,
     #[error("timer error")]
-    Timer(#[from] tokio::time::Error),
+    Timer(#[from] tokio::time::error::Error),
 }
 
 impl<T> From<TrySendError<T>> for Error {
