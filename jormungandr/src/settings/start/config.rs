@@ -7,6 +7,7 @@ use crate::{
 pub use jormungandr_lib::interfaces::{Cors, Rest, Tls};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
+use multiaddr::Multiaddr;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use slog::FilterLevel;
 
@@ -154,7 +155,9 @@ pub struct P2pConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TrustedPeer {
-    pub address: Address,
+    // We cannot use Address here because it can only be constructed for
+    // /ip4 or /ip6, but we accept dns addresses as well.
+    pub address: Multiaddr,
 
     // KEEP the ID optional, this is no longer needed but removing this will
     // allow to keep some back compatibility.
@@ -236,9 +239,7 @@ impl std::str::FromStr for TrustedPeer {
         let mut split = s.split('@');
 
         let address = if let Some(address) = split.next() {
-            address
-                .parse::<poldercast::Address>()
-                .map_err(|e| e.to_string())?
+            address.parse::<Multiaddr>().map_err(|e| e.to_string())?
         } else {
             return Err("Missing address component".to_owned());
         };
