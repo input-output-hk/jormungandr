@@ -58,6 +58,9 @@ pub struct Weight(pub String);
 #[derive(juniper::GraphQLScalarValue)]
 pub struct VotePlanCount(pub String);
 
+#[derive(juniper::GraphQLScalarValue)]
+pub struct VoteStatusCount(pub String);
+
 /// Vote option range
 ///
 /// provide a range of available choices for a given proposal. Usual value would
@@ -264,5 +267,11 @@ impl From<u64> for VotePlanCount {
 impl From<u32> for VotePlanCount {
     fn from(number: u32) -> VotePlanCount {
         VotePlanCount(format!("{}", number))
+    }
+}
+
+impl From<u64> for VoteStatusCount {
+    fn from(number: u64) -> VoteStatusCount {
+        VoteStatusCount(format!("{}", number))
     }
 }
