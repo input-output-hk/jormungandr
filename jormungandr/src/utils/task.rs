@@ -11,15 +11,17 @@ use futures::prelude::*;
 use futures::stream::FuturesUnordered;
 use slog::Logger;
 use thiserror::Error;
-use tokio::runtime::{Handle, Runtime};
+use tokio::runtime::Runtime;
 use tokio::task::JoinHandle;
 
 use std::error;
 use std::fmt::Debug;
 use std::future::Future;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+type Handle = Arc<Runtime>;
 /// hold onto the different services created
 pub struct Services {
     logger: Logger,
@@ -95,6 +97,10 @@ impl Services {
         }
     }
 
+    pub fn runtime_handle(&self) -> Handle {
+        Arc::new(self.runtime)
+    }
+
     /// Spawn the given Future in a new dedicated runtime
     pub fn spawn_future<F, T>(&mut self, name: &'static str, f: F)
     where
@@ -107,7 +113,7 @@ impl Services {
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
 
-        let handle = self.runtime.handle().clone();
+        let handle = self.runtime_handle();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
@@ -140,7 +146,7 @@ impl Services {
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
 
-        let handle = self.runtime.handle().clone();
+        let handle = self.runtime_handle();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
@@ -149,7 +155,7 @@ impl Services {
             handle,
         };
 
-        let handle = self.runtime.spawn(async move {
+        let handle = &self.runtime.spawn(async move {
             let res = f(future_service_info).await;
             if let Err(err) = &res {
                 error!(logger, "service finished with error"; "reason" => err.to_string());
@@ -199,7 +205,7 @@ impl Services {
             .logger
             .new(o!(crate::log::KEY_TASK => name))
             .into_erased();
-        let handle = self.runtime.handle().clone();
+        let handle = self.runtime_handle();
         let now = Instant::now();
         let future_service_info = TokioServiceInfo {
             name,
