@@ -102,10 +102,10 @@ impl Key {
         let input = NamedTempFile::new("key_to_bytes.input").unwrap();
         input.write_str(&private_key.into()).unwrap();
 
-        self.copy_bytes_to_file(input.path(), output.as_ref())
+        self.convert_to_bytes_file(input.path(), output.as_ref())
     }
 
-    pub fn copy_bytes_to_file<P: AsRef<Path>, Q: AsRef<Path>>(self, input: P, output: Q) {
+    pub fn convert_to_bytes_file<P: AsRef<Path>, Q: AsRef<Path>>(self, input: P, output: Q) {
         self.key_command
             .to_bytes()
             .output(output)
@@ -115,7 +115,7 @@ impl Key {
             .success();
     }
 
-    pub fn copy_bytes_to_file_expect_fail<P: AsRef<Path>, Q: AsRef<Path>>(
+    pub fn convert_to_bytes_file_expect_fail<P: AsRef<Path>, Q: AsRef<Path>>(
         self,
         input: P,
         output: Q,

@@ -39,7 +39,7 @@ pub fn test_to_bytes_for_invalid_key() {
     let byte_key_file = temp_dir.child("byte_file");
     byte_key_file.write_str("ed25519e_sk1kp80gevhccz8cnst6x97rmlc9n5fls2nmcqcjfn65vdktt0wy9f3zcf76hp7detq9sz8cmhlcyzw5h3ralf98rdwl4wcwcgaaqna3pgz9qgk0").unwrap();
     let output_file = temp_dir.child("output_byte_file");
-    jcli.key().copy_bytes_to_file_expect_fail(
+    jcli.key().convert_to_bytes_file_expect_fail(
         byte_key_file.path(),
         output_file.path(),
         "invalid Bech32",
