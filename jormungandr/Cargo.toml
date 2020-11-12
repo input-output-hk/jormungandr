@@ -38,7 +38,7 @@ lazy_static = "1.4"
 linked-hash-map = "0.5"
 poldercast = { git = "https://github.com/primetype/poldercast.git" }
 multiaddr = { package = "parity-multiaddr", version = "0.9" }
-rand = "0.7"
+rand = { version = "0.7", features = [ "small_rng" ] }
 rand_chacha = "0.2.2"
 rustls = "0.19.0"
 serde = "1.0"
@@ -69,6 +69,8 @@ features = ["rustls-tls"]
 [dev-dependencies]
 rand_core = "0.5"
 tokio = { version = "^0.2", features = ["full" ] }
+quickcheck = "0.9"
+quickcheck_async = "0.1"
 
 [build-dependencies]
 versionisator = "1.0.2"
