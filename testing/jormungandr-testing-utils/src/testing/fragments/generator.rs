@@ -8,13 +8,15 @@ use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
 use chain_time::TimeEra;
 use rand::RngCore;
 use rand_core::OsRng;
+use jormungandr_lib::interfaces::BlockDate;
+use std::iter;
 
 pub struct FragmentGenerator<'a, Node> {
     sender: &'a mut Wallet,
     receiver: &'a Wallet,
     active_stake_pools: Vec<StakePool>,
-    vote_plan_for_casting: VotePlan,
-    //    vote_plans_for_tally: Vec<VotePlan>,
+    vote_plan_for_casting: Option<VotePlan>,
+    vote_plans_for_tally: Vec<VotePlan>,
     node: &'a Node,
     rand: OsRng,
     explorer: Explorer,
@@ -25,9 +27,6 @@ impl<'a, Node: FragmentNode + SyncNode + Sized + Sync + Send> FragmentGenerator<
     pub fn new(
         sender: &'a mut Wallet,
         receiver: &'a Wallet,
-        stake_pools: Vec<StakePool>,
-        vote_plan_for_casting: VotePlan,
-        //  vote_plans_for_tally: Vec<VotePlan>,
         node: &'a Node,
         explorer: Explorer,
         slots_per_epoch: u32,
@@ -35,14 +34,45 @@ impl<'a, Node: FragmentNode + SyncNode + Sized + Sync + Send> FragmentGenerator<
         Self {
             sender,
             receiver,
-            active_stake_pools: stake_pools,
-            vote_plan_for_casting,
-            //    vote_plans_for_tally,
+            active_stake_pools: vec![],
+            vote_plan_for_casting: None,
+            vote_plans_for_tally: vec![],
             node,
             rand: OsRng,
             explorer,
             slots_per_epoch,
         }
+    }
+
+    pub fn prepare(&mut self, fragment_sender: &'a FragmentSender, current_date: BlockDate, time_era: TimeEra) {
+        
+        let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(self.sender))).take(3).collect();
+   
+        for stake_pool in stake_pools.iter() {
+            fragment_sender.send_pool_registration(self.sender, &stake_pool, self.node).unwrap();
+        }
+
+    let vote_plan_for_casting : VotePlan = VotePlanBuilder::new()
+        .with_vote_start(current_date.shift_slot(18, &time_era).into())
+        .with_tally_start(current_date.shift_epoch(5).into())
+        .with_tally_end(current_date.shift_epoch(6).into())
+        .build();
+
+    fragment_sender.send_vote_plan(self.sender, &vote_plan_for_casting, self.node).unwrap();    
+    let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| Some(VotePlanBuilder::new()
+        .with_vote_start(current_date.shift_slot(17, &time_era).into())
+        .with_tally_start(current_date.shift_slot(18, &time_era).into())
+        .with_tally_end(current_date.shift_epoch(5).into())
+        .build())
+    ).take(10).collect();
+
+    for vote_plan in vote_plans_for_tally.iter() {
+        fragment_sender.send_vote_plan(self.sender, &vote_plan, self.node).unwrap();    
+    }
+    self.vote_plan_for_casting = Some(vote_plan_for_casting);
+    self.vote_plans_for_tally = vote_plans_for_tally;
+    self.active_stake_pools = stake_pools;
+
     }
 
     pub fn send_random(
@@ -83,12 +113,11 @@ impl<'a, Node: FragmentNode + SyncNode + Sized + Sync + Send> FragmentGenerator<
                 fragment_sender.send_full_delegation(&mut self.sender, stake_pool, self.node)
             }
             2 => {
-                let index = self.rand.next_u32() as usize % self.active_stake_pools.len();
-                let stake_pool = self.active_stake_pools.get(index).unwrap();
+                let (left,right) = self.active_stake_pools.split_first().unwrap();
 
                 fragment_sender.send_split_delegation(
                     &mut self.sender,
-                    &vec![(stake_pool, 1)],
+                    &[(left, 1),(right.first().unwrap(),1)],
                     self.node,
                 )
             }
@@ -136,20 +165,21 @@ impl<'a, Node: FragmentNode + SyncNode + Sized + Sync + Send> FragmentGenerator<
                 fragment_sender.send_vote_plan(&mut self.sender, &vote_plan, self.node)
             }
             8 => fragment_sender.send_vote_cast(
-                &mut self.sender,
-                &self.vote_plan_for_casting,
+                self.sender,
+                self.vote_plan_for_casting.as_ref().unwrap(),
                 0,
                 &Choice::new(1),
                 self.node,
             ),
-            /*9 => {
+            9 => {
                 let index = self.rand.next_u32() as usize % self.vote_plans_for_tally.len();
                 let vote_plan = self.vote_plans_for_tally.remove(index);
 
                 fragment_sender
                     .send_vote_tally(&mut self.sender, &vote_plan, self.node)
-            },*/
+            },
             _ => unreachable!(),
         }
     }
+
 }
