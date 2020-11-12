@@ -2,6 +2,7 @@ use super::JormungandrError;
 use crate::common::jcli::JCli;
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
+use chain_time::TimeEra;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
@@ -149,6 +150,19 @@ impl JormungandrProcess {
             address: self.p2p_public_address.clone(),
             id: None,
         }
+    }
+
+    pub fn time_era(&self) -> TimeEra {
+        let block_date = self.explorer().current_time();
+
+        TimeEra::new(
+            (block_date.slot() as u64).into(),
+            chain_time::Epoch(block_date.epoch()),
+            self.block0_configuration
+                .blockchain_configuration
+                .slots_per_epoch
+                .into(),
+        )
     }
 
     pub fn to_remote(&self) -> RemoteJormungandr {
