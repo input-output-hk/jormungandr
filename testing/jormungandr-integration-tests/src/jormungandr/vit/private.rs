@@ -6,6 +6,7 @@ use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     NamedTempFile, TempDir,
 };
+use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     certificate::VoteAction, chaintypes::ConsensusType, milli::Milli, value::Value, vote::Choice,
@@ -45,11 +46,13 @@ pub fn jcli_e2e_flow_private_vote() {
     let member_pk = jcli.votes().committee().member_key().to_public(member_sk);
     let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk.clone());
 
+    let (_, member_pk_bech32) = bech32::decode(&member_pk).unwrap();
+    let member_pk_bytes = Vec::<u8>::from_base32(&member_pk_bech32).unwrap();
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
         .private()
-        .member_public_key(MemberPublicKey::from_bytes(member_pk.as_bytes()).unwrap())
+        .member_public_key(MemberPublicKey::from_bytes(&member_pk_bytes).unwrap())
         .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
@@ -102,9 +105,13 @@ pub fn jcli_e2e_flow_private_vote() {
     time::wait_for_epoch(1, jormungandr.explorer());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
-    let vote_cast =
-        jcli.certificate()
-            .new_private_vote_cast(vote_plan_id.clone(), 0, yes_choice, 3);
+    let vote_cast = jcli.certificate().new_private_vote_cast(
+        vote_plan_id.clone(),
+        0,
+        yes_choice,
+        3,
+        encrypting_vote_key.clone(),
+    );
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
