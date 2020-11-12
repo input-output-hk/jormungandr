@@ -23,8 +23,8 @@ pub struct JormungandrParams<Conf = NodeConfig> {
     log_file_path: PathBuf,
 }
 
-#[allow(clippy::too_many_arguments)]
 impl<Conf: TestConfig> JormungandrParams<Conf> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new<Secs>(
         node_config: Conf,
         node_config_path: impl Into<PathBuf>,
