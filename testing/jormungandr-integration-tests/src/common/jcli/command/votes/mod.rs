@@ -40,9 +40,9 @@ impl VotesCommand {
     ) -> Self {
         self.command
             .arg("encrypting-key")
+            .arg(&output_file.as_ref())
             .arg("--keys")
-            .arg(member_key.into())
-            .arg(&output_file.as_ref());
+            .arg(member_key.into());
         self
     }
 
