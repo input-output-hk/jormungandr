@@ -67,7 +67,7 @@ features = ["rustls-tls"]
 
 [dev-dependencies]
 rand_core = "0.5"
-tokio = { version = "^0.2", features = ["full" ] }
+tokio = { version = "^0.3", features = ["full" ] }
 
 [build-dependencies]
 versionisator = "1.0.2"
