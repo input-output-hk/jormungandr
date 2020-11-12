@@ -35,7 +35,7 @@ structopt = "0.3"
 console = "0.11"
 warp = "0.2.5"
 warp-reverse-proxy = "0.1.0"
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "0.3.3", features = ["macros"] }
 url = "2.1.1"
 
 [dependencies.reqwest]

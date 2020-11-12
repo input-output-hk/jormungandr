@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 tonic = "0.3"
 prost = "0.6"
-tokio = { version = "^0.3", features = ["macros"] }
+tokio = { version = "0.3.3", features = ["macros", "sync", "rt", "stream", "rt-multi-thread"] }
 futures = "0.3.8"
 base64 = "0.13"
 bech32 = "0.7"
