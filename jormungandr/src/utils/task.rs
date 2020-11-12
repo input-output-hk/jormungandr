@@ -145,14 +145,23 @@ impl Services {
             logger: logger.clone(),
         };
 
-        let handle = &self.runtime.spawn(async move {
+        let finish_notifier = self.finish_listener.notifier();
+        self.runtime.spawn(async move {
+        let handle = self.runtime.spawn(async move {
             let res = f(future_service_info).await;
             if let Err(err) = &res {
                 error!(logger, "service finished with error"; "reason" => err.to_string());
             } else {
-                info!(logger, "service finished successfully");
-            }
-            res.map_err(Into::into)
+                "with error"
+            };
+            info!(logger, "service finished {}", outcome);
+
+            // send the finish notifier if the service finished with an error.
+            // this will allow to finish the node with an error code instead
+            // of an success error code
+            let _ = finish_notifier.sender.send(res.is_ok());
+            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
+            std::mem::drop(finish_notifier);
         });
         self.finish_listener.push(handle);
 
