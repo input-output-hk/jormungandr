@@ -105,7 +105,7 @@ impl StorageBuilder {
             store
                 .put_block(&block.serialize_as_vec(), block_info)
                 .unwrap();
-            iterations_counter = iterations_counter + 1;
+            iterations_counter += 1;
         }
     }
 }
