@@ -12,7 +12,7 @@ pub fn test_key_from_and_to_bytes() {
         .dump_bytes_to_file(&private_key, byte_key_file.path());
     let key_after_transformation = jcli
         .key()
-        .convert_to_bytes_string("Ed25519Extended", byte_key_file.path());
+        .convert_from_bytes_string("Ed25519Extended", byte_key_file.path());
 
     assert_eq!(
         &private_key, &key_after_transformation,
@@ -25,8 +25,11 @@ pub fn test_key_from_and_to_bytes() {
 pub fn test_to_bytes_for_non_existent_input_file() {
     let jcli: JCli = Default::default();
     let byte_key_file = NamedTempFile::new("byte_file").unwrap();
-    jcli.key()
-        .convert_to_bytes_string_expect_fail("ed25519Extended", byte_key_file.path(), "file");
+    jcli.key().convert_from_bytes_string_expect_fail(
+        "ed25519Extended",
+        byte_key_file.path(),
+        "file",
+    );
 }
 
 #[test]

@@ -131,7 +131,7 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
-    pub fn convert_to_bytes_string<P: AsRef<Path>, S: Into<String>>(
+    pub fn convert_from_bytes_string<P: AsRef<Path>, S: Into<String>>(
         self,
         key_type: S,
         input: P,
@@ -147,7 +147,7 @@ impl Key {
             .as_single_line()
     }
 
-    pub fn convert_to_bytes_string_expect_fail<P: AsRef<Path>, S: Into<String>>(
+    pub fn convert_from_bytes_string_expect_fail<P: AsRef<Path>, S: Into<String>>(
         self,
         key_type: S,
         input: P,
