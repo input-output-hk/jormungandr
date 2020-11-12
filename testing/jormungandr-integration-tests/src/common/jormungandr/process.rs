@@ -153,7 +153,7 @@ impl JormungandrProcess {
     pub fn to_remote(&self) -> RemoteJormungandr {
         let mut builder = RemoteJormungandrBuilder::new(self.alias.clone());
         builder
-            .with_rest(self.rest_socket_addr.clone())
+            .with_rest(self.rest_socket_addr)
             .with_logger(self.logger.log_file_path.clone());
         builder.build()
     }

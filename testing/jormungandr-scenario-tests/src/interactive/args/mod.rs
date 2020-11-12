@@ -77,13 +77,13 @@ impl<'a> UserInteractionController<'a> {
             .iter()
             .cloned()
             .find(|x| x.address() == to_address)
-            .expect(&format!("cannot find wallet with alias: {}", to_str));
+            .unwrap_or_else(|| panic!("cannot find wallet with alias: {}", to_str));
 
         let mut temp_wallets = self.wallets_mut().clone();
         let from = temp_wallets
             .iter_mut()
             .find(|x| x.address() == from_address)
-            .expect(&format!("cannot find wallet with alias: {}", from_str));
+            .unwrap_or_else(|| panic!("cannot find wallet with alias: {}", from_str));
 
         let check = self
             .controller

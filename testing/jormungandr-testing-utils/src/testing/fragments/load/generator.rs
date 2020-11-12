@@ -27,7 +27,7 @@ impl<'a> FragmentGenerator<'a> {
             wallets: Vec::new(),
             fragment_sender: FragmentSender::new(block_hash, fees, fragment_sender_setup),
             rand: OsRng,
-            jormungandr: jormungandr,
+            jormungandr,
             split_marker: 0,
         }
     }
@@ -81,7 +81,7 @@ impl<'a> FragmentGenerator<'a> {
 
         self.fragment_sender
             .send_transaction(&mut sender, &reciever, &self.jormungandr, 1.into())
-            .map(|x| x.fragment_id().clone())
+            .map(|x| *x.fragment_id())
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }
 }

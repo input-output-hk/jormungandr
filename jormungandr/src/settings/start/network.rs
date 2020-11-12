@@ -156,10 +156,11 @@ impl Configuration {
         use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
 
         self.listen_address
-            .or(self
-                .profile
-                .address()
-                .and_then(|address| multiaddr_to_socket_addr(address.multi_address())))
+            .or_else(|| {
+                self.profile
+                    .address()
+                    .and_then(|address| multiaddr_to_socket_addr(address.multi_address()))
+            })
             .map(Listen::new)
     }
 }

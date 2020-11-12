@@ -59,14 +59,12 @@ pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<Scenario
     passive.wait_for_bootstrap()?;
 
     let mut alice = controller.wallet("alice")?;
-    let mut bob = controller.wallet("bob")?;
+    let bob = controller.wallet("bob")?;
 
-    let mem_pool_check = controller.fragment_sender().send_transaction(
-        &mut alice,
-        &mut bob,
-        &leader_1,
-        1_000.into(),
-    )?;
+    let mem_pool_check =
+        controller
+            .fragment_sender()
+            .send_transaction(&mut alice, &bob, &leader_1, 1_000.into())?;
 
     // give some time to update explorer
     jortestkit::process::sleep(60);

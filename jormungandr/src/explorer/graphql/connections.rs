@@ -296,6 +296,7 @@ pub type TransactionConnection = Connection<TransactionEdge, TransactionCount>;
 pub type PoolConnection = Connection<PoolEdge, PoolCount>;
 pub type VotePlanConnection = Connection<VotePlanEdge, VotePlanCount>;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 pub enum TransactionNodeFetchInfo {
     Id(HeaderHash),

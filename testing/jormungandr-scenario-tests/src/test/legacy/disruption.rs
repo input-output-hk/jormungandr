@@ -367,7 +367,7 @@ pub fn newest_node_enters_legacy_network(
         controller
             .new_spawn_params(LEADER_4)
             .persistence_mode(PersistenceMode::Persistent)
-            .jormungandr(legacy_app.clone()),
+            .jormungandr(legacy_app),
         &last_release.version(),
     )?;
     old_leader4.wait_for_bootstrap()?;

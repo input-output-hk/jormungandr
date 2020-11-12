@@ -192,7 +192,7 @@ impl FragmentBuilder {
         let vote_cast = VoteCast::new(
             vote_plan.to_id(),
             proposal_index as u8,
-            Payload::public(choice.clone()),
+            Payload::public(*choice),
         );
         self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
     }

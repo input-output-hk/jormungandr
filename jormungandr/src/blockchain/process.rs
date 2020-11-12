@@ -380,6 +380,7 @@ async fn process_and_propagate_new_ref(
         .map(|_| ())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_leadership_block(
     logger: Logger,
     mut blockchain: Blockchain,
@@ -509,6 +510,7 @@ async fn process_block_announcement(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_network_blocks(
     mut blockchain: Blockchain,
     blockchain_tip: Tip,
@@ -530,7 +532,7 @@ async fn process_network_blocks(
             Some(block) => {
                 latest_block = Some(Arc::new(block.clone()));
                 let res = process_network_block(
-                    &mut blockchain,
+                    &blockchain,
                     block.clone(),
                     &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
@@ -568,7 +570,7 @@ async fn process_network_blocks(
 
     match maybe_updated {
         Some(new_block_ref) => {
-            let r = process_and_propagate_new_ref(
+            process_and_propagate_new_ref(
                 &logger,
                 &mut blockchain,
                 blockchain_tip,
@@ -578,13 +580,10 @@ async fn process_network_blocks(
             .await?;
 
             // Add block if found
-            match latest_block {
-                Some(b) => {
-                    stats_counter.set_tip_block(b);
-                }
-                None => (),
+            if let Some(b) = latest_block {
+                stats_counter.set_tip_block(b);
             };
-            Ok(r)
+            Ok(())
         }
         None => Ok(()),
     }

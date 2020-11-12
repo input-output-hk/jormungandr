@@ -27,7 +27,7 @@ mod chunk_sizes {
 pub use self::{
     branch::Branch,
     chain::{
-        new_epoch_leadership_from, Blockchain, CheckHeaderProof, Error, ErrorKind,
+        new_epoch_leadership_from, Blockchain, CheckHeaderProof, EpochLeadership, Error, ErrorKind,
         PreCheckedHeader, MAIN_BRANCH_TAG,
     },
     chain_selection::{compare_against, ComparisonResult},

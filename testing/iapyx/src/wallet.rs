@@ -17,6 +17,7 @@ use wallet_core::Conversion;
 use wallet_core::Proposal;
 use wallet_core::Wallet as Inner;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("cannot recover from mnemonics: {0}")]

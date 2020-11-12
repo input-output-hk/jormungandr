@@ -38,7 +38,7 @@ impl JormungandrStateVerifier {
         to: &Wallet,
         value: Value,
     ) -> Result<(), StateVerifierError> {
-        self.wallet_lost_value(&from, value.clone())?;
+        self.wallet_lost_value(&from, value)?;
         self.wallet_gain_value(&to, value)?;
         Ok(())
     }
@@ -76,7 +76,7 @@ impl JormungandrStateVerifier {
             .as_ref()
             .ok_or(StateVerifierError::NoSnapshot)?;
         let expected = snapshot.value_for(wallet)?.checked_add(value)?;
-        let actual = self.rest.account_state(wallet)?.value().clone();
+        let actual = *self.rest.account_state(wallet)?.value();
         assert_eq!(
             expected, actual,
             "No value was added to account: {} vs {}",
@@ -114,7 +114,7 @@ impl StateSnapshot {
         let state = self
             .wallets
             .get(&address)
-            .ok_or(StateVerifierError::NoWalletInSnapshot(address.clone()))?;
-        Ok(state.value().clone())
+            .ok_or_else(|| StateVerifierError::NoWalletInSnapshot(address.clone()))?;
+        Ok(*state.value())
     }
 }

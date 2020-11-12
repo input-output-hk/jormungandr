@@ -189,7 +189,7 @@ impl Controller {
 
     pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool> {
         if let Some(stake_pool) = self.settings.stake_pools.get(node_alias) {
-            Ok(stake_pool.clone().into())
+            Ok(stake_pool.clone())
         } else {
             Err(ErrorKind::StakePoolNotFound(node_alias.to_owned()).into())
         }
@@ -205,7 +205,7 @@ impl Controller {
 
     pub fn vote_plan(&self, alias: &str) -> Result<VotePlanDef> {
         if let Some(vote_plan) = self.blockchain.vote_plan(alias) {
-            Ok(vote_plan.clone().into())
+            Ok(vote_plan)
         } else {
             Err(ErrorKind::VotePlanNotFound(alias.to_owned()).into())
         }
@@ -463,7 +463,7 @@ impl Controller {
         let mut builder = FragmentSenderSetupBuilder::from(setup);
         let root_dir: PathBuf = PathBuf::from(self.working_directory().path());
         builder.dump_fragments_into(root_dir.join("fragments"));
-        let hash = Hash::from_hash(self.block0_hash.clone());
+        let hash = Hash::from_hash(self.block0_hash);
 
         FragmentSender::new(
             hash,

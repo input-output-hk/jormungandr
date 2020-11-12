@@ -536,6 +536,7 @@ impl Node {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn<R: RngCore>(
         jormungandr: &Path,
         context: &Context<R>,
@@ -570,7 +571,7 @@ impl Node {
             },
             LogEntry {
                 format: format.to_string(),
-                level: level.to_string(),
+                level,
                 output: LogOutput::File(log_file),
             },
         ]));
@@ -624,12 +625,9 @@ impl Node {
         let process = command.spawn().map_err(Error::CannotSpawnNode)?;
 
         let node = Node {
-            alias: alias.clone().into(),
-
+            alias: alias.into(),
             dir,
-
             process,
-
             progress_bar,
             node_settings: node_settings.clone(),
             status: Arc::new(Mutex::new(Status::Running)),

@@ -150,7 +150,7 @@ impl WalletProxy {
             context.progress_bar_mode(),
         );
 
-        settings.node_backend_address = Some(node_setting.config().rest.listen.clone());
+        settings.node_backend_address = Some(node_setting.config().rest.listen);
 
         let mut command = Command::new("iapyx-proxy");
         command
@@ -164,7 +164,7 @@ impl WalletProxy {
             .arg(block0.to_str().unwrap());
 
         let wallet_proxy = WalletProxy {
-            alias: alias.clone().into(),
+            alias: alias.into(),
             process: command.spawn().unwrap(),
             progress_bar,
             settings,

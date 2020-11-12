@@ -249,7 +249,7 @@ impl ConnectionState {
     fn new(global: GlobalStateR, peer: &Peer, logger: Logger) -> Self {
         ConnectionState {
             timeout: peer.timeout,
-            connection: peer.connection.clone(),
+            connection: peer.connection,
             logger,
             global,
         }
@@ -309,7 +309,7 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
 
     let reset_state = global_state.clone();
 
-    if let Some(interval) = global_state.config.topology_force_reset_interval.clone() {
+    if let Some(interval) = global_state.config.topology_force_reset_interval {
         service_info.run_periodic("force reset topology", interval, move || {
             let state = reset_state.clone();
             async move { state.topology.force_reset_layers().await }
@@ -565,6 +565,12 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
 #[derive(Clone)]
 pub struct BootstrapPeers(BTreeMap<String, Peer>);
 
+impl Default for BootstrapPeers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BootstrapPeers {
     pub fn new() -> Self {
         BootstrapPeers(BTreeMap::new())
@@ -605,9 +611,7 @@ async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeer
     let trusted_peers = config
         .trusted_peers
         .iter()
-        .filter_map(|tp| {
-            multiaddr_to_socket_addr(tp.address.multi_address()).map(|sa| Peer::new(sa.clone()))
-        })
+        .filter_map(|tp| multiaddr_to_socket_addr(tp.address.multi_address()).map(Peer::new))
         .collect::<Vec<_>>();
     if config.bootstrap_from_trusted_peers {
         let _: usize = peers.add_peers(&trusted_peers);

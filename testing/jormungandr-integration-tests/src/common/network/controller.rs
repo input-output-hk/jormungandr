@@ -106,8 +106,8 @@ impl Controller {
         expected_msg: &str,
     ) -> Result<(), ControllerError> {
         let mut starter = self.make_starter_for(&spawn_params)?;
-        let process = starter.start_with_fail_in_logs(expected_msg)?;
-        Ok(process)
+        starter.start_with_fail_in_logs(expected_msg)?;
+        Ok(())
     }
 
     pub fn spawn_custom(

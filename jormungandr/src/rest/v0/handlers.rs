@@ -15,7 +15,7 @@ pub async fn get_account_state(
         .await
         .map_err(warp::reject::custom)?
         .map(|r| warp::reply::json(&r))
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_message_logs(context: ContextLock) -> Result<impl Reply, Rejection> {
@@ -57,7 +57,7 @@ pub async fn get_block_id(
     logic::get_block_id(&context, &block_id_hex)
         .await
         .map_err(warp::reject::custom)?
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 #[derive(Deserialize)]
@@ -75,7 +75,7 @@ pub async fn get_block_next_id(
     logic::get_block_next_id(&context, &block_id_hex, count as usize)
         .await
         .map_err(warp::reject::custom)?
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_stake_distribution(context: ContextLock) -> Result<impl Reply, Rejection> {
@@ -95,7 +95,7 @@ pub async fn get_stake_distribution_at(
         .await
         .map_err(warp::reject::custom)?
         .map(|r| warp::reply::json(&r))
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_settings(context: ContextLock) -> Result<impl Reply, Rejection> {
@@ -139,7 +139,7 @@ pub async fn delete_leaders(leader_id: u32, context: ContextLock) -> Result<impl
         .await
         .map_err(warp::reject::custom)?
         .map(|()| warp::reply())
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_leaders_logs(context: ContextLock) -> Result<impl Reply, Rejection> {
@@ -175,7 +175,7 @@ pub async fn get_rewards_info_epoch(
         .await
         .map_err(warp::reject::custom)?
         .map(|r| warp::reply::json(&r))
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_rewards_info_history(
@@ -199,7 +199,7 @@ pub async fn get_utxo(
         .await
         .map_err(warp::reject::custom)?
         .map(|r| warp::reply::json(&r))
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_stake_pool(
@@ -211,7 +211,7 @@ pub async fn get_stake_pool(
         .await
         .map_err(warp::reject::custom)?
         .map(|r| warp::reply::json(&r))
-        .ok_or(warp::reject::not_found())
+        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_diagnostic(context: ContextLock) -> Result<impl Reply, Rejection> {

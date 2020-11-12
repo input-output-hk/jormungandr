@@ -162,6 +162,7 @@ impl TransactionCommand {
         self
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_message<P: AsRef<Path>>(mut self, staging_file: P) -> Self {
         self.command
             .arg("to-message")

@@ -95,7 +95,7 @@ impl Logs {
         result
     }
 
-    pub fn logs<'a>(&'a self) -> impl Iterator<Item = &'a FragmentLog> {
+    pub fn logs(&self) -> impl Iterator<Item = &FragmentLog> {
         self.entries.iter().map(|(_, v)| v)
     }
 }

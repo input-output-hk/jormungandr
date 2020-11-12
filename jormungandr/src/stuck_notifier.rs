@@ -43,7 +43,7 @@ pub async fn check_last_block_time(
         let system_current_blockdate = system_current_slot
             .and_then(|scs| era.from_slot_to_era(scs))
             .map(|ep| format!("{}", ep))
-            .unwrap_or("date-computation-error".to_string());
+            .unwrap_or_else(|| "date-computation-error".to_string());
 
         let header = tip.header();
         match now.duration_since(tip_time) {

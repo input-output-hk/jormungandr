@@ -512,6 +512,7 @@ pub fn stream_request<T, R>(
 }
 
 /// ...
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum TransactionMsg {
     SendTransaction(FragmentOrigin, Vec<Fragment>),

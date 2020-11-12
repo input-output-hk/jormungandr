@@ -44,7 +44,7 @@ impl ExplorerRequestGen {
     }
 
     pub fn next_address(&mut self) -> Option<&String> {
-        if self.addresses.len() == 0 {
+        if self.addresses.is_empty() {
             return None;
         }
 
@@ -53,7 +53,7 @@ impl ExplorerRequestGen {
     }
 
     pub fn next_pool_id(&mut self) -> Option<&String> {
-        if self.stake_pools.len() == 0 {
+        if self.stake_pools.is_empty() {
             return None;
         }
 
@@ -107,7 +107,7 @@ impl RequestGenerator for ExplorerRequestGen {
                 let limit = self.next_usize_in_range(1, 1000) as i64;
                 if let Some(pool_id) = self.next_pool_id() {
                     explorer
-                        .stake_pool(pool_id.to_string(), limit.into())
+                        .stake_pool(pool_id.to_string(), limit)
                         .map(|_| ())
                         .map_err(|e| {
                             RequestFailure::General(format!(

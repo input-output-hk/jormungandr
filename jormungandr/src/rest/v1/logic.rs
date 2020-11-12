@@ -13,6 +13,7 @@ use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*}
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use std::{collections::HashMap, str::FromStr};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]

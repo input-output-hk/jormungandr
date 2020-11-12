@@ -88,7 +88,7 @@ impl Wallet {
         ))
     }
 
-    pub fn into_initial_fund(&self, value: u64) -> InitialUTxO {
+    pub fn to_initial_fund(&self, value: u64) -> InitialUTxO {
         InitialUTxO {
             address: self.address(),
             value: value.into(),

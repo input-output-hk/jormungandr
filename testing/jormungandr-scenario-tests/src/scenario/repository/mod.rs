@@ -130,10 +130,10 @@ impl ScenariosRepository {
             .iter()
             .find(|x| x.name() == scenario_name)
             .unwrap_or_else(|| {
-                panic!(format!(
+                panic!(
                     "Cannot find scenario '{}' under the tag '{:?}'. Available are: {:?}",
                     scenario_name, self.tag, scenarios_to_run
-                ))
+                )
             });
         let scenario_to_run = scenario.method();
 

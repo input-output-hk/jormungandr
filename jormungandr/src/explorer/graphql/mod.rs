@@ -1254,7 +1254,7 @@ impl Query {
                                 certificate::PoolId::clone(pool_id),
                                 StakePoolData::clone(stake_pool_data),
                             ),
-                            i.try_into().unwrap(),
+                            i,
                         )
                     })
                     .collect::<Vec<(Pool, u32)>>()
@@ -1315,7 +1315,7 @@ impl Query {
                         let (pool_id, vote_plan_data) = &vote_plans[usize::try_from(i).unwrap()];
                         (
                             VotePlanStatus::vote_plan_from_data(vote_plan_data.as_ref().clone()),
-                            i.try_into().unwrap(),
+                            i,
                         )
                     })
                     .collect::<Vec<(VotePlanStatus, u32)>>()

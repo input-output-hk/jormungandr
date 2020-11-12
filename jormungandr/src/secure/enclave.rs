@@ -90,6 +90,12 @@ impl EnclaveLeadersWithCache {
     }
 }
 
+impl Default for Enclave {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Enclave {
     pub fn new() -> Self {
         Enclave {

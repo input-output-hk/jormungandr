@@ -33,10 +33,10 @@ pub fn test_legacy_node_all_fragments() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
-            first_stake_pool_owner.into_initial_fund(1_000_000),
-            second_stake_pool_owner.into_initial_fund(2_000_000),
-            full_delegator.into_initial_fund(2_000_000),
-            split_delegator.into_initial_fund(2_000_000),
+            first_stake_pool_owner.to_initial_fund(1_000_000),
+            second_stake_pool_owner.to_initial_fund(2_000_000),
+            full_delegator.to_initial_fund(2_000_000),
+            split_delegator.to_initial_fund(2_000_000),
         ])
         .build(&temp_dir);
 

@@ -67,7 +67,7 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
-    pub fn to_public<S: Into<String>>(self, private_key: S) -> String {
+    pub fn convert_to_public_string<S: Into<String>>(self, private_key: S) -> String {
         let input_file = NamedTempFile::new("key_to_public.input").unwrap();
         input_file.write_str(&private_key.into()).unwrap();
 
@@ -81,7 +81,11 @@ impl Key {
             .as_single_line()
     }
 
-    pub fn to_public_expect_fail<S: Into<String>>(self, private_key: S, expected_msg_path: &str) {
+    pub fn convert_to_public_string_expect_fail<S: Into<String>>(
+        self,
+        private_key: S,
+        expected_msg_path: &str,
+    ) {
         let input_file = NamedTempFile::new("key_to_public.input").unwrap();
         input_file.write_str(&private_key.into()).unwrap();
 
@@ -94,14 +98,14 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
-    pub fn to_bytes<S: Into<String>, P: AsRef<Path>>(self, private_key: S, output: P) {
+    pub fn dump_bytes_to_file<S: Into<String>, P: AsRef<Path>>(self, private_key: S, output: P) {
         let input = NamedTempFile::new("key_to_bytes.input").unwrap();
         input.write_str(&private_key.into()).unwrap();
 
-        self.to_bytes_from_file(input.path(), output.as_ref())
+        self.convert_to_bytes_file(input.path(), output.as_ref())
     }
 
-    pub fn to_bytes_from_file<P: AsRef<Path>, Q: AsRef<Path>>(self, input: P, output: Q) {
+    pub fn convert_to_bytes_file<P: AsRef<Path>, Q: AsRef<Path>>(self, input: P, output: Q) {
         self.key_command
             .to_bytes()
             .output(output)
@@ -111,7 +115,7 @@ impl Key {
             .success();
     }
 
-    pub fn to_bytes_expect_fail<P: AsRef<Path>, Q: AsRef<Path>>(
+    pub fn convert_to_bytes_file_expect_fail<P: AsRef<Path>, Q: AsRef<Path>>(
         self,
         input: P,
         output: Q,
@@ -127,7 +131,11 @@ impl Key {
             .stderr(predicates::str::contains(expected_msg_path));
     }
 
-    pub fn from_bytes<P: AsRef<Path>, S: Into<String>>(self, key_type: S, input: P) -> String {
+    pub fn convert_from_bytes_string<P: AsRef<Path>, S: Into<String>>(
+        self,
+        key_type: S,
+        input: P,
+    ) -> String {
         self.key_command
             .from_bytes()
             .key_type(key_type)
@@ -139,7 +147,7 @@ impl Key {
             .as_single_line()
     }
 
-    pub fn from_bytes_expect_fail<P: AsRef<Path>, S: Into<String>>(
+    pub fn convert_from_bytes_string_expect_fail<P: AsRef<Path>, S: Into<String>>(
         self,
         key_type: S,
         input: P,

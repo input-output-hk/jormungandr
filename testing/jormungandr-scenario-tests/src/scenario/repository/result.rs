@@ -30,24 +30,15 @@ impl ScenarioResult {
     }
 
     pub fn is_failed(&self) -> bool {
-        match *self.scenario_status() {
-            ScenarioStatus::Failed { .. } => true,
-            _ => false,
-        }
+        matches!(*self.scenario_status(), ScenarioStatus::Failed { .. })
     }
 
     pub fn is_ignored(&self) -> bool {
-        match *self.scenario_status() {
-            ScenarioStatus::Ignored => true,
-            _ => false,
-        }
+        matches!(*self.scenario_status(), ScenarioStatus::Ignored)
     }
 
     pub fn is_passed(&self) -> bool {
-        match *self.scenario_status() {
-            ScenarioStatus::Passed => true,
-            _ => false,
-        }
+        matches!(*self.scenario_status(), ScenarioStatus::Passed)
     }
 
     pub fn from_result(

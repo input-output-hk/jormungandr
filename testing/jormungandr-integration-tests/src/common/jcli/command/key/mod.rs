@@ -14,6 +14,7 @@ pub struct KeyCommand {
     command: Command,
 }
 
+#[allow(clippy::wrong_self_convention)]
 impl KeyCommand {
     pub fn new(command: Command) -> Self {
         Self { command }

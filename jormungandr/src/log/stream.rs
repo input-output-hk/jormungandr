@@ -42,12 +42,12 @@ pub trait Log: Sized {
 
     /// A helper for other trait methods and macros.
     /// This method should not be used directly.
-    fn log_with_static<'a, M>(
+    fn log_with_static<M>(
         self,
         logger: Logger,
         message: M,
-        record_static: RecordStatic<'a>,
-    ) -> LoggingStream<'a, Self, M>
+        record_static: RecordStatic<'_>,
+    ) -> LoggingStream<'_, Self, M>
     where
         M: Display,
     {

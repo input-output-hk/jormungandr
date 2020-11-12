@@ -110,7 +110,7 @@ impl VitStationController {
     }
 
     pub fn address(&self) -> SocketAddr {
-        self.settings.address.clone()
+        self.settings.address
     }
 
     pub fn proposals(&self) -> Result<Vec<Proposal>> {
@@ -153,11 +153,11 @@ impl VitStation {
     }
 
     pub fn address(&self) -> SocketAddr {
-        self.settings.address.clone()
+        self.settings.address
     }
 
     pub fn controller(self) -> VitStationController {
-        let rest_uri = uri_from_socket_addr(self.settings.address.clone());
+        let rest_uri = uri_from_socket_addr(self.settings.address);
 
         VitStationController {
             alias: self.alias().clone(),
@@ -202,7 +202,7 @@ impl VitStation {
             .build();
 
         let vit_station = VitStation {
-            alias: alias.clone().into(),
+            alias: alias.into(),
             process: command.spawn().unwrap(),
             progress_bar,
             settings,

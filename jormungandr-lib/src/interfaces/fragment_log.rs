@@ -47,20 +47,12 @@ impl FragmentStatus {
 
     #[inline]
     pub fn is_rejected(&self) -> bool {
-        if let FragmentStatus::Rejected { .. } = &self {
-            true
-        } else {
-            false
-        }
+        matches!(self, FragmentStatus::Rejected { .. })
     }
 
     #[inline]
     pub fn is_in_a_block(&self) -> bool {
-        if let FragmentStatus::InABlock { .. } = &self {
-            true
-        } else {
-            false
-        }
+        matches!(self, FragmentStatus::InABlock { .. })
     }
 }
 

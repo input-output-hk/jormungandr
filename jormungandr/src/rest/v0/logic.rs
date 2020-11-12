@@ -43,6 +43,7 @@ use std::sync::Arc;
 
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
@@ -203,7 +204,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
             }?;
             block_tx_count += 1;
             block_input_sum = (block_input_sum + total_input)?;
-            let fee = (total_input - total_output).unwrap_or(Value::zero());
+            let fee = (total_input - total_output).unwrap_or_else(|_| Value::zero());
             block_fee_sum = (block_fee_sum + fee)?;
             Ok(())
         })

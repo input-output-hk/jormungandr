@@ -122,6 +122,12 @@ pub struct FragmentSenderSetupBuilder<'a> {
     setup: FragmentSenderSetup<'a>,
 }
 
+impl<'a> Default for FragmentSenderSetupBuilder<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> FragmentSenderSetupBuilder<'a> {
     pub fn from(setup: FragmentSenderSetup<'a>) -> Self {
         Self { setup }

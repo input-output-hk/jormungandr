@@ -42,14 +42,14 @@ impl Display for Diagnostic {
             "limit for open files (RLIMIT_NOFILE): {}",
             self.open_files_limit
                 .map(|v| v.to_string())
-                .unwrap_or("N/A".to_string())
+                .unwrap_or_else(|| "N/A".to_string())
         )?;
         write!(
             formatter,
             "; limit for CPU usage (RLIMIT_CPU): {}",
             self.cpu_usage_limit
                 .map(|v| v.to_string())
-                .unwrap_or("N/A".to_string())
+                .unwrap_or_else(|| "N/A".to_string())
         )
     }
 }
@@ -63,7 +63,6 @@ enum RlimitResource {
 #[cfg(all(unix, not(target_os = "android")))]
 fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     use libc::rlimit;
-    use std::convert::TryInto;
 
     let mut limits = rlimit {
         rlim_cur: 0,
@@ -78,8 +77,5 @@ fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     let retcode = unsafe { libc::getrlimit(resource, &mut limits as *mut rlimit) };
     nix::errno::Errno::result(retcode).map_err(DiagnosticError::UnixError)?;
 
-    Ok(limits
-        .rlim_cur
-        .try_into()
-        .expect("rlim always converts to a u64"))
+    Ok(limits.rlim_cur)
 }

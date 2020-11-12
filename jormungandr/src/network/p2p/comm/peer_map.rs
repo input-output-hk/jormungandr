@@ -79,7 +79,7 @@ impl PeerMap {
         }
     }
 
-    pub fn entry<'a>(&'a mut self, id: Address) -> Option<Entry<'a>> {
+    pub fn entry(&mut self, id: Address) -> Option<Entry<'_>> {
         use linked_hash_map::Entry::*;
 
         match self.map.entry(id) {

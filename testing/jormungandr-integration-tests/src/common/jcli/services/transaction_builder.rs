@@ -36,7 +36,7 @@ impl TransactionBuilder {
     }
 
     fn truncate_end_of_line(cert_content: &str) -> String {
-        let mut content = cert_content.clone().to_string();
+        let mut content = cert_content.to_string();
         if content.ends_with('\n') {
             let len = content.len();
             content.truncate(len - 1);
@@ -307,13 +307,13 @@ impl TransactionBuilder {
     pub fn to_message(&self) -> String {
         self.jcli
             .transaction()
-            .to_message(self.staging_file().path())
+            .convert_to_message(self.staging_file().path())
     }
 
     pub fn to_message_expect_fail(&self, expected_msg: &str) {
         self.jcli
             .transaction()
-            .to_message_expect_fail(self.staging_file().path(), expected_msg);
+            .convert_to_message_expect_fail(self.staging_file().path(), expected_msg);
     }
 
     pub fn transaction_id(&self) -> Hash {

@@ -54,7 +54,7 @@ impl<'de> Deserialize<'de> for CorsOrigin {
                 write!(fmt, "an origin in format http[s]://example.com[:3000]",)
             }
 
-            fn visit_str<'a, E>(self, v: &'a str) -> std::result::Result<Self::Value, E>
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
@@ -191,7 +191,7 @@ impl P2p {
     pub fn make_trusted_peer_setting(&self) -> TrustedPeer {
         TrustedPeer {
             address: self.get_listen_address(),
-            id: self.public_id.clone(),
+            id: self.public_id,
         }
     }
 

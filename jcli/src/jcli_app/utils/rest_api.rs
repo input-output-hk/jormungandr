@@ -160,10 +160,7 @@ impl RestApiRequestBody {
     }
 
     pub fn has_body(&self) -> bool {
-        match self {
-            RestApiRequestBody::None => false,
-            _ => true,
-        }
+        !matches!(self, RestApiRequestBody::None)
     }
 }
 

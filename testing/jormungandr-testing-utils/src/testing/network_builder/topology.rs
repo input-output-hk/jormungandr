@@ -40,6 +40,15 @@ impl Node {
     }
 }
 
+impl IntoIterator for Topology {
+    type Item = (NodeAlias, Node);
+    type IntoIter = std::collections::hash_map::IntoIter<NodeAlias, Node>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.nodes.into_iter()
+    }
+}
+
 impl Topology {
     pub fn node<K>(&self, alias: &K) -> Option<&Node>
     where
@@ -47,10 +56,6 @@ impl Topology {
         K: Hash + Eq,
     {
         self.nodes.get(alias)
-    }
-
-    pub fn into_iter(self) -> impl Iterator<Item = (NodeAlias, Node)> {
-        self.nodes.into_iter()
     }
 
     pub fn aliases(&self) -> impl Iterator<Item = &NodeAlias> {
