@@ -52,6 +52,20 @@ impl FragmentVerifierError {
 pub struct FragmentVerifier;
 
 impl FragmentVerifier {
+
+    pub fn wait_and_verify_all_are_in_block<A: FragmentNode + ?Sized>(
+        &self,
+        duration: Duration,
+        checks: Vec<MemPoolCheck>,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        for check in checks {
+            let status = self.wait_fragment(duration, check, node)?;
+            self.is_in_block(status, node)?;
+        }
+        Ok(())
+    }
+
     pub fn wait_and_verify_is_in_block<A: FragmentNode + ?Sized>(
         &self,
         duration: Duration,
