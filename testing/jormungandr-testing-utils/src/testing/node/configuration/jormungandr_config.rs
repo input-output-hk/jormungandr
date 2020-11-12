@@ -147,10 +147,10 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
 
     pub fn block0_utxo(&self) -> Vec<UTxOInfo> {
         let block0_bytes = std::fs::read(self.genesis_block_path()).unwrap_or_else(|_| {
-            panic!(format!(
+            panic!(
                 "Failed to load block 0 binary file '{}'",
                 self.genesis_block_path().display()
-            ))
+            )
         });
         mempack::read_from_raw::<Block>(&block0_bytes)
             .unwrap_or_else(|_| {

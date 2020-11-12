@@ -493,10 +493,7 @@ where
                     })
                 }
                 (Err(err), OnFail::Panic) => {
-                    panic!(format!(
-                        "Jormungandr node cannot start due to error: {}",
-                        err
-                    ));
+                    panic!("Jormungandr node cannot start due to error: {}", err);
                 }
                 (Err(err), _) => {
                     println!(

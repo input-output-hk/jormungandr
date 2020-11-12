@@ -185,11 +185,11 @@ impl Settings {
         let mut vote_plans_fragments = Vec::new();
         for vote_plan_def in vote_plans {
             let owner = self.wallets.get(&vote_plan_def.owner()).unwrap_or_else(|| {
-                panic!(format!(
+                panic!(
                     "Owner {} of {} is unknown wallet ",
                     vote_plan_def.owner(),
                     vote_plan_def.alias()
-                ))
+                )
             });
             let vote_plan: VotePlan = vote_plan_def.into();
             vote_plans_fragments.push(create_initial_vote_plan(
@@ -239,7 +239,7 @@ impl Settings {
                 let wallet = self
                     .wallets
                     .get(&committee)
-                    .unwrap_or_else(|| panic!(format!("committee not defined {}", committee)));
+                    .unwrap_or_else(|| panic!("committee not defined {}", committee));
                 committees.push(CommitteeIdDef::from(wallet.committee_id()));
             }
             committees
