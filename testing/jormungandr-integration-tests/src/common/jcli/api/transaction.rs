@@ -279,8 +279,7 @@ impl Transaction {
         self.command.seal(staging_file).build().assert().success();
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_message<P: AsRef<Path>>(self, staging_file: P) -> String {
+    pub fn convert_to_message<P: AsRef<Path>>(self, staging_file: P) -> String {
         self.command
             .to_message(staging_file)
             .build()
@@ -290,8 +289,11 @@ impl Transaction {
             .as_single_line()
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_message_expect_fail<P: AsRef<Path>>(self, staging_file: P, expected_msg: &str) {
+    pub fn convert_to_message_expect_fail<P: AsRef<Path>>(
+        self,
+        staging_file: P,
+        expected_msg: &str,
+    ) {
         self.command
             .to_message(staging_file)
             .build()
@@ -321,7 +323,7 @@ impl Transaction {
     }
 
     pub fn fragment_id<P: AsRef<Path>>(self, staging_file: P) -> Hash {
-        let fragment_hex = self.to_message(staging_file);
+        let fragment_hex = self.convert_to_message(staging_file);
         let fragment_bytes = hex::decode(&fragment_hex).expect("Failed to parse message hex");
         Fragment::deserialize(fragment_bytes.as_slice())
             .expect("Failed to parse message")
