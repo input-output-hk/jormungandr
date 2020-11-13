@@ -22,6 +22,12 @@ impl Default for VotePlanBuilder {
     }
 }
 
+impl Default for VotePlanBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VotePlanBuilder {
     pub fn new() -> Self {
         Self {
