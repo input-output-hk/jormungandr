@@ -68,6 +68,17 @@ impl Wallet {
         Self::new_account_with_discrimination(rng, Discrimination::Test)
     }
 
+    pub fn import_account<P: AsRef<Path>>(
+        secret_key_file: P,
+        spending_counter: Option<u32>,
+    ) -> Wallet {
+        let bech32_str = jortestkit::file::read_file(secret_key_file);
+        Wallet::Account(account::Wallet::from_existing_account(
+            &bech32_str,
+            spending_counter,
+        ))
+    }
+
     pub fn new_account_with_discrimination<RNG>(
         rng: &mut RNG,
         discrimination: Discrimination,
