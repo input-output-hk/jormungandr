@@ -55,7 +55,7 @@ impl Wallet {
         Wallet {
             signing_key,
             identifier,
-            internal_counter: spending_counter.unwrap_or_else(|| 0).into(),
+            internal_counter: spending_counter.unwrap_or(0).into(),
             discrimination: Discrimination::Test,
         }
     }

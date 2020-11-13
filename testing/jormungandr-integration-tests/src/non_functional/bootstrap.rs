@@ -25,10 +25,36 @@ pub fn bootstrap_from_1_gb_storage() {
         .with_storage(&child)
         .build(&temp_dir);
 
+    let jormungandr = Starter::new()
+        .timeout(Duration::from_secs(24_000))
+        .config(config.clone())
+        .benchmark(&format!("bootstrap from {} MB storage", storage_size))
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    jormungandr.shutdown();
+
+    let jormungandr = Starter::new()
+        .timeout(Duration::from_secs(24_000))
+        .config(config.clone())
+        .benchmark(&format!(
+            "bootstrap from {} MB storage after restart",
+            storage_size
+        ))
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    jormungandr.stop();
+
     let _jormungandr = Starter::new()
         .timeout(Duration::from_secs(24_000))
-        .config(config)
-        .benchmark(&format!("bootstrap from {} MB storage", storage_size))
+        .config(config.clone())
+        .benchmark(&format!(
+            "bootstrap from {} MB storage after kill",
+            storage_size
+        ))
         .verify_by(StartupVerificationMode::Rest)
         .start()
         .unwrap();
@@ -56,13 +82,45 @@ pub fn legacy_bootstrap_from_1_gb_storage() {
     let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
     let jormungandr_app = get_jormungandr_bin(&legacy_release, &temp_dir);
 
-    let _jormungandr = Starter::new()
+    let jormungandr = Starter::new()
         .timeout(Duration::from_secs(24_000))
-        .config(config)
+        .config(config.clone())
         .legacy(legacy_release.version())
-        .jormungandr_app(jormungandr_app)
+        .jormungandr_app(jormungandr_app.clone())
         .benchmark(&format!(
             "legacy {} bootstrap from {} MB storage",
+            legacy_release.version(),
+            storage_size
+        ))
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    jormungandr.shutdown();
+
+    let jormungandr = Starter::new()
+        .timeout(Duration::from_secs(24_000))
+        .config(config.clone())
+        .legacy(legacy_release.version())
+        .jormungandr_app(jormungandr_app.clone())
+        .benchmark(&format!(
+            "legacy {} bootstrap from {} MB storage after restart",
+            legacy_release.version(),
+            storage_size
+        ))
+        .verify_by(StartupVerificationMode::Rest)
+        .start()
+        .unwrap();
+
+    jormungandr.stop();
+
+    let _jormungandr = Starter::new()
+        .timeout(Duration::from_secs(24_000))
+        .config(config.clone())
+        .legacy(legacy_release.version())
+        .jormungandr_app(jormungandr_app.clone())
+        .benchmark(&format!(
+            "legacy {} bootstrap from {} MB storage after kill",
             legacy_release.version(),
             storage_size
         ))
