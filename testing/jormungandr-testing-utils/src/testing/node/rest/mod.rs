@@ -12,7 +12,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto,
-        PeerRecord, PeerStats, StakeDistributionDto, VotePlanStatus,
+        PeerRecord, PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
     },
 };
 use std::collections::HashMap;
@@ -165,6 +165,10 @@ impl JormungandrRest {
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
         self.inner.fragment_logs()
+    }
+
+    pub fn settings(&self) -> Result<SettingsDto, RestError> {
+        serde_json::from_str(&self.inner.settings()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn leaders_log(&self) -> Result<Vec<LeadershipLog>, RestError> {
