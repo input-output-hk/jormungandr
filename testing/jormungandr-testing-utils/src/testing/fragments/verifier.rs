@@ -52,7 +52,6 @@ impl FragmentVerifierError {
 pub struct FragmentVerifier;
 
 impl FragmentVerifier {
-
     pub fn wait_and_verify_all_are_in_block<A: FragmentNode + ?Sized>(
         &self,
         duration: Duration,
