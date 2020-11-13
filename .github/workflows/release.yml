@@ -271,8 +271,10 @@ jobs:
         run: |
           archive=jormungandr-${{ needs.create_release.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
           tar -C ./target/${{ matrix.config.target }}/release -czvf $archive jormungandr jcli
-          echo "::set-env name=RELEASE_ARCHIVE::$archive"
-          echo "::set-env name=RELEASE_CONTENT_TYPE::application/gzip"
+          cat <<EOF >> $GITHUB_ENV
+          RELEASE_ARCHIVE=$archive
+          RELEASE_CONTENT_TYPE=application/gzip
+          EOF
 
       - name: Pack binaries (Windows)
         if: matrix.config.os == 'windows-latest'
@@ -284,8 +286,10 @@ jobs:
             DestinationPath = $archive
           }
           Compress-Archive @args
-          echo "::set-env name=RELEASE_ARCHIVE::$archive"
-          echo "::set-env name=RELEASE_CONTENT_TYPE::application/zip"
+          @"
+          RELEASE_ARCHIVE=$archive
+          RELEASE_CONTENT_TYPE=application/zip
+          "@ | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Upload binaries to the release
         uses: actions/upload-release-asset@v1
