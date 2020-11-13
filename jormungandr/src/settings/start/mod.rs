@@ -2,7 +2,7 @@ pub mod config;
 pub mod network;
 
 use self::config::{Config, Leadership};
-use self::network::Protocol;
+use self::network::{Protocol, TrustedPeer};
 use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
@@ -196,8 +196,6 @@ fn generate_network(
     config: &Option<Config>,
     logger: &Logger,
 ) -> Result<network::Configuration, Error> {
-    use jormungandr_lib::multiaddr::{multiaddr_resolve_dns, multiaddr_to_socket_addr};
-
     let (mut p2p, http_fetch_block0_service, skip_bootstrap, bootstrap_from_trusted_peers) =
         if let Some(cfg) = config {
             (
@@ -218,27 +216,29 @@ fn generate_network(
         p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
 
-    if let Some(peers) = p2p.trusted_peers.as_mut() {
-        *peers = peers.iter().filter_map(|peer| {
-            match multiaddr_resolve_dns(peer.address.multi_address()) {
-                Ok(Some(address)) => {
-                    info!(logger, "DNS resolved"; "fqdn" => peer.address.multi_address().to_string(), "resolved" => address.to_string());
-                    let address = poldercast::Address::from(address);
-                    Some(config::TrustedPeer {
-                        address,
-                        id: peer.id,
-                    })
+    let trusted_peers = p2p.trusted_peers.as_ref().map_or_else(Vec::new, |peers| {
+        peers
+            .iter()
+            .filter_map(|config_peer| match TrustedPeer::resolve(config_peer) {
+                Ok(peer) => {
+                    info!(
+                        logger,
+                        "DNS resolved for trusted peer";
+                        "config" => %config_peer.address, "resolved" => %peer.address,
+                    );
+                    Some(peer)
                 }
-                Ok(None) => {
-                    Some(peer.clone())
-                },
                 Err(e) => {
-                    warn!(logger, "failed to resolve dns"; "fqdn" => peer.address.multi_address().to_string(), "error" => e.to_string());
+                    warn!(
+                        logger,
+                        "failed to resolve trusted peer address";
+                        "config" => %config_peer.address, "reason" => %e,
+                    );
                     None
                 }
-            }
-        }).collect();
-    }
+            })
+            .collect()
+    });
 
     let mut profile = poldercast::NodeProfileBuilder::new();
 
@@ -269,19 +269,13 @@ fn generate_network(
         .listen_address
         .as_ref()
         .or_else(|| p2p_listen_address)
-        .map(|v| multiaddr_to_socket_addr(v.multi_address()).ok_or(Error::ListenAddressNotValid))
+        .map(|v| v.to_socket_addr().ok_or(Error::ListenAddressNotValid))
         .transpose()?;
 
     let mut network = network::Configuration {
         profile: profile.build(),
         listen_address,
-        trusted_peers: p2p
-            .trusted_peers
-            .clone()
-            .unwrap_or_default()
-            .into_iter()
-            .map(Into::into)
-            .collect(),
+        trusted_peers,
         protocol: Protocol::Grpc,
         policy: p2p.policy.clone(),
         layers: p2p.layers.clone(),

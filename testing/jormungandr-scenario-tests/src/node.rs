@@ -450,19 +450,15 @@ impl NodeController {
     }
 
     fn ports_are_opened(&self) -> bool {
-        use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
-
         self.port_opened(self.settings.config.rest.listen.port())
             && self.port_opened(
-                multiaddr_to_socket_addr(
-                    self.settings
-                        .config
-                        .p2p
-                        .get_listen_address()
-                        .multi_address(),
-                )
-                .unwrap()
-                .port(),
+                self.settings
+                    .config
+                    .p2p
+                    .get_listen_address()
+                    .to_socket_addr()
+                    .unwrap()
+                    .port(),
             )
     }
 

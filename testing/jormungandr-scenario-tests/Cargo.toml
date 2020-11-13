@@ -23,7 +23,7 @@ vit-servicing-station-tests = { git = "https://github.com/input-output-hk/vit-se
 vit-servicing-station-lib = { git = "https://github.com/input-output-hk/vit-servicing-station", branch = "master" }
 jortestkit = { path = "../jortestkit" }
 iapyx = {path = "../iapyx"}
-poldercast = "0.13.4"
+poldercast = { git = "https://github.com/mzabaluev/poldercast.git", branch = "address-must-make-sense-by-construction" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"

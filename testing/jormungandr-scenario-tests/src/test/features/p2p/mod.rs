@@ -11,7 +11,7 @@ use crate::{
     test::{utils, Result},
 };
 
-use jormungandr_lib::{interfaces::PeerRecord, multiaddr::multiaddr_to_socket_addr};
+use jormungandr_lib::interfaces::PeerRecord;
 
 pub fn assert_connected_cnt(
     node: &NodeController,
@@ -92,7 +92,7 @@ pub fn assert_are_not_in_network_view(
         utils::assert(
             network_view
                 .iter()
-                .any(|info| info.addr == multiaddr_to_socket_addr(peer.address().multi_address())),
+                .any(|info| info.addr == peer.address().to_socket_addr()),
             &format!(
                 "{}: Peer {} is present in network view list, while it should not",
                 info,
@@ -113,9 +113,7 @@ pub fn assert_are_in_network_stats(
         utils::assert(
             network_stats.iter().any(|x| {
                 x.addr
-                    .and_then(|a| {
-                        multiaddr_to_socket_addr(peer.address().multi_address()).map(|b| a == b)
-                    })
+                    .and_then(|a| peer.address().to_socket_addr().map(|b| a == b))
                     .unwrap_or(false)
             }),
             &format!(
@@ -138,9 +136,7 @@ pub fn assert_are_not_in_network_stats(
         utils::assert(
             !network_stats.iter().any(|x| {
                 x.addr
-                    .and_then(|a| {
-                        multiaddr_to_socket_addr(peer.address().multi_address()).map(|b| a == b)
-                    })
+                    .and_then(|a| peer.address().to_socket_addr().map(|b| a == b))
                     .unwrap_or(false)
             }),
             &format!(

@@ -470,7 +470,7 @@ impl LegacyNodeController {
                     .config
                     .p2p
                     .public_address
-                    .to_socketaddr()
+                    .to_socket_addr()
                     .unwrap()
                     .port(),
             )

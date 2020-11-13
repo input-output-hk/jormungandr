@@ -62,7 +62,7 @@ impl Node for NodeService {
         let block0_id = BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap();
         let keypair = &self.global_state.keypair;
         let auth = keypair.sign(nonce);
-        let addr = Address::new(peer.addr()).unwrap();
+        let addr = Address::tcp(peer.addr());
         let nonce = self.global_state.peers.generate_auth_nonce(addr).await;
 
         Ok(HandshakeResponse {
@@ -74,7 +74,7 @@ impl Node for NodeService {
 
     /// Handles client ID authentication.
     async fn client_auth(&self, peer: Peer, auth: AuthenticatedNodeId) -> Result<(), Error> {
-        let addr = Address::new(peer.addr()).unwrap();
+        let addr = Address::tcp(peer.addr());
         let nonce = self.global_state.peers.get_auth_nonce(addr.clone()).await;
         let nonce = nonce.ok_or_else(|| {
             Error::new(
@@ -229,7 +229,7 @@ impl BlockService for NodeService {
     ) -> Result<Self::SubscriptionStream, Error> {
         let addr = subscriber.addr();
         let logger = self.subscription_logger(subscriber, "block_events");
-        let subscriber = Address::new(addr).unwrap();
+        let subscriber = Address::tcp(addr);
 
         self.global_state
             .spawn(subscription::process_block_announcements(
@@ -265,7 +265,7 @@ impl FragmentService for NodeService {
     ) -> Result<Self::SubscriptionStream, Error> {
         let addr = subscriber.addr();
         let logger = self.subscription_logger(subscriber, "fragments");
-        let subscriber = Address::new(addr).unwrap();
+        let subscriber = Address::tcp(addr);
 
         self.global_state.spawn(subscription::process_fragments(
             stream,
@@ -295,7 +295,7 @@ impl GossipService for NodeService {
     ) -> Result<Self::SubscriptionStream, Error> {
         let addr = subscriber.addr();
         let logger = self.subscription_logger(subscriber, "gossip");
-        let subscriber = Address::new(addr).unwrap();
+        let subscriber = Address::tcp(addr);
 
         self.global_state.spawn(subscription::process_gossip(
             stream,
@@ -313,13 +313,11 @@ impl GossipService for NodeService {
     }
 
     async fn peers(&self, limit: u32) -> Result<Peers, Error> {
-        use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
-
         let topology = &self.global_state.topology;
         let view = topology.view(poldercast::Selection::Any).await;
         let mut peers = Vec::new();
         for n in view.peers.into_iter() {
-            if let Some(addr) = multiaddr_to_socket_addr(n.multi_address()) {
+            if let Some(addr) = n.to_socket_addr() {
                 peers.push(addr.into());
                 if peers.len() >= limit as usize {
                     break;
@@ -328,11 +326,7 @@ impl GossipService for NodeService {
         }
         if peers.is_empty() {
             // No peers yet, put self as the peer to bootstrap from
-            if let Some(addr) = view
-                .self_node
-                .address()
-                .and_then(|x| multiaddr_to_socket_addr(x.multi_address()))
-            {
+            if let Some(addr) = view.self_node.address().and_then(|x| x.to_socket_addr()) {
                 peers.push(addr.into());
             }
         }

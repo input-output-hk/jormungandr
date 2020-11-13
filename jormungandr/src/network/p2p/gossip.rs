@@ -3,9 +3,8 @@ use crate::network::convert::Encode;
 
 use chain_core::property;
 use chain_network::data as net_data;
-use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
 use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
 
 use bincode::Options;
 pub use net_data::{Peer, Peers};
@@ -23,10 +22,7 @@ impl Gossip {
     }
 
     pub fn has_valid_address(&self) -> bool {
-        let addr = match self
-            .address()
-            .and_then(|addr| multiaddr_to_socket_addr(addr.multi_address()))
-        {
+        let addr = match self.address().and_then(|addr| addr.to_socket_addr()) {
             None => return false,
             Some(addr) => addr,
         };
@@ -67,26 +63,26 @@ impl Gossip {
             return false;
         }
 
-        let addr = match self
-            .address()
-            .and_then(|addr| multiaddr_to_socket_addr(addr.multi_address()))
-        {
+        let addr = match self.address().and_then(|addr| addr.to_socket_addr()) {
             None => return false,
             Some(addr) => addr,
         };
 
-        match addr.ip() {
-            IpAddr::V4(ip) => {
-                if ip.is_private() {
-                    return false;
-                }
-                if ip.is_loopback() {
-                    return false;
-                }
-                if ip.is_link_local() {
-                    return false;
-                }
+        fn is_ipv4_global(ip: Ipv4Addr) -> bool {
+            if ip.is_private() {
+                return false;
             }
+            if ip.is_loopback() {
+                return false;
+            }
+            if ip.is_link_local() {
+                return false;
+            }
+            true
+        }
+
+        match addr.ip() {
+            IpAddr::V4(ip) => is_ipv4_global(ip),
             IpAddr::V6(ip) => {
                 if ip.is_loopback() {
                     return false;
@@ -95,17 +91,13 @@ impl Gossip {
                 // FIXME: use Ipv6 tests when Ipv6Addr convenience methods get stabilized:
                 // https://github.com/rust-lang/rust/issues/27709
                 if let Some(ipv4) = ip.to_ipv4() {
-                    if ipv4.is_private() {
-                        return false;
-                    }
-                    if ipv4.is_link_local() {
+                    if !is_ipv4_global(ipv4) {
                         return false;
                     }
                 }
+                true
             }
         }
-
-        true
     }
 }
 
@@ -178,13 +170,14 @@ impl property::Deserialize for Gossip {
 mod tests {
     use super::*;
     use poldercast::{Address, NodeProfileBuilder};
-    use std::net::Ipv4Addr;
+    use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 
     #[test]
     fn gossip_global_ipv4_private() {
         let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(10, 0, 0, 1);
-        builder.address(Address::new(ip).ok().unwrap());
+        let addr = SocketAddr::V4(SocketAddrV4::new(ip, 1234));
+        builder.address(Address::tcp(addr));
         let node: Gossip = Gossip::from(builder.build());
         assert!(!node.is_global());
     }
@@ -194,7 +187,8 @@ mod tests {
         let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(0, 0, 0, 0);
         let ipv6 = ip.to_ipv6_compatible();
-        builder.address(Address::new(ipv6).ok().unwrap());
+        let addr = SocketAddr::V6(SocketAddrV6::new(ipv6, 1234, 0, 0));
+        builder.address(Address::tcp(addr));
         let node: Gossip = Gossip::from(builder.build());
         assert!(!node.is_global());
     }
@@ -205,7 +199,8 @@ mod tests {
         let ip = Ipv4Addr::new(127, 255, 255, 255);
         // Address should not be private but be loopback
         assert!(!ip.is_private());
-        builder.address(Address::new(ip).ok().unwrap());
+        let addr = SocketAddr::V4(SocketAddrV4::new(ip, 1234));
+        builder.address(Address::tcp(addr));
         let node: Gossip = Gossip::from(builder.build());
         assert!(!node.is_global());
     }
@@ -217,7 +212,8 @@ mod tests {
         // Address should not be private but be loopback
         assert!(!ip.is_private());
         let ipv6 = ip.to_ipv6_compatible();
-        builder.address(Address::new(ipv6).ok().unwrap());
+        let addr = SocketAddr::V6(SocketAddrV6::new(ipv6, 1234, 0, 0));
+        builder.address(Address::tcp(addr));
         let node: Gossip = Gossip::from(builder.build());
         assert!(!node.is_global());
     }
@@ -229,7 +225,8 @@ mod tests {
         // Address should not be private nor loopback
         assert!(!ip.is_private());
         assert!(!ip.is_loopback());
-        builder.address(Address::new(ip).ok().unwrap());
+        let addr = SocketAddr::V4(SocketAddrV4::new(ip, 1234));
+        builder.address(Address::tcp(addr));
         let node: Gossip = Gossip::from(builder.build());
         assert!(!node.is_global());
     }
@@ -242,7 +239,8 @@ mod tests {
         assert!(!ip.is_private());
         assert!(!ip.is_loopback());
         let ipv6 = ip.to_ipv6_compatible();
-        builder.address(Address::new(ipv6).ok().unwrap());
+        let addr = SocketAddr::V6(SocketAddrV6::new(ipv6, 1234, 0, 0));
+        builder.address(Address::tcp(addr));
         let node: Gossip = Gossip::from(builder.build());
         assert!(!node.is_global());
     }

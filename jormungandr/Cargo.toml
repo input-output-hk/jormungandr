@@ -35,7 +35,8 @@ humantime = "2.0"
 jormungandr-lib = { path = "../jormungandr-lib" }
 lazy_static = "1.4"
 linked-hash-map = "0.5"
-poldercast = "0.13.4"
+poldercast = { git = "https://github.com/mzabaluev/poldercast.git", branch = "address-must-make-sense-by-construction" }
+multiaddr = { package = "parity-multiaddr", version = "0.9" }
 rand = "0.7"
 rand_chacha = "0.2.2"
 rustls = "0.18.1"
@@ -57,7 +58,6 @@ async-trait = "0.1"
 lru = "^0.6.1"
 warp = { version = "0.2.4", features = ["tls"] }
 pin-project = "1.0"
-multiaddr = "0.3.1"
 
 [dependencies.reqwest]
 version = "0.10.7"

@@ -1,6 +1,10 @@
 #![allow(deprecated)]
+use super::config;
 use crate::network::p2p::{layers::LayersConfig, Address, PolicyConfig};
+use jormungandr_lib::multiaddr::{self, multiaddr_resolve_dns};
 use poldercast::NodeProfile;
+
+use std::convert::TryFrom;
 use std::{net::SocketAddr, str, time::Duration};
 
 /// Protocol to use for a connection.
@@ -104,12 +108,24 @@ pub struct TrustedPeer {
     pub legacy_node_id: Option<poldercast::Id>,
 }
 
-impl From<super::config::TrustedPeer> for TrustedPeer {
-    fn from(tp: super::config::TrustedPeer) -> Self {
-        TrustedPeer {
-            address: tp.address,
-            legacy_node_id: tp.id,
-        }
+#[derive(Debug, thiserror::Error)]
+pub enum PeerResolveError {
+    #[error("DNS address resolution failed")]
+    Resolve(#[from] multiaddr::Error),
+    #[error(transparent)]
+    Address(#[from] poldercast::AddressTryFromError),
+}
+
+impl TrustedPeer {
+    pub fn resolve(peer: &config::TrustedPeer) -> Result<Self, PeerResolveError> {
+        let address = match multiaddr_resolve_dns(&peer.address)? {
+            Some(address) => poldercast::Address::try_from(address).unwrap(),
+            None => poldercast::Address::try_from(peer.address.clone())?,
+        };
+        Ok(TrustedPeer {
+            address,
+            legacy_node_id: peer.id,
+        })
     }
 }
 
@@ -153,13 +169,11 @@ impl Configuration {
     /// Returns the listener configuration, if the options defining it
     /// were set.
     pub fn listen(&self) -> Option<Listen> {
-        use jormungandr_lib::multiaddr::multiaddr_to_socket_addr;
-
         self.listen_address
             .or_else(|| {
                 self.profile
                     .address()
-                    .and_then(|address| multiaddr_to_socket_addr(address.multi_address()))
+                    .and_then(|address| address.to_socket_addr())
             })
             .map(Listen::new)
     }
