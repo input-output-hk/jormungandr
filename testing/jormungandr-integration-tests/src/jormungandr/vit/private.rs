@@ -22,7 +22,7 @@ use rand::rngs::OsRng;
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().unwrap().into_persistent();
 
     let yes_choice = Choice::new(1);
 
