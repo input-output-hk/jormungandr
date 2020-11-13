@@ -11,6 +11,7 @@ use jormungandr_lib::{
 };
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 
+#[derive(Clone)]
 pub struct RemoteJormungandr {
     rest: Option<JormungandrRest>,
     grpc: Option<JormungandrClient>,

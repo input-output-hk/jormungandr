@@ -15,7 +15,7 @@ pub enum LoggerError {
     LogFileDoesNotExist { log_file: String },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JormungandrLogger {
     pub log_file_path: PathBuf,
 }
