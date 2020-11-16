@@ -352,18 +352,22 @@ fn scenarios_repository() -> Vec<Scenario> {
         vec![Tag::Short, Tag::Unstable],
     ));
 
-    repository.push(Scenario::new("relay_soak", relay_soak, vec![Tag::Long]));
+    repository.push(Scenario::new(
+        "relay_soak",
+        relay_soak,
+        vec![Tag::Long, Tag::Unstable],
+    ));
 
     repository.push(Scenario::new(
         "p2p_stats_test",
         p2p_stats_test,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
         "max_connections",
         max_connections,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository.push(Scenario::new(
