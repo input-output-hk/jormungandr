@@ -114,7 +114,7 @@ impl<'a, Conf> RestStartupVerification<'a, Conf> {
 impl<'a, Conf: TestConfig> StartupVerification for RestStartupVerification<'a, Conf> {
     fn if_stopped(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path());
-        logger.contains_error().unwrap_or_else(|_| false)
+        logger.contains_error().unwrap_or(false)
     }
 
     fn if_succeed(&self) -> bool {
@@ -164,7 +164,7 @@ impl<'a, Conf> LogStartupVerification<'a, Conf> {
 impl<'a, Conf: TestConfig> StartupVerification for LogStartupVerification<'a, Conf> {
     fn if_stopped(&self) -> bool {
         let logger = JormungandrLogger::new(self.config.log_file_path());
-        logger.contains_error().unwrap_or_else(|_| false)
+        logger.contains_error().unwrap_or(false)
     }
 
     fn if_succeed(&self) -> bool {
@@ -177,7 +177,7 @@ impl<'a, Conf: TestConfig> StartupVerification for LogStartupVerification<'a, Co
 
         bootstrap_completed_msgs
             .iter()
-            .any(|msg| logger.contains_message(msg).unwrap_or_else(|_| false))
+            .any(|msg| logger.contains_message(msg).unwrap_or(false))
     }
 }
 
@@ -418,7 +418,7 @@ where
             process_utils::sleep(self.starter.sleep);
             if logger
                 .raw_log_contains_any_of(&[expected_msg_in_logs])
-                .unwrap_or_else(|_| false)
+                .unwrap_or(false)
             {
                 return Ok(());
             }
@@ -554,7 +554,7 @@ where
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         if logger
             .raw_log_contains_any_of(&port_occupied_msgs)
-            .unwrap_or_else(|_| false)
+            .unwrap_or(false)
         {
             Err(StartupError::PortAlreadyInUse)
         } else {
