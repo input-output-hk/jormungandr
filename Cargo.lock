@@ -3305,7 +3305,7 @@ checksum = "b18befed8bc2b61abc79a457295e7e838417326da1586050b919414073977f19"
 [[package]]
 name = "poldercast"
 version = "0.14.0-dev"
-source = "git+https://github.com/mzabaluev/poldercast.git?branch=address-must-make-sense-by-construction#c0f337a4dcf74e2f1030c2fabca5f6982d10a06b"
+source = "git+https://github.com/primetype/poldercast.git#81b1e4e09159e9622b53d8d71b5fc577c3c081b0"
 dependencies = [
  "hex",
  "lru",

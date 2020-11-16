@@ -35,7 +35,7 @@ humantime = "2.0"
 jormungandr-lib = { path = "../jormungandr-lib" }
 lazy_static = "1.4"
 linked-hash-map = "0.5"
-poldercast = { git = "https://github.com/mzabaluev/poldercast.git", branch = "address-must-make-sense-by-construction" }
+poldercast = { git = "https://github.com/primetype/poldercast.git" }
 multiaddr = { package = "parity-multiaddr", version = "0.9" }
 rand = "0.7"
 rand_chacha = "0.2.2"
