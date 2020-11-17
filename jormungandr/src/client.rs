@@ -16,6 +16,7 @@ const PROCESS_TIMEOUT_GET_PEERS: u64 = 10;
 const PROCESS_TIMEOUT_GET_HEADERS: u64 = 5 * 60;
 const PROCESS_TIMEOUT_GET_HEADERS_RANGE: u64 = 5 * 60;
 const PROCESS_TIMEOUT_GET_BLOCKS: u64 = 10 * 60;
+const PROCESS_TIMEOUT_PULL_BLOCKS: u64 = 60 * 60;
 const PROCESS_TIMEOUT_PULL_BLOCKS_TO_TIP: u64 = 60 * 60;
 
 pub struct TaskData {
@@ -77,6 +78,14 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
                 "get blocks",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCKS),
                 handle_get_blocks(storage, ids, handle),
+            );
+        }
+        ClientMsg::PullBlocks(from, to, handle) => {
+            let storage = task_data.storage.clone();
+            info.timeout_spawn_fallible(
+                "PullBlocks",
+                Duration::from_secs(PROCESS_TIMEOUT_PULL_BLOCKS),
+                handle_pull_blocks(storage, from, to, handle),
             );
         }
         ClientMsg::PullBlocksToTip(from, handle) => {
@@ -163,6 +172,31 @@ async fn handle_get_headers(
         }
     }
     sink.close().await
+}
+
+async fn handle_pull_blocks(
+    storage: Storage,
+    from: HeaderHash,
+    to: HeaderHash,
+    handle: ReplyStreamHandle<Block>,
+) -> Result<(), ReplySendError> {
+    use crate::intercom::Error as IntercomError;
+
+    let res = storage
+        .find_closest_ancestor(vec![from], to)
+        .map_err(Into::into)
+        .and_then(move |maybe_ancestor| {
+            maybe_ancestor
+                .map(|ancestor| (to, ancestor.distance))
+                .ok_or_else(|| IntercomError::not_found("`from` not found"))
+        });
+    match res {
+        Ok((to, depth)) => storage.send_branch(to, Some(depth), handle).await,
+        Err(e) => {
+            handle.reply_error(e);
+            Ok(())
+        }
+    }
 }
 
 async fn handle_pull_blocks_to_tip(

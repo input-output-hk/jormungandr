@@ -3,8 +3,8 @@ pub use builder::node::{
     {
         Block, BlockEvent, BlockIds, ClientAuthRequest, ClientAuthResponse, Fragment, FragmentIds,
         Gossip, HandshakeRequest, HandshakeResponse, Header, PeersRequest, PeersResponse,
-        PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest, TipResponse,
-        UploadBlocksResponse,
+        PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse,
+        TipRequest, TipResponse, UploadBlocksResponse,
     },
 };
 
@@ -75,6 +75,7 @@ impl JormungandrServerImpl {
 
 #[tonic::async_trait]
 impl Node for JormungandrServerImpl {
+    type PullBlocksStream = mpsc::Receiver<Result<Block, Status>>;
     type PullBlocksToTipStream = mpsc::Receiver<Result<Block, Status>>;
     type GetBlocksStream = mpsc::Receiver<Result<Block, Status>>;
     type PullHeadersStream = mpsc::Receiver<Result<Header, Status>>;
@@ -172,6 +173,14 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<PullHeadersRequest>,
     ) -> Result<tonic::Response<Self::PullHeadersStream>, tonic::Status> {
         info!(self.log,"Pull Headers request recieved";"method" => MethodType::PullHeaders.to_string());
+        let (_tx, rx) = mpsc::channel(0);
+        Ok(Response::new(rx))
+    }
+    async fn pull_blocks(
+        &self,
+        _request: tonic::Request<PullBlocksRequest>,
+    ) -> Result<tonic::Response<Self::PullBlocksStream>, tonic::Status> {
+        info!(self.log,"PullBlocks request recieved";"method" => MethodType::PullBlocks.to_string());
         let (_tx, rx) = mpsc::channel(0);
         Ok(Response::new(rx))
     }

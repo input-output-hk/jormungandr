@@ -120,6 +120,7 @@ fn serve_subscription<S: Stream>(sub: S) -> SubscriptionStream<S> {
 
 #[async_trait]
 impl BlockService for NodeService {
+    type PullBlocksStream = ResponseStream<app_data::Block>;
     type PullBlocksToTipStream = ResponseStream<app_data::Block>;
     type GetBlocksStream = ResponseStream<app_data::Block>;
     type PullHeadersStream = ResponseStream<app_data::Header>;
@@ -133,6 +134,22 @@ impl BlockService for NodeService {
         send_message(mbox, ClientMsg::GetBlockTip(reply_handle), logger).await?;
         let header = reply_future.await?;
         Ok(header.encode())
+    }
+
+    async fn pull_blocks(
+        &self,
+        from: BlockId,
+        to: BlockId,
+    ) -> Result<Self::PullBlocksStream, Error> {
+        let from = from.decode()?;
+        let to = to.decode()?;
+        let logger = self.logger().new(o!("request" => "PullBlocks"));
+        let (handle, future) =
+            intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
+        let client_box = self.channels.client_box.clone();
+        send_message(client_box, ClientMsg::PullBlocks(from, to, handle), logger).await?;
+        let stream = future.await?;
+        Ok(convert::response_stream(stream))
     }
 
     async fn pull_blocks_to_tip(

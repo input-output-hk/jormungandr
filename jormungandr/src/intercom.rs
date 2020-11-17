@@ -538,6 +538,7 @@ pub enum ClientMsg {
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
     GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
+    PullBlocks(HeaderHash, HeaderHash, ReplyStreamHandle<Block>),
     PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
 }
 
@@ -562,6 +563,12 @@ impl Debug for ClientMsg {
             ClientMsg::GetBlocks(ids, _) => f
                 .debug_tuple("GetBlocks")
                 .field(ids)
+                .field(&format_args!("_"))
+                .finish(),
+            ClientMsg::PullBlocks(from, to, _) => f
+                .debug_tuple("PullBlocks")
+                .field(from)
+                .field(to)
                 .field(&format_args!("_"))
                 .finish(),
             ClientMsg::PullBlocksToTip(from, _) => f
