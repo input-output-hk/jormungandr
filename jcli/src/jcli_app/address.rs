@@ -7,32 +7,32 @@ use thiserror::Error;
 #[derive(StructOpt)]
 #[structopt(name = "address", rename_all = "kebab-case")]
 pub enum Address {
-    /// display the content and info of a bench32 formatted address
+    /// Display the content and info of a bech32 formatted address.
     Info(InfoArgs),
 
-    /// create an address from the single public key. This address does
-    /// not have delegation
+    /// Create an address from a single public key. This address does
+    /// not have delegation.
     Single(SingleArgs),
 
-    /// create an address from the the single public key
+    /// Create an account address from a single public key.
     Account(AccountArgs),
 }
 
 #[derive(StructOpt)]
 pub struct InfoArgs {
     /// An address, in bech32 format, to display the content
-    /// and info that can be extracted from
+    /// and info that can be extracted from.
     #[structopt(name = "ADDRESS")]
     address: AddressReadable,
 }
 
 #[derive(StructOpt)]
 pub struct DiscriminationData {
-    /// set the discrimination type to testing (default is production)
+    /// Set the discrimination type to testing (default is production).
     #[structopt(long = "testing")]
     testing: bool,
 
-    /// set the prefix to use to describe the address. This is only available
+    /// Set the prefix to use to describe the address. This is only available
     /// on the human readable representation of the address and will not be
     /// used or checked by the node.
     #[structopt(long = "prefix", default_value = "ca")]
@@ -41,11 +41,11 @@ pub struct DiscriminationData {
 
 #[derive(StructOpt)]
 pub struct SingleArgs {
-    /// A public key in bech32 encoding with the key type prefix
+    /// A public key in bech32 encoding with the key type prefix.
     #[structopt(name = "PUBLIC_KEY", parse(try_from_str = parse_pub_key))]
     key: PublicKey<Ed25519>,
 
-    /// A public key in bech32 encoding with the key type prefix
+    /// A public key in bech32 encoding with the key type prefix.
     #[structopt(name = "DELEGATION_KEY", parse(try_from_str = parse_pub_key))]
     delegation: Option<PublicKey<Ed25519>>,
 
@@ -55,7 +55,7 @@ pub struct SingleArgs {
 
 #[derive(StructOpt)]
 pub struct AccountArgs {
-    /// A public key in bech32 encoding with the key type prefix
+    /// A public key in bech32 encoding with the key type prefix.
     #[structopt(name = "PUBLIC_KEY", parse(try_from_str = parse_pub_key))]
     key: PublicKey<Ed25519>,
 
