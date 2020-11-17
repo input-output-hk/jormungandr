@@ -65,6 +65,8 @@ impl<'de> Deserialize<'de> for CorsOrigin {
                     if s != "http" && s != "https" {
                         return Err(E::invalid_value(Unexpected::Str(v), &self));
                     }
+                } else {
+                    return Err(E::invalid_value(Unexpected::Str(v), &self));
                 }
                 if let Some(p) = uri.path_and_query() {
                     if p.as_str() != "/" {
