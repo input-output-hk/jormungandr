@@ -1,6 +1,6 @@
 use crate::wallet::WalletProxyController;
 use crate::{
-    legacy::{LegacyNode, LegacyNodeController, LegacySettings},
+    legacy::{LegacyNode, LegacyNodeController},
     prepare_command,
     scenario::{
         settings::{Dotifier, PrepareSettings},
@@ -356,19 +356,15 @@ impl Controller {
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
-        let mut legacy_node_settings =
-            LegacySettings::from_settings(node_setting_overriden, version);
-
-        let node = LegacyNode::spawn(
-            &jormungandr,
-            &self.context,
-            pb,
-            &params.get_alias(),
-            &mut legacy_node_settings,
-            block0_setting,
-            self.working_directory.path(),
-            params.get_persistence_mode(),
-        )?;
+        let mut spawn_builder = LegacyNode::spawn(&self.context, &mut node_setting_overriden);
+        spawn_builder
+            .path_to_jormungandr(jormungandr)
+            .progress_bar(pb)
+            .alias(params.get_alias())
+            .block0(block0_setting)
+            .working_dir(self.working_directory.path())
+            .peristence_mode(params.get_persistence_mode());
+        let node = spawn_builder.build(version)?;
         Ok(node.controller())
     }
 
@@ -400,16 +396,16 @@ impl Controller {
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
-        let node = Node::spawn(
-            &jormungandr,
-            &self.context,
-            pb,
-            &params.get_alias(),
-            &mut node_setting_overriden,
-            block0_setting,
-            self.working_directory.path(),
-            params.get_persistence_mode(),
-        )?;
+        let mut spawn_builder = Node::spawn(&self.context, &mut node_setting_overriden);
+        spawn_builder
+            .path_to_jormungandr(jormungandr)
+            .progress_bar(pb)
+            .alias(params.get_alias())
+            .block0(block0_setting)
+            .working_dir(self.working_directory.path())
+            .peristence_mode(params.get_persistence_mode());
+        let node = spawn_builder.build()?;
+
         Ok(node.controller())
     }
 

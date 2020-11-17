@@ -3,7 +3,7 @@
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
     legacy::LegacySettings,
-    node::{Error, ProgressBarController, Result, Status},
+    node::{Error, ProgressBarController, Result, SpawnBuilder, Status},
     style, Context,
 };
 use chain_impl_mockchain::{
@@ -13,10 +13,7 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{
-        EnclaveLeaderId, FragmentLog, FragmentStatus, Info, Log, LogEntry, LogOutput, PeerRecord,
-        PeerStats,
-    },
+    interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats},
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -27,14 +24,13 @@ pub use jormungandr_testing_utils::testing::{
 };
 
 use futures::executor::block_on;
-use indicatif::ProgressBar;
 use rand_core::RngCore;
 use yaml_rust::{Yaml, YamlLoader};
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::path::PathBuf;
+use std::process::Child;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -49,16 +45,16 @@ pub struct LegacyNodeController {
 }
 
 pub struct LegacyNode {
-    alias: NodeAlias,
+    pub alias: NodeAlias,
 
     #[allow(unused)]
-    dir: PathBuf,
+    pub dir: PathBuf,
 
-    process: Child,
+    pub process: Child,
 
-    progress_bar: ProgressBarController,
-    node_settings: LegacySettings,
-    status: Arc<Mutex<Status>>,
+    pub progress_bar: ProgressBarController,
+    pub node_settings: LegacySettings,
+    pub status: Arc<Mutex<Status>>,
 }
 
 const NODE_CONFIG: &str = "node_config.yaml";
@@ -535,111 +531,16 @@ impl LegacyNode {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn spawn<R: RngCore>(
-        jormungandr: &Path,
-        context: &Context<R>,
-        progress_bar: ProgressBar,
-        alias: &str,
-        node_settings: &mut LegacySettings,
-        block0: NodeBlock0,
-        working_dir: &Path,
-        peristence_mode: PersistenceMode,
-    ) -> Result<Self> {
-        let mut command = Command::new(jormungandr);
-        let dir = working_dir.join(alias);
-        std::fs::DirBuilder::new().recursive(true).create(&dir)?;
-
-        let progress_bar = ProgressBarController::new(
-            progress_bar,
-            format!("{}@{}", alias, node_settings.config().rest.listen),
-            context.progress_bar_mode(),
-        );
-
-        let config_file = dir.join(NODE_CONFIG);
-        let config_secret = dir.join(NODE_SECRET);
-        let log_file = dir.join(NODE_LOG);
-
-        let format = "plain";
-        let level = context.log_level();
-        node_settings.config.log = Some(Log(vec![
-            LogEntry {
-                format: format.to_string(),
-                level: level.to_string(),
-                output: LogOutput::Stderr,
-            },
-            LogEntry {
-                format: format.to_string(),
-                level,
-                output: LogOutput::File(log_file),
-            },
-        ]));
-
-        if peristence_mode == PersistenceMode::Persistent {
-            let path_to_storage = dir.join(NODE_STORAGE);
-            node_settings.config.storage = Some(path_to_storage);
-        }
-
-        serde_yaml::to_writer(
-            std::fs::File::create(&config_file).map_err(|e| Error::CannotCreateFile {
-                path: config_file.clone(),
-                cause: e,
-            })?,
-            node_settings.config(),
-        )
-        .map_err(|e| Error::CannotWriteYamlFile {
-            path: config_file.clone(),
-            cause: e,
-        })?;
-
-        serde_yaml::to_writer(
-            std::fs::File::create(&config_secret).map_err(|e| Error::CannotCreateFile {
-                path: config_secret.clone(),
-                cause: e,
-            })?,
-            node_settings.secrets(),
-        )
-        .map_err(|e| Error::CannotWriteYamlFile {
-            path: config_secret.clone(),
-            cause: e,
-        })?;
-
-        command.arg("--config");
-        command.arg(&config_file);
-
-        match block0 {
-            NodeBlock0::File(path) => {
-                command.arg("--genesis-block");
-                command.arg(&path);
-                command.arg("--secret");
-                command.arg(&config_secret);
-            }
-            NodeBlock0::Hash(hash) => {
-                command.args(&["--genesis-block-hash", &hash.to_string()]);
-            }
-        }
-
-        command.stderr(Stdio::piped());
-
-        let process = command.spawn().map_err(Error::CannotSpawnNode)?;
-
-        let node = LegacyNode {
-            alias: alias.into(),
-
-            dir,
-
-            process,
-
-            progress_bar,
-            node_settings: node_settings.clone(),
-            status: Arc::new(Mutex::new(Status::Running)),
-        };
-
-        node.progress_bar_start();
-
-        Ok(node)
+    pub fn progress_bar(&self) -> &ProgressBarController {
+        &self.progress_bar
     }
 
+    pub fn spawn<'a, R: RngCore>(
+        context: &'a Context<R>,
+        node_settings: &'a mut NodeSetting,
+    ) -> SpawnBuilder<'a, R, LegacyNode> {
+        SpawnBuilder::new(&context, node_settings)
+    }
     pub fn capture_logs(&mut self) {
         let stderr = self.process.stderr.take().unwrap();
         let reader = BufReader::new(stderr);
@@ -668,7 +569,7 @@ impl LegacyNode {
         }
     }
 
-    fn progress_bar_start(&self) {
+    pub fn progress_bar_start(&self) {
         self.progress_bar.set_style(
             indicatif::ProgressStyle::default_spinner()
                 .template("{spinner:.green} {wide_msg}")
