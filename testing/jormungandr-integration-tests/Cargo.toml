@@ -37,7 +37,7 @@ assert_cmd = "1.0.1"
 regex = "1.4"
 poldercast = { git = "https://github.com/mzabaluev/poldercast.git", branch = "address-must-make-sense-by-construction" }
 thiserror = "1.0"
-url = "2.1.1"
+url = "2.2.0"
 yaml-rust = "0.4.4"
 indicatif = "0.15.0"
 fs_extra = "1.1.0"
