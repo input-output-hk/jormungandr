@@ -344,3 +344,103 @@ pub async fn get_fragments() {
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     println!("{:?}", client.get_fragments(vec![fragment_id.into()]).await);
 }
+
+// L1021 PullBlocks correct hashes
+#[tokio::test]
+pub async fn pull_blocks_correct_hashes_all_blocks() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = ConfigurationBuilder::new()
+        .with_slot_duration(1)
+        .with_block0_consensus(ConsensusVersion::Bft)
+        .build(&temp_dir);
+    let server = Starter::new().config(config.clone()).start().unwrap();
+
+    let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
+
+    let genesis_block_hash = Hash::from_str(config.genesis_block_hash()).unwrap();
+
+    let blocks = client
+        .pull_blocks(genesis_block_hash, client.tip().await.id())
+        .await
+        .unwrap();
+
+    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
+
+    let mut block_hashes_from_logs = server.logger.get_created_blocks_hashes();
+    block_hashes_from_logs.insert(0, genesis_block_hash);
+    assert_eq!(block_hashes_from_logs, blocks_hashes);
+}
+
+// L1022 PullBlocks correct hashes
+#[tokio::test]
+pub async fn pull_blocks_correct_hashes_partial() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = ConfigurationBuilder::new()
+        .with_slot_duration(1)
+        .with_block0_consensus(ConsensusVersion::Bft)
+        .build(&temp_dir);
+    let server = Starter::new().config(config.clone()).start().unwrap();
+
+    let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
+
+    while client.tip().await.chain_length() < 10.into() {}
+
+    let block_hashes_from_logs = server.logger.get_created_blocks_hashes();
+    let start = 2;
+    let end = 8;
+    let expected_hashes = block_hashes_from_logs[start..end].to_vec();
+
+    let blocks = client
+        .pull_blocks(expected_hashes[0], expected_hashes.last().copied().unwrap())
+        .await
+        .unwrap();
+
+    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
+
+    assert_eq!(expected_hashes, blocks_hashes);
+}
+
+// L1023 PullBlocks to and from in wrong order
+#[tokio::test]
+pub async fn pull_blocks_hashes_wrong_order() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = ConfigurationBuilder::new()
+        .with_slot_duration(1)
+        .with_block0_consensus(ConsensusVersion::Bft)
+        .build(&temp_dir);
+    let server = Starter::new().config(config.clone()).start().unwrap();
+
+    let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
+
+    while client.tip().await.chain_length() < 10.into() {}
+
+    let block_hashes_from_logs = server.logger.get_created_blocks_hashes();
+    let start = 2;
+    let end = 8;
+    let expected_hashes = block_hashes_from_logs[start..end].to_vec();
+
+    let result = client
+        .pull_blocks(expected_hashes.last().copied().unwrap(), expected_hashes[0])
+        .await;
+
+    assert!(result.is_err());
+}
+
+// L1024 PullBlocks incorrect hashes
+#[tokio::test]
+pub async fn pull_blocks_incorrect_hashes() {
+    let temp_dir = TempDir::new().unwrap();
+    let config = ConfigurationBuilder::new()
+        .with_slot_duration(1)
+        .with_block0_consensus(ConsensusVersion::Bft)
+        .build(&temp_dir);
+    let _server = Starter::new().config(config.clone()).start().unwrap();
+
+    let from = TestGen::hash();
+    let to = TestGen::hash();
+
+    let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
+    let result = client.pull_blocks(from, to).await;
+
+    assert!(result.is_err());
+}

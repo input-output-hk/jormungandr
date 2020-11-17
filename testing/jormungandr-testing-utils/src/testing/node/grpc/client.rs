@@ -2,7 +2,8 @@ use crate::testing::node::grpc::read_into;
 
 use node::{
     node_client::NodeClient, Block, BlockIds, Fragment, FragmentIds, HandshakeRequest,
-    HandshakeResponse, Header, PullBlocksToTipRequest, PullHeadersRequest, TipRequest,
+    HandshakeResponse, Header, PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest,
+    TipRequest,
 };
 
 use chain_impl_mockchain::{
@@ -137,6 +138,24 @@ impl JormungandrClient {
 
     pub async fn get_genesis_block_hash(&self) -> Hash {
         Hash::from_str(&hex::encode(self.handshake(&[]).await.block0)).unwrap()
+    }
+
+    pub async fn pull_blocks(
+        &self,
+        from: Hash,
+        to: Hash,
+    ) -> Result<Vec<LibBlock>, MockClientError> {
+        let mut client = NodeClient::connect(self.address()).await.unwrap();
+
+        let request = tonic::Request::new(PullBlocksRequest {
+            from: self.hash_to_bin(&from),
+            to: self.hash_to_bin(&to),
+        });
+        let response = client
+            .pull_blocks(request)
+            .await
+            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+        self.block_stream_to_vec(response.into_inner()).await
     }
 
     pub async fn pull_blocks_to_tip(&self, from: Hash) -> Result<Vec<LibBlock>, MockClientError> {

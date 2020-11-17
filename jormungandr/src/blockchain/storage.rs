@@ -101,6 +101,17 @@ impl Storage {
         }
     }
 
+    pub fn get_storage_block_info(
+        &self,
+        header_hash: HeaderHash,
+    ) -> Result<Option<BlockInfo>, Error> {
+        match self.storage.get_block_info(header_hash.as_bytes()) {
+            Ok(block_info) => Ok(Some(block_info)),
+            Err(StorageError::BlockNotFound) => Ok(None),
+            Err(e) => Err(Error::BackendError(e)),
+        }
+    }
+
     pub fn block_exists(&self, header_hash: HeaderHash) -> Result<bool, Error> {
         self.storage
             .block_exists(header_hash.as_ref())
