@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 slog = "2"
 custom_debug = "0.5"
-dialoguer = "0.6.2"
+dialoguer = "0.7.1"
 error-chain = "0.12"
 assert_fs = "1.0"
 chain-core           = { path = "../../chain-deps/chain-core" }

@@ -1111,7 +1111,7 @@ dependencies = [
  "digest 0.9.0",
  "rand_core 0.5.1",
  "subtle",
- "zeroize",
+ "zeroize 1.1.1",
 ]
 
 [[package]]
@@ -1169,6 +1169,18 @@ dependencies = [
  "console 0.11.3",
  "lazy_static",
  "tempfile",
+]
+
+[[package]]
+name = "dialoguer"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70f807b2943dc90f9747497d9d65d7e92472149be0b88bf4ce1201b4ac979c26"
+dependencies = [
+ "console 0.13.0",
+ "lazy_static",
+ "tempfile",
+ "zeroize 0.9.3",
 ]
 
 [[package]]
@@ -1319,7 +1331,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "sha2",
- "zeroize",
+ "zeroize 1.1.1",
 ]
 
 [[package]]
@@ -1976,7 +1988,7 @@ dependencies = [
  "chrono",
  "console 0.11.3",
  "cryptoxide 0.2.1",
- "dialoguer",
+ "dialoguer 0.6.2",
  "ed25519-bip32",
  "hdkeygen",
  "hex",
@@ -2308,7 +2320,7 @@ dependencies = [
  "chain-time 0.1.0",
  "console 0.13.0",
  "custom_debug",
- "dialoguer",
+ "dialoguer 0.7.1",
  "error-chain",
  "futures 0.3.8",
  "hex",
@@ -2403,7 +2415,7 @@ dependencies = [
  "console 0.11.3",
  "csv",
  "custom_debug",
- "dialoguer",
+ "dialoguer 0.6.2",
  "flate2",
  "fs_extra",
  "hex",
@@ -2439,7 +2451,7 @@ dependencies = [
  "console 0.11.3",
  "csv",
  "custom_debug",
- "dialoguer",
+ "dialoguer 0.6.2",
  "flate2",
  "fs_extra",
  "hex",
@@ -5669,6 +5681,12 @@ checksum = "39f0c922f1a334134dc2f7a8b67dc5d25f0735263feec974345ff706bcf20b0d"
 dependencies = [
  "linked-hash-map",
 ]
+
+[[package]]
+name = "zeroize"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45af6a010d13e4cf5b54c94ba5a2b2eba5596b9e46bf5875612d332a1f2b3f86"
 
 [[package]]
 name = "zeroize"
