@@ -13,6 +13,7 @@ use reqwest::{
 };
 use std::fmt;
 
+const ORIGIN: &str = "Origin";
 enum ApiVersion {
     V0,
     V1,
@@ -65,6 +66,14 @@ impl RawRest {
         }
     }
 
+    pub fn settings(&self) -> &RestSettings {
+        &self.settings
+    }
+
+    pub fn settings_mut(&mut self) -> &mut RestSettings {
+        &mut self.settings
+    }
+
     pub fn enable_logger(&mut self) {
         self.logging_enabled = true;
     }
@@ -92,7 +101,22 @@ impl RawRest {
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(ApiVersion::V0, path);
         self.print_request_path(&request);
-        self.client.get(request).send()
+
+        let mut client_builder = reqwest::blocking::Client::builder();
+
+        if let Some(cert) = &self.settings.certificate {
+            client_builder = client_builder
+                .use_rustls_tls()
+                .add_root_certificate(cert.clone())
+        }
+        let client = client_builder.build()?;
+        let mut res = client.get(&request);
+
+        if let Some(origin) = self.settings.cors.as_ref() {
+            res = res.header(ORIGIN, origin.to_string());
+        }
+
+        res.send()
     }
 
     fn path(&self, api_version: ApiVersion, path: &str) -> String {

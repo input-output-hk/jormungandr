@@ -1,6 +1,6 @@
 use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::{Cors, CorsOrigin};
+use jormungandr_lib::interfaces::Cors;
 use jormungandr_testing_utils::testing::node::JormungandrRest;
 
 #[test]
@@ -27,7 +27,7 @@ fn assert_request_failed_due_to_cors(
     rest_client: &JormungandrRest,
 ) -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(
-        rest_client.stats_raw()?.text()?,
+        rest_client.raw().stats()?.text()?,
         "CORS request forbidden: origin not allowed"
     );
     Ok(())
@@ -43,15 +43,9 @@ pub fn cors_malformed_domain_no_http() -> Result<(), Box<dyn std::error::Error>>
         })
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config).start_async().unwrap();
-
-    let mut rest_client = jormungandr.rest();
-    rest_client.set_origin("domain.com");
-
-    assert!(
-        rest_client.stats_raw().is_err(),
-        "jormungandr should not bootstrap with incorrect cors setting"
-    );
+    Starter::new()
+        .config(config)
+        .start_fail("invalid value: string \"domain.com\"");
     Ok(())
 }
 
@@ -71,7 +65,7 @@ pub fn cors_ip_versus_domain() -> Result<(), Box<dyn std::error::Error>> {
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("http://localhost");
 
-    println!("{:?}", rest_client.stats_raw()?.status());
+    println!("{:?}", rest_client.raw().stats()?.status());
     Ok(())
 }
 
@@ -110,7 +104,7 @@ pub fn cors_single_domain() -> Result<(), Box<dyn std::error::Error>> {
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("http://domain.com");
 
-    assert!(rest_client.stats_raw()?.status().is_success());
+    assert!(rest_client.raw().stats()?.status().is_success());
 
     Ok(())
 }
@@ -131,7 +125,7 @@ pub fn cors_https() -> Result<(), Box<dyn std::error::Error>> {
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("https://domain.com");
 
-    assert!(rest_client.stats_raw()?.status().is_success());
+    assert!(rest_client.raw().stats()?.status().is_success());
 
     Ok(())
 }

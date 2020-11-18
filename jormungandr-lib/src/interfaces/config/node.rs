@@ -93,7 +93,6 @@ impl From<String> for CorsOrigin {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2p {
     /// The public address to which other peers may connect to

@@ -8,10 +8,10 @@ use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, Initial,
-    InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
-    NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
-    FeesGoTo
+    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
+    Initial, InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
+    NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
+    Value,
 };
 
 use assert_fs::fixture::{ChildPath, PathChild};

@@ -2,7 +2,8 @@
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, Log, Mempool, LayersConfig, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest, TrustedPeer, Cors
+        Cors, Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest,
+        TrustedPeer, LayersConfig
     },
     time::Duration,
 };
