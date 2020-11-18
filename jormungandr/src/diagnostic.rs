@@ -77,5 +77,5 @@ fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
     let retcode = unsafe { libc::getrlimit(resource, &mut limits as *mut rlimit) };
     nix::errno::Errno::result(retcode).map_err(DiagnosticError::UnixError)?;
 
-    Ok(limits.rlim_cur)
+    Ok(limits.rlim_cur.into())
 }
