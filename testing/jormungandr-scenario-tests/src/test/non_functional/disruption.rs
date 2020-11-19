@@ -8,13 +8,16 @@ use crate::{
     },
     Context,
 };
+use function_name::named;
 use rand_chacha::ChaChaRng;
 
+#[named]
 pub fn passive_leader_disruption_no_overlap(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "passive_leader_disruption_no_overlap",
+        name,
         &mut context,
         topology [
             LEADER,
@@ -86,14 +89,16 @@ pub fn passive_leader_disruption_no_overlap(
     leader.shutdown()?;
     passive.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn passive_leader_disruption_overlap(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "passive_leader_disruption_overlap",
+        name,
         &mut context,
         topology [
             LEADER,
@@ -150,12 +155,14 @@ pub fn passive_leader_disruption_overlap(
     leader.shutdown()?;
     passive.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "leader_leader_disruption_overlap",
+        name,
         &mut context,
         topology [
             LEADER_2,
@@ -219,14 +226,16 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
     leader1.shutdown()?;
     leader2.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn leader_leader_disruption_no_overlap(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "leader_leader_disruption_no_overlap",
+        name,
         &mut context,
         topology [
             LEADER_2,
@@ -300,12 +309,14 @@ pub fn leader_leader_disruption_no_overlap(
     leader1.shutdown()?;
     leader2.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "point_to_point_disruption",
+        name,
         &mut context,
         topology [
             LEADER_2,
@@ -371,14 +382,16 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     leader3.shutdown()?;
     leader1.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn point_to_point_disruption_overlap(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "point_to_point_disruption_overlap",
+        name,
         &mut context,
         topology [
             LEADER_2,
@@ -505,12 +518,14 @@ pub fn point_to_point_disruption_overlap(
     leader2.shutdown()?;
     leader1.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "custom_network_disruption",
+        name,
         &mut context,
         topology [
             LEADER_5,
@@ -620,12 +635,14 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
     leader3.shutdown()?;
     leader1.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Disruption_Mesh",
+        name,
         &mut context,
         topology [
             LEADER_4,
@@ -729,5 +746,5 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader2.shutdown()?;
     leader1.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

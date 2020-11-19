@@ -9,10 +9,13 @@ const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
 const LEADER_4: &str = "Leader_4";
+use function_name::named;
 
+#[named]
 pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Retire stake pool explorer",
+        name,
         &mut context,
         topology [
             LEADER_1,
@@ -126,5 +129,5 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
     leader_3.shutdown()?;
     leader_4.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

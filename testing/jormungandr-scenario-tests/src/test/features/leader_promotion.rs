@@ -4,14 +4,17 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
+use function_name::named;
 use jormungandr_lib::interfaces::EnclaveLeaderId;
 use rand_chacha::ChaChaRng;
 const LEADER: &str = "Leader";
 const PASSIVE: &str = "Passive";
 
+#[named]
 pub fn passive_node_promotion(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Passive node promotion to leader",
+        name,
         &mut context,
         topology [
             LEADER,
@@ -55,7 +58,7 @@ pub fn passive_node_promotion(mut context: Context<ChaChaRng>) -> Result<Scenari
     passive.shutdown()?;
     leader.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
 fn promote_and_assert_leaders_id(

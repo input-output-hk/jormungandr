@@ -12,9 +12,13 @@ use rand_chacha::ChaChaRng;
 use std::ffi::OsStr;
 use structopt::StructOpt;
 
+use function_name::named;
+
+#[named]
 pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Testing the network",
+        name,
         &mut context,
         topology [
             "Leader1",
@@ -42,7 +46,7 @@ pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         controller: UserInteractionController::new(&mut controller),
     })?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
 fn jormungandr_user_interaction() -> UserInteraction {

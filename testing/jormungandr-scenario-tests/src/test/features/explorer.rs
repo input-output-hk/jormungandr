@@ -3,6 +3,7 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
+use function_name::named;
 use jormungandr_lib::interfaces::Explorer;
 use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader_1";
@@ -10,9 +11,11 @@ const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
 const PASSIVE: &str = "Passive";
 
+#[named]
 pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Passive node with explorer",
+        name,
         &mut context,
         topology [
             LEADER_1,
@@ -88,5 +91,5 @@ pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<Scenario
     passive.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

@@ -1,6 +1,7 @@
 use super::{LEADER, PASSIVE};
 use crate::scenario::{repository::ScenarioResult, Context, Controller};
 use crate::test::Result;
+use function_name::named;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
@@ -13,6 +14,7 @@ use jormungandr_testing_utils::{
 use rand_chacha::ChaChaRng;
 use std::path::PathBuf;
 
+#[named]
 pub fn legacy_current_node_fragment_propagation(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
@@ -62,9 +64,10 @@ pub fn legacy_current_node_fragment_propagation(
     passive.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(title))
 }
 
+#[named]
 pub fn current_node_legacy_fragment_propagation(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
@@ -115,9 +118,10 @@ pub fn current_node_legacy_fragment_propagation(
     passive.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(title))
 }
 
+#[named]
 pub fn current_node_fragment_propagation(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
@@ -160,7 +164,7 @@ pub fn current_node_fragment_propagation(
     passive.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(title))
 }
 
 fn get_legacy_data(title: &str, context: &mut Context<ChaChaRng>) -> (PathBuf, Version) {

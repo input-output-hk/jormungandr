@@ -126,7 +126,7 @@ fn test_legacy_release(
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
 pub fn disruption_last_nth_release_title(n: u32) -> Cow<'static, str> {
@@ -260,7 +260,7 @@ fn test_legacy_disruption_release(
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
 pub fn newest_node_enters_legacy_network(
@@ -391,5 +391,5 @@ pub fn newest_node_enters_legacy_network(
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(title))
 }

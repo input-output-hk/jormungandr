@@ -3,6 +3,7 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
+use function_name::named;
 use jormungandr_lib::interfaces::Explorer;
 use jormungandr_testing_utils::testing::network_builder::SpawnParams;
 use jormungandr_testing_utils::testing::node::time;
@@ -32,9 +33,11 @@ pub enum Vote {
     NO = 2,
 }
 
+#[named]
 pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Passive node promotion to leader",
+        name,
         &mut context,
         topology [
             LEADER_1,
@@ -193,5 +196,5 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
     leader_2.shutdown()?;
     leader_1.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

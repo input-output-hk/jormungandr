@@ -251,5 +251,5 @@ pub fn real_network(
     )?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

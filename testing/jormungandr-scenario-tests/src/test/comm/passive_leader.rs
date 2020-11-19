@@ -13,9 +13,13 @@ use rand_chacha::ChaChaRng;
 const LEADER: &str = "Leader";
 const PASSIVE: &str = "Passive";
 
+use function_name::named;
+
+#[named]
 pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "L2001-transaction_propagation_from_passive",
+        name,
         &mut context,
         topology [
             LEADER,
@@ -64,14 +68,16 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     passive.shutdown()?;
     leader.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
 const LEADER_2: &str = "LEADER_2";
 
+#[named]
 pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "L2003-leader_is_restarted",
+        name,
         &mut context,
         topology [
             LEADER_2,
@@ -159,12 +165,14 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader_2.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "L2004-passive_node_is_updated",
+        name,
         &mut context,
         topology [
             LEADER,
@@ -216,5 +224,5 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
     leader.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

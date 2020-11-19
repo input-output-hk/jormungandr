@@ -6,6 +6,7 @@ use crate::{
     },
     Context, ScenarioResult,
 };
+use function_name::named;
 use rand_chacha::ChaChaRng;
 
 const LEADER_1: &str = "Leader1";
@@ -17,9 +18,11 @@ const LEADER_5: &str = "Leader5";
 #[allow(dead_code)]
 const PASSIVE: &str = "Passive";
 
+#[named]
 pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Bft nodes",
+        name,
         &mut context,
         topology [
             LEADER_1,
@@ -102,5 +105,5 @@ pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
