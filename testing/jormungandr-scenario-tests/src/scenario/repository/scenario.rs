@@ -17,6 +17,10 @@ impl Scenario {
         }
     }
 
+    pub fn tags(&self) -> &[Tag] {
+        &self.tags
+    }
+
     pub fn has_tag(&self, tag: Tag) -> bool {
         self.tags.iter().any(|t| *t == tag)
     }

@@ -20,6 +20,10 @@ impl ScenarioSuiteResult {
         self.count_failed() > 0
     }
 
+    pub fn passed(&self) -> bool {
+        !self.is_failed()
+    }
+
     pub fn count_passed(&self) -> usize {
         self.results.iter().filter(|x| x.is_passed()).count()
     }
@@ -54,5 +58,9 @@ impl ScenarioSuiteResult {
         let mut suite_result = Self::new();
         suite_result.push(result);
         suite_result
+    }
+
+    pub fn results(&self) -> &[ScenarioResult] {
+        &self.results
     }
 }

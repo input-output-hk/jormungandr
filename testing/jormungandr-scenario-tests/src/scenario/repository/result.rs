@@ -3,24 +3,28 @@ use std::{any::Any, fmt};
 
 #[derive(Clone, Debug)]
 pub struct ScenarioResult {
+    pub name: String,
     pub scenario_status: ScenarioStatus,
 }
 
 impl ScenarioResult {
-    pub fn passed() -> Self {
+    pub fn passed<S: Into<String>>(name: S) -> Self {
         ScenarioResult {
+            name: name.into(),
             scenario_status: ScenarioStatus::Passed,
         }
     }
 
-    pub fn failed<S: Into<String>>(reason: S) -> Self {
+    pub fn failed<P: Into<String>, S: Into<String>>(name: P, reason: S) -> Self {
         ScenarioResult {
+            name: name.into(),
             scenario_status: ScenarioStatus::Failed(reason.into()),
         }
     }
 
-    pub fn ignored() -> Self {
+    pub fn ignored<S: Into<String>>(name: S) -> Self {
         ScenarioResult {
+            name: name.into(),
             scenario_status: ScenarioStatus::Ignored,
         }
     }
@@ -41,15 +45,20 @@ impl ScenarioResult {
         matches!(*self.scenario_status(), ScenarioStatus::Passed)
     }
 
-    pub fn from_result(
+    pub fn name(&self) -> String {
+        self.name.to_string()
+    }
+
+    pub fn from_result<S: Into<String>>(
+        name: S,
         result: std::result::Result<Result<ScenarioResult>, std::boxed::Box<dyn Any + Send>>,
     ) -> ScenarioResult {
         match result {
             Ok(inner) => match inner {
                 Ok(scenario_result) => scenario_result,
-                Err(err) => ScenarioResult::failed(err.to_string()),
+                Err(err) => ScenarioResult::failed(name, err.to_string()),
             },
-            Err(_) => ScenarioResult::failed("no data".to_string()),
+            Err(_) => ScenarioResult::failed(name, "no data"),
         }
     }
 }
