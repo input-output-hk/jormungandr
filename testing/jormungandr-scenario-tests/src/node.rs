@@ -1,10 +1,15 @@
 #![allow(dead_code)]
 
-use crate::{scenario::ProgressBarMode, style, Context};
+use crate::{
+    legacy::{LegacyNode, LegacySettings},
+    scenario::ProgressBarMode,
+    style, Context,
+};
 use chain_impl_mockchain::{
     block::Block,
     fragment::{Fragment, FragmentId},
     header::HeaderId,
+    testing::TestGen,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -13,7 +18,6 @@ use jormungandr_lib::{
         NodeStatsDto, PeerRecord, PeerStats,
     },
 };
-use jormungandr_testing_utils::testing::node::Explorer;
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
@@ -24,6 +28,7 @@ pub use jormungandr_testing_utils::testing::{
     },
     FragmentNode, MemPoolCheck, NamedProcess,
 };
+use jormungandr_testing_utils::{testing::node::Explorer, Version};
 
 use futures::executor::block_on;
 use indicatif::ProgressBar;
@@ -532,107 +537,15 @@ impl Node {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn spawn<R: RngCore>(
-        jormungandr: &Path,
-        context: &Context<R>,
-        progress_bar: ProgressBar,
-        alias: &str,
-        node_settings: &mut NodeSetting,
-        block0: NodeBlock0,
-        working_dir: &Path,
-        peristence_mode: PersistenceMode,
-    ) -> Result<Self> {
-        let mut command = Command::new(jormungandr);
-        let dir = working_dir.join(alias);
-        std::fs::DirBuilder::new().recursive(true).create(&dir)?;
+    pub fn spawn<'a, R: RngCore>(
+        context: &'a Context<R>,
+        node_settings: &'a mut NodeSetting,
+    ) -> SpawnBuilder<'a, R, Node> {
+        SpawnBuilder::new(&context, node_settings)
+    }
 
-        let progress_bar = ProgressBarController::new(
-            progress_bar,
-            format!("{}@{}", alias, node_settings.config().rest.listen),
-            context.progress_bar_mode(),
-        );
-
-        let config_file = dir.join(NODE_CONFIG);
-        let config_secret = dir.join(NODE_SECRET);
-        let log_file = dir.join(NODE_LOG);
-
-        let format = "plain";
-        let level = context.log_level();
-        node_settings.config.log = Some(Log(vec![
-            LogEntry {
-                format: format.to_string(),
-                level: level.to_string(),
-                output: LogOutput::Stderr,
-            },
-            LogEntry {
-                format: format.to_string(),
-                level,
-                output: LogOutput::File(log_file),
-            },
-        ]));
-
-        if peristence_mode == PersistenceMode::Persistent {
-            let path_to_storage = dir.join(NODE_STORAGE);
-            node_settings.config.storage = Some(path_to_storage);
-        }
-
-        serde_yaml::to_writer(
-            std::fs::File::create(&config_file).map_err(|e| Error::CannotCreateFile {
-                path: config_file.clone(),
-                cause: e,
-            })?,
-            node_settings.config(),
-        )
-        .map_err(|e| Error::CannotWriteYamlFile {
-            path: config_file.clone(),
-            cause: e,
-        })?;
-
-        serde_yaml::to_writer(
-            std::fs::File::create(&config_secret).map_err(|e| Error::CannotCreateFile {
-                path: config_secret.clone(),
-                cause: e,
-            })?,
-            node_settings.secrets(),
-        )
-        .map_err(|e| Error::CannotWriteYamlFile {
-            path: config_secret.clone(),
-            cause: e,
-        })?;
-
-        command.arg("--config");
-        command.arg(&config_file);
-
-        match block0 {
-            NodeBlock0::File(path) => {
-                command.arg("--genesis-block");
-                command.arg(&path);
-                command.arg("--secret");
-                command.arg(&config_secret);
-            }
-            NodeBlock0::Hash(hash) => {
-                command.args(&["--genesis-block-hash", &hash.to_string()]);
-            }
-        }
-
-        command.stderr(Stdio::piped());
-
-        let process = command.spawn().map_err(Error::CannotSpawnNode)?;
-
-        let node = Node {
-            alias: alias.into(),
-            dir,
-            process,
-            progress_bar,
-            node_settings: node_settings.clone(),
-            status: Arc::new(Mutex::new(Status::Running)),
-        };
-
-        node.progress_bar_start();
-        node.progress_bar
-            .log_info(&format!("{} bootstrapping: {:?}", alias, command));
-        Ok(node)
+    pub fn progress_bar(&self) -> &ProgressBarController {
+        &self.progress_bar
     }
 
     pub fn capture_logs(&mut self) {
@@ -753,5 +666,222 @@ impl std::ops::Deref for ProgressBarController {
     type Target = ProgressBar;
     fn deref(&self) -> &Self::Target {
         &self.progress_bar
+    }
+}
+
+use std::marker::PhantomData;
+
+pub struct SpawnBuilder<'a, R: RngCore, N> {
+    jormungandr: PathBuf,
+    context: &'a Context<R>,
+    progress_bar: ProgressBar,
+    alias: String,
+    node_settings: &'a mut NodeSetting,
+    block0: NodeBlock0,
+    working_dir: PathBuf,
+    peristence_mode: PersistenceMode,
+    phantom_data: PhantomData<N>,
+}
+
+impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
+    pub fn new(context: &'a Context<R>, node_settings: &'a mut NodeSetting) -> Self {
+        Self {
+            jormungandr: PathBuf::new(),
+            context,
+            progress_bar: ProgressBar::hidden(),
+            alias: "".to_owned(),
+            node_settings,
+            block0: NodeBlock0::Hash(TestGen::hash()),
+            working_dir: PathBuf::new(),
+            peristence_mode: PersistenceMode::Persistent,
+            phantom_data: PhantomData,
+        }
+    }
+
+    pub fn path_to_jormungandr<P: AsRef<Path>>(&mut self, path_to_jormungandr: P) -> &mut Self {
+        self.jormungandr = path_to_jormungandr.as_ref().to_path_buf();
+        self
+    }
+    pub fn progress_bar(&mut self, progress_bar: ProgressBar) -> &mut Self {
+        self.progress_bar = progress_bar;
+        self
+    }
+
+    pub fn alias<S: Into<String>>(&mut self, alias: S) -> &mut Self {
+        self.alias = alias.into();
+        self
+    }
+
+    pub fn block0(&mut self, block0: NodeBlock0) -> &mut Self {
+        self.block0 = block0;
+        self
+    }
+
+    pub fn working_dir<P: AsRef<Path>>(&mut self, working_dir: P) -> &mut Self {
+        self.working_dir = working_dir.as_ref().to_path_buf();
+        self
+    }
+
+    pub fn peristence_mode(&mut self, persistence_mode: PersistenceMode) -> &mut Self {
+        self.peristence_mode = persistence_mode;
+        self
+    }
+
+    fn write_config_file<P: AsRef<Path>>(&self, config_file: P) -> Result<()> {
+        serde_yaml::to_writer(
+            std::fs::File::create(config_file.as_ref()).map_err(|e| Error::CannotCreateFile {
+                path: config_file.as_ref().to_path_buf(),
+                cause: e,
+            })?,
+            self.node_settings.config(),
+        )
+        .map_err(|e| Error::CannotWriteYamlFile {
+            path: config_file.as_ref().to_path_buf(),
+            cause: e,
+        })
+    }
+
+    fn write_secret_file<P: AsRef<Path>>(&self, config_secret: P) -> Result<()> {
+        serde_yaml::to_writer(
+            std::fs::File::create(&config_secret).map_err(|e| Error::CannotCreateFile {
+                path: config_secret.as_ref().to_path_buf(),
+                cause: e,
+            })?,
+            self.node_settings.secrets(),
+        )
+        .map_err(|e| Error::CannotWriteYamlFile {
+            path: config_secret.as_ref().to_path_buf(),
+            cause: e,
+        })
+    }
+
+    fn apply_persistence_setting(&mut self, dir: &PathBuf) {
+        if self.peristence_mode == PersistenceMode::Persistent {
+            let path_to_storage = dir.join(NODE_STORAGE);
+            self.node_settings.config.storage = Some(path_to_storage);
+        }
+    }
+
+    fn set_log_level(&mut self, log_file: &PathBuf) {
+        let format = "plain";
+        let level = self.context.log_level();
+        self.node_settings.config.log = Some(Log(vec![
+            LogEntry {
+                format: format.to_string(),
+                level: level.to_string(),
+                output: LogOutput::Stderr,
+            },
+            LogEntry {
+                format: format.to_string(),
+                level,
+                output: LogOutput::File(log_file.to_path_buf()),
+            },
+        ]));
+    }
+
+    pub fn command<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        config_file: P,
+        config_secret: Q,
+    ) -> Command {
+        let mut command = Command::new(self.jormungandr.clone());
+
+        command.arg("--config");
+        command.arg(config_file.as_ref());
+
+        match &self.block0 {
+            NodeBlock0::File(path) => {
+                command.arg("--genesis-block");
+                command.arg(&path);
+                command.arg("--secret");
+                command.arg(config_secret.as_ref());
+            }
+            NodeBlock0::Hash(hash) => {
+                command.args(&["--genesis-block-hash", &hash.to_string()]);
+            }
+        }
+
+        command.stderr(Stdio::piped());
+        command
+    }
+}
+
+impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
+    pub fn build(mut self) -> Result<Node> {
+        let dir = self.working_dir.join(self.alias.to_owned());
+        std::fs::DirBuilder::new().recursive(true).create(&dir)?;
+
+        let config_file = dir.join(NODE_CONFIG);
+        let config_secret = dir.join(NODE_SECRET);
+        let log_file = dir.join(NODE_LOG);
+
+        self.set_log_level(&log_file);
+        self.apply_persistence_setting(&dir);
+        self.write_config_file(&config_file)?;
+        self.write_secret_file(&config_secret)?;
+
+        let mut command = self.command(config_file, config_secret);
+        let process = command.spawn().map_err(Error::CannotSpawnNode)?;
+
+        let progress_bar = ProgressBarController::new(
+            self.progress_bar,
+            format!("{}@{}", self.alias, self.node_settings.config().rest.listen),
+            self.context.progress_bar_mode(),
+        );
+
+        let node = Node {
+            alias: self.alias.clone(),
+            dir,
+            process,
+            progress_bar,
+            node_settings: self.node_settings.clone(),
+            status: Arc::new(Mutex::new(Status::Running)),
+        };
+
+        node.progress_bar_start();
+        node.progress_bar
+            .log_info(&format!("{} bootstrapping: {:?}", self.alias, command));
+        Ok(node)
+    }
+}
+
+impl<'a, R: RngCore> SpawnBuilder<'a, R, LegacyNode> {
+    pub fn build(mut self, version: &Version) -> Result<LegacyNode> {
+        let dir = self.working_dir.join(self.alias.to_owned());
+        std::fs::DirBuilder::new().recursive(true).create(&dir)?;
+
+        let config_file = dir.join(NODE_CONFIG);
+        let config_secret = dir.join(NODE_SECRET);
+        let log_file = dir.join(NODE_LOG);
+
+        self.set_log_level(&log_file);
+        self.apply_persistence_setting(&dir);
+        self.write_config_file(&config_file)?;
+        self.write_secret_file(&config_secret)?;
+
+        let mut command = self.command(config_file, config_secret);
+        let process = command.spawn().map_err(Error::CannotSpawnNode)?;
+
+        let progress_bar = ProgressBarController::new(
+            self.progress_bar,
+            format!("{}@{}", self.alias, self.node_settings.config().rest.listen),
+            self.context.progress_bar_mode(),
+        );
+
+        let legacy_settngs = LegacySettings::from_settings(self.node_settings.clone(), version);
+
+        let node = LegacyNode {
+            alias: self.alias.clone(),
+            dir,
+            process,
+            progress_bar,
+            node_settings: legacy_settngs,
+            status: Arc::new(Mutex::new(Status::Running)),
+        };
+
+        node.progress_bar_start();
+        node.progress_bar()
+            .log_info(&format!("{} bootstrapping: {:?}", self.alias, command));
+        Ok(node)
     }
 }
