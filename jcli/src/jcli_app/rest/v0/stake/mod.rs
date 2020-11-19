@@ -1,5 +1,5 @@
 use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
+use crate::jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender, TlsCert};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -15,6 +15,8 @@ pub enum Stake {
         output_format: OutputFormat,
         /// Epoch to get the stake distribution from
         epoch: Option<u32>,
+        #[structopt(flatten)]
+        tls: TlsCert,
     },
 }
 
@@ -25,6 +27,7 @@ impl Stake {
             debug,
             output_format,
             epoch,
+            tls,
         } = self;
         let url = match epoch {
             Some(epoch) => addr
@@ -33,7 +36,7 @@ impl Stake {
             _ => addr.with_segments(&["v0", "stake"])?.into_url(),
         };
         let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug).send()?;
+        let response = RestApiSender::new(builder, &debug, &tls).send()?;
         response.ok_response()?;
         let status = response.body().json_value()?;
         let formatted = output_format.format_json(status)?;

@@ -1,5 +1,5 @@
 use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender};
+use crate::jcli_app::utils::{io, DebugFlag, HostAddr, OutputFormat, RestApiSender, TlsCert};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -14,6 +14,8 @@ pub enum Leaders {
         debug: DebugFlag,
         #[structopt(flatten)]
         output_format: OutputFormat,
+        #[structopt(flatten)]
+        tls: TlsCert,
     },
     /// Register new leader and get its ID
     Post {
@@ -26,6 +28,8 @@ pub enum Leaders {
         /// If not provided, YAML will be read from stdin.
         #[structopt(short, long)]
         file: Option<PathBuf>,
+        #[structopt(flatten)]
+        tls: TlsCert,
     },
     /// Delete leader
     Delete {
@@ -35,6 +39,8 @@ pub enum Leaders {
         debug: DebugFlag,
         /// ID of deleted leader
         id: u32,
+        #[structopt(flatten)]
+        tls: TlsCert,
     },
 
     /// Leadership log operations
@@ -52,6 +58,8 @@ pub enum GetLogs {
         debug: DebugFlag,
         #[structopt(flatten)]
         output_format: OutputFormat,
+        #[structopt(flatten)]
+        tls: TlsCert,
     },
 }
 
@@ -62,22 +70,39 @@ impl Leaders {
                 addr,
                 debug,
                 output_format,
-            } => get(addr, debug, output_format),
-            Leaders::Post { addr, debug, file } => post(addr, debug, file),
-            Leaders::Delete { id, addr, debug } => delete(addr, debug, id),
+                tls,
+            } => get(addr, debug, tls, output_format),
+            Leaders::Post {
+                addr,
+                debug,
+                tls,
+                file,
+            } => post(addr, debug, tls, file),
+            Leaders::Delete {
+                id,
+                addr,
+                debug,
+                tls,
+            } => delete(addr, debug, tls, id),
             Leaders::Logs(GetLogs::Get {
                 addr,
                 debug,
                 output_format,
-            }) => get_logs(addr, debug, output_format),
+                tls,
+            }) => get_logs(addr, debug, tls, output_format),
         }
     }
 }
 
-fn get(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<(), Error> {
+fn get(
+    addr: HostAddr,
+    debug: DebugFlag,
+    tls: TlsCert,
+    output_format: OutputFormat,
+) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "leaders"])?.into_url();
     let builder = reqwest::blocking::Client::new().get(url);
-    let response = RestApiSender::new(builder, &debug).send()?;
+    let response = RestApiSender::new(builder, &debug, &tls).send()?;
     response.ok_response()?;
     let leaders = response.body().json_value()?;
     let formatted = output_format.format_json(leaders)?;
@@ -85,11 +110,16 @@ fn get(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<
     Ok(())
 }
 
-fn post(addr: HostAddr, debug: DebugFlag, file: Option<PathBuf>) -> Result<(), Error> {
+fn post(
+    addr: HostAddr,
+    debug: DebugFlag,
+    tls: TlsCert,
+    file: Option<PathBuf>,
+) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "leaders"])?.into_url();
     let builder = reqwest::blocking::Client::new().post(url);
     let input: serde_json::Value = io::read_yaml(&file)?;
-    let response = RestApiSender::new(builder, &debug)
+    let response = RestApiSender::new(builder, &debug, &tls)
         .with_json_body(&input)?
         .send()?;
     response.ok_response()?;
@@ -97,21 +127,26 @@ fn post(addr: HostAddr, debug: DebugFlag, file: Option<PathBuf>) -> Result<(), E
     Ok(())
 }
 
-fn delete(addr: HostAddr, debug: DebugFlag, id: u32) -> Result<(), Error> {
+fn delete(addr: HostAddr, debug: DebugFlag, tls: TlsCert, id: u32) -> Result<(), Error> {
     let url = addr
         .with_segments(&["v0", "leaders", &id.to_string()])?
         .into_url();
     let builder = reqwest::blocking::Client::new().delete(url);
-    let response = RestApiSender::new(builder, &debug).send()?;
+    let response = RestApiSender::new(builder, &debug, &tls).send()?;
     response.ok_response()?;
     println!("Success");
     Ok(())
 }
 
-fn get_logs(addr: HostAddr, debug: DebugFlag, output_format: OutputFormat) -> Result<(), Error> {
+fn get_logs(
+    addr: HostAddr,
+    debug: DebugFlag,
+    tls: TlsCert,
+    output_format: OutputFormat,
+) -> Result<(), Error> {
     let url = addr.with_segments(&["v0", "leaders", "logs"])?.into_url();
     let builder = reqwest::blocking::Client::new().get(url);
-    let response = RestApiSender::new(builder, &debug).send()?;
+    let response = RestApiSender::new(builder, &debug, &tls).send()?;
     response.ok_response()?;
     let logs = response.body().json_value()?;
     let formatted = output_format.format_json(logs)?;
