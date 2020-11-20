@@ -21,6 +21,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use thiserror::Error;
 use tokio::time;
+use tokio_util::sync::CancellationToken;
 
 // Constants
 
@@ -642,16 +643,13 @@ async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeer
     peers
 }
 
-pub async fn bootstrap<S>(
+pub async fn bootstrap(
     config: &Configuration,
     blockchain: NewBlockchain,
     branch: Tip,
-    bootstrap_stopper: S,
+    cancellation_token: CancellationToken,
     logger: &Logger,
-) -> Result<bool, bootstrap::Error>
-where
-    S: Future<Output = Result<(), futures::channel::oneshot::Canceled>> + Unpin + Clone,
-{
+) -> Result<bool, bootstrap::Error> {
     use futures::future::{select, Either, FutureExt};
 
     if config.protocol != Protocol::Grpc {
@@ -668,14 +666,15 @@ where
 
     let mut bootstrapped = false;
 
-    let (netboot_peers, bootstrap_stopper) =
-        match select(netboot_peers(config, logger).boxed(), bootstrap_stopper).await {
-            Either::Left(result) => result,
-            Either::Right((bootstrap_stopper_result, _)) => match bootstrap_stopper_result {
-                Ok(()) => return Err(bootstrap::Error::Interrupted),
-                Err(_) => panic!("failed to wait for SIGINT"),
-            },
-        };
+    let (netboot_peers, _) = match select(
+        netboot_peers(config, logger).boxed(),
+        cancellation_token.cancelled().boxed(),
+    )
+    .await
+    {
+        Either::Left(result) => result,
+        Either::Right(((), _)) => return Err(bootstrap::Error::Interrupted),
+    };
 
     for peer in netboot_peers.randomly() {
         let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
@@ -683,7 +682,7 @@ where
             peer,
             blockchain.clone(),
             branch.clone(),
-            bootstrap_stopper.clone(),
+            cancellation_token.clone(),
             logger.clone(),
         )
         .await;

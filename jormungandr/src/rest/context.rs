@@ -15,8 +15,7 @@ use jormungandr_lib::interfaces::NodeState;
 
 use slog::Logger;
 use tokio::sync::RwLock;
-
-use futures::channel::oneshot;
+use tokio_util::sync::CancellationToken;
 
 pub type ContextLock = Arc<RwLock<Context>>;
 
@@ -28,7 +27,7 @@ pub struct Context {
     diagnostic: Option<Diagnostic>,
     blockchain: Option<Blockchain>,
     blockchain_tip: Option<Tip>,
-    bootstrap_stopper: Option<oneshot::Sender<()>>,
+    bootstrap_stopper: Option<CancellationToken>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -123,7 +122,7 @@ impl Context {
         self.blockchain_tip.as_ref().ok_or(Error::BlockchainTip)
     }
 
-    pub fn set_bootstrap_stopper(&mut self, bootstrap_stopper: oneshot::Sender<()>) {
+    pub fn set_bootstrap_stopper(&mut self, bootstrap_stopper: CancellationToken) {
         self.bootstrap_stopper = Some(bootstrap_stopper);
     }
 
@@ -134,7 +133,7 @@ impl Context {
     pub fn stop_bootstrap(&mut self) {
         self.bootstrap_stopper
             .take()
-            .map(|bootstrap_stopper| bootstrap_stopper.send(()));
+            .map(|cancelltion_token| cancelltion_token.cancel());
     }
 }
 
