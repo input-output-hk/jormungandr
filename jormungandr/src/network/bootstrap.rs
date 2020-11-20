@@ -42,6 +42,8 @@ pub enum Error {
     ChainSelectionFailed(#[source] BlockchainError),
     #[error("the bootstrap process was interrupted")]
     Interrupted,
+    #[error("Trusted peers cannot be empty. To avoid bootstrap use `skip_bootstrap: true`")]
+    EmptyTrustedPeers,
 }
 
 const MAX_BOOTSTRAP_PEERS: u32 = 32;
