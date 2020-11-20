@@ -131,9 +131,9 @@ impl Context {
     }
 
     pub fn stop_bootstrap(&mut self) {
-        self.bootstrap_stopper
-            .take()
-            .map(|cancelltion_token| cancelltion_token.cancel());
+        if let Some(cancellation_token) = self.bootstrap_stopper.take() {
+            cancellation_token.cancel();
+        }
     }
 }
 
