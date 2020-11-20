@@ -102,19 +102,23 @@ impl ScenariosRepository {
     ) -> ScenarioSuiteResult {
         let mut suite_result = ScenarioSuiteResult::new();
         for scenario_to_run in available_scenarios {
+            if scenario_to_run.tags().contains(&Tag::Unstable) {
+                let scenario_result = ScenarioResult::ignored(scenario_to_run.name());
+
+                if self.report_unstable {
+                    println!("Scenario '{}' {}", scenario_to_run.name(), scenario_result);
+                }
+
+                suite_result.push(scenario_result);
+
+                continue;
+            }
+
             suite_result.push(self.run_single_scenario(
                 &scenario_to_run.name(),
                 &available_scenarios,
                 &mut context,
             ));
-        }
-
-        if self.report_unstable {
-            for scenario in self.scenarios_tagged_by(Tag::Unstable) {
-                let scenario_result = ScenarioResult::ignored();
-                println!("Scenario '{}' {}", scenario.name(), scenario_result);
-                suite_result.push(scenario_result);
-            }
         }
         suite_result
     }
@@ -146,7 +150,7 @@ impl ScenariosRepository {
                 std::panic::catch_unwind(|| scenario_to_run(context.clone().derive()))
             }
         };
-        let scenario_result = ScenarioResult::from_result(result);
+        let scenario_result = ScenarioResult::from_result(scenario.name(), result);
         println!("Scenario '{}' {}", scenario.name(), scenario_result);
         scenario_result
     }
@@ -183,7 +187,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "leader_restart",
         leader_restart,
-        vec![Tag::Unstable],
+        vec![Tag::Short, Tag::Unstable],
     ));
     repository.push(Scenario::new(
         "passive_node_is_updated",

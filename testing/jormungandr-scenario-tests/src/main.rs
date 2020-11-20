@@ -9,18 +9,19 @@ mod vit_station;
 mod scenario;
 mod example_scenarios;
 mod interactive;
+mod report;
 mod slog;
 mod test;
 mod wallet;
 
 use node::{Node, NodeBlock0, NodeController};
 use programs::prepare_command;
+use report::Reporter;
 use scenario::{
     parse_progress_bar_mode_from_str,
     repository::{parse_tag_from_str, ScenarioResult, ScenariosRepository, Tag},
     Context, ProgressBarMode, Seed,
 };
-
 use vit_station::{VitStation, VitStationController, VitStationControllerError};
 
 pub use jortestkit::console::style;
@@ -102,6 +103,10 @@ struct CommandArgs {
     /// lists tests under tag
     #[structopt(long = "list-only")]
     list_only: Option<String>,
+
+    /// print junit like report to output
+    #[structopt(short = "r", long = "print-report")]
+    report: bool,
 }
 
 fn main() {
@@ -152,6 +157,11 @@ fn main() {
 
     let scenario_suite_result = scenarios_repo.run(&context);
     println!("{}", scenario_suite_result.result_string());
+
+    if command_args.report {
+        let reporter = Reporter::new(scenario_suite_result.clone());
+        reporter.print()
+    }
 
     if command_args.set_exit_code {
         std::process::exit(if scenario_suite_result.is_failed() {

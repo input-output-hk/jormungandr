@@ -12,9 +12,13 @@ use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 
+use function_name::named;
+
+#[named]
 pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "L2101-Leader_to_leader_communication",
+        name,
         &mut context,
         topology [
             LEADER_1 -> LEADER_2,
@@ -68,5 +72,5 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
     monitor.snapshot()?;
     monitor.stop().print();
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

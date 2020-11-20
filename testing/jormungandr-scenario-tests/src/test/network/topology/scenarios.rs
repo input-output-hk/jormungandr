@@ -21,7 +21,11 @@ const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";
 const RELAY_NODE_2: &str = "Relay2";
 
+use function_name::named;
+
+#[named]
 pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
         "T3001_Fully-Connected",
         &mut context,
@@ -98,12 +102,14 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "T3002_Star",
+        name,
         &mut context,
         topology [
             LEADER_5,
@@ -180,12 +186,14 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "T3004_Mesh",
+        name,
         &mut context,
         topology [
             LEADER_4,
@@ -265,12 +273,14 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "T3005-Point-to-Point",
+        name,
         &mut context,
         topology [
             LEADER_4,
@@ -343,12 +353,14 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "T3005-Point-to-Point-file-storage",
+        name,
         &mut context,
         topology [
             LEADER_4,
@@ -433,12 +445,14 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "T3006-Tree",
+        name,
         &mut context,
         topology [
             LEADER_1,
@@ -528,12 +542,14 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader1.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "T3007-Relay",
+        name,
         &mut context,
         topology [
             CORE_NODE,
@@ -654,5 +670,5 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     core.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

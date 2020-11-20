@@ -6,16 +6,19 @@ use crate::{
 
 use std::time::SystemTime;
 
+use function_name::named;
 use jortestkit::process::sleep;
 use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 
+#[named]
 pub fn leader_restart_preserves_leadership_log(
     mut context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Passive node promotion to leader",
+        name,
         &mut context,
         topology [
             LEADER_1,
@@ -78,5 +81,5 @@ pub fn leader_restart_preserves_leadership_log(
     leader_2.shutdown()?;
     leader_1.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

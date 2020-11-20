@@ -9,9 +9,13 @@ const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
 const LEADER4: &str = "LEADER4";
 
+use function_name::named;
+
+#[named]
 pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "p2p stats",
+        name,
         &mut context,
         topology [
             LEADER1,
@@ -102,5 +106,5 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     leader1.shutdown()?;
     leader3.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

@@ -6,11 +6,14 @@ use crate::{
     test::Result,
     Context,
 };
+use function_name::named;
 use rand_chacha::ChaChaRng;
 
+#[named]
 pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "simple network example",
+        name,
         &mut context,
         topology [
             "node1",
@@ -49,12 +52,14 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     node2.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
 
+#[named]
 pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Testing the network",
+        name,
         &mut context,
         topology [
             "Leader1",
@@ -120,5 +125,5 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     passive2.shutdown()?;
     passive3.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

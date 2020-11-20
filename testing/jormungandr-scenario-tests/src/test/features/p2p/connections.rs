@@ -3,15 +3,18 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
+use function_name::named;
 use rand_chacha::ChaChaRng;
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
 const LEADER4: &str = "LEADER4";
 
+#[named]
 pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "p2p stats",
+        name,
         &mut context,
         topology [
             LEADER1,
@@ -61,5 +64,5 @@ pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     leader3.shutdown()?;
     leader4.shutdown()?;
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }

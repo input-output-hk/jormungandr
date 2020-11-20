@@ -13,10 +13,13 @@ use std::time::{Duration, SystemTime};
 const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";
 const RELAY_NODE_2: &str = "Relay2";
+use function_name::named;
 
+#[named]
 pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
     let scenario_settings = prepare_scenario! {
-        "Relay-Soak",
+        &name,
         &mut context,
         topology [
             CORE_NODE,
@@ -163,5 +166,5 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     core.shutdown()?;
 
     controller.finalize();
-    Ok(ScenarioResult::passed())
+    Ok(ScenarioResult::passed(name))
 }
