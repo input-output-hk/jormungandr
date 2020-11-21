@@ -68,7 +68,7 @@ impl JormungandrRest {
         self.inner.raw()
     }
 
-    pub fn new_with_cert(uri: String, cert_file: &ChildPath) -> Self {
+    pub fn new_with_cert<P: AsRef<Path>>(uri: String, cert_file: P) -> Self {
         //replace http with https
         //replace localhost ip to localhost
         let url = uri
@@ -76,7 +76,7 @@ impl JormungandrRest {
             .replace("127.0.0.1", "localhost");
 
         let mut settings: RestSettings = Default::default();
-        settings.certificate = Some(Self::extract_certificate(cert_file.path()));
+        settings.certificate = Some(Self::extract_certificate(cert_file.as_ref()));
 
         Self {
             inner: legacy::BackwardCompatibleRest::new(url, settings),
@@ -87,7 +87,7 @@ impl JormungandrRest {
         let mut buf = Vec::new();
         let path = cert_file.as_ref().as_os_str().to_str().unwrap();
         File::open(path).unwrap().read_to_end(&mut buf).unwrap();
-        reqwest::Certificate::from_der(&buf).unwrap()
+        reqwest::Certificate::from_pem(&buf).unwrap()
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<EpochRewardsInfo, RestError> {
