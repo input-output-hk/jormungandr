@@ -7,7 +7,6 @@ pub use raw::RawRest;
 pub use settings::RestSettings;
 
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
-use assert_fs::fixture::ChildPath;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,

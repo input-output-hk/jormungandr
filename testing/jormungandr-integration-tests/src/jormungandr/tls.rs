@@ -4,12 +4,11 @@ use crate::common::{
 };
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::Tls;
-use jormungandr_testing_utils::testing::Openssl;
 
 #[test]
 #[cfg(any(unix, windows))]
 pub fn test_rest_tls_config() {
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().unwrap().into_persistent();
     let prv_key_file = resources::tls_server_private_key();
     let server_crt_file = resources::tls_server_crt();
     let ca_crt_file = resources::tls_ca_crt();

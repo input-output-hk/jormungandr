@@ -1,6 +1,6 @@
 use super::JormungandrError;
 use crate::common::jcli::JCli;
-use assert_fs::{fixture::ChildPath, TempDir};
+use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
