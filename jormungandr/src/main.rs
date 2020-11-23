@@ -510,7 +510,22 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 }
 
 #[cfg(not(unix))]
-fn init_os_signal_watchers(_services: &mut Services) {}
+fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
+    use signal::ctrl_c;
+
+    services.spawn_future("ctrl_c_watcher", move |info| {
+        ctrl_c().then(move |result| match result {
+            Ok(()) => {
+                token.cancel();
+                future::ready(()).left_future()
+            }
+            Err(e) => {
+                warn!(info.logger(), "ctrl+c watcher failed"; "reason" => %e);
+                future::pending().right_future()
+            }
+        })
+    });
+}
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
