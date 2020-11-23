@@ -24,35 +24,57 @@ p2p:
 
 In order to enable TLS there must be provided certificate and private key files.
 
-#### Example generation of files for self-signed TLS
+#### `jcli` TLS requirements.
 
-Generate private key
+Note that `jormungandr` itself does not have any specific requirements for TLS certificates and you
+may give whatever you want including self-signed certificates as long as you do not intend to use
+`jcli`.
 
-```bash
-openssl genrsa -out priv.key 2048
-```
+The cryptography standards used by `jcli` as well as by all modern browsers and many http clients
+place the following requirements on certificates:
 
-Wrap private key in PKCS8
+- A certificate should adhere to X.509 v3 with appropriate key usage settings and subject
+  alternative name.
+- A certificate must not be self-signed.
 
-```bash
-openssl pkcs8 -topk8 -inform PEM -outform PEM -in priv.key -out priv.pk8 -nocrypt
-```
+Given that, your options are to either get a certificate from a well-known CA (Let's Encrypt will
+do, `jcli` uses Mozilla's CA bundle for verification) or create your own local CA and provide the
+root certificate to `jcli` via the `--tls-cert-path` option.
 
-Generate a self-signed certificate for private key
+#### Creating a local CA using OpenSSL and EasyRSA
 
-```bash
-openssl req -new -key priv.key -out cert_req.csr
-openssl x509 -req -days 3650 -in cert_req.csr -signkey priv.key -out cert.crt
-```
+EasyRSA is a set of scripts that use OpenSSL and give you an easier experience with setting up your
+local CA. You can download them [here](https://github.com/OpenVPN/easy-rsa).
 
-Use generated files in config
+1. Go to `easy-rsa/easy-rsa3`.
+2. Configure your CA. To do that, create the configuration file (`cp vars.example vars`); open it
+   with the text editor of your choise (for example, `vim vars`); uncomment and edit fields you
+   need to change. Each CA needs to edit these lines (find then in your `vars` file according to
+   their organization structure:
+
+    #set_var.EASYRSA_REQ_COUNTRY----"US"
+    #set_var.EASYRSA_REQ_PROVINCE---"California"
+    #set_var.EASYRSA_REQ_CITY---"San.Francisco"
+    #set_var.EASYRSA_REQ_ORG----"Copyleft.Certificate.Co"
+    #set_var.EASYRSA_REQ_EMAIL--"me@example.net"
+    #set_var.EASYRSA_REQ_OU-----"My.Organizational.Unit"
+
+3. When your configuration is ready, run `./easyrsa init-pki` and `./easyrsa build-ca nopass`. You
+   will be prompted to set the name of your CA.
+4. Run `./easyrsa gen-req server nopass` to create a new private key and a certificate signing
+   request. You will be prompted to enter the host name (`localhost` for local testing).
+5. Run `./easyrsa sign-req server server` to sign the request.
+
+To use the generated certificate, use it and the corresponding key in your `jormungandr` config:
 
 ```yaml
 rest:
   tls:
-    cert_file: cert.crt
-    priv_key_file: priv.pk8
+    cert_file: <path to server.crt>
+    priv_key_file: <path to server.key>
 ```
+
+Use the CA certificate with `jcli`.
 
 ## P2P configuration
 
