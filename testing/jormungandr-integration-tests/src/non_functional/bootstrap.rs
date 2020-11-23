@@ -7,6 +7,7 @@ use jormungandr_testing_utils::testing::{BranchCount, StopCriteria, StorageBuild
 use std::time::Duration;
 
 #[test]
+#[ignore]
 pub fn bootstrap_from_100_mb_storage() {
     let storage_size = 100;
     let temp_dir = TempDir::new().unwrap().into_persistent();
