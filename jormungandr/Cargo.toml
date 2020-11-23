@@ -39,7 +39,7 @@ poldercast = { git = "https://github.com/primetype/poldercast.git" }
 multiaddr = { package = "parity-multiaddr", version = "0.9" }
 rand = "0.7"
 rand_chacha = "0.2.2"
-rustls = "0.18.1"
+rustls = "0.19.0"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0.59"
