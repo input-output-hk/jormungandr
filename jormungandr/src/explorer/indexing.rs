@@ -14,7 +14,9 @@ use chain_impl_mockchain::certificate::{
 use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
 use chain_impl_mockchain::value::Value;
-use chain_impl_mockchain::vote::{Choice, Options, PayloadType, Weight};
+use chain_impl_mockchain::vote::{
+    Choice, EncryptedVote, Options, PayloadType, ProofOfCorrectVote, Weight,
+};
 use std::{convert::TryInto, sync::Arc};
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
@@ -105,11 +107,20 @@ pub struct ExplorerVotePlan {
 }
 
 #[derive(Clone)]
+pub enum ExplorerVote {
+    Public(Choice),
+    Private {
+        proof: ProofOfCorrectVote,
+        encrypted_vote: EncryptedVote,
+    },
+}
+
+#[derive(Clone)]
 pub struct ExplorerVoteProposal {
     pub proposal_id: ExternalProposalId,
     pub options: Options,
     pub tally: Option<ExplorerVoteTally>,
-    pub votes: Hamt<ExplorerAddress, Choice>,
+    pub votes: Hamt<ExplorerAddress, ExplorerVote>,
 }
 
 // TODO do proper vote tally
