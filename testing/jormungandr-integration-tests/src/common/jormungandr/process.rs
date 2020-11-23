@@ -1,6 +1,6 @@
 use super::JormungandrError;
 use crate::common::jcli::JCli;
-use assert_fs::{fixture::ChildPath, TempDir};
+use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -15,6 +15,7 @@ use jormungandr_testing_utils::testing::{
 };
 use jormungandr_testing_utils::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
 use std::net::SocketAddr;
+use std::path::Path;
 use std::process::Child;
 use std::str::FromStr;
 
@@ -60,7 +61,7 @@ impl JormungandrProcess {
         JormungandrRest::new(self.rest_uri())
     }
 
-    pub fn secure_rest(&self, cert: &ChildPath) -> JormungandrRest {
+    pub fn secure_rest<P: AsRef<Path>>(&self, cert: P) -> JormungandrRest {
         JormungandrRest::new_with_cert(self.rest_uri(), cert)
     }
 
