@@ -928,23 +928,58 @@ an origin should include a scheme, for example: <code>http://127.0.0.1:8080</cod
 </ul>
 <h3><a class="header" href="#configuring-tls" id="configuring-tls">Configuring TLS</a></h3>
 <p>In order to enable TLS there must be provided certificate and private key files.</p>
-<h4><a class="header" href="#example-generation-of-files-for-self-signed-tls" id="example-generation-of-files-for-self-signed-tls">Example generation of files for self-signed TLS</a></h4>
-<p>Generate private key</p>
-<pre><code class="language-bash">openssl genrsa -out priv.key 2048
-</code></pre>
-<p>Wrap private key in PKCS8</p>
-<pre><code class="language-bash">openssl pkcs8 -topk8 -inform PEM -outform PEM -in priv.key -out priv.pk8 -nocrypt
-</code></pre>
-<p>Generate a self-signed certificate for private key</p>
-<pre><code class="language-bash">openssl req -new -key priv.key -out cert_req.csr
-openssl x509 -req -days 3650 -in cert_req.csr -signkey priv.key -out cert.crt
-</code></pre>
-<p>Use generated files in config</p>
+<h4><a class="header" href="#jcli-tls-requirements" id="jcli-tls-requirements"><code>jcli</code> TLS requirements.</a></h4>
+<p>Note that <code>jormungandr</code> itself does not have any specific requirements for TLS certificates and you
+may give whatever you want including self-signed certificates as long as you do not intend to use
+<code>jcli</code>.</p>
+<p>The cryptography standards used by <code>jcli</code> as well as by all modern browsers and many http clients
+place the following requirements on certificates:</p>
+<ul>
+<li>A certificate should adhere to X.509 v3 with appropriate key usage settings and subject
+alternative name.</li>
+<li>A certificate must not be self-signed.</li>
+</ul>
+<p>Given that, your options are to either get a certificate from a well-known CA (Let's Encrypt will
+do, <code>jcli</code> uses Mozilla's CA bundle for verification) or create your own local CA and provide the
+root certificate to <code>jcli</code> via the <code>--tls-cert-path</code> option.</p>
+<h4><a class="header" href="#creating-a-local-ca-using-openssl-and-easyrsa" id="creating-a-local-ca-using-openssl-and-easyrsa">Creating a local CA using OpenSSL and EasyRSA</a></h4>
+<p>EasyRSA is a set of scripts that use OpenSSL and give you an easier experience with setting up your
+local CA. You can download them <a href="https://github.com/OpenVPN/easy-rsa">here</a>.</p>
+<ol>
+<li>
+<p>Go to <code>easy-rsa/easy-rsa3</code>.</p>
+</li>
+<li>
+<p>Configure your CA. To do that, create the configuration file (<code>cp vars.example vars</code>); open it
+with the text editor of your choise (for example, <code>vim vars</code>); uncomment and edit fields you
+need to change. Each CA needs to edit these lines (find then in your <code>vars</code> file according to
+their organization structure:</p>
+<p>#set_var.EASYRSA_REQ_COUNTRY----&quot;US&quot;
+#set_var.EASYRSA_REQ_PROVINCE---&quot;California&quot;
+#set_var.EASYRSA_REQ_CITY---&quot;San.Francisco&quot;
+#set_var.EASYRSA_REQ_ORG----&quot;Copyleft.Certificate.Co&quot;
+#set_var.EASYRSA_REQ_EMAIL--&quot;me@example.net&quot;
+#set_var.EASYRSA_REQ_OU-----&quot;My.Organizational.Unit&quot;</p>
+</li>
+<li>
+<p>When your configuration is ready, run <code>./easyrsa init-pki</code> and <code>./easyrsa build-ca nopass</code>. You
+will be prompted to set the name of your CA.</p>
+</li>
+<li>
+<p>Run <code>./easyrsa gen-req server nopass</code> to create a new private key and a certificate signing
+request. You will be prompted to enter the host name (<code>localhost</code> for local testing).</p>
+</li>
+<li>
+<p>Run <code>./easyrsa sign-req server server</code> to sign the request.</p>
+</li>
+</ol>
+<p>To use the generated certificate, use it and the corresponding key in your <code>jormungandr</code> config:</p>
 <pre><code class="language-yaml">rest:
   tls:
-    cert_file: cert.crt
-    priv_key_file: priv.pk8
+    cert_file: &lt;path to server.crt&gt;
+    priv_key_file: &lt;path to server.key&gt;
 </code></pre>
+<p>Use the CA certificate with <code>jcli</code>.</p>
 <h2><a class="header" href="#p2p-configuration" id="p2p-configuration">P2P configuration</a></h2>
 <ul>
 <li><code>trusted_peers</code>: (optional) the list of nodes' <a href="https://github.com/multiformats/multiaddr">multiaddr</a> to connect to in order to
