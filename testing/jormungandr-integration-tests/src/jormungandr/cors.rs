@@ -89,6 +89,7 @@ pub fn cors_wrong_delimiter() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+#[cfg(windows)]
 pub fn cors_single_domain() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new().unwrap();
 
@@ -110,6 +111,7 @@ pub fn cors_single_domain() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+#[cfg(windows)]
 pub fn cors_https() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new().unwrap();
 
@@ -132,7 +134,7 @@ pub fn cors_https() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 pub fn cors_multi_domain() -> Result<(), Box<dyn std::error::Error>> {
-    let temp_dir = TempDir::new().unwrap().into_persistent();
+    let temp_dir = TempDir::new().unwrap();
 
     let config = ConfigurationBuilder::new()
         .with_rest_cors_config(Cors {
