@@ -542,6 +542,11 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     debug!(init_logger, "system settings are: {}", diagnostic);
 
     let settings = raw_settings.try_into_settings(&init_logger)?;
+
+    if settings.network.trusted_peers.is_empty() && !settings.network.skip_bootstrap {
+        return Err(network::bootstrap::Error::EmptyTrustedPeers.into());
+    }
+
     let mut services = Services::new(logger.clone());
 
     services.spawn_try_future("sigint_watcher", move |_info| {

@@ -663,11 +663,7 @@ where
     }
 
     if config.trusted_peers.is_empty() {
-        error!(
-            logger,
-            "trusted-peers cannot be empty. to avoid bootstrap use 'skip_bootstrap: true'"
-        );
-        //panic!("use non empty trusted-peers or set skip_bootstrap");
+        return Err(bootstrap::Error::EmptyTrustedPeers);
     }
 
     let mut bootstrapped = false;
