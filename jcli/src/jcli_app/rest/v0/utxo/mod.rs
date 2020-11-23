@@ -1,5 +1,5 @@
 use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender};
+use crate::jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender, TlsCert};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -28,6 +28,9 @@ enum Subcommand {
 
         #[structopt(flatten)]
         debug: DebugFlag,
+
+        #[structopt(flatten)]
+        tls: TlsCert,
     },
 }
 
@@ -37,6 +40,7 @@ impl Utxo {
             output_format,
             addr,
             debug,
+            tls,
         } = self.subcommand;
         let url = addr
             .with_segments(&[
@@ -47,7 +51,7 @@ impl Utxo {
             ])?
             .into_url();
         let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug).send()?;
+        let response = RestApiSender::new(builder, &debug, &tls).send()?;
         response.ok_response()?;
         let status = response.body().json_value()?;
         let formatted = output_format.format_json(status)?;

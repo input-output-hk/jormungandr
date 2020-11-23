@@ -1,7 +1,7 @@
-use crate::jcli_app::utils::{open_api_verifier, DebugFlag, OpenApiVerifier};
+use crate::jcli_app::utils::{open_api_verifier, tls_cert, DebugFlag, OpenApiVerifier, TlsCert};
 use reqwest::{
     self,
-    blocking::{Client, Request, RequestBuilder, Response},
+    blocking::{Request, RequestBuilder, Response},
     header::HeaderValue,
 };
 use serde::{self, Serialize};
@@ -15,6 +15,7 @@ pub struct RestApiSender<'a> {
     builder: RequestBuilder,
     body: RestApiRequestBody,
     debug_flag: &'a DebugFlag,
+    cert: &'a TlsCert,
 }
 
 pub struct RestApiResponse {
@@ -50,6 +51,8 @@ pub enum Error {
     ResponseJsonDeserializationError(#[source] SerdeJsonError),
     #[error("response must be encoded with UTF-8")]
     ResponseEncodingError(#[from] FromUtf8Error),
+    #[error("invalid TLS certificate or path")]
+    Cert(#[from] tls_cert::Error),
 }
 
 fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
@@ -72,11 +75,12 @@ fn reqwest_error_msg(err: &reqwest::Error) -> &'static str {
 }
 
 impl<'a> RestApiSender<'a> {
-    pub fn new(builder: RequestBuilder, debug_flag: &'a DebugFlag) -> Self {
+    pub fn new(builder: RequestBuilder, debug_flag: &'a DebugFlag, cert: &'a TlsCert) -> Self {
         Self {
             builder,
             body: RestApiRequestBody::none(),
             debug_flag,
+            cert,
         }
     }
 
@@ -96,7 +100,7 @@ impl<'a> RestApiSender<'a> {
         OpenApiVerifier::load_from_env()?.verify_request(&request, &self.body)?;
         self.debug_flag.write_request(&request, &self.body);
         self.body.apply_body(&mut request);
-        let response_raw = Client::new().execute(request)?;
+        let response_raw = self.cert.client_with_cert()?.execute(request)?;
         let response = RestApiResponse::new(response_raw)?;
         self.debug_flag.write_response(&response);
         Ok(response)

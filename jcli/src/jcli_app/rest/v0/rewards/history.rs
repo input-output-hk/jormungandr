@@ -1,5 +1,5 @@
 use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, RestApiSender};
+use crate::jcli_app::utils::{DebugFlag, HostAddr, RestApiSender, TlsCert};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -13,6 +13,8 @@ pub enum History {
         debug: DebugFlag,
         /// Number of epochs
         length: usize,
+        #[structopt(flatten)]
+        tls: TlsCert,
     },
 }
 
@@ -22,12 +24,13 @@ impl History {
             addr,
             debug,
             length,
+            tls,
         } = self;
         let url = addr
             .with_segments(&["v0", "rewards", "history", &length.to_string()])?
             .into_url();
         let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug).send()?;
+        let response = RestApiSender::new(builder, &debug, &tls).send()?;
         response.ok_response()?;
         let history = response.body().text();
         println!("{}", history.as_ref());
