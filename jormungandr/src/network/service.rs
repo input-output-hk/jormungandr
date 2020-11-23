@@ -138,7 +138,7 @@ impl BlockService for NodeService {
 
     async fn pull_blocks(
         &self,
-        from: BlockId,
+        from: BlockIds,
         to: BlockId,
     ) -> Result<Self::PullBlocksStream, Error> {
         let from = from.decode()?;

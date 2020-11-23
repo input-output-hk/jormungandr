@@ -142,13 +142,13 @@ impl JormungandrClient {
 
     pub async fn pull_blocks(
         &self,
-        from: Hash,
+        from: &[Hash],
         to: Hash,
     ) -> Result<Vec<LibBlock>, MockClientError> {
         let mut client = NodeClient::connect(self.address()).await.unwrap();
 
         let request = tonic::Request::new(PullBlocksRequest {
-            from: self.hash_to_bin(&from),
+            from: self.hashes_to_bin_vec(from),
             to: self.hash_to_bin(&to),
         });
         let response = client

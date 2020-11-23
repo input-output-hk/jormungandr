@@ -360,7 +360,7 @@ pub async fn pull_blocks_correct_hashes_all_blocks() {
     let genesis_block_hash = Hash::from_str(config.genesis_block_hash()).unwrap();
 
     let blocks = client
-        .pull_blocks(genesis_block_hash, client.tip().await.id())
+        .pull_blocks(&[genesis_block_hash], client.tip().await.id())
         .await
         .unwrap();
 
@@ -391,7 +391,10 @@ pub async fn pull_blocks_correct_hashes_partial() {
     let expected_hashes = block_hashes_from_logs[start..end].to_vec();
 
     let blocks = client
-        .pull_blocks(expected_hashes[0], expected_hashes.last().copied().unwrap())
+        .pull_blocks(
+            &[expected_hashes[0]],
+            expected_hashes.last().copied().unwrap(),
+        )
         .await
         .unwrap();
 
@@ -420,7 +423,10 @@ pub async fn pull_blocks_hashes_wrong_order() {
     let expected_hashes = block_hashes_from_logs[start..end].to_vec();
 
     let result = client
-        .pull_blocks(expected_hashes.last().copied().unwrap(), expected_hashes[0])
+        .pull_blocks(
+            &[expected_hashes.last().copied().unwrap()],
+            expected_hashes[0],
+        )
         .await;
 
     assert!(result.is_err());
@@ -440,7 +446,7 @@ pub async fn pull_blocks_incorrect_hashes() {
     let to = TestGen::hash();
 
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
-    let result = client.pull_blocks(from, to).await;
+    let result = client.pull_blocks(&[from], to).await;
 
     assert!(result.is_err());
 }

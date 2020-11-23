@@ -538,7 +538,7 @@ pub enum ClientMsg {
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
     GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
-    PullBlocks(HeaderHash, HeaderHash, ReplyStreamHandle<Block>),
+    PullBlocks(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Block>),
     PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
 }
 

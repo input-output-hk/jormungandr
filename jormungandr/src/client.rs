@@ -176,14 +176,14 @@ async fn handle_get_headers(
 
 async fn handle_pull_blocks(
     storage: Storage,
-    from: HeaderHash,
+    from: Vec<HeaderHash>,
     to: HeaderHash,
     handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
     use crate::intercom::Error as IntercomError;
 
     let res = storage
-        .find_closest_ancestor(vec![from], to)
+        .find_closest_ancestor(from, to)
         .map_err(Into::into)
         .and_then(move |maybe_ancestor| {
             maybe_ancestor
