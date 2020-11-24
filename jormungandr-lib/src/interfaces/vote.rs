@@ -514,7 +514,7 @@ impl From<vote::Payload> for Payload {
                 encrypted_vote,
                 proof,
             } => Self::Private {
-                encrypted_vote: encrypted_vote.iter().flat_map(|ct| ct.to_bytes()).collect(),
+                encrypted_vote: encrypted_vote.serialize().into(),
                 proof: proof.serialize().into(),
             },
         }

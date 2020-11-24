@@ -17,6 +17,7 @@ use crate::blockcfg::{
     HeaderHash,
 };
 use crate::blockchain::{self, Blockchain, Multiverse, MAIN_BRANCH_TAG};
+use crate::explorer::indexing::ExplorerVote;
 use crate::intercom::ExplorerMsg;
 use crate::utils::async_msg::MessageQueue;
 use crate::utils::task::TokioServiceInfo;
@@ -634,9 +635,15 @@ fn apply_block_to_vote_plans(
                                 proposals[vote_cast.proposal_index() as usize].votes = proposals
                                     [vote_cast.proposal_index() as usize]
                                     .votes
-                                    .insert_or_update(voter, Arc::new(*choice), |_| {
-                                        Ok::<_, std::convert::Infallible>(Some(Arc::new(*choice)))
-                                    })
+                                    .insert_or_update(
+                                        voter,
+                                        Arc::new(ExplorerVote::Public(*choice)),
+                                        |_| {
+                                            Ok::<_, std::convert::Infallible>(Some(Arc::new(
+                                                ExplorerVote::Public(*choice),
+                                            )))
+                                        },
+                                    )
                                     .unwrap();
                                 let vote_plan = ExplorerVotePlan {
                                     proposals,
@@ -645,10 +652,38 @@ fn apply_block_to_vote_plans(
                                 Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
                             })
                             .unwrap(),
-                        Payload::Private { .. } => {
-                            // TODO: what to do exactly in this case?
-                            unimplemented!("Private payload are not implemented in explorer")
-                        }
+                        Payload::Private {
+                            proof,
+                            encrypted_vote,
+                        } => vote_plans
+                            .update(vote_cast.vote_plan(), |vote_plan| {
+                                let mut proposals = vote_plan.proposals.clone();
+                                proposals[vote_cast.proposal_index() as usize].votes = proposals
+                                    [vote_cast.proposal_index() as usize]
+                                    .votes
+                                    .insert_or_update(
+                                        voter,
+                                        Arc::new(ExplorerVote::Private {
+                                            proof: proof.clone(),
+                                            encrypted_vote: encrypted_vote.clone(),
+                                        }),
+                                        |_| {
+                                            Ok::<_, std::convert::Infallible>(Some(Arc::new(
+                                                ExplorerVote::Private {
+                                                    proof: proof.clone(),
+                                                    encrypted_vote: encrypted_vote.clone(),
+                                                },
+                                            )))
+                                        },
+                                    )
+                                    .unwrap();
+                                let vote_plan = ExplorerVotePlan {
+                                    proposals,
+                                    ..(**vote_plan).clone()
+                                };
+                                Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                            })
+                            .unwrap(),
                     }
                 }
                 Certificate::VoteTally(vote_tally) => {

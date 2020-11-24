@@ -28,7 +28,9 @@ use self::scalars::{
     PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId, Weight,
 };
 
+use crate::explorer::indexing::ExplorerVote;
 use crate::explorer::{ExplorerDB, Settings};
+use chain_impl_mockchain::vote::{EncryptedVote, ProofOfCorrectVote};
 
 #[derive(Clone)]
 pub struct Block {
@@ -899,6 +901,12 @@ pub struct VotePayloadPublicStatus {
     choice: i32,
 }
 
+#[derive(Clone)]
+pub struct VotePayloadPrivateStatus {
+    proof: ProofOfCorrectVote,
+    encrypted_vote: EncryptedVote,
+}
+
 #[juniper::object(
     Context = Context
 )]
@@ -908,14 +916,37 @@ impl VotePayloadPublicStatus {
     }
 }
 
+#[juniper::object(
+Context = Context
+)]
+impl VotePayloadPrivateStatus {
+    pub fn proof(&self, _context: &Context) -> String {
+        let bytes_proof = self.proof.serialize();
+        base64::encode_config(bytes_proof, base64::URL_SAFE)
+    }
+
+    pub fn encrypted_vote(&self, _context: &Context) -> String {
+        let encrypted_bote_bytes = self.encrypted_vote.serialize();
+        base64::encode_config(encrypted_bote_bytes, base64::URL_SAFE)
+    }
+}
+
 #[derive(Clone)]
 pub enum VotePayloadStatus {
     Public(VotePayloadPublicStatus),
+    Private(VotePayloadPrivateStatus),
 }
 
 graphql_union!(VotePayloadStatus: Context |&self| {
     instance_resolvers: |_| {
-        &VotePayloadPublicStatus => match *self { VotePayloadStatus::Public(ref c) => Some(c) },
+        &VotePayloadPublicStatus => match *self {
+            VotePayloadStatus::Public(ref c) => Some(c),
+            VotePayloadStatus::Private(_) => None,
+        },
+        &VotePayloadPrivateStatus => match *self {
+            VotePayloadStatus::Private(ref c) => Some(c),
+            VotePayloadStatus::Public(_) => None
+        },
     }
 });
 
@@ -1037,11 +1068,23 @@ impl VotePlanStatus {
                     votes: proposal
                         .votes
                         .iter()
-                        .map(|(key, value)| VoteStatus {
-                            address: key.into(),
-                            payload: VotePayloadStatus::Public(VotePayloadPublicStatus {
-                                choice: value.as_ref().as_byte().into(),
-                            }),
+                        .map(|(key, vote)| match vote.as_ref() {
+                            ExplorerVote::Public(choice) => VoteStatus {
+                                address: key.into(),
+                                payload: VotePayloadStatus::Public(VotePayloadPublicStatus {
+                                    choice: choice.as_byte().into(),
+                                }),
+                            },
+                            ExplorerVote::Private {
+                                proof,
+                                encrypted_vote,
+                            } => VoteStatus {
+                                address: key.into(),
+                                payload: VotePayloadStatus::Private(VotePayloadPrivateStatus {
+                                    proof: proof.clone(),
+                                    encrypted_vote: encrypted_vote.clone(),
+                                }),
+                            },
                         })
                         .collect(),
                 })
