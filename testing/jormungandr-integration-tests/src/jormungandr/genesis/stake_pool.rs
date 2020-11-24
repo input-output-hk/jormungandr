@@ -23,8 +23,8 @@ use std::str::FromStr;
 #[test]
 pub fn more_than_one_stake_pool_in_app() {
     let mut first_spo = startup::create_new_account_address();
-    let mut second_spo = startup::create_new_account_address();
-    let mut third_spo = startup::create_new_account_address();
+    let second_spo = startup::create_new_account_address();
+    let third_spo = startup::create_new_account_address();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[first_spo.clone(), second_spo.clone(), third_spo.clone()],
