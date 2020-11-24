@@ -33,7 +33,7 @@ structopt = "^0.3"
 lazy_static = "1.4"
 assert_fs = "1.0"
 predicates = "1.0"
-assert_cmd = "1.0.1"
+assert_cmd = "1.0.2"
 regex = "1.4"
 poldercast = { git = "https://github.com/primetype/poldercast.git" }
 thiserror = "1.0"
