@@ -454,4 +454,21 @@ pub fn jcli_e2e_flow() {
             .votes_cast,
         3
     );
+
+    assert_eq!(
+        jormungandr
+            .explorer()
+            .vote_plans(1)
+            .unwrap()
+            .data
+            .unwrap()
+            .all_vote_plans
+            .edges[0]
+            .node
+            .proposals[0]
+            .votes
+            .edges
+            .len(),
+        3
+    );
 }

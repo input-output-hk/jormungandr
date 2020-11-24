@@ -1,6 +1,8 @@
 use super::error::ErrorKind;
-use super::scalars::{BlockCount, IndexCursor, PoolCount, TransactionCount, VotePlanCount};
-use super::{Block, Context, Pool, Transaction, VotePlanStatus};
+use super::scalars::{
+    BlockCount, IndexCursor, PoolCount, TransactionCount, VotePlanCount, VoteStatusCount,
+};
+use super::{Block, Context, Pool, Transaction, VotePlanStatus, VoteStatus};
 use crate::blockcfg::HeaderHash;
 use crate::explorer::indexing::ExplorerTransaction;
 use juniper::FieldResult;
@@ -74,6 +76,19 @@ impl PoolEdge {
 )]
 impl VotePlanEdge {
     pub fn node(&self) -> &VotePlanStatus {
+        &self.node
+    }
+
+    pub fn cursor(&self) -> &IndexCursor {
+        &self.cursor
+    }
+}
+
+#[juniper::object(
+    Context = Context
+)]
+impl VoteStatusEdge {
+    pub fn node(&self) -> &VoteStatus {
         &self.node
     }
 
@@ -158,6 +173,25 @@ impl VotePlanConnection {
     }
 }
 
+#[juniper::object(
+    Context = Context,
+    name = "VoteStatusConnection"
+)]
+impl VoteStatusConnection {
+    pub fn page_info(&self) -> &PageInfo {
+        &self.page_info
+    }
+
+    pub fn edges(&self) -> &Vec<VoteStatusEdge> {
+        &self.edges
+    }
+
+    /// A count of the total number of objects in this connection, ignoring pagination.
+    pub fn total_count(&self) -> &VoteStatusCount {
+        &self.total_count
+    }
+}
+
 pub struct PageInfo {
     pub has_next_page: bool,
     pub has_previous_page: bool,
@@ -188,6 +222,11 @@ pub struct PoolEdge {
 
 pub struct VotePlanEdge {
     node: VotePlanStatus,
+    pub cursor: IndexCursor,
+}
+
+pub struct VoteStatusEdge {
+    node: VoteStatus,
     pub cursor: IndexCursor,
 }
 
@@ -295,6 +334,7 @@ pub type BlockConnection = Connection<BlockEdge, BlockCount>;
 pub type TransactionConnection = Connection<TransactionEdge, TransactionCount>;
 pub type PoolConnection = Connection<PoolEdge, PoolCount>;
 pub type VotePlanConnection = Connection<VotePlanEdge, VotePlanCount>;
+pub type VoteStatusConnection = Connection<VoteStatusEdge, VoteStatusCount>;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
@@ -349,6 +389,18 @@ impl Edge for VotePlanEdge {
 
     fn new(node: Self::Node, cursor: IndexCursor) -> Self {
         VotePlanEdge { node, cursor }
+    }
+
+    fn cursor(&self) -> &IndexCursor {
+        &self.cursor
+    }
+}
+
+impl Edge for VoteStatusEdge {
+    type Node = VoteStatus;
+
+    fn new(node: Self::Node, cursor: IndexCursor) -> Self {
+        VoteStatusEdge { node, cursor }
     }
 
     fn cursor(&self) -> &IndexCursor {

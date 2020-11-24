@@ -6,6 +6,7 @@ mod scalars;
 use self::connections::{
     BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
     PoolConnection, TransactionConnection, TransactionNodeFetchInfo, VotePlanConnection,
+    VoteStatusConnection,
 };
 use self::error::ErrorKind;
 use super::indexing::{
@@ -1165,8 +1166,48 @@ impl VoteProposalStatus {
         self.tally.as_ref()
     }
 
-    pub fn votes(&self) -> &[VoteStatus] {
-        &self.votes
+    pub fn votes(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
+        context: &Context,
+    ) -> FieldResult<VoteStatusConnection> {
+        let boundaries = if !self.votes.is_empty() {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: 0u32,
+                upper_bound: self
+                    .votes
+                    .len()
+                    .checked_sub(1)
+                    .unwrap()
+                    .try_into()
+                    .expect("tried to paginate more than 2^32 elements"),
+            })
+        } else {
+            PaginationInterval::Empty
+        };
+
+        let pagination_arguments = PaginationArguments {
+            first,
+            last,
+            before: before.map(u32::try_from).transpose()?,
+            after: after.map(u32::try_from).transpose()?,
+        }
+        .validate()?;
+
+        VoteStatusConnection::new(boundaries, pagination_arguments, |range| match range {
+            PaginationInterval::Empty => vec![],
+            PaginationInterval::Inclusive(range) => {
+                let from = range.lower_bound;
+                let to = range.upper_bound;
+
+                (from..=to)
+                    .map(|i: u32| (self.votes[i as usize].clone(), i))
+                    .collect::<Vec<(VoteStatus, u32)>>()
+            }
+        })
     }
 }
 
