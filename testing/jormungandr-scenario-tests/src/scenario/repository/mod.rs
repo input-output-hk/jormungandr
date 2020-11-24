@@ -76,21 +76,14 @@ impl ScenariosRepository {
     pub fn scenarios_tagged_by(&self, tag: Tag) -> Vec<Scenario> {
         match tag {
             Tag::All => self.repository.clone(),
-            Tag::Unstable => self
+            _ => self
                 .repository
                 .iter()
                 .cloned()
                 .filter(|x| x.has_tag(tag))
                 .collect(),
-            _ => self
-                .repository
-                .iter()
-                .cloned()
-                .filter(|x| x.has_tag(tag) && x.no_tag(Tag::Unstable))
-                .collect(),
         }
     }
-
     fn should_run_all(&self) -> bool {
         self.scenario.trim() == "*"
     }
@@ -102,7 +95,7 @@ impl ScenariosRepository {
     ) -> ScenarioSuiteResult {
         let mut suite_result = ScenarioSuiteResult::new();
         for scenario_to_run in available_scenarios {
-            if scenario_to_run.tags().contains(&Tag::Unstable) {
+            if scenario_to_run.tags().contains(&Tag::Unstable) && self.tag != Tag::Unstable {
                 let scenario_result = ScenarioResult::ignored(scenario_to_run.name());
 
                 if self.report_unstable {
@@ -113,7 +106,6 @@ impl ScenariosRepository {
 
                 continue;
             }
-
             suite_result.push(self.run_single_scenario(
                 &scenario_to_run.name(),
                 &available_scenarios,

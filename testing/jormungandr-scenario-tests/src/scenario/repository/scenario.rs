@@ -25,10 +25,6 @@ impl Scenario {
         self.tags.iter().any(|t| *t == tag)
     }
 
-    pub fn no_tag(&self, tag: Tag) -> bool {
-        !self.has_tag(tag)
-    }
-
     pub fn name(&self) -> String {
         self.name.clone()
     }
