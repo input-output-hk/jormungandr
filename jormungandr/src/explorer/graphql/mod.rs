@@ -1204,7 +1204,7 @@ impl VoteProposalStatus {
                 let to = range.upper_bound;
 
                 (from..=to)
-                    .map(|i: u32| (self.votes[i as usize].clone(), i.try_into().unwrap()))
+                    .map(|i: u32| (self.votes[i as usize].clone(), i))
                     .collect::<Vec<(VoteStatus, u32)>>()
             }
         })
