@@ -32,6 +32,7 @@ use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use slog::Logger;
 use tokio::signal;
+use tokio_util::sync::CancellationToken;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -318,6 +319,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         logger,
         rest_context,
         mut services,
+        cancellation_token,
     } = initialized_node;
 
     let BootstrapData {
@@ -334,6 +336,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
             block0,
             storage,
             settings,
+            cancellation_token,
         )
     })?;
 
@@ -364,9 +367,9 @@ async fn bootstrap_internal(
     block0: blockcfg::Block,
     storage: blockchain::Storage,
     settings: Settings,
+    cancellation_token: CancellationToken,
 ) -> Result<BootstrapData, start_up::Error> {
-    use futures::{channel::oneshot::channel, future::FutureExt};
-    use tokio::spawn;
+    use futures::future::FutureExt;
 
     if let Some(context) = rest_context.as_ref() {
         block_on(async {
@@ -392,32 +395,14 @@ async fn bootstrap_internal(
     )
     .await?;
 
-    let (rest_shutdown_tx, rest_shutdown_rx) = channel();
     if let Some(context) = &rest_context {
         let mut context = context.write().await;
         context.set_blockchain(blockchain.clone());
         context.set_blockchain_tip(blockchain_tip.clone());
-        context.set_bootstrap_stopper(rest_shutdown_tx);
+        context.set_bootstrap_stopper(cancellation_token.clone());
     };
 
     let mut bootstrap_attempt: usize = 0;
-
-    let (shutdown_tx, shutdown_rx) = channel();
-    spawn(
-        signal::ctrl_c()
-            .map_ok(|()| {
-                shutdown_tx
-                    .send(())
-                    .expect("failed to gracefully stop netboot")
-            })
-            .map_err(|_| panic!("failed to wait for SIGINT"))
-            .boxed(),
-    );
-
-    let bootstrap_stopper =
-        futures::future::select(shutdown_rx.shared(), rest_shutdown_rx.shared())
-            .map(|result| result.into_inner().0)
-            .shared();
 
     loop {
         bootstrap_attempt += 1;
@@ -439,7 +424,7 @@ async fn bootstrap_internal(
             &settings.network,
             blockchain.clone(),
             blockchain_tip.clone(),
-            bootstrap_stopper.clone(),
+            cancellation_token.clone(),
             &logger,
         )
         .await?
@@ -453,14 +438,6 @@ async fn bootstrap_internal(
             bootstrap_attempt,
             BOOTSTRAP_RETRY_WAIT.as_secs()
         );
-
-        futures::select! {
-            _ = tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT).fuse() => {},
-            result = bootstrap_stopper.clone() => match result {
-                Ok(()) => return Err(start_up::Error::Interrupted),
-                Err(_) => panic!("failed to wait for SIGINT or GET /shutdown"),
-            },
-        };
     }
 
     let explorer_db = if settings.explorer {
@@ -468,10 +445,7 @@ async fn bootstrap_internal(
             explorer_result = explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
                 Some(explorer_result?)
             },
-            result = bootstrap_stopper.clone() => match result {
-                Ok(()) => return Err(start_up::Error::Interrupted),
-                Err(_) => panic!("failed to wait for SIGINT or GET /shutdown"),
-            },
+            _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
         }
     } else {
         None
@@ -499,17 +473,36 @@ pub struct InitializedNode {
     pub logger: Logger,
     pub rest_context: Option<rest::ContextLock>,
     pub services: Services,
+    pub cancellation_token: CancellationToken,
 }
 
 #[cfg(unix)]
-fn init_os_signal_watchers(services: &mut Services) {
+fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
     use signal::unix::SignalKind;
+
+    let token_1 = token.clone();
 
     services.spawn_future("sigterm_watcher", move |info| {
         match signal::unix::signal(SignalKind::terminate()) {
-            Ok(signal) => signal.into_future().map(|_| ()).left_future(),
+            Ok(signal) => signal
+                .into_future()
+                .map(move |_| token.cancel())
+                .left_future(),
             Err(e) => {
                 warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
+                future::pending().right_future()
+            }
+        }
+    });
+
+    services.spawn_future("sigint_watcher", move |info| {
+        match signal::unix::signal(SignalKind::interrupt()) {
+            Ok(signal) => signal
+                .into_future()
+                .map(move |_| token_1.cancel())
+                .left_future(),
+            Err(e) => {
+                warn!(info.logger(), "failed to install handler for SIGINT"; "reason" => %e);
                 future::pending().right_future()
             }
         }
@@ -517,7 +510,22 @@ fn init_os_signal_watchers(services: &mut Services) {
 }
 
 #[cfg(not(unix))]
-fn init_os_signal_watchers(_services: &mut Services) {}
+fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
+    use signal::ctrl_c;
+
+    services.spawn_future("ctrl_c_watcher", move |info| {
+        ctrl_c().then(move |result| match result {
+            Ok(()) => {
+                token.cancel();
+                future::ready(()).left_future()
+            }
+            Err(e) => {
+                warn!(info.logger(), "ctrl+c watcher failed"; "reason" => %e);
+                future::pending().right_future()
+            }
+        })
+    });
+}
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
@@ -549,10 +557,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let mut services = Services::new(logger.clone());
 
-    services.spawn_try_future("sigint_watcher", move |_info| {
-        signal::ctrl_c().map_err(|_| ())
-    });
-    init_os_signal_watchers(&mut services);
+    let cancellation_token = CancellationToken::new();
+    init_os_signal_watchers(&mut services, cancellation_token.clone());
 
     let rest_context = match settings.rest.clone() {
         Some(rest) => {
@@ -589,13 +595,13 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     }
 
     let block0 = services.block_on_task("prepare_block_0", |_service_info| async {
-        use futures::{channel::oneshot::channel, future::FutureExt};
+        use futures::future::FutureExt;
 
-        let (shutdown_tx, shutdown_rx) = channel();
+        let cancellation_token = CancellationToken::new();
 
         if let Some(context) = rest_context.as_ref() {
             let mut context = context.write().await;
-            context.set_bootstrap_stopper(shutdown_tx);
+            context.set_bootstrap_stopper(cancellation_token.clone());
         }
 
         let prepare_block0_fut = start_up::prepare_block_0(
@@ -607,10 +613,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
         let result = futures::select! {
             result = prepare_block0_fut.fuse() => result,
-            result = shutdown_rx.fuse() => match result {
-                Ok(()) => return Err(start_up::Error::Interrupted),
-                Err(_) => panic!("failed to wait for GET /shutdown"),
-            }
+            _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
         };
 
         if let Some(context) = rest_context.as_ref() {
@@ -628,6 +631,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         logger,
         rest_context,
         services,
+        cancellation_token,
     })
 }
 
