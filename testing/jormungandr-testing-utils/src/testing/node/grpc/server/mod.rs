@@ -1,4 +1,4 @@
-pub use builder::node::{
+pub use super::proto::{
     node_server::{Node, NodeServer},
     {
         Block, BlockEvent, BlockIds, ClientAuthRequest, ClientAuthResponse, Fragment, FragmentIds,

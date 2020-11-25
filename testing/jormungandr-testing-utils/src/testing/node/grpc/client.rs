@@ -1,6 +1,6 @@
 use crate::testing::node::grpc::read_into;
 
-use node::{
+use super::proto::{
     node_client::NodeClient, Block, BlockIds, Fragment, FragmentIds, HandshakeRequest,
     HandshakeResponse, Header, PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest,
     TipRequest,
@@ -12,10 +12,6 @@ use chain_impl_mockchain::{
 };
 use futures::stream;
 use std::fmt;
-
-pub mod node {
-    tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
-}
 
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
