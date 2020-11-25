@@ -17,10 +17,9 @@ impl Epoch {
     pub fn exec(self) -> Result<(), Error> {
         let Epoch::Get { args, epoch } = self;
         let response = args
-            .request_with_args(
-                &["v0", "rewards", "epoch", &epoch.to_string()],
-                |client, url| client.get(url),
-            )?
+            .client()?
+            .get(&["v0", "rewards", "epoch", &epoch.to_string()])
+            .execute()?
             .text()?;
         println!("{}", response);
         Ok(())

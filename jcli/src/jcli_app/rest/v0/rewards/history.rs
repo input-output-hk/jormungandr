@@ -17,10 +17,9 @@ impl History {
     pub fn exec(self) -> Result<(), Error> {
         let History::Get { args, length } = self;
         let response = args
-            .request_with_args(
-                &["v0", "rewards", "history", &length.to_string()],
-                |client, url| client.get(url),
-            )?
+            .client()?
+            .get(&["v0", "rewards", "history", &length.to_string()])
+            .execute()?
             .text()?;
         println!("{}", response);
         Ok(())

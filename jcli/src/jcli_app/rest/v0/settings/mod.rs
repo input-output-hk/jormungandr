@@ -20,9 +20,7 @@ impl Settings {
             args,
             output_format,
         } = self;
-        let response = args
-            .request_with_args(&["v0", "settings"], |client, url| client.get(url))?
-            .json()?;
+        let response = args.client()?.get(&["v0", "settings"]).execute()?.json()?;
         let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())

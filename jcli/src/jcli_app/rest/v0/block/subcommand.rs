@@ -25,7 +25,9 @@ impl Subcommand {
 
 fn exec_get(block_id: String, args: RestArgs) -> Result<(), Error> {
     let response = args
-        .request_with_args(&["v0", "block", &block_id], |client, url| client.get(url))?
+        .client()?
+        .get(&["v0", "block", &block_id])
+        .execute()?
         .bytes()?;
     println!("{}", hex::encode(&response));
     Ok(())

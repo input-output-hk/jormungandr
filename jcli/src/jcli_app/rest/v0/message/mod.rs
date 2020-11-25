@@ -45,7 +45,9 @@ impl Message {
 
 fn get_logs(args: RestArgs, output_format: OutputFormat) -> Result<(), Error> {
     let response = args
-        .request_with_args(&["v0", "fragment", "logs"], |client, url| client.get(url))?
+        .client()?
+        .get(&["v0", "fragment", "logs"])
+        .execute()?
         .json()?;
     let formatted = output_format.format_json(response)?;
     println!("{}", formatted);
@@ -58,9 +60,10 @@ fn post_message(args: RestArgs, file: Option<PathBuf>) -> Result<(), Error> {
     let _fragment =
         Fragment::deserialize(msg_bin.as_slice()).map_err(Error::InputFragmentMalformed)?;
     let fragment_id = args
-        .request_with_args(&["v0", "message"], move |client, url| {
-            client.post(url).body(msg_bin)
-        })?
+        .client()?
+        .post(&["v0", "message"])
+        .body(msg_bin)
+        .execute()?
         .text()?;
     println!("{}", fragment_id);
     Ok(())

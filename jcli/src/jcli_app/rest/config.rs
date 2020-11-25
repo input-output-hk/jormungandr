@@ -23,6 +23,18 @@ pub struct RestArgs {
     tls_cert_path: Option<PathBuf>,
 }
 
+pub struct RestClient {
+    client: Client,
+    debug: bool,
+    base_url: Url,
+}
+
+pub struct RestRequestBuilder {
+    client: Client,
+    request_builder: RequestBuilder,
+    debug: bool,
+}
+
 pub struct RestResponse(reqwest::blocking::Response);
 
 #[derive(Debug, Error)]
@@ -56,22 +68,19 @@ pub enum Error {
 }
 
 impl RestArgs {
-    pub fn request_with_args<F>(
-        self,
-        address_segments: &[&str],
-        f: F,
-    ) -> Result<RestResponse, Error>
-    where
-        F: FnOnce(&Client, Url) -> RequestBuilder,
-    {
+    pub fn client(self) -> Result<RestClient, Error> {
         use reqwest::{blocking::ClientBuilder, Certificate};
         use std::{fs::File, io::Read};
 
         let Self {
             tls_cert_path,
-            mut host,
+            host,
             debug,
         } = self;
+
+        if host.cannot_be_a_base() {
+            return Err(Error::HostAddrNotBase { addr: host });
+        }
 
         let client_builder = ClientBuilder::new();
 
@@ -90,14 +99,95 @@ impl RestArgs {
 
         let client = client_builder.build().map_err(Error::Client)?;
 
-        // we need a base host address
-        host.path_segments_mut()
-            .map(|mut host_segments| {
-                host_segments.extend(address_segments);
-            })
-            .map_err(|_| Error::HostAddrNotBase { addr: host.clone() })?;
+        let rest_client = RestClient {
+            client,
+            debug,
+            base_url: host,
+        };
 
-        let request = f(&client, host).build().map_err(Error::Request)?;
+        Ok(rest_client)
+    }
+}
+
+impl RestClient {
+    pub fn get(self, address_segments: &[&str]) -> RestRequestBuilder {
+        self.make_request_builder(address_segments, |client, url| client.get(url))
+    }
+
+    pub fn post(self, address_segments: &[&str]) -> RestRequestBuilder {
+        self.make_request_builder(address_segments, |client, url| client.post(url))
+    }
+
+    pub fn delete(self, address_segments: &[&str]) -> RestRequestBuilder {
+        self.make_request_builder(address_segments, |client, url| client.delete(url))
+    }
+
+    fn make_request_builder<F>(self, address_segments: &[&str], f: F) -> RestRequestBuilder
+    where
+        F: Fn(&Client, Url) -> RequestBuilder,
+    {
+        let Self {
+            client,
+            base_url,
+            debug,
+        } = self;
+        let url = make_url(base_url, address_segments);
+        let request_builder = f(&client, url);
+        RestRequestBuilder {
+            client,
+            request_builder,
+            debug,
+        }
+    }
+}
+
+fn make_url(mut host: Url, segments: &[&str]) -> Url {
+    host.path_segments_mut()
+        .map(|mut host_segments| {
+            host_segments.extend(segments);
+        })
+        .unwrap();
+    host
+}
+
+impl RestRequestBuilder {
+    pub fn json<T>(self, json: &T) -> Self
+    where
+        T: serde::Serialize,
+    {
+        Self {
+            request_builder: self.request_builder.json(&json),
+            ..self
+        }
+    }
+
+    pub fn query<T>(self, query: &T) -> Self
+    where
+        T: serde::Serialize,
+    {
+        Self {
+            request_builder: self.request_builder.query(&query),
+            ..self
+        }
+    }
+
+    pub fn body<T>(self, body: T) -> Self
+    where
+        T: Into<reqwest::blocking::Body>,
+    {
+        Self {
+            request_builder: self.request_builder.body(body),
+            ..self
+        }
+    }
+    pub fn execute(self) -> Result<RestResponse, Error> {
+        let Self {
+            client,
+            request_builder,
+            debug,
+        } = self;
+
+        let request = request_builder.build().map_err(Error::Request)?;
 
         if debug {
             eprintln!("Request: {:?}", request);

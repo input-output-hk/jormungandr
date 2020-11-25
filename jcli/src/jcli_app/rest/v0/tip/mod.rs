@@ -16,9 +16,7 @@ impl Tip {
         let args = match self {
             Tip::Get { args } => args,
         };
-        let response = args
-            .request_with_args(&["v0", "tip"], |client, url| client.get(url))?
-            .text()?;
+        let response = args.client()?.get(&["v0", "tip"]).execute()?.text()?;
         println!("{}", response);
         Ok(())
     }
