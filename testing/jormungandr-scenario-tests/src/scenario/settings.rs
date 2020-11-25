@@ -1,17 +1,25 @@
 use crate::vit_station::VitStationSettings;
 use crate::{scenario::Context, style};
+
+use chain_impl_mockchain::{
+    certificate::VotePlan,
+    testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
+};
+use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{Explorer, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest},
     time::Duration,
 };
-use jormungandr_testing_utils::testing::network_builder::WalletProxySettings;
 use jormungandr_testing_utils::testing::network_builder::{
-    Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting, Settings,
-    Topology as TopologyTemplate, WalletTemplate, WalletType,
+    Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting,
+    Settings as NetworkBuilderSettings, Topology as TopologyTemplate, WalletTemplate, WalletType,
 };
+use jormungandr_testing_utils::testing::network_builder::{Random, WalletProxySettings};
 use rand_core::{CryptoRng, RngCore};
 use std::collections::HashMap;
 use std::io::Write;
+use std::ops::{Deref, DerefMut};
+use vit_servicing_station_lib::server::settings::ServiceSettings;
 use vit_servicing_station_tests::common::startup::server::ServerSettingsBuilder;
 
 pub trait Prepare: Clone + Send + 'static {
@@ -49,6 +57,72 @@ pub trait PrepareSettings {
     ) -> Self
     where
         RNG: RngCore + CryptoRng;
+}
+
+#[derive(Debug)]
+pub struct Settings {
+    pub network_settings: NetworkBuilderSettings,
+    pub vit_stations: HashMap<NodeAlias, ServiceSettings>,
+}
+
+impl Deref for Settings {
+    type Target = NetworkBuilderSettings;
+
+    fn deref(&self) -> &Self::Target {
+        &self.network_settings
+    }
+}
+
+impl DerefMut for Settings {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.network_settings
+    }
+}
+
+impl Settings {
+    pub fn new<RNG>(
+        nodes: HashMap<NodeAlias, NodeSetting>,
+        blockchain: BlockchainTemplate,
+        vit_stations: HashMap<NodeAlias, ServiceSettings>,
+        wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
+        rng: &mut Random<RNG>,
+    ) -> Self
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let network_settings =
+            NetworkBuilderSettings::new(nodes, blockchain.clone(), wallet_proxies, rng);
+        let mut settings = Settings {
+            network_settings,
+            vit_stations,
+        };
+        settings.populate_block0_blockchain_vote_plans(blockchain.vote_plans());
+
+        println!("{:?}", settings);
+
+        settings
+    }
+
+    fn populate_block0_blockchain_vote_plans(&mut self, vote_plans: Vec<VotePlanDef>) {
+        let mut vote_plans_fragments = Vec::new();
+        for vote_plan_def in vote_plans {
+            let owner = self.wallets.get(&vote_plan_def.owner()).unwrap_or_else(|| {
+                panic!(
+                    "Owner {} of {} is unknown wallet ",
+                    vote_plan_def.owner(),
+                    vote_plan_def.alias()
+                )
+            });
+            let vote_plan: VotePlan = vote_plan_def.into();
+            vote_plans_fragments.push(create_initial_vote_plan(
+                &vote_plan,
+                &[owner.clone().into()],
+            ));
+        }
+        self.block0
+            .initial
+            .extend(try_initials_vec_from_messages(vote_plans_fragments.iter()).unwrap())
+    }
 }
 
 pub struct Dotifier;

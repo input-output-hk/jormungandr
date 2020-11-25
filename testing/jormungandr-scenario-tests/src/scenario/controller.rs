@@ -23,8 +23,8 @@ use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption,
         network_builder::{
-            Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, Settings,
-            SpawnParams, Topology, Wallet as WalletSetting, WalletAlias,
+            Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, SpawnParams,
+            Topology, Wallet as WalletSetting, WalletAlias,
         },
         ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
@@ -32,6 +32,7 @@ use jormungandr_testing_utils::{
     Version,
 };
 
+use crate::scenario::settings::Settings;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
