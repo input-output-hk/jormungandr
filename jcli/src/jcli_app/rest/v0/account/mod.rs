@@ -1,4 +1,4 @@
-use crate::jcli_app::rest::{config::RestArgs, Error};
+use crate::jcli_app::rest::{Error, RestArgs};
 use crate::jcli_app::utils::{AccountId, OutputFormat};
 use structopt::StructOpt;
 

@@ -1,5 +1,5 @@
 use super::next_id::NextId;
-use crate::jcli_app::rest::{config::RestArgs, Error};
+use crate::jcli_app::rest::{Error, RestArgs};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

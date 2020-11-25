@@ -2,6 +2,7 @@ mod config;
 mod v0;
 
 use crate::jcli_app::utils::{io::ReadYamlError, output_format};
+use config::RestArgs;
 use hex::FromHexError;
 use structopt::StructOpt;
 use thiserror::Error;

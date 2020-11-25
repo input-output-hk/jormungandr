@@ -1,4 +1,4 @@
-use crate::jcli_app::rest::{config::RestArgs, Error};
+use crate::jcli_app::rest::{Error, RestArgs};
 use structopt::StructOpt;
 
 /// Shutdown node

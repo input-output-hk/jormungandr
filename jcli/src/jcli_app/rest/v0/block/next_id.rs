@@ -1,4 +1,4 @@
-use crate::jcli_app::rest::{config::RestArgs, Error};
+use crate::jcli_app::rest::{Error, RestArgs};
 use chain_crypto::Blake2b256;
 use structopt::StructOpt;
 

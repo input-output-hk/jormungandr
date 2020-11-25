@@ -1,5 +1,5 @@
 use crate::jcli_app::{
-    rest::{config::RestArgs, Error},
+    rest::{Error, RestArgs},
     utils::{io, OutputFormat},
 };
 use chain_core::property::Deserialize;
