@@ -20,8 +20,9 @@ impl Stats {
             args,
             output_format,
         } = self;
-        let response =
-            args.request_json_with_args(&["v0", "node", "stats"], |client, url| client.get(url))?;
+        let response = args
+            .request_with_args(&["v0", "node", "stats"], |client, url| client.get(url))?
+            .json()?;
         let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())

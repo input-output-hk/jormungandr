@@ -28,7 +28,9 @@ impl Stake {
         if let Some(epoch) = &epoch {
             url.push(epoch);
         }
-        let response = args.request_json_with_args(&url, |client, url| client.get(url))?;
+        let response = args
+            .request_with_args(&url, |client, url| client.get(url))?
+            .json()?;
         let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())

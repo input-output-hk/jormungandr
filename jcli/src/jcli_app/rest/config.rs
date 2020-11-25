@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use reqwest::{
-    blocking::{Client, RequestBuilder, Response},
+    blocking::{Client, RequestBuilder},
     Url,
 };
 use std::path::PathBuf;
@@ -22,6 +22,8 @@ pub struct RestArgs {
     #[structopt(long, name = "PATH", env = "JORMUNGANDR_TLS_CERT_PATH")]
     tls_cert_path: Option<PathBuf>,
 }
+
+pub struct RestResponse(reqwest::blocking::Response);
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -54,7 +56,11 @@ pub enum Error {
 }
 
 impl RestArgs {
-    pub fn request_with_args<F>(self, address_segments: &[&str], f: F) -> Result<Response, Error>
+    pub fn request_with_args<F>(
+        self,
+        address_segments: &[&str],
+        f: F,
+    ) -> Result<RestResponse, Error>
     where
         F: FnOnce(&Client, Url) -> RequestBuilder,
     {
@@ -122,34 +128,23 @@ impl RestArgs {
             eprintln!("Response: {:?}", response);
         }
 
-        Ok(response)
+        Ok(RestResponse(response))
     }
+}
 
-    pub fn request_json_with_args<T, F>(self, address_segments: &[&str], f: F) -> Result<T, Error>
+impl RestResponse {
+    pub fn json<T>(self) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned,
-        F: FnOnce(&Client, Url) -> RequestBuilder,
     {
-        self.request_with_args(address_segments, f)?
-            .json()
-            .map_err(Error::Json)
+        self.0.json().map_err(Error::Json)
     }
 
-    pub fn request_bin_with_args<F>(self, address_segments: &[&str], f: F) -> Result<Bytes, Error>
-    where
-        F: FnOnce(&Client, Url) -> RequestBuilder,
-    {
-        self.request_with_args(address_segments, f)?
-            .bytes()
-            .map_err(Error::Bytes)
+    pub fn bytes(self) -> Result<Bytes, Error> {
+        self.0.bytes().map_err(Error::Bytes)
     }
 
-    pub fn request_text_with_args<F>(self, address_segments: &[&str], f: F) -> Result<String, Error>
-    where
-        F: FnOnce(&Client, Url) -> RequestBuilder,
-    {
-        self.request_with_args(address_segments, f)?
-            .text()
-            .map_err(Error::Text)
+    pub fn text(self) -> Result<String, Error> {
+        self.0.text().map_err(Error::Text)
     }
 }

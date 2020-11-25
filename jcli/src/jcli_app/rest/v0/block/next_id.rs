@@ -25,9 +25,10 @@ impl NextId {
 
 fn exec_get(args: RestArgs, block_id: String, count: Option<usize>) -> Result<(), Error> {
     let response = args
-        .request_bin_with_args(&["v0", "block", &block_id, "next_id"], |client, url| {
+        .request_with_args(&["v0", "block", &block_id, "next_id"], |client, url| {
             client.get(url).query(&[("count", count)])
-        })?;
+        })?
+        .bytes()?;
     for block_id in response.chunks(Blake2b256::HASH_SIZE) {
         println!("{}", hex::encode(block_id));
     }

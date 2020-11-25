@@ -21,7 +21,8 @@ impl Stats {
             output_format,
         } = self;
         let response = args
-            .request_json_with_args(&["v0", "network", "stats"], |client, url| client.get(url))?;
+            .request_with_args(&["v0", "network", "stats"], |client, url| client.get(url))?
+            .json()?;
         let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())

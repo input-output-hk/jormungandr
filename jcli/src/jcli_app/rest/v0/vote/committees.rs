@@ -21,9 +21,10 @@ impl Committees {
             output_format,
         } = self;
         let response = args
-            .request_json_with_args(&["v0", "vote", "active", "committees"], |client, url| {
+            .request_with_args(&["v0", "vote", "active", "committees"], |client, url| {
                 client.get(url)
-            })?;
+            })?
+            .json()?;
         let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())

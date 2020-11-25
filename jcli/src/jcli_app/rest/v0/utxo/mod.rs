@@ -34,15 +34,17 @@ impl Utxo {
             args,
             output_format,
         } = self.subcommand;
-        let response = args.request_json_with_args(
-            &[
-                "v0",
-                "utxo",
-                &self.fragment_id,
-                &self.output_index.to_string(),
-            ],
-            |client, url| client.get(url),
-        )?;
+        let response = args
+            .request_with_args(
+                &[
+                    "v0",
+                    "utxo",
+                    &self.fragment_id,
+                    &self.output_index.to_string(),
+                ],
+                |client, url| client.get(url),
+            )?
+            .json()?;
         let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())

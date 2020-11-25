@@ -65,8 +65,9 @@ impl Leaders {
 }
 
 fn get(args: RestArgs, output_format: OutputFormat) -> Result<(), Error> {
-    let response =
-        args.request_json_with_args(&["v0", "leaders"], |client, url| client.get(url))?;
+    let response = args
+        .request_with_args(&["v0", "leaders"], |client, url| client.get(url))?
+        .json()?;
     let formatted = output_format.format_json(response)?;
     println!("{}", formatted);
     Ok(())
@@ -74,9 +75,11 @@ fn get(args: RestArgs, output_format: OutputFormat) -> Result<(), Error> {
 
 fn post(args: RestArgs, file: Option<PathBuf>) -> Result<(), Error> {
     let input: serde_json::Value = io::read_yaml(&file)?;
-    let response = args.request_text_with_args(&["v0", "leaders"], |client, url| {
-        client.post(url).json(&input)
-    })?;
+    let response = args
+        .request_with_args(&["v0", "leaders"], |client, url| {
+            client.post(url).json(&input)
+        })?
+        .text()?;
     println!("{}", response);
     Ok(())
 }
@@ -90,8 +93,9 @@ fn delete(args: RestArgs, id: u32) -> Result<(), Error> {
 }
 
 fn get_logs(args: RestArgs, output_format: OutputFormat) -> Result<(), Error> {
-    let response =
-        args.request_json_with_args(&["v0", "leaders", "logs"], |client, url| client.get(url))?;
+    let response = args
+        .request_with_args(&["v0", "leaders", "logs"], |client, url| client.get(url))?
+        .json()?;
     let formatted = output_format.format_json(response)?;
     println!("{}", formatted);
     Ok(())

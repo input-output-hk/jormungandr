@@ -16,8 +16,9 @@ impl Diagnostic {
         let args = match self {
             Diagnostic::Get { args } => args,
         };
-        let response =
-            args.request_text_with_args(&["v0", "diagnostic"], |client, url| client.get(url))?;
+        let response = args
+            .request_with_args(&["v0", "diagnostic"], |client, url| client.get(url))?
+            .text()?;
         println!("{}", response);
         Ok(())
     }

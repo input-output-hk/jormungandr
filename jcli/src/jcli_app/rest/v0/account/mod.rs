@@ -24,10 +24,12 @@ impl Account {
             output_format,
             account_id,
         } = self;
-        let state = args.request_json_with_args(
-            &["v0", "account", &account_id.to_url_arg()],
-            |client, url| client.get(url),
-        )?;
+        let state = args
+            .request_with_args(
+                &["v0", "account", &account_id.to_url_arg()],
+                |client, url| client.get(url),
+            )?
+            .json()?;
         let formatted = output_format.format_json(state)?;
         println!("{}", formatted);
         Ok(())

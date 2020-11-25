@@ -24,9 +24,10 @@ impl StakePool {
             output_format,
         } = self;
         let response = args
-            .request_json_with_args(&["v0", "stake_pool", &pool_id], |client, url| {
+            .request_with_args(&["v0", "stake_pool", &pool_id], |client, url| {
                 client.get(url)
-            })?;
+            })?
+            .json()?;
         let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())
