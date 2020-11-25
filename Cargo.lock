@@ -2189,7 +2189,6 @@ dependencies = [
  "gtmpl",
  "hex",
  "jormungandr-lib",
- "maplit",
  "mime",
  "openapiv3",
  "predicates",
