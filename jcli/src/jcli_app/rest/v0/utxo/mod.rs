@@ -1,5 +1,5 @@
-use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender, TlsCert};
+use crate::jcli_app::rest::{config::RestArgs, Error};
+use crate::jcli_app::utils::OutputFormat;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -24,37 +24,26 @@ enum Subcommand {
         output_format: OutputFormat,
 
         #[structopt(flatten)]
-        addr: HostAddr,
-
-        #[structopt(flatten)]
-        debug: DebugFlag,
-
-        #[structopt(flatten)]
-        tls: TlsCert,
+        args: RestArgs,
     },
 }
 
 impl Utxo {
     pub fn exec(self) -> Result<(), Error> {
         let Subcommand::Get {
+            args,
             output_format,
-            addr,
-            debug,
-            tls,
         } = self.subcommand;
-        let url = addr
-            .with_segments(&[
+        let response = args.request_json_with_args(
+            &[
                 "v0",
                 "utxo",
                 &self.fragment_id,
                 &self.output_index.to_string(),
-            ])?
-            .into_url();
-        let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug, &tls).send()?;
-        response.ok_response()?;
-        let status = response.body().json_value()?;
-        let formatted = output_format.format_json(status)?;
+            ],
+            |client, url| client.get(url),
+        )?;
+        let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())
     }

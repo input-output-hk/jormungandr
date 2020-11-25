@@ -1,5 +1,4 @@
-use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, RestApiSender, TlsCert};
+use crate::jcli_app::rest::{config::RestArgs, Error};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -8,32 +7,20 @@ pub enum History {
     /// Get rewards for one or more epochs
     Get {
         #[structopt(flatten)]
-        addr: HostAddr,
-        #[structopt(flatten)]
-        debug: DebugFlag,
+        args: RestArgs,
         /// Number of epochs
         length: usize,
-        #[structopt(flatten)]
-        tls: TlsCert,
     },
 }
 
 impl History {
     pub fn exec(self) -> Result<(), Error> {
-        let History::Get {
-            addr,
-            debug,
-            length,
-            tls,
-        } = self;
-        let url = addr
-            .with_segments(&["v0", "rewards", "history", &length.to_string()])?
-            .into_url();
-        let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug, &tls).send()?;
-        response.ok_response()?;
-        let history = response.body().text();
-        println!("{}", history.as_ref());
+        let History::Get { args, length } = self;
+        let response = args.request_text_with_args(
+            &["v0", "rewards", "history", &length.to_string()],
+            |client, url| client.get(url),
+        )?;
+        println!("{}", response);
         Ok(())
     }
 }

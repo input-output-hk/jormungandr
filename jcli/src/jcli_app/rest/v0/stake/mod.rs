@@ -1,5 +1,5 @@
-use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender, TlsCert};
+use crate::jcli_app::rest::{config::RestArgs, Error};
+use crate::jcli_app::utils::OutputFormat;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -8,38 +8,28 @@ pub enum Stake {
     /// Get stake distribution
     Get {
         #[structopt(flatten)]
-        addr: HostAddr,
-        #[structopt(flatten)]
-        debug: DebugFlag,
+        args: RestArgs,
         #[structopt(flatten)]
         output_format: OutputFormat,
         /// Epoch to get the stake distribution from
         epoch: Option<u32>,
-        #[structopt(flatten)]
-        tls: TlsCert,
     },
 }
 
 impl Stake {
     pub fn exec(self) -> Result<(), Error> {
         let Stake::Get {
-            addr,
-            debug,
+            args,
             output_format,
             epoch,
-            tls,
         } = self;
-        let url = match epoch {
-            Some(epoch) => addr
-                .with_segments(&["v0", "stake", &epoch.to_string()])?
-                .into_url(),
-            _ => addr.with_segments(&["v0", "stake"])?.into_url(),
-        };
-        let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug, &tls).send()?;
-        response.ok_response()?;
-        let status = response.body().json_value()?;
-        let formatted = output_format.format_json(status)?;
+        let epoch = epoch.map(|epoch| epoch.to_string());
+        let mut url = vec!["v0", "stake"];
+        if let Some(epoch) = &epoch {
+            url.push(epoch);
+        }
+        let response = args.request_json_with_args(&url, |client, url| client.get(url))?;
+        let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())
     }

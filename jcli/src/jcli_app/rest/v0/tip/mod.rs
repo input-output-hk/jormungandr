@@ -1,5 +1,4 @@
-use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, RestApiSender, TlsCert};
+use crate::jcli_app::rest::{config::RestArgs, Error};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -8,25 +7,18 @@ pub enum Tip {
     /// Get tip ID
     Get {
         #[structopt(flatten)]
-        addr: HostAddr,
-        #[structopt(flatten)]
-        debug: DebugFlag,
-        #[structopt(flatten)]
-        tls: TlsCert,
+        args: RestArgs,
     },
 }
 
 impl Tip {
     pub fn exec(self) -> Result<(), Error> {
-        let (addr, debug, tls) = match self {
-            Tip::Get { addr, debug, tls } => (addr, debug, tls),
+        let args = match self {
+            Tip::Get { args } => args,
         };
-        let url = addr.with_segments(&["v0", "tip"])?.into_url();
-        let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug, &tls).send()?;
-        response.ok_response()?;
-        let tip = response.body().text();
-        println!("{}", tip.as_ref());
+        let response =
+            args.request_text_with_args(&["v0", "tip"], |client, url| client.get(url))?;
+        println!("{}", response);
         Ok(())
     }
 }

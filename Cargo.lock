@@ -2177,6 +2177,7 @@ dependencies = [
  "base64 0.13.0",
  "bech32",
  "bincode",
+ "bytes 0.5.6",
  "chain-addr 0.1.0",
  "chain-core 0.1.0",
  "chain-crypto 0.1.0",

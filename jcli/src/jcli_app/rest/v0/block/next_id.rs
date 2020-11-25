@@ -1,5 +1,4 @@
-use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, RestApiSender, TlsCert};
+use crate::jcli_app::rest::{config::RestArgs, Error};
 use chain_crypto::Blake2b256;
 use structopt::StructOpt;
 
@@ -9,47 +8,27 @@ pub enum NextId {
     /// Get block descendant ID
     Get {
         #[structopt(flatten)]
-        addr: HostAddr,
-        #[structopt(flatten)]
-        debug: DebugFlag,
+        args: RestArgs,
         /// Maximum number of IDs, must be between 1 and 100, default 1
         #[structopt(short, long)]
         count: Option<usize>,
-        #[structopt(flatten)]
-        tls: TlsCert,
     },
 }
 
 impl NextId {
     pub fn exec(self, block_id: String) -> Result<(), Error> {
         match self {
-            NextId::Get {
-                addr,
-                debug,
-                count,
-                tls,
-            } => exec_get(block_id, addr, debug, tls, count),
+            NextId::Get { args, count } => exec_get(args, block_id, count),
         }
     }
 }
 
-fn exec_get(
-    block_id: String,
-    addr: HostAddr,
-    debug: DebugFlag,
-    tls: TlsCert,
-    count: Option<usize>,
-) -> Result<(), Error> {
-    let url = addr
-        .with_segments(&["v0", "block", &block_id, "next_id"])?
-        .into_url();
-    let builder = reqwest::blocking::Client::new()
-        .get(url)
-        .query(&[("count", count)]);
-    let response = RestApiSender::new(builder, &debug, &tls).send()?;
-    response.ok_response()?;
-    let body = response.body().binary();
-    for block_id in body.chunks(Blake2b256::HASH_SIZE) {
+fn exec_get(args: RestArgs, block_id: String, count: Option<usize>) -> Result<(), Error> {
+    let response = args
+        .request_bin_with_args(&["v0", "block", &block_id, "next_id"], |client, url| {
+            client.get(url).query(&[("count", count)])
+        })?;
+    for block_id in response.chunks(Blake2b256::HASH_SIZE) {
         println!("{}", hex::encode(block_id));
     }
     Ok(())
