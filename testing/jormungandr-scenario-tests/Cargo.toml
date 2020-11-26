@@ -21,7 +21,7 @@ jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 vit-servicing-station-tests = { git = "https://github.com/input-output-hk/vit-servicing-station", branch = "master" }
 vit-servicing-station-lib = { git = "https://github.com/input-output-hk/vit-servicing-station", branch = "master" }
-jortestkit = { path = "../jortestkit" }
+jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 iapyx = {path = "../iapyx"}
 poldercast = { git = "https://github.com/primetype/poldercast.git" }
 rand = "0.7"

@@ -25,7 +25,7 @@ chain-storage           = { git = "https://github.com/input-output-hk/chain-libs
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
-jortestkit = { path = "../jortestkit"}
+jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"
