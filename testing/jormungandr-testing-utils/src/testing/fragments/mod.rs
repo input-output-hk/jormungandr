@@ -149,7 +149,7 @@ impl FragmentBuilder {
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
         self.fragment_factory()
-            .stake_pool_retire(&ref_inner_owners[..], &stake_pool.clone().into())
+            .stake_pool_retire(ref_inner_owners, &stake_pool.clone().into())
     }
 
     pub fn stake_pool_update(
