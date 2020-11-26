@@ -5,24 +5,17 @@ use crate::testing::network_builder::{
 };
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
-use chain_impl_mockchain::{
-    certificate::VotePlan,
-    chaintypes::ConsensusVersion,
-    fee::LinearFee,
-    testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
-};
+use chain_impl_mockchain::{certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
-        try_initials_vec_from_messages, ActiveSlotCoefficient, Bft, Block0Configuration,
-        BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial, InitialUTxO, LegacyUTxO,
-        NodeConfig, NodeSecret,
+        ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
+        GenesisPraos, Initial, InitialUTxO, LegacyUTxO, NodeConfig, NodeSecret,
     },
 };
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
-use vit_servicing_station_lib::server::settings::ServiceSettings;
 
 pub type VotePlanAlias = String;
 
@@ -107,8 +100,6 @@ impl WalletProxySettings {
 pub struct Settings {
     pub nodes: HashMap<NodeAlias, NodeSetting>,
 
-    pub vit_stations: HashMap<NodeAlias, ServiceSettings>,
-
     pub wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
 
     pub wallets: HashMap<WalletAlias, Wallet>,
@@ -126,7 +117,6 @@ impl Settings {
     pub fn new<RNG>(
         nodes: HashMap<NodeAlias, NodeSetting>,
         blockchain: BlockchainTemplate,
-        vit_stations: HashMap<NodeAlias, ServiceSettings>,
         wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
         rng: &mut Random<RNG>,
     ) -> Self
@@ -144,7 +134,6 @@ impl Settings {
                 ),
                 initial: Vec::new(),
             },
-            vit_stations,
             wallet_proxies,
             legacy_wallets: HashMap::new(),
             stake_pools: HashMap::new(),
@@ -155,7 +144,6 @@ impl Settings {
         settings.populate_block0_blockchain_initials(blockchain.wallets(), rng);
         settings.populate_block0_blockchain_configuration(&blockchain, rng);
         settings.populate_block0_blockchain_legacy(blockchain.legacy_wallets(), rng);
-        settings.populate_block0_blockchain_vote_plans(blockchain.vote_plans());
 
         println!("{:?}", settings);
 
@@ -179,27 +167,6 @@ impl Settings {
                 .insert(template.alias().clone(), template.clone());
             self.block0.initial.push(legacy_fragment);
         }
-    }
-
-    fn populate_block0_blockchain_vote_plans(&mut self, vote_plans: Vec<VotePlanDef>) {
-        let mut vote_plans_fragments = Vec::new();
-        for vote_plan_def in vote_plans {
-            let owner = self.wallets.get(&vote_plan_def.owner()).unwrap_or_else(|| {
-                panic!(
-                    "Owner {} of {} is unknown wallet ",
-                    vote_plan_def.owner(),
-                    vote_plan_def.alias()
-                )
-            });
-            let vote_plan: VotePlan = vote_plan_def.into();
-            vote_plans_fragments.push(create_initial_vote_plan(
-                &vote_plan,
-                &[owner.clone().into()],
-            ));
-        }
-        self.block0
-            .initial
-            .extend(try_initials_vec_from_messages(vote_plans_fragments.iter()).unwrap())
     }
 
     fn populate_block0_blockchain_configuration<RNG>(

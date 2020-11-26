@@ -2440,7 +2440,6 @@ dependencies = [
  "tonic-build",
  "typed-bytes 0.1.0",
  "url",
- "vit-servicing-station-lib",
  "zip",
 ]
 

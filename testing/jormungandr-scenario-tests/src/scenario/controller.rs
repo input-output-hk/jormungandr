@@ -23,8 +23,8 @@ use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption,
         network_builder::{
-            Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, Settings,
-            SpawnParams, Topology, Wallet as WalletSetting, WalletAlias,
+            Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, SpawnParams,
+            Topology, Wallet as WalletSetting, WalletAlias,
         },
         ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
     },
@@ -32,6 +32,7 @@ use jormungandr_testing_utils::{
     Version,
 };
 
+use crate::scenario::settings::Settings;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -144,12 +145,12 @@ impl ControllerBuilder {
             let dotifier = Dotifier;
             dotifier.dottify(&settings, file)?;
 
-            for wallet in settings.wallets.values() {
+            for wallet in settings.network_settings.wallets.values() {
                 wallet.save_to(path)?;
             }
 
             let file = std::fs::File::create(&path.join("genesis.yaml"))?;
-            serde_yaml::to_writer(file, &settings.block0).unwrap();
+            serde_yaml::to_writer(file, &settings.network_settings.block0).unwrap();
         }
 
         Ok(())
@@ -166,7 +167,7 @@ impl Controller {
     ) -> Result<Self> {
         use chain_core::property::Serialize as _;
 
-        let block0 = settings.block0.to_block();
+        let block0 = settings.network_settings.block0.to_block();
         let block0_hash = block0.header.hash();
 
         let block0_file = working_directory.child("block0.bin").path().into();
@@ -188,7 +189,7 @@ impl Controller {
     }
 
     pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool> {
-        if let Some(stake_pool) = self.settings.stake_pools.get(node_alias) {
+        if let Some(stake_pool) = self.settings.network_settings.stake_pools.get(node_alias) {
             Ok(stake_pool.clone())
         } else {
             Err(ErrorKind::StakePoolNotFound(node_alias.to_owned()).into())
@@ -200,7 +201,7 @@ impl Controller {
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = (&NodeAlias, &NodeSetting)> {
-        self.settings.nodes.iter()
+        self.settings.network_settings.nodes.iter()
     }
 
     pub fn vote_plan(&self, alias: &str) -> Result<VotePlanDef> {
@@ -212,13 +213,13 @@ impl Controller {
     }
 
     pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
-        self.settings.wallets.iter()
+        self.settings.network_settings.wallets.iter()
     }
 
     pub fn get_all_wallets(&mut self) -> Vec<Wallet> {
         let mut wallets = vec![];
 
-        for alias in self.settings.wallets.clone().keys() {
+        for alias in self.settings.network_settings.wallets.clone().keys() {
             wallets.push(self.wallet(alias).unwrap());
         }
         wallets
@@ -240,7 +241,7 @@ impl Controller {
     }
 
     pub fn wallet(&self, wallet: &str) -> Result<Wallet> {
-        if let Some(wallet) = self.settings.wallets.get(wallet) {
+        if let Some(wallet) = self.settings.network_settings.wallets.get(wallet) {
             Ok(wallet.clone().into())
         } else {
             Err(ErrorKind::WalletNotFound(wallet.to_owned()).into())
@@ -302,15 +303,17 @@ impl Controller {
     pub fn spawn_wallet_proxy(&self, node_alias: &str) -> Result<WalletProxyController> {
         let (alias, settings) = self
             .settings
+            .network_settings
             .wallet_proxies
             .iter()
             .next()
             .ok_or(WalletProxyError::NoWalletProxiesDefinedInSettings)?;
-        let node_setting = if let Some(node_setting) = self.settings.nodes.get(node_alias) {
-            node_setting
-        } else {
-            bail!(ErrorKind::NodeNotFound(node_alias.to_string()))
-        };
+        let node_setting =
+            if let Some(node_setting) = self.settings.network_settings.nodes.get(node_alias) {
+                node_setting
+            } else {
+                bail!(ErrorKind::NodeNotFound(node_alias.to_string()))
+            };
 
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
@@ -333,7 +336,11 @@ impl Controller {
         params: &mut SpawnParams,
         version: &Version,
     ) -> Result<LegacyNodeController> {
-        let node_setting = if let Some(node_setting) = self.settings.nodes.get(&params.get_alias())
+        let node_setting = if let Some(node_setting) = self
+            .settings
+            .network_settings
+            .nodes
+            .get(&params.get_alias())
         {
             node_setting
         } else {
@@ -369,7 +376,11 @@ impl Controller {
     }
 
     pub fn spawn_node_custom(&mut self, params: &mut SpawnParams) -> Result<NodeController> {
-        let node_setting = if let Some(node_setting) = self.settings.nodes.get(&params.get_alias())
+        let node_setting = if let Some(node_setting) = self
+            .settings
+            .network_settings
+            .nodes
+            .get(&params.get_alias())
         {
             node_setting
         } else {
@@ -463,7 +474,11 @@ impl Controller {
 
         FragmentSender::new(
             hash,
-            self.settings.block0.blockchain_configuration.linear_fees,
+            self.settings
+                .network_settings
+                .block0
+                .blockchain_configuration
+                .linear_fees,
             builder.build(),
         )
     }
