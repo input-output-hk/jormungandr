@@ -2481,7 +2481,7 @@ dependencies = [
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#cbf7064a4c1e9f03f46d3a49bd983571e530c812"
+source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#cfff3466f05604c5bba8ded1060c4eb8c091f15e"
 dependencies = [
  "assert_fs",
  "bech32",
@@ -2661,7 +2661,7 @@ dependencies = [
 [[package]]
 name = "logging-lib"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#cbf7064a4c1e9f03f46d3a49bd983571e530c812"
+source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#50790703145e0c761d5249a757bc3bdfc0658873"
 dependencies = [
  "chrono",
  "log 0.4.11",
@@ -5403,7 +5403,7 @@ dependencies = [
 [[package]]
 name = "vit-servicing-station-lib"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#cbf7064a4c1e9f03f46d3a49bd983571e530c812"
+source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#50790703145e0c761d5249a757bc3bdfc0658873"
 dependencies = [
  "async-graphql",
  "async-graphql-warp",
@@ -5429,7 +5429,7 @@ dependencies = [
 [[package]]
 name = "vit-servicing-station-tests"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#cbf7064a4c1e9f03f46d3a49bd983571e530c812"
+source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#50790703145e0c761d5249a757bc3bdfc0658873"
 dependencies = [
  "askama",
  "askama_shared",
@@ -5442,7 +5442,7 @@ dependencies = [
  "diesel_migrations",
  "fake",
  "hyper",
- "jortestkit 0.1.0 (git+https://github.com/input-output-hk/vit-servicing-station)",
+ "jortestkit 0.1.0 (git+https://github.com/input-output-hk/jortestkit.git)",
  "lazy_static",
  "libsqlite3-sys",
  "predicates",
