@@ -16,7 +16,6 @@ use jormungandr_lib::{
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
-// use vit_servicing_station_lib::server::settings::ServiceSettings;
 
 pub type VotePlanAlias = String;
 

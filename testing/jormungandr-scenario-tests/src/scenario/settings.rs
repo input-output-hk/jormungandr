@@ -18,7 +18,6 @@ use jormungandr_testing_utils::testing::network_builder::{Random, WalletProxySet
 use rand_core::{CryptoRng, RngCore};
 use std::collections::HashMap;
 use std::io::Write;
-use std::ops::{Deref, DerefMut};
 use vit_servicing_station_lib::server::settings::ServiceSettings;
 use vit_servicing_station_tests::common::startup::server::ServerSettingsBuilder;
 
@@ -65,20 +64,6 @@ pub struct Settings {
     pub vit_stations: HashMap<NodeAlias, ServiceSettings>,
 }
 
-impl Deref for Settings {
-    type Target = NetworkBuilderSettings;
-
-    fn deref(&self) -> &Self::Target {
-        &self.network_settings
-    }
-}
-
-impl DerefMut for Settings {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.network_settings
-    }
-}
-
 impl Settings {
     pub fn new<RNG>(
         nodes: HashMap<NodeAlias, NodeSetting>,
@@ -106,20 +91,25 @@ impl Settings {
     fn populate_block0_blockchain_vote_plans(&mut self, vote_plans: Vec<VotePlanDef>) {
         let mut vote_plans_fragments = Vec::new();
         for vote_plan_def in vote_plans {
-            let owner = self.wallets.get(&vote_plan_def.owner()).unwrap_or_else(|| {
-                panic!(
-                    "Owner {} of {} is unknown wallet ",
-                    vote_plan_def.owner(),
-                    vote_plan_def.alias()
-                )
-            });
+            let owner = self
+                .network_settings
+                .wallets
+                .get(&vote_plan_def.owner())
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Owner {} of {} is unknown wallet ",
+                        vote_plan_def.owner(),
+                        vote_plan_def.alias()
+                    )
+                });
             let vote_plan: VotePlan = vote_plan_def.into();
             vote_plans_fragments.push(create_initial_vote_plan(
                 &vote_plan,
                 &[owner.clone().into()],
             ));
         }
-        self.block0
+        self.network_settings
+            .block0
             .initial
             .extend(try_initials_vec_from_messages(vote_plans_fragments.iter()).unwrap())
     }
@@ -137,12 +127,12 @@ impl Dotifier {
     node [ style = filled; color = lightgrey ];
 "###
         )?;
-        for node in settings.nodes.values() {
+        for node in settings.network_settings.nodes.values() {
             let label = self.dot_node_label(&node);
             writeln!(&mut w, "    {}", &label)?;
 
             for trusted_peer in node.node_topology.trusted_peers() {
-                let trusted_peer = settings.nodes.get(trusted_peer).unwrap();
+                let trusted_peer = settings.network_settings.nodes.get(trusted_peer).unwrap();
                 writeln!(
                     &mut w,
                     "    {} -> {} [ label = \"trusts\" ; color = blue ]",
@@ -153,13 +143,13 @@ impl Dotifier {
         }
         writeln!(&mut w, "  }}")?;
 
-        for wallet in settings.wallets.values() {
+        for wallet in settings.network_settings.wallets.values() {
             let template = wallet.template();
             let label = self.dot_wallet_label(&template);
             writeln!(&mut w, "  {}", &label)?;
 
             if let Some(node) = template.delegate() {
-                let trusted_peer = settings.nodes.get(node).unwrap();
+                let trusted_peer = settings.network_settings.nodes.get(node).unwrap();
                 writeln!(
                     &mut w,
                     "  {} -> {} [ label = \"delegates\"; style = dashed ; color = red ]",
