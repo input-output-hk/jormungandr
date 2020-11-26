@@ -366,8 +366,7 @@ pub async fn pull_blocks_correct_hashes_all_blocks() {
 
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
 
-    let mut block_hashes_from_logs = server.logger.get_created_blocks_hashes();
-    block_hashes_from_logs.insert(0, genesis_block_hash);
+    let block_hashes_from_logs = server.logger.get_created_blocks_hashes();
     assert_eq!(block_hashes_from_logs, blocks_hashes);
 }
 
@@ -400,7 +399,7 @@ pub async fn pull_blocks_correct_hashes_partial() {
 
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
 
-    assert_eq!(expected_hashes, blocks_hashes);
+    assert_eq!(expected_hashes[1..].to_vec(), blocks_hashes);
 }
 
 // L1023 PullBlocks to and from in wrong order

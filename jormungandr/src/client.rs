@@ -191,7 +191,7 @@ async fn handle_pull_blocks(
                 .ok_or_else(|| IntercomError::not_found("`from` not found"))
         });
     match res {
-        Ok((to, depth)) => storage.send_branch(to, Some(depth + 1), handle).await,
+        Ok((to, depth)) => storage.send_branch(to, Some(depth), handle).await,
         Err(e) => {
             handle.reply_error(e);
             Ok(())
