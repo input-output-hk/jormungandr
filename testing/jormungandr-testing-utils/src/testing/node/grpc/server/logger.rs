@@ -12,6 +12,7 @@ pub enum MethodType {
     Init,
     Handshake,
     ClientAuth,
+    PullBlocks,
     PullBlocksToTip,
     Tip,
     GetBlocks,
