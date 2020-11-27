@@ -27,6 +27,7 @@
   - [Transaction](./jcli/transaction.md)
   - [Certificate](./jcli/certificate.md)
   - [Genesis](./jcli/genesis.md)
+  - [Voting](./jcli/vote.md)
   - [REST](./jcli/rest.md)
 
 - [Staking and stake pool](./stake_pool/introduction.md)
