@@ -87,13 +87,9 @@ pub async fn bootstrap_from_peer(
 
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let blockchain1 = blockchain.clone();
-    let tip1 = tip.clone();
-    let logger1 = logger.clone();
-
     let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
 
-    let checkpoints = blockchain1.get_checkpoints(tip1.branch()).await;
+    let checkpoints = blockchain.get_checkpoints(tip.branch()).await;
     let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
 
     let remote_tip: Header = client
@@ -104,7 +100,7 @@ pub async fn bootstrap_from_peer(
     let remote_tip = BlockId::try_from(remote_tip.id().as_ref()).unwrap();
 
     info!(
-        logger1,
+        logger,
         "pulling blocks starting from checkpoints: {:?}; to tip {:?}", checkpoints, remote_tip,
     );
 
