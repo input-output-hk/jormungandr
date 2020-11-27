@@ -706,6 +706,11 @@ pub async fn bootstrap(
         }
     }
 
+    blockchain
+        .gc(branch.get_ref().await)
+        .await
+        .map_err(bootstrap::Error::GcFailed)?;
+
     Ok(bootstrapped)
 }
 

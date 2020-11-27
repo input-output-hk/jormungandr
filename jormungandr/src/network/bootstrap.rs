@@ -43,6 +43,8 @@ pub enum Error {
     ApplyBlockFailed(#[source] BlockchainError),
     #[error("failed to select the new tip")]
     ChainSelectionFailed(#[source] BlockchainError),
+    #[error("failed to collect garbage and flush blocks to the permanent storage")]
+    GcFailed(#[source] BlockchainError),
     #[error("the bootstrap process was interrupted")]
     Interrupted,
     #[error("Trusted peers cannot be empty. To avoid bootstrap use `skip_bootstrap: true`")]
