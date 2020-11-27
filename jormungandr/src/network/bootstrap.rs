@@ -25,6 +25,8 @@ pub enum Error {
     PullRequestFailed(#[source] NetworkError),
     #[error("bootstrap pull stream failed")]
     PullStreamFailed(#[source] NetworkError),
+    #[error("could not get the blockchain tip from a peer")]
+    TipFailed(#[source] NetworkError),
     #[error("decoding of a block failed")]
     BlockDecodingFailed(#[source] <Block as Deserialize>::Error),
     #[error("block header check failed")]
@@ -78,6 +80,11 @@ pub async fn bootstrap_from_peer(
     cancellation_token: CancellationToken,
     logger: Logger,
 ) -> Result<(), Error> {
+    use crate::network::convert::Decode;
+    use chain_impl_mockchain::header::Header;
+    use chain_network::data::BlockId;
+    use std::convert::TryFrom;
+
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
     let blockchain1 = blockchain.clone();
@@ -89,13 +96,20 @@ pub async fn bootstrap_from_peer(
     let checkpoints = blockchain1.get_checkpoints(tip1.branch()).await;
     let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
 
+    let remote_tip: Header = client
+        .tip()
+        .await
+        .and_then(|header| header.decode())
+        .map_err(Error::TipFailed)?;
+    let remote_tip = BlockId::try_from(remote_tip.id().as_ref()).unwrap();
+
     info!(
         logger1,
-        "pulling blocks starting from checkpoints: {:?}", checkpoints
+        "pulling blocks starting from checkpoints: {:?}; to tip {:?}", checkpoints, remote_tip,
     );
 
     let stream = client
-        .pull_blocks_to_tip(checkpoints)
+        .pull_blocks(checkpoints, remote_tip)
         .await
         .map_err(Error::PullRequestFailed)?;
 
