@@ -81,7 +81,6 @@ pub async fn bootstrap_from_peer(
     logger: Logger,
 ) -> Result<(), Error> {
     use crate::network::convert::Decode;
-    use chain_impl_mockchain::header::Header;
     use chain_network::data::BlockId;
     use std::convert::TryFrom;
 
@@ -89,27 +88,42 @@ pub async fn bootstrap_from_peer(
 
     let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
 
-    let checkpoints = blockchain.get_checkpoints(tip.branch()).await;
-    let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
+    loop {
+        let remote_tip = client
+            .tip()
+            .await
+            .and_then(|header| header.decode())
+            .map_err(Error::TipFailed)?
+            .id();
 
-    let remote_tip: Header = client
-        .tip()
-        .await
-        .and_then(|header| header.decode())
-        .map_err(Error::TipFailed)?;
-    let remote_tip = BlockId::try_from(remote_tip.id().as_ref()).unwrap();
+        if remote_tip == tip.get_ref().await.hash() {
+            break Ok(());
+        }
 
-    info!(
-        logger,
-        "pulling blocks starting from checkpoints: {:?}; to tip {:?}", checkpoints, remote_tip,
-    );
+        let checkpoints = blockchain.get_checkpoints(tip.branch()).await;
+        let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
 
-    let stream = client
-        .pull_blocks(checkpoints, remote_tip)
-        .await
-        .map_err(Error::PullRequestFailed)?;
+        let remote_tip = BlockId::try_from(remote_tip.as_ref()).unwrap();
 
-    bootstrap_from_stream(blockchain, tip, stream, cancellation_token, logger).await
+        info!(
+            logger,
+            "pulling blocks starting from checkpoints: {:?}; to tip {:?}", checkpoints, remote_tip,
+        );
+
+        let stream = client
+            .pull_blocks(checkpoints, remote_tip)
+            .await
+            .map_err(Error::PullRequestFailed)?;
+
+        bootstrap_from_stream(
+            blockchain.clone(),
+            tip.clone(),
+            stream,
+            cancellation_token.clone(),
+            logger.clone(),
+        )
+        .await?;
+    }
 }
 
 struct BootstrapInfo {
