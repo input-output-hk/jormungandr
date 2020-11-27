@@ -1,11 +1,8 @@
+mod config;
 mod v0;
 
-use crate::jcli_app::utils::{
-    host_addr,
-    io::ReadYamlError,
-    output_format,
-    rest_api::{self, DESERIALIZATION_ERROR_MSG},
-};
+use crate::jcli_app::utils::{io::ReadYamlError, output_format};
+use config::RestArgs;
 use hex::FromHexError;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -20,12 +17,6 @@ pub enum Rest {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("failed to make a REST request")]
-    RestError(#[from] rest_api::Error),
-    #[error("invalid host address")]
-    HostAddrError(#[from] host_addr::Error),
-    #[error("{}", DESERIALIZATION_ERROR_MSG)]
-    DeserializationError(#[from] serde_json::Error),
     #[error("input is not a valid fragment")]
     InputFragmentMalformed(#[source] std::io::Error),
     #[error("formatting output failed")]
@@ -36,6 +27,8 @@ pub enum Error {
     InputFileYamlMalformed(#[from] serde_yaml::Error),
     #[error("input hex encoding is not valid")]
     InputHexMalformed(#[from] FromHexError),
+    #[error("error when trying to perform an HTTP request")]
+    RequestError(#[from] config::Error),
 }
 
 impl From<ReadYamlError> for Error {

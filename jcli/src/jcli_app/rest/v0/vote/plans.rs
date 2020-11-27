@@ -1,5 +1,5 @@
-use crate::jcli_app::rest::Error;
-use crate::jcli_app::utils::{DebugFlag, HostAddr, OutputFormat, RestApiSender, TlsCert};
+use crate::jcli_app::rest::{Error, RestArgs};
+use crate::jcli_app::utils::OutputFormat;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -8,32 +8,24 @@ pub enum Plans {
     /// Get active vote plans list
     Get {
         #[structopt(flatten)]
-        addr: HostAddr,
-        #[structopt(flatten)]
-        debug: DebugFlag,
+        args: RestArgs,
         #[structopt(flatten)]
         output_format: OutputFormat,
-        #[structopt(flatten)]
-        tls: TlsCert,
     },
 }
 
 impl Plans {
     pub fn exec(self) -> Result<(), Error> {
         let Plans::Get {
-            addr,
-            debug,
+            args,
             output_format,
-            tls,
         } = self;
-        let url = addr
-            .with_segments(&["v0", "vote", "active", "plans"])?
-            .into_url();
-        let builder = reqwest::blocking::Client::new().get(url);
-        let response = RestApiSender::new(builder, &debug, &tls).send()?;
-        response.ok_response()?;
-        let status = response.body().json_value()?;
-        let formatted = output_format.format_json(status)?;
+        let response = args
+            .client()?
+            .get(&["v0", "vote", "active", "plans"])
+            .execute()?
+            .json()?;
+        let formatted = output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())
     }

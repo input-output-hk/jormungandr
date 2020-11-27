@@ -36,6 +36,7 @@ openapiv3 = "0.3.2"
 valico = "3.4.0"
 ed25519-bip32 = "0.3"
 thiserror = "1.0"
+bytes = "0.5"
 
 [dependencies.clap]
 version = "2.33"
@@ -45,12 +46,11 @@ features = [ "suggestions", "color", "wrap_help" ]
 [dependencies.reqwest]
 version = "0.10.9"
 default-features = false
-features = ["blocking", "rustls-tls"]
+features = ["blocking", "rustls-tls", "json"]
 
 [dev-dependencies]
 assert_fs = "1.0"
 predicates = "1.0"
-maplit = "1.0.2"
 
 [build-dependencies]
 versionisator = "1.0.2"
