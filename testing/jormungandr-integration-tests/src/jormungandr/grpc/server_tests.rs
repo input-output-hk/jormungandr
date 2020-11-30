@@ -12,7 +12,6 @@ use std::time::Duration;
 
 // L1005 Handshake version discrepancy
 #[tokio::test]
-#[ignore]
 pub async fn wrong_protocol() {
     let fixture = Fixture::new();
 
@@ -41,7 +40,6 @@ pub async fn wrong_protocol() {
 
 // L1004 Handshake hash discrepancy
 #[tokio::test]
-#[ignore]
 pub async fn wrong_genesis_hash() {
     let fixture = Fixture::new();
 
@@ -82,7 +80,6 @@ pub async fn wrong_genesis_hash() {
 
 // L1002 Handshake compatible
 #[tokio::test]
-#[ignore]
 pub async fn handshake_ok() {
     let fixture = Fixture::new();
 
