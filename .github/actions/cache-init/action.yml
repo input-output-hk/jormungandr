@@ -1,0 +1,29 @@
+name: Initialize Cargo dependency cache
+inputs:
+  crates-io-index-head:
+    required: true
+  cargo-lock-hash:
+    required: true
+runs:
+  using: composite
+  steps:
+    # TODO update when this issue is fix
+    # Caches on Windows and Unix do not interop with actions/cache@v2:
+    # https://github.com/actions/cache/issues/330#issuecomment-637701649
+    - name: Cache cargo registry index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry/index
+        key: cargo-index-v2-${{ inputs.crates-io-index-head }}
+
+    - name: Cache cargo dependencies
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry/cache
+        key: cargo-deps-v2-${{ inputs.cargo-lock-hash }}
+
+    - name: Cache cargo git dependencies
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git/db
+        key: cargo-git-deps-v2-${{ inputs.cargo-lock-hash }}

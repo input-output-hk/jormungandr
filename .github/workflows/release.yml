@@ -155,23 +155,11 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache cargo registry index
-        uses: actions/cache@v1
+      - name: Load Cargo caches
+        uses: ./.github/actions/cache-init
         with:
-          path: ~/.cargo/registry/index
-          key: cargo-index-v2-${{ needs.update_deps.outputs.crates-io-index-head }}
-
-      - name: Cache cargo dependencies
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry/cache
-          key: cargo-deps-v2-${{ needs.update_deps.outputs.cargo-lock-hash }}
-
-      - name: Cache cargo git dependencies
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/git/db
-          key: cargo-git-deps-v2-${{ needs.update_deps.outputs.cargo-lock-hash }}
+          crates-io-index-head: ${{ needs.update_deps.outputs.crates-io-index-head }}
+          cargo-lock-hash: ${{ needs.update_deps.outputs.cargo-lock-hash }}
 
       - name: Create .cargo/config.toml
         shell: bash
