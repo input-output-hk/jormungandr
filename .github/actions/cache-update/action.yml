@@ -1,0 +1,50 @@
+name: Update Cargo dependency cache
+outputs:
+  crates-io-index-head:
+    value: ${{ steps.crates-io-index-head.outputs.head }}
+  cargo-lock-hash:
+    value: ${{ steps.cargo-lock-hash.outputs.hash }}
+runs:
+  using: composite
+  steps:
+    - id: crates-io-index-head
+      name: Get head commit hash of crates.io registry index
+      run: |
+        commit=$(
+          git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
+          cut -f 1
+        )
+        echo "::set-output name=head::$commit"
+
+    - id: cargo-lock-hash
+      name: Calculate dependency cache key
+      run: |
+        hash=$(
+          ci/strip-own-version-from-cargo-lock.pl Cargo.lock |
+          sha1sum | cut -d ' ' -f 1
+        )
+        echo "::set-output name=hash::$hash"
+
+    # TODO update when this issue is fix
+    # Caches on Windows and Unix do not interop with actions/cache@v2:
+    # https://github.com/actions/cache/issues/330#issuecomment-637701649
+    - name: Cache cargo registry index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry/index
+        key: cargo-index-v2-${{ steps.crates-io-index-head.outputs.head }}
+
+    - name: Cache cargo dependencies
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry/cache
+        key: cargo-deps-v2-${{ steps.cargo-lock-hash.outputs.hash }}
+
+    - name: Cache cargo git dependencies
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git/db
+        key: cargo-git-deps-v2-${{ steps.cargo-lock-hash.outputs.hash }}
+
+    - name: Fetch dependencies and update cargo registry
+      run: cargo fetch --locked

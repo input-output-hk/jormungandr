@@ -59,75 +59,25 @@ jobs:
           upload_url=$(hub release show -f '%uA' $release_tag)
           echo "::set-output name=upload_url::$upload_url"
 
-  cache_info:
-    name: Bootstrap cache
-    if: >
-      github.repository_owner == 'input-output-hk'
-      || startsWith(github.ref, 'refs/heads/ci/test/')
-      || startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-ci-test.')
-    runs-on: ubuntu-latest
-    outputs:
-      crates-io-index-head: ${{ steps.ls-crates-io-index.outputs.head }}
-      cargo-lock-hash: ${{ steps.hash-cargo-lock.outputs.hash }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - id: ls-crates-io-index
-        name: Get head commit hash of crates.io registry index
-        run: |
-          commit=$(
-            git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
-            cut -f 1
-          )
-          echo "$commit"
-          echo "::set-output name=head::$commit"
-
-      - id: hash-cargo-lock
-        name: Calculate dependency cache key
-        run: |
-          hash=$(
-            ci/strip-own-version-from-cargo-lock.pl Cargo.lock |
-            sha1sum | cut -d ' ' -f 1
-          )
-          echo "$hash"
-          echo "::set-output name=hash::$hash"
-
   update_deps:
     name: Update dependencies
-    needs: cache_info
-    # Caches on Windows and Unix do not interop:
-    # https://github.com/actions/cache/issues/330#issuecomment-637701649
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    outputs:
+      crates-io-index-head: ${{ steps.cache-update.outputs.crates-io-index-head }}
+      cargo-lock-hash: ${{ steps.cache-update.outputs.cargo-lock-hash }}
     steps:
-      - name: Cache cargo registry index
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry/index
-          key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
-          restore-keys: cargo-index-
-
-      - id: cargo-deps
-        name: Cache cargo dependencies
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry/cache
-          key: cargo-deps-${{ needs.cache_info.outputs.cargo-lock-hash }}
-
       - name: Check out the repository
         uses: actions/checkout@v2
         with:
           submodules: true
 
-      - name: Fetch dependencies and update cargo registry
-        run: cargo fetch --locked
+      - id: cache-update
+        name: Fetch dependencies and update cargo registry
+        uses: ./.github/actions/cache-update
 
   build_assets:
     name: Build assets
-    needs: [create_release, cache_info, update_deps]
+    needs: [create_release, update_deps]
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
@@ -205,17 +155,23 @@ jobs:
         with:
           submodules: true
 
-      - name: Restore cargo registry index
-        uses: actions/cache@v2
+      - name: Cache cargo registry index
+        uses: actions/cache@v1
         with:
           path: ~/.cargo/registry/index
-          key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
+          key: cargo-index-v2-${{ needs.update_deps.outputs.crates-io-index-head }}
 
-      - name: Restore cargo dependencies
-        uses: actions/cache@v2
+      - name: Cache cargo dependencies
+        uses: actions/cache@v1
         with:
           path: ~/.cargo/registry/cache
-          key: cargo-deps-${{ needs.cache_info.outputs.cargo-lock-hash }}
+          key: cargo-deps-v2-${{ needs.update_deps.outputs.cargo-lock-hash }}
+
+      - name: Cache cargo git dependencies
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git/db
+          key: cargo-git-deps-v2-${{ needs.update_deps.outputs.cargo-lock-hash }}
 
       - name: Create .cargo/config.toml
         shell: bash
