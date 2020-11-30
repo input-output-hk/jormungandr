@@ -11,14 +11,14 @@ tokio = { version = "0.2", features = ["macros"] }
 futures      = "0.3.8"
 base64 = "0.13"
 hex = "0.4.2"
-chain-addr      = { path = "../../chain-deps/chain-addr" }
-chain-core      = { path = "../../chain-deps/chain-core" }
-chain-crypto    = { path = "../../chain-deps/chain-crypto" }
-chain-impl-mockchain = { path = "../../chain-deps/chain-impl-mockchain" }
-chain-time      = { path = "../../chain-deps/chain-time" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
-jortestkit = { path = "../jortestkit" }
+jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"

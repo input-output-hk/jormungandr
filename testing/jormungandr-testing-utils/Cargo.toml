@@ -16,16 +16,16 @@ bech32 = "0.7"
 bytesize = "1.0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chain-impl-mockchain = { path = "../../chain-deps/chain-impl-mockchain", features = [ "property-test-api" ] }
-chain-addr      = { path = "../../chain-deps/chain-addr", features = [ "property-test-api" ] }
-chain-core      = { path = "../../chain-deps/chain-core" }
-chain-crypto    = { path = "../../chain-deps/chain-crypto", features = [ "property-test-api" ] }
-chain-time           = { path = "../../chain-deps/chain-time" }
-chain-storage           = { path = "../../chain-deps/chain-storage", features = ["with-bench"] }
-cardano-legacy-address = { path = "../../chain-deps/cardano-legacy-address" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-storage           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
-jortestkit = { path = "../jortestkit"}
-typed-bytes = { path = "../../chain-deps/typed-bytes" }
+jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"

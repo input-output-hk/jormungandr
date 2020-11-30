@@ -7,9 +7,6 @@ use std::sync::Arc;
 use tokio::sync::{oneshot, RwLock};
 use tonic::transport::Server;
 
-pub mod node {
-    tonic::include_proto!("iohk.chain.node"); // The string specified here must match the proto package name
-}
 use crate::testing::node::grpc::server::NodeServer;
 
 pub struct MockBuilder {
