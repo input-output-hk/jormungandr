@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  update_deps:
+    name: Update dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      crates-io-index-head: ${{ steps.cache-update.outputs.crates-io-index-head }}
+      cargo-lock-hash: ${{ steps.cache-update.outputs.cargo-lock-hash }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - id: cache-update
+        name: Fetch dependencies and update cargo registry
+        uses: ./.github/actions/cache-update
+
+  test_debug:
+    name: Run tests
+    runs_on: ${{ matrix.os }}
+    needs: update_deps
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      RUSTFLAGS: -D warnings
+      RUST_BACKTRACE: 1
+    steps:
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          default: true
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Load Cargo caches
+        uses: ./.github/actions/cache-init
+        with:
+          crates-io-index-head: ${{ needs.update_deps.outputs.crates-io-index-head }}
+          cargo-lock-hash: ${{ needs.update_deps.outputs.cargo-lock-hash }}
+
+      - name: Build jormungandr
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            -p jormungandr
+            --verbose
+
+      - name: Build jcli
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            -p jcli
+            --verbose
+
+      - name: Build tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            --tests
+            --verbose
+
+      - name: Build scenario tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >
+            -p jormungandr-scenario-tests
+            --verbose
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
