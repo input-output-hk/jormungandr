@@ -22,7 +22,7 @@ jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"
-slog = { version = "^2.5.1", features = [ "max_level_trace", "release_max_level_trace" ] }
+slog = { version = "^2.7.0", features = [ "max_level_trace", "release_max_level_trace" ] }
 slog-async = "2.5.0"
 slog-json = "2.3.0"
 serde = "1.0"
