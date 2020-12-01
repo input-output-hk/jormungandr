@@ -87,34 +87,6 @@ jobs:
           paths:
             - /usr/local/cargo/advisory-db
 
-  rustfmt:
-    executor: rust-stable
-    steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init --depth=1
-      - run:
-          name: Print version information
-          command: rustfmt --version
-      - run:
-          name: Check rustfmt
-          command: cargo fmt -- --check
-
-  clippy:
-    executor: rust-stable
-    environment:
-      RUSTFLAGS: -D warnings
-    steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init --depth=1
-      - run:
-          name: Print version information
-          command: cargo clippy -- --version
-      - run:
-          name: Check clippy
-          command: cargo clippy
-
   test_debug:
     executor: rust-stable
     environment:
@@ -122,14 +94,6 @@ jobs:
       CARGO_INCREMENTAL: 0
     steps:
       - test
-
-  test_release:
-    executor: rust-stable
-    environment:
-      RUSTFLAGS: -D warnings
-    steps:
-      - test:
-          mode: --release
 
 commands:
   test:
