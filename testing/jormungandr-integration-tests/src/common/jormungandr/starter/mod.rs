@@ -403,19 +403,22 @@ where
     Conf: TestConfig + Serialize + Debug,
 {
     fn start_with_fail_in_logs(self, expected_msg_in_logs: &str) -> Result<(), StartupError> {
+        let log_file_path = self.params.log_file_path().to_owned();
+        let sleep_duration = self.starter.sleep;
+        let timeout = self.starter.timeout;
+
         let start = Instant::now();
-        let _process = self.start_process();
+        let _process = self.start_async()?;
 
         loop {
-            let log_file_path = self.params.log_file_path();
-            let logger = JormungandrLogger::new(log_file_path);
-            if start.elapsed() > self.starter.timeout {
+            let logger = JormungandrLogger::new(log_file_path.clone());
+            if start.elapsed() > timeout {
                 return Err(StartupError::EntryNotFoundInLogs {
                     entry: expected_msg_in_logs.to_string(),
                     log_content: logger.get_log_content(),
                 });
             }
-            process_utils::sleep(self.starter.sleep);
+            process_utils::sleep(sleep_duration);
             if logger
                 .raw_log_contains_any_of(&[expected_msg_in_logs])
                 .unwrap_or(false)
