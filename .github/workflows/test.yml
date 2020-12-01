@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - ci/test/nightly
   pull_request:
 
 jobs:
