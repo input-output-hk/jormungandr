@@ -13,6 +13,12 @@ pub struct VotePlanBuilder {
     member_keys: Vec<MemberPublicKey>,
 }
 
+impl Default for VotePlanBuilder {
+    fn default() -> Self {
+        VotePlanBuilder::new()
+    }
+}
+
 impl VotePlanBuilder {
     pub fn new() -> Self {
         Self {

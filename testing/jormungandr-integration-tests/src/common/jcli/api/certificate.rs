@@ -7,6 +7,7 @@ use assert_fs::{prelude::*, NamedTempFile};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_testing_utils::testing::file;
 use std::path::Path;
+
 #[derive(Debug)]
 pub struct Certificate {
     command: CertificateCommand,

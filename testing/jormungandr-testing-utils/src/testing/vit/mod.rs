@@ -2,44 +2,7 @@ use chain_impl_mockchain::vote::PayloadType;
 mod builder;
 use bech32::ToBase32;
 pub use builder::VotePlanBuilder;
-use chain_impl_mockchain::certificate::{Proposal, Proposals, PushProposal, VoteAction, VotePlan};
-use chain_impl_mockchain::ledger::governance::ParametersGovernanceAction;
-use chain_impl_mockchain::testing::VoteTestGen;
-use chain_impl_mockchain::value::Value;
-use chain_impl_mockchain::vote::Options;
-pub fn proposal_with_3_options(rewards_increase: u64) -> Proposal {
-    let action = VoteAction::Parameters {
-        action: ParametersGovernanceAction::RewardAdd {
-            value: Value(rewards_increase),
-        },
-    };
-
-    Proposal::new(
-        VoteTestGen::external_proposal_id(),
-        Options::new_length(3).unwrap(),
-        action,
-    )
-}
-
-pub fn offchain_proposal() -> Proposal {
-    Proposal::new(
-        VoteTestGen::external_proposal_id(),
-        Options::new_length(3).unwrap(),
-        VoteAction::OffChain,
-    )
-}
-
-pub fn proposals(rewards_increase: u64) -> Proposals {
-    let mut proposals = Proposals::new();
-    for _ in 0..3 {
-        assert_eq!(
-            PushProposal::Success,
-            proposals.push(proposal_with_3_options(rewards_increase)),
-            "generate_proposal method is only for correct data preparation"
-        );
-    }
-    proposals
-}
+use chain_impl_mockchain::certificate::VotePlan;
 
 pub trait VotePlanExtension {
     fn as_json(&self) -> json::JsonValue;

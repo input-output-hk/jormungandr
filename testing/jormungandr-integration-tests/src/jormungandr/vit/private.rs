@@ -158,6 +158,9 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
+    let encryption_key_file = NamedTempFile::new("encrypting_vote_key.yaml").unwrap();
+    encryption_key_file.write_str(&encrypting_vote_key).unwrap();
+
     let vote_tally_cert = jcli.certificate().new_vote_tally(vote_plan_id);
 
     let tx = jcli
@@ -179,9 +182,6 @@ pub fn jcli_e2e_flow_private_vote() {
     let vote_tally = jormungandr.rest().inner().vote_plan_statuses().unwrap();
     let vote_tally_file = NamedTempFile::new("vote_tally.yaml").unwrap();
     vote_tally_file.write_str(&vote_tally).unwrap();
-
-    let encryption_key_file = NamedTempFile::new("encrypting_vote_key.yaml").unwrap();
-    encryption_key_file.write_str(&encrypting_vote_key).unwrap();
 
     let decryption_share = jcli
         .votes()
