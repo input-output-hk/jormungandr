@@ -39,6 +39,8 @@ pub struct PrivateTally {
     #[structopt(long = "vote-plan-id")]
     pub id: VotePlanId,
 
+    /// path to the json file containing the tally shares
+    #[structopt(long = "shares-file")]
     pub encrypted_shares_file: PathBuf,
 
     /// write the output to the given file or print it to the standard output if not defined
