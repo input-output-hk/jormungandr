@@ -268,7 +268,7 @@ fn generate_network(
     let listen_address = command_arguments
         .listen_address
         .as_ref()
-        .or_else(|| p2p_listen_address)
+        .or(p2p_listen_address)
         .map(|v| v.to_socket_addr().ok_or(Error::ListenAddressNotValid))
         .transpose()?;
 
