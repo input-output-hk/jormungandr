@@ -86,7 +86,11 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
         flags: ['', '--release']
-        toolchain: [stable, nightly]
+        toolchain: stable
+        include:
+          - os: ubuntu-latest
+            flags: ''
+            toolchain: nightly
     steps:
       - uses: actions-rs/toolchain@v1
         with:
