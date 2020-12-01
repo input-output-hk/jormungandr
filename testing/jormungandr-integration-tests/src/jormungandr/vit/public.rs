@@ -8,7 +8,7 @@ use assert_fs::{
     TempDir,
 };
 use chain_impl_mockchain::{
-    certificate::VoteAction,
+    certificate::{VoteAction, VoteTallyPayload},
     chaintypes::ConsensusType,
     ledger::governance::ParametersGovernanceAction,
     milli::Milli,
@@ -181,7 +181,12 @@ pub fn test_vote_flow_bft() {
     wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
-        .send_vote_tally(&mut clarice, &vote_plan, &jormungandr)
+        .send_vote_tally(
+            &mut clarice,
+            &vote_plan,
+            &jormungandr,
+            VoteTallyPayload::Public,
+        )
         .unwrap();
 
     wait_for_epoch(2, jormungandr.explorer().clone());
@@ -289,7 +294,12 @@ pub fn test_vote_flow_praos() {
     wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
-        .send_vote_tally(&mut alice, &vote_plan, &jormungandr)
+        .send_vote_tally(
+            &mut alice,
+            &vote_plan,
+            &jormungandr,
+            VoteTallyPayload::Public,
+        )
         .unwrap();
 
     wait_for_epoch(3, jormungandr.explorer().clone());
