@@ -5,10 +5,6 @@ executors:
     docker:
       - image: inputoutput/rust:stable
     working_directory: /home/circleci/build
-  rust-beta:
-    docker:
-      - image: instrumentisto/rust:beta
-    working_directory: /home/build
 
 jobs:
   cargo_fetch:
@@ -91,52 +87,8 @@ jobs:
           paths:
             - /usr/local/cargo/advisory-db
 
-  rustfmt:
-    executor: rust-stable
-    steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init --depth=1
-      - run:
-          name: Print version information
-          command: rustfmt --version
-      - run:
-          name: Check rustfmt
-          command: cargo fmt -- --check
-
-  clippy:
-    executor: rust-stable
-    environment:
-      RUSTFLAGS: -D warnings
-    steps:
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init --depth=1
-      - run:
-          name: Print version information
-          command: cargo clippy -- --version
-      - run:
-          name: Check clippy
-          command: cargo clippy
-
   test_debug:
     executor: rust-stable
-    environment:
-      RUSTFLAGS: -D warnings
-      CARGO_INCREMENTAL: 0
-    steps:
-      - test
-
-  test_release:
-    executor: rust-stable
-    environment:
-      RUSTFLAGS: -D warnings
-    steps:
-      - test:
-          mode: --release
-
-  test_beta:
-    executor: rust-beta
     environment:
       RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
@@ -208,19 +160,9 @@ workflows:
   test_all:
     jobs:
       - cargo_fetch
-      - rustfmt
-      - clippy:
-          requires:
-            - cargo_fetch
       - cargo_audit:
           requires:
             - cargo_fetch
       - test_debug:
-          requires:
-            - cargo_fetch
-      - test_release:
-          requires:
-            - cargo_fetch
-      - test_beta:
           requires:
             - cargo_fetch
