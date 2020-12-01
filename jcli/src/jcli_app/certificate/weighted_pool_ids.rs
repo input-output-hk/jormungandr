@@ -45,7 +45,7 @@ fn delegation_ratio(pool_ids: &[WeightedPoolId]) -> Result<DelegationRatio, Erro
         .iter()
         .map(|pool_id| (pool_id.pool_id.into(), pool_id.weight))
         .collect();
-    DelegationRatio::new(parts, pools).ok_or_else(|| Error::InvalidPoolDelegation)
+    DelegationRatio::new(parts, pools).ok_or(Error::InvalidPoolDelegation)
 }
 
 fn delegation_ratio_sum(pool_ids: &[WeightedPoolId]) -> Result<u8, Error> {
