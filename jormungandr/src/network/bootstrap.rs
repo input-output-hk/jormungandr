@@ -25,6 +25,8 @@ pub enum Error {
     PullRequestFailed(#[source] NetworkError),
     #[error("bootstrap pull stream failed")]
     PullStreamFailed(#[source] NetworkError),
+    #[error("could not get the blockchain tip from a peer")]
+    TipFailed(#[source] NetworkError),
     #[error("decoding of a block failed")]
     BlockDecodingFailed(#[source] <Block as Deserialize>::Error),
     #[error("block header check failed")]
@@ -41,6 +43,8 @@ pub enum Error {
     ApplyBlockFailed(#[source] BlockchainError),
     #[error("failed to select the new tip")]
     ChainSelectionFailed(#[source] BlockchainError),
+    #[error("failed to collect garbage and flush blocks to the permanent storage")]
+    GcFailed(#[source] BlockchainError),
     #[error("the bootstrap process was interrupted")]
     Interrupted,
     #[error("Trusted peers cannot be empty. To avoid bootstrap use `skip_bootstrap: true`")]
@@ -78,28 +82,50 @@ pub async fn bootstrap_from_peer(
     cancellation_token: CancellationToken,
     logger: Logger,
 ) -> Result<(), Error> {
-    debug!(logger, "connecting to bootstrap peer {}", peer.connection);
+    use crate::network::convert::Decode;
+    use chain_network::data::BlockId;
+    use std::convert::TryFrom;
 
-    let blockchain1 = blockchain.clone();
-    let tip1 = tip.clone();
-    let logger1 = logger.clone();
+    debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
     let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
 
-    let checkpoints = blockchain1.get_checkpoints(tip1.branch()).await;
-    let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
+    loop {
+        let remote_tip = client
+            .tip()
+            .await
+            .and_then(|header| header.decode())
+            .map_err(Error::TipFailed)?
+            .id();
 
-    info!(
-        logger1,
-        "pulling blocks starting from checkpoints: {:?}", checkpoints
-    );
+        if remote_tip == tip.get_ref().await.hash() {
+            break Ok(());
+        }
 
-    let stream = client
-        .pull_blocks_to_tip(checkpoints)
-        .await
-        .map_err(Error::PullRequestFailed)?;
+        let checkpoints = blockchain.get_checkpoints(tip.branch()).await;
+        let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
 
-    bootstrap_from_stream(blockchain, tip, stream, cancellation_token, logger).await
+        let remote_tip = BlockId::try_from(remote_tip.as_ref()).unwrap();
+
+        info!(
+            logger,
+            "pulling blocks starting from checkpoints: {:?}; to tip {:?}", checkpoints, remote_tip,
+        );
+
+        let stream = client
+            .pull_blocks(checkpoints, remote_tip)
+            .await
+            .map_err(Error::PullRequestFailed)?;
+
+        bootstrap_from_stream(
+            blockchain.clone(),
+            tip.clone(),
+            stream,
+            cancellation_token.clone(),
+            logger.clone(),
+        )
+        .await?;
+    }
 }
 
 struct BootstrapInfo {
