@@ -117,30 +117,35 @@ jobs:
 
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
+        timeout-minutes: 30
         with:
           command: build
           args: -p jormungandr ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
+        timeout-minutes: 30
         with:
           command: build
           args: -p jcli ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
 
       - name: Build tests
         uses: actions-rs/cargo@v1
+        timeout-minutes: 30
         with:
           command: build
           args: --tests ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
 
       - name: Build scenario tests
         uses: actions-rs/cargo@v1
+        timeout-minutes: 30
         with:
           command: build
           args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
 
       - name: Run tests
         uses: actions-rs/cargo@v1
+        timeout-minutes: 30
         with:
           command: test
           args: --tests ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
