@@ -38,7 +38,7 @@ sysinfo = { version = "0.15.3" }
 slog = { version = "^2.7.0", features = [ "max_level_trace", "release_max_level_trace" ] }
 slog-async = "2.5.0"
 slog-json = "2.3.0"
-os_info = { version = "2.0.7", default-features = false }
+os_info = { version = "3.0.1", default-features = false }
 zip = "0.5.6"
 flate2 = "1.0.18"
 tar = "0.4"
