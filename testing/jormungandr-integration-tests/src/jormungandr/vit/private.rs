@@ -56,14 +56,17 @@ pub fn jcli_e2e_flow_private_vote() {
         .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
+
+    println!("{:#}", vote_plan.as_json_str());
+
     vote_plan_json.write_str(&vote_plan.as_json_str()).unwrap();
 
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![
-            alice.into_initial_fund(1_000_000),
-            bob.into_initial_fund(1_000_000),
-            clarice.into_initial_fund(1_000_000),
+            alice.to_initial_fund(1_000_000),
+            bob.to_initial_fund(1_000_000),
+            clarice.to_initial_fund(1_000_000),
         ])
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())

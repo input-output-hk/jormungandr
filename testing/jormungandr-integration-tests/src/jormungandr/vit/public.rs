@@ -139,7 +139,7 @@ pub fn test_vote_flow_bft() {
         .with_funds(
             wallets
                 .iter()
-                .map(|x| x.into_initial_fund(initial_fund_per_wallet))
+                .map(|x| x.to_initial_fund(initial_fund_per_wallet))
                 .collect(),
         )
         .with_committees(&wallets)
@@ -340,9 +340,9 @@ pub fn jcli_e2e_flow() {
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![
-            alice.into_initial_fund(1_000_000),
-            bob.into_initial_fund(1_000_000),
-            clarice.into_initial_fund(1_000_000),
+            alice.to_initial_fund(1_000_000),
+            bob.to_initial_fund(1_000_000),
+            clarice.to_initial_fund(1_000_000),
         ])
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())

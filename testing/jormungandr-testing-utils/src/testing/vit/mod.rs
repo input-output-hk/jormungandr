@@ -1,8 +1,12 @@
-use chain_impl_mockchain::{certificate::VotePlan, vote::PayloadType};
+use chain_impl_mockchain::vote::PayloadType;
 mod builder;
-pub use builder::VotePlanBuilder;
 use bech32::ToBase32;
-
+pub use builder::VotePlanBuilder;
+use chain_impl_mockchain::certificate::{Proposal, Proposals, PushProposal, VoteAction, VotePlan};
+use chain_impl_mockchain::ledger::governance::ParametersGovernanceAction;
+use chain_impl_mockchain::testing::VoteTestGen;
+use chain_impl_mockchain::value::Value;
+use chain_impl_mockchain::vote::Options;
 pub fn proposal_with_3_options(rewards_increase: u64) -> Proposal {
     let action = VoteAction::Parameters {
         action: ParametersGovernanceAction::RewardAdd {
@@ -86,10 +90,13 @@ impl VotePlanExtension for VotePlan {
         let mut committee_member_public_keys = json::JsonValue::new_array();
 
         for member in self.committee_public_keys() {
-            let encoded_member_key = bech32::encode(jormungandr_lib::interfaces::MEMBER_PUBLIC_KEY_BECH32_HRP,member.to_bytes().to_base32()).unwrap();
-            let _ =  committee_member_public_keys.push(encoded_member_key);
+            let encoded_member_key = bech32::encode(
+                jormungandr_lib::interfaces::MEMBER_PUBLIC_KEY_BECH32_HRP,
+                member.to_bytes().to_base32(),
+            )
+            .unwrap();
+            let _ = committee_member_public_keys.push(encoded_member_key);
         }
-
 
         data["committee_member_public_keys"] = committee_member_public_keys;
         data
