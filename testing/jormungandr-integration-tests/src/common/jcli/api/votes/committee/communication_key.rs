@@ -23,6 +23,7 @@ impl CommunicationKey {
             .as_single_line()
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_public(self, input: String) -> String {
         let input_file = NamedTempFile::new("input.tmp").unwrap();
         input_file.write_str(&input).unwrap();

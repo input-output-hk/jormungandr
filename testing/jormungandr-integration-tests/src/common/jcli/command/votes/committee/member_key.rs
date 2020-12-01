@@ -8,6 +8,7 @@ impl MemberKeyCommand {
         Self { command }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_public<P: AsRef<Path>, Q: AsRef<Path>>(
         mut self,
         private_key_file: P,

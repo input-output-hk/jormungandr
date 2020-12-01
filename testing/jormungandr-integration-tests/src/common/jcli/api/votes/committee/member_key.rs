@@ -15,6 +15,7 @@ impl MemberKey {
         Self { member_key_command }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_public<S: Into<String>>(self, member_secret_key: S) -> String {
         let input_file = NamedTempFile::new("member_key.tmp").unwrap();
         input_file.write_str(&member_secret_key.into()).unwrap();
