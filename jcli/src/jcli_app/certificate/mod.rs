@@ -98,6 +98,8 @@ pub enum Error {
     VoteEncryptingKey,
     #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
     InvalidBech32Key { expected: String, actual: String },
+    #[error("Invalid json representation")]
+    InvalidJson(#[from] serde_json::Error),
 }
 
 #[allow(clippy::large_enum_variant)]
