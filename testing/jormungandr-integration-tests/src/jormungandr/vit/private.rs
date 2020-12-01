@@ -191,7 +191,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let decryption_share_file = NamedTempFile::new("decryption_share").unwrap();
     decryption_share_file.write_str(&decryption_share).unwrap();
 
-    let generated_share = jcli.votes().tally().decrypt_with_shares(
+    let _generated_share = jcli.votes().tally().decrypt_with_shares(
         vote_tally_file.path(),
         3,
         decryption_share_file.path(),
