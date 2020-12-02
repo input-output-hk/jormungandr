@@ -16,7 +16,7 @@ impl TryFrom<TallyDecryptShare> for chain_vote::TallyDecryptShare {
     type Error = Error;
 
     fn try_from(value: TallyDecryptShare) -> Result<Self, Self::Error> {
-        chain_vote::TallyDecryptShare::from_bytes(&value.0).ok_or_else(|| Error::InvalidBinaryShare)
+        chain_vote::TallyDecryptShare::from_bytes(&value.0).ok_or(Error::InvalidBinaryShare)
     }
 }
 
