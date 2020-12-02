@@ -3,6 +3,7 @@ mod candidate;
 mod chain;
 mod chain_selection;
 mod checkpoints;
+mod downloader;
 mod multiverse;
 mod process;
 mod reference;
