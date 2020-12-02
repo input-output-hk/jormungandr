@@ -46,10 +46,11 @@ impl CertificateCommand {
         self
     }
 
-    pub fn vote_tally<S: Into<String>>(mut self, vote_plan_id: S) -> Self {
+    pub fn vote_tally<S: Into<String>>(mut self, vote_plan_id: S, tally_type: S) -> Self {
         self.command
             .arg("new")
             .arg("vote-tally")
+            .arg(tally_type.into())
             .arg("--vote-plan-id")
             .arg(vote_plan_id.into());
         self
