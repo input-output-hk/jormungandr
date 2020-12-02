@@ -17,7 +17,7 @@ use serde::export::Formatter;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 use std::str;
 
 #[derive(
@@ -405,7 +405,7 @@ impl TallyResult {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
-mod serde_base64_bytes {
+pub mod serde_base64_bytes {
     use serde::de::{Error, Visitor};
     use serde::{Deserializer, Serializer};
 
@@ -468,23 +468,6 @@ mod serde_base64_bytes {
         } else {
             serializer.serialize_bytes(bytes)
         }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TallyDecryptShare(#[serde(with = "serde_base64_bytes")] Vec<u8>);
-
-impl TryFrom<TallyDecryptShare> for chain_vote::TallyDecryptShare {
-    // TODO: Maybe change this error to a custom type?
-    type Error = std::io::Error;
-
-    fn try_from(value: TallyDecryptShare) -> Result<Self, Self::Error> {
-        chain_vote::TallyDecryptShare::from_bytes(&value.0).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid binary data for TallyDecryptShare",
-            )
-        })
     }
 }
 

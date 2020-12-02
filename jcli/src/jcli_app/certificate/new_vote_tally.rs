@@ -1,10 +1,24 @@
 use crate::jcli_app::certificate::{write_cert, Error};
 use crate::jcli_app::utils::io::open_file_read;
 use chain_impl_mockchain::certificate::{Certificate, TallyDecryptShares, VotePlanId, VoteTally};
-use jormungandr_lib::interfaces::TallyDecryptShare;
-use std::convert::TryInto;
-use std::path::PathBuf;
+use jormungandr_lib::interfaces::serde_base64_bytes;
+
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
+
+use std::convert::{TryFrom, TryInto};
+use std::path::PathBuf;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TallyDecryptShare(#[serde(with = "serde_base64_bytes")] Vec<u8>);
+
+impl TryFrom<TallyDecryptShare> for chain_vote::TallyDecryptShare {
+    type Error = Error;
+
+    fn try_from(value: TallyDecryptShare) -> Result<Self, Self::Error> {
+        chain_vote::TallyDecryptShare::from_bytes(&value.0).ok_or_else(|| Error::InvalidBinaryShare)
+    }
+}
 
 /// create a vote tally certificate
 ///
@@ -40,7 +54,7 @@ pub struct PrivateTally {
     pub id: VotePlanId,
 
     /// path to the json file containing the tally shares
-    #[structopt(long = "shares-file")]
+    #[structopt(long = "shares")]
     pub encrypted_shares_file: PathBuf,
 
     /// write the output to the given file or print it to the standard output if not defined
