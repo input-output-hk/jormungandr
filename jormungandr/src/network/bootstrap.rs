@@ -86,14 +86,27 @@ pub async fn bootstrap_from_peer(
     use chain_network::data::BlockId;
     use std::convert::TryFrom;
 
+    async fn with_cancellation_token<T>(
+        future: impl Future<Output = T> + Unpin,
+        token: &CancellationToken,
+    ) -> Result<T, Error> {
+        use futures::future::{select, Either};
+
+        match select(future, token.cancelled().boxed()).await {
+            Either::Left((result, _)) => Ok(result),
+            Either::Right(((), _)) => Err(Error::Interrupted),
+        }
+    }
+
     debug!(logger, "connecting to bootstrap peer {}", peer.connection);
 
-    let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
+    let mut client = with_cancellation_token(grpc::connect(&peer).boxed(), &cancellation_token)
+        .await?
+        .map_err(Error::Connect)?;
 
     loop {
-        let remote_tip = client
-            .tip()
-            .await
+        let remote_tip = with_cancellation_token(client.tip().boxed(), &cancellation_token)
+            .await?
             .and_then(|header| header.decode())
             .map_err(Error::TipFailed)?
             .id();
@@ -112,10 +125,12 @@ pub async fn bootstrap_from_peer(
             "pulling blocks starting from checkpoints: {:?}; to tip {:?}", checkpoints, remote_tip,
         );
 
-        let stream = client
-            .pull_blocks(checkpoints, remote_tip)
-            .await
-            .map_err(Error::PullRequestFailed)?;
+        let stream = with_cancellation_token(
+            client.pull_blocks(checkpoints, remote_tip).boxed(),
+            &cancellation_token,
+        )
+        .await?
+        .map_err(Error::PullRequestFailed)?;
 
         bootstrap_from_stream(
             blockchain.clone(),
