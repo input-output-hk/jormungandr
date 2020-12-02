@@ -24,7 +24,8 @@ pub enum BlockDownloaderInput<StBlocks> {
 pub enum BlockDownloaderOutput {
     RequestDownloadFromPeer {
         peer: Peer,
-        block_ids: Vec<HeaderId>,
+        start: HeaderId,
+        end: HeaderId,
     },
 }
 
@@ -537,7 +538,8 @@ where
                             output
                                 .send(BlockDownloaderOutput::RequestDownloadFromPeer {
                                     peer,
-                                    block_ids: tail,
+                                    start: tail.first().cloned().unwrap(),
+                                    end: tail.last().cloned().unwrap(),
                                 })
                                 .await
                                 .map_err(DownloadTaskError::OutputSink)?;
@@ -568,7 +570,8 @@ where
                         output
                             .send(BlockDownloaderOutput::RequestDownloadFromPeer {
                                 peer,
-                                block_ids,
+                                start: block_ids.first().cloned().unwrap(),
+                                end: block_ids.last().cloned().unwrap(),
                             })
                             .await
                             .map_err(PreDownloadTaskError::OutputSink)?;
