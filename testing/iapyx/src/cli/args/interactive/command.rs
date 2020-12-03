@@ -287,9 +287,11 @@ pub struct Connect {
 
 impl Connect {
     pub fn exec(&self, model: &mut UserInteractionContoller) -> Result<(), IapyxCommandError> {
-        let mut settings: RestSettings = Default::default();
-        settings.use_https_for_post = self.use_https_for_post;
-        settings.enable_debug = self.enable_debug;
+        let settings = RestSettings { 
+            use_https_for_post: self.use_https_for_post, 
+            enable_debug: self.enable_debug, 
+            ..Default::default() 
+        };
 
         if let Some(controller) = model.controller.as_mut() {
             controller.switch_backend(self.address.clone(), settings);

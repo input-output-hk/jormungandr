@@ -74,9 +74,12 @@ impl IapyxLoadCommand {
         let mnemonics = jortestkit::file::read_file_as_vector(&config.mnemonics_file)
             .map_err(|_e| IapyxLoadCommandError::CannotReadMnemonicsFile)?;
         let backend = config.address;
-        let mut settings: RestSettings = Default::default();
-        settings.enable_debug = self.debug;
-        settings.use_https_for_post = self.use_https_for_post;
+
+        let settings = RestSettings { 
+            enable_debug: self.debug, 
+            use_https_for_post: self.use_https_for_post, 
+            ..Default::default() };
+
         println!("{:?}", settings);
         let multicontroller = MultiController::recover(&backend, mnemonics, &[], settings).unwrap();
         let mut request_generator = WalletRequestGen::new(multicontroller);

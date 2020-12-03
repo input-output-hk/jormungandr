@@ -483,7 +483,7 @@ impl NodeController {
     pub fn shutdown(&self) -> Result<()> {
         let result = self.get("shutdown")?.text()?;
 
-        if result == "" {
+        if result.is_empty() {
             self.progress_bar.log_info("shuting down");
             self.wait_for_shutdown()
         } else {
