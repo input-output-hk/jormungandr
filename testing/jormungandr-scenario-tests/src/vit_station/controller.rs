@@ -194,7 +194,7 @@ impl VitStation {
         DbGenerator::new(vote_plans).build(&db_file);
 
         let mut command_builder =
-            BootstrapCommandBuilder::new(PathBuf::from("vit-servicing-station-server.exe"));
+            BootstrapCommandBuilder::new(PathBuf::from("vit-servicing-station-server"));
         let mut command = command_builder
             .in_settings_file(&config_file)
             .db_url(db_file.to_str().unwrap())
