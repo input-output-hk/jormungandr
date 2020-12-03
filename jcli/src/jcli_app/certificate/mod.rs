@@ -98,9 +98,9 @@ pub enum Error {
     VoteEncryptingKey,
     #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
     InvalidBech32Key { expected: String, actual: String },
-    #[error("Invalid shares JSON representation")]
+    #[error("invalid shares JSON representation")]
     InvalidJson(#[from] serde_json::Error),
-    #[error("Invalid binary share")]
+    #[error("invalid binary share")]
     InvalidBinaryShare,
 }
 
