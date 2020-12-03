@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use chain_impl_mockchain::vote::PayloadType;
 use jormungandr_lib::interfaces::TaxType;
 use std::path::Path;
 use std::process::Command;
@@ -46,10 +47,15 @@ impl CertificateCommand {
         self
     }
 
-    pub fn vote_tally<S: Into<String>>(mut self, vote_plan_id: S) -> Self {
+    pub fn vote_tally<S: Into<String>>(
+        mut self,
+        vote_plan_id: S,
+        payload_type: PayloadType,
+    ) -> Self {
         self.command
             .arg("new")
             .arg("vote-tally")
+            .arg(payload_type_to_string(payload_type))
             .arg("--vote-plan-id")
             .arg(vote_plan_id.into());
         self
@@ -160,5 +166,12 @@ impl CertificateCommand {
 
     pub fn build(self) -> Command {
         self.command
+    }
+}
+
+fn payload_type_to_string(payload_type: PayloadType) -> &'static str {
+    match payload_type {
+        PayloadType::Public => "public",
+        PayloadType::Private => "private",
     }
 }

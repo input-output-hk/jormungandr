@@ -405,7 +405,7 @@ impl TallyResult {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
-mod serde_base64_bytes {
+pub mod serde_base64_bytes {
     use serde::de::{Error, Visitor};
     use serde::{Deserializer, Serializer};
 
