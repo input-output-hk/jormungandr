@@ -100,7 +100,7 @@ pub enum Error {
     InvalidBech32Key { expected: String, actual: String },
     #[error("invalid shares JSON representation")]
     InvalidJson(#[from] serde_json::Error),
-    #[error("invalid binary share")]
+    #[error("invalid binary share data")]
     InvalidBinaryShare,
 }
 
