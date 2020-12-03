@@ -40,11 +40,13 @@ impl DbGenerator {
             }
         }
 
+        let path = std::path::Path::new(".").join("resources/vit_station/migration");
+
         let temp_dir = TempDir::new().unwrap().into_persistent();
         let temp_db_path = DbBuilder::new()
             .with_proposals(snapshot_proposals)
             .with_tokens(snapshot.tokens().values().cloned().collect())
-            .with_migrations_from(".\\resources\\vit_station\\migration")
+            .with_migrations_from(std::fs::canonicalize(path).unwrap())
             .with_funds(snapshot.funds())
             .build(&temp_dir)
             .unwrap();
