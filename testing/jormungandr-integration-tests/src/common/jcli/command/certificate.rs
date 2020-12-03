@@ -169,10 +169,9 @@ impl CertificateCommand {
     }
 }
 
-fn payload_type_to_string(payload_type: PayloadType) -> String {
+fn payload_type_to_string(payload_type: PayloadType) -> &'static str {
     match payload_type {
         PayloadType::Public => "public",
         PayloadType::Private => "private",
     }
-    .to_string()
 }
