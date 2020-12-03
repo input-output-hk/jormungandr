@@ -27,9 +27,13 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn new_vote_tally<S: Into<String>>(self, vote_plan_id: S, tally_type: S) -> String {
+    pub fn new_vote_tally<S: Into<String>>(
+        self,
+        vote_plan_id: S,
+        payload_type: PayloadType,
+    ) -> String {
         self.command
-            .vote_tally(vote_plan_id, tally_type)
+            .vote_tally(vote_plan_id, payload_type)
             .build()
             .assert()
             .success()
