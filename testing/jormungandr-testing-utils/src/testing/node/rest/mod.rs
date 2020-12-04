@@ -74,9 +74,9 @@ impl JormungandrRest {
             .replace("http://", "https://")
             .replace("127.0.0.1", "localhost");
 
-        let settings = RestSettings{
+        let settings = RestSettings {
             certificate: Some(Self::extract_certificate(cert_file.as_ref())),
-            ..Default::default() 
+            ..Default::default()
         };
         Self {
             inner: legacy::BackwardCompatibleRest::new(url, settings),
