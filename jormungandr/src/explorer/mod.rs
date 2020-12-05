@@ -3,8 +3,8 @@ pub mod graphql;
 mod indexing;
 mod persistent_sequence;
 
-use self::error::{Error, ErrorKind, Result};
 pub use self::graphql::create_schema;
+use self::error::{ExplorerError as Error, Result};
 use self::graphql::Context;
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
@@ -208,9 +208,9 @@ impl ExplorerDB {
         let stream = match maybe_head {
             Some(head) => blockchain.storage().stream_from_to(block0_id, head)?,
             None => {
-                return Err(Error::from(ErrorKind::BootstrapError(
+                return Err(Error::BootstrapError(
                     "Couldn't read the HEAD tag from storage".to_owned(),
-                )))
+                ))
             }
         };
 
@@ -262,7 +262,7 @@ impl ExplorerDB {
         let previous_state = multiverse
             .get_ref(previous_block)
             .await
-            .ok_or_else(|| Error::from(ErrorKind::AncestorNotFound(format!("{}", block.id()))))?;
+            .ok_or_else(|| Error::AncestorNotFound(block.id()))?;
         let State {
             parent_ref: _,
             transactions,
@@ -480,7 +480,7 @@ fn apply_block_to_transactions(
     for id in ids {
         transactions = transactions
             .insert(id, Arc::new(block_id))
-            .map_err(|_| ErrorKind::TransactionAlreadyExists(format!("{}", id)))?;
+            .map_err(|_| Error::TransactionAlreadyExists(id))?;
     }
 
     Ok(transactions)
@@ -490,7 +490,7 @@ fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks
     let block_id = block.id();
     blocks
         .insert(block_id, Arc::new(block.clone()))
-        .map_err(|_| Error::from(ErrorKind::BlockAlreadyExists(format!("{}", block_id))))
+        .map_err(|_| Error::BlockAlreadyExists(block_id))
 }
 
 fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
@@ -554,9 +554,7 @@ fn apply_block_to_chain_lengths(
         .insert(new_block_chain_length, Arc::new(new_block_hash))
         .map_err(|_| {
             // I think this shouldn't happen
-            Error::from(ErrorKind::ChainLengthBlockAlreadyExists(u32::from(
-                new_block_chain_length,
-            )))
+            Error::ChainLengthBlockAlreadyExists(new_block_chain_length)
         })
 }
 

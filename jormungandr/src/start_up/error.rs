@@ -54,7 +54,7 @@ pub enum Error {
     #[error("Block 0 is set to start in the future")]
     Block0InFuture,
     #[error("Error while loading the explorer from storage")]
-    ExplorerBootstrapError(#[from] explorer::error::Error),
+    ExplorerBootstrapError(#[from] explorer::error::ExplorerError),
     #[error("A service has terminated with an error")]
     ServiceTerminatedWithError(#[from] crate::utils::task::ServiceError),
     #[error("Unable to get system limits: {0}")]
