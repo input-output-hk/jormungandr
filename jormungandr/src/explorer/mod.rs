@@ -1,6 +1,7 @@
 pub mod error;
 pub mod graphql;
 mod indexing;
+mod multiverse;
 mod persistent_sequence;
 
 pub use self::graphql::create_schema;
@@ -17,7 +18,7 @@ use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
 };
-use crate::blockchain::{self, Blockchain, Multiverse, MAIN_BRANCH_TAG};
+use crate::blockchain::{self, Blockchain, MAIN_BRANCH_TAG};
 use crate::explorer::indexing::ExplorerVote;
 use crate::intercom::ExplorerMsg;
 use crate::utils::async_msg::MessageQueue;
@@ -26,8 +27,9 @@ use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId, VotePlanId};
 use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::multiverse;
 use futures::prelude::*;
+use multiverse::Multiverse;
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -38,7 +40,7 @@ pub struct Explorer {
 }
 
 struct Branch {
-    state_ref: multiverse::Ref<State>,
+    state_ref: multiverse::Ref,
     length: ChainLength,
 }
 
@@ -50,7 +52,7 @@ pub struct ExplorerDB {
     /// Structure that keeps all the known states to allow easy branch management
     /// each new block is indexed by getting its previous `State` from the multiverse
     /// and inserted a new updated one.
-    multiverse: Multiverse<State>,
+    multiverse: Multiverse,
     /// This keeps track of the longest chain seen until now. All the queries are
     /// performed using the state of this branch, the HeaderHash is used as key for the
     /// multiverse, and the ChainLength is used in the updating process.
@@ -58,6 +60,8 @@ pub struct ExplorerDB {
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
+
+    unconfirmed_fragments: HashMap<FragmentId, Vec<HeaderHash>>,
 }
 
 #[derive(Clone)]
@@ -67,14 +71,14 @@ pub struct BlockchainConfig {
     discrimination: Discrimination,
     consensus_version: ConsensusVersion,
     fees: LinearFee,
+    epoch_stability_depth: u32,
 }
 
 /// Inmutable data structure used to represent the explorer's state at a given Block
 /// A new state can be obtained to from a Block and it's previous state, getting two
 /// independent states but with memory sharing to minimize resource utilization
 #[derive(Clone)]
-struct State {
-    parent_ref: Option<multiverse::Ref<State>>,
+pub(self) struct State {
     transactions: Transactions,
     blocks: Blocks,
     addresses: Addresses,
@@ -176,32 +180,30 @@ impl ExplorerDB {
         let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &blockchain_tip, &block);
 
         let initial_state = State {
+            transactions,
             blocks,
             epochs,
             chain_lengths,
-            transactions,
             addresses,
             stake_pool_data,
             stake_pool_blocks,
-            parent_ref: None,
             vote_plans,
         };
 
-        let multiverse = Multiverse::<State>::new();
         let block0_id = block0.id();
-        let initial_state_ref = multiverse
-            .insert(block0.chain_length(), block0_id, initial_state)
-            .await;
+        let (initial_state_ref, multiverse) =
+            Multiverse::new(block0.chain_length(), block0_id, initial_state);
 
         let bootstraped_db = ExplorerDB {
             multiverse,
             longest_chain_tip: Tip::new(Branch {
-                state_ref: initial_state_ref,
+                state_ref: initial_state_ref.clone(),
                 length: block0.header.chain_length(),
             }),
             blockchain_config,
             blockchain: blockchain.clone(),
             blockchain_tip,
+            unconfirmed_fragments: Default::default(),
         };
 
         let maybe_head = blockchain.storage().get_tag(MAIN_BRANCH_TAG)?;
@@ -251,7 +253,7 @@ impl ExplorerDB {
     /// chain length is greater than the current.
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
-    async fn apply_block(&mut self, block: Block) -> Result<multiverse::Ref<State>> {
+    async fn apply_block(&mut self, block: Block) -> Result<multiverse::Ref> {
         let previous_block = block.header.block_parent_hash();
         let chain_length = block.header.chain_length();
         let block_id = block.header.hash();
@@ -264,7 +266,6 @@ impl ExplorerDB {
             .await
             .ok_or_else(|| Error::AncestorNotFound(block.id()))?;
         let State {
-            parent_ref: _,
             transactions,
             blocks,
             addresses,
@@ -289,9 +290,9 @@ impl ExplorerDB {
         let state_ref = multiverse
             .insert(
                 chain_length,
+                block.parent_id(),
                 block_id,
                 State {
-                    parent_ref: Some(previous_state),
                     transactions: apply_block_to_transactions(transactions, &explorer_block)?,
                     blocks: apply_block_to_blocks(blocks, &explorer_block)?,
                     addresses: apply_block_to_addresses(addresses, &explorer_block)?,
@@ -308,12 +309,48 @@ impl ExplorerDB {
             )
             .await;
 
-        current_tip
+        for tx_id in explorer_block.transactions.keys() {
+            self.unconfirmed_fragments
+                .entry(*tx_id)
+                .and_modify(|blocks| blocks.push(block_id))
+                .or_insert_with(|| vec![block_id]);
+        }
+
+        let replaced = current_tip
             .compare_and_replace(Branch {
                 state_ref: state_ref.clone(),
                 length: chain_length,
             })
             .await;
+
+        // if the tip was replaced, then it means the chain_length is greater,
+        // which means now a block is confirmed (at least after the initial
+        // epoch_stability_depth blocks)
+        if replaced {
+            if let Some(confirmed_block_chain_length) =
+                chain_length.nth_ancestor(self.blockchain_config.epoch_stability_depth)
+            {
+                let confirmed_id = state_ref
+                    .state()
+                    .chain_lengths
+                    .lookup(&confirmed_block_chain_length)
+                    .unwrap();
+
+                let confirmed_ref = multiverse.get_ref(**confirmed_id).await.unwrap();
+
+                let block = confirmed_ref.state().blocks.lookup(confirmed_id).unwrap();
+
+                for tx_id in block.transactions.keys() {
+                    // the fragment is already confirmed, so it can be found in
+                    // all branches (in the longest, in particular)
+                    self.unconfirmed_fragments.remove(&tx_id);
+                }
+
+                multiverse
+                    .gc(self.blockchain_config.epoch_stability_depth)
+                    .await;
+            }
+        }
 
         Ok(state_ref)
     }
@@ -359,6 +396,28 @@ impl ExplorerDB {
                 .map(|id| *id.as_ref())
         })
         .await
+    }
+
+    // TODO: map this to graphql? although it still needs a bit more work
+    // if the transaction is not in a confirmed block, this returns a State at
+    // the tip of all the branches this transaction is in. I'm still not sure
+    // how to map this to graphql. We could either return only stats, like
+    // the length of each branch, and how deep is the block this transaction is
+    // in, or something more complex
+    // also, there are some possible optimizations or filters here, as including
+    // two branches with the same block is not really that useful (I mean, only
+    // the longest is)
+    pub(self) async fn transaction_unconfirmed_status(
+        &self,
+        transaction_id: &FragmentId,
+    ) -> Option<Vec<Arc<State>>> {
+        if let Some(blocks) = self.unconfirmed_fragments.get(transaction_id) {
+            let mut tips = self.multiverse.tips().await;
+            tips.retain(|state| blocks.iter().any(|id| state.blocks.contains_key(id)));
+            Some(tips)
+        } else {
+            None
+        }
     }
 
     pub async fn get_transactions_by_address(
@@ -771,37 +830,36 @@ fn apply_block_to_vote_plans(
 
 impl BlockchainConfig {
     fn from_config_params(params: &ConfigParams) -> BlockchainConfig {
-        let discrimination = params
-            .iter()
-            .filter_map(|param| match param {
-                ConfigParam::Discrimination(discrimination) => Some(discrimination),
-                _ => None,
-            })
-            .next()
-            .expect("the discrimination to be present");
+        let mut discrimination: Option<Discrimination> = None;
+        let mut consensus_version: Option<ConsensusVersion> = None;
+        let mut fees: Option<LinearFee> = None;
+        let mut epoch_stability_depth: Option<u32> = None;
 
-        let consensus_version = params
-            .iter()
-            .filter_map(|param| match param {
-                ConfigParam::ConsensusVersion(version) => Some(version),
-                _ => None,
-            })
-            .next()
-            .expect("consensus version to be present");
-
-        let fees = params
-            .iter()
-            .filter_map(|param| match param {
-                ConfigParam::LinearFee(fee) => Some(fee),
-                _ => None,
-            })
-            .next()
-            .expect("fee is not in config params");
+        for p in params.iter() {
+            match p {
+                ConfigParam::Discrimination(d) => {
+                    discrimination.replace(*d);
+                }
+                ConfigParam::ConsensusVersion(v) => {
+                    consensus_version.replace(*v);
+                }
+                ConfigParam::LinearFee(fee) => {
+                    fees.replace(*fee);
+                }
+                ConfigParam::EpochStabilityDepth(d) => {
+                    epoch_stability_depth.replace(*d);
+                }
+                _ => (),
+            }
+        }
 
         BlockchainConfig {
-            discrimination: *discrimination,
-            consensus_version: *consensus_version,
-            fees: *fees,
+            discrimination: discrimination.expect("discrimination not found in initial params"),
+            consensus_version: consensus_version
+                .expect("consensus version not found in initial params"),
+            fees: fees.expect("fees not found in initial params"),
+            epoch_stability_depth: epoch_stability_depth
+                .expect("epoch stability depth not found in initial params"),
         }
     }
 }
@@ -811,7 +869,7 @@ impl Tip {
         Tip(Arc::new(RwLock::new(branch)))
     }
 
-    async fn compare_and_replace(&self, other: Branch) {
+    async fn compare_and_replace(&self, other: Branch) -> bool {
         let mut current = self.0.write().await;
 
         if other.length > (*current).length {
@@ -819,6 +877,10 @@ impl Tip {
                 state_ref: other.state_ref,
                 length: other.length,
             };
+
+            true
+        } else {
+            false
         }
     }
 
