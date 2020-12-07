@@ -158,10 +158,14 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let encryption_key_file = NamedTempFile::new("encrypting_vote_key.yaml").unwrap();
-    encryption_key_file.write_str(&encrypting_vote_key).unwrap();
+    let decryption_share = jcli
+        .votes()
+        .tally()
+        .generate_decryption_share(decryption_share_file.path(), vote_tally_file.path());
 
-    let vote_tally_cert = jcli.certificate().new_vote_tally(vote_plan_id);
+    let vote_tally_cert = jcli
+        .certificate()
+        .new_private_vote_tally(vote_plan_id, decryption_share_file.path());
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -183,13 +187,13 @@ pub fn jcli_e2e_flow_private_vote() {
     let vote_tally_file = NamedTempFile::new("vote_tally.yaml").unwrap();
     vote_tally_file.write_str(&vote_tally).unwrap();
 
+    let decryption_share_file = NamedTempFile::new("decryption_share").unwrap();
+    decryption_share_file.write_str(&decryption_share).unwrap();
+
     let decryption_share = jcli
         .votes()
         .tally()
-        .generate_decryption_share(encryption_key_file.path(), vote_tally_file.path());
-
-    let decryption_share_file = NamedTempFile::new("decryption_share").unwrap();
-    decryption_share_file.write_str(&decryption_share).unwrap();
+        .generate_decryption_share(decryption_share_file.path(), vote_tally_file.path());
 
     let _generated_share = jcli.votes().tally().decrypt_with_shares(
         vote_tally_file.path(),

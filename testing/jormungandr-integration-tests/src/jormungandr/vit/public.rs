@@ -440,7 +440,7 @@ pub fn jcli_e2e_flow() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let vote_tally_cert = jcli.certificate().new_vote_tally(vote_plan_id);
+    let vote_tally_cert = jcli.certificate().new_public_vote_tally(vote_plan_id);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
