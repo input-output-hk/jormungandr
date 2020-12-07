@@ -1,11 +1,11 @@
-use jormungandr_lib::interfaces::TaxType;
-use jortestkit::process::output_extensions::ProcessOutput;
-
 use crate::common::jcli::command::CertificateCommand;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{prelude::*, NamedTempFile};
 use chain_impl_mockchain::vote::Choice;
+use chain_impl_mockchain::vote::PayloadType;
+use jormungandr_lib::interfaces::TaxType;
 use jormungandr_testing_utils::testing::file;
+use jortestkit::process::output_extensions::ProcessOutput;
 use std::path::Path;
 
 #[derive(Debug)]
@@ -28,13 +28,23 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn new_vote_tally<S: Into<String>>(
+    pub fn new_public_vote_tally<S: Into<String>>(self, vote_plan_id: S) -> String {
+        self.command
+            .public_vote_tally(vote_plan_id)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
+    pub fn new_private_vote_tally<S: Into<String>, P: AsRef<Path>>(
         self,
         vote_plan_id: S,
-        payload_type: PayloadType,
+        shares: P,
     ) -> String {
         self.command
-            .vote_tally(vote_plan_id, payload_type)
+            .private_vote_tally(vote_plan_id, shares)
             .build()
             .assert()
             .success()

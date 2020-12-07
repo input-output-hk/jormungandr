@@ -47,15 +47,27 @@ impl CertificateCommand {
         self
     }
 
-    pub fn vote_tally<S: Into<String>>(
+    pub fn public_vote_tally<S: Into<String>>(mut self, vote_plan_id: S) -> Self {
+        self.command
+            .arg("new")
+            .arg("vote-tally")
+            .arg("public")
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id.into());
+        self
+    }
+
+    pub fn private_vote_tally<S: Into<String>, P: AsRef<Path>>(
         mut self,
         vote_plan_id: S,
-        payload_type: PayloadType,
+        shares: P,
     ) -> Self {
         self.command
             .arg("new")
             .arg("vote-tally")
-            .arg(payload_type_to_string(payload_type))
+            .arg("private")
+            .arg("--share")
+            .arg(shares.as_ref())
             .arg("--vote-plan-id")
             .arg(vote_plan_id.into());
         self
