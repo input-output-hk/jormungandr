@@ -14,7 +14,7 @@ impl TallyCommand {
         encrypted_tally: Q,
     ) -> Self {
         self.command
-            .arg("generate-decryption-share")
+            .arg("decryption-share")
             .arg("--key")
             .arg(decryption_key.as_ref())
             .arg("--tally")
@@ -40,7 +40,7 @@ impl TallyCommand {
             .arg(shares.as_ref())
             .arg("--tablesize")
             .arg(tablesize.to_string())
-            .arg("threshold")
+            .arg("--threshold")
             .arg(threshold.to_string());
         self
     }
