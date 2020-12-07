@@ -2,7 +2,6 @@ use crate::common::jcli::command::CertificateCommand;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{prelude::*, NamedTempFile};
 use chain_impl_mockchain::vote::Choice;
-use chain_impl_mockchain::vote::PayloadType;
 use jormungandr_lib::interfaces::TaxType;
 use jormungandr_testing_utils::testing::file;
 use jortestkit::process::output_extensions::ProcessOutput;
