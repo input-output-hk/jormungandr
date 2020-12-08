@@ -205,7 +205,7 @@ impl RawRest {
         let builder = reqwest::blocking::Client::builder();
         let client = builder.build()?;
 
-             client
+        client
             .post(&self.path_http_or_https("fragments", ApiVersion::V1))
             .headers(self.construct_headers())
             .json(
