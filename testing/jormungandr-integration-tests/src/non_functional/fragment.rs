@@ -68,11 +68,11 @@ pub fn fragment_batch_load_test() {
     jormungandr.steal_temp_dir().unwrap().into_persistent();
 
     let configuration = Configuration::duration(
-        1,
+        5,
         std::time::Duration::from_secs(60),
-        100,
+        1000,
         Monitor::Standard(100),
-        100,
+        0,
     );
 
     let mut request_generator = BatchFragmentGenerator::new(
