@@ -7,9 +7,9 @@ use jortestkit::process::Wait;
 use std::time::Duration;
 
 #[test]
-pub fn test_blocks_are_being_created_for_48_hours() {
+pub fn test_blocks_are_being_created_for_7_hours() {
     let jcli: JCli = Default::default();
-    let duration_48_hours = Duration::from_secs(172_800);
+    let duration_48_hours = Duration::from(25_200);
 
     let mut receiver = startup::create_new_account_address();
     let mut sender = startup::create_new_account_address();
