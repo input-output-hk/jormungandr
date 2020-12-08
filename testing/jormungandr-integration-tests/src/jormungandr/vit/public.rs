@@ -7,6 +7,8 @@ use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
 };
+use chain_core::property::BlockDate as _;
+use chain_impl_mockchain::header::BlockDate;
 use chain_impl_mockchain::{
     certificate::{VoteAction, VoteTallyPayload},
     chaintypes::ConsensusType,
@@ -342,6 +344,9 @@ pub fn jcli_e2e_flow() {
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");

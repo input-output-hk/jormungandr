@@ -11,6 +11,9 @@ pub struct VotePlanBuilder {
     action: VoteAction,
     payload: PayloadType,
     member_keys: Vec<MemberPublicKey>,
+    vote_start: BlockDate,
+    tally_start: BlockDate,
+    tally_end: BlockDate,
 }
 
 impl Default for VotePlanBuilder {
@@ -26,6 +29,9 @@ impl VotePlanBuilder {
             action: VoteAction::OffChain,
             payload: PayloadType::Public,
             member_keys: Vec::new(),
+            vote_start: BlockDate::from_epoch_slot_id(0, 0),
+            tally_start: BlockDate::from_epoch_slot_id(1, 0),
+            tally_end: BlockDate::from_epoch_slot_id(2, 0),
         }
     }
 
@@ -61,6 +67,21 @@ impl VotePlanBuilder {
         self
     }
 
+    pub fn vote_start(&mut self, block_date: BlockDate) -> &mut Self {
+        self.vote_start = block_date;
+        self
+    }
+
+    pub fn tally_start(&mut self, block_date: BlockDate) -> &mut Self {
+        self.tally_start = block_date;
+        self
+    }
+
+    pub fn tally_end(&mut self, block_date: BlockDate) -> &mut Self {
+        self.tally_end = block_date;
+        self
+    }
+
     pub fn build(&self) -> VotePlan {
         let proposal_vec: Vec<Proposal> = std::iter::from_fn(|| {
             Some(Proposal::new(
@@ -78,9 +99,9 @@ impl VotePlanBuilder {
         }
 
         VotePlan::new(
-            BlockDate::from_epoch_slot_id(1, 0),
-            BlockDate::from_epoch_slot_id(2, 0),
-            BlockDate::from_epoch_slot_id(3, 0),
+            self.vote_start,
+            self.tally_start,
+            self.tally_end,
             proposals,
             self.payload,
             self.member_keys.clone(),
