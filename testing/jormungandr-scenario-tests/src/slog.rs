@@ -66,7 +66,7 @@ fn map_get<'a>(map: &'a Map<String, Value>, key: &str) -> Result<&'a Value> {
 }
 
 #[inline]
-fn value_is_str<'a>(value: &'a Value) -> Result<&'a str> {
+fn value_is_str(value: &Value) -> Result<&str> {
     if let Value::String(string) = value {
         Ok(&string)
     } else {
