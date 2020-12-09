@@ -204,17 +204,14 @@ impl RawRest {
     ) -> Result<Response, reqwest::Error> {
         let builder = reqwest::blocking::Client::builder();
         let client = builder.build()?;
+
         client
             .post(&self.path_http_or_https("fragments", ApiVersion::V1))
             .headers(self.construct_headers())
             .json(
                 &fragments
                     .iter()
-                    .map(|x| {
-                        std::str::from_utf8(&x.serialize_as_vec().unwrap())
-                            .unwrap()
-                            .to_string()
-                    })
+                    .map(|x| hex::encode(&x.serialize_as_vec().unwrap()))
                     .collect::<Vec<String>>(),
             )
             .send()
