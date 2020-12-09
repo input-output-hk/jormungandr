@@ -81,14 +81,13 @@ impl Block {
         context: &Context,
     ) -> FieldResult<TransactionConnection> {
         let explorer_block = self.get_explorer_block(&context.db).await?;
-        let mut transactions: Vec<&ExplorerTransaction> =
-            explorer_block.transactions.values().collect();
+        let mut transactions: Vec<_> = explorer_block.transactions.values().collect();
 
         // TODO: This may be expensive at some point, but I can't rely in
         // the HashMap's order (also, I'm assuming the order in the block matters)
         transactions
             .as_mut_slice()
-            .sort_unstable_by_key(|tx| tx.offset_in_block);
+            .sort_unstable_by_key(|(offset, _tx)| offset);
 
         let pagination_arguments = PaginationArguments {
             first,
@@ -124,7 +123,7 @@ impl Block {
                     (from..=to)
                         .map(|i| {
                             (
-                                TransactionNodeFetchInfo::Contents(transactions[i].clone()),
+                                TransactionNodeFetchInfo::Contents(transactions[i].1.clone()),
                                 i.try_into().unwrap(),
                             )
                         })
@@ -313,6 +312,7 @@ impl Transaction {
             Ok(block
                 .transactions
                 .get(&self.id)
+                .map(|(_, tx)| tx)
                 .ok_or_else(|| {
                     ErrorKind::InternalError(
                         "transaction was not found in respective block".to_owned(),

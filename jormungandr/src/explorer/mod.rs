@@ -534,7 +534,7 @@ fn apply_block_to_transactions(
     block: &ExplorerBlock,
 ) -> Result<Transactions> {
     let block_id = block.id();
-    let ids = block.transactions.values().map(|tx| tx.id());
+    let ids = block.transactions.values().map(|(_offset, tx)| tx.id());
 
     for id in ids {
         transactions = transactions
@@ -555,7 +555,7 @@ fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks
 fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
     let transactions = block.transactions.values();
 
-    for tx in transactions {
+    for (_, tx) in transactions {
         let id = tx.id();
 
         // A Hashset is used for preventing duplicates when the address is both an
@@ -637,7 +637,7 @@ fn apply_block_to_stake_pools(
 
     let mut data = data;
 
-    for tx in block.transactions.values() {
+    for (_, tx) in block.transactions.values() {
         if let Some(cert) = &tx.certificate {
             blocks = match cert {
                 Certificate::PoolRegistration(registration) => blocks
@@ -678,7 +678,7 @@ fn apply_block_to_vote_plans(
     blockchain_tip: &blockchain::Tip,
     block: &ExplorerBlock,
 ) -> VotePlans {
-    for tx in block.transactions.values() {
+    for (_, tx) in block.transactions.values() {
         if let Some(cert) = &tx.certificate {
             vote_plans = match cert {
                 Certificate::VotePlan(vote_plan) => vote_plans
