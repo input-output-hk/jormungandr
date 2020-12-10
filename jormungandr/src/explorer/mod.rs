@@ -241,8 +241,7 @@ impl ExplorerDB {
                 hash = block.header.block_parent_hash();
                 blocks.push(block);
             }
-            blocks.reverse();
-            for block in blocks {
+            while let Some(block) = blocks.pop() {
                 db.apply_block(block).await?;
             }
         }
