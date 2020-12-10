@@ -63,6 +63,10 @@ impl JormungandrRest {
         self.inner.enable_logger();
     }
 
+    pub fn inner(&self) -> &legacy::BackwardCompatibleRest {
+        &self.inner
+    }
+
     pub fn raw(&self) -> &RawRest {
         self.inner.raw()
     }

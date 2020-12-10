@@ -9,7 +9,7 @@ pub use services::Error;
 
 use super::jormungandr::JormungandrProcess;
 use crate::common::configuration;
-use api::{Address, Certificate, Genesis, Key, Rest, Transaction};
+use api::{Address, Certificate, Genesis, Key, Rest, Transaction, Votes};
 use jormungandr_lib::crypto::hash::Hash;
 use services::{CertificateBuilder, FragmentSender, FragmentsCheck, TransactionBuilder};
 use std::{
@@ -71,6 +71,12 @@ impl JCli {
         let command = Command::new(self.exe.clone());
         let jcli_command = JCliCommand::new(command);
         Certificate::new(jcli_command.certificate())
+    }
+
+    pub fn votes(&self) -> Votes {
+        let command = Command::new(self.exe.clone());
+        let jcli_command = JCliCommand::new(command);
+        Votes::new(jcli_command.votes())
     }
 
     pub fn fragment_sender<'a>(&self, jormungandr: &'a JormungandrProcess) -> FragmentSender<'a> {

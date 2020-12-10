@@ -6,6 +6,7 @@ mod genesis;
 mod key;
 pub mod rest;
 mod transaction;
+pub mod votes;
 
 pub use address::AddressCommand;
 pub use certificate::CertificateCommand;
@@ -13,6 +14,8 @@ pub use genesis::GenesisCommand;
 pub use key::KeyCommand;
 pub use rest::RestCommand;
 pub use transaction::TransactionCommand;
+pub use votes::VotesCommand;
+
 pub struct JCliCommand {
     command: Command,
 }
@@ -50,5 +53,10 @@ impl JCliCommand {
     pub fn certificate(mut self) -> CertificateCommand {
         self.command.arg("certificate");
         CertificateCommand::new(self.command)
+    }
+
+    pub fn votes(mut self) -> VotesCommand {
+        self.command.arg("votes");
+        VotesCommand::new(self.command)
     }
 }

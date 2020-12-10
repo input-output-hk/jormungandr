@@ -11,6 +11,7 @@ pub use self::{
     verifier::{FragmentVerifier, FragmentVerifierError},
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
+use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::{
     certificate::{PoolId, VoteCast, VotePlan, VoteTally},
     fee::LinearFee,
@@ -197,9 +198,19 @@ impl FragmentBuilder {
         self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
     }
 
-    pub fn vote_tally(&self, wallet: &Wallet, vote_plan: &VotePlan) -> Fragment {
+    pub fn vote_tally(
+        &self,
+        wallet: &Wallet,
+        vote_plan: &VotePlan,
+        payload: VoteTallyPayload,
+    ) -> Fragment {
         let inner_wallet = wallet.clone().into();
-        let vote_tally = VoteTally::new_public(vote_plan.to_id());
+        let vote_tally = match payload {
+            VoteTallyPayload::Private { shares } => {
+                VoteTally::new_private(vote_plan.to_id(), shares)
+            }
+            VoteTallyPayload::Public => VoteTally::new_public(vote_plan.to_id()),
+        };
         self.fragment_factory()
             .vote_tally(&inner_wallet, vote_tally)
     }

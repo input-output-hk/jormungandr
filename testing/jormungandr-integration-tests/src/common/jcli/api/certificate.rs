@@ -1,12 +1,12 @@
-use jormungandr_lib::interfaces::TaxType;
-use jortestkit::process::output_extensions::ProcessOutput;
-
 use crate::common::jcli::command::CertificateCommand;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{prelude::*, NamedTempFile};
-use chain_impl_mockchain::vote::{Choice, PayloadType};
+use chain_impl_mockchain::vote::Choice;
+use jormungandr_lib::interfaces::TaxType;
 use jormungandr_testing_utils::testing::file;
+use jortestkit::process::output_extensions::ProcessOutput;
 use std::path::Path;
+
 #[derive(Debug)]
 pub struct Certificate {
     command: CertificateCommand,
@@ -27,13 +27,9 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn new_vote_tally<S: Into<String>>(
-        self,
-        vote_plan_id: S,
-        payload_type: PayloadType,
-    ) -> String {
+    pub fn new_public_vote_tally<S: Into<String>>(self, vote_plan_id: S) -> String {
         self.command
-            .vote_tally(vote_plan_id, payload_type)
+            .public_vote_tally(vote_plan_id)
             .build()
             .assert()
             .success()
@@ -41,22 +37,54 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn new_vote_cast<S: Into<String>>(
+    pub fn new_private_vote_tally<S: Into<String>, P: AsRef<Path>>(
+        self,
+        vote_plan_id: S,
+        shares: P,
+    ) -> String {
+        self.command
+            .private_vote_tally(vote_plan_id, shares)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
+    pub fn new_public_vote_cast<S: Into<String>>(
         self,
         vote_plan_id: S,
         proposal_idx: usize,
         choice: Choice,
-        payload_type: PayloadType,
     ) -> String {
-        let command = match payload_type {
-            PayloadType::Public => {
-                self.command
-                    .public_vote_cast(vote_plan_id.into(), proposal_idx, choice.as_byte())
-            }
-            PayloadType::Private => unimplemented!(),
-        };
+        self.command
+            .public_vote_cast(vote_plan_id.into(), proposal_idx, choice.as_byte())
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
 
-        command
+    pub fn new_private_vote_cast<S: Into<String>, P: Into<String>>(
+        self,
+        vote_plan_id: S,
+        proposal_idx: usize,
+        choice: Choice,
+        option_size: usize,
+        encrypting_key: P,
+    ) -> String {
+        let key_path = NamedTempFile::new("key_path").unwrap();
+        key_path.write_str(&encrypting_key.into()).unwrap();
+
+        self.command
+            .private_vote_cast(
+                choice.as_byte(),
+                option_size,
+                proposal_idx,
+                vote_plan_id.into(),
+                key_path.path(),
+            )
             .build()
             .assert()
             .success()
