@@ -30,8 +30,14 @@ pub struct Services {
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
-    #[error("service panicked: {0}")]
-    Panic(String),
+    #[error(
+        "service panicked: {}",
+        .0
+        .as_ref()
+        .map(|reason| reason.as_ref())
+        .unwrap_or("could not serialize the panic"),
+    )]
+    Panic(Option<String>),
     #[error("service future cancelled")]
     Cancelled,
     #[error("service error")]
@@ -174,11 +180,7 @@ impl Services {
                 if join_error.is_cancelled() {
                     Err(ServiceError::Cancelled)
                 } else if join_error.is_panic() {
-                    let desc = join_error
-                        .into_panic()
-                        .downcast_ref::<String>()
-                        .expect("a panic must be convertible to String")
-                        .clone();
+                    let desc = join_error.into_panic().downcast_ref::<String>().cloned();
                     Err(ServiceError::Panic(desc))
                 } else {
                     unreachable!("JoinError is either Cancelled or Panic")
