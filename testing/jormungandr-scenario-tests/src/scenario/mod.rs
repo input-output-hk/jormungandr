@@ -69,7 +69,7 @@ macro_rules! prepare_scenario {
             slot_duration = $slot_duration:tt,
             leaders = [ $($node_leader:tt),* $(,)* ],
             initials = [
-                $(account $initial_wallet_name:tt with $initial_wallet_funds:tt $(delegates to $initial_wallet_delegate_to:tt)* ),+ $(,)*
+                $($wallet_type:tt $initial_wallet_name:tt with $initial_wallet_funds:tt $(delegates to $initial_wallet_delegate_to:tt)* ),+ $(,)*
             ] $(,)*
             $(committees = [ $($committe_wallet_name:tt),* $(,)* ] $(,)*)?
             $(legacy = [
@@ -109,22 +109,35 @@ macro_rules! prepare_scenario {
         )*
 
         $(
-            #[allow(unused_mut)]
-            let mut wallet = jormungandr_testing_utils::testing::network_builder::WalletTemplate::new_account(
-                $initial_wallet_name.to_owned(),
-                chain_impl_mockchain::value::Value($initial_wallet_funds).into()
-            );
+            let wallet = {
 
-            $(
-                assert!(
-                    wallet.delegate().is_none(),
-                    "we only support delegating once for now, fix delegation for wallet \"{}\"",
-                    $initial_wallet_name
-                );
-                *wallet.delegate_mut() = Some($initial_wallet_delegate_to.to_owned());
-            )*
+                if $wallet_type == "account" {
+                    #[allow(unused_mut)]
+                    let mut wallet = jormungandr_testing_utils::testing::network_builder::WalletTemplate::new_account(
+                        $initial_wallet_name.to_owned(),
+                        chain_impl_mockchain::value::Value($initial_wallet_funds).into()
+                    );
 
-
+                    $(
+                        assert!(
+                            wallet.delegate().is_none(),
+                            "we only support delegating once for now, fix delegation for wallet \"{}\"",
+                            $initial_wallet_name
+                        );
+                        *wallet.delegate_mut() = Some($initial_wallet_delegate_to.to_owned());
+                    )*
+                    wallet
+                } else if $wallet_type == "utxo" {
+                    #[allow(unused_mut)]
+                    let wallet = jormungandr_testing_utils::testing::network_builder::WalletTemplate::new_utxo(
+                        $initial_wallet_name.to_owned(),
+                        chain_impl_mockchain::value::Value($initial_wallet_funds).into()
+                    );
+                    wallet
+                } else {
+                    panic!("unknown wallet type");
+                }
+            };
             blockchain.add_wallet(wallet);
         )*
 
@@ -142,7 +155,6 @@ macro_rules! prepare_scenario {
                 blockchain.add_legacy_wallet(legacy_wallet);
             )*
         )?
-
 
         $(
             $(
