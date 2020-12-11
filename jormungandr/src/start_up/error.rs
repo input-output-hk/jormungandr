@@ -56,7 +56,7 @@ pub enum Error {
     #[error("Error while loading the explorer from storage")]
     ExplorerBootstrapError(#[from] explorer::error::Error),
     #[error("A service has terminated with an error")]
-    ServiceTerminatedWithError,
+    ServiceTerminatedWithError(#[from] crate::utils::task::ServiceError),
     #[error("Unable to get system limits: {0}")]
     DiagnosticError(#[from] DiagnosticError),
     #[error("Interrupted by the user")]
@@ -90,7 +90,7 @@ impl Error {
             Error::FetchBlock0 { .. } => 9,
             Error::NetworkBootstrapError { .. } => 10,
             Error::ExplorerBootstrapError { .. } => 11,
-            Error::ServiceTerminatedWithError => 12,
+            Error::ServiceTerminatedWithError { .. } => 12,
             Error::DiagnosticError { .. } => 13,
         }
     }

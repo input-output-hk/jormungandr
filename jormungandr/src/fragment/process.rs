@@ -8,12 +8,19 @@ use crate::{
     },
 };
 use std::collections::HashMap;
+use thiserror::Error;
 use tokio::stream::StreamExt;
 
 pub struct Process {
     pool_max_entries: usize,
     logs: Logs,
     network_msg_box: MessageBox<NetworkMsg>,
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("transaction pool error")]
+    Pool(#[from] crate::fragment::pool::Error),
 }
 
 impl Process {
@@ -35,7 +42,7 @@ impl Process {
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
         mut input: MessageQueue<TransactionMsg>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), Error> {
         let mut pool = Pool::new(
             self.pool_max_entries,
             self.logs,
