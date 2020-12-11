@@ -41,10 +41,6 @@ struct CommandArgs {
     )]
     progress_bar_mode: ProgressBarMode,
 
-    /// set exit code based on test result
-    #[structopt(long = "set-exit-code")]
-    set_exit_code: bool,
-
     /// to set if to reproduce an existing test
     #[structopt(long = "seed")]
     seed: Option<Seed>,
