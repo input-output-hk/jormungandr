@@ -11,7 +11,6 @@ impl Into<ChainBlock> for Block {
 
 #[cfg(test)]
 mod tests {
-    extern crate hex;
     use crate::mock::proto::node::Block;
     use chain_impl_mockchain::block::Block as ChainBlock;
 

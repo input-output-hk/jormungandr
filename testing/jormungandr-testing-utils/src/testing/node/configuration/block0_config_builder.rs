@@ -1,16 +1,7 @@
 #![allow(dead_code)]
 
-extern crate chain_addr;
-extern crate chain_crypto;
-extern crate chain_impl_mockchain;
-extern crate rand;
-extern crate rand_chacha;
-extern crate serde_derive;
-use self::chain_addr::{Address as ChainAddress, Discrimination, Kind};
-use self::chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
-use self::rand::SeedableRng;
-use self::rand_chacha::ChaChaRng;
-use self::serde_derive::{Deserialize, Serialize};
+use chain_addr::{Address as ChainAddress, Discrimination, Kind};
+use chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     interfaces::{
@@ -21,6 +12,9 @@ use jormungandr_lib::{
     },
     time::SecondsSinceUnixEpoch,
 };
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
+use serde_derive::{Deserialize, Serialize};
 
 use std::num::NonZeroU32;
 use std::vec::Vec;

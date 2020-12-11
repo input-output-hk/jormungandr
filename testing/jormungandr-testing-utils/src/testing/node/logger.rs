@@ -1,11 +1,7 @@
-extern crate regex;
-extern crate serde;
-extern crate serde_json;
-
-use self::serde::{Deserialize, Serialize};
 use crate::testing::file as file_utils;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
