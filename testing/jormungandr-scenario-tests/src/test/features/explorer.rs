@@ -29,9 +29,9 @@ pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<Scenario
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "alice" with   500_000_000,
-                account "bob" with  2_000_000_000 delegates to LEADER_1,
-                account "clarice" with  2_000_000_000 delegates to LEADER_2,
+                "account" "alice" with   500_000_000,
+                "account" "bob" with  2_000_000_000 delegates to LEADER_1,
+                "account" "clarice" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };

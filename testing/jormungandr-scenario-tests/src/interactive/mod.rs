@@ -32,10 +32,10 @@ pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             slot_duration = 1,
             leaders = [ "Leader2" ],
             initials = [
-                account "unassigned1" with  500_000_000,
-                account "unassigned2" with  100_000_000,
-                account "delegated1" with 2_000_000_000 delegates to "Leader1",
-                account "delegated2" with  300_000_000 delegates to "Leader2",
+                "account" "unassigned1" with  500_000_000,
+                "account" "unassigned2" with  100_000_000,
+                "account" "delegated1" with 2_000_000_000 delegates to "Leader1",
+                "account" "delegated2" with  300_000_000 delegates to "Leader2",
             ],
         }
     };

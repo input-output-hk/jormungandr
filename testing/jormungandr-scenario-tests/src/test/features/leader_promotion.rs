@@ -26,9 +26,9 @@ pub fn passive_node_promotion(mut context: Context<ChaChaRng>) -> Result<Scenari
             slot_duration = 1,
             leaders = [ LEADER ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
-                account "delegated2" with  2_000_000_000 delegates to PASSIVE,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
+                "account" "delegated2" with  2_000_000_000 delegates to PASSIVE,
             ],
         }
     };

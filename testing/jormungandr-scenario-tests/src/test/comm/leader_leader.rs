@@ -30,8 +30,8 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "delegated1" with  2_500_000_000 delegates to LEADER_2,
-                account "delegated2" with  2_000_000_000 delegates to LEADER_1,
+                "account" "delegated1" with  2_500_000_000 delegates to LEADER_2,
+                "account" "delegated2" with  2_000_000_000 delegates to LEADER_1,
             ],
         }
     };

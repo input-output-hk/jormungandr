@@ -39,13 +39,13 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             slot_duration = 10,
             leaders = [ LEADER_1 ],
             initials = [
-                account "delegated1" with  1_000_000_000 delegates to LEADER_1,
-                account "delegated2" with  1_000_000_000 delegates to LEADER_2,
-                account "delegated3" with  1_000_000_000 delegates to LEADER_3,
-                account "delegated4" with  1_000_000_000 delegates to LEADER_4,
-                account "delegated5" with  1_000_000_000 delegates to LEADER_5,
-                account "delegated6" with  1_000_000_000 delegates to LEADER_6,
-                account "delegated7" with  1_000_000_000 delegates to LEADER_7,
+                "account" "delegated1" with  1_000_000_000 delegates to LEADER_1,
+                "account" "delegated2" with  1_000_000_000 delegates to LEADER_2,
+                "account" "delegated3" with  1_000_000_000 delegates to LEADER_3,
+                "account" "delegated4" with  1_000_000_000 delegates to LEADER_4,
+                "account" "delegated5" with  1_000_000_000 delegates to LEADER_5,
+                "account" "delegated6" with  1_000_000_000 delegates to LEADER_6,
+                "account" "delegated7" with  1_000_000_000 delegates to LEADER_7,
             ],
         }
     };

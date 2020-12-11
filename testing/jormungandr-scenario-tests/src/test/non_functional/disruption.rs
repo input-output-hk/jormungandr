@@ -29,8 +29,8 @@ pub fn passive_leader_disruption_no_overlap(
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
             ],
         }
     };
@@ -110,8 +110,8 @@ pub fn passive_leader_disruption_overlap(
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
             ],
         }
     };
@@ -174,8 +174,8 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -247,8 +247,8 @@ pub fn leader_leader_disruption_no_overlap(
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -329,8 +329,8 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -404,8 +404,8 @@ pub fn point_to_point_disruption_overlap(
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -541,10 +541,10 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
-                account "delegated3" with  2_000_000_000 delegates to LEADER_3,
-                account "delegated4" with  2_000_000_000 delegates to LEADER_4,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_1,
+                "account" "delegated3" with  2_000_000_000 delegates to LEADER_3,
+                "account" "delegated4" with  2_000_000_000 delegates to LEADER_4,
             ],
         }
     };
@@ -657,8 +657,8 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_3,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_3,
             ],
         }
     };

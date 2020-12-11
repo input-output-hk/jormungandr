@@ -32,10 +32,10 @@ pub fn legacy_current_node_fragment_propagation(
             slot_duration = 1,
             leaders = [ LEADER],
             initials = [
-                account "alice" with  2_000_000_000 delegates to LEADER,
-                account "bob" with   500_000_000,
-                account "clarice" with   500_000_000,
-                account "david" with   500_000_000,
+                "account" "alice" with  2_000_000_000 delegates to LEADER,
+                "account" "bob" with   500_000_000,
+                "account" "clarice" with   500_000_000,
+                "account" "david" with   500_000_000,
             ],
         }
     };
@@ -85,10 +85,10 @@ pub fn current_node_legacy_fragment_propagation(
             slot_duration = 1,
             leaders = [ LEADER],
             initials = [
-                account "alice" with  2_000_000_000 delegates to LEADER,
-                account "bob" with   500_000_000,
-                account "clarice" with   500_000_000,
-                account "david" with   500_000_000,
+                "account" "alice" with  2_000_000_000 delegates to LEADER,
+                "account" "bob" with   500_000_000,
+                "account" "clarice" with   500_000_000,
+                "account" "david" with   500_000_000,
             ],
         }
     };
@@ -139,10 +139,10 @@ pub fn current_node_fragment_propagation(
             slot_duration = 1,
             leaders = [ LEADER],
             initials = [
-                account "alice" with  2_000_000_000 delegates to LEADER,
-                account "bob" with   500_000_000,
-                account "clarice" with   500_000_000,
-                account "david" with   500_000_000,
+                "account" "alice" with  2_000_000_000 delegates to LEADER,
+                "account" "bob" with   500_000_000,
+                "account" "clarice" with   500_000_000,
+                "account" "david" with   500_000_000,
             ],
         }
     };

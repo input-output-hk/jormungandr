@@ -52,7 +52,7 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
             slot_duration = 1,
             leaders = [ LEADER_1, LEADER_2, LEADER_3, LEADER_4 ],
             initials = [
-                account "Alice" with 500_000_000,
+                "account" "Alice" with 500_000_000,
             ],
             committees = [ "Alice" ],
             legacy = [

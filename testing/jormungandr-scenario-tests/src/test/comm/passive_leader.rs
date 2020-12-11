@@ -31,8 +31,8 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
             slot_duration = 1,
             leaders = [ LEADER],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
             ],
         }
     };
@@ -90,9 +90,9 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
             slot_duration = 1,
             leaders = [ LEADER, LEADER_2],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_2,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_2,
             ],
         }
     };
@@ -184,8 +184,8 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
             slot_duration = 1,
             leaders = [ LEADER],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER,
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
             ],
         }
     };

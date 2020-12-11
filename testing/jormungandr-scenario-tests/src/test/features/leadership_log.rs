@@ -30,8 +30,8 @@ pub fn leader_restart_preserves_leadership_log(
             slot_duration = 2,
             leaders = [ LEADER_1, LEADER_2 ],
             initials = [
-                account "alice" with   500_000_000,
-                account "bob" with   500_000_000,
+                "account" "alice" with   500_000_000,
+                "account" "bob" with   500_000_000,
             ],
         }
     };
