@@ -65,3 +65,36 @@ fn pass_to_key(password: &[u8], salt: &[u8]) -> [u8; 32] {
     pbkdf2(&mut hmac, salt, PASSWORD_DERIVATION_ITERATIONS, &mut output);
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encrypt_decrypt() {
+        const PASSWORD: &[u8] = &[1, 2, 3, 4];
+        let mut plaintext = [0; 64];
+        rand::thread_rng().fill_bytes(&mut plaintext);
+        let buf = encrypt(&plaintext, PASSWORD);
+        assert_eq!(buf[0], PROTO_VERSION);
+        let (salt, tail) = buf[1..].split_at(SALT_LEN);
+        let (nonce, tail) = tail.split_at(NONCE_LEN);
+        let (ciphertext, tag) = tail.split_at(tail.len() - TAG_LEN);
+        let mut aead = ChaCha20Poly1305::new(&pass_to_key(PASSWORD, &salt), &nonce, &[]);
+        let mut decrypted = [0; 64];
+        let tag_matches = aead.decrypt(ciphertext, &mut decrypted, tag);
+        assert!(tag_matches);
+        assert_eq!(plaintext, decrypted);
+    }
+
+    // TODO: Improve into an integration test using a temporary directory.
+    // Leaving here as an example.
+    #[test]
+    #[ignore]
+    fn generate_svg() {
+        const PASSWORD: &[u8] = &[1, 2, 3, 4];
+        let sk = SecretKey::generate(rand::thread_rng());
+        let qr = KeyQrCode::generate(sk, PASSWORD);
+        qr.write_svg("qr-code.svg").unwrap();
+    }
+}
