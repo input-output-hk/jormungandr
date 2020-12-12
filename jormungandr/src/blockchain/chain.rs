@@ -476,9 +476,31 @@ impl Blockchain {
 
         let metadata = header.to_content_eval_context();
 
-        ledger
+        let ledger = ledger
             .apply_block(epoch_ledger_parameters, &block.contents, &metadata)
-            .chain_err(|| ErrorKind::CannotApplyBlock)
+            .chain_err(|| ErrorKind::CannotApplyBlock)?;
+
+        // Check if rewards for this block can be distributed
+        if let Some(distribution) = post_checked_header
+            .epoch_leadership_schedule
+            .stake_distribution()
+        {
+            let reward_info_dist = if self.rewards_report_all {
+                RewardsInfoParameters::report_all()
+            } else {
+                RewardsInfoParameters::default()
+            };
+
+            ledger
+                .distribute_rewards(
+                    distribution,
+                    &post_checked_header.epoch_ledger_parameters,
+                    reward_info_dist,
+                )
+                .chain_err(|| ErrorKind::CannotApplyBlock)?;
+        }
+
+        Ok(ledger)
     }
 
     async fn apply_block_finalize(
