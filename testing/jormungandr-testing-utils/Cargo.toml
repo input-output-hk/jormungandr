@@ -55,7 +55,7 @@ url = "2.2.0"
 graphql_client = "0.9.0"
 semver = "0.11.0"
 json = "0.12.4"
-cryptoxide = "0.2.1"
+symmetric-cipher = { git = "https://github.com/input-output-hk/chain-wallet-libs.git", branch = "master" }
 qrcodegen = "1.6"
 
 [dependencies.reqwest]
