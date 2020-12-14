@@ -1,4 +1,3 @@
-use crate::common::startup::start_stake_pool;
 use crate::common::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
@@ -9,29 +8,20 @@ use assert_fs::{
 };
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
-    certificate::{VoteAction, VotePlan},
+    certificate::VoteAction,
     chaintypes::ConsensusType,
     milli::Milli,
-    testing::VoteTestGen,
     value::Value,
-    vote::{Choice, CommitteeId, PayloadType},
+    vote::Choice,
 };
 use jormungandr_lib::{
-    crypto::key::KeyPair,
     interfaces::{
-        ActiveSlotCoefficient, CommitteeIdDef, FeesGoTo, KESUpdateSpeed, Tally, VotePlanStatus,
+        ActiveSlotCoefficient, FeesGoTo, KESUpdateSpeed
     },
 };
-use jormungandr_testing_utils::testing::VotePlanExtension;
-use jormungandr_testing_utils::{
-    testing::{
-        node::time::{self, wait_for_epoch},
-        vote_plan_cert, FragmentSender, FragmentSenderSetup,
-    },
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::testing::{VotePlanBuilder,VotePlanExtension};
+use jormungandr_testing_utils::wallet::Wallet};
 use rand::rngs::OsRng;
-use rand_core::{CryptoRng, RngCore};
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
@@ -51,13 +41,13 @@ pub fn jcli_e2e_flow_private_vote() {
         .votes()
         .committee()
         .member_key()
-        .generate(communication_sk, crs, 1, 1);
+        .generate(communication_sk, crs, 1, 1, None);
     let member_pk = jcli.votes().committee().member_key().to_public(member_sk);
     let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk);
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
-        .actionType(VoteAction::OffChain)
+        .action_type(VoteAction::OffChain)
         .private()
         .member_public_key(member_pk)
         .build();
@@ -91,7 +81,6 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let alice_sk = temp_dir.child("alice_sk");
     alice.save_to_path(alice_sk.path()).unwrap();
-
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
     let tx = jcli
@@ -162,7 +151,9 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let vote_tally_cert = jcli.certificate().new_vote_tally(vote_plan_id);
+    let decryption_share = jcli.votes().tally().generate_decryption_share();
+  
+    let vote_tally_cert = jcli.certificate().new_private_vote_tally(vote_plan_id,decryption_share);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -182,7 +173,6 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let vote_tally = jormungandr.rest().vote_plan_statuses().unwrap();
 
-    let decryption_share = jcli.votes().tally().generate_decryption_share();
     let generated_share = jcli.votes().tally().decrypt_with_shares();
 
     assert!(jormungandr
