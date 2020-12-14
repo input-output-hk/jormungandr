@@ -216,13 +216,37 @@ impl ExplorerDB {
                 )))
             }
         };
-        stream
+
+        let mut db = stream
             .map_err(Error::from)
             .try_fold(bootstraped_db, |mut db, block| async move {
                 db.apply_block(block).await?;
                 Ok(db)
             })
-            .await
+            .await?;
+
+        for branch in blockchain.branches().branches().await.iter() {
+            let mut hash = branch.hash();
+            let mut blocks = vec![];
+            loop {
+                if db.get_block(&hash).await.is_some() {
+                    break;
+                }
+                let block = blockchain.storage().get(hash)?.ok_or_else(|| {
+                    Error::from(ErrorKind::BootstrapError(format!(
+                        "couldn't get block {} from the storage",
+                        hash
+                    )))
+                })?;
+                hash = block.header.block_parent_hash();
+                blocks.push(block);
+            }
+            while let Some(block) = blocks.pop() {
+                db.apply_block(block).await?;
+            }
+        }
+
+        Ok(db)
     }
 
     /// Try to add a new block to the indexes, this can fail if the parent of the block is
