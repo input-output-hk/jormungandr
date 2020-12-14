@@ -29,10 +29,10 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "alice" with  2_000_000_000 delegates to LEADER_1,
-                account "bob" with  2_000_000_000 delegates to LEADER_2,
-                account "clarice" with  2_000_000_000 delegates to LEADER_3,
-                account "david" with  2_000_000_000 delegates to LEADER_4,
+                "account" "alice" with  2_000_000_000 delegates to LEADER_1,
+                "account" "bob" with  2_000_000_000 delegates to LEADER_2,
+                "account" "clarice" with  2_000_000_000 delegates to LEADER_3,
+                "account" "david" with  2_000_000_000 delegates to LEADER_4,
             ],
         }
     };

@@ -1,31 +1,13 @@
-#[macro_use(error_chain, bail)]
-extern crate error_chain;
-
-mod legacy;
-mod node;
-mod programs;
-mod vit_station;
-#[macro_use]
-mod scenario;
-mod example_scenarios;
-mod interactive;
-mod report;
-mod slog;
-mod test;
-mod wallet;
-
-use node::{Node, NodeBlock0, NodeController};
-use programs::prepare_command;
-use report::Reporter;
-use scenario::{
-    parse_progress_bar_mode_from_str,
-    repository::{parse_tag_from_str, ScenarioResult, ScenariosRepository, Tag},
-    Context, ProgressBarMode, Seed,
+use jormungandr_scenario_tests::{
+    programs::prepare_command,
+    report::Reporter,
+    scenario::{
+        parse_progress_bar_mode_from_str,
+        repository::{parse_tag_from_str, ScenariosRepository, Tag},
+        Context, ProgressBarMode, Seed,
+    },
 };
-use vit_station::{VitStation, VitStationController, VitStationControllerError};
-
 pub use jortestkit::console::style;
-pub use wallet::{Error as WalletProxyError, WalletProxy};
 
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -134,7 +116,7 @@ fn main() {
         log_level,
     );
 
-    introduction(&context);
+    jormungandr_scenario_tests::introduction::print(&context, "SCENARIO TEST SUITE");
     let scenarios_repo = ScenariosRepository::new(
         command_args.scenario,
         command_args.tag,
@@ -170,39 +152,4 @@ fn main() {
             0
         });
     }
-}
-
-fn introduction<R: rand_core::RngCore>(context: &Context<R>) {
-    println!(
-        r###"
-        ---_ ......._-_--.
-       (|\ /      / /| \  \               _  ___  ____  __  __ _   _ _   _  ____    _    _   _ ____  ____
-       /  /     .'  -=-'   `.            | |/ _ \|  _ \|  \/  | | | | \ | |/ ___|  / \  | \ | |  _ \|  _ \
-      /  /    .'             )        _  | | | | | |_) | |\/| | | | |  \| | |  _  / _ \ |  \| | | | | |_) |
-    _/  /   .'        _.)   /        | |_| | |_| |  _ <| |  | | |_| | |\  | |_| |/ ___ \| |\  | |_| |  _ <
-   /   o  o       _.-' /  .'          \___/ \___/|_| \_\_|  |_|\___/|_| \_|\____/_/   \_\_| \_|____/|_| \_\
-   \          _.-'    / .'#|
-    \______.-'//    .'.' \#|         SCENARIO TEST SUITE
-     \|  \ | //   .'.' _ |#|
-      `   \|//  .'.'_._._|#|
-       .  .// .'.' | _._ \#|
-       \`-|\_/ /    \ _._ \#\
-        `/'\__/      \ _._ \#\
-       /^|            \ _-_ \#
-      '  `             \ _-_ \
-                        \_
-
- {}jormungandr: {}
- {}jcli:        {}
- {}seed:        {}
-
-###############################################################################
-    "###,
-        *style::icons::jormungandr,
-        style::binary.apply_to(context.jormungandr().to_string_lossy()),
-        *style::icons::jcli,
-        style::binary.apply_to(context.jcli().to_string_lossy()),
-        *style::icons::seed,
-        style::seed.apply_to(context.seed()),
-    )
 }

@@ -66,11 +66,11 @@ fn test_legacy_release(
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
-                account "delegated2" with  2_000_000_000 delegates to LEADER_2,
-                account "delegated3" with  2_000_000_000 delegates to LEADER_3,
-                account "delegated4" with  2_000_000_000 delegates to LEADER_4
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_1,
+                "account" "delegated2" with  2_000_000_000 delegates to LEADER_2,
+                "account" "delegated3" with  2_000_000_000 delegates to LEADER_3,
+                "account" "delegated4" with  2_000_000_000 delegates to LEADER_4
             ],
         }
     };
@@ -166,11 +166,11 @@ fn test_legacy_disruption_release(
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
-                account "delegated2" with  2_000_000_000 delegates to LEADER_2,
-                account "delegated3" with  2_000_000_000 delegates to LEADER_3,
-                account "delegated4" with  2_000_000_000 delegates to LEADER_4
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_1,
+                "account" "delegated2" with  2_000_000_000 delegates to LEADER_2,
+                "account" "delegated3" with  2_000_000_000 delegates to LEADER_3,
+                "account" "delegated4" with  2_000_000_000 delegates to LEADER_4
             ],
         }
     };
@@ -286,11 +286,11 @@ pub fn newest_node_enters_legacy_network(
             slot_duration = 1,
             leaders = [ LEADER_1 ],
             initials = [
-                account "unassigned1" with   500_000_000,
-                account "delegated1" with  2_000_000_000 delegates to LEADER_1,
-                account "delegated2" with  2_000_000_000 delegates to LEADER_2,
-                account "delegated3" with  2_000_000_000 delegates to LEADER_3,
-                account "delegated4" with  2_000_000_000 delegates to LEADER_4
+                "account" "unassigned1" with   500_000_000,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER_1,
+                "account" "delegated2" with  2_000_000_000 delegates to LEADER_2,
+                "account" "delegated3" with  2_000_000_000 delegates to LEADER_3,
+                "account" "delegated4" with  2_000_000_000 delegates to LEADER_4
             ],
         }
     };

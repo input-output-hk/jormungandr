@@ -28,9 +28,9 @@ pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
             slot_duration = 2,
             leaders = [ LEADER1 ],
             initials = [
-                account "delegated1" with  2_000_000_000 delegates to LEADER1,
-                account "delegated2" with  2_000_000_000 delegates to LEADER2,
-                account "delegated3" with  2_000_000_000 delegates to LEADER3,
+                "account" "delegated1" with  2_000_000_000 delegates to LEADER1,
+                "account" "delegated2" with  2_000_000_000 delegates to LEADER2,
+                "account" "delegated3" with  2_000_000_000 delegates to LEADER3,
             ],
         }
     };

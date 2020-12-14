@@ -81,6 +81,10 @@ impl Wallet {
         self.signing_keys.get(index).expect("no signing key found")
     }
 
+    pub fn save_to<W: std::io::Write>(&self, mut w: W) -> std::io::Result<()> {
+        writeln!(w, "{}", self.last_signing_key().to_bech32_str())
+    }
+
     pub fn mk_witness(
         &self,
         block0_hash: &Hash,

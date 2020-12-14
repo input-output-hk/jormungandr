@@ -140,6 +140,7 @@ impl Wallet {
     pub fn save_to<W: std::io::Write>(&self, w: W) -> std::io::Result<()> {
         match self {
             Wallet::Account(account) => account.save_to(w),
+            Wallet::UTxO(utxo) => utxo.save_to(w),
             _ => unimplemented!(),
         }
     }

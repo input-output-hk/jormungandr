@@ -37,8 +37,8 @@ pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             slot_duration = 1,
             leaders = [ LEADER_1, LEADER_2, LEADER_3, LEADER_4,LEADER_5 ],
             initials = [
-                account "alice" with   500_000_000,
-                account "bob" with  500_000_000,
+                "account" "alice" with   500_000_000,
+                "account" "bob" with  500_000_000,
             ],
         }
     };
