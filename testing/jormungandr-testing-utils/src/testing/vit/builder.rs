@@ -22,12 +22,6 @@ impl Default for VotePlanBuilder {
     }
 }
 
-impl Default for VotePlanBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl VotePlanBuilder {
     pub fn new() -> Self {
         Self {
@@ -42,17 +36,17 @@ impl VotePlanBuilder {
     }
 
     pub fn with_vote_start(&mut self, block_date: BlockDate) -> &mut Self {
-        self.vote_start_date = block_date;
+        self.vote_start = block_date;
         self
     }
 
     pub fn with_tally_start(&mut self, block_date: BlockDate) -> &mut Self {
-        self.vote_tally_start_date = block_date;
+        self.tally_start = block_date;
         self
     }
 
     pub fn with_tally_end(&mut self, block_date: BlockDate) -> &mut Self {
-        self.vote_tally_end_date = block_date;
+        self.tally_end = block_date;
         self
     }
 

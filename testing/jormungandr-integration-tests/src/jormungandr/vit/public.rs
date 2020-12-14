@@ -8,12 +8,13 @@ use assert_fs::{
     TempDir,
 };
 use chain_impl_mockchain::{
-    certificate::VotePlan,
+    certificate::{VoteAction,VoteTallyPayload},
+    ledger::governance::{TreasuryGovernanceAction},
     chaintypes::ConsensusType,
     milli::Milli,
     testing::VoteTestGen,
     value::Value,
-    vote::{Choice, CommitteeId, PayloadType},
+    vote::{Choice, CommitteeId},
 };
 use jormungandr_lib::{
     crypto::key::KeyPair,
@@ -108,14 +109,14 @@ pub fn test_get_initial_vote_plan() {
         expected_vote_plan.to_id().to_string()
     );
 }
-
+use jormungandr_testing_utils::testing::VotePlanBuilder;
 use chain_addr::Discrimination;
 
 #[test]
 pub fn test_vote_flow_bft() {
     let favorable_choice = Choice::new(1);
 
-    let rewards_increase = 10;
+    let rewards_increase = 10u64;
     let initial_fund_per_wallet = 1_000_000;
     let temp_dir = TempDir::new().unwrap();
 
@@ -124,7 +125,16 @@ pub fn test_vote_flow_bft() {
     let mut bob = Wallet::new_account(&mut rng);
     let mut clarice = Wallet::new_account(&mut rng);
 
-    let vote_plan = VotePlan::new_with_3_proposals(rewards_increase);
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::Treasury {
+            action: TreasuryGovernanceAction::TransferToRewards {
+                value: Value(rewards_increase),
+            }
+        })
+        .public()
+        .build();
+
     let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
     let wallets = [&alice, &bob, &clarice];
     let config = ConfigurationBuilder::new()
@@ -173,7 +183,7 @@ pub fn test_vote_flow_bft() {
     wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
-        .send_vote_tally(&mut clarice, &vote_plan, &jormungandr)
+        .send_vote_tally(&mut clarice, &vote_plan, &jormungandr, VoteTallyPayload::Public)
         .unwrap();
 
     wait_for_epoch(2, jormungandr.explorer().clone());
@@ -234,7 +244,15 @@ pub fn test_vote_flow_praos() {
     let mut bob = Wallet::new_account(&mut rng);
     let mut clarice = Wallet::new_account(&mut rng);
 
-    let vote_plan = VotePlan::new_with_3_proposals(rewards_increase);
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::Treasury {
+            action: TreasuryGovernanceAction::TransferToRewards {
+                value: Value(rewards_increase),
+            }
+        })
+        .public()
+        .build();
 
     let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
     let mut config = ConfigurationBuilder::new();
@@ -274,7 +292,7 @@ pub fn test_vote_flow_praos() {
     wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
-        .send_vote_tally(&mut alice, &vote_plan, &jormungandr)
+        .send_vote_tally(&mut alice, &vote_plan, &jormungandr,VoteTallyPayload::Public)
         .unwrap();
 
     wait_for_epoch(3, jormungandr.explorer().clone());
@@ -314,7 +332,11 @@ pub fn jcli_e2e_flow() {
     let bob = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
     let clarice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
 
-    let vote_plan = VotePlan::new_with_3_off_chain_proposals();
+    let vote_plan = VotePlanBuilder::new()
+    .proposals_count(3)
+    .action_type(VoteAction::OffChain)
+    .public()
+    .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
     vote_plan_json.write_str(&vote_plan.as_json_str()).unwrap();
@@ -368,7 +390,7 @@ pub fn jcli_e2e_flow() {
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
     let vote_cast =
         jcli.certificate()
-            .new_vote_cast(vote_plan_id.clone(), 0, yes_choice, PayloadType::Public);
+            .new_public_vote_cast(vote_plan_id.clone(), 0, yes_choice);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -412,7 +434,7 @@ pub fn jcli_e2e_flow() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let vote_tally_cert = jcli.certificate().new_vote_tally(vote_plan_id);
+    let vote_tally_cert = jcli.certificate().new_public_vote_tally(vote_plan_id);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())

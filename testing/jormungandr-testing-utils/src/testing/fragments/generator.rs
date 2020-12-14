@@ -4,7 +4,7 @@ use crate::{
     testing::{node::Explorer, RemoteJormungandr, VotePlanBuilder},
     wallet::Wallet,
 };
-use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
+use chain_impl_mockchain::{vote::Choice,certificate::{VotePlan, VoteTallyPayload},};
 use chain_time::TimeEra;
 use jortestkit::load::{RequestFailure, RequestGenerator};
 use rand::RngCore;
@@ -195,7 +195,7 @@ impl<'a> FragmentGenerator<'a> {
                 let vote_plan = self.vote_plans_for_tally.remove(index);
 
                 self.fragment_sender
-                    .send_vote_tally(&mut self.sender, &vote_plan, &self.node)
+                    .send_vote_tally(&mut self.sender, &vote_plan, &self.node, VoteTallyPayload::Public)
             }
             _ => unreachable!(),
         }

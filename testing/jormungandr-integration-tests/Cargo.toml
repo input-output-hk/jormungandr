@@ -18,7 +18,6 @@ chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-vote      = { path = "../../chain-deps/chain-vote"}
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }

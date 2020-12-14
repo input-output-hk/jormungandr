@@ -1,10 +1,9 @@
-use chain_impl_mockchain::vote::PayloadType;
 mod builder;
+
+use chain_impl_mockchain::vote::PayloadType;
 use bech32::ToBase32;
 pub use builder::VotePlanBuilder;
 use chain_impl_mockchain::certificate::VotePlan;
-mod builder;
-pub use builder::VotePlanBuilder;
 
 pub trait VotePlanExtension {
     fn as_json(&self) -> json::JsonValue;
