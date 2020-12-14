@@ -9,15 +9,23 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
+use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
+use thiserror::Error;
 
 pub struct Pool {
     logs: Logs,
     pool: internal::Pool,
     network_msg_box: MessageBox<NetworkMsg>,
     logger: Logger,
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("cannot propagate a fragment to the network")]
+    CannotPropagate(#[source] SendError),
 }
 
 impl Pool {
@@ -44,7 +52,7 @@ impl Pool {
         &mut self,
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
-    ) -> Result<usize, ()> {
+    ) -> Result<usize, Error> {
         debug!(self.logger, "received {} fragments", fragments.len(); "origin" => ?origin);
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
@@ -74,7 +82,7 @@ impl Pool {
             network_msg_box
                 .send(fragment_msg)
                 .await
-                .map_err(|e| error!(self.logger, "cannot propagate fragment to network: {}", e))?;
+                .map_err(Error::CannotPropagate)?;
         }
         self.logs.insert_all(fragment_logs);
         Ok(count)

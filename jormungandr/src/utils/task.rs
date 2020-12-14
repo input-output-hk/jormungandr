@@ -7,20 +7,41 @@
 
 use crate::log;
 
+use futures::prelude::*;
+use futures::stream::FuturesUnordered;
 use slog::Logger;
+use thiserror::Error;
 use tokio::runtime::{Handle, Runtime};
+use tokio::task::JoinHandle;
 
+use std::error;
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::mpsc::{self, Receiver, RecvError, Sender};
+use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
 /// hold onto the different services created
 pub struct Services {
     logger: Logger,
     services: Vec<Service>,
-    finish_listener: ServiceFinishListener,
+    finish_listener: FuturesUnordered<JoinHandle<Result<(), Box<dyn error::Error + Send + Sync>>>>,
     runtime: Runtime,
+}
+
+#[derive(Debug, Error)]
+pub enum ServiceError {
+    #[error(
+        "service panicked: {}",
+        .0
+        .as_ref()
+        .map(|reason| reason.as_ref())
+        .unwrap_or("could not serialize the panic"),
+    )]
+    Panic(Option<String>),
+    #[error("service future cancelled")]
+    Cancelled,
+    #[error("service error")]
+    Service(#[source] Box<dyn error::Error>),
 }
 
 /// wrap up a service
@@ -69,7 +90,7 @@ impl Services {
         Services {
             logger,
             services: Vec::new(),
-            finish_listener: ServiceFinishListener::new(),
+            finish_listener: FuturesUnordered::new(),
             runtime: Runtime::new().unwrap(),
         }
     }
@@ -95,28 +116,24 @@ impl Services {
             handle,
         };
 
-        let finish_notifier = self.finish_listener.notifier();
-        self.runtime.spawn(async move {
+        let handle = self.runtime.spawn(async move {
             f(future_service_info).await;
             info!(logger, "service finished");
-            // send the finish notifier if the service finished with an error.
-            // this will allow to finish the node with an error code instead
-            // of an success error code
-            let _ = finish_notifier.sender.send(true);
-            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
-            std::mem::drop(finish_notifier);
+            Ok::<_, std::convert::Infallible>(()).map_err(Into::into)
         });
+        self.finish_listener.push(handle);
 
         let task = Service::new(name, now);
         self.services.push(task);
     }
 
     /// Spawn the given Future in a new dedicated runtime
-    pub fn spawn_try_future<F, T>(&mut self, name: &'static str, f: F)
+    pub fn spawn_try_future<F, T, E>(&mut self, name: &'static str, f: F)
     where
         F: FnOnce(TokioServiceInfo) -> T,
         F: Send + 'static,
-        T: Future<Output = Result<(), ()>> + Send + 'static,
+        T: Future<Output = Result<(), E>> + Send + 'static,
+        E: error::Error + Send + Sync + 'static,
     {
         let logger = self
             .logger
@@ -132,31 +149,44 @@ impl Services {
             handle,
         };
 
-        let finish_notifier = self.finish_listener.notifier();
-        self.runtime.spawn(async move {
+        let handle = self.runtime.spawn(async move {
             let res = f(future_service_info).await;
-            let outcome = if res.is_ok() {
-                "successfully"
+            if let Err(err) = &res {
+                error!(logger, "service finished with error"; "reason" => err.to_string());
             } else {
-                "with error"
-            };
-            info!(logger, "service finished {}", outcome);
-
-            // send the finish notifier if the service finished with an error.
-            // this will allow to finish the node with an error code instead
-            // of an success error code
-            let _ = finish_notifier.sender.send(res.is_ok());
-            // Holds finish notifier, so it's dropped when whole future finishes or is dropped
-            std::mem::drop(finish_notifier);
+                info!(logger, "service finished successfully");
+            }
+            res.map_err(Into::into)
         });
+        self.finish_listener.push(handle);
 
         let task = Service::new(name, now);
         self.services.push(task);
     }
 
     /// select on all the started services. this function will block until first services returns
-    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
-        self.finish_listener.wait_any_finished()
+    pub fn wait_any_finished(mut self) -> Result<(), ServiceError> {
+        let finish_listener = self.finish_listener;
+        let result = self
+            .runtime
+            .block_on(async move { finish_listener.into_future().await.0 });
+        match result {
+            // No services were started or some service exited successfully
+            None | Some(Ok(Ok(()))) => Ok(()),
+            // Error produced by a service
+            Some(Ok(Err(service_error))) => Err(ServiceError::Service(service_error)),
+            // A service panicked or was cancelled by the environment
+            Some(Err(join_error)) => {
+                if join_error.is_cancelled() {
+                    Err(ServiceError::Cancelled)
+                } else if join_error.is_panic() {
+                    let desc = join_error.into_panic().downcast_ref::<String>().cloned();
+                    Err(ServiceError::Panic(desc))
+                } else {
+                    unreachable!("JoinError is either Cancelled or Panic")
+                }
+            }
+        }
     }
 
     // Run the task to completion
@@ -360,38 +390,5 @@ impl<Msg> Clone for TaskMessageBox<Msg> {
 impl<Msg> TaskMessageBox<Msg> {
     pub fn send_to(&self, a: Msg) {
         self.0.send(a).unwrap()
-    }
-}
-
-struct ServiceFinishListener {
-    sender: Sender<bool>,
-    receiver: Receiver<bool>,
-}
-
-/// Sends notification when dropped
-struct ServiceFinishNotifier {
-    sender: Sender<bool>,
-}
-
-impl ServiceFinishListener {
-    pub fn new() -> Self {
-        let (sender, receiver) = mpsc::channel();
-        ServiceFinishListener { sender, receiver }
-    }
-
-    pub fn notifier(&self) -> ServiceFinishNotifier {
-        ServiceFinishNotifier {
-            sender: self.sender.clone(),
-        }
-    }
-
-    pub fn wait_any_finished(&self) -> Result<bool, RecvError> {
-        self.receiver.recv()
-    }
-}
-
-impl Drop for ServiceFinishNotifier {
-    fn drop(&mut self) {
-        let _ = self.sender.send(true);
     }
 }

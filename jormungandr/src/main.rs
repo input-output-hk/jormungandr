@@ -240,9 +240,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 block_msgbox,
             )
             .and_then(|module| module.run())
-            .map_err(|e| {
-                eprint!("leadership error: {}", e);
-            })
         });
     }
 
@@ -279,24 +276,17 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     }
 
     match services.wait_any_finished() {
-        Err(err) => {
-            crit!(
-                bootstrapped_node.logger,
-                "Service notifier failed to wait for services to shutdown" ;
-                "reason" => err.to_string()
-            );
-            Err(start_up::Error::ServiceTerminatedWithError)
-        }
-        Ok(true) => {
+        Ok(()) => {
             info!(bootstrapped_node.logger, "Shutting down node");
             Ok(())
         }
-        Ok(false) => {
+        Err(err) => {
             crit!(
                 bootstrapped_node.logger,
-                "Service has terminated with an error"
+                "Service has terminated with an error";
+                "reason" => err.to_string(),
             );
-            Err(start_up::Error::ServiceTerminatedWithError)
+            Err(start_up::Error::ServiceTerminatedWithError(err))
         }
     }
 }
