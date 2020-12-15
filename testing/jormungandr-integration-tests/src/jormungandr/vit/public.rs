@@ -7,10 +7,11 @@ use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
 };
+use chain_core::property::BlockDate;
 use chain_impl_mockchain::{
-    certificate::{VoteAction,VoteTallyPayload},
-    ledger::governance::{TreasuryGovernanceAction},
+    certificate::{VoteAction, VoteTallyPayload},
     chaintypes::ConsensusType,
+    ledger::governance::TreasuryGovernanceAction,
     milli::Milli,
     testing::VoteTestGen,
     value::Value,
@@ -109,8 +110,8 @@ pub fn test_get_initial_vote_plan() {
         expected_vote_plan.to_id().to_string()
     );
 }
-use jormungandr_testing_utils::testing::VotePlanBuilder;
 use chain_addr::Discrimination;
+use jormungandr_testing_utils::testing::VotePlanBuilder;
 
 #[test]
 pub fn test_vote_flow_bft() {
@@ -130,8 +131,11 @@ pub fn test_vote_flow_bft() {
         .action_type(VoteAction::Treasury {
             action: TreasuryGovernanceAction::TransferToRewards {
                 value: Value(rewards_increase),
-            }
+            },
         })
+        .with_vote_start(BlockDate::from_epoch_slot_id(0, 0))
+        .with_tally_start(BlockDate::from_epoch_slot_id(1, 0))
+        .with_tally_end(BlockDate::from_epoch_slot_id(2, 0))
         .public()
         .build();
 
@@ -149,6 +153,7 @@ pub fn test_vote_flow_bft() {
         .with_certs(vec![vote_plan_cert])
         .with_explorer()
         .with_slot_duration(1)
+        .with_treasury(1_000.into())
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
@@ -183,7 +188,12 @@ pub fn test_vote_flow_bft() {
     wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
-        .send_vote_tally(&mut clarice, &vote_plan, &jormungandr, VoteTallyPayload::Public)
+        .send_vote_tally(
+            &mut clarice,
+            &vote_plan,
+            &jormungandr,
+            VoteTallyPayload::Public,
+        )
         .unwrap();
 
     wait_for_epoch(2, jormungandr.explorer().clone());
@@ -249,7 +259,7 @@ pub fn test_vote_flow_praos() {
         .action_type(VoteAction::Treasury {
             action: TreasuryGovernanceAction::TransferToRewards {
                 value: Value(rewards_increase),
-            }
+            },
         })
         .public()
         .build();
@@ -292,7 +302,12 @@ pub fn test_vote_flow_praos() {
     wait_for_epoch(1, jormungandr.explorer().clone());
 
     transaction_sender
-        .send_vote_tally(&mut alice, &vote_plan, &jormungandr,VoteTallyPayload::Public)
+        .send_vote_tally(
+            &mut alice,
+            &vote_plan,
+            &jormungandr,
+            VoteTallyPayload::Public,
+        )
         .unwrap();
 
     wait_for_epoch(3, jormungandr.explorer().clone());
@@ -333,10 +348,13 @@ pub fn jcli_e2e_flow() {
     let clarice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
 
     let vote_plan = VotePlanBuilder::new()
-    .proposals_count(3)
-    .action_type(VoteAction::OffChain)
-    .public()
-    .build();
+        .proposals_count(3)
+        .action_type(VoteAction::OffChain)
+        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .public()
+        .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
     vote_plan_json.write_str(&vote_plan.as_json_str()).unwrap();
@@ -388,9 +406,9 @@ pub fn jcli_e2e_flow() {
     time::wait_for_epoch(1, jormungandr.explorer());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
-    let vote_cast =
-        jcli.certificate()
-            .new_public_vote_cast(vote_plan_id.clone(), 0, yes_choice);
+    let vote_cast = jcli
+        .certificate()
+        .new_public_vote_cast(vote_plan_id.clone(), 0, yes_choice);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())

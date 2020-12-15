@@ -82,7 +82,7 @@ impl TxOnly {
             30,
         );
 
-        let status_provider = FragmentStatusProvider::new(remote_jormungandr.clone());
+        let status_provider = FragmentStatusProvider::new(remote_jormungandr);
 
         let stats =
             jortestkit::load::start_async(request_gen, status_provider, config, "rest  test");

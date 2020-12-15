@@ -15,11 +15,11 @@ impl BlockDate {
     }
 
     pub fn slot(&self) -> SlotId {
-        self.0.slot_id.into()
+        self.0.slot_id
     }
 
     pub fn epoch(&self) -> Epoch {
-        self.0.epoch.into()
+        self.0.epoch
     }
 
     pub fn shift_epoch(&self, epoch_shift: u32) -> Self {
