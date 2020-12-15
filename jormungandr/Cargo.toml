@@ -13,7 +13,7 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "^1.1.0"
-juniper = "0.14.2"
+juniper = "0.15.1"
 base64 = "0.13.0"
 bincode = "1.2.1"
 bytes = "0.5"
