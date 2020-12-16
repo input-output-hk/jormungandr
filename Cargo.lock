@@ -1947,7 +1947,7 @@ dependencies = [
  "jortestkit",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "regex 1.4.2",
+ "regex 0.1.80",
  "reqwest",
  "serde",
  "serde_json",
@@ -5419,7 +5419,7 @@ dependencies = [
 [[package]]
 name = "vit-servicing-station-lib"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#ecc9080e33aed28f55949feab93f9a5e5b99bb65"
+source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#5560333d5d50a69abde4ea616ce6352a653f33e0"
 dependencies = [
  "async-graphql",
  "async-graphql-warp",
@@ -5447,7 +5447,7 @@ dependencies = [
 [[package]]
 name = "vit-servicing-station-tests"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#ecc9080e33aed28f55949feab93f9a5e5b99bb65"
+source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#5560333d5d50a69abde4ea616ce6352a653f33e0"
 dependencies = [
  "askama",
  "askama_shared",
