@@ -7,7 +7,45 @@ to decrypt and certify the tally.
 
 ## Creating committee keys
 
-TBA
+### Private
+Please refer to `jcli votes committee --help` for help with the committee related cli operations and specification of arguments.
+
+In this example we will be using 3 kind of keys for the private vote and tallying.
+
+In order:
+
+#### Committee communication key
+
+```shell
+jcli votes committee communication-key generate > ./comm.sk
+```
+
+We can get its public representation with:
+
+```shell
+jcli votes committee communication-key to-public --input ./comm.sk > ./comm.pk
+```
+
+#### Committee member key
+
+```shell
+crs=$(jcli vote crs generate)
+jcli votes committee member-key generate --threshold 3 --crs "$crs" --index 0 --keys pk1 pk2 pk3 > ./member.sk
+```
+Where `pkX` are each of the committee communication public keys.
+We can also easily get its public representation as before:
+
+```shell
+jcli votes committee member-key to-public --input ./member.sk ./member.pk
+```
+
+
+#### Vote encrypting key
+This key (*public*) is the key **every vote** should be encrypted with.
+
+```shell
+jcli votes encrypting-key --eys mpk1 mpk2 mpkn > ./vote.pk
+```
 
 ## Casting votes
 
@@ -40,3 +78,6 @@ jcli transaction auth --staging vote-tally.staging --key committee.sk
 jcli transaction to-message --staging vote-tally.staging > vote-tally.fragment
 jcli rest v0 message post --file vote-tally.fragment
 ```
+
+### Private
+
