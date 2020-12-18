@@ -163,24 +163,29 @@ def tally_with_shares(aggregated_data_shares_file, output_file="decrypted_tally"
 if __name__ == "__main__":
     import click
 
-    @click.command()
+    @click.group()
+    def cli():
+        pass
+
+    @cli.command()
     @click.option("--key", type=str, help="Path to committee member key file")
     @click.option("--output", type=str, help="Output path for the share file", default="./proposals.shares")
     def generate_share(key, output):
         generate_committee_member_shares(key, output)
 
-    @click.command()
+    @cli.command()
     @click.option("--shares", "-s", type=str, multiple=True, help="Path to a generated proposal shares file")
     @click.option("--output", type=str, help="Output path for the merged shares file", default="./merged_proposals.shares")
     def merge_shares(shares, output):
         merge_generated_shares(*shares, output_file=output)
 
-    @click.command()
+    @cli.command()
     @click.option("--shares", type=str, help="Path to the merged shares file")
     @click.option("--output", type=str, help="Output path for the merged shares file", default="./results.json")
     def tally(shares, output):
         tally_with_shares(shares, output)
 
+    cli()
 
 
 
