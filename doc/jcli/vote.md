@@ -85,7 +85,7 @@ That file should be a `yaml` (or json) with the following format:
     },
     ...
   ],
-  "commitee_public_keys": [
+  "committee_member_public_keys ": [
     "pk....",
   ]
 }
