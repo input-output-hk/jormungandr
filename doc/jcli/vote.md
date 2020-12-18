@@ -29,7 +29,7 @@ jcli votes committee communication-key to-public --input ./comm.sk > ./comm.pk
 #### Committee member key
 
 ```shell
-crs=$(jcli vote crs generate)
+crs=$(jcli votes crs generate)
 jcli votes committee member-key generate --threshold 3 --crs "$crs" --index 0 --keys pk1 pk2 pk3 > ./member.sk
 ```
 Where `pkX` are each of the committee communication public keys.
@@ -64,7 +64,7 @@ We need to provide a vote plan definition file to generate a new voteplan certif
 That file should be a `yaml` (or json) with the following format:
 ```yaml
 {
-  "payload_type": "public",
+  "payload_type": "private",
   "vote_start": {
     "epoch": 1,
     "slot_id": 0
