@@ -35,7 +35,7 @@ impl ProxyClient {
     }
 
     pub fn block0(&self) -> Result<Vec<u8>, Error> {
-        let response = reqwest::blocking::get(&self.path("block0"))?;
+        let response = reqwest::blocking::get(&self.path("api/v0/block0"))?;
         self.print_response(&response);
         Ok(response.bytes()?.to_vec())
     }
