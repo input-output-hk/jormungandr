@@ -150,7 +150,7 @@ macro_rules! prepare_scenario {
 
         $(
             $(
-                let value: u64 = $initial_legacy_funds as u64;
+                let value = chain_impl_mockchain::value::Value($initial_legacy_funds);
                 let legacy_wallet = jormungandr_testing_utils::testing::network_builder::LegacyWalletTemplate::new($legacy_wallet_name,value.into(),$legacy_wallet_address.to_owned(),$legacy_wallet_mnemonics.to_owned());
                 blockchain.add_legacy_wallet(legacy_wallet);
             )*
