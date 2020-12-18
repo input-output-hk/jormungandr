@@ -2333,6 +2333,7 @@ dependencies = [
  "os_info 3.0.1",
  "poldercast",
  "prost",
+ "qrcodegen",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
@@ -2346,6 +2347,7 @@ dependencies = [
  "slog",
  "slog-async",
  "slog-json",
+ "symmetric-cipher",
  "sysinfo 0.15.3",
  "tar",
  "thiserror",
@@ -3459,6 +3461,12 @@ checksum = "eef52fac62d0ea7b9b4dc7da092aa64ea7ec3d90af6679422d3d7e0e14b6ee15"
 dependencies = [
  "bitflags",
 ]
+
+[[package]]
+name = "qrcodegen"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d24ea38b2345f15533e6668104bec0136883404287e095f15f9ea2522e2b4b6c"
 
 [[package]]
 name = "quick-error"
