@@ -150,7 +150,7 @@ impl QuickVitBackendSettingsBuilder {
                 Value(1_000_000).into()
             );
             blockchain.add_wallet(committe_wallet);
-            let i = 1;
+            let mut i = 1;
             for initial in self.initials {
                     
                 let wallet = WalletTemplate::new_utxo(
