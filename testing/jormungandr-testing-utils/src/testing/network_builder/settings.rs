@@ -1,7 +1,7 @@
 use super::LegacyWalletTemplate;
 use crate::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, Random, Wallet, WalletAlias,
-    WalletTemplate, WalletType,
+    WalletTemplate, WalletType,ExternalWalletTemplate
 };
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
@@ -143,29 +143,42 @@ impl Settings {
         settings.populate_trusted_peers();
         settings.populate_block0_blockchain_initials(blockchain.wallets(), rng);
         settings.populate_block0_blockchain_configuration(&blockchain, rng);
-        settings.populate_block0_blockchain_legacy(blockchain.legacy_wallets(), rng);
+        settings.populate_block0_blockchain_legacy(blockchain.legacy_wallets());
+        settings.populate_block0_blockchain_external(blockchain.external_wallets());
 
         println!("{:?}", settings);
 
         settings
     }
 
-    fn populate_block0_blockchain_legacy<RNG>(
+    fn populate_block0_blockchain_legacy(
         &mut self,
         legacy_wallets: Vec<LegacyWalletTemplate>,
-        _rng: &mut Random<RNG>,
-    ) where
-        RNG: RngCore + CryptoRng,
+    )
     {
         for template in legacy_wallets {
             let legacy_fragment = Initial::LegacyFund(vec![LegacyUTxO {
                 address: template.address().parse().unwrap(),
-                value: *template.value(),
+                value: (*template.value()).into(),
             }]);
 
             self.legacy_wallets
                 .insert(template.alias().clone(), template.clone());
             self.block0.initial.push(legacy_fragment);
+        }
+    }
+
+    fn populate_block0_blockchain_external(
+        &mut self,
+        external_wallets: Vec<ExternalWalletTemplate>,
+    )
+    {
+        for template in external_wallets {
+            let external_fragment = Initial::LegacyFund(vec![LegacyUTxO {
+                address: template.address().parse().unwrap(),
+                value: (*template.value()).into(),
+            }]);
+            self.block0.initial.push(external_fragment);
         }
     }
 
@@ -242,7 +255,7 @@ impl Settings {
             // TODO add support for sharing fragment with multiple utxos
             let initial_fragment = Initial::Fund(vec![InitialUTxO {
                 address: initial_address,
-                value: *wallet_template.value(),
+                value: (*wallet_template.value()).into(),
             }]);
 
             self.wallets
