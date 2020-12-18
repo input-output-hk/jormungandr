@@ -203,4 +203,8 @@ impl JormungandrRest {
         serde_json::from_str(&self.inner.vote_plan_statuses()?)
             .map_err(RestError::CannotDeserialize)
     }
+
+    pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
+        self.inner.set_origin(origin);
+    }
 }

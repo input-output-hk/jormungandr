@@ -260,6 +260,7 @@ impl Controller {
             use_https_for_post: false,
             enable_debug: true,
             certificate: None,
+            cors: None,
         };
 
         let backend = WalletBackend::new_from_addresses(

@@ -12,6 +12,7 @@ use reqwest::{
 };
 use std::fmt;
 
+const ORIGIN: &str = "Origin";
 enum ApiVersion {
     V0,
     V1,
@@ -40,8 +41,12 @@ impl RawRest {
         Self { uri, settings }
     }
 
-    pub fn update_settings(&mut self, settings: RestSettings) {
-        self.settings = settings;
+    pub fn settings(&self) -> &RestSettings {
+        &self.settings
+    }
+
+    pub fn settings_mut(&mut self) -> &mut RestSettings {
+        &mut self.settings
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<Response, reqwest::Error> {
@@ -63,17 +68,22 @@ impl RawRest {
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(path);
         self.print_request_path(&request);
-        match &self.settings.certificate {
-            None => reqwest::blocking::get(&request),
-            Some(cert) => {
-                let client = reqwest::blocking::Client::builder()
-                    .use_rustls_tls()
-                    .add_root_certificate(cert.clone())
-                    .build()
-                    .unwrap();
-                client.get(&request).send()
-            }
+
+        let mut client_builder = reqwest::blocking::Client::builder();
+
+        if let Some(cert) = &self.settings.certificate {
+            client_builder = client_builder
+                .use_rustls_tls()
+                .add_root_certificate(cert.clone())
         }
+        let client = client_builder.build()?;
+        let mut res = client.get(&request);
+
+        if let Some(origin) = self.settings.cors.as_ref() {
+            res = res.header(ORIGIN, origin.to_string());
+        }
+
+        res.send()
     }
 
     fn path(&self, path: &str) -> String {

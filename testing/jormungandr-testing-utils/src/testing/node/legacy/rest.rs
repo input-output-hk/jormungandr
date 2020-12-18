@@ -16,14 +16,12 @@ use std::collections::HashMap;
 /// in order to assure compatibility and lack of serde errors
 #[derive(Debug, Clone)]
 pub struct BackwardCompatibleRest {
-    settings: RestSettings,
     raw: RawRest,
 }
 
 impl BackwardCompatibleRest {
     pub fn new(uri: String, settings: RestSettings) -> Self {
         Self {
-            settings: settings.clone(),
             raw: RawRest::new(uri, settings),
         }
     }
@@ -32,26 +30,28 @@ impl BackwardCompatibleRest {
         &self.raw
     }
 
+    pub fn settings(&self) -> &RestSettings {
+        &self.raw.settings()
+    }
+
     fn print_response_text(&self, text: &str) {
-        if self.settings.enable_debug {
+        if self.settings().enable_debug {
             println!("Response: {}", text);
         }
     }
 
     fn print_debug_response(&self, response: &Response) {
-        if self.settings.enable_debug {
+        if self.settings().enable_debug {
             println!("Response: {:?}", response);
         }
     }
 
     pub fn disable_logger(&mut self) {
-        self.settings.enable_debug = false;
-        self.raw.update_settings(self.settings.clone());
+        self.raw.settings_mut().enable_debug = false;
     }
 
     pub fn enable_logger(&mut self) {
-        self.settings.enable_debug = true;
-        self.raw.update_settings(self.settings.clone());
+        self.raw.settings_mut().enable_debug = true;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {
@@ -178,5 +178,9 @@ impl BackwardCompatibleRest {
 
     pub fn vote_plan_statuses(&self) -> Result<String, reqwest::Error> {
         self.raw().vote_plan_statuses()?.text()
+    }
+
+    pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
+        self.raw.settings_mut().cors = Some(origin.into());
     }
 }
