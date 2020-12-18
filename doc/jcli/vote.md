@@ -44,6 +44,7 @@ jcli votes committee member-key to-public --input ./member.sk ./member.pk
 
 #### Vote encrypting key
 This key (*public*) is the key **every vote** should be encrypted with.
+
 Notice that we can always rebuild this key with the committee member public keys found
 within the [voteplan certificate](#creating-a-vote-plan).
 
