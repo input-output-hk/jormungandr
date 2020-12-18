@@ -80,4 +80,51 @@ jcli rest v0 message post --file vote-tally.fragment
 ```
 
 ### Private
+To tally private votes, all committee members are needed.
+The process is similar to the public one, but we need to issue different certificates.
 
+```shell
+vote_plan_id=$(jcli rest v0 vote active plans get --output-format json|jq '.[0].id')
+jcli certificate new encrypted-vote-tally --vote-plan-id "$vote_plan_id" --output encrypted-vote-tally.certificate
+...
+```
+
+**WIP**
+
+After the certificate is issued we need each of the committee members to create a share for each voteplan:
+```shell
+jcli res v0 vote active plans > active_plans.json
+```
+For each proposal in the `active_plans.json` we need to retrieve the `proposal["tally"]["private"]["encrypted"]["encrypted_tally"]` and dump it to a file.
+
+Then, for each of those encrypted tally each of the committee member need to generate a share.
+
+```shell
+jcli votes tally decyption-share --encrypted-tally voteplan1.secret_tally --key member.sk --output-format json 
+```
+
+Then the committee members need to exchange their share (only one full set of shares is needed) for finally get the results.
+We will need those share files merged into a single file where each of the shares are in separated lines.
+With that we can process the final tally result as follows:
+
+```shell
+jcli votes tally decrypt \
+--encrypted-tally voteplan1.secret_tally \
+--shares merged_shares_file_path.shares \
+--threshold number_of_committee_members \
+--max-votes total_votes_cast \
+--table-size table_size \
+--output-format json > result.json
+```
+
+Notes:
+
+The table size is a cache parameter, any value greater than one would be enough but the best approximated values would be
+`table_size = votes_cast / vote_options`. So, if we had `1000` votes and `2` options (*yes*, *no*), and optimum table size value
+would be `1000/2 = 500`
+
+It may be ***cumbersome*** to do this process manually. So we can use a `python` script for processing the tallying in 3 simple steps:
+
+1. Generate all shares for all voteplans (every committee member).
+2. Merge all shares together with their corresponding voteplans.
+3. Generate the final results for each of them.
