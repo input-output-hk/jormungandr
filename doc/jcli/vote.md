@@ -33,6 +33,8 @@ crs=$(jcli vote crs generate)
 jcli votes committee member-key generate --threshold 3 --crs "$crs" --index 0 --keys pk1 pk2 pk3 > ./member.sk
 ```
 Where `pkX` are each of the committee communication public keys.
+Note that **all committee members should use the same CRS**
+
 We can also easily get its public representation as before:
 
 ```shell
@@ -45,6 +47,49 @@ This key (*public*) is the key **every vote** should be encrypted with.
 
 ```shell
 jcli votes encrypting-key --eys mpk1 mpk2 mpkn > ./vote.pk
+```
+
+
+## Creating a vote plan
+
+We need to provide a vote plan definition file to generate a new voteplan certificate.
+That file should be a `yaml` (or json) with the following format:
+```yaml
+{
+  "payload_type": "public",
+  "vote_start": {
+    "epoch": 1,
+    "slot_id": 0
+  },
+  "vote_end": {
+    "epoch": 3,
+    "slot_id": 0
+  },
+  "committee_end": {
+    "epoch": 6,
+    "slot_id": 0
+  },
+  "proposals": [
+    {
+      "external_id": "d7fa4e00e408751319c3bdb84e95fd0dcffb81107a2561e691c33c1ae635c2cd",
+      "options": 3,
+      "action": "off_chain"
+    },
+    ...
+  ],
+  "commitee_public_keys": [
+    "pk....",
+  ]
+}
+```
+Where:
+* payload_type is either *public* or *private*
+* commitee_public_keys is only needed for private voting, can be empty for public.
+
+Then, we can generate the voteplan certificate with:
+
+```shell
+jcli certificate new vote-plan voteplan_def.json --output voteplan.certificate
 ```
 
 ## Casting votes
@@ -60,7 +105,7 @@ In the example below, the file `committee.sk` contains the committee member's
 private key in bech32 format, and `block0.bin` contains the genesis block of
 the voting chain.
 
-```sh
+```shell
 genesis_block_hash=$(jcli genesis hash < block0.bin)
 vote_plan_id=$(jcli rest v0 vote active plans get --output-format json|jq '.[0].id')
 committee_addr=$(jcli address account $(jcli key to-public < committee.sk))
@@ -84,6 +129,7 @@ To tally private votes, all committee members are needed.
 The process is similar to the public one, but we need to issue different certificates.
 
 ```shell
+...
 vote_plan_id=$(jcli rest v0 vote active plans get --output-format json|jq '.[0].id')
 jcli certificate new encrypted-vote-tally --vote-plan-id "$vote_plan_id" --output encrypted-vote-tally.certificate
 ...
