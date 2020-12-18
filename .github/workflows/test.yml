@@ -4,7 +4,25 @@ on:
   push:
     branches:
       - master
+    paths:
+      - doc/api/**.yaml
+      - jormungandr-lib/**
+      - jormungandr/**
+      - jcli/**
+      - modules/**
+      - testing/**
+      - Cargo.*
+      - !**.md
   pull_request:
+    paths:
+      - doc/api/**.yaml
+      - jormungandr-lib/**
+      - jormungandr/**
+      - jcli/**
+      - modules/**
+      - testing/**
+      - Cargo.*
+      - !**.md
 
 jobs:
 

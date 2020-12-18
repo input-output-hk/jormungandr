@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - master
+    paths:
+      - book.toml
+      - doc/**
+      - !doc/api/**.yaml
 
 jobs:
   build-and-deploy:
