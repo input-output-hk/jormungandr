@@ -1,17 +1,16 @@
 mod args;
-use crate::interactive::args::UserInteractionController;
+
+pub use crate::interactive::args::{UserInteractionController,InteractiveCommand};
 use crate::{
     scenario::{repository::ScenarioResult, Context},
     test::Result,
 };
-pub use args::InteractiveCommand;
 use jortestkit::prelude::{
     ConsoleWriter, InteractiveCommandError, InteractiveCommandExec, UserInteraction,
 };
 use rand_chacha::ChaChaRng;
 use std::ffi::OsStr;
 use structopt::StructOpt;
-
 use function_name::named;
 
 #[named]
@@ -67,7 +66,7 @@ fn jormungandr_user_interaction() -> UserInteraction {
 }
 
 pub struct JormungandrInteractiveCommandExec<'a> {
-    controller: UserInteractionController<'a>,
+    pub controller: UserInteractionController<'a>,
 }
 
 impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
