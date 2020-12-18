@@ -45,12 +45,17 @@ jcli votes committee member-key to-public --input ./member.sk ./member.pk
 #### Vote encrypting key
 This key (*public*) is the key **every vote** should be encrypted with.
 
+```shell
+jcli votes encrypting-key --eys mpk1 mpk2 mpkn > ./vote.pk
+```
+
 Notice that we can always rebuild this key with the committee member public keys found
 within the [voteplan certificate](#creating-a-vote-plan).
 
 ```shell
-jcli votes encrypting-key --eys mpk1 mpk2 mpkn > ./vote.pk
+jcli rest v0 vote active plans > voteplan.json
 ```
+
 
 
 ## Creating a vote plan
