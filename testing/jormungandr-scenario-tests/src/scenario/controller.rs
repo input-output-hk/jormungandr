@@ -1,3 +1,4 @@
+use crate::scenario::settings::Settings;
 use crate::wallet::WalletProxyController;
 use crate::{
     legacy::{LegacyNode, LegacyNodeController},
@@ -31,12 +32,11 @@ use jormungandr_testing_utils::{
     wallet::Wallet,
     Version,
 };
-
-use crate::scenario::settings::Settings;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use vit_servicing_station_tests::common::data::ValidVotePlanParameters;
 
 pub struct ControllerBuilder {
     title: String,
@@ -229,6 +229,10 @@ impl Controller {
         &self.topology
     }
 
+    pub fn settings(&self) -> &Settings {
+        &self.settings
+    }
+
     pub fn start_monitor_resources(
         &mut self,
         info: &str,
@@ -276,7 +280,10 @@ impl Controller {
         SpawnParams::new(node_alias)
     }
 
-    pub fn spawn_vit_station(&self) -> Result<VitStationController> {
+    pub fn spawn_vit_station(
+        &self,
+        parameters: ValidVotePlanParameters,
+    ) -> Result<VitStationController> {
         let (alias, settings) = self
             .settings
             .vit_stations
@@ -289,10 +296,10 @@ impl Controller {
 
         let vit_station = VitStation::spawn(
             &self.context,
+            parameters,
             pb,
             alias,
             settings.clone(),
-            self.blockchain.vote_plans(),
             &self.block0_file.as_path(),
             &self.working_directory.path(),
         )
