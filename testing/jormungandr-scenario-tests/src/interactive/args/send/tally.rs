@@ -15,7 +15,6 @@ pub struct VoteTally {
 
 impl VoteTally {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
-
         let node = controller
             .nodes()
             .iter()
@@ -28,11 +27,7 @@ impl VoteTally {
             .find(|x| *x.alias() == self.via);
 
         if let Some(node) = node {
-            let mem_pool_check = controller.tally_vote(
-                &self.committee,
-                &self.vote_plan,
-                &node,
-            )?;
+            let mem_pool_check = controller.tally_vote(&self.committee, &self.vote_plan, &node)?;
             println!(
                 "{}",
                 style::info.apply_to(format!(
@@ -42,11 +37,8 @@ impl VoteTally {
             );
             return Ok(());
         } else if let Some(legacy_node) = legacy_node {
-            let mem_pool_check = controller.tally_vote(
-                &self.committee,
-                &self.vote_plan,
-                &legacy_node,
-            )?;
+            let mem_pool_check =
+                controller.tally_vote(&self.committee, &self.vote_plan, &legacy_node)?;
             println!(
                 "{}",
                 style::info.apply_to(format!(

@@ -1,21 +1,25 @@
-use jortestkit::prelude::UserInteraction;
 use crate::interactive::JormungandrInteractiveCommandExec;
-use crate::vit::{WALLET_NODE,LEADER_1,LEADER_2,LEADER_3,LEADER_4};
+use crate::interactive::UserInteractionController;
+use crate::vit::{LEADER_1, LEADER_2, LEADER_3, LEADER_4, WALLET_NODE};
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     scenario::{repository::ScenarioResult, Context},
-    vit::QuickVitBackendSettingsBuilder,
     test::Result,
+    vit::QuickVitBackendSettingsBuilder,
 };
-use rand_chacha::ChaChaRng;
-use crate::interactive::UserInteractionController;
-use jormungandr_testing_utils::testing::network_builder::SpawnParams;
 use jormungandr_lib::interfaces::Explorer;
+use jormungandr_testing_utils::testing::network_builder::SpawnParams;
+use jortestkit::prelude::UserInteraction;
+use rand_chacha::ChaChaRng;
 
 #[allow(unreachable_code)]
 #[allow(clippy::empty_loop)]
-pub fn vote_backend(mut context: Context<ChaChaRng>, quick_setup: QuickVitBackendSettingsBuilder, interactive: bool) -> Result<ScenarioResult> {
-    
+pub fn vote_backend(
+    mut context: Context<ChaChaRng>,
+    mut quick_setup: QuickVitBackendSettingsBuilder,
+    interactive: bool,
+) -> Result<ScenarioResult> {
+    let fund_name = quick_setup.fund_name();
     let mut controller = quick_setup.build_settings(&mut context).build(context)?;
 
     // bootstrap network
@@ -61,8 +65,18 @@ pub fn vote_backend(mut context: Context<ChaChaRng>, quick_setup: QuickVitBacken
     )?;
     wallet_node.wait_for_bootstrap()?;
 
+    quick_setup.recalculate_voting_periods_if_needed(
+        controller
+            .settings()
+            .network_settings
+            .block0
+            .blockchain_configuration
+            .block0_date,
+    );
+
     // start proxy and vit station
-    let vit_station = controller.spawn_vit_station()?;
+    let vit_station = controller
+        .spawn_vit_station(quick_setup.parameters(controller.vote_plan(&fund_name).unwrap()))?;
     let wallet_proxy = controller.spawn_wallet_proxy(WALLET_NODE)?;
 
     match interactive {
@@ -75,14 +89,13 @@ pub fn vote_backend(mut context: Context<ChaChaRng>, quick_setup: QuickVitBacken
             user_integration.interact(&mut JormungandrInteractiveCommandExec {
                 controller: UserInteractionController::new(&mut controller),
             })?;
-            controller.finalize();       
+            controller.finalize();
         }
-        false => loop {}
+        false => loop {},
     }
 
     Ok(ScenarioResult::passed(""))
 }
-
 
 fn vit_interaction() -> UserInteraction {
     UserInteraction::new(

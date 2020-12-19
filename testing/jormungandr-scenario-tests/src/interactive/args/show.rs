@@ -86,7 +86,7 @@ impl ShowStatus {
         for vit_station in controller.vit_stations() {
             println!("{} is up", vit_station.alias());
         }
-        
+
         for proxy_wallet in controller.proxies() {
             println!("{} is up", proxy_wallet.alias());
         }

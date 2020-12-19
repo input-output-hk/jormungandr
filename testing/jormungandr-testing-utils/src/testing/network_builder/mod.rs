@@ -12,7 +12,9 @@ pub use settings::{NodeSetting, Settings, WalletProxySettings};
 pub use spawn_params::SpawnParams;
 use std::path::PathBuf;
 pub use topology::{Node, NodeAlias, Topology, TopologyBuilder};
-pub use wallet::{LegacyWalletTemplate, Wallet, WalletAlias, WalletTemplate, WalletType, ExternalWalletTemplate};
+pub use wallet::{
+    ExternalWalletTemplate, LegacyWalletTemplate, Wallet, WalletAlias, WalletTemplate, WalletType,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LeadershipMode {

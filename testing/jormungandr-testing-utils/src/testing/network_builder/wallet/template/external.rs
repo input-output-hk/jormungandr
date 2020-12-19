@@ -1,5 +1,5 @@
-use chain_impl_mockchain::value::Value;
 use crate::testing::network_builder::WalletAlias;
+use chain_impl_mockchain::value::Value;
 
 /// Struct can be used to differentiate wallet template
 /// which only adress is known and controller cannot control it
@@ -12,11 +12,7 @@ pub struct ExternalWalletTemplate {
 
 impl ExternalWalletTemplate {
     #[inline]
-    pub fn new<S: Into<WalletAlias>>(
-        alias: S,
-        value: Value,
-        address: String,
-    ) -> Self {
+    pub fn new<S: Into<WalletAlias>>(alias: S, value: Value, address: String) -> Self {
         Self {
             alias: alias.into(),
             value,

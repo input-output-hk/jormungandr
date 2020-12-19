@@ -1,4 +1,4 @@
-use super::{LegacyWalletTemplate, NodeAlias, WalletAlias, WalletTemplate,ExternalWalletTemplate};
+use super::{ExternalWalletTemplate, LegacyWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 use jormungandr_lib::interfaces::{

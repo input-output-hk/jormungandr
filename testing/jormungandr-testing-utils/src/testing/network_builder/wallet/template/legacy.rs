@@ -1,5 +1,5 @@
-use chain_impl_mockchain::value::Value;
 use crate::testing::network_builder::WalletAlias;
+use chain_impl_mockchain::value::Value;
 
 #[derive(Clone, Debug)]
 pub struct LegacyWalletTemplate {

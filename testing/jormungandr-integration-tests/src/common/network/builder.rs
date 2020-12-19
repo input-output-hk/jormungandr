@@ -1,9 +1,9 @@
 use super::{Controller, ControllerError};
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
-use jormungandr_lib::interfaces::Value;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NodeSecret, NumberOfSlotsPerEpoch, SlotDuration,
 };
+use chain_impl_mockchain::value::Value;
 use jormungandr_testing_utils::testing::{
     network_builder::{
         Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, SpawnParams,
@@ -106,14 +106,14 @@ pub fn builder() -> NetworkBuilder {
 
 pub struct WalletTemplateBuilder {
     alias: WalletAlias,
-    value: Value,
+    value: u64,
     wallet_template: Option<WalletTemplate>,
     node_alias: Option<NodeAlias>,
 }
 
 impl WalletTemplateBuilder {
     pub fn with(&mut self, value: u64) -> &mut Self {
-        self.value = value.into();
+        self.value = value;
         self
     }
 
@@ -123,7 +123,7 @@ impl WalletTemplateBuilder {
     }
 
     pub fn build(&self) -> WalletTemplate {
-        let mut wallet = WalletTemplate::new_account(self.alias.clone(), self.value);
+        let mut wallet = WalletTemplate::new_account(self.alias.clone(), Value(self.value));
         *wallet.delegate_mut() = self.node_alias.clone();
         wallet
     }
@@ -132,7 +132,7 @@ impl WalletTemplateBuilder {
 pub fn wallet(alias: &str) -> WalletTemplateBuilder {
     WalletTemplateBuilder {
         alias: alias.to_string(),
-        value: 0u64.into(),
+        value: 0u64,
         wallet_template: None,
         node_alias: None,
     }

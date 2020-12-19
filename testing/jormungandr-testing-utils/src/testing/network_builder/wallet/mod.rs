@@ -1,6 +1,6 @@
 mod template;
 
-pub use template::{LegacyWalletTemplate,ExternalWalletTemplate,WalletTemplate};
+pub use template::{ExternalWalletTemplate, LegacyWalletTemplate, WalletTemplate};
 
 use crate::wallet::{
     account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,

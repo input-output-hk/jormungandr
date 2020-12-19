@@ -1,13 +1,13 @@
+use crate::wallet::WalletProxyController;
+use crate::VitStationController;
 use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller};
+use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::{
     testing::{FragmentNode, SyncNode},
     wallet::Wallet,
 };
 use structopt::{clap::AppSettings, StructOpt};
-use crate::VitStationController;
-use crate::wallet::WalletProxyController;
-use jormungandr_lib::interfaces::Value;
 
 mod describe;
 mod send;
@@ -20,7 +20,7 @@ pub struct UserInteractionController<'a> {
     nodes: Vec<NodeController>,
     legacy_nodes: Vec<LegacyNodeController>,
     vit_stations: Vec<VitStationController>,
-    proxies: Vec<WalletProxyController>
+    proxies: Vec<WalletProxyController>,
 }
 
 impl<'a> UserInteractionController<'a> {
@@ -32,7 +32,7 @@ impl<'a> UserInteractionController<'a> {
             nodes: Vec::new(),
             legacy_nodes: Vec::new(),
             vit_stations: Vec::new(),
-            proxies: Vec::new()
+            proxies: Vec::new(),
         }
     }
 
@@ -87,7 +87,7 @@ impl<'a> UserInteractionController<'a> {
         &mut self,
         committee_alias: &str,
         vote_plan_alias: &str,
-        via: &A
+        via: &A,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
         let committee_address = self.controller.wallet(&committee_alias)?.address();
         let vote_plan_def = self.controller.vote_plan(vote_plan_alias)?;
@@ -98,14 +98,11 @@ impl<'a> UserInteractionController<'a> {
             .find(|x| x.address() == committee_address)
             .unwrap_or_else(|| panic!("cannot find wallet with alias: {}", committee_alias));
 
-        let check = self
-            .controller
-            .fragment_sender()
-            .send_public_vote_tally(
-                committee,
-                &vote_plan_def.into(),
-                via,
-            )?;
+        let check = self.controller.fragment_sender().send_public_vote_tally(
+            committee,
+            &vote_plan_def.into(),
+            via,
+        )?;
 
         *self.wallets_mut() = temp_wallets;
         Ok(check)

@@ -1,7 +1,7 @@
 use super::LegacyWalletTemplate;
 use crate::testing::network_builder::{
-    Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, Random, Wallet, WalletAlias,
-    WalletTemplate, WalletType,ExternalWalletTemplate
+    Blockchain as BlockchainTemplate, ExternalWalletTemplate, Node as NodeTemplate, NodeAlias,
+    Random, Wallet, WalletAlias, WalletTemplate, WalletType,
 };
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
@@ -151,11 +151,7 @@ impl Settings {
         settings
     }
 
-    fn populate_block0_blockchain_legacy(
-        &mut self,
-        legacy_wallets: Vec<LegacyWalletTemplate>,
-    )
-    {
+    fn populate_block0_blockchain_legacy(&mut self, legacy_wallets: Vec<LegacyWalletTemplate>) {
         for template in legacy_wallets {
             let legacy_fragment = Initial::LegacyFund(vec![LegacyUTxO {
                 address: template.address().parse().unwrap(),
@@ -171,8 +167,7 @@ impl Settings {
     fn populate_block0_blockchain_external(
         &mut self,
         external_wallets: Vec<ExternalWalletTemplate>,
-    )
-    {
+    ) {
         for template in external_wallets {
             let external_fragment = Initial::LegacyFund(vec![LegacyUTxO {
                 address: template.address().parse().unwrap(),

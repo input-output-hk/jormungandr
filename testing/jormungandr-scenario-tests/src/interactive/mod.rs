@@ -1,17 +1,17 @@
 mod args;
 
-pub use crate::interactive::args::{UserInteractionController,InteractiveCommand};
+pub use crate::interactive::args::{InteractiveCommand, UserInteractionController};
 use crate::{
     scenario::{repository::ScenarioResult, Context},
     test::Result,
 };
+use function_name::named;
 use jortestkit::prelude::{
     ConsoleWriter, InteractiveCommandError, InteractiveCommandExec, UserInteraction,
 };
 use rand_chacha::ChaChaRng;
 use std::ffi::OsStr;
 use structopt::StructOpt;
-use function_name::named;
 
 #[named]
 pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {

@@ -8,14 +8,12 @@ use super::UserInteractionController;
 use crate::test::Result;
 use structopt::StructOpt;
 
-
 #[derive(StructOpt, Debug)]
 pub enum Send {
     /// Sends transaction
     Tx(SendTransaction),
     /// Tally the vote
     Tally(VoteTally),
-
 }
 
 impl Send {
