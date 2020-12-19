@@ -8,6 +8,7 @@ use jormungandr_lib::interfaces::Explorer;
 use jormungandr_testing_utils::testing::network_builder::SpawnParams;
 use jormungandr_testing_utils::testing::node::time;
 use rand_chacha::ChaChaRng;
+use vit_servicing_station_tests::common::data::ValidVotePlanParameters;
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 const LEADER_3: &str = "Leader3";
@@ -112,9 +113,11 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
             .explorer(Explorer { enabled: true }),
     )?;
     wallet_node.wait_for_bootstrap()?;
+    let fund1_vote_plan = controller.vote_plan("fund1")?;
 
     // start proxy and vit station
-    let vit_station = controller.spawn_vit_station()?;
+    let vit_station =
+        controller.spawn_vit_station(ValidVotePlanParameters::new(fund1_vote_plan))?;
     let wallet_proxy = controller.spawn_wallet_proxy(WALLET_NODE)?;
 
     // start mainnet walets
