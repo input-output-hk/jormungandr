@@ -1,9 +1,9 @@
 use super::{Controller, ControllerError};
+use chain_impl_mockchain::value::Value;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NodeSecret, NumberOfSlotsPerEpoch, SlotDuration,
 };
-use chain_impl_mockchain::value::Value;
 use jormungandr_testing_utils::testing::{
     network_builder::{
         Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, SpawnParams,
