@@ -98,9 +98,13 @@ impl<RNG: RngCore> Context<RNG> {
     }
 
     pub fn child_directory(&self, path: impl AsRef<Path>) -> ChildPath {
-        let child = self.testing_directory.child(path);
+        let child = self.child(path);
         child.create_dir_all().unwrap();
         child
+    }
+
+    pub fn child(&self, path: impl AsRef<Path>) -> ChildPath {
+        self.testing_directory.child(path)
     }
 
     pub fn jcli(&self) -> &Path {
