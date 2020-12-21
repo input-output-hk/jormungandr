@@ -29,10 +29,9 @@ impl ExplorerTip {
             .nodes
             .iter()
             .find(|x| *x.alias() == self.alias)
-            .ok_or_else(|| InteractiveCommandError::UserError(format!(
-                "Node '{}' not found",
-                self.alias
-            )))?;
+            .ok_or_else(|| {
+                InteractiveCommandError::UserError(format!("Node '{}' not found", self.alias))
+            })?;
         println!("{:#?}", node.explorer().last_block()?);
         Ok(())
     }

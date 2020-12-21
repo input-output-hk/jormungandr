@@ -111,7 +111,6 @@ pub struct Settings {
     pub stake_pools: HashMap<NodeAlias, StakePool>,
 
     pub vote_plans: HashMap<VotePlanAlias, VotePlan>,
-
 }
 
 impl Settings {
