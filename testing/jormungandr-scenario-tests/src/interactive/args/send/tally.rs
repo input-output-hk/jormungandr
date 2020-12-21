@@ -31,7 +31,7 @@ impl VoteTally {
             println!(
                 "{}",
                 style::info.apply_to(format!(
-                    "tally vote frament '{}' successfully sent",
+                    "tally vote fragment '{}' successfully sent",
                     mem_pool_check.fragment_id()
                 ))
             );

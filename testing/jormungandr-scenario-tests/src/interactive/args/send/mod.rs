@@ -1,6 +1,8 @@
+mod cast;
 mod tally;
 mod tx;
 
+use cast::CastVote;
 use tally::VoteTally;
 use tx::SendTransaction;
 
@@ -14,6 +16,8 @@ pub enum Send {
     Tx(SendTransaction),
     /// Tally the vote
     Tally(VoteTally),
+    /// Send the vote
+    Vote(CastVote),
 }
 
 impl Send {
@@ -21,6 +25,7 @@ impl Send {
         match self {
             Send::Tx(transaction) => transaction.exec(controller),
             Send::Tally(vote_tally) => vote_tally.exec(controller),
+            Send::Vote(cast_vote) => cast_vote.exec(controller),
         }
     }
 }
