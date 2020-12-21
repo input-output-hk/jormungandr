@@ -176,3 +176,30 @@ Notes:
 The table size is a cache parameter, any value greater than one would be enough but the best approximated values would be
 `table_size = votes_cast / vote_options`. So, if we had `1000` votes and `2` options (*yes*, *no*), and optimum table size value
 would be `1000/2 = 500`
+
+#### Tally automation
+As previously pointed. It may be ***cumbersome*** to do this process manually. 
+
+Each of the following steps need to be done per proposal:
+
+1. Generate all shares for all proposals (every committee member).
+2. Merge all shares together with their corresponding proposal information.
+3. Generate the final results for each of them.
+
+For this task we can use a they `python` `private_tally.py` script (located at `jormungandr/scripts/tally`) for processing the tallying in 3 simple steps.
+Notice that it **requires** of jcli been installed and a node to communicate with. Also it need of the `requirements.txt` dependencies to be installed.
+
+##### Generate shares for a single committee member
+```shell
+python3 private_tally.py generate-share --key member.sk --ouput voteplan.shares
+```
+
+##### Merge committee member generated shares files
+```shell
+python3 private_tally.py merge-shares -s member1_voteplan.shares -s member2_voteplan.shares --ouput merged.shares
+```
+
+##### Tally the merged data
+```shell
+python3 private_tally.py tally --shares merged.shares --output results.json
+```
