@@ -86,6 +86,9 @@ impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
                             describe.exec(&mut self.controller)
                         }
                         InteractiveCommand::Send(send) => send.exec(&mut self.controller),
+                        InteractiveCommand::Explorer(explorer) => {
+                            explorer.exec(&mut self.controller)
+                        }
                     }
                 } {
                     console.format_error(InteractiveCommandError::UserError(err.to_string()));
