@@ -51,8 +51,21 @@ def jcli_request_active_voteplans(output_format="json"):
         print(f"Error executing process, exit code {e.returncode}:\n{e.output}")
 
 
-def generate_committee_member_shares(decryption_key_path, output_file="./proposals.shares"):
-    active_vote_plans = jcli_request_active_voteplans()
+def load_json_file(file_path):
+    try:
+        with open(file_path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"File {file_path} coul not be found.")
+    except json.JSONDecodeError as e:
+        print(f"Malformed json:\n{e}")
+
+
+def generate_committee_member_shares(decryption_key_path, input_file=None, output_file="./proposals.shares"):
+    active_vote_plans = (
+        jcli_request_active_voteplans() if input_file is None else load_json_file(input_file)
+    )
+
 
     # Active voteplans dict would look like:
     # {
@@ -172,8 +185,14 @@ if __name__ == "__main__":
     @cli.command()
     @click.option("--key", type=str, help="Path to committee member key file")
     @click.option("--output", type=str, help="Output path for the share file", default="./proposals.shares")
-    def generate_share(key, output):
-        generate_committee_member_shares(key, output)
+    @click.option(
+        "--input-file",
+        type=str,
+        help="Path to the active voteplans json file. If not provided it will be requested directly to the node",
+        default=None
+    )
+    def generate_share(key, input_file, output):
+        generate_committee_member_shares(key, input_file, output)
 
 
     @cli.command()
