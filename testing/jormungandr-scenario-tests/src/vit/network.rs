@@ -1,6 +1,7 @@
 use crate::interactive::JormungandrInteractiveCommandExec;
 use crate::interactive::UserInteractionController;
 use crate::vit::{LEADER_1, LEADER_2, LEADER_3, LEADER_4, WALLET_NODE};
+use crate::wallet::WalletProxySpawnParams;
 use crate::{
     node::{LeadershipMode, PersistenceMode},
     scenario::{repository::ScenarioResult, Context},
@@ -15,12 +16,12 @@ use rand_chacha::ChaChaRng;
 #[allow(unreachable_code)]
 #[allow(clippy::empty_loop)]
 pub fn vote_backend(
-    mut context: Context<ChaChaRng>,
+    context: Context<ChaChaRng>,
     mut quick_setup: QuickVitBackendSettingsBuilder,
     interactive: bool,
+    endpoint: String,
 ) -> Result<ScenarioResult> {
-    let fund_name = quick_setup.fund_name();
-    let mut controller = quick_setup.build_settings(&mut context).build(context)?;
+    let (mut controller, vit_parameters) = quick_setup.build(context)?;
 
     // bootstrap network
     let leader_1 = controller.spawn_node_custom(
@@ -65,29 +66,27 @@ pub fn vote_backend(
     )?;
     wallet_node.wait_for_bootstrap()?;
 
-    quick_setup.recalculate_voting_periods_if_needed(
-        controller
-            .settings()
-            .network_settings
-            .block0
-            .blockchain_configuration
-            .block0_date,
-    );
-
     // start proxy and vit station
-    let vit_station = controller
-        .spawn_vit_station(quick_setup.parameters(controller.vote_plan(&fund_name).unwrap()))?;
-    let wallet_proxy = controller.spawn_wallet_proxy(WALLET_NODE)?;
+    let vit_station = controller.spawn_vit_station(vit_parameters)?;
+    let wallet_proxy = controller.spawn_wallet_proxy_custom(
+        WalletProxySpawnParams::new(WALLET_NODE).with_base_address(endpoint),
+    )?;
 
     match interactive {
         true => {
             let user_integration = vit_interaction();
             let mut interaction_controller = UserInteractionController::new(&mut controller);
+            let nodes = interaction_controller.nodes_mut();
+            nodes.push(leader_1);
+            nodes.push(leader_2);
+            nodes.push(leader_3);
+            nodes.push(leader_4);
+            nodes.push(wallet_node);
             interaction_controller.proxies_mut().push(wallet_proxy);
             interaction_controller.vit_stations_mut().push(vit_station);
 
             user_integration.interact(&mut JormungandrInteractiveCommandExec {
-                controller: UserInteractionController::new(&mut controller),
+                controller: interaction_controller,
             })?;
             controller.finalize();
         }

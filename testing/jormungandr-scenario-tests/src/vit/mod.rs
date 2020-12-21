@@ -2,9 +2,10 @@ pub mod args;
 mod network;
 
 use crate::scenario::{
-    ActiveSlotCoefficient, ConsensusVersion, ContextChaCha, ControllerBuilder, KESUpdateSpeed,
-    Milli, NumberOfSlotsPerEpoch, SlotDuration, TopologyBuilder,
+    ActiveSlotCoefficient, ConsensusVersion, ContextChaCha, Controller, ControllerBuilder,
+    KESUpdateSpeed, Milli, NumberOfSlotsPerEpoch, SlotDuration, TopologyBuilder,
 };
+use crate::test::Result;
 use assert_fs::fixture::PathChild;
 use chain_crypto::SecretKey;
 use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
@@ -185,7 +186,10 @@ impl QuickVitBackendSettingsBuilder {
         parameters
     }
 
-    pub fn build_settings(&self, context: &mut ContextChaCha) -> ControllerBuilder {
+    pub fn build(
+        &mut self,
+        mut context: ContextChaCha,
+    ) -> Result<(Controller, ValidVotePlanParameters)> {
         let committe_wallet_name = "committee";
         let title = "vit_backend";
 
@@ -242,7 +246,7 @@ impl QuickVitBackendSettingsBuilder {
 
         let committe_wallet = WalletTemplate::new_account(committe_wallet_name, Value(1_000_000));
         blockchain.add_wallet(committe_wallet);
-        let mut i = 1;
+        let mut i = 1u32;
         for initial in self.initials.iter() {
             let wallet_alias = format!("wallet_{}_with_{}", i, initial);
             let wallet = WalletTemplate::new_utxo(wallet_alias.clone(), Value(*initial));
@@ -256,7 +260,7 @@ impl QuickVitBackendSettingsBuilder {
             qr.write_svg(svg.path()).unwrap();
 
             blockchain.add_wallet(wallet);
-            i += i;
+            i += 1;
         }
 
         blockchain.add_committee(committe_wallet_name);
@@ -278,9 +282,22 @@ impl QuickVitBackendSettingsBuilder {
             proposal_builder.action_off_chain();
             vote_plan_builder.with_proposal(&mut proposal_builder);
         }
-        blockchain.add_vote_plan(vote_plan_builder.build());
+
+        let vote_plan = vote_plan_builder.build();
+        blockchain.add_vote_plan(vote_plan.clone());
         builder.set_blockchain(blockchain);
-        builder.build_settings(context);
-        builder
+        builder.build_settings(&mut context);
+
+        let controller = builder.build(context)?;
+
+        self.recalculate_voting_periods_if_needed(
+            controller
+                .settings()
+                .network_settings
+                .block0
+                .blockchain_configuration
+                .block0_date,
+        );
+        Ok((controller, self.parameters(vote_plan)))
     }
 }
