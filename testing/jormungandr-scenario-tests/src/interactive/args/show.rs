@@ -20,6 +20,8 @@ pub enum Show {
     /// Prints logs, can filter logs to print
     /// only errors or filter by custom string  
     Logs(ShowLogs),
+    /// Active Vote Plans
+    VotePlans(ActiveVotePlans),
 }
 
 #[derive(StructOpt, Debug)]
@@ -65,6 +67,24 @@ pub struct ShowFragments {
 pub struct ShowBlockHeight {
     #[structopt(short = "a", long = "alias")]
     pub alias: Option<String>,
+}
+
+#[derive(StructOpt, Debug)]
+pub struct ActiveVotePlans {
+    #[structopt(short = "a", long = "alias")]
+    pub alias: Option<String>,
+}
+
+impl ActiveVotePlans {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+        do_for_all_alias(
+            &self.alias,
+            controller.nodes(),
+            controller.legacy_nodes(),
+            |node| println!("{}: {:#?}", node.alias(), node.vote_plans()),
+            |node| println!("{}: {:#?}", node.alias(), node.vote_plans()),
+        )
+    }
 }
 
 #[derive(StructOpt, Debug)]
@@ -252,6 +272,7 @@ impl Show {
             Show::BlockHeight(block_height) => block_height.exec(controller),
             Show::PeerStats(peer_stats) => peer_stats.exec(controller),
             Show::Logs(logs) => logs.exec(controller),
+            Show::VotePlans(active_vote_plan) => active_vote_plan.exec(controller),
         }
     }
 }

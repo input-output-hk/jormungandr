@@ -2,6 +2,7 @@ use crate::wallet::WalletProxyController;
 use crate::VitStationController;
 use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller};
+use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::{
     testing::{FragmentNode, SyncNode},
@@ -10,6 +11,7 @@ use jormungandr_testing_utils::{
 use structopt::{clap::AppSettings, StructOpt};
 
 mod describe;
+mod explorer;
 mod send;
 mod show;
 mod spawn;
@@ -108,6 +110,35 @@ impl<'a> UserInteractionController<'a> {
         Ok(check)
     }
 
+    pub fn cast_vote<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &mut self,
+        wallet_alias: &str,
+        vote_plan_alias: &str,
+        via: &A,
+        proposal_index: usize,
+        choice: u8,
+    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
+        let address = self.controller.wallet(&wallet_alias)?.address();
+        let vote_plan_def = self.controller.vote_plan(vote_plan_alias)?;
+
+        let mut temp_wallets = self.wallets_mut().clone();
+        let wallet = temp_wallets
+            .iter_mut()
+            .find(|x| x.address() == address)
+            .unwrap_or_else(|| panic!("cannot find wallet with alias: {}", wallet_alias));
+
+        let check = self.controller.fragment_sender().send_vote_cast(
+            wallet,
+            &vote_plan_def.into(),
+            proposal_index as u8,
+            &Choice::new(choice),
+            via,
+        )?;
+
+        *self.wallets_mut() = temp_wallets;
+        Ok(check)
+    }
+
     pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &mut self,
         from_str: &str,
@@ -147,6 +178,8 @@ pub enum InteractiveCommand {
     Show(show::Show),
     /// Spawn leader or passive node (also legacy)
     Spawn(spawn::Spawn),
+    /// Sends Explorer queries
+    Explorer(explorer::Explorer),
     /// Exit interactive mode
     Exit,
     /// Prints wallets, nodes which can be used. Draw topology
