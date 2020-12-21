@@ -134,6 +134,10 @@ pub struct QuickStartCommandArgs {
     /// is capable of quering logs, sending transactions (e.g. tallying), etc.,
     #[structopt(long = "interactive")]
     interactive: bool,
+
+    /// endopint in format: 127.0.0.1:80
+    #[structopt(long = "endpoint", default_value = "127.0.0.1:80")]
+    endpoint: String,
 }
 
 impl QuickStartCommandArgs {
@@ -142,7 +146,7 @@ impl QuickStartCommandArgs {
 
         let jormungandr = prepare_command(&self.jormungandr);
         let jcli = prepare_command(&self.jcli);
-        let progress_bar_mode = self.progress_bar_mode;
+        let mut progress_bar_mode = self.progress_bar_mode;
         let seed = self
             .seed
             .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
@@ -150,6 +154,11 @@ impl QuickStartCommandArgs {
         let generate_documentation = true;
         let log_level = self.log_level;
         let interactive = self.interactive;
+        let endpoint = self.endpoint;
+
+        if interactive {
+            progress_bar_mode = ProgressBarMode::None;
+        }
 
         let context = Context::new(
             seed,
@@ -197,6 +206,6 @@ impl QuickStartCommandArgs {
             .voting_power(self.voting_power);
 
         crate::introduction::print(&context, "VOTING BACKEND");
-        vote_backend(context, quick_setup, interactive).map(|_| ())
+        vote_backend(context, quick_setup, interactive, endpoint).map(|_| ())
     }
 }
