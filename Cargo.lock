@@ -3255,9 +3255,9 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
 name = "platforms"
-version = "0.2.1"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feb3b2b1033b8a60b4da6ee470325f887758c95d5320f52f9ce0df055a55940e"
+checksum = "cc77a3fc329982cbf3ea772aa265b742a550998bad65747c630406ee52dac425"
 
 [[package]]
 name = "plotters"
@@ -5416,11 +5416,10 @@ checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
 
 [[package]]
 name = "versionisator"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62f79da5ff07bafd68a6822107bc37d194fc6c80ca4ae1cbdd66437e7a2b0e7e"
+checksum = "bcf3c4d44e891de0dd807b7cb3681f55590ba52803dc33e65b7389ff9b5cec49"
 dependencies = [
- "cfg-if 0.1.10",
  "platforms",
 ]
 

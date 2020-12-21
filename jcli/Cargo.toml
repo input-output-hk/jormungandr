@@ -53,4 +53,4 @@ assert_fs = "1.0"
 predicates = "1.0"
 
 [build-dependencies]
-versionisator = "1.0.2"
+versionisator = "1.0.3"
