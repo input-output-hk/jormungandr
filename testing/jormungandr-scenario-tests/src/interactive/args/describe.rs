@@ -1,6 +1,7 @@
 use crate::{style, test::Result};
 
 use super::UserInteractionController;
+use chain_impl_mockchain::certificate::VotePlan;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -15,6 +16,8 @@ pub enum Describe {
     Topology,
     /// Prints everything
     All(DescribeAll),
+    /// Prints Votes Plan
+    VotePlan(DescribeVotePlans),
 }
 
 impl Describe {
@@ -37,6 +40,7 @@ impl Describe {
                 }
                 Ok(())
             }
+            Describe::VotePlan(vote_plans) => vote_plans.exec(controller),
         }
     }
 }
@@ -52,9 +56,10 @@ impl DescribeWallets {
         println!("Wallets:");
         for (alias, wallet) in controller.controller().wallets() {
             println!(
-                "\t{}: address: {}, delegated to: {:?}",
+                "\t{}: address: {}, initial_funds: {}, delegated to: {:?}",
                 alias,
                 wallet.address(),
+                wallet.template().value(),
                 wallet.template().delegate()
             );
         }
@@ -62,6 +67,35 @@ impl DescribeWallets {
     }
 }
 
+#[derive(StructOpt, Debug)]
+pub struct DescribeVotePlans {
+    #[structopt(short = "a", long = "alias")]
+    pub alias: Option<String>,
+}
+
+impl DescribeVotePlans {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+        println!("Vote Plans:");
+        for vote_plan in controller.controller().vote_plans() {
+            let chain_vote_plan: VotePlan = vote_plan.clone().into();
+            println!(
+                "\t{}:\n\t - owner: {}\n\t - id: {}\n\t - start: {}\n\t - tally: {}\n\t - end: {}\n",
+                vote_plan.alias(),
+                vote_plan.owner(),
+                vote_plan.id(),
+                chain_vote_plan.vote_start(),
+                chain_vote_plan.committee_start(),
+                chain_vote_plan.committee_end()
+            );
+            println!("\tProposals");
+
+            for proposal in vote_plan.proposals() {
+                println!("\t\t{}", hex::encode(proposal.id()))
+            }
+        }
+        Ok(())
+    }
+}
 #[derive(StructOpt, Debug)]
 pub struct DescribeNodes {
     #[structopt(short = "a", long = "alias")]
@@ -74,6 +108,21 @@ impl DescribeNodes {
         for (alias, node) in controller.controller().nodes() {
             println!("\t{}: rest api: {}", alias, node.config().rest.listen);
         }
+        for vit_station in controller.vit_stations() {
+            println!(
+                "\t{}: rest api: {}",
+                vit_station.alias(),
+                vit_station.address()
+            );
+        }
+        for proxy in controller.proxies() {
+            println!(
+                "\t{}: rest api: {}",
+                proxy.alias(),
+                proxy.settings().proxy_address
+            );
+        }
+
         Ok(())
     }
 }
