@@ -102,7 +102,7 @@ pub enum Error {
     InvalidJson(#[from] serde_json::Error),
     #[error("invalid binary share data")]
     InvalidBinaryShare,
-    #[error("private vote plans should contain all committee member public keys")]
+    #[error("private vote plans `committee_public_keys` cannot be empty")]
     InvalidPrivateVotePlanCommitteeKeys,
 }
 
