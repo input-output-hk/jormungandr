@@ -102,6 +102,8 @@ pub enum Error {
     InvalidJson(#[from] serde_json::Error),
     #[error("invalid binary share data")]
     InvalidBinaryShare,
+    #[error("private vote plans should contain all committee member public keys")]
+    InvalidPrivateVotePlanCommitteeKeys,
 }
 
 #[allow(clippy::large_enum_variant)]
