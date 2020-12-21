@@ -176,9 +176,3 @@ Notes:
 The table size is a cache parameter, any value greater than one would be enough but the best approximated values would be
 `table_size = votes_cast / vote_options`. So, if we had `1000` votes and `2` options (*yes*, *no*), and optimum table size value
 would be `1000/2 = 500`
-
-It may be ***cumbersome*** to do this process manually. So we can use a `python` script for processing the tallying in 3 simple steps:
-
-1. Generate all shares for all voteplans (every committee member).
-2. Merge all shares together with their corresponding voteplans.
-3. Generate the final results for each of them.
