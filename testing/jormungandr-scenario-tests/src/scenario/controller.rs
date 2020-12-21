@@ -1,5 +1,6 @@
 use crate::scenario::settings::Settings;
 use crate::wallet::WalletProxyController;
+use crate::wallet::WalletProxySpawnParams;
 use crate::{
     legacy::{LegacyNode, LegacyNodeController},
     prepare_command,
@@ -212,6 +213,10 @@ impl Controller {
         }
     }
 
+    pub fn vote_plans(&self) -> Vec<VotePlanDef> {
+        self.blockchain.vote_plans()
+    }
+
     pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
         self.settings.network_settings.wallets.iter()
     }
@@ -282,7 +287,7 @@ impl Controller {
 
     pub fn spawn_vit_station(
         &self,
-        parameters: ValidVotePlanParameters,
+        vote_plan_parameters: ValidVotePlanParameters,
     ) -> Result<VitStationController> {
         let (alias, settings) = self
             .settings
@@ -296,7 +301,7 @@ impl Controller {
 
         let vit_station = VitStation::spawn(
             &self.context,
-            parameters,
+            vote_plan_parameters,
             pb,
             alias,
             settings.clone(),
@@ -307,7 +312,12 @@ impl Controller {
         Ok(vit_station.controller())
     }
 
-    pub fn spawn_wallet_proxy(&self, node_alias: &str) -> Result<WalletProxyController> {
+    pub fn spawn_wallet_proxy_custom(
+        &self,
+        params: &mut WalletProxySpawnParams,
+    ) -> Result<WalletProxyController> {
+        let node_alias = params.alias.clone();
+
         let (alias, settings) = self
             .settings
             .network_settings
@@ -316,11 +326,14 @@ impl Controller {
             .next()
             .ok_or(WalletProxyError::NoWalletProxiesDefinedInSettings)?;
         let node_setting =
-            if let Some(node_setting) = self.settings.network_settings.nodes.get(node_alias) {
+            if let Some(node_setting) = self.settings.network_settings.nodes.get(&node_alias) {
                 node_setting
             } else {
                 bail!(ErrorKind::NodeNotFound(node_alias.to_string()))
             };
+
+        let mut settings_overriden = settings.clone();
+        params.override_settings(&mut settings_overriden);
 
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
@@ -329,13 +342,17 @@ impl Controller {
             &self.context,
             pb,
             alias,
-            settings.clone(),
+            settings_overriden,
             node_setting,
             &self.block0_file.as_path(),
             &self.working_directory.path(),
         )
         .unwrap();
         Ok(wallet_proxy.controller())
+    }
+
+    pub fn spawn_wallet_proxy(&self, alias: &str) -> Result<WalletProxyController> {
+        self.spawn_wallet_proxy_custom(&mut WalletProxySpawnParams::new(alias))
     }
 
     pub fn spawn_legacy_node(
