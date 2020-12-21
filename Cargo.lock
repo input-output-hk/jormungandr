@@ -356,7 +356,7 @@ dependencies = [
 [[package]]
 name = "bip39"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#47bca1e53f93351514c132db950ceb291c3fdf64"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#7a3a90b6ad0403fd0a8b5e312427fad175bab02f"
 dependencies = [
  "cryptoxide 0.1.3",
  "thiserror",
@@ -700,7 +700,7 @@ dependencies = [
 [[package]]
 name = "chain-path-derivation"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#47bca1e53f93351514c132db950ceb291c3fdf64"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#7a3a90b6ad0403fd0a8b5e312427fad175bab02f"
 dependencies = [
  "thiserror",
 ]
@@ -1763,7 +1763,7 @@ dependencies = [
 [[package]]
 name = "hdkeygen"
 version = "0.2.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#47bca1e53f93351514c132db950ceb291c3fdf64"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#7a3a90b6ad0403fd0a8b5e312427fad175bab02f"
 dependencies = [
  "bip39",
  "cardano-legacy-address",
@@ -1947,7 +1947,7 @@ dependencies = [
  "jortestkit",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "regex 1.4.2",
+ "regex 0.1.80",
  "reqwest",
  "serde",
  "serde_json",
@@ -4425,8 +4425,8 @@ checksum = "343f3f510c2915908f155e94f17220b19ccfacf2a64a2a5d8004f2c3e311e7fd"
 
 [[package]]
 name = "symmetric-cipher"
-version = "0.5.0-pre8"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#47bca1e53f93351514c132db950ceb291c3fdf64"
+version = "0.5.0-pre9"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#7a3a90b6ad0403fd0a8b5e312427fad175bab02f"
 dependencies = [
  "cryptoxide 0.2.1",
  "rand 0.7.3",
@@ -5512,8 +5512,8 @@ dependencies = [
 
 [[package]]
 name = "wallet"
-version = "0.5.0-pre8"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#47bca1e53f93351514c132db950ceb291c3fdf64"
+version = "0.5.0-pre9"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#7a3a90b6ad0403fd0a8b5e312427fad175bab02f"
 dependencies = [
  "bip39",
  "cardano-legacy-address",
@@ -5534,8 +5534,8 @@ dependencies = [
 
 [[package]]
 name = "wallet-core"
-version = "0.5.0-pre8"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#47bca1e53f93351514c132db950ceb291c3fdf64"
+version = "0.5.0-pre9"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#7a3a90b6ad0403fd0a8b5e312427fad175bab02f"
 dependencies = [
  "bip39",
  "chain-addr",
