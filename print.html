@@ -1546,7 +1546,71 @@ If <em>weight</em> is not provided, <em>it defaults to 1</em>.</li>
 <p>The voting process is controlled by a committee whose private keys can be used
 to decrypt and certify the tally.</p>
 <h2><a class="header" href="#creating-committee-keys" id="creating-committee-keys">Creating committee keys</a></h2>
-<p>TBA</p>
+<h3><a class="header" href="#private" id="private">Private</a></h3>
+<p>Please refer to <code>jcli votes committee --help</code> for help with the committee related cli operations and specification of arguments.</p>
+<p>In this example we will be using 3 kind of keys for the private vote and tallying.</p>
+<p>In order:</p>
+<h4><a class="header" href="#committee-communication-key" id="committee-communication-key">Committee communication key</a></h4>
+<pre><code class="language-shell">jcli votes committee communication-key generate &gt; ./comm.sk
+</code></pre>
+<p>We can get its public representation with:</p>
+<pre><code class="language-shell">jcli votes committee communication-key to-public --input ./comm.sk &gt; ./comm.pk
+</code></pre>
+<h4><a class="header" href="#committee-member-key" id="committee-member-key">Committee member key</a></h4>
+<pre><code class="language-shell">crs=$(jcli votes crs generate)
+jcli votes committee member-key generate --threshold 3 --crs &quot;$crs&quot; --index 0 --keys pk1 pk2 pk3 &gt; ./member.sk
+</code></pre>
+<p>Where <code>pkX</code> are each of the committee communication public keys.
+Note that <strong>all committee members should use the same CRS</strong></p>
+<p>We can also easily get its public representation as before:</p>
+<pre><code class="language-shell">jcli votes committee member-key to-public --input ./member.sk ./member.pk
+</code></pre>
+<h4><a class="header" href="#vote-encrypting-key" id="vote-encrypting-key">Vote encrypting key</a></h4>
+<p>This key (<em>public</em>) is the key <strong>every vote</strong> should be encrypted with.</p>
+<pre><code class="language-shell">jcli votes encrypting-key --eys mpk1 mpk2 mpkn &gt; ./vote.pk
+</code></pre>
+<p>Notice that we can always rebuild this key with the committee member public keys found
+within the <a href="jcli/vote.html#creating-a-vote-plan">voteplan certificate</a>.</p>
+<pre><code class="language-shell">jcli rest v0 vote active plans &gt; voteplan.json
+</code></pre>
+<h2><a class="header" href="#creating-a-vote-plan" id="creating-a-vote-plan">Creating a vote plan</a></h2>
+<p>We need to provide a vote plan definition file to generate a new voteplan certificate.
+That file should be a <code>yaml</code> (or json) with the following format:</p>
+<pre><code class="language-yaml">{
+  &quot;payload_type&quot;: &quot;private&quot;,
+  &quot;vote_start&quot;: {
+    &quot;epoch&quot;: 1,
+    &quot;slot_id&quot;: 0
+  },
+  &quot;vote_end&quot;: {
+    &quot;epoch&quot;: 3,
+    &quot;slot_id&quot;: 0
+  },
+  &quot;committee_end&quot;: {
+    &quot;epoch&quot;: 6,
+    &quot;slot_id&quot;: 0
+  },
+  &quot;proposals&quot;: [
+    {
+      &quot;external_id&quot;: &quot;d7fa4e00e408751319c3bdb84e95fd0dcffb81107a2561e691c33c1ae635c2cd&quot;,
+      &quot;options&quot;: 3,
+      &quot;action&quot;: &quot;off_chain&quot;
+    },
+    ...
+  ],
+  &quot;committee_member_public_keys &quot;: [
+    &quot;pk....&quot;,
+  ]
+}
+</code></pre>
+<p>Where:</p>
+<ul>
+<li>payload_type is either <em>public</em> or <em>private</em></li>
+<li>commitee_public_keys is only needed for private voting, can be empty for public.</li>
+</ul>
+<p>Then, we can generate the voteplan certificate with:</p>
+<pre><code class="language-shell">jcli certificate new vote-plan voteplan_def.json --output voteplan.certificate
+</code></pre>
 <h2><a class="header" href="#casting-votes" id="casting-votes">Casting votes</a></h2>
 <p>TBA</p>
 <h2><a class="header" href="#tallying" id="tallying">Tallying</a></h2>
@@ -1555,7 +1619,7 @@ to decrypt and certify the tally.</p>
 In the example below, the file <code>committee.sk</code> contains the committee member's
 private key in bech32 format, and <code>block0.bin</code> contains the genesis block of
 the voting chain.</p>
-<pre><code class="language-sh">genesis_block_hash=$(jcli genesis hash &lt; block0.bin)
+<pre><code class="language-shell">genesis_block_hash=$(jcli genesis hash &lt; block0.bin)
 vote_plan_id=$(jcli rest v0 vote active plans get --output-format json|jq '.[0].id')
 committee_addr=$(jcli address account $(jcli key to-public &lt; committee.sk))
 committee_addr_counter=$(jcli rest v0 account get &quot;$committee_addr&quot; --output-format json|jq .counter)
@@ -1572,6 +1636,37 @@ jcli transaction auth --staging vote-tally.staging --key committee.sk
 jcli transaction to-message --staging vote-tally.staging &gt; vote-tally.fragment
 jcli rest v0 message post --file vote-tally.fragment
 </code></pre>
+<h3><a class="header" href="#private-1" id="private-1">Private</a></h3>
+<p>To tally private votes, all committee members are needed.
+The process is similar to the public one, but we need to issue different certificates.</p>
+<pre><code class="language-shell">...
+vote_plan_id=$(jcli rest v0 vote active plans get --output-format json|jq '.[0].id')
+jcli certificate new encrypted-vote-tally --vote-plan-id &quot;$vote_plan_id&quot; --output encrypted-vote-tally.certificate
+...
+</code></pre>
+<p><strong>WIP</strong></p>
+<p>After the certificate is issued we need each of the committee members to create a share for each voteplan:</p>
+<pre><code class="language-shell">jcli res v0 vote active plans &gt; active_plans.json
+</code></pre>
+<p>For each proposal in the <code>active_plans.json</code> we need to retrieve the <code>proposal[&quot;tally&quot;][&quot;private&quot;][&quot;encrypted&quot;][&quot;encrypted_tally&quot;]</code> and dump it to a file.</p>
+<p>Then, for each of those encrypted tally each of the committee member need to generate a share.</p>
+<pre><code class="language-shell">jcli votes tally decyption-share --encrypted-tally voteplan1.secret_tally --key member.sk --output-format json 
+</code></pre>
+<p>Then the committee members need to exchange their share (only one full set of shares is needed) for finally get the results.
+We will need those share files merged into a single file where each of the shares are in separated lines.
+With that we can process the final tally result as follows:</p>
+<pre><code class="language-shell">jcli votes tally decrypt \
+--encrypted-tally voteplan1.secret_tally \
+--shares merged_shares_file_path.shares \
+--threshold number_of_committee_members \
+--max-votes total_votes_cast \
+--table-size table_size \
+--output-format json &gt; result.json
+</code></pre>
+<p>Notes:</p>
+<p>The table size is a cache parameter, any value greater than one would be enough but the best approximated values would be
+<code>table_size = votes_cast / vote_options</code>. So, if we had <code>1000</code> votes and <code>2</code> options (<em>yes</em>, <em>no</em>), and optimum table size value
+would be <code>1000/2 = 500</code></p>
 <h1><a class="header" href="#rest" id="rest">REST</a></h1>
 <p>Jormungandr comes with a CLI client for manual communication with nodes over HTTP.</p>
 <h2><a class="header" href="#conventions" id="conventions">Conventions</a></h2>
