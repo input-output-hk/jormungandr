@@ -400,7 +400,7 @@ fn scenarios_repository() -> Vec<Scenario> {
     repository.push(Scenario::new(
         "newest_node_enters_legacy_network",
         legacy::newest_node_enters_legacy_network,
-        vec![Tag::Short],
+        vec![Tag::Short, Tag::Unstable],
     ));
 
     repository
