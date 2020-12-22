@@ -7,6 +7,7 @@ use assert_fs::{
     TempDir,
 };
 use chain_addr::Discrimination;
+use chain_core::property::BlockDate;
 use chain_impl_mockchain::{
     certificate::VoteAction,
     chaintypes::ConsensusType,
@@ -21,6 +22,7 @@ use jormungandr_lib::{
 };
 use jormungandr_testing_utils::testing::{VotePlanBuilder,VotePlanExtension};
 use jormungandr_testing_utils::wallet::Wallet};
+use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
 
 #[test]
@@ -42,14 +44,25 @@ pub fn jcli_e2e_flow_private_vote() {
         .committee()
         .member_key()
         .generate(communication_sk, crs, 1, 1, None);
-    let member_pk = jcli.votes().committee().member_key().to_public(member_sk);
+    let member_pk = jcli
+        .votes()
+        .committee()
+        .member_key()
+        .to_public(member_sk.clone());
     let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk);
+
+
+    let member_sk_file = NamedTempFile::new("member.sk").unwrap();
+    member_sk_file.write_str(&member_sk).unwrap();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
         .private()
-        .member_public_key(member_pk)
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .member_public_key(MemberPublicKey::from_bytes(&member_pk_bytes).unwrap())
         .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
@@ -151,9 +164,12 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let decryption_share = jcli.votes().tally().generate_decryption_share();
-  
-    let vote_tally_cert = jcli.certificate().new_private_vote_tally(vote_plan_id,decryption_share);
+    let encrypted_vote_tally = NamedTempFile::new("encrypted-vote-tally.certificate").unwrap();
+
+    jcli.certificate()
+        .new_encrypted_vote_tally(vote_plan_id, encrypted_vote_tally.path());
+
+    let vote_tally_cert = read_file(encrypted_vote_tally.path());
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -172,32 +188,45 @@ pub fn jcli_e2e_flow_private_vote() {
     time::wait_for_epoch(3, jormungandr.explorer());
 
     let vote_tally = jormungandr.rest().vote_plan_statuses().unwrap();
+    let vote_tally_file = NamedTempFile::new("vote_tally_proposal_0.yaml").unwrap();
 
-    let generated_share = jcli.votes().tally().decrypt_with_shares();
-
-    assert!(jormungandr
-        .rest()
-        .vote_plan_statuses()
-        .unwrap()
-        .first()
+    let encrypted_tally = match vote_tally
+        .get(0)
         .unwrap()
         .proposals
-        .first()
+        .get(0)
         .unwrap()
         .tally
-        .is_some());
+        .as_ref()
+        .unwrap()
+    {
+        jormungandr_lib::interfaces::Tally::Private { state } => match state {
+            jormungandr_lib::interfaces::PrivateTallyState::Encrypted {
+                encrypted_tally,
+                total_stake: _,
+            } => serde_json::to_string(&encrypted_tally).unwrap(),
+            _ => panic!("tally state should be encrypted"),
+        },
+        _ => panic!("voting should be private"),
+    };
 
-    assert_eq!(
-        jormungandr
-            .rest()
-            .vote_plan_statuses()
-            .unwrap()
-            .first()
-            .unwrap()
-            .proposals
-            .first()
-            .unwrap()
-            .votes_cast,
-        3
+    vote_tally_file.write_str(&encrypted_tally).unwrap();
+
+    let decryption_share = jcli
+        .votes()
+        .tally()
+        .generate_decryption_share(member_sk_file.path(), vote_tally_file.path());
+
+    let decryption_share_file = NamedTempFile::new("decryption_share").unwrap();
+    decryption_share_file.write_str(&decryption_share).unwrap();
+
+    let generated_share = jcli.votes().tally().decrypt_with_shares(
+        vote_tally_file.path(),
+        3,
+        decryption_share_file.path(),
+        1,
+        1,
     );
+
+    println!("{}", generated_share);
 }
