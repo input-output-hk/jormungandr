@@ -271,8 +271,8 @@ pub fn test_vote_flow_praos() {
         .with_slot_duration(1);
 
     let (jormungandr, _stake_pools) = start_stake_pool(
-        &[alice.clone(), bob.clone()],
-        &[clarice.clone()],
+        &[alice.clone()],
+        &[bob.clone(), clarice.clone()],
         &mut config,
     )
     .unwrap();
