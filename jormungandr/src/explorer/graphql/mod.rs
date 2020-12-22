@@ -20,7 +20,7 @@ use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
 use futures::executor::block_on;
 pub use juniper::http::GraphQLRequest;
-use juniper::{graphql_union, EmptyMutation, FieldResult, RootNode};
+use juniper::{EmptyMutation, EmptySubscription, FieldResult, GraphQLUnion, RootNode};
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 
@@ -58,7 +58,7 @@ impl Block {
 }
 
 /// A Block
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl Block {
@@ -189,7 +189,7 @@ struct BftLeader {
     id: BftLeaderId,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl BftLeader {
@@ -198,17 +198,12 @@ impl BftLeader {
     }
 }
 
+#[derive(GraphQLUnion)]
+#[graphql(Context = Context)]
 enum Leader {
     StakePool(Pool),
     BftLeader(BftLeader),
 }
-
-graphql_union!(Leader: Context |&self| {
-    instance_resolvers: |_| {
-        &Pool => match *self { Leader::StakePool(ref c) => Some(c), _ => None },
-        &BftLeader => match *self { Leader::BftLeader(ref c) => Some(c), _ => None },
-    }
-});
 
 impl From<&ExplorerBlock> for Block {
     fn from(block: &ExplorerBlock) -> Block {
@@ -223,7 +218,7 @@ struct BlockDate {
 }
 
 /// Block's date, composed of an Epoch and a Slot
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl BlockDate {
@@ -316,7 +311,7 @@ impl Transaction {
 }
 
 /// A transaction in the blockchain
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl Transaction {
@@ -369,7 +364,7 @@ struct TransactionInput {
     address: Address,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl TransactionInput {
@@ -387,7 +382,7 @@ struct TransactionOutput {
     address: Address,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl TransactionOutput {
@@ -422,7 +417,7 @@ impl From<&ExplorerAddress> for Address {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl Address {
@@ -489,7 +484,7 @@ impl Address {
 
 struct TaxType(chain_impl_mockchain::rewards::TaxType);
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl TaxType {
@@ -510,7 +505,7 @@ impl TaxType {
 
 struct Ratio(chain_impl_mockchain::rewards::Ratio);
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl Ratio {
@@ -525,7 +520,7 @@ impl Ratio {
 
 pub struct Proposal(certificate::Proposal);
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl Proposal {
@@ -583,7 +578,7 @@ impl Pool {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl Pool {
@@ -662,7 +657,7 @@ impl Pool {
 
 struct Status {}
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl Status {
@@ -733,7 +728,7 @@ struct Treasury {
     treasury_tax: TaxType,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl Treasury {
@@ -777,7 +772,7 @@ impl Epoch {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl Epoch {
@@ -870,7 +865,7 @@ struct StakeDistribution {
     pools: Vec<PoolStakeDistribution>,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl StakeDistribution {
@@ -884,7 +879,7 @@ struct PoolStakeDistribution {
     delegated_stake: Value,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl PoolStakeDistribution {
@@ -908,7 +903,7 @@ pub struct VotePayloadPrivateStatus {
     encrypted_vote: EncryptedVote,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VotePayloadPublicStatus {
@@ -917,7 +912,7 @@ impl VotePayloadPublicStatus {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
 Context = Context
 )]
 impl VotePayloadPrivateStatus {
@@ -932,24 +927,12 @@ impl VotePayloadPrivateStatus {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, GraphQLUnion)]
+#[graphql(Context = Context)]
 pub enum VotePayloadStatus {
     Public(VotePayloadPublicStatus),
     Private(VotePayloadPrivateStatus),
 }
-
-graphql_union!(VotePayloadStatus: Context |&self| {
-    instance_resolvers: |_| {
-        &VotePayloadPublicStatus => match *self {
-            VotePayloadStatus::Public(ref c) => Some(c),
-            VotePayloadStatus::Private(_) => None,
-        },
-        &VotePayloadPrivateStatus => match *self {
-            VotePayloadStatus::Private(ref c) => Some(c),
-            VotePayloadStatus::Public(_) => None
-        },
-    }
-});
 
 // TODO do proper vote tally
 #[derive(Clone)]
@@ -958,7 +941,7 @@ pub struct TallyPublicStatus {
     options: VoteOptionRange,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl TallyPublicStatus {
@@ -977,7 +960,7 @@ pub struct TallyPrivateStatus {
     options: VoteOptionRange,
 }
 
-#[juniper::object(Context = Context)]
+#[juniper::graphql_object(Context = Context)]
 impl TallyPrivateStatus {
     fn results(&self) -> Option<&[Weight]> {
         self.results.as_ref().map(AsRef::as_ref)
@@ -988,20 +971,12 @@ impl TallyPrivateStatus {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, GraphQLUnion)]
+#[graphql(Context = Context)]
 pub enum TallyStatus {
     Public(TallyPublicStatus),
     Private(TallyPrivateStatus),
 }
-
-graphql_union!(TallyStatus: Context |&self| {
-    instance_resolvers: |_| {
-        &TallyPublicStatus => match *self {
-            TallyStatus::Public(ref c) => Some(c),
-            TallyStatus::Private(_) => None,
-        },
-    }
-});
 
 #[derive(Clone)]
 pub struct VotePlanStatus {
@@ -1094,7 +1069,7 @@ impl VotePlanStatus {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VotePlanStatus {
@@ -1129,7 +1104,7 @@ pub struct VoteStatus {
     payload: VotePayloadStatus,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VoteStatus {
@@ -1150,7 +1125,7 @@ pub struct VoteProposalStatus {
     votes: Vec<VoteStatus>,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VoteProposalStatus {
@@ -1213,7 +1188,7 @@ impl VoteProposalStatus {
 
 pub struct Query;
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl Query {
@@ -1415,10 +1390,10 @@ pub struct Context {
 
 impl juniper::Context for Context {}
 
-pub type Schema = RootNode<'static, Query, EmptyMutation<Context>>;
+pub type Schema = RootNode<'static, Query, EmptyMutation<Context>, EmptySubscription<Context>>;
 
 pub fn create_schema() -> Schema {
-    Schema::new(Query {}, EmptyMutation::new())
+    Schema::new(Query {}, EmptyMutation::new(), EmptySubscription::new())
 }
 
 fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {

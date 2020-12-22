@@ -8,7 +8,7 @@ use crate::explorer::indexing::ExplorerTransaction;
 use juniper::FieldResult;
 use std::convert::TryFrom;
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl PageInfo {
@@ -29,7 +29,7 @@ impl PageInfo {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl BlockEdge {
@@ -43,7 +43,7 @@ impl BlockEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl TransactionEdge {
@@ -57,7 +57,7 @@ impl TransactionEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl PoolEdge {
@@ -71,7 +71,7 @@ impl PoolEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VotePlanEdge {
@@ -84,7 +84,7 @@ impl VotePlanEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VoteStatusEdge {
@@ -97,7 +97,7 @@ impl VoteStatusEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "BlockConnection"
 )]
@@ -116,7 +116,7 @@ impl BlockConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "TransactionConnection"
 )]
@@ -135,7 +135,7 @@ impl TransactionConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "PoolConnection"
 )]
@@ -154,7 +154,7 @@ impl PoolConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "VotePlanConnection"
 )]
@@ -173,7 +173,7 @@ impl VotePlanConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "VoteStatusConnection"
 )]

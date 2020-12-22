@@ -1,6 +1,6 @@
 use super::error::ErrorKind;
 use chain_impl_mockchain::certificate;
-use juniper::graphql_union;
+use juniper::GraphQLUnion;
 use std::convert::TryFrom;
 
 use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
@@ -8,6 +8,8 @@ use super::{Address, BlockDate, Context, ExplorerAddress, Pool, Proposal, TaxTyp
 use juniper::FieldResult;
 
 // interface for grouping certificates as a graphl union
+#[derive(GraphQLUnion)]
+#[graphql(Context = Context)]
 pub enum Certificate {
     StakeDelegation(StakeDelegation),
     OwnerStakeDelegation(OwnerStakeDelegation),
@@ -39,22 +41,7 @@ pub struct VoteTally(certificate::VoteTally);
 
 pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
 
-graphql_union!(Certificate: Context |&self| {
-    // the left hand side of the `instance_resolvers` match-like pub structure is the one
-    // that's used to match in the graphql query with the `__typename` field
-    instance_resolvers: |_| {
-        &StakeDelegation => match *self { Certificate::StakeDelegation(ref c) => Some(c), _ => None },
-        &OwnerStakeDelegation => match *self { Certificate::OwnerStakeDelegation(ref c) => Some(c), _ => None },
-        &PoolRegistration => match *self { Certificate::PoolRegistration(ref c) => Some(c), _ => None },
-        &PoolUpdate => match *self { Certificate::PoolUpdate(ref c) => Some(c), _ => None},
-        &PoolRetirement => match *self { Certificate::PoolRetirement(ref c) => Some(c), _ => None},
-        &VotePlan => match *self { Certificate::VotePlan(ref c) => Some(c), _ => None},
-        &VoteCast => match *self { Certificate::VoteCast(ref c) => Some(c), _ => None},
-        &VoteTally => match *self { Certificate::VoteTally(ref c) => Some(c), _ => None},
-    }
-});
-
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl StakeDelegation {
@@ -91,7 +78,7 @@ impl StakeDelegation {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl PoolRegistration {
@@ -157,7 +144,7 @@ impl PoolRegistration {
     // pub keys: GenesisPraosLeader,
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl OwnerStakeDelegation {
@@ -179,7 +166,7 @@ impl OwnerStakeDelegation {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl PoolRetirement {
@@ -192,7 +179,7 @@ impl PoolRetirement {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl PoolUpdate {
@@ -208,7 +195,7 @@ impl PoolUpdate {
     // TODO: Updated keys?
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl VotePlan {
@@ -239,7 +226,7 @@ impl VotePlan {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl VoteCast {
@@ -252,10 +239,19 @@ impl VoteCast {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
 )]
 impl VoteTally {
+    pub fn vote_plan(&self) -> VotePlanId {
+        self.0.id().clone().into()
+    }
+}
+
+#[juniper::graphql_object(
+    Context = Context,
+)]
+impl EncryptedVoteTally {
     pub fn vote_plan(&self) -> VotePlanId {
         self.0.id().clone().into()
     }

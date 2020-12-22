@@ -127,8 +127,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 .explorer_db
                 .expect("explorer db to be bootstrapped");
 
-            let mut explorer =
-                explorer::Explorer::new(explorer_db, explorer::graphql::create_schema());
+            let mut explorer = explorer::Explorer::new(explorer_db);
 
             // Context to give to the rest api
             let context = explorer.clone();
