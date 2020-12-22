@@ -9,29 +9,26 @@ use self::connections::{
     VoteStatusConnection,
 };
 use self::error::ErrorKind;
+use self::scalars::{
+    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
+    PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId, Weight,
+};
 use super::indexing::{
     BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
 };
 use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
+use crate::explorer::indexing::ExplorerVote;
+use crate::explorer::{ExplorerDB, Settings};
 use cardano_legacy_address::Addr as OldAddress;
 use certificates::*;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
-use futures::executor::block_on;
+use chain_impl_mockchain::vote::{EncryptedVote, ProofOfCorrectVote};
 pub use juniper::http::GraphQLRequest;
 use juniper::{EmptyMutation, EmptySubscription, FieldResult, GraphQLUnion, RootNode};
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
-
-use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
-    PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId, Weight,
-};
-
-use crate::explorer::indexing::ExplorerVote;
-use crate::explorer::{ExplorerDB, Settings};
-use chain_impl_mockchain::vote::{EncryptedVote, ProofOfCorrectVote};
 
 #[derive(Clone)]
 pub struct Block {
@@ -39,19 +36,19 @@ pub struct Block {
 }
 
 impl Block {
-    fn from_string_hash(hash: String, db: &ExplorerDB) -> FieldResult<Block> {
+    async fn from_string_hash(hash: String, db: &ExplorerDB) -> FieldResult<Block> {
         let hash = HeaderHash::from_str(&hash)?;
         let block = Block { hash };
 
-        block.get_explorer_block(db).map(|_| block)
+        block.get_explorer_block(db).await.map(|_| block)
     }
 
     fn from_valid_hash(hash: HeaderHash) -> Block {
         Block { hash }
     }
 
-    fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
-        block_on(db.get_block(&self.hash)).ok_or_else(|| {
+    async fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
+        db.get_block(&self.hash).await.ok_or_else(|| {
             ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned()).into()
         })
     }
@@ -68,13 +65,14 @@ impl Block {
     }
 
     /// Date the Block was included in the blockchain
-    pub fn date(&self, context: &Context) -> FieldResult<BlockDate> {
+    pub async fn date(&self, context: &Context) -> FieldResult<BlockDate> {
         self.get_explorer_block(&context.db)
+            .await
             .map(|b| b.date().into())
     }
 
     /// The transactions contained in the block
-    pub fn transactions(
+    pub async fn transactions(
         &self,
         first: Option<i32>,
         last: Option<i32>,
@@ -82,7 +80,7 @@ impl Block {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<TransactionConnection> {
-        let explorer_block = self.get_explorer_block(&context.db)?;
+        let explorer_block = self.get_explorer_block(&context.db).await?;
         let mut transactions: Vec<&ExplorerTransaction> =
             explorer_block.transactions.values().collect();
 
@@ -136,18 +134,21 @@ impl Block {
         )
     }
 
-    pub fn previous_block(&self, context: &Context) -> FieldResult<Block> {
+    pub async fn previous_block(&self, context: &Context) -> FieldResult<Block> {
         self.get_explorer_block(&context.db)
+            .await
             .map(|b| Block::from_valid_hash(b.parent_hash))
     }
 
-    pub fn chain_length(&self, context: &Context) -> FieldResult<ChainLength> {
+    pub async fn chain_length(&self, context: &Context) -> FieldResult<ChainLength> {
         self.get_explorer_block(&context.db)
+            .await
             .map(|block| block.chain_length().into())
     }
 
-    pub fn leader(&self, context: &Context) -> FieldResult<Option<Leader>> {
+    pub async fn leader(&self, context: &Context) -> FieldResult<Option<Leader>> {
         self.get_explorer_block(&context.db)
+            .await
             .map(|block| match block.producer() {
                 BlockProducer::StakePool(pool) => {
                     Some(Leader::StakePool(Pool::from_valid_id(pool.clone())))
@@ -159,18 +160,24 @@ impl Block {
             })
     }
 
-    pub fn total_input(&self, context: &Context) -> FieldResult<Value> {
+    pub async fn total_input(&self, context: &Context) -> FieldResult<Value> {
         self.get_explorer_block(&context.db)
+            .await
             .map(|block| Value(format!("{}", block.total_input)))
     }
 
-    pub fn total_output(&self, context: &Context) -> FieldResult<Value> {
+    pub async fn total_output(&self, context: &Context) -> FieldResult<Value> {
         self.get_explorer_block(&context.db)
+            .await
             .map(|block| Value(format!("{}", block.total_output)))
     }
 
-    pub fn treasury(&self, context: &Context) -> FieldResult<Option<Treasury>> {
-        let treasury = block_on(context.db.blockchain().get_ref(self.hash))
+    pub async fn treasury(&self, context: &Context) -> FieldResult<Option<Treasury>> {
+        let treasury = context
+            .db
+            .blockchain()
+            .get_ref(self.hash)
+            .await
             .unwrap_or(None)
             .map(|reference| {
                 let ledger = reference.ledger();
@@ -248,8 +255,11 @@ struct Transaction {
 }
 
 impl Transaction {
-    fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let block_hash = block_on(context.db.find_block_hash_by_transaction(&id))
+    async fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
+        let block_hash = context
+            .db
+            .find_block_hash_by_transaction(&id)
+            .await
             .ok_or_else(|| ErrorKind::NotFound(format!("transaction not found: {}", &id,)))?;
 
         Ok(Transaction {
@@ -275,16 +285,19 @@ impl Transaction {
         }
     }
 
-    fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
-        let block_id =
-            match self.block_hash {
-                Some(block_id) => block_id,
-                None => block_on(context.db.find_block_hash_by_transaction(&self.id)).ok_or_else(
-                    || ErrorKind::InternalError("Transaction's block was not found".to_owned()),
-                )?,
-            };
+    async fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
+        let block_id = match self.block_hash {
+            Some(block_id) => block_id,
+            None => context
+                .db
+                .find_block_hash_by_transaction(&self.id)
+                .await
+                .ok_or_else(|| {
+                    ErrorKind::InternalError("Transaction's block was not found".to_owned())
+                })?,
+        };
 
-        block_on(context.db.get_block(&block_id)).ok_or_else(|| {
+        context.db.get_block(&block_id).await.ok_or_else(|| {
             ErrorKind::InternalError(
                 "transaction is in explorer but couldn't find its block".to_owned(),
             )
@@ -292,11 +305,11 @@ impl Transaction {
         })
     }
 
-    fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
+    async fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
         if let Some(c) = &self.contents {
             Ok(c.clone())
         } else {
-            let block = self.get_block(context)?;
+            let block = self.get_block(context).await?;
             Ok(block
                 .transactions
                 .get(&self.id)
@@ -321,13 +334,13 @@ impl Transaction {
     }
 
     /// The block this transaction is in
-    pub fn block(&self, context: &Context) -> FieldResult<Block> {
-        let block = self.get_block(context)?;
+    pub async fn block(&self, context: &Context) -> FieldResult<Block> {
+        let block = self.get_block(context).await?;
         Ok(Block::from(&block))
     }
 
-    pub fn inputs(&self, context: &Context) -> FieldResult<Vec<TransactionInput>> {
-        let transaction = self.get_contents(context)?;
+    pub async fn inputs(&self, context: &Context) -> FieldResult<Vec<TransactionInput>> {
+        let transaction = self.get_contents(context).await?;
         Ok(transaction
             .inputs()
             .iter()
@@ -338,8 +351,8 @@ impl Transaction {
             .collect())
     }
 
-    pub fn outputs(&self, context: &Context) -> FieldResult<Vec<TransactionOutput>> {
-        let transaction = self.get_contents(context)?;
+    pub async fn outputs(&self, context: &Context) -> FieldResult<Vec<TransactionOutput>> {
+        let transaction = self.get_contents(context).await?;
         Ok(transaction
             .outputs()
             .iter()
@@ -350,8 +363,11 @@ impl Transaction {
             .collect())
     }
 
-    pub fn certificate(&self, context: &Context) -> FieldResult<Option<certificates::Certificate>> {
-        let transaction = self.get_contents(context)?;
+    pub async fn certificate(
+        &self,
+        context: &Context,
+    ) -> FieldResult<Option<certificates::Certificate>> {
+        let transaction = self.get_contents(context).await?;
         match transaction.certificate {
             Some(c) => Certificate::try_from(c).map(Some).map_err(|e| e.into()),
             None => Ok(None),
@@ -437,7 +453,7 @@ impl Address {
         Err(ErrorKind::Unimplemented.into())
     }
 
-    fn transactions(
+    async fn transactions(
         &self,
         first: Option<i32>,
         last: Option<i32>,
@@ -445,7 +461,10 @@ impl Address {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<TransactionConnection> {
-        let transactions = block_on(context.db.get_transactions_by_address(&self.id))
+        let transactions = context
+            .db
+            .get_transactions_by_address(&self.id)
+            .await
             .unwrap_or_else(PersistentSequence::<FragmentId>::new);
 
         let boundaries = if transactions.len() > 0 {
@@ -546,12 +565,16 @@ pub struct Pool {
 }
 
 impl Pool {
-    fn from_string_id(id: &str, db: &ExplorerDB) -> FieldResult<Pool> {
+    async fn from_string_id(id: &str, db: &ExplorerDB) -> FieldResult<Pool> {
         let id = certificate::PoolId::from_str(&id)?;
-        let blocks = block_on(db.get_stake_pool_blocks(&id))
+        let blocks = db
+            .get_stake_pool_blocks(&id)
+            .await
             .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
-        let data = block_on(db.get_stake_pool_data(&id))
+        let data = db
+            .get_stake_pool_data(&id)
+            .await
             .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
 
         Ok(Pool {
@@ -586,7 +609,7 @@ impl Pool {
         PoolId(format!("{}", &self.id))
     }
 
-    pub fn blocks(
+    pub async fn blocks(
         &self,
         first: Option<i32>,
         last: Option<i32>,
@@ -596,9 +619,13 @@ impl Pool {
     ) -> FieldResult<BlockConnection> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
-            None => block_on(context.db.get_stake_pool_blocks(&self.id)).ok_or_else(|| {
-                ErrorKind::InternalError("Stake pool in block is not indexed".to_owned())
-            })?,
+            None => context
+                .db
+                .get_stake_pool_blocks(&self.id)
+                .await
+                .ok_or_else(|| {
+                    ErrorKind::InternalError("Stake pool in block is not indexed".to_owned())
+                })?,
         };
 
         let bounds = if blocks.len() > 0 {
@@ -631,26 +658,27 @@ impl Pool {
         })
     }
 
-    pub fn registration(&self, context: &Context) -> FieldResult<PoolRegistration> {
+    pub async fn registration(&self, context: &Context) -> FieldResult<PoolRegistration> {
         match &self.data {
             Some(data) => Ok(data.registration.clone().into()),
-            None => block_on(context.db.get_stake_pool_data(&self.id))
+            None => context
+                .db
+                .get_stake_pool_data(&self.id)
+                .await
                 .map(|data| PoolRegistration::from(data.registration))
                 .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
         }
     }
 
-    pub fn retirement(&self, context: &Context) -> FieldResult<Option<PoolRetirement>> {
+    pub async fn retirement(&self, context: &Context) -> FieldResult<Option<PoolRetirement>> {
         match &self.data {
             Some(data) => Ok(data.retirement.clone().map(PoolRetirement::from)),
-            None => Ok(block_on(async {
-                context
-                    .db
-                    .get_stake_pool_data(&self.id)
-                    .await
-                    .map(|data| data.retirement)
-                    .and_then(|retirement| retirement.map(PoolRetirement::from))
-            })),
+            None => context
+                .db
+                .get_stake_pool_data(&self.id)
+                .await
+                .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into())
+                .map(|data| data.retirement.map(PoolRetirement::from)),
         }
     }
 }
@@ -666,8 +694,8 @@ impl Status {
         Err(ErrorKind::Unimplemented.into())
     }
 
-    pub fn latest_block(&self, context: &Context) -> FieldResult<Block> {
-        latest_block(context).map(|b| Block::from(&b))
+    pub async fn latest_block(&self, context: &Context) -> FieldResult<Block> {
+        latest_block(context).await.map(|b| Block::from(&b))
     }
 
     pub fn fee_settings(&self, context: &Context) -> FeeSettings {
@@ -767,8 +795,8 @@ impl Epoch {
         Ok(Epoch { id: id.try_into()? })
     }
 
-    fn get_epoch_data(&self, db: &ExplorerDB) -> Option<EpochData> {
-        block_on(db.get_epoch(self.id))
+    async fn get_epoch_data(&self, db: &ExplorerDB) -> Option<EpochData> {
+        db.get_epoch(self.id).await
     }
 }
 
@@ -786,7 +814,7 @@ impl Epoch {
     }
 
     /// Get a paginated view of all the blocks in this epoch
-    pub fn blocks(
+    pub async fn blocks(
         &self,
         first: Option<i32>,
         last: Option<i32>,
@@ -794,28 +822,24 @@ impl Epoch {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<Option<BlockConnection>> {
-        let epoch_data = match self.get_epoch_data(&context.db) {
+        let epoch_data = match self.get_epoch_data(&context.db).await {
             Some(epoch_data) => epoch_data,
             None => return Ok(None),
         };
 
-        let epoch_lower_bound = block_on(async {
-            context
-                .db
-                .get_block(&epoch_data.first_block)
-                .await
-                .map(|block| u32::from(block.chain_length))
-        })
-        .expect("Epoch lower bound");
+        let epoch_lower_bound = context
+            .db
+            .get_block(&epoch_data.first_block)
+            .await
+            .map(|block| u32::from(block.chain_length))
+            .expect("Epoch lower bound");
 
-        let epoch_upper_bound = block_on(async {
-            context
-                .db
-                .get_block(&epoch_data.last_block)
-                .await
-                .map(|block| u32::from(block.chain_length))
-        })
-        .expect("Epoch upper bound");
+        let epoch_upper_bound = context
+            .db
+            .get_block(&epoch_data.last_block)
+            .await
+            .map(|block| u32::from(block.chain_length))
+            .expect("Epoch upper bound");
 
         let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
             lower_bound: 0,
@@ -832,31 +856,40 @@ impl Epoch {
         }
         .validate()?;
 
-        BlockConnection::new(boundaries, pagination_arguments, |range| match range {
-            PaginationInterval::Empty => unreachable!("No blocks found (not even genesis)"),
-            PaginationInterval::Inclusive(range) => block_on(context.db.get_block_hash_range(
-                (range.lower_bound + epoch_lower_bound).into(),
-                (range.upper_bound + epoch_lower_bound + 1).into(),
-            ))
-            .iter()
-            .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
-            .collect(),
+        BlockConnection::new_async(boundaries, pagination_arguments, |range| async {
+            match range {
+                PaginationInterval::Empty => unreachable!("No blocks found (not even genesis)"),
+                PaginationInterval::Inclusive(range) => context
+                    .db
+                    .get_block_hash_range(
+                        (range.lower_bound + epoch_lower_bound).into(),
+                        (range.upper_bound + epoch_lower_bound + 1).into(),
+                    )
+                    .await
+                    .iter()
+                    .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
+                    .collect(),
+            }
         })
+        .await
         .map(Some)
     }
 
-    pub fn first_block(&self, context: &Context) -> Option<Block> {
+    pub async fn first_block(&self, context: &Context) -> Option<Block> {
         self.get_epoch_data(&context.db)
+            .await
             .map(|data| Block::from_valid_hash(data.first_block))
     }
 
-    pub fn last_block(&self, context: &Context) -> Option<Block> {
+    pub async fn last_block(&self, context: &Context) -> Option<Block> {
         self.get_epoch_data(&context.db)
+            .await
             .map(|data| Block::from_valid_hash(data.last_block))
     }
 
-    pub fn total_blocks(&self, context: &Context) -> BlockCount {
+    pub async fn total_blocks(&self, context: &Context) -> BlockCount {
         self.get_epoch_data(&context.db)
+            .await
             .map_or(0u32.into(), |data| data.total_blocks.into())
     }
 }
@@ -989,12 +1022,15 @@ pub struct VotePlanStatus {
 }
 
 impl VotePlanStatus {
-    pub fn vote_plan_from_id(vote_plan_id: VotePlanId, context: &Context) -> FieldResult<Self> {
+    pub async fn vote_plan_from_id(
+        vote_plan_id: VotePlanId,
+        context: &Context,
+    ) -> FieldResult<Self> {
         let vote_plan_id = chain_impl_mockchain::certificate::VotePlanId::from_str(&vote_plan_id.0)
             .map_err(|err| -> juniper::FieldError {
                 ErrorKind::InvalidAddress(err.to_string()).into()
             })?;
-        if let Some(vote_plan) = block_on(context.db.get_vote_plan_by_id(&vote_plan_id)) {
+        if let Some(vote_plan) = context.db.get_vote_plan_by_id(&vote_plan_id).await {
             return Ok(Self::vote_plan_from_data(vote_plan));
         }
 
@@ -1147,7 +1183,6 @@ impl VoteProposalStatus {
         last: Option<i32>,
         before: Option<IndexCursor>,
         after: Option<IndexCursor>,
-        context: &Context,
     ) -> FieldResult<VoteStatusConnection> {
         let boundaries = if !self.votes.is_empty() {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
@@ -1192,19 +1227,23 @@ pub struct Query;
     Context = Context,
 )]
 impl Query {
-    fn block(id: String, context: &Context) -> FieldResult<Block> {
-        Block::from_string_hash(id, &context.db)
+    async fn block(id: String, context: &Context) -> FieldResult<Block> {
+        Block::from_string_hash(id, &context.db).await
     }
 
-    fn block_by_chain_length(length: ChainLength, context: &Context) -> FieldResult<Option<Block>> {
-        Ok(
-            block_on(context.db.find_block_by_chain_length(length.try_into()?))
-                .map(Block::from_valid_hash),
-        )
+    async fn block_by_chain_length(
+        length: ChainLength,
+        context: &Context,
+    ) -> FieldResult<Option<Block>> {
+        Ok(context
+            .db
+            .find_block_by_chain_length(length.try_into()?)
+            .await
+            .map(Block::from_valid_hash))
     }
 
     /// query all the blocks in a paginated view
-    fn all_blocks(
+    async fn all_blocks(
         &self,
         first: Option<i32>,
         last: Option<i32>,
@@ -1212,7 +1251,7 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<BlockConnection> {
-        let longest_chain = latest_block(context)?.chain_length;
+        let longest_chain = latest_block(context).await?.chain_length;
 
         let block0 = 0u32;
 
@@ -1229,38 +1268,44 @@ impl Query {
         }
         .validate()?;
 
-        BlockConnection::new(boundaries, pagination_arguments, |range| match range {
-            PaginationInterval::Empty => vec![],
-            PaginationInterval::Inclusive(range) => {
-                let a = range.lower_bound.into();
-                let b = range.upper_bound.checked_add(1).unwrap().into();
-                block_on(context.db.get_block_hash_range(a, b))
-                    .iter_mut()
-                    .map(|(hash, chain_length)| (*hash, u32::from(*chain_length)))
-                    .collect()
+        BlockConnection::new_async(boundaries, pagination_arguments, |range| async {
+            match range {
+                PaginationInterval::Empty => vec![],
+                PaginationInterval::Inclusive(range) => {
+                    let a = range.lower_bound.into();
+                    let b = range.upper_bound.checked_add(1).unwrap().into();
+                    context
+                        .db
+                        .get_block_hash_range(a, b)
+                        .await
+                        .iter_mut()
+                        .map(|(hash, chain_length)| (*hash, u32::from(*chain_length)))
+                        .collect()
+                }
             }
         })
+        .await
     }
 
-    fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {
+    async fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {
         let id = FragmentId::from_str(&id)?;
 
-        Transaction::from_id(id, context)
+        Transaction::from_id(id, context).await
     }
 
-    fn epoch(id: EpochNumber, context: &Context) -> FieldResult<Epoch> {
+    fn epoch(id: EpochNumber) -> FieldResult<Epoch> {
         Epoch::from_epoch_number(id)
     }
 
-    fn address(bech32: String, context: &Context) -> FieldResult<Address> {
+    fn address(bech32: String) -> FieldResult<Address> {
         Address::from_bech32(&bech32)
     }
 
-    pub fn stake_pool(id: PoolId, context: &Context) -> FieldResult<Pool> {
-        Pool::from_string_id(&id.0, &context.db)
+    pub async fn stake_pool(id: PoolId, context: &Context) -> FieldResult<Pool> {
+        Pool::from_string_id(&id.0, &context.db).await
     }
 
-    pub fn all_stake_pools(
+    pub async fn all_stake_pools(
         &self,
         first: Option<i32>,
         last: Option<i32>,
@@ -1268,14 +1313,14 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<PoolConnection> {
-        let mut stake_pools = block_on(context.db.get_stake_pools());
+        let mut stake_pools = context.db.get_stake_pools().await;
 
         // Although it's probably not a big performance concern
         // There are a few alternatives to not have to sort this
         // - A separate data structure can be used to track InsertionOrder -> PoolId
         // (or any other order)
         // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea)
-        stake_pools.sort_unstable_by_key(|(id, data)| id.clone());
+        stake_pools.sort_unstable_by_key(|(id, _data)| id.clone());
 
         let boundaries = if !stake_pools.is_empty() {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
@@ -1325,11 +1370,11 @@ impl Query {
         Ok(Status {})
     }
 
-    pub fn vote_plan(&self, id: String, context: &Context) -> FieldResult<VotePlanStatus> {
-        VotePlanStatus::vote_plan_from_id(VotePlanId(id), context)
+    pub async fn vote_plan(&self, id: String, context: &Context) -> FieldResult<VotePlanStatus> {
+        VotePlanStatus::vote_plan_from_id(VotePlanId(id), context).await
     }
 
-    pub fn all_vote_plans(
+    pub async fn all_vote_plans(
         &self,
         first: Option<i32>,
         last: Option<i32>,
@@ -1337,9 +1382,9 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<VotePlanConnection> {
-        let mut vote_plans = block_on(context.db.get_vote_plans());
+        let mut vote_plans = context.db.get_vote_plans().await;
 
-        vote_plans.sort_unstable_by_key(|(id, data)| id.clone());
+        vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
 
         let boundaries = if !vote_plans.is_empty() {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
@@ -1371,7 +1416,7 @@ impl Query {
 
                 (from..=to)
                     .map(|i: u32| {
-                        let (pool_id, vote_plan_data) = &vote_plans[usize::try_from(i).unwrap()];
+                        let (_pool_id, vote_plan_data) = &vote_plans[usize::try_from(i).unwrap()];
                         (
                             VotePlanStatus::vote_plan_from_data(vote_plan_data.as_ref().clone()),
                             i,
@@ -1396,11 +1441,12 @@ pub fn create_schema() -> Schema {
     Schema::new(Query {}, EmptyMutation::new(), EmptySubscription::new())
 }
 
-fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
-    block_on(async {
+async fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
+    async {
         let hash = context.db.get_latest_block_hash().await;
         context.db.get_block(&hash).await
-    })
+    }
+    .await
     .ok_or_else(|| ErrorKind::InternalError("tip is not in explorer".to_owned()))
     .map_err(Into::into)
 }

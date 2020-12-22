@@ -60,7 +60,7 @@ impl StakeDelegation {
             .map(|addr| Address::from(&ExplorerAddress::New(addr)))
     }
 
-    pub fn pools(&self, context: &Context) -> Vec<Pool> {
+    pub fn pools(&self) -> Vec<Pool> {
         use chain_impl_mockchain::account::DelegationType;
         use std::iter::FromIterator as _;
 
@@ -82,7 +82,7 @@ impl StakeDelegation {
     Context = Context,
 )]
 impl PoolRegistration {
-    pub fn pool(&self, context: &Context) -> Pool {
+    pub fn pool(&self) -> Pool {
         Pool::from_valid_id(self.0.to_id())
     }
 
