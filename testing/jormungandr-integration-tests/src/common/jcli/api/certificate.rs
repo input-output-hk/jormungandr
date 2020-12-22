@@ -51,6 +51,20 @@ impl Certificate {
             .as_single_line()
     }
 
+    pub fn new_encrypted_vote_tally<S: Into<String>, P: AsRef<Path>>(
+        self,
+        vote_plan_id: S,
+        shares: P,
+    ) -> String {
+        self.command
+            .encrypted_vote_tally(vote_plan_id, shares)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
     pub fn new_public_vote_cast<S: Into<String>>(
         self,
         vote_plan_id: S,

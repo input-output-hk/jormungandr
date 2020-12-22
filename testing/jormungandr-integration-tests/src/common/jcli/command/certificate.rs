@@ -57,6 +57,21 @@ impl CertificateCommand {
         self
     }
 
+    pub fn encrypted_vote_tally<S: Into<String>, P: AsRef<Path>>(
+        mut self,
+        vote_plan_id: S,
+        output_file: P,
+    ) -> Self {
+        self.command
+            .arg("new")
+            .arg("encrypted-vote-tally")
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id.into())
+            .arg("--output")
+            .arg(output_file.as_ref());
+        self
+    }
+
     pub fn private_vote_tally<S: Into<String>, P: AsRef<Path>>(
         mut self,
         vote_plan_id: S,
