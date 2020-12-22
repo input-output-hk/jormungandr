@@ -187,12 +187,20 @@ Each of the following steps need to be done per proposal:
 3. Generate the final results for each of them.
 
 For this task we can use a they `python` `private_tally.py` script (located at `jormungandr/scripts/tally`) for processing the tallying in 3 simple steps.
-Notice that it **requires** of jcli been installed and a node to communicate with. Also it need of the `requirements.txt` dependencies to be installed.
+Notice that it **requires** of jcli been installed (and optionally a node to communicate with). Also it need of the `requirements.txt` dependencies to be installed.
 
 ##### Generate shares for a single committee member
+If we have a running node, we can directly process with.
 ```shell
 python3 private_tally.py generate-share --key member.sk --ouput voteplan.shares
 ```
+
+Otherwise, for an off-line mode we would need to request the data first with:
+```shell
+jcli rest v0 vote active plans get --output-format json > voteplans.json
+python3 private_tally.py generate-share --input-file voteplans.json --key member.sk --ouput voteplan.shares
+```
+
 
 ##### Merge committee member generated shares files
 ```shell

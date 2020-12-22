@@ -40,7 +40,7 @@ def jcli_decrypt_tally(encrypted_tally_path, shares_path, threshold, max_votes, 
 
 def jcli_request_active_voteplans(output_format="json"):
     cli_args = [
-        "jcli", "rest", "v0", "vote", "plans"
+        "jcli", "rest", "v0", "vote", "plans", "get"
     ]
     try:
         result = subprocess.check_output(cli_args)
