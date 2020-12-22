@@ -5,6 +5,7 @@ pub mod introduction;
 pub mod legacy;
 pub mod node;
 pub mod programs;
+pub mod vit;
 pub mod vit_station;
 #[macro_use]
 pub mod scenario;

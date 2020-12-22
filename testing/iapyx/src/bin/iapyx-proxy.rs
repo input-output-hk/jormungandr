@@ -56,9 +56,9 @@ async fn main() {
                 .or(fragment)
                 .or(message)
                 .or(settings)
-                .or(explorer),
-        )
-        .or(block0);
+                .or(explorer)
+                .or(block0),
+        );
 
     warp::serve(app).run(server_stub.base_address()).await;
 }

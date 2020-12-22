@@ -1,5 +1,6 @@
 mod controller;
 mod settings;
+mod spawn_params;
 
 use chain_impl_mockchain::fragment::FragmentId;
 
@@ -28,6 +29,7 @@ use crate::{node::Status, style, Context};
 
 pub use controller::WalletProxyController;
 pub use jormungandr_testing_utils::testing::network_builder::WalletProxySettings;
+pub use spawn_params::WalletProxySpawnParams;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

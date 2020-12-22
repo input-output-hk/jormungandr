@@ -20,6 +20,8 @@ pub enum Show {
     /// Prints logs, can filter logs to print
     /// only errors or filter by custom string  
     Logs(ShowLogs),
+    /// Active Vote Plans
+    VotePlans(ActiveVotePlans),
 }
 
 #[derive(StructOpt, Debug)]
@@ -68,6 +70,24 @@ pub struct ShowBlockHeight {
 }
 
 #[derive(StructOpt, Debug)]
+pub struct ActiveVotePlans {
+    #[structopt(short = "a", long = "alias")]
+    pub alias: Option<String>,
+}
+
+impl ActiveVotePlans {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+        do_for_all_alias(
+            &self.alias,
+            controller.nodes(),
+            controller.legacy_nodes(),
+            |node| println!("{}: {:#?}", node.alias(), node.vote_plans()),
+            |node| println!("{}: {:#?}", node.alias(), node.vote_plans()),
+        )
+    }
+}
+
+#[derive(StructOpt, Debug)]
 pub struct ShowPeerStats {
     #[structopt(short = "a", long = "alias")]
     pub alias: Option<String>,
@@ -81,7 +101,16 @@ impl ShowStatus {
             controller.legacy_nodes(),
             |node| println!("{} is up", node.alias()),
             |node| println!("{} is up", node.alias()),
-        )
+        )?;
+
+        for vit_station in controller.vit_stations() {
+            println!("{} is up", vit_station.alias());
+        }
+
+        for proxy_wallet in controller.proxies() {
+            println!("{} is up", proxy_wallet.alias());
+        }
+        Ok(())
     }
 }
 
@@ -243,6 +272,7 @@ impl Show {
             Show::BlockHeight(block_height) => block_height.exec(controller),
             Show::PeerStats(peer_stats) => peer_stats.exec(controller),
             Show::Logs(logs) => logs.exec(controller),
+            Show::VotePlans(active_vote_plan) => active_vote_plan.exec(controller),
         }
     }
 }

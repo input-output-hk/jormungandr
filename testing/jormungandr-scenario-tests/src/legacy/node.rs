@@ -292,6 +292,10 @@ impl LegacyNodeController {
         Ok(logs)
     }
 
+    pub fn vote_plans(&self) -> Result<String> {
+        Ok(self.get("active/plans")?.text()?)
+    }
+
     pub fn wait_fragment(&self, duration: Duration, check: MemPoolCheck) -> Result<FragmentStatus> {
         let max_try = 50;
         for _ in 0..max_try {

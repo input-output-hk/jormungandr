@@ -5,11 +5,12 @@ use crate::{style, Context};
 use super::DbGenerator;
 use std::net::SocketAddr;
 use vit_servicing_station_lib::db::models::proposals::Proposal;
-use vit_servicing_station_tests::common::clients::RestClient;
-use vit_servicing_station_tests::common::startup::server::BootstrapCommandBuilder;
+use vit_servicing_station_tests::common::data::ValidVotePlanParameters;
+use vit_servicing_station_tests::common::{
+    clients::RestClient, startup::server::BootstrapCommandBuilder,
+};
 
 use crate::node::Status;
-use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
         LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
@@ -169,12 +170,13 @@ impl VitStation {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn<R: RngCore>(
         context: &Context<R>,
+        parameters: ValidVotePlanParameters,
         progress_bar: ProgressBar,
         alias: &str,
         settings: VitStationSettings,
-        vote_plans: Vec<VotePlanDef>,
         block0: &Path,
         working_dir: &Path,
     ) -> Result<Self> {
@@ -191,7 +193,7 @@ impl VitStation {
         let db_file = dir.join(STORAGE);
         dump_settings_to_file(&config_file.to_str().unwrap(), &settings).unwrap();
 
-        DbGenerator::new(vote_plans).build(&db_file);
+        DbGenerator::new(parameters).build(&db_file);
 
         let mut command_builder =
             BootstrapCommandBuilder::new(PathBuf::from("vit-servicing-station-server"));

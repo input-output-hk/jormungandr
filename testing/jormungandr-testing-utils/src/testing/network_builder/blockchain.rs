@@ -1,4 +1,4 @@
-use super::{LegacyWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
+use super::{ExternalWalletTemplate, LegacyWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 use jormungandr_lib::interfaces::{
@@ -15,6 +15,7 @@ pub struct Blockchain {
     committees: Vec<WalletAlias>,
     vote_plans: Vec<VotePlanDef>,
     legacy_wallets: Vec<LegacyWalletTemplate>,
+    external_wallets: Vec<ExternalWalletTemplate>,
     wallets: HashMap<WalletAlias, WalletTemplate>,
     kes_update_speed: KESUpdateSpeed,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
@@ -35,6 +36,7 @@ impl Blockchain {
             committees: Vec::new(),
             vote_plans: Vec::new(),
             legacy_wallets: Vec::new(),
+            external_wallets: Vec::new(),
             slots_per_epoch,
             slot_duration,
             kes_update_speed,
@@ -44,6 +46,10 @@ impl Blockchain {
 
     pub fn committees(&self) -> Vec<WalletAlias> {
         self.committees.clone()
+    }
+
+    pub fn external_wallets(&self) -> Vec<ExternalWalletTemplate> {
+        self.external_wallets.clone()
     }
 
     pub fn legacy_wallets(&self) -> Vec<LegacyWalletTemplate> {

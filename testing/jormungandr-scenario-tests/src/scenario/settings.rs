@@ -220,7 +220,7 @@ impl PrepareSettings for Settings {
 
         let mut wallet_proxies = HashMap::new();
         let wallet_proxy_setting = WalletProxySettings::prepare(context, &vit_stations);
-        wallet_proxies.insert("wallet proxy".to_string(), wallet_proxy_setting);
+        wallet_proxies.insert("wallet_proxy".to_string(), wallet_proxy_setting);
 
         Settings::new(
             nodes,

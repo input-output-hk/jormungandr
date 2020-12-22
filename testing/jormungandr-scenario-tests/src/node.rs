@@ -15,7 +15,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
         EnclaveLeaderId, FragmentLog, LeadershipLog, Log, LogEntry, LogOutput, NodeState,
-        NodeStatsDto, PeerRecord, PeerStats,
+        NodeStatsDto, PeerRecord, PeerStats, VotePlanStatus,
     },
 };
 pub use jormungandr_testing_utils::testing::{
@@ -394,6 +394,10 @@ impl NodeController {
 
     pub fn stats(&self) -> Result<NodeStatsDto> {
         self.rest_client.stats().map_err(Error::InvalidNodeStats)
+    }
+
+    pub fn vote_plans(&self) -> Result<Vec<VotePlanStatus>> {
+        Ok(self.rest_client.vote_plan_statuses()?)
     }
 
     pub fn log_stats(&self) {

@@ -1,18 +1,17 @@
 mod args;
-use crate::interactive::args::UserInteractionController;
+
+pub use crate::interactive::args::{InteractiveCommand, UserInteractionController};
 use crate::{
     scenario::{repository::ScenarioResult, Context},
     test::Result,
 };
-pub use args::InteractiveCommand;
+use function_name::named;
 use jortestkit::prelude::{
     ConsoleWriter, InteractiveCommandError, InteractiveCommandExec, UserInteraction,
 };
 use rand_chacha::ChaChaRng;
 use std::ffi::OsStr;
 use structopt::StructOpt;
-
-use function_name::named;
 
 #[named]
 pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -67,7 +66,7 @@ fn jormungandr_user_interaction() -> UserInteraction {
 }
 
 pub struct JormungandrInteractiveCommandExec<'a> {
-    controller: UserInteractionController<'a>,
+    pub controller: UserInteractionController<'a>,
 }
 
 impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
@@ -87,6 +86,9 @@ impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
                             describe.exec(&mut self.controller)
                         }
                         InteractiveCommand::Send(send) => send.exec(&mut self.controller),
+                        InteractiveCommand::Explorer(explorer) => {
+                            explorer.exec(&mut self.controller)
+                        }
                     }
                 } {
                     console.format_error(InteractiveCommandError::UserError(err.to_string()));
