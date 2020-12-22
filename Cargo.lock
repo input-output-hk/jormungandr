@@ -2313,7 +2313,7 @@ dependencies = [
  "poldercast",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
- "rand_core 0.5.1",
+ "rand_core 0.6.0",
  "reqwest",
  "rustls 0.19.0",
  "serde",
@@ -2363,7 +2363,7 @@ dependencies = [
  "prost",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
- "rand_core 0.5.1",
+ "rand_core 0.6.0",
  "regex 1.4.2",
  "reqwest",
  "serde",
@@ -2404,7 +2404,7 @@ dependencies = [
  "quickcheck",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
- "rand_core 0.5.1",
+ "rand_core 0.6.0",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -2441,7 +2441,7 @@ dependencies = [
  "poldercast",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
- "rand_core 0.5.1",
+ "rand_core 0.6.0",
  "regex 1.4.2",
  "reqwest",
  "serde",
@@ -2490,7 +2490,7 @@ dependencies = [
  "qrcodegen",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
- "rand_core 0.5.1",
+ "rand_core 0.6.0",
  "regex 1.4.2",
  "reqwest",
  "semver 0.11.0",
@@ -3729,6 +3729,12 @@ checksum = "90bde5296fc891b0cef12a6d03ddccc162ce7b2aff54160af9338f8d40df6d19"
 dependencies = [
  "getrandom",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8b34ba8cfb21243bd8df91854c830ff0d785fff2e82ebd4434c2644cb9ada18"
 
 [[package]]
 name = "rand_hc"

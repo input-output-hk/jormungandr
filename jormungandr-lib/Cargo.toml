@@ -15,7 +15,7 @@ chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 rand = "0.7"
-rand_core = "0.5"
+rand_core = "0.6"
 rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
