@@ -36,7 +36,7 @@ struct CommandArgs {
     /// no progress bar, only simple console output
     #[structopt(
         long = "progress-bar-mode",
-        default_value = "Monitor",
+        default_value = "None",
         parse(from_str = parse_progress_bar_mode_from_str)
     )]
     progress_bar_mode: ProgressBarMode,
