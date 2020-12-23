@@ -18,10 +18,10 @@ pub struct TallyDecryptWithAllShares {
     #[structopt(long = "threshold", default_value = "3")]
     threshold: usize,
     /// Maximum supported number of votes
-    #[structopt(long = "maxvotes")]
+    #[structopt(long = "max-votes")]
     max_votes: u64,
     /// Computing table cache size, usually total_votes/number_of_options
-    #[structopt(long = "table_size")]
+    #[structopt(long = "table-size")]
     table_size: usize,
     /// The path to encoded necessary shares. If this parameter is not
     /// specified, the shares will be read from the standard input.
