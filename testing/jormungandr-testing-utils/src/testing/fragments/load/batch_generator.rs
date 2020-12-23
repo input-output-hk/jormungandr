@@ -8,6 +8,7 @@ use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 
+#[derive(Clone)]
 pub struct BatchFragmentGenerator<'a> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,

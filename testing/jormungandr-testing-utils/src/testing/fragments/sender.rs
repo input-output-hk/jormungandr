@@ -64,6 +64,7 @@ impl FragmentSenderError {
     }
 }
 
+#[derive(Clone)]
 pub struct FragmentSender<'a> {
     block0_hash: Hash,
     fees: LinearFee,

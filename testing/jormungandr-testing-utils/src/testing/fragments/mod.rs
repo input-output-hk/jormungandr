@@ -3,6 +3,7 @@ pub use self::{
         AdversaryFragmentSender, AdversaryFragmentSenderError, AdversaryFragmentSenderSetup,
     },
     export::{FragmentExporter, FragmentExporterError},
+    generator::FragmentGenerator,
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     sender::{FragmentSender, FragmentSenderError},
@@ -26,11 +27,12 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
-pub use load::{BatchFragmentGenerator, FragmentGenerator, FragmentStatusProvider};
+pub use load::{BatchFragmentGenerator, FragmentStatusProvider, TransactionGenerator};
 use thiserror::Error;
 
 mod adversary;
 mod export;
+mod generator;
 mod initial_certificates;
 mod load;
 mod node;

@@ -127,6 +127,10 @@ impl BackwardCompatibleRest {
         tip.parse().map_err(RestError::HashParseError)
     }
 
+    pub fn settings(&self) -> Result<String, reqwest::Error> {
+        self.raw().settings()?.text()
+    }
+
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
         let logs = self.raw().fragment_logs()?.text()?;
         let logs: Vec<FragmentLog> = if logs.is_empty() {

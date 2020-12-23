@@ -1,5 +1,6 @@
 pub mod bft;
 pub mod explorer;
+pub mod fragments;
 pub mod genesis;
 pub mod grpc;
 pub mod legacy;

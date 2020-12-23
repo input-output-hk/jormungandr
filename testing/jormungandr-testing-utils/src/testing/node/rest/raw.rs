@@ -155,6 +155,10 @@ impl RawRest {
         self.get("tip")
     }
 
+    pub fn settings(&self) -> Result<Response, reqwest::Error> {
+        self.get("settings")
+    }
+
     pub fn fragment_logs(&self) -> Result<Response, reqwest::Error> {
         self.get("fragment/logs")
     }

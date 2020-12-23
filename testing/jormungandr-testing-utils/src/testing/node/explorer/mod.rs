@@ -6,9 +6,11 @@ use self::{
         AllVotePlans, BlockByChainLength, Epoch, LastBlock, StakePool, Status, TransactionById,
     },
 };
+use chain_impl_mockchain::block::BlockDate as LibBlockDate;
 use graphql_client::GraphQLQuery;
 use graphql_client::*;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::BlockDate;
 use std::str::FromStr;
 mod client;
 mod data;
@@ -187,6 +189,23 @@ impl Explorer {
         let response_body: Response<transaction_by_id::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
+    }
+
+    pub fn current_time(&self) -> BlockDate {
+        let date = self
+            .status()
+            .unwrap()
+            .data
+            .unwrap()
+            .status
+            .latest_block
+            .date;
+
+        let block_date = LibBlockDate {
+            epoch: date.epoch.id.parse().unwrap(),
+            slot_id: date.slot.parse().unwrap(),
+        };
+        BlockDate::from(block_date)
     }
 
     fn print_log<T: std::fmt::Debug>(&self, response: &Response<T>) {

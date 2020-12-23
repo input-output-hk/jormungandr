@@ -4,26 +4,29 @@ use crate::common::{
 };
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
-    NamedTempFile, TempDir,
+    TempDir,
 };
-use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
-    certificate::VoteAction, chaintypes::ConsensusType, milli::Milli, value::Value, vote::Choice,
+    certificate::VoteAction,
+    chaintypes::ConsensusType,
+    milli::Milli,
+    value::Value,
+    vote::Choice,
 };
-use chain_vote::MemberPublicKey;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, FeesGoTo, KESUpdateSpeed};
-use jormungandr_testing_utils::{
-    testing::{node::time, VotePlanBuilder, VotePlanExtension},
-    wallet::Wallet,
+use jormungandr_lib::{
+    interfaces::{
+        ActiveSlotCoefficient, FeesGoTo, KESUpdateSpeed
+    },
 };
+use jormungandr_testing_utils::testing::{VotePlanBuilder,VotePlanExtension};
+use jormungandr_testing_utils::wallet::Wallet};
 use rand::rngs::OsRng;
 
 #[test]
-#[ignore]
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
-    let temp_dir = TempDir::new().unwrap().into_persistent();
+    let temp_dir = TempDir::new().unwrap();
 
     let yes_choice = Choice::new(1);
 
@@ -33,33 +36,23 @@ pub fn jcli_e2e_flow_private_vote() {
     let clarice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
 
     let communication_sk = jcli.votes().committee().communication_key().generate();
-    let communication_pk = jcli
+    let crs = jcli.votes().crs().generate();
+    let member_sk = jcli
         .votes()
         .committee()
-        .communication_key()
-        .to_public(communication_sk);
-    let crs = jcli.votes().crs().generate();
-    let member_sk =
-        jcli.votes()
-            .committee()
-            .member_key()
-            .generate(communication_pk, crs, 0, 1, None);
+        .member_key()
+        .generate(communication_sk, crs, 1, 1, None);
     let member_pk = jcli.votes().committee().member_key().to_public(member_sk);
-    let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk.clone());
+    let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk);
 
-    let (_, member_pk_bech32) = bech32::decode(&member_pk).unwrap();
-    let member_pk_bytes = Vec::<u8>::from_base32(&member_pk_bech32).unwrap();
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
         .private()
-        .member_public_key(MemberPublicKey::from_bytes(&member_pk_bytes).unwrap())
+        .member_public_key(member_pk)
         .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
-
-    println!("{:#}", vote_plan.as_json_str());
-
     vote_plan_json.write_str(&vote_plan.as_json_str()).unwrap();
 
     let config = ConfigurationBuilder::new()
@@ -88,7 +81,6 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let alice_sk = temp_dir.child("alice_sk");
     alice.save_to_path(alice_sk.path()).unwrap();
-
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
     let tx = jcli
@@ -114,7 +106,7 @@ pub fn jcli_e2e_flow_private_vote() {
         0,
         yes_choice,
         3,
-        encrypting_vote_key.clone(),
+        encrypting_vote_key,
     );
 
     let tx = jcli
@@ -159,12 +151,9 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let decryption_share_file = NamedTempFile::new("decryption_share").unwrap();
-    //decryption_share_file.write_str(&decryption_share).unwrap();
-
-    let vote_tally_cert = jcli
-        .certificate()
-        .new_private_vote_tally(vote_plan_id, decryption_share_file.path());
+    let decryption_share = jcli.votes().tally().generate_decryption_share();
+  
+    let vote_tally_cert = jcli.certificate().new_private_vote_tally(vote_plan_id,decryption_share);
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -182,22 +171,9 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(3, jormungandr.explorer());
 
-    let vote_tally = jormungandr.rest().inner().vote_plan_statuses().unwrap();
-    let vote_tally_file = NamedTempFile::new("vote_tally.yaml").unwrap();
-    vote_tally_file.write_str(&vote_tally).unwrap();
+    let vote_tally = jormungandr.rest().vote_plan_statuses().unwrap();
 
-    let _decryption_share = jcli
-        .votes()
-        .tally()
-        .generate_decryption_share(decryption_share_file.path(), vote_tally_file.path());
-
-    let _generated_share = jcli.votes().tally().decrypt_with_shares(
-        vote_tally_file.path(),
-        3,
-        decryption_share_file.path(),
-        1,
-        1,
-    );
+    let generated_share = jcli.votes().tally().decrypt_with_shares();
 
     assert!(jormungandr
         .rest()
