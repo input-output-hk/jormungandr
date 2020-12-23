@@ -1,7 +1,7 @@
 use super::Error;
-use crate::jcli_app::utils::{io, OutputFormat};
+use crate::jcli_app::utils::io;
+use bech32::FromBase32;
 use chain_vote::{EncryptedTally, OpeningVoteKey};
-use serde::Serialize;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -18,14 +18,6 @@ pub struct TallyGenerateDecryptionShare {
     /// The path to hex-encoded decryption key.
     #[structopt(long = "key")]
     decryption_key: PathBuf,
-    #[structopt(flatten)]
-    output_format: OutputFormat,
-}
-
-#[derive(Serialize)]
-struct Output {
-    state: String,
-    share: String,
 }
 
 impl TallyGenerateDecryptionShare {
@@ -37,19 +29,21 @@ impl TallyGenerateDecryptionShare {
 
         let decryption_key = {
             let data = io::read_line(&Some(&self.decryption_key))?;
-            let mut bytes = [0u8; 32];
-            hex::decode_to_slice(data, &mut bytes as &mut [u8])?;
-            OpeningVoteKey::from_bytes(&bytes).ok_or(Error::DecryptionKeyRead)?
+            bech32::decode(&data)
+                .map_err(Error::from)
+                .and_then(|(hrp, raw_key)| {
+                    if hrp != crate::jcli_app::vote::bech32_constants::MEMBER_SK_HRP {
+                        return Err(Error::InvalidSecretKey);
+                    }
+                    OpeningVoteKey::from_bytes(
+                        &Vec::<u8>::from_base32(&raw_key).map_err(|_| Error::DecryptionKeyRead)?,
+                    )
+                    .ok_or(Error::DecryptionKeyRead)
+                })?
         };
 
-        let (state, share) = encrypted_tally.finish(&decryption_key);
-        let output = self
-            .output_format
-            .format_json(serde_json::to_value(Output {
-                state: base64::encode(state.to_bytes()),
-                share: base64::encode(share.to_bytes()),
-            })?)?;
-        println!("{}", output);
+        let (_state, share) = encrypted_tally.finish(&decryption_key);
+        println!("{}", base64::encode(share.to_bytes()));
 
         Ok(())
     }
