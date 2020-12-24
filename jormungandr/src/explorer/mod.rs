@@ -4,6 +4,7 @@ mod indexing;
 mod persistent_sequence;
 
 use self::error::{Error, ErrorKind, Result};
+pub use self::graphql::create_schema;
 use self::graphql::Context;
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
@@ -34,7 +35,6 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 pub struct Explorer {
     pub db: ExplorerDB,
-    pub schema: Arc<graphql::Schema>,
 }
 
 struct Branch {
@@ -95,11 +95,8 @@ pub struct Settings {
 }
 
 impl Explorer {
-    pub fn new(db: ExplorerDB, schema: graphql::Schema) -> Explorer {
-        Explorer {
-            db,
-            schema: Arc::new(schema),
-        }
+    pub fn new(db: ExplorerDB) -> Explorer {
+        Explorer { db }
     }
 
     pub fn context(&self) -> Context {

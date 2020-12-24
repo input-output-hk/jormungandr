@@ -8,7 +8,7 @@ use crate::explorer::indexing::ExplorerTransaction;
 use juniper::FieldResult;
 use std::convert::TryFrom;
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl PageInfo {
@@ -29,7 +29,7 @@ impl PageInfo {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl BlockEdge {
@@ -43,7 +43,7 @@ impl BlockEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl TransactionEdge {
@@ -57,7 +57,7 @@ impl TransactionEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl PoolEdge {
@@ -71,7 +71,7 @@ impl PoolEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VotePlanEdge {
@@ -84,7 +84,7 @@ impl VotePlanEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context
 )]
 impl VoteStatusEdge {
@@ -97,7 +97,7 @@ impl VoteStatusEdge {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "BlockConnection"
 )]
@@ -116,7 +116,7 @@ impl BlockConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "TransactionConnection"
 )]
@@ -135,7 +135,7 @@ impl TransactionConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "PoolConnection"
 )]
@@ -154,7 +154,7 @@ impl PoolConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "VotePlanConnection"
 )]
@@ -173,7 +173,7 @@ impl VotePlanConnection {
     }
 }
 
-#[juniper::object(
+#[juniper::graphql_object(
     Context = Context,
     name = "VoteStatusConnection"
 )]
@@ -251,28 +251,31 @@ pub struct PaginationArguments<I> {
     pub after: Option<I>,
 }
 
+struct PageMeta {
+    has_next_page: bool,
+    has_previous_page: bool,
+    total_count: u64,
+}
+
 impl<E, C> Connection<E, C>
 where
     E: Edge,
     C: From<u64>,
     E::Node: Clone,
 {
-    pub fn new<I>(
+    fn compute_interval<I>(
         bounds: PaginationInterval<I>,
         pagination_arguments: ValidatedPaginationArguments<I>,
-        get_node_range: impl Fn(PaginationInterval<I>) -> Vec<(E::Node, I)>,
-    ) -> FieldResult<Connection<E, C>>
+    ) -> FieldResult<(PaginationInterval<I>, PageMeta)>
     where
-        I: TryFrom<u64>,
+        I: TryFrom<u64> + Clone,
         u64: From<I>,
-        I: Clone,
-        IndexCursor: From<I>,
     {
         let pagination_arguments = pagination_arguments.cursors_into::<u64>();
         let bounds = bounds.bounds_into::<u64>();
 
         let (page_interval, has_next_page, has_previous_page, total_count) = match bounds {
-            PaginationInterval::Empty => (PaginationInterval::Empty, false, false, 0.into()),
+            PaginationInterval::Empty => (PaginationInterval::Empty, false, false, 0u64),
             PaginationInterval::Inclusive(total_elements) => {
                 let InclusivePaginationInterval {
                     upper_bound,
@@ -288,8 +291,7 @@ where
                     .checked_add(1)
                     .unwrap()
                     .checked_sub(lower_bound)
-                    .expect("upper_bound should be >= than lower_bound")
-                    .into();
+                    .expect("upper_bound should be >= than lower_bound");
                 (
                     PaginationInterval::Inclusive(page),
                     has_next_page,
@@ -299,12 +301,28 @@ where
             }
         };
 
-        let page_interval = page_interval
+        Ok(page_interval
             .bounds_try_into::<I>()
+            .map(|interval| {
+                (
+                    interval,
+                    PageMeta {
+                        has_next_page,
+                        has_previous_page,
+                        total_count,
+                    },
+                )
+            })
             .map_err(|_| "computed page interval is outside pagination boundaries")
-            .unwrap();
+            .unwrap())
+    }
 
-        let edges: Vec<_> = get_node_range(page_interval)
+    fn from_vec<I>(v: Vec<(E::Node, I)>, page_meta: PageMeta) -> FieldResult<Connection<E, C>>
+    where
+        I: TryFrom<u64> + Clone,
+        IndexCursor: From<I>,
+    {
+        let edges: Vec<_> = v
             .iter()
             .map(|(hash, node_pagination_identifier)| {
                 E::new((*hash).clone(), node_pagination_identifier.clone().into())
@@ -317,6 +335,12 @@ where
             .map(|e| e.cursor().clone())
             .or_else(|| start_cursor.clone());
 
+        let PageMeta {
+            has_next_page,
+            has_previous_page,
+            total_count,
+        } = page_meta;
+
         Ok(Connection {
             edges,
             page_info: PageInfo {
@@ -325,8 +349,39 @@ where
                 start_cursor,
                 end_cursor,
             },
-            total_count,
+            total_count: total_count.into(),
         })
+    }
+
+    pub async fn new_async<I, F>(
+        bounds: PaginationInterval<I>,
+        pagination_arguments: ValidatedPaginationArguments<I>,
+        get_node_range: impl Fn(PaginationInterval<I>) -> F,
+    ) -> FieldResult<Connection<E, C>>
+    where
+        I: TryFrom<u64> + Clone,
+        u64: From<I>,
+        IndexCursor: From<I>,
+        F: std::future::Future<Output = Vec<(E::Node, I)>>,
+    {
+        let (interval, page_meta) = Self::compute_interval(bounds, pagination_arguments)?;
+        let vec = get_node_range(interval).await;
+        Self::from_vec(vec, page_meta)
+    }
+
+    pub fn new<I>(
+        bounds: PaginationInterval<I>,
+        pagination_arguments: ValidatedPaginationArguments<I>,
+        get_node_range: impl Fn(PaginationInterval<I>) -> Vec<(E::Node, I)>,
+    ) -> FieldResult<Connection<E, C>>
+    where
+        I: TryFrom<u64> + Clone,
+        u64: From<I>,
+        IndexCursor: From<I>,
+    {
+        let (interval, page_meta) = Self::compute_interval(bounds, pagination_arguments)?;
+        let vec = get_node_range(interval);
+        Self::from_vec(vec, page_meta)
     }
 }
 

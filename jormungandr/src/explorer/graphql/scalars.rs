@@ -75,26 +75,31 @@ pub struct VoteOptionRange {
 }
 
 // u32 should be enough to count blocks and transactions (the only two cases for now)
+
 #[derive(Clone)]
 pub struct IndexCursor(pub u64);
 
-juniper::graphql_scalar!(IndexCursor where Scalar = <S> {
-    description: "Non-opaque cursor that can be used for offset-based pagination"
-
-    resolve(&self) -> Value {
+#[juniper::graphql_scalar(
+    description = "Non-opaque cursor that can be used for offset-based pagination"
+)]
+impl<S> GraphQLScalar for IndexCursor
+where
+    S: juniper::ScalarValue,
+{
+    fn resolve(&self) -> Value {
         juniper::Value::scalar(self.0.to_string())
     }
 
-    from_input_value(v: &InputValue) -> Option<IndexCursor> {
-        v.as_scalar_value::<String>()
-         .and_then(|s| s.parse::<u64>().ok())
-         .map(IndexCursor)
+    fn from_input_value(v: &InputValue) -> Option<IndexCursor> {
+        v.as_string_value()
+            .and_then(|s| s.parse::<u64>().ok())
+            .map(IndexCursor)
     }
 
-    from_str<'a>(value: ScalarToken<'a>) -> ParseScalarResult<'a, S> {
+    fn from_str<'a>(value: ScalarToken<'a>) -> ParseScalarResult<'a, S> {
         <String as ParseScalarValue<S>>::from_str(value)
     }
-});
+}
 
 /*------------------------------*/
 /*------- Conversions ---------*/
