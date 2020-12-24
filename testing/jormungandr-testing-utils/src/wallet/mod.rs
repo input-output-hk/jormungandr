@@ -1,6 +1,9 @@
 pub mod account;
+pub mod committee;
 pub mod delegation;
 pub mod utxo;
+
+pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 
 use crate::{
     stake_pool::StakePool,
