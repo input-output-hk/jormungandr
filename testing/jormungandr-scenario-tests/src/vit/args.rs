@@ -136,8 +136,12 @@ pub struct QuickStartCommandArgs {
     interactive: bool,
 
     /// endopint in format: 127.0.0.1:80
-    #[structopt(long = "endpoint", default_value = "127.0.0.1:80")]
+    #[structopt(long = "endpoint", default_value = "0.0.0.0:80")]
     endpoint: String,
+
+    /// endopint in format: 127.0.0.1:80
+    #[structopt(long = "private")]
+    private: bool,
 }
 
 impl QuickStartCommandArgs {
@@ -203,7 +207,8 @@ impl QuickStartCommandArgs {
             .slot_duration_in_seconds(self.slot_duration)
             .slots_in_epoch_count(self.slots_in_epoch)
             .proposals_count(self.proposals)
-            .voting_power(self.voting_power);
+            .voting_power(self.voting_power)
+            .private(self.private);
 
         crate::introduction::print(&context, "VOTING BACKEND");
         vote_backend(context, quick_setup, interactive, endpoint).map(|_| ())
