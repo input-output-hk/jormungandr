@@ -62,7 +62,7 @@ pub fn vote_e2e_flow(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> 
                 "Filip" address FILIP_ADDRESS mnemonics FILIP_MNEMONICS with 500_000_000,
             ],
             vote_plans = [
-                "fund1" from "Alice" through epochs 0->1->2 contains proposals = [
+                "fund1" from "Alice" through epochs 0->1->2 as "public" contains proposals = [
                     proposal adds 100 to "rewards" with 3 vote options,
                 ]
             ],
