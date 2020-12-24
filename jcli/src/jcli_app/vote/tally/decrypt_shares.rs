@@ -18,10 +18,10 @@ pub struct TallyDecryptWithAllShares {
     #[structopt(long = "threshold", default_value = "3")]
     threshold: usize,
     /// Maximum supported number of votes
-    #[structopt(long = "maxvotes")]
+    #[structopt(long = "max-votes")]
     max_votes: u64,
     /// Computing table cache size, usually total_votes/number_of_options
-    #[structopt(long = "table_size")]
+    #[structopt(long = "table-size")]
     table_size: usize,
     /// The path to encoded necessary shares. If this parameter is not
     /// specified, the shares will be read from the standard input.
@@ -50,6 +50,7 @@ impl TallyDecryptWithAllShares {
             for _ in 0..self.threshold {
                 let mut buff = String::new();
                 shares_file.read_line(&mut buff)?;
+                let buff = buff.trim_end();
                 shares.push(
                     chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
                         .ok_or(Error::DecryptionShareRead)?,

@@ -15,9 +15,9 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("invalid Hexadecimal")]
     Hex(#[from] hex::FromHexError),
-    #[error("error while using random source")]
+    #[error("base64 decode error")]
     Base64(#[from] base64::DecodeError),
-    #[error("error while using random source")]
+    #[error("bech32 decode error")]
     Bech32(#[from] bech32::Error),
     #[error("error while decoding base64 source")]
     Rand(#[from] rand::Error),
