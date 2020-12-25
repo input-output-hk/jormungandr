@@ -2,29 +2,24 @@ use crate::common::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
 };
+use assert_fs::NamedTempFile;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
 };
+use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::{
-    certificate::VoteAction,
-    chaintypes::ConsensusType,
-    milli::Milli,
-    value::Value,
-    vote::Choice,
+    certificate::VoteAction, chaintypes::ConsensusType, milli::Milli, value::Value, vote::Choice,
 };
-use jormungandr_lib::{
-    interfaces::{
-        ActiveSlotCoefficient, FeesGoTo, KESUpdateSpeed
-    },
-};
-use jormungandr_testing_utils::testing::{VotePlanBuilder,VotePlanExtension};
-use jormungandr_testing_utils::wallet::Wallet};
+use chain_vote::MemberPublicKey;
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, FeesGoTo, KESUpdateSpeed};
+use jormungandr_testing_utils::testing::node::time;
+use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
+use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
-
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
@@ -38,22 +33,29 @@ pub fn jcli_e2e_flow_private_vote() {
     let clarice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
 
     let communication_sk = jcli.votes().committee().communication_key().generate();
-    let crs = jcli.votes().crs().generate();
-    let member_sk = jcli
+    let communication_pk = jcli
         .votes()
         .committee()
-        .member_key()
-        .generate(communication_sk, crs, 1, 1, None);
+        .communication_key()
+        .to_public(communication_sk);
+    let crs = jcli.votes().crs().generate();
+    let member_sk =
+        jcli.votes()
+            .committee()
+            .member_key()
+            .generate(communication_pk, crs, 0, 1, None);
     let member_pk = jcli
         .votes()
         .committee()
         .member_key()
         .to_public(member_sk.clone());
-    let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk);
-
+    let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk.clone());
 
     let member_sk_file = NamedTempFile::new("member.sk").unwrap();
     member_sk_file.write_str(&member_sk).unwrap();
+
+    let (_, member_pk_bech32) = bech32::decode(&member_pk).unwrap();
+    let member_pk_bytes = Vec::<u8>::from_base32(&member_pk_bech32).unwrap();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
