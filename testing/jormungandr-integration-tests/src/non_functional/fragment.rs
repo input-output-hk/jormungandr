@@ -1,6 +1,8 @@
 use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::startup;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
+use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
+use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::{
     BatchFragmentGenerator, FragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
 };
@@ -9,11 +11,12 @@ use jortestkit::load::{self, Configuration, Monitor};
 
 #[test]
 pub fn fragment_load_test() {
-    let mut faucet = startup::create_new_account_address();
+    let faucet = startup::create_new_account_address();
+    let receiver = startup::create_new_account_address();
 
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet.clone()],
-        &[],
+        &[receiver.clone()],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
@@ -34,12 +37,19 @@ pub fn fragment_load_test() {
     );
 
     let mut request_generator = FragmentGenerator::new(
-        FragmentSenderSetup::no_verify(),
+        faucet,
+        receiver,
         jormungandr.to_remote(),
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+        jormungandr.explorer(),
+        60,
+        FragmentSender::new(
+            jormungandr.genesis_block_hash(),
+            jormungandr.fees(),
+            FragmentSenderSetup::no_verify(),
+        ),
     );
-    request_generator.fill_from_faucet(&mut faucet);
+
+    request_generator.prepare();
 
     load::start_async(
         request_generator,
