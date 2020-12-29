@@ -4,8 +4,8 @@ mod indexing;
 mod multiverse;
 mod persistent_sequence;
 
-pub use self::graphql::create_schema;
 use self::error::{ExplorerError as Error, Result};
+pub use self::graphql::create_schema;
 use self::graphql::Context;
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
@@ -232,10 +232,7 @@ impl ExplorerDB {
                     break;
                 }
                 let block = blockchain.storage().get(hash)?.ok_or_else(|| {
-                    Error::from(ErrorKind::BootstrapError(format!(
-                        "couldn't get block {} from the storage",
-                        hash
-                    )))
+                    Error::BootstrapError(format!("couldn't get block {} from the storage", hash))
                 })?;
                 hash = block.header.block_parent_hash();
                 blocks.push(block);
