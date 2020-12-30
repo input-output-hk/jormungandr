@@ -70,7 +70,7 @@ impl Multiverse {
 
     /// get all the branches this block is in, None here means the block was never added
     /// or it was moved to stable storage
-    pub(super) async fn tips(&self) -> Vec<Arc<State>> {
+    pub(super) async fn tips(&self) -> Vec<(HeaderHash, Arc<State>)> {
         let mut guard = self.inner.write().await;
         let mut states = Vec::new();
 
@@ -80,7 +80,7 @@ impl Multiverse {
         for tip in guard.tips.iter() {
             if let Some(state) = guard.multiverse.get(&tip) {
                 // TODO: probably return them sorted by chain length (descending)?
-                states.push(state);
+                states.push((*tip, state));
 
                 new_tips.insert(*tip);
             }

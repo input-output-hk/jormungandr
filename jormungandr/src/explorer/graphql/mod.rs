@@ -26,31 +26,62 @@ use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::vote::{EncryptedVote, ProofOfCorrectVote};
 pub use juniper::http::GraphQLRequest;
-use juniper::{EmptyMutation, EmptySubscription, FieldResult, GraphQLUnion, RootNode};
+use juniper::{EmptyMutation, EmptySubscription, FieldError, FieldResult, GraphQLUnion, RootNode};
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
+use std::sync::Arc;
 
-#[derive(Clone)]
 pub struct Block {
     hash: HeaderHash,
+    contents: tokio::sync::Mutex<Option<Arc<ExplorerBlock>>>,
 }
 
 impl Block {
     async fn from_string_hash(hash: String, db: &ExplorerDB) -> FieldResult<Block> {
         let hash = HeaderHash::from_str(&hash)?;
-        let block = Block { hash };
 
-        block.get_explorer_block(db).await.map(|_| block)
+        db.get_block(&hash)
+            .await
+            .map(|inner| Block {
+                hash,
+                contents: tokio::sync::Mutex::new(Some(inner)),
+            })
+            .ok_or_else(|| ErrorKind::NotFound("block not found".to_string()).into())
     }
 
     fn from_valid_hash(hash: HeaderHash) -> Block {
-        Block { hash }
+        Block {
+            hash,
+            contents: tokio::sync::Mutex::new(None),
+        }
     }
 
-    async fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
-        db.get_block(&self.hash).await.ok_or_else(|| {
-            ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned()).into()
-        })
+    async fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<Arc<ExplorerBlock>> {
+        let mut contents = self.contents.lock().await;
+        if let Some(block) = &*contents {
+            return Ok(Arc::clone(&block));
+        } else {
+            let block = db.get_block(&self.hash).await.ok_or_else(|| {
+                ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
+            })?;
+
+            *contents = Some(Arc::clone(&block));
+            return Ok(block);
+        }
+    }
+
+    async fn get_branches(&self, db: &ExplorerDB) -> FieldResult<Vec<HeaderHash>> {
+        let (block, branches) = db
+            .get_block_with_branches(&self.hash)
+            .await
+            .ok_or_else(|| {
+                ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
+            })?;
+
+        let mut contents = self.contents.lock().await;
+        contents.get_or_insert(block);
+
+        Ok(branches)
     }
 }
 
@@ -189,6 +220,21 @@ impl Block {
             });
         Ok(treasury)
     }
+
+    pub async fn confirmed(&self, context: &Context) -> bool {
+        context.db.is_block_confirmed(&self.hash).await
+    }
+
+    pub async fn branches(&self, context: &Context) -> FieldResult<Option<Vec<Block>>> {
+        let branches = self.get_branches(&context.db).await?;
+
+        Ok(Some(
+            branches
+                .iter()
+                .map(|hash| Block::from_valid_hash(*hash))
+                .collect(),
+        ))
+    }
 }
 
 struct BftLeader {
@@ -249,29 +295,29 @@ impl From<blockcfg::BlockDate> for BlockDate {
 #[derive(Clone)]
 struct Transaction {
     id: FragmentId,
-    block_hash: Option<HeaderHash>,
+    block_hashes: Vec<HeaderHash>,
     contents: Option<ExplorerTransaction>,
 }
 
 impl Transaction {
     async fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let block_hash = context
-            .db
-            .find_block_hash_by_transaction(&id)
-            .await
-            .ok_or_else(|| ErrorKind::NotFound(format!("transaction not found: {}", &id,)))?;
+        let block_hashes = context.db.find_blocks_by_transaction(&id).await;
 
-        Ok(Transaction {
-            id,
-            block_hash: Some(block_hash),
-            contents: None,
-        })
+        if block_hashes.is_empty() {
+            return Err(ErrorKind::NotFound(format!("transaction not found: {}", &id,)).into());
+        } else {
+            Ok(Transaction {
+                id,
+                block_hashes,
+                contents: None,
+            })
+        }
     }
 
     fn from_valid_id(id: FragmentId) -> Transaction {
         Transaction {
             id,
-            block_hash: None,
+            block_hashes: vec![],
             contents: None,
         }
     }
@@ -279,36 +325,45 @@ impl Transaction {
     fn from_contents(contents: ExplorerTransaction) -> Transaction {
         Transaction {
             id: contents.id,
-            block_hash: None,
+            block_hashes: vec![],
             contents: Some(contents),
         }
     }
 
-    async fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
-        let block_id = match self.block_hash {
-            Some(block_id) => block_id,
-            None => context
-                .db
-                .find_block_hash_by_transaction(&self.id)
-                .await
-                .ok_or_else(|| {
-                    ErrorKind::InternalError("Transaction's block was not found".to_owned())
-                })?,
+    async fn get_blocks(&self, context: &Context) -> FieldResult<Vec<Arc<ExplorerBlock>>> {
+        let block_ids = if self.block_hashes.is_empty() {
+            context.db.find_blocks_by_transaction(&self.id).await
+        } else {
+            self.block_hashes.clone()
         };
 
-        context.db.get_block(&block_id).await.ok_or_else(|| {
-            ErrorKind::InternalError(
-                "transaction is in explorer but couldn't find its block".to_owned(),
-            )
-            .into()
-        })
+        if block_ids.is_empty() {
+            return Err(FieldError::from(ErrorKind::InternalError(
+                "Transaction's blocks was not found".to_owned(),
+            )));
+        }
+
+        let mut result = Vec::new();
+
+        for block_id in block_ids {
+            let block = context.db.get_block(&block_id).await.ok_or_else(|| {
+                FieldError::from(ErrorKind::InternalError(
+                    "transaction is in explorer but couldn't find its block".to_owned(),
+                ))
+            })?;
+
+            result.push(block);
+        }
+
+        Ok(result)
     }
 
     async fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
         if let Some(c) = &self.contents {
             Ok(c.clone())
         } else {
-            let block = self.get_block(context).await?;
+            //TODO: maybe store transactions outside blocks? as Arc, as doing it this way is pretty wasty
+            let block = &self.get_blocks(context).await?[0];
             Ok(block
                 .transactions
                 .get(&self.id)
@@ -334,9 +389,10 @@ impl Transaction {
     }
 
     /// The block this transaction is in
-    pub async fn block(&self, context: &Context) -> FieldResult<Block> {
-        let block = self.get_block(context).await?;
-        Ok(Block::from(&block))
+    pub async fn blocks(&self, context: &Context) -> FieldResult<Vec<Block>> {
+        let blocks = self.get_blocks(context).await?;
+
+        Ok(blocks.iter().map(|b| Block::from(b.as_ref())).collect())
     }
 
     pub async fn inputs(&self, context: &Context) -> FieldResult<Vec<TransactionInput>> {
@@ -695,7 +751,7 @@ impl Status {
     }
 
     pub async fn latest_block(&self, context: &Context) -> FieldResult<Block> {
-        latest_block(context).await.map(|b| Block::from(&b))
+        latest_block(context).await.map(|b| Block::from(b.as_ref()))
     }
 
     pub fn fee_settings(&self, context: &Context) -> FeeSettings {
@@ -747,6 +803,17 @@ impl Status {
                     .unwrap_or(certificate)
             )),
         }
+    }
+
+    pub fn epoch_stability_depth(&self, context: &Context) -> i32 {
+        // epoch stability depth should always fit in i32, so it should be fine
+        // to panic
+        context
+            .db
+            .blockchain_config
+            .epoch_stability_depth
+            .try_into()
+            .unwrap()
     }
 }
 
@@ -1441,7 +1508,7 @@ pub fn create_schema() -> Schema {
     Schema::new(Query {}, EmptyMutation::new(), EmptySubscription::new())
 }
 
-async fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
+async fn latest_block(context: &Context) -> FieldResult<Arc<ExplorerBlock>> {
     async {
         let hash = context.db.get_latest_block_hash().await;
         context.db.get_block(&hash).await

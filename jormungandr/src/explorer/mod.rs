@@ -29,7 +29,6 @@ use chain_impl_mockchain::certificate::{Certificate, PoolId, VotePlanId};
 use chain_impl_mockchain::fee::LinearFee;
 use futures::prelude::*;
 use multiverse::Multiverse;
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -60,8 +59,7 @@ pub struct ExplorerDB {
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
-
-    unconfirmed_fragments: HashMap<FragmentId, Vec<HeaderHash>>,
+    confirmed_block_chain_length: Arc<RwLock<ChainLength>>,
 }
 
 #[derive(Clone)]
@@ -203,7 +201,7 @@ impl ExplorerDB {
             blockchain_config,
             blockchain: blockchain.clone(),
             blockchain_tip,
-            unconfirmed_fragments: Default::default(),
+            confirmed_block_chain_length: Arc::new(RwLock::new(ChainLength::from(0))),
         };
 
         let maybe_head = blockchain.storage().get_tag(MAIN_BRANCH_TAG)?;
@@ -306,13 +304,6 @@ impl ExplorerDB {
             )
             .await;
 
-        for tx_id in explorer_block.transactions.keys() {
-            self.unconfirmed_fragments
-                .entry(*tx_id)
-                .and_modify(|blocks| blocks.push(block_id))
-                .or_insert_with(|| vec![block_id]);
-        }
-
         let replaced = current_tip
             .compare_and_replace(Branch {
                 state_ref: state_ref.clone(),
@@ -327,6 +318,11 @@ impl ExplorerDB {
             if let Some(confirmed_block_chain_length) =
                 chain_length.nth_ancestor(self.blockchain_config.epoch_stability_depth)
             {
+                {
+                    let mut guard = self.confirmed_block_chain_length.write().await;
+                    *guard = confirmed_block_chain_length;
+                }
+
                 let confirmed_id = state_ref
                     .state()
                     .chain_lengths
@@ -335,13 +331,8 @@ impl ExplorerDB {
 
                 let confirmed_ref = multiverse.get_ref(**confirmed_id).await.unwrap();
 
-                let block = confirmed_ref.state().blocks.lookup(confirmed_id).unwrap();
-
-                for tx_id in block.transactions.keys() {
-                    // the fragment is already confirmed, so it can be found in
-                    // all branches (in the longest, in particular)
-                    self.unconfirmed_fragments.remove(&tx_id);
-                }
+                // TODO: this should go to a stable storage
+                let _block = confirmed_ref.state().blocks.lookup(confirmed_id).unwrap();
 
                 multiverse
                     .gc(self.blockchain_config.epoch_stability_depth)
@@ -356,12 +347,42 @@ impl ExplorerDB {
         self.longest_chain_tip.get_block_id().await
     }
 
-    pub async fn get_block(&self, block_id: &HeaderHash) -> Option<ExplorerBlock> {
-        let block_id = *block_id;
-        self.with_latest_state(move |state| {
-            state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
-        })
-        .await
+    // short-circuiting version of get_block_with_branchs, that stops at the
+    // first branch that contains the block
+    pub async fn get_block(&self, block_id: &HeaderHash) -> Option<Arc<ExplorerBlock>> {
+        for (_hash, state) in self.multiverse.tips().await.iter() {
+            if let Some(b) = state.blocks.lookup(&block_id) {
+                return Some(Arc::clone(b));
+            }
+        }
+
+        None
+    }
+
+    pub async fn get_block_with_branches(
+        &self,
+        block_id: &HeaderHash,
+    ) -> Option<(Arc<ExplorerBlock>, Vec<HeaderHash>)> {
+        let mut block = None;
+        let mut tips = Vec::new();
+
+        for (hash, state) in self.multiverse.tips().await.iter() {
+            if let Some(b) = state.blocks.lookup(&block_id) {
+                block = block.or_else(|| Some(Arc::clone(b)));
+                tips.push(*hash);
+            }
+        }
+
+        block.map(|b| (b, tips))
+    }
+
+    pub async fn is_block_confirmed(&self, block_id: &HeaderHash) -> bool {
+        if let Some(block) = self.get_block(block_id).await {
+            let confirmed_block_chain_length = self.confirmed_block_chain_length.read().await;
+            block.chain_length <= *confirmed_block_chain_length
+        } else {
+            false
+        }
     }
 
     pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
@@ -382,39 +403,18 @@ impl ExplorerDB {
         .await
     }
 
-    pub async fn find_block_hash_by_transaction(
-        &self,
-        transaction_id: &FragmentId,
-    ) -> Option<HeaderHash> {
-        self.with_latest_state(move |state| {
-            state
-                .transactions
-                .lookup(&transaction_id)
-                .map(|id| *id.as_ref())
-        })
-        .await
-    }
-
-    // TODO: map this to graphql? although it still needs a bit more work
-    // if the transaction is not in a confirmed block, this returns a State at
-    // the tip of all the branches this transaction is in. I'm still not sure
-    // how to map this to graphql. We could either return only stats, like
-    // the length of each branch, and how deep is the block this transaction is
-    // in, or something more complex
-    // also, there are some possible optimizations or filters here, as including
-    // two branches with the same block is not really that useful (I mean, only
-    // the longest is)
-    pub(self) async fn transaction_unconfirmed_status(
-        &self,
-        transaction_id: &FragmentId,
-    ) -> Option<Vec<Arc<State>>> {
-        if let Some(blocks) = self.unconfirmed_fragments.get(transaction_id) {
-            let mut tips = self.multiverse.tips().await;
-            tips.retain(|state| blocks.iter().any(|id| state.blocks.contains_key(id)));
-            Some(tips)
-        } else {
-            None
-        }
+    pub async fn find_blocks_by_transaction(&self, transaction_id: &FragmentId) -> Vec<HeaderHash> {
+        self.multiverse
+            .tips()
+            .await
+            .iter()
+            .filter_map(|(_tip_hash, state)| {
+                state
+                    .transactions
+                    .lookup(&transaction_id)
+                    .map(|arc| *arc.clone())
+            })
+            .collect()
     }
 
     pub async fn get_transactions_by_address(
