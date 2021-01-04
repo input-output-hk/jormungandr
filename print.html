@@ -317,7 +317,7 @@ also have associated UTXOs, and this case is covered in the next section.</p>
 </code></pre>
 <h2><a class="header" href="#stake-pool" id="stake-pool">Stake pool</a></h2>
 <p>Stake pool are the trusted block creators in the genesis-praos system. A pool
-is declared on the network explicitely by its owners and contains, metadata
+is declared on the network explicitly by its owners and contains, metadata
 and cryptographic material.</p>
 <p>Stake pool has no stake power on their own, but participants in the network
 delegate their stake to a pool for running the operation.</p>
@@ -327,9 +327,9 @@ change over time with a publication of a new delegation certificate.</p>
 <p>Delegation certificate are a simple declaration statement in the form of:</p>
 <pre><code>    Account 'A' delegate to Stake Pool 'Z'
 </code></pre>
-<p>Effectively it assign the stake in the account and its associated UTXO stake
+<p>Effectively it assigns the stake in the account and its associated UTXO stake
 to the pool it delegates to until another delegation certificate is made.</p>
-<h1><a class="header" href="#node-organisation" id="node-organisation">Node organisation</a></h1>
+<h1><a class="header" href="#node-organization" id="node-organization">Node organization</a></h1>
 <h2><a class="header" href="#secure-enclave" id="secure-enclave">Secure Enclave</a></h2>
 <p>The secure enclave is the component containing the secret cryptographic
 material, and offering safe and secret high level interfaces to the rest of
@@ -391,7 +391,7 @@ the protocol and permit the traffic.</p>
 this is for the fragment propagation.</li>
 <li>propose new blocks: for block propagation.</li>
 </ul>
-<p>There are other commands that optimise the communication and synchronisation
+<p>There are other commands that optimise the communication and synchronization
 between nodes that will be documented here in the future.</p>
 <p>Another type of messages is the <code>Gossip</code> message. These gossip messages allow Nodes to exchange
 information (gossips) about other nodes on the network, allowing for peer
