@@ -50,6 +50,14 @@ impl Wallet {
         })
     }
 
+    pub fn recover_from(secret_key: &[u8]) -> Result<Self,Error> {
+        Ok(Self {
+            inner: Inner::recover_free_keys(secret_key, &[])
+                .map_err(|e| Error::CannotRecover(e.to_string()))?,
+            proposals: vec![]
+        })
+    }
+
     pub fn account(&self, discrimination: chain_addr::Discrimination) -> chain_addr::Address {
         self.inner.account(discrimination)
     }
