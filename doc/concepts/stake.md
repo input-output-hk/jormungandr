@@ -49,7 +49,7 @@ For example with the following utxos:
 ## Stake pool
 
 Stake pool are the trusted block creators in the genesis-praos system. A pool
-is declared on the network explicitely by its owners and contains, metadata
+is declared on the network explicitly by its owners and contains, metadata
 and cryptographic material.
 
 Stake pool has no stake power on their own, but participants in the network
@@ -66,5 +66,5 @@ Delegation certificate are a simple declaration statement in the form of:
     Account 'A' delegate to Stake Pool 'Z'
 ```
 
-Effectively it assign the stake in the account and its associated UTXO stake
+Effectively it assigns the stake in the account and its associated UTXO stake
 to the pool it delegates to until another delegation certificate is made.

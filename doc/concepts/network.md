@@ -26,7 +26,7 @@ The protocol allows you to send multiple types of messages between nodes:
   this is for the fragment propagation.
 * propose new blocks: for block propagation.
 
-There are other commands that optimise the communication and synchronisation
+There are other commands that optimise the communication and synchronization
 between nodes that will be documented here in the future.
 
 Another type of messages is the `Gossip` message. These gossip messages allow Nodes to exchange
