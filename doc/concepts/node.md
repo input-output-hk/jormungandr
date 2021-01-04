@@ -1,4 +1,4 @@
-# Node organization 
+# Node organization
 
 ## Secure Enclave
 
