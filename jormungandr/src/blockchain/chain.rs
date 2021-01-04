@@ -61,7 +61,7 @@ use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_time::TimeFrame;
 use slog::Logger;
 use std::sync::Arc;
-use tokio::stream::StreamExt;
+use tokio_stream::StreamExt;
 
 // derive
 use thiserror::Error;

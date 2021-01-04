@@ -165,7 +165,7 @@ impl Services {
     }
 
     /// select on all the started services. this function will block until first services returns
-    pub fn wait_any_finished(mut self) -> Result<(), ServiceError> {
+    pub fn wait_any_finished(self) -> Result<(), ServiceError> {
         let finish_listener = self.finish_listener;
         let result = self
             .runtime

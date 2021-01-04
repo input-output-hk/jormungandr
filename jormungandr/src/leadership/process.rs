@@ -25,7 +25,6 @@ use slog::Logger;
 use std::cmp::Ordering;
 use std::{sync::Arc, time::Instant};
 use thiserror::Error;
-use tokio::time::{delay_until, timeout_at, Instant as TokioInstant};
 
 #[derive(Error, Debug)]
 pub enum LeadershipError {
@@ -223,7 +222,7 @@ impl Module {
 
     async fn wait(mut self) -> Result<Self, LeadershipError> {
         let deadline = self.wait_peek_deadline().await?;
-        delay_until(TokioInstant::from_std(deadline)).await;
+        tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)).await;
         let tip = self.tip.clone();
         self.tip_ref = tip.get_ref().await;
         Ok(self)
@@ -335,7 +334,7 @@ impl Module {
                 );
 
                 // await the right_time before starting the action
-                delay_until(TokioInstant::from_std(right_time)).await;
+                tokio::time::sleep_until(tokio::time::Instant::from_std(right_time)).await;
                 self.action_run_entry_in_bound(entry, logger, event_end)
                     .await
             } else {
@@ -377,8 +376,8 @@ impl Module {
 
         let timed_out_log = logger.clone();
 
-        let res = timeout_at(
-            TokioInstant::from_std(deadline),
+        let res = tokio::time::timeout_at(
+            tokio::time::Instant::from_std(deadline),
             self.action_run_entry_build_block(entry, logger),
         )
         .await;
