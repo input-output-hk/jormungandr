@@ -55,6 +55,20 @@ impl Controller {
         Self::recover_with_backend(backend, mnemonics, password)
     }
 
+    pub fn recover_account(
+        proxy_address: String,
+        account: &[u8],
+        backend_settings: RestSettings,
+    ) -> Result<Self, ControllerError> {
+        let backend = WalletBackend::new(proxy_address, backend_settings);
+        let settings = backend.settings()?;
+        Ok(Self {
+            backend,
+            wallet: Wallet::recover_from(account)?,
+            settings,
+        })
+    }
+
     pub fn switch_backend(&mut self, proxy_address: String, backend_settings: RestSettings) {
         self.backend = WalletBackend::new(proxy_address, backend_settings);
     }
