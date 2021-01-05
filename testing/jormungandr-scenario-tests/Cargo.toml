@@ -26,7 +26,7 @@ jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch
 iapyx = {path = "../iapyx"}
 poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
 rand = "0.7"
-rand_core = "0.5"
+rand_core = "0.6"
 rand_chacha = "0.2"
 json = "0.12.4"
 function_name = "0.2.0"
