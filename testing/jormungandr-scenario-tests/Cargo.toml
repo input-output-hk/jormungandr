@@ -24,7 +24,7 @@ vit-servicing-station-tests = { git = "https://github.com/input-output-hk/vit-se
 vit-servicing-station-lib = { git = "https://github.com/input-output-hk/vit-servicing-station", branch = "master" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 iapyx = {path = "../iapyx"}
-poldercast = { git = "https://github.com/primetype/poldercast.git" }
+poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"
