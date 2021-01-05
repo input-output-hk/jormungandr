@@ -27,7 +27,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
-pub use load::{BatchFragmentGenerator, FragmentStatusProvider, TransactionGenerator};
+pub use load::{BatchFragmentGenerator, FragmentStatusProvider, TransactionGenerator,VoteCastsGenerator};
 use thiserror::Error;
 
 mod adversary;
