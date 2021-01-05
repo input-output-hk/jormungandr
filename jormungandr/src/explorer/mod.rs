@@ -390,17 +390,19 @@ impl ExplorerDB {
             .await
     }
 
-    pub async fn find_block_by_chain_length(
-        &self,
-        chain_length: ChainLength,
-    ) -> Option<HeaderHash> {
-        self.with_latest_state(move |state| {
-            state
-                .chain_lengths
-                .lookup(&chain_length)
-                .map(|b| *b.as_ref())
-        })
-        .await
+    pub async fn find_blocks_by_chain_length(&self, chain_length: ChainLength) -> Vec<HeaderHash> {
+        let mut hashes = Vec::new();
+
+        for (_hash, state) in self.multiverse.tips().await.iter() {
+            if let Some(hash) = state.chain_lengths.lookup(&chain_length) {
+                hashes.push(**hash);
+            }
+        }
+
+        hashes.sort_unstable();
+        hashes.dedup();
+
+        hashes
     }
 
     pub async fn find_blocks_by_transaction(&self, transaction_id: &FragmentId) -> Vec<HeaderHash> {

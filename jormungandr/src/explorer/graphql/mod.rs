@@ -1298,15 +1298,20 @@ impl Query {
         Block::from_string_hash(id, &context.db).await
     }
 
-    async fn block_by_chain_length(
+    async fn blocks_by_chain_length(
         length: ChainLength,
         context: &Context,
-    ) -> FieldResult<Option<Block>> {
-        Ok(context
+    ) -> FieldResult<Vec<Block>> {
+        let blocks = context
             .db
-            .find_block_by_chain_length(length.try_into()?)
+            .find_blocks_by_chain_length(length.try_into()?)
             .await
-            .map(Block::from_valid_hash))
+            .iter()
+            .cloned()
+            .map(Block::from_valid_hash)
+            .collect();
+
+        Ok(blocks)
     }
 
     /// query all the blocks in a paginated view
