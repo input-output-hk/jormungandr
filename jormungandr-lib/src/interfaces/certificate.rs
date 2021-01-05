@@ -103,7 +103,7 @@ impl property::Serialize for Certificate {
 }
 
 impl Readable for Certificate {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+    fn read<'a>(buf: &mut ReadBuf<'_>) -> Result<Self, ReadError> {
         match buf.get_u8()? {
             1 => {
                 let cert = certificate::StakeDelegation::read(buf)?;
@@ -201,7 +201,7 @@ impl property::Serialize for SignedCertificate {
 }
 
 impl Readable for SignedCertificate {
-    fn read<'a>(buf: &mut ReadBuf<'a>) -> Result<Self, ReadError> {
+    fn read<'a>(buf: &mut ReadBuf<'_>) -> Result<Self, ReadError> {
         match buf.get_u8()? {
             1 => {
                 let cert = certificate::StakeDelegation::read(buf)?;

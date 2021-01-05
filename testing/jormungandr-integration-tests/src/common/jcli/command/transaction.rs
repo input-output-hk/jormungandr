@@ -112,10 +112,7 @@ impl TransactionCommand {
         witness_file: P,
         witness_key: Q,
     ) -> Self {
-        let spending_counter = match spending_account_counter {
-            Some(value) => value,
-            None => 0,
-        };
+        let spending_counter = spending_account_counter.unwrap_or(0);
 
         self.command
             .arg("make-witness")

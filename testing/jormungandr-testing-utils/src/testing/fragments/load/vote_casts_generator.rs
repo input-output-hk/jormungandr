@@ -1,11 +1,8 @@
 use crate::{
-    testing::{RemoteJormungandr, FragmentSender,FragmentSenderError,MemPoolCheck},
+    testing::{FragmentSender, FragmentSenderError, MemPoolCheck, RemoteJormungandr},
     wallet::Wallet,
 };
-use chain_impl_mockchain::{
-    certificate::VotePlan,
-    vote::Choice,
-};
+use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
 use jortestkit::load::{RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
@@ -16,7 +13,7 @@ pub struct VoteCastsGenerator<'a> {
     node: RemoteJormungandr,
     rand: OsRng,
     fragment_sender: FragmentSender<'a>,
-    send_marker: usize
+    send_marker: usize,
 }
 
 impl<'a> VoteCastsGenerator<'a> {
@@ -32,7 +29,7 @@ impl<'a> VoteCastsGenerator<'a> {
             node,
             rand: OsRng,
             fragment_sender,
-            send_marker: 0
+            send_marker: 0,
         }
     }
 
@@ -43,7 +40,7 @@ impl<'a> VoteCastsGenerator<'a> {
         }
 
         let mut voter = self.voters.get_mut(self.send_marker).unwrap();
-        
+
         let choice = Choice::new((self.rand.next_u32() % 3) as u8);
         let proposal_index = self.rand.next_u32() % (self.vote_plan.proposals().len() as u32);
 
