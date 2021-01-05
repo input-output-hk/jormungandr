@@ -31,14 +31,14 @@ impl TallyCommand {
         threshold: u32,
     ) -> Self {
         self.command
-            .arg("decrypt-with-shares")
+            .arg("decrypt")
             .arg("--tally")
             .arg(encrypted_tally.as_ref())
-            .arg("--maxvotes")
+            .arg("--max-votes")
             .arg(max_votes.to_string())
             .arg("--shares")
             .arg(shares.as_ref())
-            .arg("--tablesize")
+            .arg("--table-size")
             .arg(tablesize.to_string())
             .arg("--threshold")
             .arg(threshold.to_string());
