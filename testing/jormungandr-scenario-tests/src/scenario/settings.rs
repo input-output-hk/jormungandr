@@ -1,10 +1,14 @@
+use crate::scenario::WalletAlias;
 use crate::vit_station::VitStationSettings;
 use crate::{scenario::Context, style};
-
+use assert_fs::fixture::ChildPath;
+use assert_fs::fixture::PathChild;
 use chain_impl_mockchain::{
     certificate::VotePlan,
     testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
+    vote::PayloadType,
 };
+use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{Explorer, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest},
@@ -15,6 +19,7 @@ use jormungandr_testing_utils::testing::network_builder::{
     Settings as NetworkBuilderSettings, Topology as TopologyTemplate, WalletTemplate, WalletType,
 };
 use jormungandr_testing_utils::testing::network_builder::{Random, WalletProxySettings};
+use jormungandr_testing_utils::wallet::PrivateVoteCommitteeDataManager;
 use rand_core::{CryptoRng, RngCore};
 use std::collections::HashMap;
 use std::io::Write;
@@ -58,10 +63,13 @@ pub trait PrepareSettings {
         RNG: RngCore + CryptoRng;
 }
 
+pub type VotePlanAlias = String;
+
 #[derive(Debug)]
 pub struct Settings {
     pub network_settings: NetworkBuilderSettings,
     pub vit_stations: HashMap<NodeAlias, ServiceSettings>,
+    pub private_vote_plans: HashMap<VotePlanAlias, PrivateVoteCommitteeDataManager>,
 }
 
 impl Settings {
@@ -77,20 +85,40 @@ impl Settings {
     {
         let network_settings =
             NetworkBuilderSettings::new(nodes, blockchain.clone(), wallet_proxies, rng);
-        let mut settings = Settings {
+        let mut settings = Self {
             network_settings,
             vit_stations,
+            private_vote_plans: HashMap::new(),
         };
-        settings.populate_block0_blockchain_vote_plans(blockchain.vote_plans());
+        settings.populate_block0_blockchain_vote_plans(
+            blockchain.vote_plans(),
+            blockchain.committees(),
+            rng.rng_mut(),
+        );
 
         println!("{:?}", settings);
 
         settings
     }
 
-    fn populate_block0_blockchain_vote_plans(&mut self, vote_plans: Vec<VotePlanDef>) {
+    pub fn dump_private_vote_keys(&self, directory: ChildPath) {
+        for (vote_plan, data) in self.private_vote_plans.iter() {
+            let vote_plan_dir = directory.child(format!("{}_committees", vote_plan));
+            data.write_to(vote_plan_dir).unwrap();
+        }
+    }
+
+    fn populate_block0_blockchain_vote_plans<RNG>(
+        &mut self,
+        mut vote_plans: Vec<VotePlanDef>,
+        committees_aliases: Vec<WalletAlias>,
+        rng: &mut RNG,
+    ) where
+        RNG: RngCore + CryptoRng,
+    {
         let mut vote_plans_fragments = Vec::new();
-        for vote_plan_def in vote_plans {
+
+        for vote_plan_def in vote_plans.iter_mut() {
             let owner = self
                 .network_settings
                 .wallets
@@ -102,7 +130,34 @@ impl Settings {
                         vote_plan_def.alias()
                     )
                 });
-            let vote_plan: VotePlan = vote_plan_def.into();
+
+            // workaround beacuse vote_plan_def does not expose payload_type
+            let tmp_vote_plan: VotePlan = vote_plan_def.clone().into();
+
+            let vote_plan: VotePlan = match tmp_vote_plan.payload_type() {
+                PayloadType::Public => vote_plan_def.clone().into(),
+                PayloadType::Private => {
+                    let mut wallets = self.network_settings.wallets.clone();
+                    let committees: Vec<(WalletAlias, Identifier)> = committees_aliases
+                        .iter()
+                        .map(|x| {
+                            let wallet = wallets.get_mut(x).unwrap();
+                            (x.clone(), wallet.identifier().into())
+                        })
+                        .collect();
+                    let threshold = committees.len();
+                    let manager = PrivateVoteCommitteeDataManager::new(rng, committees, threshold);
+
+                    vote_plan_def
+                        .committee_keys_mut()
+                        .extend(manager.member_public_keys());
+                    self.private_vote_plans
+                        .insert(vote_plan_def.alias(), manager);
+                    println!("{:#?}", vote_plan_def);
+                    vote_plan_def.clone().into()
+                }
+            };
+
             vote_plans_fragments.push(create_initial_vote_plan(
                 &vote_plan,
                 &[owner.clone().into()],

@@ -9,6 +9,7 @@ use crate::test::Result;
 use assert_fs::fixture::PathChild;
 use chain_crypto::SecretKey;
 use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
+use chain_impl_mockchain::vote::PayloadType;
 use chain_impl_mockchain::{
     testing::scenario::template::{ProposalDefBuilder, VotePlanDefBuilder},
     value::Value,
@@ -39,6 +40,7 @@ pub struct QuickVitBackendSettingsBuilder {
     slots_per_epoch: u32,
     voting_power: u64,
     fund_name: String,
+    private: bool,
 }
 
 impl Default for QuickVitBackendSettingsBuilder {
@@ -67,6 +69,7 @@ impl QuickVitBackendSettingsBuilder {
             tally_end_timestamp: None,
             next_vote_start_time: None,
             fund_name: "fund_3".to_owned(),
+            private: false,
         }
     }
 
@@ -85,6 +88,7 @@ impl QuickVitBackendSettingsBuilder {
         self.vote_start = vote_start_epoch as u64;
         self
     }
+
     pub fn tally_start_epoch(&mut self, tally_start_epoch: u32) -> &mut Self {
         self.vote_tally = tally_start_epoch as u64;
         self
@@ -145,6 +149,10 @@ impl QuickVitBackendSettingsBuilder {
 
     pub fn fund_name(&self) -> String {
         self.fund_name.to_string()
+    }
+
+    pub fn private(&mut self, private: bool) {
+        self.private = private;
     }
 
     pub fn recalculate_voting_periods_if_needed(&mut self, block0_date: SecondsSinceUnixEpoch) {
@@ -247,6 +255,9 @@ impl QuickVitBackendSettingsBuilder {
         let committe_wallet = WalletTemplate::new_account(committe_wallet_name, Value(1_000_000));
         blockchain.add_wallet(committe_wallet);
         let mut i = 1u32;
+
+        let child = context.child_directory(title);
+
         for initial in self.initials.iter() {
             let wallet_alias = format!("wallet_{}_with_{}", i, initial);
             let wallet = WalletTemplate::new_utxo(wallet_alias.clone(), Value(*initial));
@@ -255,7 +266,6 @@ impl QuickVitBackendSettingsBuilder {
 
             let sk = SecretKey::generate(rand::thread_rng());
             let qr = KeyQrCode::generate(sk, &password.as_bytes().to_vec());
-            let child = context.child_directory(title);
             let svg = child.child(format!("{}_{}.svg", wallet_alias, password));
             qr.write_svg(svg.path()).unwrap();
 
@@ -267,6 +277,10 @@ impl QuickVitBackendSettingsBuilder {
 
         let mut vote_plan_builder = VotePlanDefBuilder::new(&self.fund_name());
         vote_plan_builder.owner(committe_wallet_name);
+
+        if self.private {
+            vote_plan_builder.payload_type(PayloadType::Private);
+        }
         vote_plan_builder.vote_phases(
             self.vote_start as u32,
             self.vote_tally as u32,
@@ -289,6 +303,8 @@ impl QuickVitBackendSettingsBuilder {
         builder.build_settings(&mut context);
 
         let controller = builder.build(context)?;
+
+        controller.settings().dump_private_vote_keys(child);
 
         self.recalculate_voting_periods_if_needed(
             controller

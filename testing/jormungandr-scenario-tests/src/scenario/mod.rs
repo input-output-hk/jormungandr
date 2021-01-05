@@ -14,7 +14,6 @@ pub use chain_impl_mockchain::{
 pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
-
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
 pub use jormungandr_testing_utils::testing::network_builder::{
@@ -76,7 +75,7 @@ macro_rules! prepare_scenario {
                 $($legacy_wallet_name:tt address $legacy_wallet_address:tt mnemonics $legacy_wallet_mnemonics:tt with $initial_legacy_funds:tt,)+
             ],)?
             $(vote_plans = [
-                $($fund_name:tt from $fund_owner:tt through epochs $vote_start:tt->$vote_tally:tt->$vote_end:tt contains proposals = [
+                $($fund_name:tt from $fund_owner:tt through epochs $vote_start:tt->$vote_tally:tt->$vote_end:tt as $vote_type:tt contains proposals = [
                     $(proposal adds $action_value:tt to $action_target:tt with $proposal_options_count:tt vote options),+ $(,)*
                 ]
             )*],)?
@@ -160,6 +159,16 @@ macro_rules! prepare_scenario {
             $(
                 let mut vote_plan_builder = chain_impl_mockchain::testing::scenario::template::VotePlanDefBuilder::new($fund_name);
                 vote_plan_builder.owner($fund_owner);
+
+                match $vote_type {
+                    "public" => {
+                        vote_plan_builder.payload_type(chain_impl_mockchain::vote::PayloadType::Public);
+                    }
+                    "private" => {
+                        vote_plan_builder.payload_type(chain_impl_mockchain::vote::PayloadType::Private);
+                    }
+                    _ => panic!("unknown vote plan type")
+                }
 
                 let vote_start: u32 = $vote_start.to_owned() as u32;
                 let vote_tally: u32 = $vote_tally.to_owned() as u32;

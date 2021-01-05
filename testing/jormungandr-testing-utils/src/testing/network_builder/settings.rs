@@ -146,7 +146,7 @@ impl Settings {
         settings.populate_block0_blockchain_legacy(blockchain.legacy_wallets());
         settings.populate_block0_blockchain_external(blockchain.external_wallets());
 
-        println!("{:?}", settings);
+        println!("{:#?}", settings);
 
         settings
     }
