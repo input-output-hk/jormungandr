@@ -206,7 +206,9 @@ pub fn jcli_e2e_flow_private_vote() {
             jormungandr_lib::interfaces::PrivateTallyState::Encrypted {
                 encrypted_tally,
                 total_stake: _,
-            } => serde_json::to_string(&encrypted_tally).unwrap(),
+            } => serde_json::to_string(&encrypted_tally)
+                .unwrap()
+                .replace("\"", ""),
             _ => panic!("tally state should be encrypted"),
         },
         _ => panic!("voting should be private"),
