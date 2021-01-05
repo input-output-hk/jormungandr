@@ -15,7 +15,6 @@ pub use fragments::{
     FragmentBuilder, FragmentBuilderError, FragmentGenerator, FragmentNode, FragmentNodeError,
     FragmentSender, FragmentSenderError, FragmentSenderSetup, FragmentSenderSetupBuilder,
     FragmentStatusProvider, FragmentVerifier, FragmentVerifierError, MemPoolCheck, VerifyStrategy,
-    VoteCastsGenerator
 };
 pub use jortestkit::archive::decompress;
 pub use jortestkit::github::{GitHubApi, GitHubApiError, Release};

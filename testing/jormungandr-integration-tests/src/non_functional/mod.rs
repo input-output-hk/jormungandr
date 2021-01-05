@@ -35,9 +35,6 @@ pub mod fragment;
 #[cfg(feature = "sanity-non-functional")]
 pub mod bootstrap;
 
-#[cfg(feature = "sanity-non-functional")]
-pub mod voting;
-
 use crate::common::{
     jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
