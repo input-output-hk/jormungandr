@@ -58,7 +58,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let member_pk_bytes = Vec::<u8>::from_base32(&member_pk_bech32).unwrap();
 
     let vote_plan = VotePlanBuilder::new()
-        .proposals_count(3)
+        .proposals_count(1)
         .action_type(VoteAction::OffChain)
         .private()
         .vote_start(BlockDate::from_epoch_slot_id(1, 0))
@@ -118,7 +118,8 @@ pub fn jcli_e2e_flow_private_vote() {
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
     let vote_cast = jcli.certificate().new_private_vote_cast(
         vote_plan_id.clone(),
-        0,
+        // should be 0
+        1,
         yes_choice,
         3,
         encrypting_vote_key,
