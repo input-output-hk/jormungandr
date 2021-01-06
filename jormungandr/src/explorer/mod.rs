@@ -30,7 +30,10 @@ use chain_impl_mockchain::fee::LinearFee;
 use futures::prelude::*;
 use multiverse::Multiverse;
 use std::convert::Infallible;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Arc,
+};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
@@ -59,7 +62,13 @@ pub struct ExplorerDB {
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
-    confirmed_block_chain_length: Arc<RwLock<ChainLength>>,
+    stable_store: StableIndex,
+}
+
+#[derive(Clone)]
+pub struct StableIndex {
+    confirmed_block_chain_length: Arc<AtomicU32>,
+    transactions_by_address: Arc<RwLock<Addresses>>,
 }
 
 #[derive(Clone)]
@@ -201,7 +210,10 @@ impl ExplorerDB {
             blockchain_config,
             blockchain: blockchain.clone(),
             blockchain_tip,
-            confirmed_block_chain_length: Arc::new(RwLock::new(ChainLength::from(0))),
+            stable_store: StableIndex {
+                confirmed_block_chain_length: Arc::new(AtomicU32::default()),
+                transactions_by_address: Default::default(),
+            },
         };
 
         let maybe_head = blockchain.storage().get_tag(MAIN_BRANCH_TAG)?;
@@ -318,10 +330,9 @@ impl ExplorerDB {
             if let Some(confirmed_block_chain_length) =
                 chain_length.nth_ancestor(self.blockchain_config.epoch_stability_depth)
             {
-                {
-                    let mut guard = self.confirmed_block_chain_length.write().await;
-                    *guard = confirmed_block_chain_length;
-                }
+                self.stable_store
+                    .confirmed_block_chain_length
+                    .store(confirmed_block_chain_length.into(), Ordering::Release);
 
                 let confirmed_id = state_ref
                     .state()
@@ -333,6 +344,10 @@ impl ExplorerDB {
 
                 // TODO: this should go to a stable storage
                 let _block = confirmed_ref.state().blocks.lookup(confirmed_id).unwrap();
+
+                let addresses = confirmed_ref.state().addresses.clone();
+
+                *self.stable_store.transactions_by_address.write().await = addresses;
 
                 multiverse
                     .gc(self.blockchain_config.epoch_stability_depth)
@@ -378,8 +393,12 @@ impl ExplorerDB {
 
     pub async fn is_block_confirmed(&self, block_id: &HeaderHash) -> bool {
         if let Some(block) = self.get_block(block_id).await {
-            let confirmed_block_chain_length = self.confirmed_block_chain_length.read().await;
-            block.chain_length <= *confirmed_block_chain_length
+            let confirmed_block_chain_length: ChainLength = self
+                .stable_store
+                .confirmed_block_chain_length
+                .load(Ordering::Acquire)
+                .into();
+            block.chain_length <= confirmed_block_chain_length
         } else {
             false
         }
@@ -424,13 +443,25 @@ impl ExplorerDB {
         address: &ExplorerAddress,
     ) -> Option<PersistentSequence<FragmentId>> {
         let address = address.clone();
-        self.with_latest_state(move |state| {
-            state
-                .addresses
-                .lookup(&address)
-                .map(|set| set.as_ref().clone())
-        })
-        .await
+
+        let txs = self.stable_store.transactions_by_address.read().await;
+
+        let confirmed = PersistentSequence::clone(txs.lookup(&address)?);
+        let confirmed_len = confirmed.len();
+
+        Some(
+            self.multiverse
+                .tips()
+                .await
+                .iter()
+                .fold(confirmed, |list, (_tip_hash, state)| {
+                    let new = state.addresses.lookup(&address).unwrap();
+                    for i in confirmed_len..new.len() {
+                        list.append(**new.get(i).unwrap());
+                    }
+                    list
+                }),
+        )
     }
 
     // Get the hashes of all blocks in the range [from, to)
