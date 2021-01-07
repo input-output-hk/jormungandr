@@ -438,7 +438,7 @@ impl ExplorerDB {
             .collect()
     }
 
-    pub async fn get_transactions_by_address(
+    pub async fn confirmed_transactions_by_address(
         &self,
         address: &ExplorerAddress,
     ) -> Option<PersistentSequence<FragmentId>> {
@@ -446,22 +446,46 @@ impl ExplorerDB {
 
         let txs = self.stable_store.transactions_by_address.read().await;
 
+        txs.lookup(&address)
+            .map(|txs| PersistentSequence::clone(txs))
+    }
+
+    /// returns transactions of a given address
+    /// the order is such that transactions are ordered by inclusion, without
+    /// using the branch information.
+    pub async fn unconfirmed_transactions_by_address(
+        &self,
+        address: &ExplorerAddress,
+    ) -> Option<Vec<FragmentId>> {
+        let address = address.clone();
+
+        let txs = self.stable_store.transactions_by_address.read().await;
+
         let confirmed = PersistentSequence::clone(txs.lookup(&address)?);
         let confirmed_len = confirmed.len();
 
-        Some(
+        let mut txs =
             self.multiverse
                 .tips()
                 .await
                 .iter()
-                .fold(confirmed, |list, (_tip_hash, state)| {
+                .fold(Vec::new(), |mut txs, (_tip_hash, state)| {
                     let new = state.addresses.lookup(&address).unwrap();
                     for i in confirmed_len..new.len() {
-                        list.append(**new.get(i).unwrap());
+                        let tx_id = **new.get(i).unwrap();
+                        txs.push((tx_id, i));
                     }
-                    list
-                }),
-        )
+                    txs
+                });
+
+        // using a stable sort here makes things a bit more consistent
+        txs.sort_by_key(|(hash, _)| *hash);
+        txs.dedup_by_key(|(hash, _)| *hash);
+        txs.sort_by_key(|(_, idx)| *idx);
+
+        let txs = txs.iter().map(|(hash, _)| *hash).collect();
+
+        Some(txs)
     }
 
     // Get the hashes of all blocks in the range [from, to)

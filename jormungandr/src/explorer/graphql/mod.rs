@@ -519,14 +519,22 @@ impl Address {
     ) -> FieldResult<TransactionConnection> {
         let transactions = context
             .db
-            .get_transactions_by_address(&self.id)
+            .confirmed_transactions_by_address(&self.id)
             .await
             .unwrap_or_else(PersistentSequence::<FragmentId>::new);
 
-        let boundaries = if transactions.len() > 0 {
+        let unconfirmed = context
+            .db
+            .unconfirmed_transactions_by_address(&self.id)
+            .await
+            .unwrap_or_else(Vec::new);
+
+        let len = transactions.len() + unconfirmed.len() as u64;
+
+        let boundaries = if len > 0 {
             PaginationInterval::Inclusive(InclusivePaginationInterval {
                 lower_bound: 0u64,
-                upper_bound: transactions.len(),
+                upper_bound: len,
             })
         } else {
             PaginationInterval::Empty
@@ -549,7 +557,9 @@ impl Address {
                     .filter_map(|i| {
                         transactions
                             .get(i)
-                            .map(|h| (TransactionNodeFetchInfo::Id(*h.as_ref()), i))
+                            .map(|h| HeaderHash::clone(h))
+                            .or_else(|| unconfirmed.get((i - transactions.len()) as usize).cloned())
+                            .map(|h| (TransactionNodeFetchInfo::Id(h), i))
                     })
                     .collect(),
             },
