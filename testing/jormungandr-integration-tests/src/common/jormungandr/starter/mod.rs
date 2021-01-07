@@ -332,9 +332,9 @@ impl Starter {
     pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
         let (params, temp_dir) = self.build_configuration()?;
         if let Some(version) = self.legacy.as_ref() {
-            ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?.start_async()
+            Ok(ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?.start_async())
         } else {
-            ConfiguredStarter::new(self, params, temp_dir).start_async()
+            Ok(ConfiguredStarter::new(self, params, temp_dir).start_async())
         }
     }
 
@@ -408,7 +408,7 @@ where
         let timeout = self.starter.timeout;
 
         let start = Instant::now();
-        let _process = self.start_async()?;
+        let _process = self.start_async();
 
         loop {
             let logger = JormungandrLogger::new(log_file_path.clone());
@@ -453,13 +453,13 @@ where
             .expect("failed to execute 'start jormungandr node'")
     }
 
-    fn start_async(self) -> Result<JormungandrProcess, StartupError> {
-        Ok(JormungandrProcess::from_config(
+    fn start_async(self) -> JormungandrProcess {
+        JormungandrProcess::from_config(
             self.start_process(),
             &self.params,
             self.temp_dir,
             self.starter.alias.clone(),
-        ))
+        )
     }
 
     fn start(mut self) -> Result<JormungandrProcess, StartupError> {

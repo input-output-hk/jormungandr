@@ -66,19 +66,19 @@ impl RequestGenerator for ExplorerRequestGen {
     fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
         let result = match self.next_usize() % 7 {
             0 => {
-                let limit = self.next_usize_in_range(1, 1000) as i64;
+                let limit = self.next_usize_in_range(1, 10) as i64;
                 self.explorer.stake_pools(limit).map(|_| ()).map_err(|e| {
-                    RequestFailure::General(format!("Explorer - StakePools: {}", e.to_string()))
+                    RequestFailure::General(format!("Explorer - StakePools: {:?}", e))
                 })
             }
             1 => {
-                let limit = self.next_usize_in_range(1, 1000) as i64;
+                let limit = self.next_usize_in_range(1, 10) as i64;
                 self.explorer.blocks(limit).map(|_| ()).map_err(|e| {
-                    RequestFailure::General(format!("Explorer- Blocks: {}", e.to_string()))
+                    RequestFailure::General(format!("Explorer- Blocks: {:?}", e))
                 })
             }
             2 => self.explorer.last_block().map(|_| ()).map_err(|e| {
-                RequestFailure::General(format!("Explorer - LastBlock: {}", e.to_string()))
+                RequestFailure::General(format!("Explorer - LastBlock: {:?}", e))
             }),
             3 => {
                 let limit = self.next_usize_in_range(1, 30) as u32;
@@ -87,8 +87,8 @@ impl RequestGenerator for ExplorerRequestGen {
                     .map(|_| ())
                     .map_err(|e| {
                         RequestFailure::General(format!(
-                            "Explorer - BlockAtChainLength: {}",
-                            e.to_string()
+                            "Explorer - BlockAtChainLength: {:?}",
+                            e
                         ))
                     })
             }
@@ -99,7 +99,7 @@ impl RequestGenerator for ExplorerRequestGen {
                     .epoch(epoch_nr, limit)
                     .map(|_| ())
                     .map_err(|e| {
-                        RequestFailure::General(format!("Explorer - Epoch: {}", e.to_string()))
+                        RequestFailure::General(format!("Explorer - Epoch: {:?}", e))
                     })
             }
             5 => {
@@ -111,39 +111,39 @@ impl RequestGenerator for ExplorerRequestGen {
                         .map(|_| ())
                         .map_err(|e| {
                             RequestFailure::General(format!(
-                                "Explorer - StakePool: {}",
-                                e.to_string()
+                                "Explorer - StakePool: {:?}",
+                                e
                             ))
                         })
                 } else {
                     explorer
                         .status()
                         .map(|_| ())
-                        .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))
+                        .map_err(|e| RequestFailure::General(format!("Status: {:?}", e)))
                 }
             }
             6 => self
                 .explorer
                 .status()
                 .map(|_| ())
-                .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string()))),
+                .map_err(|e| RequestFailure::General(format!("Status: {:?}", e))),
             7 => {
                 let limit = self.next_usize_in_range(1, 1000) as i64;
                 self.explorer.vote_plans(limit).map(|_| ()).map_err(|e| {
-                    RequestFailure::General(format!("Explorer - VotePlans: {}", e.to_string()))
+                    RequestFailure::General(format!("Explorer - VotePlans: {:?}", e))
                 })
             }
             8 => {
                 let explorer = self.explorer.clone();
                 if let Some(pool_id) = self.next_address() {
                     explorer.address(pool_id).map(|_| ()).map_err(|e| {
-                        RequestFailure::General(format!("Explorer - Address: {}", e.to_string()))
+                        RequestFailure::General(format!("Explorer - Address: {:?}", e))
                     })
                 } else {
                     explorer
                         .status()
                         .map(|_| ())
-                        .map_err(|e| RequestFailure::General(format!("Status: {}", e.to_string())))
+                        .map_err(|e| RequestFailure::General(format!("Status: {:?}", e)))
                 }
             }
             _ => unreachable!(),
