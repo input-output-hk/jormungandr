@@ -1,7 +1,10 @@
-use crate::common::load::FragmentLoadCommandError;
+use crate::mjolnir_app::MjolnirError;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
-    testing::{fragments::TransactionGenerator, FragmentSenderSetup, RemoteJormungandrBuilder},
+    testing::{
+        BatchFragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
+        RemoteJormungandrBuilder,
+    },
     wallet::Wallet,
 };
 use jortestkit::prelude::parse_progress_bar_mode_from_str;
@@ -13,19 +16,14 @@ use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 pub struct TxOnly {
-    /// Prints nodes related data, like stats,fragments etc.
+    /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
 
     /// address in format:
     /// /ip4/54.193.75.55/tcp/3000
-    #[structopt(short = "a", long = "address")]
+    #[structopt(short = "e", long = "endpoint")]
     pub endpoint: String,
-
-    /// address in format:
-    /// /ip4/54.193.75.55/tcp/3000
-    #[structopt(short = "e", long = "explorer")]
-    pub explorer_endpoint: String,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "p", long = "pace", default_value = "2")]
@@ -55,12 +53,9 @@ pub struct TxOnly {
 }
 
 impl TxOnly {
-    pub fn exec(&self) -> Result<(), FragmentLoadCommandError> {
-        let title = "standard load only transactions";
-        let mut faucet = Wallet::import_account(
-            self.faucet_key_file.clone(),
-            Some(self.faucet_spending_counter),
-        );
+    pub fn exec(&self) -> Result<(), MjolnirError> {
+        let mut faucet =
+            Wallet::import_account(&self.faucet_key_file, Some(self.faucet_spending_counter));
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();
@@ -70,13 +65,14 @@ impl TxOnly {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let mut generator = TransactionGenerator::new(
+        let mut request_gen = BatchFragmentGenerator::new(
             FragmentSenderSetup::no_verify(),
-            remote_jormungandr,
+            remote_jormungandr.clone(),
             block0_hash,
             fees,
+            10,
         );
-        generator.fill_from_faucet(&mut faucet);
+        request_gen.fill_from_faucet(&mut faucet);
 
         let config = Configuration::duration(
             self.count,
@@ -85,8 +81,14 @@ impl TxOnly {
             self.build_monitor(),
             30,
         );
-        let stats = jortestkit::load::start_sync(generator, config, title);
-        stats.print_summary(title);
+
+        let status_provider = FragmentStatusProvider::new(remote_jormungandr);
+
+        let stats =
+            jortestkit::load::start_async(request_gen, status_provider, config, "rest  test");
+        if self.measure {
+            assert!((stats.calculate_passrate() as u32) > 95);
+        }
         Ok(())
     }
 

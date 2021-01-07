@@ -1,11 +1,11 @@
 use super::ScenarioProgressBar;
-use crate::common::load::{bootstrap::ClientLoadConfig, ClientLoadError};
+use crate::mjolnir_app::bootstrap::ClientLoadConfig;
+use crate::mjolnir_app::MjolnirError;
 use assert_fs::TempDir;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::NodeState;
 use jormungandr_testing_utils::testing::{benchmark_speed, SpeedBenchmarkFinish};
 use std::{thread, time};
-
 pub struct IterationBasedClientLoad {
     config: ClientLoadConfig,
     sync_iteration: u32,
@@ -29,8 +29,7 @@ impl IterationBasedClientLoad {
         id: u32,
         iteration: u32,
         multi_progress: &MultiProgress,
-    ) -> Result<thread::JoinHandle<Result<SpeedBenchmarkFinish, ClientLoadError>>, ClientLoadError>
-    {
+    ) -> Result<thread::JoinHandle<Result<SpeedBenchmarkFinish, MjolnirError>>, MjolnirError> {
         let storage_folder_name = self.get_storage_name(id, iteration);
 
         let progress_bar = ScenarioProgressBar::new(
@@ -58,7 +57,7 @@ impl IterationBasedClientLoad {
         }))
     }
 
-    pub fn run(&self) -> Result<(), ClientLoadError> {
+    pub fn run(&self) -> Result<(), MjolnirError> {
         let m = MultiProgress::new();
         let mut results = vec![];
 
@@ -68,7 +67,7 @@ impl IterationBasedClientLoad {
             let mut handles = vec![];
             let mut temp_dirs = vec![];
 
-            for client_id in 1..=self.config.count {
+            for client_id in 1..=self.config.count() {
                 let temp_dir = TempDir::new().unwrap();
                 handles.push(self.start_node(&temp_dir, client_id, iter, &m)?);
                 temp_dirs.push(temp_dir);
@@ -79,12 +78,12 @@ impl IterationBasedClientLoad {
                 results.push(
                     handle
                         .join()
-                        .map_err(|_| ClientLoadError::InternalClientError)?,
+                        .map_err(|_| MjolnirError::InternalClientError)?,
                 );
             }
         }
 
-        if self.config.measure {
+        if self.config.measure() {
             for overall_result in results {
                 if let Ok(measurement) = &overall_result {
                     println!("{}", measurement);

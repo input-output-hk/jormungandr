@@ -8,8 +8,6 @@ members = [
   "testing/jormungandr-testing-utils",
   "testing/jormungandr-integration-tests",
   "testing/jormungandr-scenario-tests",
-]
-
-exclude = [
-  "testing/iapyx"
+  "testing/iapyx",
+  "testing/mjolnir",
 ]

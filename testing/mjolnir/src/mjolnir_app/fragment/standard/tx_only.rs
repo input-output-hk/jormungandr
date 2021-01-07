@@ -1,10 +1,7 @@
-use crate::common::{load::FragmentLoadCommandError, startup};
+use crate::mjolnir_app::MjolnirError;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
-    testing::{
-        node::Explorer, FragmentGenerator, FragmentSender, FragmentSenderSetup,
-        FragmentStatusProvider, RemoteJormungandrBuilder,
-    },
+    testing::{fragments::TransactionGenerator, FragmentSenderSetup, RemoteJormungandrBuilder},
     wallet::Wallet,
 };
 use jortestkit::prelude::parse_progress_bar_mode_from_str;
@@ -14,10 +11,9 @@ use jortestkit::{
 };
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-
 #[derive(StructOpt, Debug)]
-pub struct AllFragments {
-    /// Prints nodes related data, like stats,fragments etc.
+pub struct TxOnly {
+    /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
 
@@ -25,11 +21,6 @@ pub struct AllFragments {
     /// /ip4/54.193.75.55/tcp/3000
     #[structopt(short = "a", long = "address")]
     pub endpoint: String,
-
-    /// address in format:
-    /// /ip4/54.193.75.55/tcp/3000
-    #[structopt(short = "e", long = "explorer")]
-    pub explorer_endpoint: String,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "p", long = "pace", default_value = "2")]
@@ -58,13 +49,14 @@ pub struct AllFragments {
     faucet_spending_counter: u32,
 }
 
-impl AllFragments {
-    pub fn exec(&self) -> Result<(), FragmentLoadCommandError> {
-        let title = "all fragment load test";
-        let faucet =
-            Wallet::import_account(&self.faucet_key_file, Some(self.faucet_spending_counter));
-        let receiver = startup::create_new_account_address();
-        let mut builder = RemoteJormungandrBuilder::new("node".to_string());
+impl TxOnly {
+    pub fn exec(&self) -> Result<(), MjolnirError> {
+        let title = "standard load only transactions";
+        let mut faucet = Wallet::import_account(
+            self.faucet_key_file.clone(),
+            Some(self.faucet_spending_counter),
+        );
+        let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();
 
@@ -73,18 +65,13 @@ impl AllFragments {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let fragment_sender =
-            FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
-
-        let mut generator = FragmentGenerator::new(
-            faucet,
-            receiver,
-            remote_jormungandr.clone(),
-            Explorer::new(self.explorer_endpoint.clone()),
-            settings.slots_per_epoch,
-            fragment_sender,
+        let mut generator = TransactionGenerator::new(
+            FragmentSenderSetup::no_verify(),
+            remote_jormungandr,
+            block0_hash,
+            fees,
         );
-        generator.prepare();
+        generator.fill_from_faucet(&mut faucet);
 
         let config = Configuration::duration(
             self.count,
@@ -93,13 +80,8 @@ impl AllFragments {
             self.build_monitor(),
             30,
         );
-
-        let fragment_status_provider = FragmentStatusProvider::new(remote_jormungandr);
-
-        let stats =
-            jortestkit::load::start_async(generator, fragment_status_provider, config, title);
+        let stats = jortestkit::load::start_sync(generator, config, title);
         stats.print_summary(title);
-
         Ok(())
     }
 

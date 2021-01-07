@@ -1,27 +1,25 @@
+mod config;
+mod scenario;
+
+use crate::mjolnir_app::MjolnirError;
 use chain_impl_mockchain::key::Hash;
-use jormungandr_integration_tests::common::load::{
-    ClientLoadConfig, ClientLoadError, PassiveBootstrapLoad, ScenarioType,
-};
+use config::{ClientLoadConfig, PassiveBootstrapLoad, ScenarioType};
 use jormungandr_testing_utils::testing::node::grpc::client::JormungandrClient;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
-
-pub fn main() -> Result<(), ClientLoadCommandError> {
-    ClientLoadCommand::from_args().exec()
-}
 
 #[derive(Error, Debug)]
 pub enum ClientLoadCommandError {
     #[error("No scenario defined for run. Available: [duration,iteration]")]
     NoScenarioDefined,
     #[error("Client Error")]
-    ClientError(#[from] ClientLoadError),
+    ClientError(#[from] MjolnirError),
 }
 
 #[derive(StructOpt, Debug)]
 pub struct ClientLoadCommand {
-    /// Prints nodes related data, like stats,fragments etc.
+    /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: u32,
     /// address in format:
