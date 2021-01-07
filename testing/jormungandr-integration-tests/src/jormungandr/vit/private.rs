@@ -26,6 +26,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let temp_dir = TempDir::new().unwrap();
 
     let yes_choice = Choice::new(1);
+    let no_choice = Choice::new(2);
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
@@ -116,20 +117,28 @@ pub fn jcli_e2e_flow_private_vote() {
     time::wait_for_epoch(1, jormungandr.explorer());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
-    let vote_cast = jcli.certificate().new_private_vote_cast(
+    let yes_vote_cast = jcli.certificate().new_private_vote_cast(
         vote_plan_id.clone(),
-        // should be 0
-        1,
+        0,
         yes_choice,
+        3,
+        encrypting_vote_key.clone(),
+    );
+
+    let no_vote_cast = jcli.certificate().new_private_vote_cast(
+        vote_plan_id.clone(),
+        0,
+        no_choice,
         3,
         encrypting_vote_key,
     );
+
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
-        .add_certificate(&vote_cast)
+        .add_certificate(&yes_vote_cast)
         .finalize()
         .seal_with_witness_for_address(&alice)
         .to_message();
@@ -144,7 +153,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
         .add_account(&bob.address().to_string(), &Value::zero().into())
-        .add_certificate(&vote_cast)
+        .add_certificate(&yes_vote_cast)
         .finalize()
         .seal_with_witness_for_address(&bob)
         .to_message();
@@ -157,7 +166,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
         .add_account(&clarice.address().to_string(), &Value::zero().into())
-        .add_certificate(&vote_cast)
+        .add_certificate(&no_vote_cast)
         .finalize()
         .seal_with_witness_for_address(&clarice)
         .to_message();
