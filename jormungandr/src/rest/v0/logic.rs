@@ -181,7 +181,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
         .ok_or(Error::TipBlockNotFound)?
         .contents
         .iter()
-        .map(|fragment| {
+        .try_for_each::<_, Result<(), ValueError>>(|fragment| {
             fn totals<T>(t: &Transaction<T>) -> Result<(Value, Value), ValueError> {
                 Ok((t.total_input()?, t.total_output()?))
             }
@@ -207,8 +207,7 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
             let fee = (total_input - total_output).unwrap_or_else(|_| Value::zero());
             block_fee_sum = (block_fee_sum + fee)?;
             Ok(())
-        })
-        .collect::<Result<(), ValueError>>()?;
+        })?;
     let nodes_count = full_context.network_state.topology().nodes_count().await;
     let tip_header = tip.header();
     let stats = &full_context.stats_counter;
