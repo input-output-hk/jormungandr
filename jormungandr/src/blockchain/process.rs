@@ -188,12 +188,20 @@ impl Process {
     fn start_branch_reprocessing(&self, info: &TokioServiceInfo) {
         let tip = self.blockchain_tip.clone();
         let blockchain = self.blockchain.clone();
+        let explorer = self.explorer_msgbox.clone();
         let logger = info.logger().clone();
 
         info.run_periodic_fallible(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
-            move || reprocess_tip(logger.clone(), blockchain.clone(), tip.clone()),
+            move || {
+                reprocess_tip(
+                    logger.clone(),
+                    blockchain.clone(),
+                    tip.clone(),
+                    explorer.clone(),
+                )
+            },
         )
     }
 
@@ -279,7 +287,12 @@ fn try_request_fragment_removal(
 /// this function will re-process the tip against the different branches
 /// this is because a branch may have become more interesting with time
 /// moving forward and branches may have been dismissed
-async fn reprocess_tip(logger: Logger, mut blockchain: Blockchain, tip: Tip) -> Result<(), Error> {
+async fn reprocess_tip(
+    logger: Logger,
+    mut blockchain: Blockchain,
+    tip: Tip,
+    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+) -> Result<(), Error> {
     let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
 
     let tip_as_ref = tip.get_ref().await;
@@ -290,7 +303,14 @@ async fn reprocess_tip(logger: Logger, mut blockchain: Blockchain, tip: Tip) -> 
         .collect::<Vec<_>>();
 
     for other in others {
-        process_new_ref(&logger, &mut blockchain, tip.clone(), Arc::clone(other)).await?
+        process_new_ref(
+            &logger,
+            &mut blockchain,
+            tip.clone(),
+            Arc::clone(other),
+            explorer_msg_box.clone(),
+        )
+        .await?
     }
 
     Ok(())
@@ -310,6 +330,7 @@ pub async fn process_new_ref(
     blockchain: &mut Blockchain,
     mut tip: Tip,
     candidate: Arc<Ref>,
+    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
     let tip_ref = tip.get_ref().await;
@@ -354,6 +375,15 @@ pub async fn process_new_ref(
                 let branch = blockchain.branches_mut().apply_or_create(candidate).await;
                 tip.swap(branch).await;
             }
+
+            if let Some(mut msg_box) = explorer_msg_box {
+                msg_box
+                    .send(ExplorerMsg::NewTip(candidate_hash))
+                    .await
+                    .unwrap_or_else(|err| {
+                        error!(logger, "cannot send new tip to explorer: {}", err)
+                    });
+            }
         }
     }
 
@@ -366,11 +396,12 @@ async fn process_and_propagate_new_ref(
     tip: Tip,
     new_block_ref: Arc<Ref>,
     mut network_msg_box: MessageBox<NetworkMsg>,
+    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     debug!(logger, "processing the new block and propagating");
 
-    process_new_ref(logger, blockchain, tip, new_block_ref).await?;
+    process_new_ref(logger, blockchain, tip, new_block_ref, explorer_msg_box).await?;
 
     debug!(logger, "propagating block to the network");
     network_msg_box
@@ -406,6 +437,7 @@ async fn process_leadership_block(
         blockchain_tip,
         Arc::clone(&new_block_ref),
         network_msg_box,
+        explorer_msg_box.clone(),
     )
     .await?;
 
@@ -576,6 +608,7 @@ async fn process_network_blocks(
                 blockchain_tip,
                 Arc::clone(&new_block_ref),
                 network_msg_box,
+                explorer_msg_box,
             )
             .await?;
 
