@@ -1,6 +1,6 @@
 use crate::blockchain::Ref;
 use futures::stream::{FuturesUnordered, StreamExt};
-use std::{iter::FromIterator, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
@@ -76,19 +76,23 @@ impl BranchesData {
     }
 
     async fn apply(&mut self, candidate: Arc<Ref>) -> Option<Branch> {
-        let (value, _) = FuturesUnordered::from_iter(
-            self.branches
-                .iter_mut()
-                .map(|branch| branch.continue_with(Arc::clone(&candidate))),
-        )
-        .filter_map(|updated| Box::pin(async move { updated }))
-        .into_future()
-        .await;
+        let (value, _) = self
+            .branches
+            .iter_mut()
+            .map(|branch| branch.continue_with(Arc::clone(&candidate)))
+            .collect::<FuturesUnordered<_>>()
+            .filter_map(|updated| Box::pin(async move { updated }))
+            .into_future()
+            .await;
         value
     }
 
     async fn branches(&self) -> Vec<Arc<Ref>> {
-        FuturesUnordered::from_iter(self.branches.iter().map(|b| b.get_ref()))
+        self.branches
+            .iter()
+            .map(|b| b.get_ref())
+            // this is done so that inner futures are only polled when they generate wake-up notifications
+            .collect::<FuturesUnordered<_>>()
             .collect()
             .await
     }
