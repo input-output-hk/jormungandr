@@ -12,7 +12,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - !**.md
+      - '!**.md'
   pull_request:
     paths:
       - doc/api/**.yaml
@@ -22,7 +22,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - !**.md
+      - '!**.md'
 
 jobs:
 
