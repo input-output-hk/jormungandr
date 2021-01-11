@@ -77,13 +77,13 @@ pub fn tally_vote_load_test() {
         FragmentSenderSetup::no_verify(),
     );
 
-    let mut benchmark_consumption_monitor =
+    let benchmark_consumption_monitor =
         benchmark_consumption("tallying_public_vote_with_10_000_votes")
             .target(ResourcesUsage::new(10, 200_000, 5_000_000))
             .for_process("Node", jormungandr.pid() as usize)
             .start_async(std::time::Duration::from_secs(30));
 
-    let mut votes_generator = VoteCastsGenerator::new(
+    let votes_generator = VoteCastsGenerator::new(
         voters,
         vote_plan.clone(),
         jormungandr.to_remote(),
@@ -96,20 +96,6 @@ pub fn tally_vote_load_test() {
         configuration,
         "Wallet backend load test",
     );
-
-    let rewards_before = jormungandr
-        .explorer()
-        .status()
-        .unwrap()
-        .data
-        .unwrap()
-        .status
-        .latest_block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
 
     wait_for_epoch(5, jormungandr.explorer().clone());
 
@@ -124,7 +110,7 @@ pub fn tally_vote_load_test() {
 
     wait_for_epoch(6, jormungandr.explorer().clone());
 
-    benchmark_consumption_monitor.stop().unwrap();
+    benchmark_consumption_monitor.stop();
 
     jormungandr.assert_no_errors_in_log();
 }
