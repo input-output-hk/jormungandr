@@ -51,42 +51,6 @@ jobs:
           paths:
             - .circleci/crates.io-index.head
 
-  cargo_audit:
-    executor: rust-stable
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
-      - restore_cache:
-          name: Restore cargo registry index from cache
-          keys:
-            - cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
-      - run:
-          name: Get top commit hash of RustSec advisory database
-          command: |
-            git ls-remote --heads https://github.com/RustSec/advisory-db.git master |
-              cut -f 1 | tee .circleci/advisory-db.head
-      - restore_cache:
-          name: Restore advisory database from cache
-          keys:
-            - cargo-advisory-db-v2-{{ checksum ".circleci/advisory-db.head" }}
-            - cargo-advisory-db-v2-
-      - run:
-          name: Print Cargo Audit Version
-          command: cargo audit --version
-      - run:
-          name: Check Cargo Audit
-          command: |
-            cargo audit
-            git -C /usr/local/cargo/advisory-db \
-                show-ref -s refs/remotes/origin/master \
-              > .circleci/advisory-db.head
-      - save_cache:
-          name: Save advisory database into cache
-          key: cargo-advisory-db-v2-{{ checksum ".circleci/advisory-db.head" }}
-          paths:
-            - /usr/local/cargo/advisory-db
-
   test_debug:
     executor: rust-stable
     environment:
@@ -160,9 +124,6 @@ workflows:
   test_all:
     jobs:
       - cargo_fetch
-      - cargo_audit:
-          requires:
-            - cargo_fetch
       - test_debug:
           requires:
             - cargo_fetch
