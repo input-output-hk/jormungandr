@@ -29,7 +29,7 @@ jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.7"
 rand_core = "0.5"
-rand_chacha = "0.2"
+rand_chacha = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 custom_debug = "0.5"

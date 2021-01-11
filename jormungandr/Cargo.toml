@@ -40,7 +40,7 @@ linked-hash-map = "0.5"
 poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
 multiaddr = { package = "parity-multiaddr", version = "0.9" }
 rand = "0.7"
-rand_chacha = "0.2.2"
+rand_chacha = "0.3.0"
 rustls = "0.19.0"
 serde = "1.0"
 serde_derive = "1.0"
