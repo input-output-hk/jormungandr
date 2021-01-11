@@ -12,7 +12,8 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - !**.md
+      - '!**.md'
+      - .github/workflows/test.yml
   pull_request:
     paths:
       - doc/api/**.yaml
@@ -22,7 +23,8 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - !**.md
+      - '!**.md'
+      - .github/workflows/test.yml
 
 jobs:
 
