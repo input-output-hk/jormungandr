@@ -815,6 +815,6 @@ impl Tip {
     }
 
     async fn get_block_id(&self) -> HeaderHash {
-        self.0.read().await.clone()
+        *self.0.read().await
     }
 }
