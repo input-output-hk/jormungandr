@@ -5,7 +5,6 @@ use chain_vote::EncryptedTally;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, TallyResult};
 use rayon::prelude::*;
-use serde::Serialize;
 use std::convert::TryInto;
 use std::io::BufRead;
 use std::path::PathBuf;
