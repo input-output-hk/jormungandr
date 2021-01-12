@@ -25,7 +25,7 @@ impl TallyCommand {
     pub fn decrypt_with_shares<P: AsRef<Path>, R: AsRef<Path>>(
         mut self,
         encrypted_tally: P,
-        max_votes: u32,
+        votes_stake_limit: u64,
         shares: R,
         tablesize: u32,
         threshold: u32,
@@ -34,8 +34,8 @@ impl TallyCommand {
             .arg("decrypt")
             .arg("--tally")
             .arg(encrypted_tally.as_ref())
-            .arg("--max-votes")
-            .arg(max_votes.to_string())
+            .arg("--vote-stake-limit")
+            .arg(votes_stake_limit.to_string())
             .arg("--shares")
             .arg(shares.as_ref())
             .arg("--table-size")
