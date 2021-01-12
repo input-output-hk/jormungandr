@@ -13,7 +13,7 @@ pub enum Describe {
     /// that can be used
     Nodes(DescribeNodes),
     /// Prints trusted peer info
-    Topology,
+    Topology(DescribeTopology),
     /// Prints everything
     All(DescribeAll),
     /// Prints Votes Plan
@@ -26,22 +26,32 @@ impl Describe {
             Describe::Wallets(wallets) => wallets.exec(controller),
             Describe::Nodes(desc_nodes) => desc_nodes.exec(controller),
             Describe::All(all) => all.exec(controller),
-            Describe::Topology => {
-                println!(
-                    "{}",
-                    style::info.apply_to("Legend: '->' means trust direction".to_owned())
-                );
-                for (alias, node) in controller.controller().topology().clone().into_iter() {
-                    println!(
-                        "\t{} -> {:?}",
-                        alias,
-                        node.trusted_peers().collect::<Vec<&String>>()
-                    )
-                }
-                Ok(())
-            }
+            Describe::Topology(topology) => topology.exec(controller), 
             Describe::VotePlan(vote_plans) => vote_plans.exec(controller),
         }
+    }
+}
+
+#[derive(StructOpt, Debug)]
+pub struct DescribeTopology{
+    #[structopt(short = "a", long = "alias")]
+    pub alias: Option<String>,
+}
+
+impl DescribeTopology{
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+        println!(
+            "{}",
+            style::info.apply_to("Legend: '->' means trust direction".to_owned())
+        );
+        for (alias, node) in controller.controller().topology().clone().into_iter() {
+            println!(
+                "\t{} -> {:?}",
+                alias,
+                node.trusted_peers().collect::<Vec<&String>>()
+            )
+        }
+        Ok(())
     }
 }
 
