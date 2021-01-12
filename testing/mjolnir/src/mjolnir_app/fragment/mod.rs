@@ -1,4 +1,4 @@
-use crate::common::load::ClientLoadError;
+use crate::mjolnir_app::MjolnirError;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -7,22 +7,20 @@ mod standard;
 
 #[derive(StructOpt, Debug)]
 pub enum FragmentLoadCommand {
-    /// Prints nodes related data, like stats,fragments etc.
+    /// sends fragments using batch endpoint
     Batch(batch::Batch),
-    /// Spawn leader or passive node (also legacy)
+    /// sends fragments in single manner
     Standard(standard::Standard),
 }
 
 #[derive(Error, Debug)]
 pub enum FragmentLoadCommandError {
-    #[error("No scenario defined for run. Available: [duration,iteration]")]
-    NoScenarioDefined,
     #[error("Client Error")]
-    ClientError(#[from] ClientLoadError),
+    ClientError(#[from] MjolnirError),
 }
 
 impl FragmentLoadCommand {
-    pub fn exec(&self) -> Result<(), FragmentLoadCommandError> {
+    pub fn exec(&self) -> Result<(), MjolnirError> {
         match self {
             FragmentLoadCommand::Batch(batch) => batch.exec(),
             FragmentLoadCommand::Standard(standard) => standard.exec(),

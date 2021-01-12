@@ -49,10 +49,6 @@ impl RemoteJormungandr {
         self.grpc.as_ref().unwrap()
     }
 
-    pub fn logger(&self) -> &JormungandrLogger {
-        self.logger.as_ref().unwrap()
-    }
-
     pub fn node_config(&self) -> &NodeConfig {
         self.node_config.as_ref().unwrap()
     }
@@ -82,11 +78,17 @@ impl SyncNode for RemoteJormungandr {
     }
 
     fn log_content(&self) -> String {
-        self.logger().get_log_content()
+       match &self.logger {
+           Some(logger) => logger.get_log_content(),
+           None => "log not available".to_string()
+       }
     }
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
-        self.logger().get_lines_with_error_and_invalid().collect()
+        match &self.logger {
+            Some(logger) => logger.get_lines_with_error_and_invalid().collect(),
+            None => vec!["log not available".to_string()]
+        }
     }
 
     fn is_running(&self) -> bool {
@@ -138,7 +140,10 @@ impl FragmentNode for RemoteJormungandr {
         println!("Fragment '{}' in block: {} ({})", fragment_id, block, date);
     }
     fn log_content(&self) -> Vec<String> {
-        self.logger().get_lines_from_log().collect()
+        match &self.logger {
+                 Some(logger) => logger.get_lines_from_log().collect(),
+                None => vec!["log not available".to_string()]
+        }
     }
 }
 

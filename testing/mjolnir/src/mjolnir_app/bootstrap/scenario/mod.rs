@@ -1,25 +1,25 @@
 mod duration;
 mod iteration;
-use assert_fs::fixture::PathChild;
-pub use duration::DurationBasedClientLoad;
-pub use iteration::IterationBasedClientLoad;
-
-use crate::common::jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError};
-use std::path::PathBuf;
-
-use indicatif::{ProgressBar, ProgressStyle};
-use std::{fs, result::Result};
-
 use super::ClientLoadConfig;
+use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
+pub use duration::DurationBasedClientLoad;
+use indicatif::{ProgressBar, ProgressStyle};
+pub use iteration::IterationBasedClientLoad;
+use jormungandr_integration_tests::common::jormungandr::ConfigurationBuilder;
+use jormungandr_integration_tests::common::jormungandr::JormungandrProcess;
+use jormungandr_integration_tests::common::jormungandr::Starter;
+use jormungandr_integration_tests::common::jormungandr::StartupError;
 use jormungandr_testing_utils::testing::file;
+use std::path::PathBuf;
+use std::{fs, result::Result};
 
 pub fn copy_initial_storage_if_used(
     config: &ClientLoadConfig,
     storage_folder: &str,
     temp_dir: &TempDir,
 ) {
-    if let Some(storage) = &config.initial_storage {
+    if let Some(storage) = config.initial_storage() {
         let client_storage: PathBuf = temp_dir.child(storage_folder.to_string()).path().into();
         if client_storage.exists() {
             fs::remove_dir_all(&client_storage).expect("cannot remove existing client storage");
@@ -38,7 +38,7 @@ pub fn start_node(
 
     let config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![client_config.trusted_peer()])
-        .with_block_hash(client_config.block0_hash.to_string())
+        .with_block_hash(client_config.block0_hash().to_string())
         .with_storage(&temp_dir.child(storage_folder_name.to_string()))
         .build(temp_dir);
 

@@ -1,14 +1,14 @@
 use super::ScenarioProgressBar;
-use crate::common::{
-    jormungandr::JormungandrProcess,
-    load::{bootstrap::ClientLoadConfig, ClientLoadError},
-};
 use assert_fs::TempDir;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::NodeState;
 use jormungandr_testing_utils::testing::{
     benchmark_speed, SpeedBenchmarkFinish, SpeedBenchmarkRun,
 };
+
+use crate::mjolnir_app::bootstrap::ClientLoadConfig;
+use crate::mjolnir_app::MjolnirError;
+use jormungandr_integration_tests::common::jormungandr::JormungandrProcess;
 use std::{
     thread,
     time::{Duration, Instant},
@@ -24,12 +24,12 @@ impl DurationBasedClientLoad {
         Self { config, duration }
     }
 
-    pub fn run(&self) -> Result<(), ClientLoadError> {
+    pub fn run(&self) -> Result<(), MjolnirError> {
         let m = MultiProgress::new();
         let mut results = vec![];
         let mut handles = vec![];
 
-        for client_id in 1..=self.config.count {
+        for client_id in 1..=self.config.count() {
             handles.push(self.run_single(client_id, self.duration, &m)?);
         }
         m.join_and_clear().unwrap();
@@ -38,11 +38,11 @@ impl DurationBasedClientLoad {
             results.push(
                 handle
                     .join()
-                    .map_err(|_| ClientLoadError::InternalClientError)?,
+                    .map_err(|_| MjolnirError::InternalClientError)?,
             );
         }
 
-        if self.config.measure {
+        if self.config.measure() {
             for overall_result in results {
                 if let Ok(measurements) = &overall_result {
                     for measurement in measurements {
@@ -60,7 +60,7 @@ impl DurationBasedClientLoad {
         target: u64,
         benchmark: SpeedBenchmarkRun,
         progress_bar: &ScenarioProgressBar,
-    ) -> Result<Option<SpeedBenchmarkFinish>, ClientLoadError> {
+    ) -> Result<Option<SpeedBenchmarkFinish>, MjolnirError> {
         loop {
             thread::sleep(Duration::from_secs(2));
             progress_bar.set_progress(&format!(
@@ -91,10 +91,8 @@ impl DurationBasedClientLoad {
         id: u32,
         duration: u64,
         multi_progress: &MultiProgress,
-    ) -> Result<
-        thread::JoinHandle<Result<Vec<SpeedBenchmarkFinish>, ClientLoadError>>,
-        ClientLoadError,
-    > {
+    ) -> Result<thread::JoinHandle<Result<Vec<SpeedBenchmarkFinish>, MjolnirError>>, MjolnirError>
+    {
         let temp_dir = TempDir::new().unwrap().into_persistent();
         let storage_folder_name = format!("client_{}", id);
 
@@ -128,7 +126,7 @@ impl DurationBasedClientLoad {
                 };
 
                 node.shutdown();
-                thread::sleep(Duration::from_secs(config.pace));
+                thread::sleep(Duration::from_secs(config.pace()));
                 node = super::start_node(&config, &storage_folder_name, &temp_dir)?;
             }
         }))

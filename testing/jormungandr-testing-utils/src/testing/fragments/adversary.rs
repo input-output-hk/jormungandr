@@ -133,7 +133,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         to: &Wallet,
         via: &A,
     ) -> Result<MemPoolCheck, AdversaryFragmentSenderError> {
-        let fragment = self.random_faulty_transaction(from, to)?;
+        let fragment = self.random_faulty_transaction(from, to);
         self.send_fragment(fragment, via)
     }
 
@@ -141,18 +141,18 @@ impl<'a> AdversaryFragmentSender<'a> {
         &self,
         from: &Wallet,
         to: &Wallet,
-    ) -> Result<Fragment, FragmentBuilderError> {
+    ) -> Fragment {
         let mut rng = thread_rng();
         let option: u8 = rng.gen();
         let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
         match option % 7 {
-            0 => Ok(faulty_tx_builder.wrong_block0_hash(from, to))?,
-            1 => Ok(faulty_tx_builder.no_input(to))?,
-            2 => Ok(faulty_tx_builder.no_output(from))?,
-            3 => Ok(faulty_tx_builder.unbalanced(from, to))?,
-            4 => Ok(faulty_tx_builder.empty())?,
-            5 => Ok(faulty_tx_builder.wrong_counter(from, to))?,
-            6 => Ok(faulty_tx_builder.no_witnesses(from, to))?,
+            0 => faulty_tx_builder.wrong_block0_hash(from, to),
+            1 => faulty_tx_builder.no_input(to),
+            2 => faulty_tx_builder.no_output(from),
+            3 => faulty_tx_builder.unbalanced(from, to),
+            4 => faulty_tx_builder.empty(),
+            5 => faulty_tx_builder.wrong_counter(from, to),
+            6 => faulty_tx_builder.no_witnesses(from, to),
             _ => unreachable!(),
         }
     }
@@ -302,7 +302,7 @@ impl FaultyTransactionBuilder {
         &self,
         from: &Wallet,
         to: &Wallet,
-    ) -> Result<Fragment, FragmentBuilderError> {
+    ) -> Fragment {
         let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
@@ -315,19 +315,19 @@ impl FaultyTransactionBuilder {
         &self,
         from: &Wallet,
         to: &Wallet,
-    ) -> Result<Fragment, FragmentBuilderError> {
+    ) -> Fragment {
         let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
         self.transaction_to(&[input], &[output], |_sign_data| vec![])
     }
 
-    pub fn no_input(&self, to: &Wallet) -> Result<Fragment, FragmentBuilderError> {
+    pub fn no_input(&self, to: &Wallet) -> Fragment {
         let output = Output::from_address(to.address().into(), Value(1u64));
         self.transaction_to(&[], &[output], |_sign_data| vec![])
     }
 
-    pub fn no_output(&self, from: &Wallet) -> Result<Fragment, FragmentBuilderError> {
+    pub fn no_output(&self, from: &Wallet) -> Fragment {
         let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
         let input = from.add_input_with_value(input_value.into());
         self.transaction_to(&[input], &[], |sign_data| {
@@ -335,7 +335,7 @@ impl FaultyTransactionBuilder {
         })
     }
 
-    pub fn unbalanced(&self, from: &Wallet, to: &Wallet) -> Result<Fragment, FragmentBuilderError> {
+    pub fn unbalanced(&self, from: &Wallet, to: &Wallet) -> Fragment {
         let input = from.add_input_with_value(1u64.into());
         let output = Output::from_address(to.address().into(), Value(2u64));
         self.transaction_to(&[input], &[output], |sign_data| {
@@ -343,7 +343,7 @@ impl FaultyTransactionBuilder {
         })
     }
 
-    pub fn empty(&self) -> Result<Fragment, FragmentBuilderError> {
+    pub fn empty(&self) -> Fragment {
         self.transaction_to(&[], &[], |_sign_data| vec![])
     }
 
@@ -351,7 +351,7 @@ impl FaultyTransactionBuilder {
         &self,
         from: &Wallet,
         to: &Wallet,
-    ) -> Result<Fragment, FragmentBuilderError> {
+    ) -> Fragment {
         let input_value: Value = (self.fees.calculate(None, 1, 1) + Value(1u64)).unwrap();
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
@@ -367,12 +367,12 @@ impl FaultyTransactionBuilder {
         inputs: &[Input],
         outputs: &[OutputAddress],
         make_witnesses: F,
-    ) -> Result<Fragment, FragmentBuilderError> {
+    ) -> Fragment {
         let builder = TxBuilder::new().set_nopayload();
         let builder = builder.set_ios(inputs, outputs);
         let witnesses = make_witnesses(&builder.get_auth_data_for_witness().hash());
         let builder = builder.set_witnesses_unchecked(&witnesses);
         let tx = builder.set_payload_auth(&());
-        Ok(Fragment::Transaction(tx))
+        Fragment::Transaction(tx)
     }
 }

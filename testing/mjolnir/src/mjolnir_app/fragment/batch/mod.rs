@@ -1,6 +1,6 @@
 mod tx_only;
 
-use super::FragmentLoadCommandError;
+use crate::mjolnir_app::MjolnirError;
 use structopt::StructOpt;
 pub use tx_only::TxOnly;
 #[derive(StructOpt, Debug)]
@@ -10,7 +10,7 @@ pub enum Batch {
 }
 
 impl Batch {
-    pub fn exec(&self) -> Result<(), FragmentLoadCommandError> {
+    pub fn exec(&self) -> Result<(), MjolnirError> {
         match self {
             Batch::TxOnly(tx_only_command) => tx_only_command.exec(),
         }

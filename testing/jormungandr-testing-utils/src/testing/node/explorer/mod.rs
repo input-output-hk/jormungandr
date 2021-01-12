@@ -40,9 +40,11 @@ pub struct Explorer {
 
 impl Explorer {
     pub fn new<S: Into<String>>(address: S) -> Explorer {
+        let print_log = true;
+
         Explorer {
             client: GraphQLClient::new(address),
-            print_log: true,
+            print_log,
         }
     }
 
@@ -52,10 +54,12 @@ impl Explorer {
 
     pub fn disable_logs(&mut self) {
         self.print_log = false;
+        self.client.disable_print();
     }
 
     pub fn enable_logs(&mut self) {
         self.print_log = true;
+        self.client.enable_print();
     }
 
     pub fn print_request<T: Serialize>(&self, query: &QueryBody<T>) {

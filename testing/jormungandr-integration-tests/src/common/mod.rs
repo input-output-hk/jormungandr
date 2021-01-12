@@ -6,7 +6,6 @@ pub mod configuration;
 pub mod data;
 pub mod jcli;
 pub mod jormungandr;
-pub mod load;
 pub mod network;
 pub mod predicates;
 pub mod resources;

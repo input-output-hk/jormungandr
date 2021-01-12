@@ -3029,6 +3029,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "mjolnir"
+version = "0.1.0"
+dependencies = [
+ "assert_fs",
+ "chain-addr",
+ "chain-core",
+ "chain-crypto",
+ "chain-impl-mockchain",
+ "chain-storage",
+ "chain-time",
+ "chain-vote",
+ "indicatif",
+ "jormungandr-integration-tests",
+ "jormungandr-lib",
+ "jormungandr-testing-utils",
+ "jortestkit",
+ "structopt",
+ "thiserror",
+ "tokio 0.2.24",
+ "versionisator",
+]
+
+[[package]]
 name = "multer"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
