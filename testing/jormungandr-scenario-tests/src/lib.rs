@@ -16,7 +16,7 @@ pub mod test;
 pub use jortestkit::console::style;
 use node::{Node, NodeBlock0, NodeController};
 use programs::prepare_command;
-use scenario::{
+pub use scenario::{
     parse_progress_bar_mode_from_str,
     repository::{parse_tag_from_str, ScenarioResult, Tag},
     Context, ProgressBarMode, Seed,
