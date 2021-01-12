@@ -25,12 +25,6 @@ pub enum Show {
 }
 
 #[derive(StructOpt, Debug)]
-pub struct ShowStatus {
-    #[structopt(short = "a", long = "alias")]
-    pub alias: Option<String>,
-}
-
-#[derive(StructOpt, Debug)]
 pub struct ShowNodeStats {
     #[structopt(short = "a", long = "alias")]
     pub alias: Option<String>,
@@ -93,6 +87,12 @@ pub struct ShowPeerStats {
     pub alias: Option<String>,
 }
 
+#[derive(StructOpt, Debug)]
+pub struct ShowStatus {
+    #[structopt(short = "a", long = "alias")]
+    pub alias: Option<String>,
+}
+
 impl ShowStatus {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         do_for_all_alias(
@@ -102,14 +102,6 @@ impl ShowStatus {
             |node| println!("{} is up", node.alias()),
             |node| println!("{} is up", node.alias()),
         )?;
-
-        for vit_station in controller.vit_stations() {
-            println!("{} is up", vit_station.alias());
-        }
-
-        for proxy_wallet in controller.proxies() {
-            println!("{} is up", proxy_wallet.alias());
-        }
         Ok(())
     }
 }

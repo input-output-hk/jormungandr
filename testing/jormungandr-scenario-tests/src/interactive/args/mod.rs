@@ -1,5 +1,3 @@
-use crate::wallet::WalletProxyController;
-use crate::VitStationController;
 use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller};
 use chain_impl_mockchain::vote::Choice;
@@ -21,8 +19,6 @@ pub struct UserInteractionController<'a> {
     wallets: Vec<Wallet>,
     nodes: Vec<NodeController>,
     legacy_nodes: Vec<LegacyNodeController>,
-    vit_stations: Vec<VitStationController>,
-    proxies: Vec<WalletProxyController>,
 }
 
 impl<'a> UserInteractionController<'a> {
@@ -33,8 +29,6 @@ impl<'a> UserInteractionController<'a> {
             wallets,
             nodes: Vec::new(),
             legacy_nodes: Vec::new(),
-            vit_stations: Vec::new(),
-            proxies: Vec::new(),
         }
     }
 
@@ -59,22 +53,6 @@ impl<'a> UserInteractionController<'a> {
     }
     pub fn nodes_mut(&mut self) -> &mut Vec<NodeController> {
         &mut self.nodes
-    }
-
-    pub fn vit_stations_mut(&mut self) -> &mut Vec<VitStationController> {
-        &mut self.vit_stations
-    }
-
-    pub fn proxies(&self) -> &[WalletProxyController] {
-        &self.proxies
-    }
-
-    pub fn vit_stations(&self) -> &[VitStationController] {
-        &self.vit_stations
-    }
-
-    pub fn proxies_mut(&mut self) -> &mut Vec<WalletProxyController> {
-        &mut self.proxies
     }
 
     pub fn controller(&self) -> &Controller {

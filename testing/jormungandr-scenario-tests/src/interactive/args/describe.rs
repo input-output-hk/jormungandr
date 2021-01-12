@@ -108,21 +108,6 @@ impl DescribeNodes {
         for (alias, node) in controller.controller().nodes() {
             println!("\t{}: rest api: {}", alias, node.config().rest.listen);
         }
-        for vit_station in controller.vit_stations() {
-            println!(
-                "\t{}: rest api: {}",
-                vit_station.alias(),
-                vit_station.address()
-            );
-        }
-        for proxy in controller.proxies() {
-            println!(
-                "\t{}: rest api: {}",
-                proxy.alias(),
-                proxy.settings().proxy_address
-            );
-        }
-
         Ok(())
     }
 }

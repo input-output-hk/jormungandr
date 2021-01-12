@@ -5,8 +5,6 @@ pub mod introduction;
 pub mod legacy;
 pub mod node;
 pub mod programs;
-pub mod vit;
-pub mod vit_station;
 #[macro_use]
 pub mod scenario;
 pub mod example_scenarios;
@@ -14,8 +12,8 @@ pub mod interactive;
 pub mod report;
 pub mod slog;
 pub mod test;
-pub mod wallet;
 
+pub use jortestkit::console::style;
 use node::{Node, NodeBlock0, NodeController};
 use programs::prepare_command;
 use scenario::{
@@ -23,10 +21,6 @@ use scenario::{
     repository::{parse_tag_from_str, ScenarioResult, Tag},
     Context, ProgressBarMode, Seed,
 };
-use vit_station::{VitStation, VitStationController, VitStationControllerError};
-
-pub use jortestkit::console::style;
-pub use wallet::{Error as WalletProxyError, WalletProxy};
 
 use std::path::PathBuf;
 use structopt::StructOpt;

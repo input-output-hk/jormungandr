@@ -1,5 +1,4 @@
 use crate::scenario::WalletAlias;
-use crate::vit_station::VitStationSettings;
 use crate::{scenario::Context, style};
 use assert_fs::fixture::ChildPath;
 use assert_fs::fixture::PathChild;
@@ -8,23 +7,22 @@ use chain_impl_mockchain::{
     testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
     vote::PayloadType,
 };
+
 use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{Explorer, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest},
     time::Duration,
 };
+use jormungandr_testing_utils::testing::network_builder::Random;
 use jormungandr_testing_utils::testing::network_builder::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting,
     Settings as NetworkBuilderSettings, Topology as TopologyTemplate, WalletTemplate, WalletType,
 };
-use jormungandr_testing_utils::testing::network_builder::{Random, WalletProxySettings};
 use jormungandr_testing_utils::wallet::PrivateVoteCommitteeDataManager;
 use rand_core::{CryptoRng, RngCore};
 use std::collections::HashMap;
 use std::io::Write;
-use vit_servicing_station_lib::server::settings::ServiceSettings;
-use vit_servicing_station_tests::common::startup::server::ServerSettingsBuilder;
 
 pub trait Prepare: Clone + Send + 'static {
     fn prepare<RNG>(context: &mut Context<RNG>) -> Self
@@ -44,15 +42,6 @@ pub trait PrepareVitServerSettings: Clone + Send {
         RNG: RngCore + CryptoRng;
 }
 
-pub trait PrepareWalletProxySettings: Clone + Send {
-    fn prepare<RNG>(
-        context: &mut Context<RNG>,
-        vit_stations: &HashMap<NodeAlias, VitStationSettings>,
-    ) -> Self
-    where
-        RNG: RngCore + CryptoRng;
-}
-
 pub trait PrepareSettings {
     fn prepare<RNG>(
         topology: TopologyTemplate,
@@ -68,7 +57,6 @@ pub type VotePlanAlias = String;
 #[derive(Debug)]
 pub struct Settings {
     pub network_settings: NetworkBuilderSettings,
-    pub vit_stations: HashMap<NodeAlias, ServiceSettings>,
     pub private_vote_plans: HashMap<VotePlanAlias, PrivateVoteCommitteeDataManager>,
 }
 
@@ -76,18 +64,14 @@ impl Settings {
     pub fn new<RNG>(
         nodes: HashMap<NodeAlias, NodeSetting>,
         blockchain: BlockchainTemplate,
-        vit_stations: HashMap<NodeAlias, ServiceSettings>,
-        wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
         rng: &mut Random<RNG>,
     ) -> Self
     where
         RNG: RngCore + CryptoRng,
     {
-        let network_settings =
-            NetworkBuilderSettings::new(nodes, blockchain.clone(), wallet_proxies, rng);
+        let network_settings = NetworkBuilderSettings::new(nodes, blockchain.clone(), rng);
         let mut settings = Self {
             network_settings,
-            vit_stations,
             private_vote_plans: HashMap::new(),
         };
         settings.populate_block0_blockchain_vote_plans(
@@ -269,21 +253,7 @@ impl PrepareSettings for Settings {
             })
             .collect();
 
-        let mut vit_stations = HashMap::new();
-        let vit_station = VitStationSettings::prepare(context);
-        vit_stations.insert("vit_station".to_string(), vit_station);
-
-        let mut wallet_proxies = HashMap::new();
-        let wallet_proxy_setting = WalletProxySettings::prepare(context, &vit_stations);
-        wallet_proxies.insert("wallet_proxy".to_string(), wallet_proxy_setting);
-
-        Settings::new(
-            nodes,
-            blockchain,
-            vit_stations,
-            wallet_proxies,
-            context.random(),
-        )
+        Settings::new(nodes, blockchain, context.random())
     }
 }
 
@@ -298,18 +268,6 @@ impl PrepareNodeSettings for NodeSetting {
             secret: NodeSecret::prepare(context),
             node_topology: template.clone(),
         }
-    }
-}
-
-impl PrepareVitServerSettings for VitStationSettings {
-    fn prepare<RNG>(context: &mut Context<RNG>) -> Self
-    where
-        RNG: RngCore + CryptoRng,
-    {
-        let mut settings_builder: ServerSettingsBuilder = Default::default();
-        settings_builder
-            .with_localhost_address(context.generate_new_unique_port() as u32)
-            .build()
     }
 }
 
