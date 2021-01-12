@@ -67,29 +67,30 @@ impl RequestGenerator for ExplorerRequestGen {
         let result = match self.next_usize() % 7 {
             0 => {
                 let limit = self.next_usize_in_range(1, 10) as i64;
-                self.explorer.stake_pools(limit).map(|_| ()).map_err(|e| {
-                    RequestFailure::General(format!("Explorer - StakePools: {:?}", e))
-                })
+                self.explorer
+                    .stake_pools(limit)
+                    .map(|_| ())
+                    .map_err(|e| RequestFailure::General(format!("Explorer - StakePools: {:?}", e)))
             }
             1 => {
                 let limit = self.next_usize_in_range(1, 10) as i64;
-                self.explorer.blocks(limit).map(|_| ()).map_err(|e| {
-                    RequestFailure::General(format!("Explorer- Blocks: {:?}", e))
-                })
+                self.explorer
+                    .blocks(limit)
+                    .map(|_| ())
+                    .map_err(|e| RequestFailure::General(format!("Explorer- Blocks: {:?}", e)))
             }
-            2 => self.explorer.last_block().map(|_| ()).map_err(|e| {
-                RequestFailure::General(format!("Explorer - LastBlock: {:?}", e))
-            }),
+            2 => self
+                .explorer
+                .last_block()
+                .map(|_| ())
+                .map_err(|e| RequestFailure::General(format!("Explorer - LastBlock: {:?}", e))),
             3 => {
                 let limit = self.next_usize_in_range(1, 30) as u32;
                 self.explorer
                     .block_at_chain_length(limit)
                     .map(|_| ())
                     .map_err(|e| {
-                        RequestFailure::General(format!(
-                            "Explorer - BlockAtChainLength: {:?}",
-                            e
-                        ))
+                        RequestFailure::General(format!("Explorer - BlockAtChainLength: {:?}", e))
                     })
             }
             4 => {
@@ -98,9 +99,7 @@ impl RequestGenerator for ExplorerRequestGen {
                 self.explorer
                     .epoch(epoch_nr, limit)
                     .map(|_| ())
-                    .map_err(|e| {
-                        RequestFailure::General(format!("Explorer - Epoch: {:?}", e))
-                    })
+                    .map_err(|e| RequestFailure::General(format!("Explorer - Epoch: {:?}", e)))
             }
             5 => {
                 let explorer = self.explorer.clone();
@@ -110,10 +109,7 @@ impl RequestGenerator for ExplorerRequestGen {
                         .stake_pool(pool_id.to_string(), limit)
                         .map(|_| ())
                         .map_err(|e| {
-                            RequestFailure::General(format!(
-                                "Explorer - StakePool: {:?}",
-                                e
-                            ))
+                            RequestFailure::General(format!("Explorer - StakePool: {:?}", e))
                         })
                 } else {
                     explorer
@@ -129,9 +125,10 @@ impl RequestGenerator for ExplorerRequestGen {
                 .map_err(|e| RequestFailure::General(format!("Status: {:?}", e))),
             7 => {
                 let limit = self.next_usize_in_range(1, 1000) as i64;
-                self.explorer.vote_plans(limit).map(|_| ()).map_err(|e| {
-                    RequestFailure::General(format!("Explorer - VotePlans: {:?}", e))
-                })
+                self.explorer
+                    .vote_plans(limit)
+                    .map(|_| ())
+                    .map_err(|e| RequestFailure::General(format!("Explorer - VotePlans: {:?}", e)))
             }
             8 => {
                 let explorer = self.explorer.clone();

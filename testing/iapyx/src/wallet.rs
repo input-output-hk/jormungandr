@@ -50,11 +50,11 @@ impl Wallet {
         })
     }
 
-    pub fn recover_from(secret_key: &[u8]) -> Result<Self,Error> {
+    pub fn recover_from(secret_key: &[u8]) -> Result<Self, Error> {
         Ok(Self {
             inner: Inner::recover_free_keys(secret_key, &[])
                 .map_err(|e| Error::CannotRecover(e.to_string()))?,
-            proposals: vec![]
+            proposals: vec![],
         })
     }
 

@@ -75,10 +75,11 @@ impl IapyxLoadCommand {
             .map_err(|_e| IapyxLoadCommandError::CannotReadMnemonicsFile)?;
         let backend = config.address;
 
-        let settings = RestSettings { 
-            enable_debug: self.debug, 
-            use_https_for_post: self.use_https_for_post, 
-            ..Default::default() };
+        let settings = RestSettings {
+            enable_debug: self.debug,
+            use_https_for_post: self.use_https_for_post,
+            ..Default::default()
+        };
 
         println!("{:?}", settings);
         let multicontroller = MultiController::recover(&backend, mnemonics, &[], settings).unwrap();

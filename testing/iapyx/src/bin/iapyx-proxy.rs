@@ -48,17 +48,16 @@ async fn main() {
 
     let block0 = warp::path!("block0").map(move || Ok(block0_content.clone()));
 
-    let app = root
-        .and(
-            proposals
-                .or(fund)
-                .or(account)
-                .or(fragment)
-                .or(message)
-                .or(settings)
-                .or(explorer)
-                .or(block0),
-        );
+    let app = root.and(
+        proposals
+            .or(fund)
+            .or(account)
+            .or(fragment)
+            .or(message)
+            .or(settings)
+            .or(explorer)
+            .or(block0),
+    );
 
     warp::serve(app).run(server_stub.base_address()).await;
 }

@@ -137,11 +137,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         self.send_fragment(fragment, via)
     }
 
-    fn random_faulty_transaction(
-        &self,
-        from: &Wallet,
-        to: &Wallet,
-    ) -> Fragment {
+    fn random_faulty_transaction(&self, from: &Wallet, to: &Wallet) -> Fragment {
         let mut rng = thread_rng();
         let option: u8 = rng.gen();
         let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
@@ -298,11 +294,7 @@ impl FaultyTransactionBuilder {
         Self { block0_hash, fees }
     }
 
-    pub fn wrong_block0_hash(
-        &self,
-        from: &Wallet,
-        to: &Wallet,
-    ) -> Fragment {
+    pub fn wrong_block0_hash(&self, from: &Wallet, to: &Wallet) -> Fragment {
         let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
@@ -311,11 +303,7 @@ impl FaultyTransactionBuilder {
         })
     }
 
-    pub fn no_witnesses(
-        &self,
-        from: &Wallet,
-        to: &Wallet,
-    ) -> Fragment {
+    pub fn no_witnesses(&self, from: &Wallet, to: &Wallet) -> Fragment {
         let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
@@ -347,11 +335,7 @@ impl FaultyTransactionBuilder {
         self.transaction_to(&[], &[], |_sign_data| vec![])
     }
 
-    pub fn wrong_counter(
-        &self,
-        from: &Wallet,
-        to: &Wallet,
-    ) -> Fragment {
+    pub fn wrong_counter(&self, from: &Wallet, to: &Wallet) -> Fragment {
         let input_value: Value = (self.fees.calculate(None, 1, 1) + Value(1u64)).unwrap();
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
