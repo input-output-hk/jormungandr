@@ -14,8 +14,8 @@ pub mod slog;
 pub mod test;
 
 pub use jortestkit::console::style;
-use node::{Node, NodeBlock0, NodeController};
-use programs::prepare_command;
+pub use node::{Node, NodeBlock0, NodeController};
+pub use programs::prepare_command;
 pub use scenario::{
     parse_progress_bar_mode_from_str,
     repository::{parse_tag_from_str, ScenarioResult, Tag},
