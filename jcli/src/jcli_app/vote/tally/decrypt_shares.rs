@@ -3,7 +3,7 @@ use crate::jcli_app::utils::vote::{self, SharesError};
 use crate::jcli_app::utils::{io, OutputFormat};
 use chain_vote::EncryptedTally;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
+use jormungandr_lib::interfaces::{PrivateTallyState, TallyResult};
 use rayon::prelude::*;
 use serde::Serialize;
 use std::convert::TryInto;
@@ -94,9 +94,7 @@ impl TallyDecryptWithAllShares {
         )?;
         let output = self
             .output_format
-            .format_json(serde_json::to_value(Output {
-                result: result.votes,
-            })?)?;
+            .format_json(serde_json::to_value(result)?)?;
 
         println!("{}", output);
 
