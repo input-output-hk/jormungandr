@@ -236,12 +236,12 @@ impl Controller {
         &mut self.context
     }
 
-    pub fn add_to_progress_bar(&mut self, pb: ProgressBar) {
-        self.progress_bar.add(pb);
+    pub fn add_to_progress_bar(&mut self, pb: ProgressBar) -> ProgressBar {
+        self.progress_bar.add(pb)
     }
 
-    pub fn block0_file(&self) -> &PathBuf {
-        &self.block0_file
+    pub fn block0_file(&self) -> PathBuf {
+        self.block0_file.clone()
     }
 
     pub fn start_monitor_resources(
