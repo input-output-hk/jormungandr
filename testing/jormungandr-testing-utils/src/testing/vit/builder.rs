@@ -14,6 +14,7 @@ pub struct VotePlanBuilder {
     vote_start: BlockDate,
     tally_start: BlockDate,
     tally_end: BlockDate,
+    options_size: u8,
 }
 
 impl Default for VotePlanBuilder {
@@ -26,6 +27,7 @@ impl VotePlanBuilder {
     pub fn new() -> Self {
         Self {
             proposals_count: 3,
+            options_size: 3,
             action: VoteAction::OffChain,
             payload: PayloadType::Public,
             member_keys: Vec::new(),
@@ -97,11 +99,16 @@ impl VotePlanBuilder {
         self
     }
 
+    pub fn options_size(&mut self, size: u8) -> &mut Self {
+        self.options_size = size;
+        self
+    }
+
     pub fn build(&self) -> VotePlan {
         let proposal_vec: Vec<Proposal> = std::iter::from_fn(|| {
             Some(Proposal::new(
                 VoteTestGen::external_proposal_id(),
-                Options::new_length(3).unwrap(),
+                Options::new_length(self.options_size).unwrap(),
                 self.action.clone(),
             ))
         })

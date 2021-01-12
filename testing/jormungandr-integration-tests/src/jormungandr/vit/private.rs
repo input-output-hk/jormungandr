@@ -25,8 +25,8 @@ pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
-    let yes_choice = Choice::new(1);
-    let no_choice = Choice::new(2);
+    let yes_choice = Choice::new(0);
+    let no_choice = Choice::new(1);
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
@@ -66,6 +66,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .tally_start(BlockDate::from_epoch_slot_id(2, 0))
         .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .member_public_key(MemberPublicKey::from_bytes(&member_pk_bytes).unwrap())
+        .options_size(2)
         .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
@@ -85,7 +86,6 @@ pub fn jcli_e2e_flow_private_vote() {
         .with_total_rewards_supply(Value::zero().into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[&alice])
-        .with_slots_per_epoch(60)
         .with_consensus_genesis_praos_active_slot_coeff(
             ActiveSlotCoefficient::new(Milli::from_millis(100)).unwrap(),
         )
@@ -121,7 +121,7 @@ pub fn jcli_e2e_flow_private_vote() {
         vote_plan_id.clone(),
         0,
         yes_choice,
-        3,
+        2,
         encrypting_vote_key.clone(),
     );
 
@@ -129,10 +129,9 @@ pub fn jcli_e2e_flow_private_vote() {
         vote_plan_id.clone(),
         0,
         no_choice,
-        3,
+        2,
         encrypting_vote_key,
     );
-
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -236,7 +235,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let generated_share = jcli.votes().tally().decrypt_with_shares(
         vote_tally_file.path(),
-        3,
+        5000000,
         decryption_share_file.path(),
         1,
         1,
