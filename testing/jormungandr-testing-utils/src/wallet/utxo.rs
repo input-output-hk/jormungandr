@@ -9,7 +9,7 @@ use jormungandr_lib::{
 };
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
-pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519>;
+pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519Extended>;
 
 /// wallet for an account
 #[derive(Debug, Clone)]
