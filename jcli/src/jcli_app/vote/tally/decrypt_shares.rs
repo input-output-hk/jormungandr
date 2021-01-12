@@ -1,6 +1,7 @@
 use super::Error;
 use crate::jcli_app::utils::{io, OutputFormat};
 use chain_vote::EncryptedTally;
+use jormungandr_lib::interfaces::TallyResult;
 use serde::Serialize;
 use std::io::BufRead;
 use std::path::PathBuf;
@@ -31,11 +32,6 @@ pub struct TallyDecryptWithAllShares {
     output_format: OutputFormat,
 }
 
-#[derive(Serialize)]
-struct Output {
-    result: Vec<Option<u64>>,
-}
-
 impl TallyDecryptWithAllShares {
     pub fn exec(&self) -> Result<(), Error> {
         let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
@@ -60,12 +56,15 @@ impl TallyDecryptWithAllShares {
         };
 
         let state = encrypted_tally.state();
-        let result = chain_vote::result(self.max_votes, self.table_size, &state, &shares);
+        let result = TallyResult::from(chain_vote::result(
+            self.max_votes,
+            self.table_size,
+            &state,
+            &shares,
+        ));
         let output = self
             .output_format
-            .format_json(serde_json::to_value(Output {
-                result: result.votes,
-            })?)?;
+            .format_json(serde_json::to_value(result)?)?;
 
         println!("{}", output);
 
