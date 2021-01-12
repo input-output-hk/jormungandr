@@ -950,21 +950,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "console"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cc80946b3480f421c2f17ed1cb841753a371c7c5104f51d507e13f532c856aa"
-dependencies = [
- "encode_unicode",
- "lazy_static",
- "libc",
- "regex 1.4.3",
- "terminal_size",
- "unicode-width",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "const_fn"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2178,7 +2163,7 @@ dependencies = [
  "jortestkit",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "regex 1.4.3",
+ "regex 0.1.80",
  "reqwest",
  "serde",
  "serde_json",
@@ -2269,7 +2254,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
- "console 0.14.0",
+ "console 0.13.0",
  "lazy_static",
  "number_prefix",
  "regex 1.4.3",
@@ -5710,7 +5695,7 @@ dependencies = [
 [[package]]
 name = "vit-servicing-station-lib"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#6779115053e4380002275a31eb98ad8dae3b609c"
+source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#4d8cbf8a1d074e72bb0709fa0b4d1f934a8be990"
 dependencies = [
  "async-graphql",
  "async-graphql-warp",
@@ -5738,7 +5723,7 @@ dependencies = [
 [[package]]
 name = "vit-servicing-station-tests"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#6779115053e4380002275a31eb98ad8dae3b609c"
+source = "git+https://github.com/input-output-hk/vit-servicing-station?branch=master#4d8cbf8a1d074e72bb0709fa0b4d1f934a8be990"
 dependencies = [
  "askama",
  "askama_shared",
