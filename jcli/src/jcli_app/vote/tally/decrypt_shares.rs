@@ -2,7 +2,6 @@ use super::Error;
 use crate::jcli_app::utils::{io, OutputFormat};
 use chain_vote::EncryptedTally;
 use jormungandr_lib::interfaces::TallyResult;
-use serde::Serialize;
 use std::io::BufRead;
 use std::path::PathBuf;
 use structopt::StructOpt;
