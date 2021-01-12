@@ -232,8 +232,8 @@ impl Controller {
         &self.settings
     }
 
-    pub fn context_mut(&mut self) -> &mut ContextChaCha {
-        &mut self.context
+    pub fn context(&self) -> &ContextChaCha {
+        &self.context
     }
 
     pub fn add_to_progress_bar(&mut self, pb: ProgressBar) -> ProgressBar {
