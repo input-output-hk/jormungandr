@@ -26,19 +26,19 @@ impl Describe {
             Describe::Wallets(wallets) => wallets.exec(controller),
             Describe::Nodes(desc_nodes) => desc_nodes.exec(controller),
             Describe::All(all) => all.exec(controller),
-            Describe::Topology(topology) => topology.exec(controller), 
+            Describe::Topology(topology) => topology.exec(controller),
             Describe::VotePlan(vote_plans) => vote_plans.exec(controller),
         }
     }
 }
 
 #[derive(StructOpt, Debug)]
-pub struct DescribeTopology{
+pub struct DescribeTopology {
     #[structopt(short = "a", long = "alias")]
     pub alias: Option<String>,
 }
 
-impl DescribeTopology{
+impl DescribeTopology {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         println!(
             "{}",

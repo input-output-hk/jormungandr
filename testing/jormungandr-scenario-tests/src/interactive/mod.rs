@@ -39,12 +39,16 @@ pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         }
     };
 
-    let mut controller = scenario_settings.build(context).unwrap();
+    let controller = scenario_settings.build(context).unwrap();
     let user_integration = jormungandr_user_interaction();
-    user_integration.interact(&mut JormungandrInteractiveCommandExec {
-        controller: UserInteractionController::new(&mut controller),
-    })?;
-    controller.finalize();
+
+    let mut interactive_commands = JormungandrInteractiveCommandExec {
+        controller: UserInteractionController::new(controller),
+    };
+
+    user_integration.interact(&mut interactive_commands)?;
+    interactive_commands.tear_down();
+
     Ok(ScenarioResult::passed(name))
 }
 
@@ -65,11 +69,17 @@ fn jormungandr_user_interaction() -> UserInteraction {
     )
 }
 
-pub struct JormungandrInteractiveCommandExec<'a> {
-    pub controller: UserInteractionController<'a>,
+pub struct JormungandrInteractiveCommandExec {
+    pub controller: UserInteractionController,
 }
 
-impl InteractiveCommandExec for JormungandrInteractiveCommandExec<'_> {
+impl JormungandrInteractiveCommandExec {
+    pub fn tear_down(self) {
+        self.controller.finalize();
+    }
+}
+
+impl InteractiveCommandExec for JormungandrInteractiveCommandExec {
     fn parse_and_exec(
         &mut self,
         tokens: Vec<String>,

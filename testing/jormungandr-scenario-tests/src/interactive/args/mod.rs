@@ -14,15 +14,15 @@ pub mod send;
 pub mod show;
 pub mod spawn;
 
-pub struct UserInteractionController<'a> {
-    controller: &'a mut Controller,
+pub struct UserInteractionController {
+    controller: Controller,
     wallets: Vec<Wallet>,
     nodes: Vec<NodeController>,
     legacy_nodes: Vec<LegacyNodeController>,
 }
 
-impl<'a> UserInteractionController<'a> {
-    pub fn new(controller: &'a mut Controller) -> Self {
+impl UserInteractionController {
+    pub fn new(mut controller: Controller) -> Self {
         let wallets = controller.get_all_wallets();
         Self {
             controller,
@@ -146,6 +146,10 @@ impl<'a> UserInteractionController<'a> {
             .send_transaction(from, &to, via, value)?;
         *self.wallets_mut() = temp_wallets;
         Ok(check)
+    }
+
+    pub fn finalize(self) {
+        self.controller.finalize();
     }
 }
 
