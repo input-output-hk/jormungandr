@@ -17,9 +17,9 @@ pub struct TallyDecryptWithAllShares {
     /// The minimum number of shares needed for decryption
     #[structopt(long = "threshold", default_value = "3")]
     threshold: usize,
-    /// Maximum supported number of votes
-    #[structopt(long = "max-votes")]
-    max_votes: u64,
+    /// Supported limit of vote stake (Ex: 10 votes with 10 stake power each would be 100 limit stake)
+    #[structopt(long = "vote-stake-limit")]
+    vote_stake_limit: u64,
     /// Computing table cache size, usually total_votes/number_of_options
     #[structopt(long = "table-size")]
     table_size: usize,
@@ -56,7 +56,7 @@ impl TallyDecryptWithAllShares {
 
         let state = encrypted_tally.state();
         let result = TallyResult::from(chain_vote::result(
-            self.max_votes,
+            self.vote_stake_limit,
             self.table_size,
             &state,
             &shares,
