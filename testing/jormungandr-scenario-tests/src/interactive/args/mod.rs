@@ -8,11 +8,11 @@ use jormungandr_testing_utils::{
 };
 use structopt::{clap::AppSettings, StructOpt};
 
-mod describe;
-mod explorer;
-mod send;
-mod show;
-mod spawn;
+pub mod describe;
+pub mod explorer;
+pub mod send;
+pub mod show;
+pub mod spawn;
 
 pub struct UserInteractionController<'a> {
     controller: &'a mut Controller,
