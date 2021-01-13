@@ -11,10 +11,11 @@ use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::{
-    certificate::VoteAction, chaintypes::ConsensusType, milli::Milli, value::Value, vote::Choice,
+    certificate::VoteAction, chaintypes::ConsensusType,
+    ledger::governance::TreasuryGovernanceAction, milli::Milli, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, FeesGoTo, KESUpdateSpeed};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_testing_utils::wallet::Wallet;
@@ -24,9 +25,11 @@ use rand::rngs::OsRng;
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
-
-    let yes_choice = Choice::new(0);
+    let rewards_increase = 10;
+    let yes_choice = Choice::new(1);
     let no_choice = Choice::new(1);
+
+    let wallet_initial_funds = 1_000_000;
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
@@ -60,7 +63,11 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(1)
-        .action_type(VoteAction::OffChain)
+        .action_type(VoteAction::Treasury {
+            action: TreasuryGovernanceAction::TransferToRewards {
+                value: Value(rewards_increase),
+            },
+        })
         .private()
         .vote_start(BlockDate::from_epoch_slot_id(1, 0))
         .tally_start(BlockDate::from_epoch_slot_id(2, 0))
@@ -75,20 +82,15 @@ pub fn jcli_e2e_flow_private_vote() {
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![
-            alice.to_initial_fund(1_000_000),
-            bob.to_initial_fund(1_000_000),
-            clarice.to_initial_fund(1_000_000),
+            alice.to_initial_fund(wallet_initial_funds),
+            bob.to_initial_fund(wallet_initial_funds),
+            clarice.to_initial_fund(wallet_initial_funds),
         ])
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
-        .with_fees_go_to(FeesGoTo::Rewards)
-        .with_treasury(Value::zero().into())
-        .with_total_rewards_supply(Value::zero().into())
+        .with_treasury(1000.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[&alice])
-        .with_consensus_genesis_praos_active_slot_coeff(
-            ActiveSlotCoefficient::new(Milli::from_millis(100)).unwrap(),
-        )
         .with_slot_duration(4)
         .with_slots_per_epoch(10)
         .build(&temp_dir);
@@ -114,6 +116,21 @@ pub fn jcli_e2e_flow_private_vote() {
         .assert_in_block();
 
     alice.confirm_transaction();
+
+    let rewards_before = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
     time::wait_for_epoch(1, jormungandr.explorer());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
@@ -241,5 +258,34 @@ pub fn jcli_e2e_flow_private_vote() {
         1,
     );
 
-    println!("{}", generated_share);
+    let generated_share_yaml: serde_yaml::Value = serde_yaml::from_str(&generated_share).unwrap();
+    let results = &generated_share_yaml["results"];
+    assert_eq!(
+        results[0].as_str().unwrap(),
+        (wallet_initial_funds * 2).to_string()
+    );
+    assert_eq!(
+        results[1].as_str().unwrap(),
+        (wallet_initial_funds).to_string()
+    );
+
+    let rewards_after = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
+    // We want to make sure that our small rewards increase is reflexed in current rewards amount
+    assert!(
+        rewards_after == rewards_before + rewards_increase,
+        "Vote was unsuccessful"
+    );
 }

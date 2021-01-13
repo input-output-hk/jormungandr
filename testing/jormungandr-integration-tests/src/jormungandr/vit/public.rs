@@ -339,7 +339,7 @@ pub fn test_vote_flow_praos() {
 pub fn jcli_e2e_flow() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
-
+    let rewards_increase = 10;
     let yes_choice = Choice::new(1);
 
     let mut rng = OsRng;
@@ -403,6 +403,21 @@ pub fn jcli_e2e_flow() {
         .assert_in_block();
 
     alice.confirm_transaction();
+
+    let rewards_before = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
     time::wait_for_epoch(1, jormungandr.explorer());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
@@ -493,5 +508,25 @@ pub fn jcli_e2e_flow() {
             .unwrap()
             .votes_cast,
         3
+    );
+
+    let rewards_after = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
+    // We want to make sure that our small rewards increase is reflexed in current rewards amount
+    assert!(
+        rewards_after == rewards_before + rewards_increase,
+        "Vote was unsuccessful"
     );
 }
