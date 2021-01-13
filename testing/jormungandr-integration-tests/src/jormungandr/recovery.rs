@@ -156,6 +156,10 @@ pub fn test_node_recovers_kill_signal() {
         &utxo_receiver,
         &jormungandr,
     );
+
+    // give some time to update storage
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
     jormungandr.stop();
 
