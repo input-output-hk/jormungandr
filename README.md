@@ -61,10 +61,9 @@ Check `<latest release tag>` on
 https://github.com/input-output-hk/jormungandr/releases/latest
 
 ```sh
-git clone --recurse-submodules https://github.com/input-output-hk/jormungandr
+git clone https://github.com/input-output-hk/jormungandr
 cd jormungandr
 git checkout tags/<latest release tag> #replace this with something like v1.2.3
-git submodule update
 cargo install --locked --path jormungandr # --features systemd # (on linux with systemd)
 cargo install --locked --path jcli
 ```
