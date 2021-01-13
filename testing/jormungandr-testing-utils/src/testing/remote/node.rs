@@ -78,16 +78,16 @@ impl SyncNode for RemoteJormungandr {
     }
 
     fn log_content(&self) -> String {
-       match &self.logger {
-           Some(logger) => logger.get_log_content(),
-           None => "log not available".to_string()
-       }
+        match &self.logger {
+            Some(logger) => logger.get_log_content(),
+            None => "log not available".to_string(),
+        }
     }
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         match &self.logger {
             Some(logger) => logger.get_lines_with_error_and_invalid().collect(),
-            None => vec!["log not available".to_string()]
+            None => vec!["log not available".to_string()],
         }
     }
 
@@ -141,8 +141,8 @@ impl FragmentNode for RemoteJormungandr {
     }
     fn log_content(&self) -> Vec<String> {
         match &self.logger {
-                 Some(logger) => logger.get_lines_from_log().collect(),
-                None => vec!["log not available".to_string()]
+            Some(logger) => logger.get_lines_from_log().collect(),
+            None => vec!["log not available".to_string()],
         }
     }
 }

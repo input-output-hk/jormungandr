@@ -6,7 +6,7 @@ use thiserror::Error;
 #[derive(Clone)]
 pub struct GraphQLClient {
     base_url: String,
-    print_out: bool
+    print_out: bool,
 }
 
 #[derive(Error, Debug)]
@@ -18,7 +18,10 @@ pub enum GraphQLClientError {
 impl GraphQLClient {
     pub fn new<S: Into<String>>(base_address: S) -> GraphQLClient {
         let base_url = format!("http://{}/explorer/graphql", base_address.into());
-        GraphQLClient { base_url, print_out: true }
+        GraphQLClient {
+            base_url,
+            print_out: true,
+        }
     }
 
     pub fn base_url(&self) -> String {
