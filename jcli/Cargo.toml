@@ -36,7 +36,7 @@ openapiv3 = "0.3.2"
 valico = "3.5.0"
 ed25519-bip32 = "0.3"
 thiserror = "1.0"
-bytes = "0.5"
+bytes = "1.0"
 
 [dependencies.clap]
 version = "2.33"

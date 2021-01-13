@@ -17,7 +17,7 @@ juniper = "0.15.1"
 juniper_warp = "0.6.0"
 base64 = "0.13.0"
 bincode = "1.2.1"
-bytes = "0.5"
+bytes = "1.0"
 bech32 = "0.7"
 chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
