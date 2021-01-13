@@ -100,8 +100,6 @@ impl WalletProxySettings {
 pub struct Settings {
     pub nodes: HashMap<NodeAlias, NodeSetting>,
 
-    pub wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
-
     pub wallets: HashMap<WalletAlias, Wallet>,
 
     pub legacy_wallets: HashMap<WalletAlias, LegacyWalletTemplate>,
@@ -117,7 +115,6 @@ impl Settings {
     pub fn new<RNG>(
         nodes: HashMap<NodeAlias, NodeSetting>,
         blockchain: BlockchainTemplate,
-        wallet_proxies: HashMap<NodeAlias, WalletProxySettings>,
         rng: &mut Random<RNG>,
     ) -> Self
     where
@@ -134,7 +131,6 @@ impl Settings {
                 ),
                 initial: Vec::new(),
             },
-            wallet_proxies,
             legacy_wallets: HashMap::new(),
             stake_pools: HashMap::new(),
             vote_plans: HashMap::new(),

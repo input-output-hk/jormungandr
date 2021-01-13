@@ -6,6 +6,7 @@ pub mod utxo;
 pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 
 use crate::{
+    qr_code::KeyQrCode,
     stake_pool::StakePool,
     testing::{FragmentBuilder, FragmentBuilderError},
 };
@@ -144,6 +145,27 @@ impl Wallet {
         let mut delegation = delegation::Wallet::generate(rng, discrimination);
         delegation.generate_new_signing_key(delegation_identifier.clone());
         Wallet::Delegation(delegation)
+    }
+
+    pub fn save_qr_code<P: AsRef<Path>>(&self, path: P, password: &[u8]) {
+        let qr = match self {
+            Wallet::Account(account) => {
+                let secret_key = match account.signing_key().as_ref() {
+                    EitherEd25519SecretKey::Extended(secret_key) => secret_key,
+                    EitherEd25519SecretKey::Normal(_) => panic!("unsupported secret key type"),
+                };
+                KeyQrCode::generate(secret_key.clone(), password)
+            }
+            Wallet::UTxO(utxo) => {
+                KeyQrCode::generate(utxo.last_signing_key().clone().into_secret_key(), password)
+            }
+            Wallet::Delegation(delegation) => KeyQrCode::generate(
+                delegation.last_signing_key().clone().into_secret_key(),
+                password,
+            ),
+        };
+
+        qr.to_img().save(path).unwrap();
     }
 
     pub fn save_to_path<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
@@ -396,12 +418,12 @@ impl Into<WalletLib> for Wallet {
                 account.address().into(),
             ),
             Wallet::UTxO(utxo) => AddressData::new(
-                EitherEd25519SecretKey::Normal(utxo.last_signing_key().as_ref().clone()),
+                EitherEd25519SecretKey::Extended(utxo.last_signing_key().as_ref().clone()),
                 None,
                 utxo.address().into(),
             ),
             Wallet::Delegation(delegation) => AddressData::new(
-                EitherEd25519SecretKey::Normal(delegation.last_signing_key().as_ref().clone()),
+                EitherEd25519SecretKey::Extended(delegation.last_signing_key().as_ref().clone()),
                 None,
                 delegation.address().into(),
             ),

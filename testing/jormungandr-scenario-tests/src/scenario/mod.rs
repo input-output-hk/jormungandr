@@ -29,9 +29,6 @@ error_chain! {
         Io(std::io::Error);
         Reqwest(reqwest::Error);
         BlockFormatError(chain_core::mempack::ReadError);
-        VitStationControllerError(crate::VitStationControllerError);
-        IapyxWalletError(iapyx::ControllerError);
-        WalletProxyError(crate::WalletProxyError);
     }
 
     errors {

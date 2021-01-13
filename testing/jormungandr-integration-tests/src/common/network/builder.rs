@@ -83,7 +83,7 @@ impl NetworkBuilder {
             blockchain.add_wallet(wallet.clone());
         }
 
-        let settings = Settings::new(nodes, blockchain, HashMap::new(), &mut random);
+        let settings = Settings::new(nodes, blockchain, &mut random);
         Controller::new(settings, temp_dir)
     }
 }

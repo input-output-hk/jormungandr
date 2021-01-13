@@ -1,5 +1,3 @@
-use crate::wallet::WalletProxyController;
-use crate::VitStationController;
 use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller};
 use chain_impl_mockchain::vote::Choice;
@@ -10,31 +8,27 @@ use jormungandr_testing_utils::{
 };
 use structopt::{clap::AppSettings, StructOpt};
 
-mod describe;
-mod explorer;
-mod send;
-mod show;
-mod spawn;
+pub mod describe;
+pub mod explorer;
+pub mod send;
+pub mod show;
+pub mod spawn;
 
-pub struct UserInteractionController<'a> {
-    controller: &'a mut Controller,
+pub struct UserInteractionController {
+    controller: Controller,
     wallets: Vec<Wallet>,
     nodes: Vec<NodeController>,
     legacy_nodes: Vec<LegacyNodeController>,
-    vit_stations: Vec<VitStationController>,
-    proxies: Vec<WalletProxyController>,
 }
 
-impl<'a> UserInteractionController<'a> {
-    pub fn new(controller: &'a mut Controller) -> Self {
+impl UserInteractionController {
+    pub fn new(mut controller: Controller) -> Self {
         let wallets = controller.get_all_wallets();
         Self {
             controller,
             wallets,
             nodes: Vec::new(),
             legacy_nodes: Vec::new(),
-            vit_stations: Vec::new(),
-            proxies: Vec::new(),
         }
     }
 
@@ -59,22 +53,6 @@ impl<'a> UserInteractionController<'a> {
     }
     pub fn nodes_mut(&mut self) -> &mut Vec<NodeController> {
         &mut self.nodes
-    }
-
-    pub fn vit_stations_mut(&mut self) -> &mut Vec<VitStationController> {
-        &mut self.vit_stations
-    }
-
-    pub fn proxies(&self) -> &[WalletProxyController] {
-        &self.proxies
-    }
-
-    pub fn vit_stations(&self) -> &[VitStationController] {
-        &self.vit_stations
-    }
-
-    pub fn proxies_mut(&mut self) -> &mut Vec<WalletProxyController> {
-        &mut self.proxies
     }
 
     pub fn controller(&self) -> &Controller {
@@ -168,6 +146,10 @@ impl<'a> UserInteractionController<'a> {
             .send_transaction(from, &to, via, value)?;
         *self.wallets_mut() = temp_wallets;
         Ok(check)
+    }
+
+    pub fn finalize(self) {
+        self.controller.finalize();
     }
 }
 
