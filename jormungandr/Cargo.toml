@@ -47,7 +47,7 @@ serde_derive = "1.0"
 serde_json = "1.0.59"
 serde_yaml = "0.8"
 slog = { version = "^2.7.0", features = [ "max_level_trace", "release_max_level_trace" ] }
-slog-async = "2.5.0"
+slog-async = "2.6.0"
 slog-gelf = { version = "0.1.2", optional = true }
 slog-journald = { version = "2.1.1", optional = true }
 slog-json = "2.3.0"
