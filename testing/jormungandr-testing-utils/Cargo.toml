@@ -31,7 +31,7 @@ rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
-humantime = "2.0"
+humantime = "2.1"
 custom_debug = "0.5"
 thiserror = "1.0"
 poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
