@@ -157,9 +157,9 @@ pub fn test_node_recovers_kill_signal() {
         &jormungandr,
     );
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
+    // Wait before stopping so transactions are flushed to disk
+    std::thread::sleep(std::time::Duration::from_secs(1));
     jormungandr.stop();
-
-    std::thread::sleep(std::time::Duration::from_secs(2));
 
     let jormungandr = Starter::new()
         .config(config)
