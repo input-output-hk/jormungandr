@@ -427,6 +427,11 @@ async fn bootstrap_internal(
             bootstrap_attempt,
             BOOTSTRAP_RETRY_WAIT.as_secs()
         );
+
+        futures::select! {
+            _ = tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT).fuse() => {},
+            _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
+        }
     }
 
     let explorer_db = if settings.explorer {
