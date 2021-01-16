@@ -1,14 +1,14 @@
+use multiaddr::Multiaddr;
+
 pub mod comm;
 mod gossip;
 pub mod layers;
-mod policy;
 mod topology;
 
 pub use self::gossip::{Gossip, Gossips, Peer, Peers};
-pub use self::policy::{Policy, PolicyConfig};
 pub use self::topology::P2pTopology;
 
-pub use poldercast::Address;
+pub type Address = Multiaddr;
 
 /**
 # topics definition for p2p interest subscriptions

@@ -35,7 +35,7 @@ chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 custom_debug = "0.5"
 thiserror = "1.0"
-poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
+poldercast = { git = "https://github.com/Zeegomo/poldercast", branch = "master" }
 sysinfo = { version = "0.16.5" }
 os_info = { version = "3.0.1", default-features = false }
 zip = "0.5.6"

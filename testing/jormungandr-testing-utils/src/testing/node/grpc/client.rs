@@ -34,15 +34,14 @@ pub enum MockClientError {
 }
 
 pub struct JormungandrClient {
-    host: String,
-    port: u16,
+    addr: SocketAddr,
     inner_client: NodeClient<Channel>,
     rt: Runtime,
 }
 
 impl Clone for JormungandrClient {
     fn clone(&self) -> Self {
-        JormungandrClient::new(&self.host, self.port)
+        JormungandrClient::new(self.addr)
     }
 }
 
@@ -56,28 +55,11 @@ impl fmt::Debug for JormungandrClient {
 }
 
 impl JormungandrClient {
-    pub fn from_address(address: &str) -> Result<Self, MockClientError> {
-        let elements: Vec<&str> = address.split('/').collect();
-
-        let host = elements.get(2);
-        let port = elements.get(4);
-
-        if host.is_none() || port.is_none() {
-            return Err(MockClientError::InvalidAddressFormat(address.to_owned()));
-        }
-
-        let port: u16 = port
-            .unwrap()
-            .parse()
-            .map_err(|_err| MockClientError::InvalidAddressFormat(address.to_owned()))?;
-        Ok(Self::new(host.unwrap(), port))
-    }
-
-    pub fn new(host: &str, port: u16) -> Self {
+    pub fn new(addr: SocketAddr) -> Self {
         let rt = Builder::new_current_thread().enable_all().build().unwrap();
         let inner_client = rt.block_on(async {
             NodeClient::new(
-                tonic::transport::Endpoint::from_shared(format!("http://{}:{}", host, port))
+                tonic::transport::Endpoint::from_shared(format!("http://{}", addr))
                     .unwrap()
                     .connect_lazy()
                     .unwrap(),
@@ -85,8 +67,7 @@ impl JormungandrClient {
         });
 
         Self {
-            host: host.to_owned(),
-            port,
+            addr,
             inner_client,
             rt,
         }

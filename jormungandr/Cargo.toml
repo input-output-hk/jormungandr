@@ -36,10 +36,11 @@ hex = "0.4"
 http = "0.2.2"
 humantime = "2.0"
 jormungandr-lib = { path = "../jormungandr-lib" }
+keynesis = "1.1"
 lazy_static = "1.4"
 linked-hash-map = "0.5"
-poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
-multiaddr = { package = "parity-multiaddr", version = "0.9" }
+poldercast = { git = "https://github.com/Zeegomo/poldercast", branch = "master" }
+multiaddr = { package = "parity-multiaddr", version = "0.11" }
 rand = "0.7"
 rand_chacha = "0.2.2"
 rustls = "0.19.0"
