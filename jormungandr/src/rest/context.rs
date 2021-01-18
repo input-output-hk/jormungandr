@@ -13,9 +13,9 @@ use crate::{
 };
 use jormungandr_lib::interfaces::NodeState;
 
-use slog::Logger;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
+use tracing::Span;
 
 pub type ContextLock = Arc<RwLock<Context>>;
 
@@ -23,7 +23,7 @@ pub struct Context {
     full: Option<FullContext>,
     server_stopper: Option<ServerStopper>,
     node_state: NodeState,
-    logger: Option<Logger>,
+    span: Option<Span>,
     diagnostic: Option<Diagnostic>,
     blockchain: Option<Blockchain>,
     blockchain_tip: Option<Tip>,
@@ -36,8 +36,8 @@ pub enum Error {
     FullContext,
     #[error("Server stopper not set in REST context")]
     ServerStopper,
-    #[error("Logger not set in REST context")]
-    Logger,
+    #[error("Log span not set in REST context")]
+    Span,
     #[error("Blockchain not set in REST context")]
     Blockchain,
     #[error("Blockchain tip not set in REST context")]
@@ -58,7 +58,7 @@ impl Context {
             full: Default::default(),
             server_stopper: Default::default(),
             node_state: NodeState::StartingRestServer,
-            logger: Default::default(),
+            span: Default::default(),
             diagnostic: Default::default(),
             blockchain: Default::default(),
             blockchain_tip: Default::default(),
@@ -90,12 +90,12 @@ impl Context {
         &self.node_state
     }
 
-    pub fn set_logger(&mut self, logger: Logger) {
-        self.logger = Some(logger);
+    pub fn set_span(&mut self, span: Span) {
+        self.span = Some(span);
     }
 
-    pub fn logger(&self) -> Result<&Logger, Error> {
-        self.logger.as_ref().ok_or(Error::Logger)
+    pub fn span(&self) -> Result<&Span, Error> {
+        self.span.as_ref().ok_or(Error::Span)
     }
 
     pub fn set_diagnostic_data(&mut self, diagnostic: Diagnostic) {

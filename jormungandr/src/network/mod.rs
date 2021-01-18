@@ -281,7 +281,6 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
     // open the port for listening/accepting other peers to connect too
     let listen_state = global_state.clone();
     let listen_channels = channels.clone();
-    let logger = service_info.logger();
     let listener = async move {
         if let Some(listen) = listen_state.config.listen() {
             match listen.protocol {
@@ -289,10 +288,10 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
                     grpc::run_listen_socket(&listen, listen_state, listen_channels)
                         .await
                         .unwrap_or_else(|e| {
-                            error!(
-                            logger,
-                            "failed to listen for P2P connections at {}", listen.connection;
-                            "reason" => %e);
+                            tracing::error!(
+                                reason = %e,
+                                "failed to listen for P2P connections at {}", listen.connection
+                            );
                         });
                 }
                 Protocol::Ntt => unimplemented!(),

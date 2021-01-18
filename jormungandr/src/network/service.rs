@@ -129,7 +129,7 @@ impl BlockService for NodeService {
 
     async fn tip(&self) -> Result<Header, Error> {
         let logger = self.logger().new(o!("request" => "Tip"));
-        let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
+        let (reply_handle, reply_future) = intercom::unary_reply();
         let mbox = self.channels.client_box.clone();
         send_message(mbox, ClientMsg::GetBlockTip(reply_handle), logger).await?;
         let header = reply_future.await?;
