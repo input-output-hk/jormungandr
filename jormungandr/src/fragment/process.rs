@@ -7,9 +7,13 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
+
 use std::collections::HashMap;
+
 use thiserror::Error;
 use tokio_stream::StreamExt;
+use tracing::{span, Level};
+use tracing_futures::Instrument;
 
 pub struct Process {
     pool_max_entries: usize,
@@ -49,7 +53,6 @@ impl Process {
             n_pools,
             self.logs,
             self.network_msg_box,
-            service_info.logger().clone(),
         );
 
         while let Some(input_result) = input.next().await {
@@ -73,9 +76,10 @@ impl Process {
                         .map(move |count| stats_counter.add_tx_recv_cnt(count))?;
                 }
                 TransactionMsg::RemoveTransactions(fragment_ids, status) => {
-                    debug!(
-                        service_info.logger(),
-                        "removing fragments added to block {:?}: {:?}", status, fragment_ids
+                    tracing::debug!(
+                        "removing fragments added to block {:?}: {:?}",
+                        status,
+                        fragment_ids
                     );
                     pool.remove_added_to_block(fragment_ids, status, service_info.logger());
                 }
@@ -105,8 +109,10 @@ impl Process {
                     reply_handle.reply_ok(contents);
                 }
             }
-        }
 
-        Ok(())
+            Ok(())
+        }
+        .instrument(span!(parent: service_info.span(), Level::TRACE, "process", name = "fragment"))
+        .await
     }
 }
