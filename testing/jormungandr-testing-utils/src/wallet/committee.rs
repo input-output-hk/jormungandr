@@ -109,7 +109,7 @@ pub trait ElectionPublicKeyExtension {
 
 impl ElectionPublicKeyExtension for ElectionPublicKey {
     fn to_base32(&self) -> Result<String, bech32::Error> {
-        bech32::encode(COMMUNICATION_SK_HRP, self.to_bytes().to_base32())
+        bech32::encode(ENCRYPTING_VOTE_PK_HRP, self.to_bytes().to_base32())
     }
 }
 
