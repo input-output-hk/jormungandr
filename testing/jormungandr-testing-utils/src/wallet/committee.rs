@@ -109,10 +109,7 @@ pub trait EncryptingVoteKeyExtension {
 
 impl EncryptingVoteKeyExtension for EncryptingVoteKey {
     fn to_base32(&self) -> Result<String, bech32::Error> {
-        bech32::encode(
-            COMMUNICATION_SK_HRP,
-            self.to_bytes().to_base32(),
-        )
+        bech32::encode(COMMUNICATION_SK_HRP, self.to_bytes().to_base32())
     }
 }
 
@@ -164,7 +161,8 @@ impl PrivateVoteCommitteeDataManager {
             let ms = MemberState::new(&mut rng, threshold, &crs, &communication_public_keys, index);
 
             let communication_secret_key = communication_secret_keys.get(index).unwrap();
-            let encrypting_vote_key = EncryptingVoteKey::from_participants(&vec![ms.public_key().clone()]);
+            let encrypting_vote_key =
+                EncryptingVoteKey::from_participants(&vec![ms.public_key().clone()]);
 
             data.insert(
                 pk.clone(),
@@ -179,6 +177,10 @@ impl PrivateVoteCommitteeDataManager {
         }
 
         Self { data }
+    }
+
+    pub fn get(&self, identifier: &Identifier) -> Option<&PrivateVoteCommitteeData> {
+        self.data.get(identifier)
     }
 
     pub fn write_to(&self, directory: ChildPath) -> std::io::Result<()> {
