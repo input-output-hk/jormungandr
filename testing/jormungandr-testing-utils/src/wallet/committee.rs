@@ -2,8 +2,8 @@ use crate::testing::network_builder::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
 use bech32::ToBase32;
 use chain_vote::{
-    MemberCommunicationKey, MemberCommunicationPublicKey, MemberPublicKey, MemberState,
-    OpeningVoteKey, CRS,
+    committee::ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey,
+    MemberPublicKey, MemberState, OpeningVoteKey, CRS,
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
@@ -14,6 +14,7 @@ use std::io::Write;
 
 pub const COMMUNICATION_SK_HRP: &str = "p256k1_vcommsk";
 pub const MEMBER_SK_HRP: &str = "p256k1_membersk";
+pub const ENCRYPTING_VOTE_PK_HRP: &str = "p256k1_votepk";
 
 #[derive(Clone)]
 pub struct PrivateVoteCommitteeData {
@@ -21,6 +22,7 @@ pub struct PrivateVoteCommitteeData {
     communication_key: MemberCommunicationKey,
     member_secret_key: OpeningVoteKey,
     member_public_key: MemberPublicKey,
+    election_public_key: ElectionPublicKey,
 }
 
 impl PrivateVoteCommitteeData {
@@ -29,12 +31,14 @@ impl PrivateVoteCommitteeData {
         communication_key: MemberCommunicationKey,
         member_secret_key: OpeningVoteKey,
         member_public_key: MemberPublicKey,
+        election_public_key: ElectionPublicKey,
     ) -> Self {
         Self {
             alias,
             communication_key,
             member_secret_key,
             member_public_key,
+            election_public_key,
         }
     }
 
@@ -46,6 +50,10 @@ impl PrivateVoteCommitteeData {
         self.member_secret_key.clone()
     }
 
+    pub fn encrypting_vote_key(&self) -> ElectionPublicKey {
+        self.election_public_key.clone()
+    }
+
     pub fn alias(&self) -> String {
         self.alias.clone()
     }
@@ -54,6 +62,13 @@ impl PrivateVoteCommitteeData {
         std::fs::create_dir_all(directory.path()).unwrap();
         self.write_communication_key(&directory);
         self.write_member_secret_key(&directory);
+        self.write_encrypting_vote_key(&directory);
+    }
+
+    fn write_encrypting_vote_key(&self, directory: &ChildPath) {
+        let path = directory.child("encrypting_vote_key.sk");
+        let mut file = File::create(path.path()).unwrap();
+        writeln!(file, "{}", self.encrypting_vote_key().to_base32().unwrap()).unwrap()
     }
 
     fn write_communication_key(&self, directory: &ChildPath) {
@@ -85,6 +100,16 @@ impl PrivateVoteCommitteeData {
             .unwrap()
         )
         .unwrap()
+    }
+}
+
+pub trait ElectionPublicKeyExtension {
+    fn to_base32(&self) -> Result<String, bech32::Error>;
+}
+
+impl ElectionPublicKeyExtension for ElectionPublicKey {
+    fn to_base32(&self) -> Result<String, bech32::Error> {
+        bech32::encode(ENCRYPTING_VOTE_PK_HRP, self.to_bytes().to_base32())
     }
 }
 
@@ -136,6 +161,8 @@ impl PrivateVoteCommitteeDataManager {
             let ms = MemberState::new(&mut rng, threshold, &crs, &communication_public_keys, index);
 
             let communication_secret_key = communication_secret_keys.get(index).unwrap();
+            let encrypting_vote_key =
+                ElectionPublicKey::from_participants(&[ms.public_key().clone()]);
 
             data.insert(
                 pk.clone(),
@@ -144,11 +171,16 @@ impl PrivateVoteCommitteeDataManager {
                     communication_secret_key.clone(),
                     ms.secret_key().clone(),
                     ms.public_key().clone(),
+                    encrypting_vote_key,
                 ),
             );
         }
 
         Self { data }
+    }
+
+    pub fn get(&self, identifier: &Identifier) -> Option<&PrivateVoteCommitteeData> {
+        self.data.get(identifier)
     }
 
     pub fn write_to(&self, directory: ChildPath) -> std::io::Result<()> {
