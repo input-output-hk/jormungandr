@@ -4,7 +4,7 @@ pub mod delegation;
 pub mod utxo;
 
 pub use committee::{
-    EncryptingVoteKeyExtension, PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager,
+    ElectionPublicKeyExtension, PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager,
 };
 
 use crate::{

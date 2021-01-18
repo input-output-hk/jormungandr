@@ -2,8 +2,8 @@ use crate::testing::network_builder::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
 use bech32::ToBase32;
 use chain_vote::{
-    EncryptingVoteKey, MemberCommunicationKey, MemberCommunicationPublicKey, MemberPublicKey,
-    MemberState, OpeningVoteKey, CRS,
+    committee::ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey,
+    MemberPublicKey, MemberState, OpeningVoteKey, CRS,
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
@@ -22,7 +22,7 @@ pub struct PrivateVoteCommitteeData {
     communication_key: MemberCommunicationKey,
     member_secret_key: OpeningVoteKey,
     member_public_key: MemberPublicKey,
-    election_public_key: EncryptingVoteKey,
+    election_public_key: ElectionPublicKey,
 }
 
 impl PrivateVoteCommitteeData {
@@ -31,7 +31,7 @@ impl PrivateVoteCommitteeData {
         communication_key: MemberCommunicationKey,
         member_secret_key: OpeningVoteKey,
         member_public_key: MemberPublicKey,
-        election_public_key: EncryptingVoteKey,
+        election_public_key: ElectionPublicKey,
     ) -> Self {
         Self {
             alias,
@@ -50,7 +50,7 @@ impl PrivateVoteCommitteeData {
         self.member_secret_key.clone()
     }
 
-    pub fn encrypting_vote_key(&self) -> EncryptingVoteKey {
+    pub fn encrypting_vote_key(&self) -> ElectionPublicKey {
         self.election_public_key.clone()
     }
 
@@ -103,11 +103,11 @@ impl PrivateVoteCommitteeData {
     }
 }
 
-pub trait EncryptingVoteKeyExtension {
+pub trait ElectionPublicKeyExtension {
     fn to_base32(&self) -> Result<String, bech32::Error>;
 }
 
-impl EncryptingVoteKeyExtension for EncryptingVoteKey {
+impl ElectionPublicKeyExtension for ElectionPublicKey {
     fn to_base32(&self) -> Result<String, bech32::Error> {
         bech32::encode(COMMUNICATION_SK_HRP, self.to_bytes().to_base32())
     }
@@ -162,7 +162,7 @@ impl PrivateVoteCommitteeDataManager {
 
             let communication_secret_key = communication_secret_keys.get(index).unwrap();
             let encrypting_vote_key =
-                EncryptingVoteKey::from_participants(&vec![ms.public_key().clone()]);
+                ElectionPublicKey::from_participants(&vec![ms.public_key().clone()]);
 
             data.insert(
                 pk.clone(),
