@@ -162,7 +162,7 @@ impl PrivateVoteCommitteeDataManager {
 
             let communication_secret_key = communication_secret_keys.get(index).unwrap();
             let encrypting_vote_key =
-                ElectionPublicKey::from_participants(&vec![ms.public_key().clone()]);
+                ElectionPublicKey::from_participants(&[ms.public_key().clone()]);
 
             data.insert(
                 pk.clone(),
