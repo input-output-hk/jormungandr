@@ -41,7 +41,9 @@ impl TallyCommand {
             .arg("--table-size")
             .arg(tablesize.to_string())
             .arg("--threshold")
-            .arg(threshold.to_string());
+            .arg(threshold.to_string())
+            .arg("--output-format")
+            .arg("json");
         self
     }
 
