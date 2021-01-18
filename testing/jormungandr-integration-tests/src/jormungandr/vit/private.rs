@@ -12,22 +12,24 @@ use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::{
     certificate::VoteAction, chaintypes::ConsensusType,
-    ledger::governance::TreasuryGovernanceAction, milli::Milli, value::Value, vote::Choice,
+    ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
+use jormungandr_lib::interfaces::KESUpdateSpeed;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
+
+use jormungandr_testing_utils::testing::vote_plan_cert;
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TempDir::new().unwrap().into_persistent();
     let rewards_increase = 10;
     let yes_choice = Choice::new(1);
-    let no_choice = Choice::new(1);
+    let no_choice = Choice::new(2);
 
     let wallet_initial_funds = 1_000_000;
 
@@ -73,11 +75,13 @@ pub fn jcli_e2e_flow_private_vote() {
         .tally_start(BlockDate::from_epoch_slot_id(2, 0))
         .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .member_public_key(MemberPublicKey::from_bytes(&member_pk_bytes).unwrap())
-        .options_size(2)
+        .options_size(3)
         .build();
 
     let vote_plan_json = temp_dir.child("vote_plan.json");
     vote_plan_json.write_str(&vote_plan.as_json_str()).unwrap();
+
+    let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
     let config = ConfigurationBuilder::new()
         .with_explorer()
@@ -99,7 +103,6 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let alice_sk = temp_dir.child("alice_sk");
     alice.save_to_path(alice_sk.path()).unwrap();
-    let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
@@ -138,7 +141,7 @@ pub fn jcli_e2e_flow_private_vote() {
         vote_plan_id.clone(),
         0,
         yes_choice,
-        2,
+        3,
         encrypting_vote_key.clone(),
     );
 
@@ -146,7 +149,7 @@ pub fn jcli_e2e_flow_private_vote() {
         vote_plan_id.clone(),
         0,
         no_choice,
-        2,
+        3,
         encrypting_vote_key,
     );
 
@@ -192,18 +195,18 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(2, jormungandr.explorer());
 
-    let encrypted_vote_tally = NamedTempFile::new("encrypted-vote-tally.certificate").unwrap();
+    let encrypted_vote_tally = temp_dir.child("encrypted-vote-tally.certificate");
 
     jcli.certificate()
-        .new_encrypted_vote_tally(vote_plan_id, encrypted_vote_tally.path());
+        .new_encrypted_vote_tally(vote_plan_id.clone(), encrypted_vote_tally.path());
 
-    let vote_tally_cert = read_file(encrypted_vote_tally.path());
+    let encrypted_vote_tally_cert = read_file(encrypted_vote_tally.path());
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
-        .add_certificate(&vote_tally_cert)
+        .add_certificate(&encrypted_vote_tally_cert)
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())
@@ -213,10 +216,10 @@ pub fn jcli_e2e_flow_private_vote() {
         .send(&tx)
         .assert_in_block();
 
-    time::wait_for_epoch(3, jormungandr.explorer());
+    alice.confirm_transaction();
 
     let vote_tally = jormungandr.rest().vote_plan_statuses().unwrap();
-    let vote_tally_file = NamedTempFile::new("vote_tally_proposal_0.yaml").unwrap();
+    let vote_tally_file = temp_dir.child("vote_tally_proposal_0.yaml");
 
     let encrypted_tally = match vote_tally
         .get(0)
@@ -247,27 +250,54 @@ pub fn jcli_e2e_flow_private_vote() {
         .tally()
         .generate_decryption_share(member_sk_file.path(), vote_tally_file.path());
 
-    let decryption_share_file = NamedTempFile::new("decryption_share").unwrap();
+    let decryption_share_file = temp_dir.child("decryption_share");
     decryption_share_file.write_str(&decryption_share).unwrap();
 
     let generated_share = jcli.votes().tally().decrypt_with_shares(
         vote_tally_file.path(),
-        5000000,
+        3_000_000,
         decryption_share_file.path(),
         1,
         1,
     );
 
-    let generated_share_yaml: serde_yaml::Value = serde_yaml::from_str(&generated_share).unwrap();
-    let results = &generated_share_yaml["results"];
+    println!("{:#?}", generated_share);
+
+    let generated_share_yaml: serde_json::Value = serde_json::from_str(&generated_share).unwrap();
+
+    let shares_file = temp_dir.child("shares.json");
+    shares_file.write_str(&generated_share).unwrap();
+
+    println!("{:#?}", generated_share_yaml);
+    /*  let results = &generated_share_yaml["results"];
     assert_eq!(
-        results[0].as_str().unwrap(),
-        (wallet_initial_funds * 2).to_string()
+        results[0].as_u64(),
+        wallet_initial_funds * 2
     );
     assert_eq!(
-        results[1].as_str().unwrap(),
-        (wallet_initial_funds).to_string()
-    );
+        results[1].as_u64(),
+        (wallet_initial_funds)
+    );*/
+
+    let vote_tally_cert = jcli
+        .certificate()
+        .new_private_vote_tally(vote_plan_id, shares_file.path());
+
+    let tx = jcli
+        .transaction_builder(jormungandr.genesis_block_hash())
+        .new_transaction()
+        .add_account(&alice.address().to_string(), &Value::zero().into())
+        .add_certificate(&vote_tally_cert)
+        .finalize()
+        .seal_with_witness_for_address(&alice)
+        .add_auth(alice_sk.path())
+        .to_message();
+
+    jcli.fragment_sender(&jormungandr)
+        .send(&tx)
+        .assert_in_block();
+
+    time::wait_for_epoch(3, jormungandr.explorer());
 
     let rewards_after = jormungandr
         .explorer()
