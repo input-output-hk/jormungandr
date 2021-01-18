@@ -560,7 +560,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         return Err(network::bootstrap::Error::EmptyTrustedPeers.into());
     }
 
-    let mut services = Services::new(logger.clone());
+    let mut services = Services::new();
 
     let cancellation_token = CancellationToken::new();
     init_os_signal_watchers(&mut services, cancellation_token.clone());
@@ -578,7 +578,10 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let explorer = settings.explorer;
             let server_handler = rest::start_rest_server(rest, explorer, context.clone()).compat();
             services.spawn_future("rest", move |info| async move {
-                service_context.write().await.set_logger(info.into_logger());
+                service_context
+                    .write()
+                    .await
+                    .set_logger(info.span().clone());
                 server_handler.await
             });
             Some(context)

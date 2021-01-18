@@ -42,6 +42,8 @@ use jormungandr_lib::{
 use std::sync::Arc;
 
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use tracing::{span, Level};
+use tracing_futures::Instrument;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, thiserror::Error)]
@@ -111,16 +113,20 @@ pub async fn get_account_state(
 }
 
 pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {
-    let logger = context.logger()?.new(o!("request" => "message_logs"));
-    let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
-    let mut mbox = context.try_full()?.transaction_task.clone();
-    mbox.send(TransactionMsg::GetLogs(reply_handle))
-        .await
-        .map_err(|e| {
-            debug!(&logger, "error getting message logs"; "reason" => %e);
-            Error::MsgSendError(e)
-        })?;
-    reply_future.await.map_err(Into::into)
+    let span = span!(parent: context.span()?, Level::TRACE, "message_logs");
+    async move {
+        let (reply_handle, reply_future) = intercom::unary_reply();
+        let mut mbox = context.try_full()?.transaction_task.clone();
+        mbox.send(TransactionMsg::GetLogs(reply_handle))
+            .await
+            .map_err(|e| {
+                tracing::debug!(reason = %e, "error getting message logs");
+                Error::MsgSendError(e)
+            })?;
+        reply_future.await.map_err(Into::into)
+    }
+    .instrument(span)
+    .await
 }
 
 pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, Error> {
@@ -428,26 +434,30 @@ pub async fn get_stake_pools(context: &Context) -> Result<Vec<String>, Error> {
 pub async fn get_network_stats(context: &Context) -> Result<Vec<PeerStats>, Error> {
     let full_context = context.try_full()?;
 
-    let logger = context.logger()?.new(o!("request" => "network_stats"));
-    let (reply_handle, reply_future) = intercom::unary_reply(logger.clone());
-    let mut mbox = full_context.network_task.clone();
-    mbox.send(NetworkMsg::PeerInfo(reply_handle))
-        .await
-        .map_err(|e| {
-            debug!(&logger, "error getting network stats"; "reason" => %e);
-            Error::MsgSendError(e)
-        })?;
-    let peer_stats = reply_future.await?;
-    Ok(peer_stats
-        .into_iter()
-        .map(|info| PeerStats {
-            addr: info.addr,
-            established_at: SystemTime::from(info.stats.connection_established()),
-            last_block_received: info.stats.last_block_received().map(SystemTime::from),
-            last_fragment_received: info.stats.last_fragment_received().map(SystemTime::from),
-            last_gossip_received: info.stats.last_gossip_received().map(SystemTime::from),
-        })
-        .collect())
+    let span = span!(parent: context.span()?, Level::TRACE, "request", request = "network_stats");
+    async move {
+        let (reply_handle, reply_future) = intercom::unary_reply();
+        let mut mbox = full_context.network_task.clone();
+        mbox.send(NetworkMsg::PeerInfo(reply_handle))
+            .await
+            .map_err(|e| {
+                tracing::debug!(reason = %e, "error getting network stats");
+                Error::MsgSendError(e)
+            })?;
+        let peer_stats = reply_future.await?;
+        Ok(peer_stats
+            .into_iter()
+            .map(|info| PeerStats {
+                addr: info.addr,
+                established_at: SystemTime::from(info.stats.connection_established()),
+                last_block_received: info.stats.last_block_received().map(SystemTime::from),
+                last_fragment_received: info.stats.last_fragment_received().map(SystemTime::from),
+                last_gossip_received: info.stats.last_gossip_received().map(SystemTime::from),
+            })
+            .collect())
+    }
+    .instrument(span)
+    .await
 }
 
 pub async fn get_rewards_info_epoch(
