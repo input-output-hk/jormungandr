@@ -45,7 +45,46 @@ impl VotePlanExtension for VotePlan {
             let mut item = json::JsonValue::new_object();
             item["external_id"] = proposal.external_id().to_string().into();
             item["options"] = proposal.options().choice_range().end.into();
-            item["action"] = json::JsonValue::String("off_chain".to_string());
+
+            match proposal.action() {
+                chain_impl_mockchain::certificate::VoteAction::OffChain => {
+                    item["action"] = json::JsonValue::String("off_chain".to_string());
+                }
+                chain_impl_mockchain::certificate::VoteAction::Treasury { action } => {
+                    match action {
+                        chain_impl_mockchain::ledger::governance::TreasuryGovernanceAction::NoOp => {
+                            unimplemented!()
+                        }
+                        chain_impl_mockchain::ledger::governance::TreasuryGovernanceAction::TransferToRewards { value } => {
+                            item["action"] = json::parse(&format!(r#"
+                                                {{
+                                                    "treasury": {{
+                                                        "transfer_to_rewards": {{
+                                                            "value": {}
+                                                        }}
+                                                    }}
+                                                }}"#,value.to_string())).unwrap();
+                        }
+                    }
+                }
+                chain_impl_mockchain::certificate::VoteAction::Parameters { action } => {
+                    match action {
+                        chain_impl_mockchain::ledger::governance::ParametersGovernanceAction::NoOp => {
+                            unimplemented!()
+                        }
+                        chain_impl_mockchain::ledger::governance::ParametersGovernanceAction::RewardAdd { value } => {
+                            item["action"] = json::parse(&format!(r#"
+                            {{
+                                "governance": {{
+                                    "reward_add": {{
+                                        "value": {}
+                                    }},
+                                }}
+                            }}"#,value.to_string())).unwrap();
+                        }
+                    }
+                }
+            }
             let _ = proposals.push(item);
         }
 
