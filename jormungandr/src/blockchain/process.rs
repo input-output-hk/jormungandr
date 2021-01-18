@@ -326,7 +326,6 @@ async fn reprocess_tip(
 /// chain selection after updating that other branch as it may be possible that
 /// this branch just became more interesting for the current consensus algorithm.
 pub async fn process_new_ref(
-    logger: &Logger,
     blockchain: &mut Blockchain,
     mut tip: Tip,
     candidate: Arc<Ref>,
@@ -337,8 +336,7 @@ pub async fn process_new_ref(
 
     match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
         ComparisonResult::PreferCurrent => {
-            info!(
-                logger,
+            tracing::info!(
                 "create new branch with tip {} | current-tip {}",
                 candidate.header().description(),
                 tip_ref.header().description(),
@@ -346,8 +344,7 @@ pub async fn process_new_ref(
         }
         ComparisonResult::PreferCandidate => {
             if tip_ref.hash() == candidate.block_parent_hash() {
-                info!(
-                    logger,
+                tracing::info!(
                     "update current branch tip: {} -> {}",
                     tip_ref.header().description(),
                     candidate.header().description(),
@@ -360,8 +357,7 @@ pub async fn process_new_ref(
 
                 tip.update_ref(candidate).await;
             } else {
-                info!(
-                    logger,
+                tracing::info!(
                     "switching branch from {} to {}",
                     tip_ref.header().description(),
                     candidate.header().description(),
