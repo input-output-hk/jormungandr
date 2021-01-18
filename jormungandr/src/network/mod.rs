@@ -100,6 +100,8 @@ use std::time::Duration;
 
 pub use self::bootstrap::Error as BootstrapError;
 use crate::stats_counter::StatsCounter;
+use tracing::{span, Level, Span};
+use tracing_futures::Instrument;
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -608,7 +610,7 @@ impl BootstrapPeers {
 }
 
 /// Try to get sufficient peers to do a netboot from
-async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
+async fn netboot_peers(config: &Configuration, logger: &Span) -> BootstrapPeers {
     let mut peers = BootstrapPeers::new();
 
     // extract the trusted peers from the config
@@ -652,7 +654,7 @@ pub async fn bootstrap(
     blockchain: NewBlockchain,
     branch: Tip,
     cancellation_token: CancellationToken,
-    logger: &Logger,
+    span: &Span,
 ) -> Result<bool, bootstrap::Error> {
     use futures::future::{select, Either, FutureExt};
 
@@ -671,7 +673,7 @@ pub async fn bootstrap(
     let mut bootstrapped = false;
 
     let (netboot_peers, _) = match select(
-        netboot_peers(config, logger).boxed(),
+        netboot_peers(config, span).boxed(),
         cancellation_token.cancelled().boxed(),
     )
     .await
@@ -681,33 +683,37 @@ pub async fn bootstrap(
     };
 
     for peer in netboot_peers.randomly() {
-        let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
-        let res = bootstrap::bootstrap_from_peer(
-            peer,
-            blockchain.clone(),
-            branch.clone(),
-            cancellation_token.clone(),
-            logger.clone(),
-        )
-        .await;
+        let span =
+            span!(parent: span, Level::TRACE, "bootstrap", peer_addr = %peer.address().to_string());
+        async move {
+            let res = bootstrap::bootstrap_from_peer(
+                peer,
+                blockchain.clone(),
+                branch.clone(),
+                cancellation_token.clone(),
+            )
+            .await;
 
-        match res {
-            Err(bootstrap::Error::Connect(e)) => {
-                warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
-            }
-            Err(bootstrap::Error::Interrupted) => {
-                warn!(logger, "the bootstrap process was interrupted");
-                return Err(bootstrap::Error::Interrupted);
-            }
-            Err(e) => {
-                warn!(logger, "initial bootstrap failed"; "error" => ?e);
-            }
-            Ok(()) => {
-                info!(logger, "initial bootstrap completed");
-                bootstrapped = true;
-                break;
-            }
+            match res {
+                Err(bootstrap::Error::Connect(e)) => {
+                    tracing::warn!(reason = %e, "unable to reach peer for initial bootstrap");
+                }
+                Err(bootstrap::Error::Interrupted) => {
+                    tracing::warn!("the bootstrap process was interrupted");
+                    return Err(bootstrap::Error::Interrupted);
+                }
+                Err(e) => {
+                    tracing::warn!(error = ?e, "initial bootstrap failed");
+                }
+                Ok(()) => {
+                    tracing::info!("initial bootstrap completed");
+                    bootstrapped = true;
+                    break;
+                }
+            };
         }
+        .instrument(span)
+        .await;
     }
 
     blockchain
