@@ -10,7 +10,7 @@ use futures::stream::FuturesUnordered;
 use thiserror::Error;
 use tokio::runtime::{Handle, Runtime};
 use tokio::task::JoinHandle;
-use tracing::{span, Level};
+use tracing::{span, Level, Span};
 use tracing_futures::Instrument;
 
 use std::error;
@@ -238,6 +238,12 @@ impl TokioServiceInfo {
     #[inline]
     pub fn runtime_handle(&self) -> &Handle {
         &self.handle
+    }
+
+    /// Access the parent service span
+    #[inline]
+    pub fn span(&self) -> &Span {
+        &self.span
     }
 
     /// spawn a std::future within the service's tokio handle
