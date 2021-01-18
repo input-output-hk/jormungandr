@@ -81,7 +81,7 @@ impl CertificateCommand {
             .arg("new")
             .arg("vote-tally")
             .arg("private")
-            .arg("--share")
+            .arg("--shares")
             .arg(shares.as_ref())
             .arg("--vote-plan-id")
             .arg(vote_plan_id.into());
