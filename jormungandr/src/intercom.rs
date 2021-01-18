@@ -171,7 +171,6 @@ impl<T> ReplyHandle<T> {
 
 pub struct ReplyFuture<T> {
     receiver: oneshot::Receiver<Result<T, Error>>,
-    logger: Logger,
 }
 
 impl<T> Unpin for ReplyFuture<T> {}
@@ -182,24 +181,24 @@ impl<T> Future for ReplyFuture<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<T, Error>> {
         Pin::new(&mut self.receiver).poll(cx).map(|res| match res {
             Ok(Ok(item)) => {
-                debug!(self.logger, "request processed");
+                tracing::debug!("request processed");
                 Ok(item)
             }
             Ok(Err(e)) => {
-                info!(self.logger, "error processing request"; "reason" => %e);
+                tracing::info!(reason = %e, "error processing request");
                 Err(e)
             }
             Err(oneshot::Canceled) => {
-                warn!(self.logger, "response canceled by the processing task");
+                tracing::warn!("response canceled by the processing task");
                 Err(Error::from(oneshot::Canceled))
             }
         })
     }
 }
 
-pub fn unary_reply<T>(logger: Logger) -> (ReplyHandle<T>, ReplyFuture<T>) {
+pub fn unary_reply<T>() -> (ReplyHandle<T>, ReplyFuture<T>) {
     let (sender, receiver) = oneshot::channel();
-    let future = ReplyFuture { receiver, logger };
+    let future = ReplyFuture { receiver };
     (ReplyHandle { sender }, future)
 }
 
