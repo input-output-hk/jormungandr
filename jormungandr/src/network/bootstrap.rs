@@ -6,7 +6,6 @@ use chain_core::property::{Deserialize, HasHeader};
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
 use futures::{prelude::*, stream, task::Poll};
-use slog::Logger;
 use tokio_util::sync::CancellationToken;
 
 use std::fmt::Debug;
@@ -53,11 +52,8 @@ pub enum Error {
 
 const MAX_BOOTSTRAP_PEERS: u32 = 32;
 
-pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>, Error> {
-    info!(
-        logger,
-        "getting peers from bootstrap peer {}", peer.connection
-    );
+pub async fn peers_from_trusted_peer(peer: &Peer) -> Result<Vec<Peer>, Error> {
+    tracing::info!("getting peers from bootstrap peer {}", peer.connection);
 
     let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
     let peers = client
@@ -65,12 +61,7 @@ pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<
         .await
         .map_err(Error::PeersNotAvailable)?;
 
-    info!(
-        logger,
-        "peer {} : peers known : {}",
-        peer.connection,
-        peers.len()
-    );
+    tracing::info!("peer {} : peers known : {}", peer.connection, peers.len());
     let peers = peers.iter().map(|peer| Peer::new(peer.addr())).collect();
     Ok(peers)
 }

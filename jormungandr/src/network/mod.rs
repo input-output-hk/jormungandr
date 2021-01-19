@@ -610,7 +610,7 @@ impl BootstrapPeers {
 }
 
 /// Try to get sufficient peers to do a netboot from
-async fn netboot_peers(config: &Configuration, logger: &Span) -> BootstrapPeers {
+async fn netboot_peers(config: &Configuration, parent_span: &Span) -> BootstrapPeers {
     let mut peers = BootstrapPeers::new();
 
     // extract the trusted peers from the config
@@ -626,20 +626,28 @@ async fn netboot_peers(config: &Configuration, logger: &Span) -> BootstrapPeers 
         let mut trusted_peers = trusted_peers;
         trusted_peers.shuffle(&mut rng);
         for tpeer in trusted_peers {
-            // let peer = Peer::new(peer, Protocol::Grpc);
-            let tp_logger = logger.new(o!("peer_addr" => tpeer.address().to_string()));
-            let received_peers = bootstrap::peers_from_trusted_peer(&tpeer, tp_logger.clone())
-                .await
-                .unwrap_or_else(|e| {
-                    warn!(
-                        tp_logger,
-                        "failed to retrieve the list of bootstrap peers from trusted peer";
-                        "reason" => %e,
-                    );
-                    vec![tpeer]
-                });
-            let added = peers.add_peers(&received_peers);
-            info!(logger, "adding {} peers from peer", added);
+            let span = span!(
+                parent: parent_span,
+                Level::TRACE,
+                "netboot_peers",
+                peer_addr = %tpeer.address().to_string()
+            );
+            peers = async move {
+                let received_peers = bootstrap::peers_from_trusted_peer(&tpeer)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!(
+                            reason = %e,
+                            "failed to retrieve the list of bootstrap peers from trusted peer"
+                        );
+                        vec![tpeer]
+                    });
+                let added = peers.add_peers(&received_peers);
+                tracing::info!("adding {} peers from peer", added);
+                peers
+            }
+            .instrument(span)
+            .await;
 
             if peers.count() > 32 {
                 break;
@@ -685,35 +693,48 @@ pub async fn bootstrap(
     for peer in netboot_peers.randomly() {
         let span =
             span!(parent: span, Level::TRACE, "bootstrap", peer_addr = %peer.address().to_string());
-        async move {
-            let res = bootstrap::bootstrap_from_peer(
-                peer,
-                blockchain.clone(),
-                branch.clone(),
-                cancellation_token.clone(),
-            )
-            .await;
+        let res = bootstrap::bootstrap_from_peer(
+            peer,
+            blockchain.clone(),
+            branch.clone(),
+            cancellation_token.clone(),
+        )
+        .await;
 
-            match res {
-                Err(bootstrap::Error::Connect(e)) => {
+        match res {
+            Err(bootstrap::Error::Connect(e)) => {
+                async move {
                     tracing::warn!(reason = %e, "unable to reach peer for initial bootstrap");
                 }
-                Err(bootstrap::Error::Interrupted) => {
+                .instrument(span)
+                .await;
+            }
+            Err(bootstrap::Error::Interrupted) => {
+                async move {
                     tracing::warn!("the bootstrap process was interrupted");
-                    return Err(bootstrap::Error::Interrupted);
                 }
-                Err(e) => {
+                .instrument(span)
+                .await;
+                return Err(bootstrap::Error::Interrupted);
+            }
+            Err(e) => {
+                async move {
                     tracing::warn!(error = ?e, "initial bootstrap failed");
                 }
-                Ok(()) => {
+                .instrument(span)
+                .await;
+            }
+            Ok(()) => {
+                async move {
                     tracing::info!("initial bootstrap completed");
-                    bootstrapped = true;
-                    break;
                 }
-            };
+                .instrument(span)
+                .await;
+
+                bootstrapped = true;
+                break;
+            }
         }
-        .instrument(span)
-        .await;
     }
 
     blockchain

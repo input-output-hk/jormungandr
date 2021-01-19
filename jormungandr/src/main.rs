@@ -30,9 +30,9 @@ use futures::executor::block_on;
 use futures::prelude::*;
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
-use slog::Logger;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
+use tracing::Span;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -72,7 +72,6 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::ContextLock>,
     services: Services,
@@ -320,7 +319,14 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         rest_context,
         settings,
     } = services.block_on_task("bootstrap", |info| {
-        bootstrap_internal(rest_context, block0, storage, settings, cancellation_token)
+        bootstrap_internal(
+            rest_context,
+            info.span(),
+            block0,
+            storage,
+            settings,
+            cancellation_token,
+        )
     })?;
 
     Ok(BootstrappedNode {
@@ -346,6 +352,7 @@ struct BootstrapData {
 
 async fn bootstrap_internal(
     rest_context: Option<rest::ContextLock>,
+    span: &Span,
     block0: blockcfg::Block,
     storage: blockchain::Storage,
     settings: Settings,
@@ -368,14 +375,9 @@ async fn bootstrap_internal(
 
     let cache_capacity = 102_400;
 
-    let (blockchain, blockchain_tip) = start_up::load_blockchain(
-        block0,
-        storage,
-        cache_capacity,
-        settings.rewards_report_all,
-        &logger,
-    )
-    .await?;
+    let (blockchain, blockchain_tip) =
+        start_up::load_blockchain(block0, storage, cache_capacity, settings.rewards_report_all)
+            .await?;
 
     if let Some(context) = &rest_context {
         let mut context = context.write().await;
@@ -404,7 +406,7 @@ async fn bootstrap_internal(
             blockchain.clone(),
             blockchain_tip.clone(),
             cancellation_token.clone(),
-            &logger,
+            &span,
         )
         .await?
         {
@@ -453,7 +455,6 @@ pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
     pub storage: blockchain::Storage,
-    pub logger: Logger,
     pub rest_context: Option<rest::ContextLock>,
     pub services: Services,
     pub cancellation_token: CancellationToken,
@@ -475,7 +476,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
         match signal::unix::signal(SignalKind::terminate()) {
             Ok(signal) => recv_signal_and_cancel(signal, token).left_future(),
             Err(e) => {
-                warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
+                tracing::warn!(reason = %e, "failed to install handler for SIGTERM");
                 future::pending().right_future()
             }
         }
@@ -485,7 +486,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
         match signal::unix::signal(SignalKind::interrupt()) {
             Ok(signal) => recv_signal_and_cancel(signal, token_1).left_future(),
             Err(e) => {
-                warn!(info.logger(), "failed to install handler for SIGINT"; "reason" => %e);
+                tracing::warn!(reason = %e, "failed to install handler for SIGINT");
                 future::pending().right_future()
             }
         }
@@ -565,10 +566,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let explorer = settings.explorer;
             let server_handler = rest::start_rest_server(rest, explorer, context.clone()).compat();
             services.spawn_future("rest", move |info| async move {
-                service_context
-                    .write()
-                    .await
-                    .set_logger(info.span().clone());
+                service_context.write().await.set_span(info.span().clone());
                 server_handler.await
             });
             Some(context)
@@ -621,7 +619,6 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         settings,
         block0,
         storage,
-        logger,
         rest_context,
         services,
         cancellation_token,
