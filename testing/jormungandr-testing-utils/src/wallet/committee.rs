@@ -1,5 +1,7 @@
+use super::WalletError as Error;
 use crate::testing::network_builder::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
+use bech32::FromBase32;
 use bech32::ToBase32;
 use chain_vote::{
     committee::ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey,
@@ -111,6 +113,18 @@ impl ElectionPublicKeyExtension for ElectionPublicKey {
     fn to_base32(&self) -> Result<String, bech32::Error> {
         bech32::encode(ENCRYPTING_VOTE_PK_HRP, self.to_bytes().to_base32())
     }
+}
+
+pub fn encrypting_key_from_base32(key: &str) -> Result<ElectionPublicKey, Error> {
+    let (hrp, data) = bech32::decode(&key).map_err(Error::InvalidBech32)?;
+    if hrp != ENCRYPTING_VOTE_PK_HRP {
+        return Err(Error::InvalidBech32Key {
+            expected: ENCRYPTING_VOTE_PK_HRP.to_string(),
+            actual: hrp,
+        });
+    }
+    let key_bin = Vec::<u8>::from_base32(&data)?;
+    chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)
 }
 
 impl fmt::Debug for PrivateVoteCommitteeData {

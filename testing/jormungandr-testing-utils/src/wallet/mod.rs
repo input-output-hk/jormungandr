@@ -56,6 +56,12 @@ pub enum WalletError {
     CannotMakeWitness,
     #[error("transaction error")]
     FragmentError(#[from] FragmentBuilderError),
+    #[error("Invalid data")]
+    InvalidBech32(#[from] bech32::Error),
+    #[error("invalid vote encrypting key")]
+    VoteEncryptingKey,
+    #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
+    InvalidBech32Key { expected: String, actual: String },
 }
 
 #[allow(clippy::large_enum_variant)]
