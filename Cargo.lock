@@ -1994,6 +1994,7 @@ dependencies = [
  "jormungandr-lib",
  "jormungandr-testing-utils",
  "jortestkit",
+ "json",
  "lazy_static",
  "poldercast",
  "predicates",

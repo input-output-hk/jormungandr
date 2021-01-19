@@ -23,7 +23,7 @@ impl Tally {
             .assert()
             .success()
             .get_output()
-            .as_lossy_string()
+            .as_single_line()
     }
 
     pub fn decrypt_with_shares<P: AsRef<Path>, R: AsRef<Path>>(
