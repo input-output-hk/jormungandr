@@ -22,7 +22,6 @@ use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
 
-use jormungandr_testing_utils::testing::vote_plan_cert;
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
@@ -266,7 +265,18 @@ pub fn jcli_e2e_flow_private_vote() {
     let generated_share_yaml: serde_json::Value = serde_json::from_str(&generated_share).unwrap();
 
     let shares_file = temp_dir.child("shares.json");
-    shares_file.write_str(&generated_share).unwrap();
+
+    let json = format!(
+        r#"
+        [
+            [
+                "{}"
+            ]
+        ]"#,
+        decryption_share
+    );
+
+    shares_file.write_str(&json).unwrap();
 
     println!("{:#?}", generated_share_yaml);
     /*  let results = &generated_share_yaml["results"];
