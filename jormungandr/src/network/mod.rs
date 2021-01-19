@@ -152,7 +152,7 @@ pub struct GlobalState {
     topology: P2pTopology,
     peers: Peers,
     keypair: NodeKeyPair,
-    logger: Logger,
+    span: Span,
 }
 
 pub type GlobalStateR = Arc<GlobalState>;
@@ -163,7 +163,7 @@ impl GlobalState {
         block0_hash: HeaderHash,
         config: Configuration,
         stats_counter: StatsCounter,
-        logger: Logger,
+        span: Span,
     ) -> Self {
         let peers = Peers::new(config.max_connections, logger.clone());
 

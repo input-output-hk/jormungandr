@@ -169,9 +169,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         bootstrapped_node.block0_hash,
         bootstrapped_node.settings.network.clone(),
         stats_counter.clone(),
-        bootstrapped_node
-            .logger
-            .new(o!(crate::log::KEY_TASK => "network")),
+        span!(Level::TRACE, "task", name = "network"),
     ));
 
     {
@@ -305,7 +303,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         settings,
         block0,
         storage,
-        logger,
         rest_context,
         mut services,
         cancellation_token,
@@ -334,7 +331,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0_hash,
         blockchain,
         blockchain_tip,
-        logger,
         explorer_db,
         rest_context,
         services,

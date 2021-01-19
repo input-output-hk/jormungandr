@@ -283,12 +283,15 @@ impl TokioServiceInfo {
         F: Future<Output = ()> + Send + 'static,
     {
         tracing::trace!("spawning {}", name);
-        self.handle.spawn(async move {
-            match tokio::time::timeout(timeout, future).await {
-                Err(_) => tracing::error!("task {} timed out", name),
-                Ok(()) => {}
-            };
-        });
+        self.handle.spawn(
+            async move {
+                match tokio::time::timeout(timeout, future).await {
+                    Err(_) => tracing::error!("task {} timed out", name),
+                    Ok(()) => {}
+                };
+            }
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)),
+        );
     }
 
     /// just like spawn_failable but add a timeout
@@ -299,13 +302,16 @@ impl TokioServiceInfo {
         F: Future<Output = Result<(), E>>,
     {
         tracing::trace!("spawning {}", name);
-        self.handle.spawn(async move {
-            match tokio::time::timeout(timeout, future).await {
-                Err(_) => tracing::error!("task {} timed out", name),
-                Ok(Err(e)) => tracing::error!(reason = ?e, "task {} finished with error", name),
-                Ok(Ok(())) => {}
-            };
-        });
+        self.handle.spawn(
+            async move {
+                match tokio::time::timeout(timeout, future).await {
+                    Err(_) => tracing::error!("task {} timed out", name),
+                    Ok(Err(e)) => tracing::error!(reason = ?e, "task {} finished with error", name),
+                    Ok(Ok(())) => {}
+                };
+            }
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)),
+        );
     }
 
     // Run the closure with the specified period on the handle

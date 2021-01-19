@@ -8,7 +8,6 @@ use crate::{
     blockcfg::{Block, FragmentId, Header, HeaderHash},
     blockchain::Checkpoints,
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
-    log,
     network::p2p::Address,
     stats_counter::StatsCounter,
     utils::{
@@ -23,7 +22,8 @@ use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as 
 use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::prelude::*;
-use slog::Logger;
+use tracing::{span, Level};
+use tracing_futures::Instrument;
 
 use std::{sync::Arc, time::Duration};
 
@@ -97,18 +97,21 @@ impl Process {
 
         match input {
             BlockMsg::LeadershipBlock(block) => {
-                let logger = info.logger().new(o!(
-                    "hash" => block.header.hash().to_string(),
-                    "parent" => block.header.parent_id().to_string(),
-                    "date" => block.header.block_date().to_string()));
-
-                info!(logger, "receiving block from leadership service");
+                let span = span!(
+                    parent: info.span(),
+                    Level::TRACE,
+                    "process_leadership_block",
+                    hash = %block.header.hash().to_string(),
+                    parent = %block.header.parent_id().to_string(),
+                    date = %block.header.block_date().to_string()
+                );
+                let _enter = span.enter();
+                tracing::info!("receiving block from leadership service");
 
                 info.timeout_spawn_fallible(
                     "process leadership block",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP),
                     process_leadership_block(
-                        logger,
                         blockchain,
                         blockchain_tip,
                         tx_msg_box,
@@ -116,17 +119,22 @@ impl Process {
                         explorer_msg_box,
                         block,
                         stats_counter,
-                    ),
-                )
+                    )
+                    .instrument(span.clone()),
+                );
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
-                let logger = info.logger().new(o!(
-                    "hash" => header.hash().to_string(),
-                    "parent" => header.parent_id().to_string(),
-                    "date" => header.block_date().to_string(),
-                    "peer" => node_id.to_string()));
-
-                info!(logger, "received block announcement from network");
+                let span = span!(
+                    parent: info.span(),
+                    Level::TRACE,
+                    "process_announced_block",
+                    hash = %header.hash().to_string(),
+                    parent = %header.parent_id().to_string(),
+                    date = %header.block_date().to_string(),
+                    peer = %node_id.to_string()
+                );
+                let _enter = span.enter();
+                tracing::info!("received block announcement from network");
 
                 info.timeout_spawn_fallible(
                     "process block announcement",
@@ -138,14 +146,12 @@ impl Process {
                         node_id,
                         pull_headers_scheduler.clone(),
                         get_next_block_scheduler.clone(),
-                        logger.clone(),
                     ),
                 )
             }
             BlockMsg::NetworkBlocks(handle) => {
-                info!(info.logger(), "receiving block stream from network");
+                tracing::info!("receiving block stream from network");
 
-                let logger = info.logger().clone();
                 let get_next_block_scheduler = get_next_block_scheduler.clone();
 
                 info.timeout_spawn_fallible(
@@ -160,21 +166,19 @@ impl Process {
                         get_next_block_scheduler,
                         handle,
                         stats_counter,
-                        logger,
                     ),
                 );
             }
             BlockMsg::ChainHeaders(handle) => {
-                info!(info.logger(), "receiving header stream from network");
-
-                let logger = info.logger().new(o!(log::KEY_SUB_TASK => "chain_pull"));
+                tracing::info!("receiving header stream from network");
+                let span = span!(parent: info.span(), Level::TRACE, "process_chain_headers", sub_task = "chain_pull");
+                let _enter = span.enter();
                 let pull_headers_scheduler = pull_headers_scheduler.clone();
 
                 info.timeout_spawn(
                     "process network headers",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS),
                     process_chain_headers(
-                        logger,
                         blockchain,
                         handle,
                         pull_headers_scheduler,
@@ -189,19 +193,11 @@ impl Process {
         let tip = self.blockchain_tip.clone();
         let blockchain = self.blockchain.clone();
         let explorer = self.explorer_msgbox.clone();
-        let logger = info.logger().clone();
 
         info.run_periodic_fallible(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
-            move || {
-                reprocess_tip(
-                    logger.clone(),
-                    blockchain.clone(),
-                    tip.clone(),
-                    explorer.clone(),
-                )
-            },
+            move || reprocess_tip(blockchain.clone(), tip.clone(), explorer.clone()),
         )
     }
 
@@ -222,7 +218,6 @@ impl Process {
 
     fn spawn_pull_headers_scheduler(&self, info: &TokioServiceInfo) -> PullHeadersScheduler {
         let network_msgbox = self.network_msgbox.clone();
-        let scheduler_logger = info.logger().clone();
         let scheduler_future = FireForgetSchedulerFuture::new(
             &PULL_HEADERS_SCHEDULER_CONFIG,
             move |to, node_address, from| {
@@ -234,22 +229,19 @@ impl Process {
                         to,
                     })
                     .unwrap_or_else(|e| {
-                        error!(scheduler_logger, "cannot send PullHeaders request to network";
-                        "reason" => e.to_string())
+                        tracing::error!(reason = %e.to_string(), "cannot send PullHeaders request to network")
                     })
             },
         );
         let scheduler = scheduler_future.scheduler();
-        let logger = info.logger().clone();
         let future = scheduler_future
-            .map_err(move |e| error!(logger, "get blocks scheduling failed"; "reason" => ?e));
+            .map_err(move |e| tracing::error!(reason = ?e, "get blocks scheduling failed"));
         info.spawn_fallible("pull headers scheduling", future);
         scheduler
     }
 
     fn spawn_get_next_block_scheduler(&self, info: &TokioServiceInfo) -> GetNextBlockScheduler {
         let network_msgbox = self.network_msgbox.clone();
-        let scheduler_logger = info.logger().clone();
         let scheduler_future = FireForgetSchedulerFuture::new(
             &GET_NEXT_BLOCK_SCHEDULER_CONFIG,
             move |header_id, node_id, ()| {
@@ -257,17 +249,16 @@ impl Process {
                     .clone()
                     .try_send(NetworkMsg::GetNextBlock(node_id, header_id))
                     .unwrap_or_else(|e| {
-                        error!(
-                            scheduler_logger,
-                            "cannot send GetNextBlock request to network"; "reason" => ?e
+                        tracing::error!(
+                            reason = ?e,
+                            "cannot send GetNextBlock request to network"
                         )
                     });
             },
         );
         let scheduler = scheduler_future.scheduler();
-        let logger = info.logger().clone();
         let future = scheduler_future
-            .map_err(move |e| error!(logger, "get next block scheduling failed"; "reason" => ?e));
+            .map_err(move |e| tracing::error!(reason = ?e, "get next block scheduling failed"));
         info.spawn_fallible("get next block scheduling", future);
         scheduler
     }
@@ -288,7 +279,6 @@ fn try_request_fragment_removal(
 /// this is because a branch may have become more interesting with time
 /// moving forward and branches may have been dismissed
 async fn reprocess_tip(
-    logger: Logger,
     mut blockchain: Blockchain,
     tip: Tip,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
@@ -304,7 +294,6 @@ async fn reprocess_tip(
 
     for other in others {
         process_new_ref(
-            &logger,
             &mut blockchain,
             tip.clone(),
             Arc::clone(other),
@@ -387,7 +376,6 @@ pub async fn process_new_ref(
 }
 
 async fn process_and_propagate_new_ref(
-    logger: &Logger,
     blockchain: &mut Blockchain,
     tip: Tip,
     new_block_ref: Arc<Ref>,
@@ -395,11 +383,11 @@ async fn process_and_propagate_new_ref(
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
-    debug!(logger, "processing the new block and propagating");
+    tracing::debug!("processing the new block and propagating");
 
-    process_new_ref(logger, blockchain, tip, new_block_ref, explorer_msg_box).await?;
+    process_new_ref(blockchain, tip, new_block_ref, explorer_msg_box).await?;
 
-    debug!(logger, "propagating block to the network");
+    tracing::debug!("propagating block to the network");
     network_msg_box
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
         .await
@@ -409,7 +397,6 @@ async fn process_and_propagate_new_ref(
 
 #[allow(clippy::too_many_arguments)]
 async fn process_leadership_block(
-    logger: Logger,
     mut blockchain: Blockchain,
     blockchain_tip: Tip,
     mut tx_msg_box: MessageBox<TransactionMsg>,
@@ -418,17 +405,15 @@ async fn process_leadership_block(
     block: Block,
     stats_counter: StatsCounter,
 ) -> Result<(), Error> {
-    let new_block_ref =
-        process_leadership_block_inner(&logger, &mut blockchain, block.clone()).await?;
+    let new_block_ref = process_leadership_block_inner(&mut blockchain, block.clone()).await?;
 
     let fragments = block.fragments().map(|f| f.id()).collect();
 
-    trace!(logger, "updating fragments log");
+    tracing::trace!("updating fragments log");
     try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
         .map_err(|_| "cannot remove fragments from pool".to_string())?;
 
     process_and_propagate_new_ref(
-        &logger,
         &mut blockchain,
         blockchain_tip,
         Arc::clone(&new_block_ref),
@@ -450,7 +435,6 @@ async fn process_leadership_block(
 }
 
 async fn process_leadership_block_inner(
-    logger: &Logger,
     blockchain: &mut Blockchain,
     block: Block,
 ) -> Result<Arc<Ref>, Error> {
@@ -461,19 +445,16 @@ async fn process_leadership_block_inner(
     let parent = blockchain.get_ref(parent_hash).await?;
 
     let post_checked = if let Some(parent_ref) = parent {
-        debug!(logger, "processing block from leader event");
+        tracing::debug!("processing block from leader event");
         blockchain
             .post_check_header(header, parent_ref, CheckHeaderProof::Enabled)
             .await?
     } else {
-        error!(
-            logger,
-            "block from leader event does not have parent block in storage"
-        );
+        tracing::error!("block from leader event does not have parent block in storage");
         return Err(ErrorKind::MissingParentBlock(parent_hash).into());
     };
 
-    debug!(logger, "apply and store block");
+    tracing::debug!("apply and store block");
     let applied = blockchain
         .apply_and_store_block(post_checked, block)
         .await
@@ -481,7 +462,7 @@ async fn process_leadership_block_inner(
     let new_ref = applied
         .new_ref()
         .expect("block from leadership must be unique");
-    info!(logger, "block from leader event successfully stored");
+    tracing::info!("block from leader event successfully stored");
     Ok(new_ref)
 }
 
@@ -492,7 +473,6 @@ async fn process_block_announcement(
     node_id: Address,
     mut pull_headers_scheduler: PullHeadersScheduler,
     mut get_next_block_scheduler: GetNextBlockScheduler,
-    logger: Logger,
 ) -> Result<(), Error> {
     let pre_checked = blockchain
         .pre_check_header(header, false)
@@ -500,19 +480,19 @@ async fn process_block_announcement(
         .map_err(|err| Error::with_chain(err, "cannot process block announcement"))?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent { .. } => {
-            debug!(logger, "block is already present");
+            tracing::debug!("block is already present");
             Ok(())
         }
         PreCheckedHeader::MissingParent { header, .. } => {
-            debug!(logger, "block is missing a locally stored parent");
+            tracing::debug!("block is missing a locally stored parent");
             let to = header.hash();
             let from = blockchain.get_checkpoints(blockchain_tip.branch()).await;
             pull_headers_scheduler
                 .schedule(to, node_id, from)
                 .unwrap_or_else(move |err| {
-                    error!(
-                        logger,
-                        "cannot schedule pulling headers"; "reason" => ?err
+                    tracing::error!(
+                         reason = ?err,
+                        "cannot schedule pulling headers"
                     )
                 });
             Ok(())
@@ -521,16 +501,13 @@ async fn process_block_announcement(
             header,
             parent_ref: _,
         } => {
-            debug!(
-                logger,
-                "Announced block has a locally stored parent, fetch it"
-            );
+            tracing::debug!("Announced block has a locally stored parent, fetch it");
             get_next_block_scheduler
                 .schedule(header.id(), node_id, ())
                 .unwrap_or_else(move |err| {
-                    error!(
-                        logger,
-                        "cannot schedule getting next block"; "reason" => ?err
+                    tracing::error!(
+                         reason = ?err,
+                        "cannot schedule getting next block"
                     )
                 });
             Ok(())
@@ -548,7 +525,6 @@ async fn process_network_blocks(
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
     stats_counter: StatsCounter,
-    logger: Logger,
 ) -> Result<(), Error> {
     let (mut stream, reply) = handle.into_stream_and_reply();
     let mut candidate = None;
@@ -565,7 +541,6 @@ async fn process_network_blocks(
                     &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
                     &mut get_next_block_scheduler,
-                    &logger,
                 )
                 .await;
                 match res {
@@ -579,10 +554,9 @@ async fn process_network_blocks(
                         break candidate;
                     }
                     Err(e) => {
-                        info!(
-                            logger,
-                            "validation of an incoming block failed";
-                            "reason" => ?e,
+                        tracing::info!(
+                            reason = ?e,
+                            "validation of an incoming block failed"
                         );
                         reply.reply_error(network_block_error_into_reply(e));
                         break candidate;
@@ -599,7 +573,6 @@ async fn process_network_blocks(
     match maybe_updated {
         Some(new_block_ref) => {
             process_and_propagate_new_ref(
-                &logger,
                 &mut blockchain,
                 blockchain_tip,
                 Arc::clone(&new_block_ref),
@@ -624,47 +597,38 @@ async fn process_network_block(
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
     get_next_block_scheduler: &mut GetNextBlockScheduler,
-    logger: &Logger,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     get_next_block_scheduler
         .declare_completed(block.id())
         .unwrap_or_else(
-            |e| error!(logger, "get next block schedule completion failed"; "reason" => ?e),
+            |e| tracing::error!(reason = ?e, "get next block schedule completion failed"),
         );
     let header = block.header();
     let pre_checked = blockchain.pre_check_header(header, false).await?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent { header, .. } => {
-            debug!(
-                logger,
-                "block is already present";
-                "hash" => %header.hash(),
-                "parent" => %header.parent_id(),
-                "date" => %header.block_date(),
+            tracing::debug!(
+                hash = %header.hash(),
+                parent = %header.parent_id(),
+                date = %header.block_date(),
+                "block is already present"
             );
             Ok(None)
         }
         PreCheckedHeader::MissingParent { header, .. } => {
             let parent_hash = header.parent_id();
-            debug!(
-                logger,
-                "block is missing a locally stored parent";
-                "hash" => %header.hash(),
-                "parent" => %parent_hash,
-                "date" => %header.block_date(),
+            tracing::debug!(
+                hash = %header.hash(),
+                parent = %parent_hash,
+                date = %header.block_date(),
+                "block is missing a locally stored parent"
             );
             Err(ErrorKind::MissingParentBlock(parent_hash).into())
         }
         PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-            let r = check_and_apply_block(
-                blockchain,
-                parent_ref,
-                block,
-                tx_msg_box,
-                explorer_msg_box,
-                logger,
-            )
-            .await;
+            let r =
+                check_and_apply_block(blockchain, parent_ref, block, tx_msg_box, explorer_msg_box)
+                    .await;
             r
         }
     }
@@ -676,7 +640,6 @@ async fn check_and_apply_block(
     block: Block,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
-    logger: &Logger,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
     let post_checked = blockchain
@@ -684,12 +647,11 @@ async fn check_and_apply_block(
         .await?;
     let header = post_checked.header();
     let block_hash = header.hash();
-    debug!(
-        logger,
-        "applying block to storage";
-        "hash" => %block_hash,
-        "parent" => %header.parent_id(),
-        "date" => %header.block_date(),
+    tracing::debug!(
+        hash = %block_hash,
+        parent = %header.parent_id(),
+        date = %header.block_date(),
+        "applying block to storage"
     );
     let mut block_for_explorer = if explorer_enabled {
         Some(block.clone())
@@ -702,46 +664,42 @@ async fn check_and_apply_block(
         .await?;
     if let AppliedBlock::New(block_ref) = applied_block {
         let header = block_ref.header();
-        debug!(
-            logger,
-            "applied block to storage";
-            "hash" => %block_hash,
-            "parent" => %header.parent_id(),
-            "date" => %header.block_date(),
+        tracing::debug!(
+            hash = %block_hash,
+            parent = %header.parent_id(),
+            date = %header.block_date(),
+            "applied block to storage"
         );
         try_request_fragment_removal(tx_msg_box, fragment_ids, header).unwrap_or_else(
-            |err| error!(logger, "cannot remove fragments from pool" ; "reason" => %err),
+            |err| tracing::error!(reason = %err, "cannot remove fragments from pool"),
         );
         if let Some(msg_box) = explorer_msg_box {
             msg_box
                 .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
-                .unwrap_or_else(|err| error!(logger, "cannot add block to explorer: {}", err));
+                .unwrap_or_else(|err| tracing::error!("cannot add block to explorer: {}", err));
         }
         Ok(Some(block_ref))
     } else {
-        debug!(
-            logger,
-            "block is already present in storage, not applied";
-            "hash" => %block_hash,
+        tracing::debug!(
+            hash = %block_hash,
+            "block is already present in storage, not applied"
         );
         Ok(None)
     }
 }
 
 async fn process_chain_headers(
-    logger: Logger,
     blockchain: Blockchain,
     handle: intercom::RequestStreamHandle<Header, ()>,
     mut pull_headers_scheduler: PullHeadersScheduler,
     mut network_msg_box: MessageBox<NetworkMsg>,
 ) {
     let (stream, reply) = handle.into_stream_and_reply();
-    match candidate::advance_branch(blockchain, stream, logger.clone()).await {
+    match candidate::advance_branch(blockchain, stream).await {
         Err(e) => {
-            info!(
-                logger,
-                "error processing an incoming header stream";
-                "reason" => %e,
+            tracing::info!(
+                reason = %e,
+                "error processing an incoming header stream"
             );
             reply.reply_error(chain_header_error_into_reply(e));
         }
@@ -750,7 +708,7 @@ async fn process_chain_headers(
                 .iter()
                 .try_for_each(|header_id| pull_headers_scheduler.declare_completed(*header_id))
                 .unwrap_or_else(
-                    |e| error!(logger, "get blocks schedule completion failed"; "reason" => ?e),
+                    |e| tracing::error!(reason = ?e, "get blocks schedule completion failed"),
                 );
 
             if header_ids.is_empty() {
@@ -758,7 +716,7 @@ async fn process_chain_headers(
                 network_msg_box
                     .send(NetworkMsg::GetBlocks(header_ids))
                     .await
-                    .map_err(|_| error!(logger, "cannot request blocks from network"))
+                    .map_err(|_| tracing::error!("cannot request blocks from network"))
                     .map(|_| ())
                     .unwrap();
 
