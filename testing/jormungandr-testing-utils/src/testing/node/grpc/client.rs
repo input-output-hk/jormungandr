@@ -15,6 +15,7 @@ use std::fmt;
 
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
+use tonic::transport::Channel;
 
 use thiserror::Error;
 
@@ -31,6 +32,7 @@ pub enum MockClientError {
 pub struct JormungandrClient {
     host: String,
     port: u16,
+    inner_client: NodeClient<Channel>,
 }
 
 impl Clone for JormungandrClient {
@@ -70,15 +72,21 @@ impl JormungandrClient {
         Self {
             host: host.to_owned(),
             port,
+            inner_client: NodeClient::new(
+                tonic::transport::Endpoint::from_shared(format!("http://{}:{}", host, port))
+                    .unwrap()
+                    .connect_lazy()
+                    .unwrap(),
+            ),
         }
     }
 
-    fn address(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
+    fn client(&self) -> NodeClient<Channel> {
+        self.inner_client.clone()
     }
 
     pub async fn handshake(&self, nonce: &[u8]) -> HandshakeResponse {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
         let request = tonic::Request::new(HandshakeRequest {
             nonce: nonce.to_vec(),
         });
@@ -87,14 +95,14 @@ impl JormungandrClient {
     }
 
     pub async fn tip(&self) -> LibHeader {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
         let request = tonic::Request::new(TipRequest {});
         let response = client.tip(request).await.unwrap().into_inner();
         read_into(&response.block_header)
     }
 
     pub async fn headers(&self, block_ids: &[Hash]) -> Result<Vec<LibHeader>, MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
 
         let request = tonic::Request::new(BlockIds {
             ids: self.hashes_to_bin_vec(block_ids),
@@ -119,7 +127,7 @@ impl JormungandrClient {
     }
 
     pub async fn get_blocks(&self, blocks_id: &[Hash]) -> Result<Vec<LibBlock>, MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
 
         let request = tonic::Request::new(BlockIds {
             ids: self.hashes_to_bin_vec(blocks_id),
@@ -141,7 +149,7 @@ impl JormungandrClient {
         from: &[Hash],
         to: Hash,
     ) -> Result<Vec<LibBlock>, MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
 
         let request = tonic::Request::new(PullBlocksRequest {
             from: self.hashes_to_bin_vec(from),
@@ -155,7 +163,7 @@ impl JormungandrClient {
     }
 
     pub async fn pull_blocks_to_tip(&self, from: Hash) -> Result<Vec<LibBlock>, MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
 
         let request = tonic::Request::new(PullBlocksToTipRequest {
             from: self.hashes_to_bin_vec(&[from]),
@@ -217,7 +225,7 @@ impl JormungandrClient {
         from: &[Hash],
         to: Hash,
     ) -> Result<Vec<LibHeader>, MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
 
         let request = tonic::Request::new(PullHeadersRequest {
             from: self.hashes_to_bin_vec(from),
@@ -232,7 +240,7 @@ impl JormungandrClient {
     }
 
     pub async fn upload_blocks(&self, lib_block: LibBlock) -> Result<(), MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
 
         let mut bytes = Vec::with_capacity(4096);
         lib_block.serialize(&mut bytes).unwrap();
@@ -247,7 +255,7 @@ impl JormungandrClient {
     }
 
     pub async fn push_headers(&self, lib_header: LibHeader) -> Result<(), MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
 
         let header = Header {
             content: lib_header.serialize_as_vec().unwrap(),
@@ -262,7 +270,7 @@ impl JormungandrClient {
     }
 
     pub async fn get_fragments(&self, ids: Vec<Hash>) -> Result<Vec<LibFragment>, MockClientError> {
-        let mut client = NodeClient::connect(self.address()).await.unwrap();
+        let mut client = self.client();
         let request = tonic::Request::new(FragmentIds {
             ids: self.hashes_to_bin_vec(&ids),
         });
