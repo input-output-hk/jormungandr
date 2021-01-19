@@ -116,8 +116,7 @@ pub(crate) fn committee_vote_tally_sign(
 
     let proof = match vote_tally.tally_type() {
         PayloadType::Public => TallyProof::Public { id, signature },
-        // TODO: vote tally can only be public, add a proper error here
-        PayloadType::Private => return Err(Error::ExpectedSignedOrNotCertificate),
+        PayloadType::Private => TallyProof::Private { id, signature },
     };
     Ok(SignedCertificate::VoteTally(vote_tally, proof))
 }
