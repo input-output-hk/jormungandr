@@ -120,7 +120,8 @@ impl Records {
 impl poldercast::Policy for Policy {
     fn check(&mut self, node: &mut Node) -> PolicyReport {
         let id = node.address().to_string();
-        let logger = self.logger.new(o!("id" => id));
+        let span = span!(parent: &self.span, Level::TRACE, "policy check", id = %id);
+        let _enter = span.enter();
         let node_address = node.address();
         // if the node is already quarantined
         if let Some(since) = node.logs().quarantined() {
@@ -138,12 +139,12 @@ impl poldercast::Policy for Policy {
                 // the fact that this `Policy` does clean the records is a policy choice.
                 // one could prefer to keep the record longers for future `check`.
                 node.record_mut().clean_slate();
-                debug!(logger, "lifting quarantine");
+                tracing::debug!("lifting quarantine");
                 PolicyReport::LiftQuarantine
             } else {
                 // it appears the node was quarantine and is no longer active or gossiped
                 // about, so we can forget it
-                debug!(logger, "forgetting about the node");
+                tracing::debug!("forgetting about the node");
                 PolicyReport::Forget
             }
         } else if node.record().is_clear() {
@@ -151,15 +152,14 @@ impl poldercast::Policy for Policy {
             PolicyReport::None
         } else if self.quarantine_whitelist.contains(node_address) {
             // if the node is whitelisted
-            debug!(
-                logger,
+            tracing::debug!(
                 "node is whitelisted, peer_addr: {}",
                 node_address.to_string()
             );
             PolicyReport::None
         } else {
             // if the record is not `clear` then we quarantine the block for some time
-            debug!(logger, "move node to quarantine");
+            tracing::debug!("move node to quarantine");
             self.update(node.address().clone());
             PolicyReport::Quarantine
         }

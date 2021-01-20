@@ -2,7 +2,6 @@
 //!
 
 use crate::{
-    log::KEY_SUB_TASK,
     network::p2p::{layers::PreferredListLayer, Address, Gossips, Policy, PolicyConfig},
     settings::start::network::Configuration,
 };
