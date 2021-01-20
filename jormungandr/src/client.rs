@@ -7,6 +7,8 @@ use chain_core::property::HasHeader;
 
 use futures::prelude::*;
 use tokio::time::timeout;
+use tracing::{span, Level};
+use tracing_futures::Instrument;
 
 use std::time::Duration;
 
@@ -42,18 +44,19 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
                 let tip = get_block_tip(blockchain_tip).await;
                 handle.reply_ok(tip);
             };
-            let logger = info.logger().new(o!("request" => "GetBlockTip"));
+            let span =
+                span!(parent: info.span(), Level::TRACE, "sub_task", request = "GetBlockTip");
+
             info.spawn_fallible(
                 "get block tip",
-                timeout(Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCK_TIP), fut).map_err(
-                    move |e| {
-                        error!(
-                            logger,
-                            "request timed out or failed unexpectedly";
-                            "error" => ?e,
+                timeout(Duration::from_secs(PROCESS_TIMEOUT_GET_BLOCK_TIP), fut)
+                    .map_err(|e| {
+                        tracing::error!(
+                            error = ?e,
+                            "request timed out or failed unexpectedly"
                         );
-                    },
-                ),
+                    })
+                    .instrument(span),
             );
         }
         ClientMsg::GetHeaders(ids, handle) => {
