@@ -12,8 +12,8 @@ use poldercast::{
     NodeProfile, PolicyReport, StrikeReason, Topology,
 };
 use rand_chacha::ChaChaRng;
-use slog::Logger;
 use tokio::sync::RwLock;
+use tracing::{span, Level, Span};
 
 pub struct View {
     pub self_node: NodeProfile,
@@ -28,22 +28,22 @@ pub struct P2pTopology {
 /// Builder object used to initialize the `P2pTopology`
 struct Builder {
     topology: Topology,
-    logger: Logger,
+    span: Span,
 }
 
 impl Builder {
     /// Create a new topology for the given node profile
-    fn new(node: poldercast::NodeProfile, logger: Logger) -> Self {
+    fn new(node: poldercast::NodeProfile, span: Span) -> Self {
         Builder {
             topology: Topology::new(node),
-            logger,
+            span,
         }
     }
 
     fn set_policy(mut self, policy: PolicyConfig) -> Self {
         self.topology.set_policy(Policy::new(
             policy,
-            self.logger.new(o!(KEY_SUB_TASK => "policy")),
+            span!(parent: &self.span, Level::TRACE, "sub_task", name = "policy"),
         ));
         self
     }
@@ -81,8 +81,8 @@ impl Builder {
 }
 
 impl P2pTopology {
-    pub fn new(config: &Configuration, logger: Logger, rng: ChaChaRng) -> Self {
-        Builder::new(config.profile.clone(), logger)
+    pub fn new(config: &Configuration, span: Span, rng: ChaChaRng) -> Self {
+        Builder::new(config.profile.clone(), span)
             .set_poldercast_modules()
             .set_custom_modules(&config, rng)
             .set_policy(config.policy.clone())

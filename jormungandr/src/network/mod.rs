@@ -165,7 +165,10 @@ impl GlobalState {
         stats_counter: StatsCounter,
         span: Span,
     ) -> Self {
-        let peers = Peers::new(config.max_connections, logger.clone());
+        let peers = Peers::new(
+            config.max_connections,
+            span!(parent: &span, Level::TRACE, "peers"),
+        );
 
         let mut rng_seed = [0; 32];
         rand::thread_rng().fill(&mut rng_seed);
@@ -175,7 +178,7 @@ impl GlobalState {
 
         let topology = P2pTopology::new(
             &config,
-            logger.new(o!(log::KEY_SUB_TASK => "poldercast")),
+            span!(parent: &span, Level::TRACE, "sub_task", name = "poldercast"),
             prng,
         );
 
@@ -186,12 +189,12 @@ impl GlobalState {
             topology,
             peers,
             keypair,
-            logger,
+            span,
         }
     }
 
-    fn logger(&self) -> &Logger {
-        &self.logger
+    fn span(&self) -> &Span {
+        &self.span
     }
 
     pub fn node_address(&self) -> Option<&Address> {
@@ -420,6 +423,7 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let config = &state.config;
     let topology = &state.topology;
     let logger = state.logger().new(o!(log::KEY_SUB_TASK => "start_gossip"));
+    let span = span!(parent: &state.span());
     // inject the trusted peers as initial gossips, this will make the node
     // gossip with them at least at the beginning
 

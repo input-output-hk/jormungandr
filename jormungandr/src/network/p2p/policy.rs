@@ -2,9 +2,9 @@ use jormungandr_lib::time::Duration;
 use lru::LruCache;
 use poldercast::{Address, Node, PolicyReport};
 use serde::{Deserialize, Serialize};
-use slog::Logger;
 use std::collections::HashSet;
 use std::time::Duration as StdDuration;
+use tracing::{span, Level, Span};
 
 /// default quarantine duration is 10min
 const DEFAULT_QUARANTINE_DURATION: StdDuration = StdDuration::from_secs(10 * 60);
@@ -24,7 +24,7 @@ pub struct Policy {
     max_quarantine: StdDuration,
     records: LruCache<Address, Records>,
     quarantine_whitelist: HashSet<Address>,
-    logger: Logger,
+    span: Span,
 }
 
 pub struct Records {
@@ -46,7 +46,7 @@ pub struct PolicyConfig {
 }
 
 impl Policy {
-    pub fn new(pc: PolicyConfig, logger: Logger) -> Self {
+    pub fn new(pc: PolicyConfig, span: Span) -> Self {
         Self {
             quarantine_duration: pc.quarantine_duration.into(),
             max_quarantine: pc
@@ -58,7 +58,7 @@ impl Policy {
                     .unwrap_or(DEFAULT_MAX_NUM_QUARANTINE_RECORDS),
             ),
             quarantine_whitelist: pc.quarantine_whitelist,
-            logger,
+            span,
         }
     }
 

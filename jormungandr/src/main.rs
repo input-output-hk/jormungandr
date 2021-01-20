@@ -32,7 +32,7 @@ use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
-use tracing::Span;
+use tracing::{span, Level, Span};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -274,14 +274,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     match services.wait_any_finished() {
         Ok(()) => {
-            info!(bootstrapped_node.logger, "Shutting down node");
+            tracing::info!("Shutting down node");
             Ok(())
         }
         Err(err) => {
-            crit!(
-                bootstrapped_node.logger,
-                "Service has terminated with an error";
-                "reason" => err.to_string(),
+            tracing::error!(
+                reason = %err.to_string(),
+                "Service has terminated with an error"
             );
             Err(start_up::Error::ServiceTerminatedWithError(err))
         }
