@@ -33,18 +33,17 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
     let peer = state.peer();
     let keypair = state.global.keypair.clone();
     let legacy_node_id = state.global.config.legacy_node_id;
-    let logger = state.logger().clone();
+    let _enter = state.span().enter();
     let cf = async move {
         let mut grpc_client = if let Some(node_id) = legacy_node_id {
             let node_id: legacy::NodeId = node_id.as_ref().try_into().unwrap();
-            debug!(
-                logger,
+            tracing::debug!(
                 "connecting with legacy node id {}",
                 hex::encode(node_id.as_bytes())
             );
             grpc::connect_legacy(&peer, node_id).await
         } else {
-            debug!(logger, "connecting");
+            tracing::debug!("connecting");
             grpc::connect(&peer).await
         }
         .map_err(ConnectError::Transport)?;
@@ -64,7 +63,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         // Validate the server's node ID
         let peer_id = validate_peer_auth(hr.auth, &nonce)?;
 
-        debug!(logger, "authenticated server peer node"; "node_id" => ?peer_id);
+        tracing::debug!(node_id = ?peer_id, "authenticated server peer node");
 
         // Send client authentication
         let auth = keypair.sign(&hr.nonce);
