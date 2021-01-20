@@ -7,7 +7,7 @@ use crate::{
 use chain_core::property::Fragment as _;
 use jormungandr_lib::interfaces::FragmentStatus;
 
-use slog::Logger;
+use tracing::{span, Level};
 
 use std::iter;
 
@@ -39,15 +39,13 @@ pub enum FragmentSelectionAlgorithmParams {
 pub struct OldestFirst {
     builder: ContentsBuilder,
     current_total_size: u32,
-    logger: Logger,
 }
 
 impl OldestFirst {
-    pub fn new(logger: Logger) -> Self {
+    pub fn new() -> Self {
         OldestFirst {
             builder: ContentsBuilder::new(),
             current_total_size: 0,
-            logger,
         }
     }
 }
@@ -74,37 +72,40 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             let fragment_raw = fragment.to_raw(); // TODO: replace everything to FragmentRaw in the node
             let fragment_size = fragment_raw.size_bytes_plus_size() as u32;
 
-            let logger = self.logger.new(o!("hash" => id.to_string()));
-
             if fragment_size > ledger_params.block_content_max_size {
                 let reason = format!(
                     "fragment size {} exceeds maximum block content size {}",
                     fragment_size, ledger_params.block_content_max_size
                 );
-                debug!(logger, "{}", reason);
-                logs.modify(id, FragmentStatus::Rejected { reason }, &logger);
+                tracing::debug!("{}", reason);
+                logs.modify(id, FragmentStatus::Rejected { reason });
                 continue;
             }
 
             let total_size = self.current_total_size + fragment_size;
 
             if total_size <= ledger_params.block_content_max_size {
-                debug!(logger, "applying fragment in simulation");
+                let span = span!(
+                    Level::TRACE,
+                    "fragment_selection_algorithm",
+                    hash = %id.to_string()
+                );
+                let _enter = span.enter();
+                tracing::debug!("applying fragment in simulation");
                 match ledger_simulation.apply_fragment(ledger_params, &fragment, block_date) {
                     Ok(ledger_new) => {
                         self.builder.push(fragment);
                         ledger_simulation = ledger_new;
-                        debug!(logger, "successfully applied and committed the fragment");
+                        tracing::debug!("successfully applied and committed the fragment");
                     }
                     Err(error) => {
-                        use std::error::Error as _;
                         let mut msg = error.to_string();
                         for e in iter::successors(error.source(), |&e| e.source()) {
                             msg.push_str(": ");
                             msg.push_str(&e.to_string());
                         }
-                        debug!(logger, "fragment is rejected"; "error" => ?error);
-                        logs.modify(id, FragmentStatus::Rejected { reason: msg }, &logger)
+                        tracing::debug!(?error, "fragment is rejected");
+                        logs.modify(id, FragmentStatus::Rejected { reason: msg })
                     }
                 }
 
@@ -113,6 +114,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 if total_size == ledger_params.block_content_max_size {
                     break;
                 }
+                drop(_enter);
             } else {
                 // return a fragment to the pool later if does not fit the contents size limit
                 return_to_pool.push(fragment);
