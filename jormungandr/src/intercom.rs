@@ -504,7 +504,7 @@ pub fn stream_request<T, R>(
     logger: Logger,
 ) -> (RequestStreamHandle<T, R>, RequestSink<T>, ReplyFuture<R>) {
     let (sender, receiver) = async_msg::channel(buffer);
-    let (reply, reply_future) = unary_reply(logger.clone());
+    let (reply, reply_future) = unary_reply();
     let handle = RequestStreamHandle { receiver, reply };
     let sink = RequestSink { sender, logger };
     (handle, sink, reply_future)
