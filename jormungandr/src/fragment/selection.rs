@@ -9,6 +9,8 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use slog::Logger;
 
+use std::iter;
+
 pub enum SelectionOutput {
     Commit { fragment_id: FragmentId },
     RequestSmallerFee,
@@ -82,13 +84,13 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     }
                     Err(error) => {
                         use std::error::Error as _;
-                        let error = if let Some(source) = error.source() {
-                            format!("{}: {}", error, source)
-                        } else {
-                            error.to_string()
-                        };
-                        debug!(logger, "fragment is rejected"; "reason" => %error);
-                        logs.modify(id, FragmentStatus::Rejected { reason: error })
+                        let mut msg = error.to_string();
+                        for e in iter::successors(error.source(), |e| e.source()) {
+                            msg.push_str(": ");
+                            msg.push_str(&e.to_string());
+                        }
+                        debug!(logger, "fragment is rejected"; "error" => ?error);
+                        logs.modify(id, FragmentStatus::Rejected { reason: msg })
                     }
                 }
 
