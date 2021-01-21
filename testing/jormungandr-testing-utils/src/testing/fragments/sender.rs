@@ -241,6 +241,17 @@ impl<'a> FragmentSender<'a> {
         self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Public)
     }
 
+    pub fn send_private_vote_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        from: &mut Wallet,
+        vote_plan: &VotePlan,
+        shares: TallyDecryptShares,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Private{ shares })
+    }
+
+
     pub fn send_vote_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
