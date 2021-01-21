@@ -20,6 +20,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentStatus, Value},
 };
+use chain_impl_mockchain::certificate::TallyDecryptShares;
 use std::time::Duration;
 
 #[derive(custom_debug::Debug, thiserror::Error)]
@@ -241,6 +242,21 @@ impl<'a> FragmentSender<'a> {
         self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Public)
     }
 
+    pub fn send_encrypted_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+        &self,
+        from: &mut Wallet,
+        vote_plan: &VotePlan,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_encrypted_tally_cert(
+            &self.block0_hash,
+            &self.fees,
+            vote_plan
+        )?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }    
+
     pub fn send_private_vote_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
@@ -250,7 +266,6 @@ impl<'a> FragmentSender<'a> {
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Private{ shares })
     }
-
 
     pub fn send_vote_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,

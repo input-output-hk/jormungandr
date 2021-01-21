@@ -11,10 +11,11 @@ pub use self::{
     transaction::{transaction_to, transaction_to_many},
     verifier::{FragmentVerifier, FragmentVerifierError},
 };
+use rand_core::SeedableRng;
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::{
-    certificate::{PoolId, VoteCast, VotePlan, VoteTally},
+    certificate::{PoolId, VoteCast, VotePlan, VoteTally, EncryptedVoteTally},
     fee::LinearFee,
     fragment::Fragment,
     testing::{
@@ -31,6 +32,7 @@ pub use load::{
     BatchFragmentGenerator, FragmentStatusProvider, TransactionGenerator, VoteCastsGenerator,
 };
 use thiserror::Error;
+use rand_chacha::ChaCha20Rng;
 
 mod adversary;
 mod export;
@@ -186,7 +188,7 @@ impl FragmentBuilder {
             .vote_plan(&inner_wallet, vote_plan.clone())
     }
 
-    pub fn vote_cast(
+    pub fn public_vote_cast(
         &self,
         wallet: &Wallet,
         vote_plan: &VotePlan,
@@ -202,6 +204,54 @@ impl FragmentBuilder {
         self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
     }
 
+    pub fn private_vote_cast(
+        &self,
+        wallet: &Wallet,
+        vote_plan: &VotePlan,
+        proposal_index: u8,
+        choice: &Choice,
+    ) -> Fragment {
+        let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
+        
+        let encrypting_key = chain_vote::EncryptingVoteKey::from_participants(
+            vote_plan.committee_public_keys(),
+        );
+
+        let options = vote_plan.proposals().iter().nth((proposal_index).into()).unwrap().options();
+
+        let length =  options
+        .choice_range()
+        .end
+        .checked_sub(options.choice_range().start).unwrap();
+
+        let choice = choice.as_byte() - options.choice_range().start;
+        let vote = chain_vote::Vote::new(length as usize, choice as usize);
+        let (encrypted_vote, proof) =
+            chain_impl_mockchain::vote::encrypt_vote(&mut rng, &encrypting_key, vote);
+
+        let vote_cast = VoteCast::new(
+            vote_plan.to_id(),
+            proposal_index as u8,
+            Payload::Private {
+                encrypted_vote,
+                proof,
+            }
+        );
+
+        let inner_wallet = wallet.clone().into();
+       
+        self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
+    }
+
+    pub fn encrypted_tally(
+        &self,
+        owner: &Wallet,
+        vote_plan: &VotePlan,
+    ) -> Fragment {
+        let encrypted_tally = EncryptedVoteTally::new(vote_plan.to_id());
+        self.fragment_factory().vote_encrypted_tally(&owner.clone().into(), encrypted_tally)
+    }
+   
     pub fn vote_tally(
         &self,
         wallet: &Wallet,
@@ -209,9 +259,10 @@ impl FragmentBuilder {
         payload: VoteTallyPayload,
     ) -> Fragment {
         let inner_wallet = wallet.clone().into();
+
         let vote_tally = match payload {
-            VoteTallyPayload::Private { inner } => VoteTally::new_private(vote_plan.to_id(), inner),
             VoteTallyPayload::Public => VoteTally::new_public(vote_plan.to_id()),
+            VoteTallyPayload::Private { shares} => VoteTally::new_private(vote_plan.to_id(), shares),
         };
         self.fragment_factory()
             .vote_tally(&inner_wallet, vote_tally)
