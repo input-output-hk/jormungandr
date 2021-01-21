@@ -18,6 +18,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::str;
+use vote::{Weight, Choice};
 
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(remote = "PayloadType", rename_all = "snake_case")]
@@ -412,7 +413,7 @@ mod serde_proposals {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VotePlanStatus {
     pub id: Hash,
     #[serde(with = "PayloadTypeDef")]
@@ -428,7 +429,7 @@ pub struct VotePlanStatus {
     pub proposals: Vec<VoteProposalStatus>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug,Clone)]
 pub enum Tally {
     Public { result: TallyResult },
     Private { state: PrivateTallyState },
@@ -521,6 +522,12 @@ pub mod serde_base64_bytes {
     }
 }
 
+impl Into<chain_vote::EncryptedTally> for EncryptedTally{
+    fn into(self) -> chain_vote::EncryptedTally {
+        chain_vote::EncryptedTally::from_bytes(&self.0).unwrap()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrivateTallyState {
     Encrypted {
@@ -545,7 +552,7 @@ pub enum Payload {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VoteProposalStatus {
     pub index: u8,
     pub proposal_id: Hash,
@@ -589,10 +596,23 @@ impl From<vote::TallyResult> for TallyResult {
     }
 }
 
-impl From<chain_vote::Tally> for TallyResult {
-    fn from(this: chain_vote::Tally) -> Self {
+impl Into<vote::TallyResult> for TallyResult {
+    fn into(self) -> vote::TallyResult {
+        let mut result = vote::TallyResult::new(Options::new_length(self.options.end - self.options.start).unwrap());
+        
+        for (idx,value) in self.results().iter().enumerate() {
+            let weight: Weight = (*value).into();
+            result.add_vote(Choice::new(idx as u8), weight).unwrap()
+        }
+        result
+    }
+}
+
+
+impl From<chain_vote::TallyResult> for TallyResult {
+    fn from(this: chain_vote::TallyResult) -> Self {
         Self {
-            results: this.votes.iter().copied().collect(),
+            results: this.votes.iter().map(|w| w.unwrap_or(0)).collect(),
             options: (0..this.votes.len().try_into().unwrap()),
         }
     }
@@ -622,6 +642,31 @@ impl From<vote::Tally> for Tally {
     }
 }
 
+
+impl Into<vote::Tally> for Tally {
+    fn into(self) -> vote::Tally {
+        match self {
+            Tally::Public { result } => vote::Tally::Public {
+                result: result.into(),
+            },
+            Tally::Private { state } => vote::Tally::Private {
+                state: match state {
+                    PrivateTallyState::Encrypted {
+                        encrypted_tally,
+                        total_stake,
+                    } => vote::PrivateTallyState::Encrypted {
+                        encrypted_tally: encrypted_tally.into(),
+                        total_stake: total_stake.into(),
+                    },
+                    PrivateTallyState::Decrypted { result } => vote::PrivateTallyState::Decrypted {
+                        result: result.into(),
+                    },
+                },
+            },
+        }
+    }
+}
+
 impl From<vote::VoteProposalStatus> for VoteProposalStatus {
     fn from(this: vote::VoteProposalStatus) -> Self {
         Self {
@@ -630,6 +675,18 @@ impl From<vote::VoteProposalStatus> for VoteProposalStatus {
             options: this.options.choice_range().clone(),
             tally: this.tally.map(|t| t.into()),
             votes_cast: this.votes.size(),
+        }
+    }
+}
+
+impl Into<vote::VoteProposalStatus> for VoteProposalStatus {
+    fn into(self) -> vote::VoteProposalStatus {
+        vote::VoteProposalStatus {
+            index: self.index,
+            proposal_id: self.proposal_id.into(),
+            options: Options::new_length(self.options.end - self.options.start).unwrap(),
+            tally: self.tally.map(|t| t.into()),
+            votes: Default::default(),
         }
     }
 }
@@ -644,6 +701,20 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
             payload: this.payload,
             committee_member_keys: this.committee_public_keys,
             proposals: this.proposals.into_iter().map(|p| p.into()).collect(),
+        }
+    }
+}
+
+impl Into<vote::VotePlanStatus> for VotePlanStatus {
+    fn into(self) -> vote::VotePlanStatus {
+        vote::VotePlanStatus {
+            id: self.id.into(),
+            vote_start: self.vote_start,
+            vote_end: self.vote_end,
+            committee_end: self.committee_end,
+            payload: self.payload,
+            committee_public_keys: self.committee_member_keys,
+            proposals: self.proposals.into_iter().map(|p| p.into()).collect(),
         }
     }
 }
