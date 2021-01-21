@@ -27,7 +27,7 @@ pub async fn get_message_logs(context: ContextLock) -> Result<impl Reply, Reject
 }
 
 pub async fn post_message(
-    message: bytes::Bytes,
+    message: warp::hyper::body::Bytes,
     context: ContextLock,
 ) -> Result<impl Reply, Rejection> {
     let context = context.read().await;

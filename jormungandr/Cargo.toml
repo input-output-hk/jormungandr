@@ -13,8 +13,8 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "^1.1.0"
-juniper = "0.15.1"
-juniper_warp = "0.6.0"
+juniper = "0.15.2"
+juniper_warp = "0.6.1"
 base64 = "0.13.0"
 bincode = "1.2.1"
 bytes = "0.5"
@@ -55,12 +55,13 @@ slog-term = "2.6.0"
 structopt = "^0.3"
 thiserror = "1.0.21"
 tokio = { version = "^1.0", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
-tokio-stream = "0.1.0"
+tokio-stream = "0.1.2"
 tokio-util = { version = "0.6.0", features = ["time"] }
-tonic = "0.3"
+tonic = "0.4"
 async-trait = "0.1"
 lru = "^0.6.1"
-warp = { version = "0.2.4", features = ["tls"] }
+warp = { version = "0.3", features = ["tls"] }
+tower = "0.4.4"
 pin-project = "1.0"
 
 [dependencies.reqwest]
@@ -70,7 +71,7 @@ features = ["rustls-tls"]
 
 [dev-dependencies]
 rand_core = "0.5"
-tokio = { version = "^1.0", features = ["full" ] }
+tokio = { version = "^1.0", features = ["full"] }
 
 [build-dependencies]
 versionisator = "1.0.2"
@@ -88,3 +89,4 @@ integration-test = []
 soak-test = []
 systemd = ["slog-journald"]
 gelf = ["slog-gelf"]
+
