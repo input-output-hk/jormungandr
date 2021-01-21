@@ -13,11 +13,10 @@ use chain_impl_mockchain::{
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
 use serde::de::Visitor;
-use serde::export::Formatter;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
 use std::convert::TryInto;
+use std::fmt::Formatter;
 use std::str;
 
 #[derive(
