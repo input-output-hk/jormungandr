@@ -5,7 +5,7 @@ use crate::testing::file;
 pub use crate::testing::node::configuration::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
-use crate::testing::{decompress, download_file, GitHubApi, Release};
+use crate::testing::{decompress, download_file, CachedReleases, GitHubApi, Release};
 pub use jormungandr_lib::interfaces::{
     Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
 };
@@ -20,12 +20,16 @@ pub use rest::BackwardCompatibleRest;
 
 pub use version::{version_0_8_19, Version};
 
+lazy_static::lazy_static! {
+    static ref RELEASES: CachedReleases = {
+        let api = GitHubApi::new();
+        api.describe_releases().unwrap()
+    };
+}
+
 pub fn download_last_n_releases(n: u32) -> Vec<Release> {
-    let github_api = GitHubApi::new();
-    github_api
-        .describe_releases()
-        .unwrap()
-        .iter()
+    RELEASES
+        .into_iter()
         .cloned()
         .filter(|x| !x.prerelease())
         .take(n as usize)
@@ -33,8 +37,7 @@ pub fn download_last_n_releases(n: u32) -> Vec<Release> {
 }
 
 pub fn get_jormungandr_bin(release: &Release, temp_dir: &impl PathChild) -> PathBuf {
-    let github_api = GitHubApi::new();
-    let asset = github_api
+    let asset = RELEASES
         .get_asset_for_current_os_by_version(release.version_str())
         .unwrap()
         .unwrap();
