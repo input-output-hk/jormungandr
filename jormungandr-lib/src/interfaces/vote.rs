@@ -94,7 +94,7 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
         impl<'de> Visitor<'de> for BytesVisitor {
             type Value = SerdeMemberPublicKey;
 
-            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter.write_str("binary data for member public key")
             }
 
