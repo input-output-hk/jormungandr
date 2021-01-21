@@ -2021,7 +2021,6 @@ dependencies = [
  "tokio-stream",
  "tokio-util 0.6.2",
  "tonic 0.4.0",
- "tower 0.4.4",
  "versionisator",
  "warp 0.3.0",
 ]
