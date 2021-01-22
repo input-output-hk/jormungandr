@@ -32,8 +32,11 @@ jcli votes committee communication-key to-public --input ./comm.sk > ./comm.pk
 crs=$(jcli votes crs generate)
 jcli votes committee member-key generate --threshold 3 --crs "$crs" --index 0 --keys pk1 pk2 pk3 > ./member.sk
 ```
-Where `pkX` are each of the committee communication public keys.
-Note that **all committee members should use the same CRS**
+Where `pkX` are each of the committee communication public keys in bech32 format.
+The order of the keys shall be the same for every member invoking the command,
+and the `--index` parameter provides the 0-based index of the member this key
+is generated for.
+Note that **all committee members shall use the same CRS**.
 
 We can also easily get its public representation as before:
 
@@ -46,7 +49,7 @@ jcli votes committee member-key to-public --input ./member.sk ./member.pk
 This key (*public*) is the key **every vote** should be encrypted with.
 
 ```shell
-jcli votes encrypting-key --eys mpk1 mpk2 mpkn > ./vote.pk
+jcli votes encrypting-key --keys mpk1 mpk2 mpk3 > ./vote.pk
 ```
 
 Notice that we can always rebuild this key with the committee member public keys found
@@ -85,7 +88,7 @@ That file should be a `yaml` (or json) with the following format:
     },
     ...
   ],
-  "committee_member_public_keys ": [
+  "committee_member_public_keys": [
     "pk....",
   ]
 }

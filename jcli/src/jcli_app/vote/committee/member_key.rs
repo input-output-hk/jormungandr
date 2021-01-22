@@ -19,7 +19,7 @@ pub struct Generate {
     #[structopt(long, name = "CRS", parse(try_from_str = parse_crs))]
     crs: chain_vote::CRS,
 
-    /// communication keys of the other committee members
+    /// communication keys of all committee members
     #[structopt(long, short, name = "COMMUNICATION_KEYS",
         parse(try_from_str = parse_member_communication_key),
         required = true,
