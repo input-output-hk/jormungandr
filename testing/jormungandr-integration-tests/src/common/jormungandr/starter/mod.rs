@@ -12,7 +12,6 @@ use assert_fs::{fixture::FixtureError, TempDir};
 use jormungandr_lib::interfaces::NodeConfig;
 use jormungandr_testing_utils::{
     testing::{
-        file,
         network_builder::LeadershipMode,
         node::{configuration::legacy, JormungandrLogger},
         JormungandrParams, LegacyConfigConverter, LegacyConfigConverterError, SpeedBenchmarkDef,
@@ -20,6 +19,7 @@ use jormungandr_testing_utils::{
     },
     Version,
 };
+use jortestkit::file;
 use jortestkit::process::{self as process_utils, output_extensions::ProcessOutput, ProcessError};
 use serde::Serialize;
 use std::fmt::Debug;

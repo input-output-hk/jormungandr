@@ -1,4 +1,3 @@
-pub mod file;
 pub mod fragments;
 pub mod network_builder;
 pub mod node;
@@ -37,7 +36,6 @@ pub use vit::{VotePlanBuilder, VotePlanExtension};
 
 pub use verify::{assert, assert_equals, Error as VerificationError};
 
-pub use file::*;
 pub use jortestkit::openssl::Openssl;
 pub use node::configuration::{
     Block0ConfigurationBuilder, JormungandrParams, LegacyConfigConverter,

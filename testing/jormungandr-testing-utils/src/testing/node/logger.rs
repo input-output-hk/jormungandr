@@ -1,6 +1,6 @@
-use crate::testing::file as file_utils;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
+use jortestkit::file as file_utils;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufRead, BufReader};

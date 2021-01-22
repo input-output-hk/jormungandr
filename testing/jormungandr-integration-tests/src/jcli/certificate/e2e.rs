@@ -44,7 +44,7 @@ pub fn test_create_and_sign_new_stake_delegation() {
         signed_cert.path(),
     );
 
-    signed_cert.assert(crate::predicate::file_exists_and_not_empty());
+    signed_cert.assert(jortestkit::prelude::file_exists_and_not_empty());
 }
 
 #[test]

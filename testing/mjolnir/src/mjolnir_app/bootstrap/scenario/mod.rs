@@ -10,7 +10,7 @@ use jormungandr_integration_tests::common::jormungandr::ConfigurationBuilder;
 use jormungandr_integration_tests::common::jormungandr::JormungandrProcess;
 use jormungandr_integration_tests::common::jormungandr::Starter;
 use jormungandr_integration_tests::common::jormungandr::StartupError;
-use jormungandr_testing_utils::testing::file;
+use jortestkit::file;
 use std::path::PathBuf;
 use std::{fs, result::Result};
 

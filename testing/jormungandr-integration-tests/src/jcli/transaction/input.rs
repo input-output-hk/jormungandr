@@ -39,12 +39,12 @@ pub fn test_cannot_create_input_with_too_big_utxo_amount() {
 #[test]
 #[cfg(not(target_os = "linux"))]
 pub fn test_cannot_create_input_when_staging_file_is_readonly() {
-    use jormungandr_testing_utils::testing::file as file_utils;
+    use jortestkit::file;
     let jcli: JCli = Default::default();
     let mut transaction_wrapper =
         jcli.transaction_builder(Hash::from_hex(FAKE_GENESIS_HASH).unwrap());
 
     transaction_wrapper.new_transaction();
-    file_utils::make_readonly(&transaction_wrapper.staging_file_path());
+    file::make_readonly(&transaction_wrapper.staging_file_path());
     transaction_wrapper.add_input_expect_fail(&FAKE_INPUT_TRANSACTION_ID, 0, "100", "denied");
 }
