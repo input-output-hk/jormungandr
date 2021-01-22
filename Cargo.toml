@@ -10,8 +10,3 @@ members = [
   "testing/jormungandr-scenario-tests",
   "testing/mjolnir",
 ]
-
-
-# FIXME: revert this after testing
-[patch.'https://github.com/input-output-hk/chain-libs.git']
-chain-network = { git = "https://github.com/danielsanchezq/chain-libs.git", branch = "tonic04" }

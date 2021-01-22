@@ -492,7 +492,7 @@ dependencies = [
  "bech32",
  "cfg-if 1.0.0",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "cryptoxide",
  "quickcheck",
 ]
@@ -523,26 +523,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "sha2",
- "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
-]
-
-[[package]]
-name = "chain-crypto"
-version = "0.1.0"
-source = "git+https://github.com/danielsanchezq/chain-libs.git?branch=tonic04#bdba14be9426844d7cb458812ac9eeecb6d911e9"
-dependencies = [
- "bech32",
- "cfg-if 1.0.0",
- "cryptoxide",
- "curve25519-dalek",
- "digest 0.9.0",
- "ed25519-bip32",
- "ed25519-dalek",
- "generic-array 0.14.4",
- "hex",
- "rand_core 0.5.1",
- "sha2",
- "typed-bytes 0.1.0 (git+https://github.com/danielsanchezq/chain-libs.git?branch=tonic04)",
+ "typed-bytes",
 ]
 
 [[package]]
@@ -554,7 +535,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-ser",
  "chain-test-utils",
  "chain-time",
@@ -571,16 +552,16 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror",
- "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "typed-bytes",
 ]
 
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/danielsanchezq/chain-libs.git?branch=tonic04#bdba14be9426844d7cb458812ac9eeecb6d911e9"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#abb5e0d470be99d66e5604c722eaef575f4d9fc1"
 dependencies = [
  "async-trait",
- "chain-crypto 0.1.0 (git+https://github.com/danielsanchezq/chain-libs.git?branch=tonic04)",
+ "chain-crypto",
  "futures 0.3.12",
  "pin-project 1.0.4",
  "prost 0.7.0",
@@ -1938,7 +1919,7 @@ dependencies = [
  "bytes 0.5.6",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-impl-mockchain",
  "chain-time",
  "chain-vote",
@@ -1976,7 +1957,7 @@ dependencies = [
  "cardano-legacy-address",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-impl-mockchain",
  "chain-network",
  "chain-storage",
@@ -2035,7 +2016,7 @@ dependencies = [
  "bech32",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-impl-mockchain",
  "chain-time",
  "chain-vote",
@@ -2080,7 +2061,7 @@ dependencies = [
  "cardano-legacy-address",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-impl-mockchain",
  "chain-time",
  "chain-vote",
@@ -2098,7 +2079,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "thiserror",
- "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "typed-bytes",
  "warp 0.3.0",
 ]
 
@@ -2109,7 +2090,7 @@ dependencies = [
  "assert_fs",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-impl-mockchain",
  "chain-time",
  "chrono",
@@ -2155,7 +2136,7 @@ dependencies = [
  "cardano-legacy-address",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-impl-mockchain",
  "chain-storage",
  "chain-time",
@@ -2198,7 +2179,7 @@ dependencies = [
  "tokio-codec",
  "tonic 0.3.1",
  "tonic-build 0.3.1",
- "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "typed-bytes",
  "url",
  "zip",
 ]
@@ -2546,7 +2527,7 @@ dependencies = [
  "assert_fs",
  "chain-addr",
  "chain-core",
- "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto",
  "chain-impl-mockchain",
  "chain-storage",
  "chain-time",
@@ -4902,11 +4883,6 @@ dependencies = [
 name = "typed-bytes"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#abb5e0d470be99d66e5604c722eaef575f4d9fc1"
-
-[[package]]
-name = "typed-bytes"
-version = "0.1.0"
-source = "git+https://github.com/danielsanchezq/chain-libs.git?branch=tonic04#bdba14be9426844d7cb458812ac9eeecb6d911e9"
 
 [[package]]
 name = "typenum"
