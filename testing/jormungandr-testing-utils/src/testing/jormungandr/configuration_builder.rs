@@ -13,6 +13,7 @@ use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
+use jormungandr_lib::interfaces::BlockContentMaxSize;
 use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
@@ -42,11 +43,11 @@ pub struct ConfigurationBuilder {
     treasury: Option<Value>,
     node_config_builder: NodeConfigBuilder,
     rewards_history: bool,
-    block_content_max_size: u32,
     configure_default_log: bool,
     committee_ids: Vec<CommitteeIdDef>,
     leader_key_pair: KeyPair<Ed25519>,
     discrimination: Discrimination,
+    block_content_max_size: BlockContentMaxSize,
     tx_max_expiry_epochs: Option<u8>,
     log_level: String,
 }
@@ -73,7 +74,6 @@ impl ConfigurationBuilder {
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
             kes_update_speed: KesUpdateSpeed::new(12 * 3600).unwrap(),
             node_config_builder: NodeConfigBuilder::new(),
-            block_content_max_size: 4096,
             rewards_history: false,
             configure_default_log: true,
             committee_ids: vec![],
@@ -82,6 +82,7 @@ impl ConfigurationBuilder {
             treasury: None,
             total_reward_supply: None,
             discrimination: Discrimination::Test,
+            block_content_max_size: 4092.into(),
             tx_max_expiry_epochs: None,
             log_level: "trace".into(),
         }
@@ -161,11 +162,6 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_block_content_max_size(&mut self, block_content_max_size: u32) -> &mut Self {
-        self.block_content_max_size = block_content_max_size;
-        self
-    }
-
     pub fn with_storage(&mut self, temp_dir: &ChildPath) -> &mut Self {
         self.node_config_builder
             .with_storage(temp_dir.path().into());
@@ -182,6 +178,14 @@ impl ConfigurationBuilder {
         active_slot_coeff: ActiveSlotCoefficient,
     ) -> &mut Self {
         self.consensus_genesis_praos_active_slot_coeff = active_slot_coeff;
+        self
+    }
+
+    pub fn with_block_content_max_size(
+        &mut self,
+        block_content_max_size: u32,
+    ) -> &mut Self {
+        self.block_content_max_size = block_content_max_size.into();
         self
     }
 
@@ -316,6 +320,7 @@ impl ConfigurationBuilder {
 
         block0_config_builder
             .with_discrimination(self.discrimination)
+            .with_block_content_max_size(self.block_content_max_size)
             .with_initial(initial)
             .with_leaders(leaders_ids)
             .with_block0_consensus(self.block0_consensus)
@@ -327,7 +332,7 @@ impl ConfigurationBuilder {
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
             .with_linear_fees(self.linear_fees)
-            .with_block_content_max_size(self.block_content_max_size.into())
+            .with_block_content_max_size(self.block_content_max_size)
             .with_committee_ids(self.committee_ids.clone())
             .with_total_rewards_supply(self.total_reward_supply)
             .build()
