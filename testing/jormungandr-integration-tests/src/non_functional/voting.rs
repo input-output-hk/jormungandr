@@ -124,7 +124,7 @@ pub fn tally_vote_load_test() {
 
     wait_for_epoch(6, jormungandr.explorer().clone());
 
-    benchmark_consumption_monitor.stop().unwrap();
+    benchmark_consumption_monitor.stop();
 
     jormungandr.assert_no_errors_in_log();
 }
