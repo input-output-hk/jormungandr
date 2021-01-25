@@ -37,13 +37,8 @@ pub struct Explorer {
     pub db: ExplorerDB,
 }
 
-struct Branch {
-    state_ref: multiverse::Ref<State>,
-    length: ChainLength,
-}
-
 #[derive(Clone)]
-struct Tip(Arc<RwLock<Branch>>);
+struct Tip(Arc<RwLock<HeaderHash>>);
 
 #[derive(Clone)]
 pub struct ExplorerDB {
@@ -114,7 +109,7 @@ impl Explorer {
             .for_each(|input| async {
                 match input {
                     ExplorerMsg::NewBlock(block) => {
-                        let mut explorer_db = self.db.clone();
+                        let explorer_db = self.db.clone();
                         let logger = info.logger().clone();
                         info.spawn_fallible("apply block", async move {
                             explorer_db
@@ -129,6 +124,13 @@ impl Explorer {
                                 })
                                 .await
                         });
+                    }
+                    ExplorerMsg::NewTip(hash) => {
+                        let explorer_db = self.db.clone();
+                        info.spawn(
+                            "apply block",
+                            async move { explorer_db.set_tip(hash).await },
+                        );
                     }
                 }
             })
@@ -189,16 +191,15 @@ impl ExplorerDB {
 
         let multiverse = Multiverse::<State>::new();
         let block0_id = block0.id();
-        let initial_state_ref = multiverse
+        multiverse
             .insert(block0.chain_length(), block0_id, initial_state)
             .await;
 
+        let block0_id = block0.id();
+
         let bootstraped_db = ExplorerDB {
             multiverse,
-            longest_chain_tip: Tip::new(Branch {
-                state_ref: initial_state_ref,
-                length: block0.header.chain_length(),
-            }),
+            longest_chain_tip: Tip::new(block0.header.id()),
             blockchain_config,
             blockchain: blockchain.clone(),
             blockchain_tip,
@@ -214,9 +215,9 @@ impl ExplorerDB {
             }
         };
 
-        let mut db = stream
+        let db = stream
             .map_err(Error::from)
-            .try_fold(bootstraped_db, |mut db, block| async move {
+            .try_fold(bootstraped_db, |db, block| async move {
                 db.apply_block(block).await?;
                 Ok(db)
             })
@@ -251,12 +252,11 @@ impl ExplorerDB {
     /// chain length is greater than the current.
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
-    async fn apply_block(&mut self, block: Block) -> Result<multiverse::Ref<State>> {
+    async fn apply_block(&self, block: Block) -> Result<multiverse::Ref<State>> {
         let previous_block = block.header.block_parent_hash();
         let chain_length = block.header.chain_length();
         let block_id = block.header.hash();
         let multiverse = self.multiverse.clone();
-        let current_tip = self.longest_chain_tip.clone();
         let discrimination = self.blockchain_config.discrimination;
 
         let previous_state = multiverse
@@ -308,14 +308,12 @@ impl ExplorerDB {
             )
             .await;
 
-        current_tip
-            .compare_and_replace(Branch {
-                state_ref: state_ref.clone(),
-                length: chain_length,
-            })
-            .await;
-
         Ok(state_ref)
+    }
+
+    pub async fn set_tip(&self, hash: HeaderHash) {
+        let mut guard = self.longest_chain_tip.0.write().await;
+        *guard = hash;
     }
 
     pub async fn get_latest_block_hash(&self) -> HeaderHash {
@@ -809,23 +807,11 @@ impl BlockchainConfig {
 }
 
 impl Tip {
-    fn new(branch: Branch) -> Tip {
-        Tip(Arc::new(RwLock::new(branch)))
-    }
-
-    async fn compare_and_replace(&self, other: Branch) {
-        let mut current = self.0.write().await;
-
-        if other.length > (*current).length {
-            *current = Branch {
-                state_ref: other.state_ref,
-                length: other.length,
-            };
-        }
+    fn new(block0_hash: HeaderHash) -> Tip {
+        Tip(Arc::new(RwLock::new(block0_hash)))
     }
 
     async fn get_block_id(&self) -> HeaderHash {
-        let guard = self.0.read().await;
-        *guard.state_ref.id()
+        *self.0.read().await
     }
 }

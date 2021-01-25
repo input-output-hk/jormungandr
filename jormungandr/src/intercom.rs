@@ -619,6 +619,7 @@ pub enum NetworkMsg {
 /// Messages to the explorer task
 pub enum ExplorerMsg {
     NewBlock(Block),
+    NewTip(HeaderHash),
 }
 
 #[cfg(test)]
