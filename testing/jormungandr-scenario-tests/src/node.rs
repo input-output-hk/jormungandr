@@ -29,6 +29,7 @@ pub use jormungandr_testing_utils::testing::{
     FragmentNode, MemPoolCheck, NamedProcess,
 };
 use jormungandr_testing_utils::{testing::node::Explorer, Version};
+use tokio::runtime;
 
 use futures::executor::block_on;
 use indicatif::ProgressBar;
@@ -531,8 +532,9 @@ impl Node {
 
         NodeController {
             alias: self.alias().clone(),
-            grpc_client: JormungandrClient::from_address(&p2p_address)
-                .expect("cannot setup grpc client"),
+            grpc_client: runtime::Runtime::new().unwrap().block_on(async {
+                JormungandrClient::from_address(&p2p_address).expect("cannot setup grpc client")
+            }),
             rest_client: JormungandrRest::new(rest_uri),
             settings: self.node_settings.clone(),
             status: self.status.clone(),
