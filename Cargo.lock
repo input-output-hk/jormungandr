@@ -2003,7 +2003,7 @@ dependencies = [
  "tokio-util 0.6.2",
  "tonic 0.4.0",
  "versionisator",
- "warp 0.3.0",
+ "warp 0.2.5",
 ]
 
 [[package]]
@@ -5126,6 +5126,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded 0.6.1",
  "tokio 0.2.24",
+ "tokio-rustls 0.14.1",
  "tokio-tungstenite 0.11.0",
  "tower-service",
  "tracing",
