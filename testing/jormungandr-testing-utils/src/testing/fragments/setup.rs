@@ -31,6 +31,7 @@ pub struct FragmentSenderSetup<'a, S: SyncNode + Send> {
     pub resend_on_error: Option<u8>,
     pub sync_nodes: Vec<&'a S>,
     pub ignore_any_errors: bool,
+    pub stop_at_error: bool,
     pub dump_fragments: Option<PathBuf>,
     /// Sender will confirm transaction (increment account counter)
     ///
@@ -81,6 +82,12 @@ impl<'a, S: SyncNode + Send> FragmentSenderSetup<'a, S> {
         self.fire_and_forget
     }
 
+    pub fn should_stop_at_error() -> Self {
+        let mut builder = FragmentSenderSetupBuilder::new();
+        builder.stop_at_error();
+        builder.into()
+    }
+
     pub fn new() -> Self {
         Self {
             resend_on_error: None,
@@ -90,6 +97,7 @@ impl<'a, S: SyncNode + Send> FragmentSenderSetup<'a, S> {
             auto_confirm: true,
             verify_strategy: None,
             fire_and_forget: false,
+            stop_at_error: false,
         }
     }
 }
@@ -140,6 +148,15 @@ impl<'a> FragmentSenderSetup<'a, DummySyncNode> {
         let mut builder = FragmentSenderSetupBuilder::from(Self::def());
         builder.fire_and_forget();
         builder.into()
+    pub fn stop_at_error(&self) -> bool {
+        self.stop_at_error
+    }
+
+    pub fn attempts_count(&self) -> u8 {
+        match self.resend_on_error {
+            Some(resend_counter) => resend_counter + 1,
+            None => 1,
+        }
     }
 
     pub fn dump_into(path: PathBuf) -> Self {
@@ -193,6 +210,11 @@ impl<'a, S: SyncNode + Send> FragmentSenderSetupBuilder<'a, S> {
 
     pub fn ignore_any_errors(&mut self) -> &mut Self {
         self.setup.ignore_any_errors = true;
+        self
+    }
+
+    pub fn stop_at_error(&mut self) -> &mut Self {
+        self.setup.stop_at_error = true;
         self
     }
 
