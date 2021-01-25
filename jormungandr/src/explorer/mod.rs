@@ -390,6 +390,23 @@ impl ExplorerDB {
         true
     }
 
+    pub(self) async fn get_block_with_branches(
+        &self,
+        block_id: &HeaderHash,
+    ) -> Option<(Arc<ExplorerBlock>, Vec<(HeaderHash, multiverse::Ref)>)> {
+        let mut block = None;
+        let mut tips = Vec::new();
+
+        for (hash, state_ref) in self.multiverse.tips().await.drain(..) {
+            if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
+                block = block.or_else(|| Some(Arc::clone(b)));
+                tips.push((hash, state_ref));
+            }
+        }
+
+        block.map(|b| (b, tips))
+    }
+
     pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
         let tips = self.multiverse.tips().await;
         let (_, state_ref) = &tips[0];
@@ -418,6 +435,36 @@ impl ExplorerDB {
         } else {
             false
         }
+    }
+
+    pub async fn find_blocks_by_chain_length(&self, chain_length: ChainLength) -> Vec<HeaderHash> {
+        let mut hashes = Vec::new();
+
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
+            if let Some(hash) = state_ref.state().chain_lengths.lookup(&chain_length) {
+                hashes.push(**hash);
+            }
+        }
+
+        hashes.sort_unstable();
+        hashes.dedup();
+
+        hashes
+    }
+
+    pub async fn find_blocks_by_transaction(&self, transaction_id: &FragmentId) -> Vec<HeaderHash> {
+        self.multiverse
+            .tips()
+            .await
+            .iter()
+            .filter_map(|(_tip_hash, state_ref)| {
+                state_ref
+                    .state()
+                    .transactions
+                    .lookup(&transaction_id)
+                    .map(|arc| *arc.clone())
+            })
+            .collect()
     }
 
     pub async fn get_stake_pool_blocks(
@@ -468,9 +515,17 @@ impl ExplorerDB {
         None
     }
 
+    pub(self) async fn get_branch(&self, hash: &HeaderHash) -> Option<multiverse::Ref> {
+        self.multiverse.get_ref(hash).await
+    }
+
     pub(self) async fn get_main_tip(&self) -> (HeaderHash, multiverse::Ref) {
         let hash = self.longest_chain_tip.get_block_id().await;
         (hash, self.multiverse.get_ref(&hash).await.unwrap())
+    }
+
+    pub(self) async fn get_tips(&self) -> Vec<(HeaderHash, multiverse::Ref)> {
+        self.multiverse.tips().await
     }
 
     fn blockchain(&self) -> &Blockchain {
@@ -865,20 +920,5 @@ impl State {
                     .map(|b| (*b.as_ref(), i.into()))
             })
             .collect()
-    }
-
-    pub fn find_block_by_chain_length(&self, chain_length: ChainLength) -> Option<HeaderHash> {
-        self.chain_lengths
-            .lookup(&chain_length)
-            .map(|b| *b.as_ref())
-    }
-
-    pub fn find_block_hash_by_transaction(
-        &self,
-        transaction_id: &FragmentId,
-    ) -> Option<HeaderHash> {
-        self.transactions
-            .lookup(&transaction_id)
-            .map(|id| *id.as_ref())
     }
 }
