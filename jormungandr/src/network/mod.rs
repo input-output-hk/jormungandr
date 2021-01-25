@@ -246,7 +246,7 @@ pub struct ConnectionState {
     /// the local (to the task) connection details
     pub connection: Connection,
 
-    span: Span,
+    pub span: Span,
 }
 
 impl ConnectionState {

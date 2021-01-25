@@ -20,6 +20,7 @@ use rand::Rng;
 use std::convert::TryInto;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use tracing_futures::Instrument;
 
 /// Initiates a client connection, returning a connection handle and
 /// the connection future that must be polled to complete the connection.
@@ -93,7 +94,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             fragments: fragment_sub,
             gossip: gossip_sub,
         };
-        let builder = ClientBuilder { channels, logger };
+        let builder = ClientBuilder { channels };
         let client = Client::new(
             grpc_client,
             builder,
@@ -102,7 +103,8 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             &mut comms,
         );
         Ok((client, comms))
-    };
+    }
+    .instrument(state.span.clone());
     let handle = ConnectHandle { receiver };
     let future = ConnectFuture {
         sender: Some(sender),

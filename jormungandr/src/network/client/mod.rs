@@ -23,7 +23,7 @@ use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
 
 use futures::prelude::*;
 use futures::ready;
-use slog::Logger;
+use tracing::Span;
 
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -33,7 +33,6 @@ pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 #[must_use = "Client must be polled"]
 pub struct Client {
     inner: grpc::Client,
-    logger: Logger,
     global_state: GlobalStateR,
     inbound: InboundSubscriptions,
     block_solicitations: OutboundSubscription<BlockIds>,
@@ -48,13 +47,13 @@ pub struct Client {
 }
 
 struct ClientBuilder {
-    pub logger: Logger,
+    pub span: Span,
     pub channels: Channels,
 }
 
 impl Client {
-    pub fn logger(&self) -> &Logger {
-        &self.logger
+    pub fn span(&self) -> &Span {
+        &self.span
     }
 }
 
@@ -66,7 +65,7 @@ impl Client {
         inbound: InboundSubscriptions,
         comms: &mut PeerComms,
     ) -> Self {
-        let logger = builder.logger;
+        let parent_span = builder.span;
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
@@ -88,7 +87,6 @@ impl Client {
 
         Client {
             inner,
-            logger,
             global_state,
             inbound,
             block_solicitations: comms.subscribe_to_block_solicitations(),
@@ -182,18 +180,16 @@ impl Client {
         let mut client_box = Pin::new(&mut self.client_box);
         let logger = &self.logger;
         ready!(client_box.as_mut().poll_ready(cx)).map_err(|e| {
-            error!(
-                logger,
-                "processing of incoming client requests failed";
-                "reason" => %e,
+            tracing::error!(
+                reason = %e,
+                "processing of incoming client requests failed"
             );
         })?;
         if let Some(msg) = self.incoming_solicitation.take() {
             client_box.start_send(msg).map_err(|e| {
-                error!(
-                    self.logger,
-                    "failed to send client request for processing";
-                    "reason" => %e,
+                tracing::error!(
+                    reason = %e,
+                    "failed to send client request for processing"
                 );
             })?;
         } else {
@@ -207,9 +203,8 @@ impl Client {
                 Poll::Ready(Ok(())) => Ok(()),
                 Poll::Ready(Err(e)) => {
                     error!(
-                        self.logger,
-                        "processing of incoming client requests failed";
-                        "reason" => %e,
+                        reason = %e,
+                        "processing of incoming client requests failed"
                     );
                     Err(())
                 }
@@ -221,14 +216,13 @@ impl Client {
         let event = match maybe_event {
             Some(Ok(event)) => event,
             None => {
-                debug!(self.logger, "block event subscription ended by the peer");
+                tracing::debug!("block event subscription ended by the peer");
                 return Ok(Disconnect).into();
             }
             Some(Err(e)) => {
                 debug!(
-                    self.logger,
-                    "block subscription stream failure";
-                    "error" => ?e,
+                    error = ?e,
+                    "block subscription stream failure"
                 );
                 return Err(()).into();
             }
@@ -249,6 +243,7 @@ impl Client {
     }
 
     fn upload_blocks(&mut self, block_ids: BlockIds) -> Result<(), ()> {
+        let _enter = span!(parent: Span::current(), Level::TRACE, )
         let logger = self.logger.new(o!("solicitation" => "UploadBlocks"));
         if block_ids.is_empty() {
             info!(logger, "peer has sent an empty block solicitation");
