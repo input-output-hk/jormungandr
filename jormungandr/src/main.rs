@@ -57,6 +57,7 @@ pub mod stuck_notifier;
 pub mod utils;
 
 use stats_counter::StatsCounter;
+use tokio_compat_02::FutureExt;
 
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
@@ -565,7 +566,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
             let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
+            let server_handler = rest::start_rest_server(rest, explorer, context.clone()).compat();
             services.spawn_future("rest", move |info| async move {
                 service_context.write().await.set_logger(info.into_logger());
                 server_handler.await

@@ -62,6 +62,7 @@ async-trait = "0.1"
 lru = "^0.6.1"
 warp = { version = "0.2", features = ["tls"] }
 pin-project = "1.0"
+tokio-compat-02 = "0.2.0"
 
 [dependencies.reqwest]
 version = "0.10.10"
