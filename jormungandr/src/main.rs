@@ -429,7 +429,7 @@ async fn bootstrap_internal(
         );
 
         futures::select! {
-            _ = tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT).fuse() => {},
+            _ = tokio::time::sleep(BOOTSTRAP_RETRY_WAIT).fuse() => {},
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
         }
     }
