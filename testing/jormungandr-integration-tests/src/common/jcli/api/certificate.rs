@@ -3,7 +3,7 @@ use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{prelude::*, NamedTempFile};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::TaxType;
-use jormungandr_testing_utils::testing::file;
+use jortestkit::file;
 use jortestkit::process::output_extensions::ProcessOutput;
 use std::path::Path;
 
@@ -141,7 +141,7 @@ impl Certificate {
             .build()
             .assert()
             .success();
-        temp_file.assert(crate::predicate::file_exists_and_not_empty());
+        temp_file.assert(jortestkit::prelude::file_exists_and_not_empty());
         file::read_file(temp_file.path())
     }
 
@@ -155,7 +155,7 @@ impl Certificate {
             .build()
             .assert()
             .success();
-        temp_file.assert(crate::predicate::file_exists_and_not_empty());
+        temp_file.assert(jortestkit::prelude::file_exists_and_not_empty());
         file::read_file(temp_file.path())
     }
 

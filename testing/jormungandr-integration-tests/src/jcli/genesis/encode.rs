@@ -192,7 +192,7 @@ pub fn test_genesis_decode_bijection() {
     jcli.clone()
         .genesis()
         .decode(params.genesis_block_path(), &actual_yaml_file);
-    actual_yaml_file.assert(crate::predicate::file_text_content_is_same_as(
+    actual_yaml_file.assert(jortestkit::prelude::file_text_content_is_same_as(
         expected_yaml_file.path(),
     ));
 
@@ -201,7 +201,7 @@ pub fn test_genesis_decode_bijection() {
         .genesis()
         .encode(actual_yaml_file.path(), &block0_after);
 
-    block0_after.assert(crate::predicate::file_binary_content_is_same_as(
+    block0_after.assert(jortestkit::prelude::file_binary_content_is_same_as(
         params.genesis_block_path(),
     ));
 

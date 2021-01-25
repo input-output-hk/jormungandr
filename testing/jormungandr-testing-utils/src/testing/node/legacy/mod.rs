@@ -1,7 +1,6 @@
 mod rest;
 mod version;
 
-use crate::testing::file;
 pub use crate::testing::node::configuration::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
@@ -9,6 +8,7 @@ use crate::testing::{decompress, download_file, CachedReleases, GitHubApi, Relea
 pub use jormungandr_lib::interfaces::{
     Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
 };
+use jortestkit::file;
 
 use assert_fs::fixture::PathChild;
 use assert_fs::prelude::*;

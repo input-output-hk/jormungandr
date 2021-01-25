@@ -35,7 +35,7 @@ impl Votes {
             .assert()
             .success();
 
-        output_file.assert(crate::predicate::file_exists_and_not_empty());
+        output_file.assert(jortestkit::prelude::file_exists_and_not_empty());
         jortestkit::prelude::read_file(output_file.path())
     }
 

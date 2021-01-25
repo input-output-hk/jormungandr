@@ -23,7 +23,7 @@ impl Genesis {
             .build()
             .assert()
             .success();
-        output.assert(crate::predicate::file_exists_and_not_empty());
+        output.assert(jortestkit::prelude::file_exists_and_not_empty());
     }
 
     pub fn encode<P: AsRef<Path>>(self, input: P, output: &ChildPath) {
@@ -35,7 +35,7 @@ impl Genesis {
             .assert()
             .success();
 
-        output.assert(crate::predicate::file_exists_and_not_empty());
+        output.assert(jortestkit::prelude::file_exists_and_not_empty());
     }
 
     pub fn encode_expect_fail<P: AsRef<Path>>(self, input: P, expected_msg: &str) {
