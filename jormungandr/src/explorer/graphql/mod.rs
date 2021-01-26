@@ -190,6 +190,10 @@ impl Block {
             });
         Ok(treasury)
     }
+
+    pub async fn is_confirmed(&self, context: &Context) -> bool {
+        context.db.is_block_confirmed(&self.hash).await
+    }
 }
 
 struct BftLeader {
