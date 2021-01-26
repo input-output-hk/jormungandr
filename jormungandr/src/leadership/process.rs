@@ -637,6 +637,7 @@ async fn prepare_block(
     let (reply_handle, reply_future) = unary_reply(logger.clone());
 
     let msg = TransactionMsg::SelectTransactions {
+        pool_idx: 0,
         ledger: ledger.as_ref().clone(),
         block_date,
         ledger_params: epoch_parameters.as_ref().clone(),
