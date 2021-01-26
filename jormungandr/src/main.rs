@@ -524,6 +524,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 
 fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let command_line = CommandLine::load();
+    let exit_after_storage_setup = command_line.storage_check;
 
     if command_line.full_version {
         println!("{}", env!("FULL_VERSION"));
@@ -545,6 +546,14 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     debug!(init_logger, "system settings are: {}", diagnostic);
 
     let settings = raw_settings.try_into_settings(&init_logger)?;
+
+    let storage = start_up::prepare_storage(&settings, &init_logger)?;
+    if exit_after_storage_setup {
+        info!(init_logger, "Exiting after successful storage setup");
+        std::mem::drop(init_logger);
+        std::mem::drop(storage);
+        std::process::exit(0);
+    }
 
     if settings.network.trusted_peers.is_empty() && !settings.network.skip_bootstrap {
         return Err(network::bootstrap::Error::EmptyTrustedPeers.into());
@@ -575,8 +584,6 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         }
         None => None,
     };
-
-    let storage = start_up::prepare_storage(&settings, &init_logger)?;
 
     // TODO: load network module here too (if needed)
 

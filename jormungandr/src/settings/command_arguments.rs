@@ -113,6 +113,10 @@ pub struct CommandLine {
     /// this option is useful for scripting retrieving the logs of the version of this application.
     #[structopt(long = "source-version")]
     pub source_version: bool,
+
+    /// Initialize the storage and exit, useful to check that the storage has been set up correctly.
+    #[structopt(long = "storage-check")]
+    pub storage_check: bool,
 }
 
 impl CommandLine {
