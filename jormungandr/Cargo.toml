@@ -13,8 +13,9 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "^1.1.0"
-juniper = "0.15.1"
-juniper_warp = "0.6.0"
+juniper = "0.15.2"
+syn = "=1.0.59" # Remove this when juniper is updated, or better, gone forever
+juniper_warp = "0.6.1"
 base64 = "0.13.0"
 bincode = "1.2.1"
 bytes = "0.5"
@@ -54,13 +55,15 @@ slog-json = "2.3.0"
 slog-term = "2.6.0"
 structopt = "^0.3"
 thiserror = "1.0.21"
-tokio = { version = "0.2.22", features = ["rt-threaded", "time", "sync", "stream", "signal", "test-util", "blocking"] }
-tokio-util = "0.5.0"
-tonic = "0.3"
+tokio = { version = "^1.0", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
+tokio-stream = "0.1.2"
+tokio-util = { version = "0.6.0", features = ["time"] }
+tonic = "0.4"
 async-trait = "0.1"
 lru = "^0.6.1"
-warp = { version = "0.2.4", features = ["tls"] }
+warp = { version = "0.2", features = ["tls"] }
 pin-project = "1.0"
+tokio-compat-02 = "0.2.0"
 
 [dependencies.reqwest]
 version = "0.10.10"
@@ -69,7 +72,7 @@ features = ["rustls-tls"]
 
 [dev-dependencies]
 rand_core = "0.5"
-tokio = { version = "^0.2", features = ["full" ] }
+tokio = { version = "^1.0", features = ["full"] }
 
 [build-dependencies]
 versionisator = "1.0.2"

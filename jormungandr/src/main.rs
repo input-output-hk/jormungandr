@@ -57,6 +57,7 @@ pub mod stuck_notifier;
 pub mod utils;
 
 use stats_counter::StatsCounter;
+use tokio_compat_02::FutureExt;
 
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
@@ -429,7 +430,7 @@ async fn bootstrap_internal(
         );
 
         futures::select! {
-            _ = tokio::time::delay_for(BOOTSTRAP_RETRY_WAIT).fuse() => {},
+            _ = tokio::time::sleep(BOOTSTRAP_RETRY_WAIT).fuse() => {},
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
         }
     }
@@ -476,12 +477,15 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 
     let token_1 = token.clone();
 
+    async fn recv_signal_and_cancel(mut signal: signal::unix::Signal, token: CancellationToken) {
+        if let Some(()) = signal.recv().await {
+            token.cancel();
+        }
+    }
+
     services.spawn_future("sigterm_watcher", move |info| {
         match signal::unix::signal(SignalKind::terminate()) {
-            Ok(signal) => signal
-                .into_future()
-                .map(move |_| token.cancel())
-                .left_future(),
+            Ok(signal) => recv_signal_and_cancel(signal, token).left_future(),
             Err(e) => {
                 warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
                 future::pending().right_future()
@@ -491,10 +495,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 
     services.spawn_future("sigint_watcher", move |info| {
         match signal::unix::signal(SignalKind::interrupt()) {
-            Ok(signal) => signal
-                .into_future()
-                .map(move |_| token_1.cancel())
-                .left_future(),
+            Ok(signal) => recv_signal_and_cancel(signal, token_1).left_future(),
             Err(e) => {
                 warn!(info.logger(), "failed to install handler for SIGINT"; "reason" => %e);
                 future::pending().right_future()
@@ -565,7 +566,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
             let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
+            let server_handler = rest::start_rest_server(rest, explorer, context.clone()).compat();
             services.spawn_future("rest", move |info| async move {
                 service_context.write().await.set_logger(info.into_logger());
                 server_handler.await

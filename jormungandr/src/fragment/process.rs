@@ -9,7 +9,7 @@ use crate::{
 };
 use std::collections::HashMap;
 use thiserror::Error;
-use tokio::stream::StreamExt;
+use tokio_stream::StreamExt;
 
 pub struct Process {
     pool_max_entries: usize,

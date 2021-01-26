@@ -9,7 +9,7 @@ use tokio::sync::mpsc::{
     error::{RecvError, TrySendError},
     Receiver, Sender,
 };
-use tokio::time::delay_queue::{DelayQueue, Key};
+use tokio_util::time::delay_queue::{DelayQueue, Key};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -20,7 +20,7 @@ pub enum Error {
     #[error("command queue closed")]
     CommandQueueClosed,
     #[error("timer error")]
-    Timer(#[from] tokio::time::Error),
+    Timer(#[from] tokio::time::error::Error),
 }
 
 impl<T> From<TrySendError<T>> for Error {
@@ -177,14 +177,14 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let inner = Pin::into_inner(self);
-        while let Poll::Ready(command_opt) = Pin::new(&mut inner.command_receiver).poll_next(cx) {
+        while let Poll::Ready(command_opt) = Pin::new(&mut inner.command_receiver).poll_recv(cx) {
             match command_opt {
                 None => return Poll::Ready(Err(Error::CommandQueueClosed)),
                 Some(Command::Schedule { task }) => inner.schedule(task),
                 Some(Command::DeclareCompleted { task }) => inner.declare_completed(task),
             }
         }
-        while let Poll::Ready(Some(expired)) = Pin::new(&mut inner.timeouts).poll_next(cx) {
+        while let Poll::Ready(Some(expired)) = Pin::new(&mut inner.timeouts).poll_expired(cx) {
             match expired {
                 Ok(expired) => inner.declare_timed_out(expired.into_inner()),
                 Err(err) => return Poll::Ready(Err(Error::Timer(err))),

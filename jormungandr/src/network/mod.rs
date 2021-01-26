@@ -316,8 +316,13 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
         });
     }
 
-    let gossip = time::interval(global_state.config.gossip_interval)
-        .for_each(move |_| send_gossip(global_state.clone(), channels.clone()));
+    let gossip = async {
+        let mut gossip_interval = time::interval(global_state.config.gossip_interval);
+        loop {
+            gossip_interval.tick().await;
+            send_gossip(global_state.clone(), channels.clone()).await
+        }
+    };
 
     future::join3(listener, handle_cmds, gossip).await;
 }
