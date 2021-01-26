@@ -69,7 +69,7 @@ impl<'a> FragmentGenerator<'a> {
         }
 
         let vote_plan_for_casting: VotePlan = VotePlanBuilder::new()
-            .with_vote_start(current_date.shift_slot(18, &time_era).into())
+            .with_vote_start(current_date.shift_slot(5, &time_era).into())
             .with_tally_start(current_date.shift_epoch(5).into())
             .with_tally_end(current_date.shift_epoch(6).into())
             .build();
@@ -80,8 +80,8 @@ impl<'a> FragmentGenerator<'a> {
         let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
-                    .with_vote_start(current_date.shift_slot(30, &time_era).into())
-                    .with_tally_start(current_date.shift_slot(31, &time_era).into())
+                    .with_vote_start(current_date.shift_slot(6, &time_era).into())
+                    .with_tally_start(current_date.shift_slot(7, &time_era).into())
                     .with_tally_end(current_date.shift_epoch(5).into())
                     .build(),
             )

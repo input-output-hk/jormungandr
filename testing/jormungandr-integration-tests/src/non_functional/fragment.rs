@@ -2,6 +2,7 @@ use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::startup;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
 use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
+use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::{
     BatchFragmentGenerator, FragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
@@ -18,7 +19,7 @@ pub fn fragment_load_test() {
         &[faucet.clone()],
         &[receiver.clone()],
         ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+            .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
@@ -30,10 +31,10 @@ pub fn fragment_load_test() {
 
     let configuration = Configuration::duration(
         1,
-        std::time::Duration::from_secs(10),
-        1000,
+        std::time::Duration::from_secs(60),
+        500,
         Monitor::Standard(1000),
-        0,
+        1_000,
     );
 
     let mut request_generator = FragmentGenerator::new(
@@ -45,7 +46,7 @@ pub fn fragment_load_test() {
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
-            FragmentSenderSetup::resend_3_times(),
+            FragmentSenderSetup::no_verify(),
         ),
     );
 
@@ -58,6 +59,8 @@ pub fn fragment_load_test() {
 
     let fragment_check = FragmentsCheck::new(jcli, &jormungandr);
     fragment_check.wait_until_all_processed().unwrap();
+
+    time::wait_for_epoch(1, jormungandr.explorer());
 
     load::start_async(
         request_generator,
@@ -90,7 +93,7 @@ pub fn fragment_batch_load_test() {
         std::time::Duration::from_secs(60),
         1000,
         Monitor::Standard(100),
-        0,
+        3_000,
     );
 
     let mut request_generator = BatchFragmentGenerator::new(
