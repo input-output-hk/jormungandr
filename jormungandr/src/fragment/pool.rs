@@ -17,7 +17,7 @@ use thiserror::Error;
 
 pub struct Pool {
     logs: Logs,
-    pool: internal::Pool,
+    pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
     logger: Logger,
 }
@@ -31,13 +31,17 @@ pub enum Error {
 impl Pool {
     pub fn new(
         max_entries: usize,
+        n_pools: usize,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
         logger: Logger,
     ) -> Self {
+        let pools = (0..n_pools)
+            .map(|_| internal::Pool::new(max_entries))
+            .collect();
         Pool {
             logs,
-            pool: internal::Pool::new(max_entries),
+            pools,
             network_msg_box,
             logger,
         }
@@ -67,40 +71,52 @@ impl Pool {
             .zip(fragments_exist_in_logs)
             .filter(|(_, exists_in_logs)| !exists_in_logs)
             .map(|(fragment, _)| fragment);
-        let new_fragments = self.pool.insert_all(new_fragments);
-        let count = new_fragments.len();
-        debug!(
-            self.logger,
-            "{} of the received fragments were added to the pool", count
-        );
-        let fragment_logs = new_fragments
-            .iter()
-            .map(move |fragment| FragmentLog::new(fragment.id(), origin))
-            .collect::<Vec<_>>();
-        for fragment in new_fragments.into_iter() {
-            let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
-            network_msg_box
-                .send(fragment_msg)
-                .await
-                .map_err(Error::CannotPropagate)?;
+
+        let mut max_added = 0;
+
+        for (i, pool) in self.pools.iter_mut().enumerate() {
+            let new_fragments = pool.insert_all(new_fragments.clone());
+            let count = new_fragments.len();
+            debug!(
+                self.logger,
+                "{} of the received fragments were added to the pool number {}", count, i
+            );
+            let fragment_logs = new_fragments
+                .iter()
+                .map(move |fragment| FragmentLog::new(fragment.id(), origin))
+                .collect::<Vec<_>>();
+            for fragment in new_fragments.into_iter() {
+                let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
+                network_msg_box
+                    .send(fragment_msg)
+                    .await
+                    .map_err(Error::CannotPropagate)?;
+            }
+            self.logs.insert_all(fragment_logs);
+            if count > max_added {
+                max_added = count;
+            }
         }
-        self.logs.insert_all(fragment_logs);
-        Ok(count)
+        Ok(max_added)
     }
 
     pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
-        self.pool.remove_all(fragment_ids.iter().cloned());
+        for pool in &mut self.pools {
+            pool.remove_all(fragment_ids.iter().cloned());
+        }
         self.logs.modify_all(fragment_ids, status);
     }
 
     pub fn select(
         &mut self,
+        pool_idx: usize,
         ledger: Ledger,
         block_date: BlockDate,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
     ) -> Contents {
-        let Pool { logs, pool, .. } = self;
+        let Pool { logs, pools, .. } = self;
+        let pool = &mut pools[pool_idx];
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new(self.logger.clone());

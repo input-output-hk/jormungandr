@@ -45,6 +45,7 @@ impl Process {
     ) -> Result<(), Error> {
         let mut pool = Pool::new(
             self.pool_max_entries,
+            1,
             self.logs,
             self.network_msg_box,
             service_info.logger().clone(),
@@ -97,7 +98,7 @@ impl Process {
                     selection_alg,
                     reply_handle,
                 } => {
-                    let contents = pool.select(ledger, block_date, ledger_params, selection_alg);
+                    let contents = pool.select(0, ledger, block_date, ledger_params, selection_alg);
                     reply_handle.reply_ok(contents);
                 }
             }
