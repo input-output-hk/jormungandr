@@ -31,7 +31,7 @@ pub fn download_last_n_releases(n: u32) -> Vec<Release> {
     RELEASES
         .into_iter()
         .cloned()
-        .filter(|x| !x.prerelease())
+        .filter(|x| !x.version_str().starts_with("nightly"))
         .take(n as usize)
         .collect()
 }
