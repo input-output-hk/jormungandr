@@ -67,6 +67,8 @@ impl FragmentSelectionAlgorithm for OldestFirst {
     ) {
         let mut ledger_simulation = ledger.clone();
 
+        let mut return_to_pool = Vec::new();
+
         while let Some(fragment) = pool.remove_oldest() {
             let id = fragment.id();
             let fragment_raw = fragment.to_raw(); // TODO: replace everything to FragmentRaw in the node
@@ -111,7 +113,12 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 if total_size == ledger_params.block_content_max_size {
                     break;
                 }
+            } else {
+                // return a fragment to the pool later if does not fit the contents size limit
+                return_to_pool.push(fragment);
             }
         }
+
+        pool.insert_all(return_to_pool);
     }
 }
