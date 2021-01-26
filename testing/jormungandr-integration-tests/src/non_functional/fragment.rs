@@ -29,10 +29,10 @@ pub fn fragment_load_test() {
     jormungandr.steal_temp_dir().unwrap().into_persistent();
 
     let configuration = Configuration::duration(
-        10,
-        std::time::Duration::from_secs(60),
-        100,
-        Monitor::Standard(100),
+        1,
+        std::time::Duration::from_secs(10),
+        1000,
+        Monitor::Standard(1000),
         0,
     );
 
@@ -45,11 +45,19 @@ pub fn fragment_load_test() {
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
-            FragmentSenderSetup::no_verify(),
+            FragmentSenderSetup::resend_3_times(),
         ),
     );
 
+    use crate::common::jcli::FragmentsCheck;
+    use crate::common::jcli::JCli;
+
     request_generator.prepare();
+
+    let jcli: JCli = Default::default();
+
+    let fragment_check = FragmentsCheck::new(jcli, &jormungandr);
+    fragment_check.wait_until_all_processed().unwrap();
 
     load::start_async(
         request_generator,

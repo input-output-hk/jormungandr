@@ -59,7 +59,7 @@ impl<'a> FragmentGenerator<'a> {
         );
 
         let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
-            .take(3)
+            .take(10)
             .collect();
 
         for stake_pool in stake_pools.iter() {
@@ -80,8 +80,8 @@ impl<'a> FragmentGenerator<'a> {
         let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
-                    .with_vote_start(current_date.shift_slot(17, &time_era).into())
-                    .with_tally_start(current_date.shift_slot(18, &time_era).into())
+                    .with_vote_start(current_date.shift_slot(30, &time_era).into())
+                    .with_tally_start(current_date.shift_slot(31, &time_era).into())
                     .with_tally_end(current_date.shift_epoch(5).into())
                     .build(),
             )

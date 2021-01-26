@@ -39,7 +39,7 @@ impl<'a> FragmentsCheck<'a> {
                 !at_least_one_pending
             },
             1,
-            5,
+            150,
             "Waiting for last transaction to be inBlock or rejected",
             "transaction is pending for too long",
         )
