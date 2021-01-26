@@ -477,12 +477,15 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 
     let token_1 = token.clone();
 
+    async fn recv_signal_and_cancel(mut signal: signal::unix::Signal, token: CancellationToken) {
+        if let Some(()) = signal.recv().await {
+            token.cancel();
+        }
+    }
+
     services.spawn_future("sigterm_watcher", move |info| {
         match signal::unix::signal(SignalKind::terminate()) {
-            Ok(signal) => signal
-                .into_future()
-                .map(move |_| token.cancel())
-                .left_future(),
+            Ok(signal) => recv_signal_and_cancel(signal, token).left_future(),
             Err(e) => {
                 warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
                 future::pending().right_future()
@@ -492,10 +495,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 
     services.spawn_future("sigint_watcher", move |info| {
         match signal::unix::signal(SignalKind::interrupt()) {
-            Ok(signal) => signal
-                .into_future()
-                .map(move |_| token_1.cancel())
-                .left_future(),
+            Ok(signal) => recv_signal_and_cancel(signal, token_1).left_future(),
             Err(e) => {
                 warn!(info.logger(), "failed to install handler for SIGINT"; "reason" => %e);
                 future::pending().right_future()
