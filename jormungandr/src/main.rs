@@ -109,19 +109,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let stats_counter = StatsCounter::default();
 
-    {
-        let stats_counter = stats_counter.clone();
-        let process = fragment::Process::new(
-            bootstrapped_node.settings.mempool.pool_max_entries.into(),
-            bootstrapped_node.settings.mempool.log_max_entries.into(),
-            network_msgbox.clone(),
-        );
-
-        services.spawn_try_future("fragment", move |info| {
-            process.start(info, stats_counter, fragment_queue)
-        });
-    };
-
     let explorer = {
         if bootstrapped_node.settings.explorer {
             let explorer_db = bootstrapped_node
@@ -221,6 +208,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         })
         .collect();
     let leader_secrets = leader_secrets?;
+    let n_pools = leader_secrets.len();
     let enclave = block_on(Enclave::from_vec(leader_secrets));
 
     {
@@ -242,6 +230,19 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .and_then(|module| module.run())
         });
     }
+
+    {
+        let stats_counter = stats_counter.clone();
+        let process = fragment::Process::new(
+            bootstrapped_node.settings.mempool.pool_max_entries.into(),
+            bootstrapped_node.settings.mempool.log_max_entries.into(),
+            network_msgbox.clone(),
+        );
+
+        services.spawn_try_future("fragment", move |info| {
+            process.start(n_pools, info, stats_counter, fragment_queue)
+        });
+    };
 
     if let Some(rest_context) = bootstrapped_node.rest_context {
         let full_context = rest::FullContext {

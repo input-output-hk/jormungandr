@@ -36,7 +36,7 @@ impl Pool {
         network_msg_box: MessageBox<NetworkMsg>,
         logger: Logger,
     ) -> Self {
-        let pools = (0..n_pools)
+        let pools = (0..=n_pools)
             .map(|_| internal::Pool::new(max_entries))
             .collect();
         Pool {

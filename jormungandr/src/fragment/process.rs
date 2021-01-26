@@ -39,13 +39,14 @@ impl Process {
 
     pub async fn start(
         self,
+        n_pools: usize,
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
         mut input: MessageQueue<TransactionMsg>,
     ) -> Result<(), Error> {
         let mut pool = Pool::new(
             self.pool_max_entries,
-            1,
+            n_pools,
             self.logs,
             self.network_msg_box,
             service_info.logger().clone(),
