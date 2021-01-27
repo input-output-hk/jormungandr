@@ -9,14 +9,12 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-#[macro_use]
-extern crate slog;
-#[cfg(feature = "gelf")]
-extern crate slog_gelf;
-#[cfg(feature = "systemd")]
-extern crate slog_journald;
 #[cfg(unix)]
 extern crate slog_syslog;
+#[cfg(feature = "gelf")]
+extern crate tracing_gelf;
+#[cfg(feature = "systemd")]
+extern crate tracing_journald;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
@@ -58,6 +56,7 @@ pub mod utils;
 
 use stats_counter::StatsCounter;
 use tokio_compat_02::FutureExt;
+use tracing_futures::Instrument;
 
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
@@ -521,20 +520,23 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let raw_settings = RawSettings::load(command_line)?;
 
     let log_settings = raw_settings.log_settings();
-    let logger = log_settings.to_logger()?;
+    let base_span = log_settings.to_span()?;
 
-    let init_logger = logger.new(o!(log::KEY_TASK => "init"));
-    info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
+    let init_span = span!(parent: &base_span, Level::TRACE, "task", name = "init");
+    let async_span = init_span.clone();
+    let _enter = init_span.enter();
+    tracing::info!("Starting {}", env!("FULL_VERSION"),);
 
     let diagnostic = Diagnostic::new()?;
-    debug!(init_logger, "system settings are: {}", diagnostic);
+    tracing::debug!("system settings are: {}", diagnostic);
 
-    let settings = raw_settings.try_into_settings(&init_logger)?;
+    let settings = raw_settings.try_into_settings()?;
 
     let storage = start_up::prepare_storage(&settings, &init_logger)?;
     if exit_after_storage_setup {
-        info!(init_logger, "Exiting after successful storage setup");
-        std::mem::drop(init_logger);
+        tracing::info!("Exiting after successful storage setup");
+        std::mem::drop(_enter);
+        std::mem::drop(init_span);
         std::mem::drop(storage);
         std::process::exit(0);
     }
@@ -580,7 +582,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         })
     }
 
-    let block0 = services.block_on_task("prepare_block_0", |_service_info| async {
+    let block0 = services.block_on_task("prepare_block_0", |_service_info| {
+        async {
         use futures::future::FutureExt;
 
         let cancellation_token = CancellationToken::new();
@@ -590,12 +593,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             context.set_bootstrap_stopper(cancellation_token.clone());
         }
 
-        let prepare_block0_fut = start_up::prepare_block_0(
-            &settings,
-            &storage,
-            &init_logger, /* add network to fetch block0 */
-        )
-        .map_err(Into::into);
+        let prepare_block0_fut = start_up::prepare_block_0(&settings, &storage).map_err(Into::into);
 
         let result = futures::select! {
             result = prepare_block0_fut.fuse() => result,
@@ -608,6 +606,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         }
 
         result
+    }.instrument(async_span)
     })?;
 
     Ok(InitializedNode {

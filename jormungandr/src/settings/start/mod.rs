@@ -118,7 +118,7 @@ impl RawSettings {
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
-    pub fn try_into_settings(self, logger: &Logger) -> Result<Settings, Error> {
+    pub fn try_into_settings(self) -> Result<Settings, Error> {
         let rest = self.rest_config();
         let RawSettings {
             command_line,
@@ -142,8 +142,7 @@ impl RawSettings {
         }
 
         if secrets.is_empty() {
-            warn!(
-                logger,
+            tracing::warn!(
                 "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
             );
         };

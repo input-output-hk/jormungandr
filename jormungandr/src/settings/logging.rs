@@ -1,6 +1,4 @@
-use crate::log::AsyncableDrain;
-use slog::{Drain, FilterLevel, Logger};
-use slog_async::Async;
+// use crate::log::AsyncableDrain;
 #[cfg(feature = "gelf")]
 use slog_gelf::Gelf;
 #[cfg(feature = "systemd")]
@@ -13,12 +11,14 @@ use std::fmt::{self, Display};
 use std::fs;
 use std::io;
 use std::str::FromStr;
+use tracing::log::Level;
+use tracing::Span;
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>);
 
 #[derive(Debug)]
 pub struct LogSettingsEntry {
-    pub level: FilterLevel,
+    pub level: Level,
     pub format: LogFormat,
     pub output: LogOutput,
 }
@@ -117,7 +117,7 @@ impl<D: Drain> Drain for DrainMux<D> {
 }
 
 impl LogSettings {
-    pub fn to_logger(&self) -> Result<Logger, Error> {
+    pub fn to_span(&self) -> Result<Span, Error> {
         let mut drains = Vec::new();
         for config in self.0.iter() {
             drains.push(config.to_logger()?);
@@ -215,13 +215,13 @@ impl LogOutput {
         }
     }
 }
-
-fn term_drain_with_decorator<D>(d: D) -> slog_term::FullFormat<D>
-where
-    D: slog_term::Decorator + Send + 'static,
-{
-    slog_term::FullFormat::new(d).build()
-}
+//
+// fn term_drain_with_decorator<D>(d: D) -> slog_term::FullFormat<D>
+// where
+//     D: slog_term::Decorator + Send + 'static,
+// {
+//     slog_term::FullFormat::new(d).build()
+// }
 
 impl LogFormat {
     #[allow(dead_code)]

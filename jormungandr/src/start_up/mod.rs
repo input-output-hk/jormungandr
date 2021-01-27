@@ -29,11 +29,7 @@ pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, E
 /// Try to fetch the block0_id from the HTTP base URL (services) in the array
 ///
 /// The HTTP url is expecting to be of the form: URL/<hash-id>.block0
-async fn fetch_block0_http(
-    logger: &Logger,
-    base_services: &[String],
-    block0_id: &HeaderId,
-) -> Option<Block> {
+async fn fetch_block0_http(base_services: &[String], block0_id: &HeaderId) -> Option<Block> {
     use chain_core::property::Deserialize as _;
 
     if base_services.is_empty() {
@@ -66,21 +62,17 @@ async fn fetch_block0_http(
         let url = format!("{}/{}.block0", base_url, block0_id.to_string());
         match fetch_one(block0_id, &url).await {
             Err(e) => {
-                debug!(
-                    logger,
-                    "HTTP fetch : fail to get from {} : error {}", base_url, e
-                );
+                tracing::debug!("HTTP fetch : fail to get from {} : error {}", base_url, e);
             }
             Ok(block) => {
-                info!(logger, "block0 {} fetched by HTTP from {}", block0_id, url);
+                tracing::info!("block0 {} fetched by HTTP from {}", block0_id, url);
                 return Some(block);
             }
         }
     }
 
-    info!(
-        logger,
-        "block0 {} fetch by HTTP unsuccesful after trying {} services",
+    tracing::info!(
+        "block0 {} fetch by HTTP unsuccessful after trying {} services",
         block0_id,
         base_services.len()
     );
@@ -94,16 +86,12 @@ async fn fetch_block0_http(
 /// 2. we have the block_0 hash only:
 ///     1. check the storage if we don't have it already there;
 ///     2. check the network nodes we know about
-pub async fn prepare_block_0(
-    settings: &Settings,
-    storage: &Storage,
-    logger: &Logger,
-) -> Result<Block, Error> {
+pub async fn prepare_block_0(settings: &Settings, storage: &Storage) -> Result<Block, Error> {
     use crate::settings::Block0Info;
     use chain_core::property::Deserialize as _;
     match &settings.block_0 {
         Block0Info::Path(path, opt_block0_id) => {
-            debug!(logger, "parsing block0 from file path `{:?}'", path);
+            tracing::debug!("parsing block0 from file path `{:?}'", path);
             let f = std::fs::File::open(path).map_err(|err| Error::IO {
                 source: err,
                 reason: ErrorKind::Block0,
@@ -133,24 +121,13 @@ pub async fn prepare_block_0(
         Block0Info::Hash(block0_id) => {
             let storage_or_http_block0 = {
                 if let Some(block0) = storage.get(*block0_id).unwrap() {
-                    debug!(
-                        logger,
-                        "retrieved block0 from storage with hash {}", block0_id
-                    );
+                    tracing::debug!("retrieved block0 from storage with hash {}", block0_id);
                     // TODO verify block0 retrieved is the expected value
                     Some(block0)
                 } else {
-                    debug!(
-                        logger,
-                        "retrieving block0 from network with hash {}", block0_id
-                    );
+                    tracing::debug!("retrieving block0 from network with hash {}", block0_id);
 
-                    fetch_block0_http(
-                        logger,
-                        &settings.network.http_fetch_block0_service,
-                        block0_id,
-                    )
-                    .await
+                    fetch_block0_http(&settings.network.http_fetch_block0_service, block0_id).await
                 }
             };
             // fetch from network:: is moved here since it start a runtime, and
