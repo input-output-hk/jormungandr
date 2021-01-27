@@ -29,8 +29,11 @@ use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::multiverse;
 use futures::prelude::*;
 use std::convert::Infallible;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Arc,
+};
+use tokio::sync::{Mutex, RwLock};
 
 #[derive(Clone)]
 pub struct Explorer {
@@ -105,35 +108,42 @@ impl Explorer {
         }
     }
 
-    pub async fn start(&mut self, info: TokioServiceInfo, messages: MessageQueue<ExplorerMsg>) {
+    pub async fn start(&self, info: TokioServiceInfo, messages: MessageQueue<ExplorerMsg>) {
+        let tip_candidate: Arc<Mutex<Option<HeaderHash>>> = Arc::new(Mutex::new(None));
+
         messages
-            .for_each(|input| async {
+            .for_each(|input| {
+                let explorer_db = self.db.clone();
+                let tip_candidate = Arc::clone(&tip_candidate);
                 match input {
                     ExplorerMsg::NewBlock(block) => {
-                        let explorer_db = self.db.clone();
-                        let logger = info.logger().clone();
-                        info.spawn_fallible("apply block", async move {
-                            explorer_db
-                                .apply_block(block)
-                                .map(move |result| match result {
-                                    // XXX: There is no garbage collection now, so the GCRoot is not used
-                                    Ok(_gc_root) => Ok(()),
-                                    Err(err) => {
-                                        error!(logger, "Explorer error: {}", err);
-                                        Err(())
-                                    }
-                                })
-                                .await
+                        info.spawn_fallible::<_, Error>("apply block to explorer", async move {
+                            let _state_ref = explorer_db.apply_block(block.clone()).await?;
+
+                            let mut guard = tip_candidate.lock().await;
+                            if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
+                                let hash = guard.take().unwrap();
+                                explorer_db.set_tip(hash).await;
+                            }
+
+                            Ok(())
                         });
                     }
                     ExplorerMsg::NewTip(hash) => {
-                        let explorer_db = self.db.clone();
-                        info.spawn(
-                            "apply block",
-                            async move { explorer_db.set_tip(hash).await },
-                        );
+                        info.spawn_fallible::<_, Error>("apply block to explorer", async move {
+                            let successful = explorer_db.set_tip(hash).await;
+
+                            if !successful {
+                                let mut guard = tip_candidate.lock().await;
+                                guard.replace(hash);
+                            }
+
+                            Ok(())
+                        });
                     }
-                }
+                };
+
+                futures::future::ready(())
             })
             .await;
     }
