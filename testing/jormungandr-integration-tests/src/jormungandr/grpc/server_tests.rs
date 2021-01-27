@@ -24,7 +24,7 @@ pub async fn wrong_protocol() {
         .with_protocol_version(ProtocolVersion::Bft)
         .build();
 
-    tokio::time::delay_for(Duration::from_millis(1000)).await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
     let server = Starter::new().config(config.clone()).start_async().unwrap();
 
@@ -53,7 +53,7 @@ pub async fn wrong_genesis_hash() {
         .with_protocol_version(ProtocolVersion::GenesisPraos)
         .build();
 
-    tokio::time::delay_for(Duration::from_millis(1000)).await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
     let server = Starter::new().config(config.clone()).start_async().unwrap();
 
@@ -95,7 +95,7 @@ pub async fn handshake_ok() {
         .with_protocol_version(ProtocolVersion::Bft)
         .build();
 
-    tokio::time::delay_for(Duration::from_millis(1000)).await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
     let server = Starter::new().config(config.clone()).start_async().unwrap();
     let mock_address = mock_controller.address();

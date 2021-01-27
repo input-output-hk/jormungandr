@@ -9,13 +9,14 @@ pub use super::proto::{
 };
 
 use slog::Drain;
-use std::fmt;
-use std::{fs::OpenOptions, path::Path};
+use tokio::sync::{mpsc, RwLock};
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
-use futures::Stream;
-use std::{pin::Pin, sync::Arc};
-use tokio::sync::{mpsc, RwLock};
+use std::fmt;
+use std::fs::OpenOptions;
+use std::path::Path;
+use std::sync::Arc;
 
 mod builder;
 mod controller;
@@ -75,18 +76,15 @@ impl JormungandrServerImpl {
 
 #[tonic::async_trait]
 impl Node for JormungandrServerImpl {
-    type PullBlocksStream = mpsc::Receiver<Result<Block, Status>>;
-    type PullBlocksToTipStream = mpsc::Receiver<Result<Block, Status>>;
-    type GetBlocksStream = mpsc::Receiver<Result<Block, Status>>;
-    type PullHeadersStream = mpsc::Receiver<Result<Header, Status>>;
-    type GetHeadersStream = mpsc::Receiver<Result<Header, Status>>;
-    type GetFragmentsStream = mpsc::Receiver<Result<Fragment, Status>>;
-    type BlockSubscriptionStream =
-        Pin<Box<dyn Stream<Item = Result<BlockEvent, Status>> + Send + Sync + 'static>>;
-    type FragmentSubscriptionStream =
-        Pin<Box<dyn Stream<Item = Result<Fragment, Status>> + Send + Sync + 'static>>;
-    type GossipSubscriptionStream =
-        Pin<Box<dyn Stream<Item = Result<Gossip, Status>> + Send + Sync + 'static>>;
+    type PullBlocksStream = ReceiverStream<Result<Block, Status>>;
+    type PullBlocksToTipStream = ReceiverStream<Result<Block, Status>>;
+    type GetBlocksStream = ReceiverStream<Result<Block, Status>>;
+    type PullHeadersStream = ReceiverStream<Result<Header, Status>>;
+    type GetHeadersStream = ReceiverStream<Result<Header, Status>>;
+    type GetFragmentsStream = ReceiverStream<Result<Fragment, Status>>;
+    type BlockSubscriptionStream = ReceiverStream<Result<BlockEvent, Status>>;
+    type FragmentSubscriptionStream = ReceiverStream<Result<Fragment, Status>>;
+    type GossipSubscriptionStream = ReceiverStream<Result<Gossip, Status>>;
 
     async fn handshake(
         &self,
@@ -150,7 +148,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GetBlocksStream>, tonic::Status> {
         info!(self.log,"Get blocks request recieved";"method" => MethodType::GetBlocks.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn get_headers(
         &self,
@@ -158,7 +156,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GetHeadersStream>, tonic::Status> {
         info!(self.log,"Get headers request recieved";"method" => MethodType::GetHeaders.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn get_fragments(
         &self,
@@ -166,7 +164,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GetFragmentsStream>, tonic::Status> {
         info!(self.log,"Get fragments request recieved";"method" => MethodType::GetFragments.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn pull_headers(
         &self,
@@ -174,7 +172,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::PullHeadersStream>, tonic::Status> {
         info!(self.log,"Pull Headers request recieved";"method" => MethodType::PullHeaders.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn pull_blocks(
         &self,
@@ -182,7 +180,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::PullBlocksStream>, tonic::Status> {
         info!(self.log,"PullBlocks request recieved";"method" => MethodType::PullBlocks.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn pull_blocks_to_tip(
         &self,
@@ -190,7 +188,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::PullBlocksToTipStream>, tonic::Status> {
         info!(self.log,"PullBlocksToTip request recieved";"method" => MethodType::PullBlocksToTip.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(rx))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn push_headers(
         &self,
@@ -213,7 +211,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::BlockSubscriptionStream>, tonic::Status> {
         info!(self.log,"Block subscription event recieved";"method" => MethodType::BlockSubscription.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(Box::pin(rx)))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
     async fn fragment_subscription(
@@ -222,7 +220,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::FragmentSubscriptionStream>, tonic::Status> {
         info!(self.log,"Fragment subscription event recieved";"method" => MethodType::FragmentSubscription.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(Box::pin(rx)))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn gossip_subscription(
         &self,
@@ -230,6 +228,6 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GossipSubscriptionStream>, tonic::Status> {
         info!(self.log,"Gossip subscription event recieved";"method" => MethodType::GossipSubscription.to_string());
         let (_tx, rx) = mpsc::channel(0);
-        Ok(Response::new(Box::pin(rx)))
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 }

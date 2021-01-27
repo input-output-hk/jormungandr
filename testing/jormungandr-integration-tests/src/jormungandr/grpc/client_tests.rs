@@ -386,7 +386,7 @@ pub async fn pull_blocks_correct_hashes_partial() {
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
 
     while client.tip().await.chain_length() < 10.into() {
-        tokio::time::delay_for(CLIENT_RETRY_WAIT).await;
+        tokio::time::sleep(CLIENT_RETRY_WAIT).await;
     }
 
     let block_hashes_from_logs = server.logger.get_created_blocks_hashes();
@@ -420,7 +420,7 @@ pub async fn pull_blocks_hashes_wrong_order() {
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
 
     while client.tip().await.chain_length() < 10.into() {
-        tokio::time::delay_for(CLIENT_RETRY_WAIT).await;
+        tokio::time::sleep(CLIENT_RETRY_WAIT).await;
     }
 
     let block_hashes_from_logs = server.logger.get_created_blocks_hashes();
