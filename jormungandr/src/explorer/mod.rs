@@ -62,6 +62,7 @@ pub struct BlockchainConfig {
     discrimination: Discrimination,
     consensus_version: ConsensusVersion,
     fees: LinearFee,
+    epoch_stability_depth: u32,
 }
 
 /// Inmutable data structure used to represent the explorer's state at a given Block
