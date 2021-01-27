@@ -22,7 +22,7 @@ pub fn fragment_load_test() {
         &[faucet.clone()],
         &[receiver.clone()],
         ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
+            .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
