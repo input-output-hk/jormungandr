@@ -1,5 +1,6 @@
 use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::startup;
+use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
 use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
 use jormungandr_testing_utils::testing::node::time;
@@ -9,6 +10,8 @@ use jormungandr_testing_utils::testing::{
 };
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 use jortestkit::load::{self, Configuration, Monitor};
+use jortestkit::prelude::Wait;
+use std::time::Duration;
 
 #[test]
 pub fn fragment_load_test() {
@@ -53,12 +56,13 @@ pub fn fragment_load_test() {
     use crate::common::jcli::FragmentsCheck;
     use crate::common::jcli::JCli;
 
-    request_generator.prepare();
+    request_generator.prepare(BlockDate::new(0, 19));
 
     let jcli: JCli = Default::default();
 
     let fragment_check = FragmentsCheck::new(jcli, &jormungandr);
-    fragment_check.wait_until_all_processed().unwrap();
+    let wait = Wait::new(Duration::from_secs(1), 25);
+    fragment_check.wait_until_all_processed(&wait).unwrap();
 
     time::wait_for_epoch(1, jormungandr.explorer());
 

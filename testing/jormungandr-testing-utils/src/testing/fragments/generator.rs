@@ -9,6 +9,7 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use chain_time::TimeEra;
+use jormungandr_lib::interfaces::BlockDate;
 use jortestkit::load::{RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
@@ -50,16 +51,15 @@ impl<'a> FragmentGenerator<'a> {
         }
     }
 
-    pub fn prepare(&mut self) {
-        let current_date = self.explorer.current_time();
+    pub fn prepare(&mut self, start_block_date: BlockDate) {
         let time_era = TimeEra::new(
-            (current_date.slot() as u64).into(),
-            chain_time::Epoch(current_date.epoch()),
+            (start_block_date.slot() as u64).into(),
+            chain_time::Epoch(start_block_date.epoch()),
             self.slots_per_epoch,
         );
 
         let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
-            .take(10)
+            .take(30)
             .collect();
 
         for stake_pool in stake_pools.iter() {
@@ -69,9 +69,9 @@ impl<'a> FragmentGenerator<'a> {
         }
 
         let vote_plan_for_casting: VotePlan = VotePlanBuilder::new()
-            .with_vote_start(current_date.shift_slot(5, &time_era).into())
-            .with_tally_start(current_date.shift_epoch(5).into())
-            .with_tally_end(current_date.shift_epoch(6).into())
+            .with_vote_start(start_block_date.into())
+            .with_tally_start(start_block_date.shift_epoch(5).into())
+            .with_tally_end(start_block_date.shift_epoch(6).into())
             .build();
 
         self.fragment_sender
@@ -80,16 +80,18 @@ impl<'a> FragmentGenerator<'a> {
         let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
-                    .with_vote_start(current_date.shift_slot(6, &time_era).into())
-                    .with_tally_start(current_date.shift_slot(7, &time_era).into())
-                    .with_tally_end(current_date.shift_epoch(5).into())
+                    .with_vote_start(start_block_date.into())
+                    .with_tally_start(start_block_date.shift_slot(1, &time_era).into())
+                    .with_tally_end(start_block_date.shift_epoch(5).into())
                     .build(),
             )
         })
-        .take(10)
+        .take(30)
         .collect();
 
         for vote_plan in vote_plans_for_tally.iter() {
+            println!("{:?}", vote_plan);
+
             self.fragment_sender
                 .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
                 .unwrap();
@@ -182,7 +184,6 @@ impl<'a> FragmentGenerator<'a> {
                     .with_tally_start(block_date.shift_slot(6, &time_era).into())
                     .with_tally_end(block_date.shift_epoch(4).into())
                     .build();
-                self.vote_plans_for_tally.push(vote_plan.clone());
                 self.fragment_sender
                     .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
             }
