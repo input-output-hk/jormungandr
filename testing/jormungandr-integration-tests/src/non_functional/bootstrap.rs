@@ -62,6 +62,7 @@ pub fn bootstrap_from_100_mb_storage() {
 }
 
 #[test]
+#[ignore]
 pub fn legacy_bootstrap_from_1_gb_storage() {
     let storage_size = 1_000;
     let temp_dir = TempDir::new().unwrap().into_persistent();
