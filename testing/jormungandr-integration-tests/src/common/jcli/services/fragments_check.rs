@@ -4,8 +4,7 @@ use crate::common::{
     jormungandr::JormungandrProcess,
 };
 use jormungandr_lib::interfaces::FragmentLog;
-use jortestkit::prelude::ProcessOutput;
-use jortestkit::prelude::Wait;
+use jortestkit::prelude::*;
 use jortestkit::process::run_process_until_response_matches;
 use std::process::Command;
 
