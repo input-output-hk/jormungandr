@@ -12,7 +12,7 @@ use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use futures::channel::{mpsc, oneshot};
 use futures::prelude::*;
 use futures::ready;
-use slog::Logger;
+
 use std::{
     collections::HashMap,
     error,
@@ -325,7 +325,6 @@ impl<T> Sink<Result<T, Error>> for ReplyStreamSink<T> {
 
 pub struct ReplyStreamFuture<T, E> {
     lead_receiver: oneshot::Receiver<Result<mpsc::Receiver<Result<T, Error>>, Error>>,
-    logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
@@ -340,13 +339,12 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let receiver = ready!(Pin::new(&mut self.lead_receiver).poll(cx)).map_err(
             |e: oneshot::Canceled| {
-                warn!(self.logger, "response canceled by the processing task");
+                tracing::warn!("response canceled by the processing task");
                 Error::from(e)
             },
         )??;
         let stream = ReplyStream {
             receiver,
-            logger: self.logger.clone(),
             _phantom_error: PhantomData,
         };
         Poll::Ready(Ok(stream))
@@ -355,7 +353,6 @@ where
 
 pub struct ReplyStream<T, E> {
     receiver: mpsc::Receiver<Result<T, Error>>,
-    logger: Logger,
     _phantom_error: PhantomData<E>,
 }
 
@@ -381,10 +378,9 @@ where
                 Some(Ok(item)) => Some(Ok(item)),
                 None => None,
                 Some(Err(e)) => {
-                    info!(
-                        self.logger,
-                        "error while streaming response";
-                        "error" => ?e,
+                    tracing::info!(
+                        error = ?e,
+                        "error while streaming response"
                     );
                     Some(Err(e.into()))
                 }
@@ -411,10 +407,7 @@ impl<T> Stream for UploadStream<T> {
     }
 }
 
-pub fn stream_reply<T, E>(
-    buffer_size: usize,
-    logger: Logger,
-) -> (ReplyStreamHandle<T>, ReplyStreamFuture<T, E>) {
+pub fn stream_reply<T, E>(buffer_size: usize) -> (ReplyStreamHandle<T>, ReplyStreamFuture<T, E>) {
     let (lead_sender, lead_receiver) = oneshot::channel();
     let handle = ReplyStreamHandle {
         lead_sender,
@@ -422,7 +415,6 @@ pub fn stream_reply<T, E>(
     };
     let future = ReplyStreamFuture {
         lead_receiver,
-        logger,
         _phantom_error: PhantomData,
     };
     (handle, future)
@@ -436,7 +428,6 @@ pub struct RequestStreamHandle<T, R> {
 
 pub struct RequestSink<T> {
     sender: MessageBox<T>,
-    logger: Logger,
 }
 
 impl<T, R> RequestStreamHandle<T, R> {
@@ -446,14 +437,8 @@ impl<T, R> RequestStreamHandle<T, R> {
 }
 
 impl<T> RequestSink<T> {
-    pub fn logger(&self) -> &Logger {
-        &self.logger
-    }
-}
-
-impl<T> RequestSink<T> {
     fn map_send_error(&self, _e: mpsc::SendError, msg: &'static str) -> Error {
-        debug!(self.logger, "{}", msg);
+        tracing::debug!("{}", msg);
         Error::aborted("request stream processing ended before all items were sent")
     }
 }
@@ -501,12 +486,11 @@ impl<T> Sink<T> for RequestSink<T> {
 
 pub fn stream_request<T, R>(
     buffer: usize,
-    logger: Logger,
 ) -> (RequestStreamHandle<T, R>, RequestSink<T>, ReplyFuture<R>) {
     let (sender, receiver) = async_msg::channel(buffer);
     let (reply, reply_future) = unary_reply();
     let handle = RequestStreamHandle { receiver, reply };
-    let sink = RequestSink { sender, logger };
+    let sink = RequestSink { sender };
     (handle, sink, reply_future)
 }
 

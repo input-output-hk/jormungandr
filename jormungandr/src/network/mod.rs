@@ -192,7 +192,7 @@ impl GlobalState {
         }
     }
 
-    fn span(&self) -> &Span {
+    pub fn span(&self) -> &Span {
         &self.span
     }
 
@@ -558,11 +558,7 @@ fn connect_and_propagate(
             }
             Ok(client) => {
                 state.inc_client_count();
-                debug!(
-                    client.logger(),
-                    "connected to peer";
-                    "client_count" => state.client_count(),
-                );
+                tracing::debug!(client_count = state.client_count(), "connected to peer");
                 client.await;
                 state.dec_client_count();
             }

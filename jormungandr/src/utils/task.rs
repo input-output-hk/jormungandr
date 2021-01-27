@@ -108,7 +108,7 @@ impl Services {
             span: tracing_span,
             handle,
         };
-        let span_parent = &future_service_info.span;
+        let span_parent = future_service_info.span.clone();
         let handle = self.runtime.spawn(
             async move {
                 f(future_service_info).await;
@@ -146,7 +146,7 @@ impl Services {
             span: tracing_span,
             handle,
         };
-        let parent_span = &future_service_info.span;
+        let parent_span = future_service_info.span.clone();
         let handle = self.runtime.spawn(
             async move {
                 let res = f(future_service_info).await;
@@ -210,7 +210,7 @@ impl Services {
             span: tracing_span,
             handle,
         };
-        let parent_span = &future_service_info.span;
+        let parent_span = future_service_info.span.clone();
         self.runtime
             .block_on(f(future_service_info).instrument(span!(
                 parent: parent_span,

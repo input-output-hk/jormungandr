@@ -34,7 +34,9 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
     let peer = state.peer();
     let keypair = state.global.keypair.clone();
     let legacy_node_id = state.global.config.legacy_node_id;
-    let _enter = state.span().enter();
+    let span = state.span().clone();
+    let async_span = span.clone();
+    let _enter = span.enter();
     let cf = async move {
         let mut grpc_client = if let Some(node_id) = legacy_node_id {
             let node_id: legacy::NodeId = node_id.as_ref().try_into().unwrap();
@@ -94,7 +96,10 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             fragments: fragment_sub,
             gossip: gossip_sub,
         };
-        let builder = ClientBuilder { channels };
+        let builder = ClientBuilder {
+            channels,
+            span: async_span,
+        };
         let client = Client::new(
             grpc_client,
             builder,
@@ -104,7 +109,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         );
         Ok((client, comms))
     }
-    .instrument(state.span.clone());
+    .instrument(span.clone());
     let handle = ConnectHandle { receiver };
     let future = ConnectFuture {
         sender: Some(sender),

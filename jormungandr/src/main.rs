@@ -317,7 +317,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     } = services.block_on_task("bootstrap", |info| {
         bootstrap_internal(
             rest_context,
-            info.span(),
+            info.span().clone(),
             block0,
             storage,
             settings,
@@ -347,7 +347,7 @@ struct BootstrapData {
 
 async fn bootstrap_internal(
     rest_context: Option<rest::ContextLock>,
-    span: &Span,
+    span: Span,
     block0: blockcfg::Block,
     storage: blockchain::Storage,
     settings: Settings,
@@ -492,7 +492,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
     use signal::ctrl_c;
 
-    services.spawn_future("ctrl_c_watcher", move |info| {
+    services.spawn_future("ctrl_c_watcher", move |_info| {
         ctrl_c().then(move |result| match result {
             Ok(()) => {
                 token.cancel();
