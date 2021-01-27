@@ -6,6 +6,10 @@ use std::{fmt, str::FromStr};
 pub struct BlockDate(block::BlockDate);
 
 impl BlockDate {
+    pub fn new(epoch: Epoch, slot_id: SlotId) -> Self {
+        Self(block::BlockDate { epoch, slot_id })
+    }
+
     pub fn next_epoch(self) -> Self {
         self.0.next_epoch().into()
     }
