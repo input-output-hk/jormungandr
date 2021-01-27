@@ -99,7 +99,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     Err(error) => {
                         use std::error::Error as _;
                         let mut msg = error.to_string();
-                        for e in iter::successors(error.source(), |e| e.source()) {
+                        for e in iter::successors(error.source(), |&e| e.source()) {
                             msg.push_str(": ");
                             msg.push_str(&e.to_string());
                         }
