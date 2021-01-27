@@ -435,7 +435,7 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#ab
 dependencies = [
  "cbor_event",
  "chain-ser",
- "cryptoxide",
+ "cryptoxide 0.2.1",
  "ed25519-bip32",
 ]
 
@@ -493,7 +493,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
- "cryptoxide",
+ "cryptoxide 0.2.1",
  "quickcheck",
 ]
 
@@ -512,7 +512,7 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#ab
 dependencies = [
  "bech32",
  "cfg-if 1.0.0",
- "cryptoxide",
+ "cryptoxide 0.2.1",
  "curve25519-dalek",
  "digest 0.9.0",
  "ed25519-bip32",
@@ -614,7 +614,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#abb5e0d470be99d66e5604c722eaef575f4d9fc1"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.2.1",
  "eccoxide",
  "rand_core 0.5.1",
 ]
@@ -838,6 +838,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da24927b5b899890bcb29205436c957b7892ec3a3fbffce81d710b9611e77778"
 
 [[package]]
+name = "cryptoxide"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2824e117f942b77e942b14162316711d66f07d14b0f37a44fa4b4cad592b8fa"
+
+[[package]]
 name = "csv"
 version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1028,11 +1034,11 @@ dependencies = [
 
 [[package]]
 name = "ed25519-bip32"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4727ce16fc016d8047462988ced12496aad2bb29b2b55ecf60d29eb5706fc6f"
+checksum = "8827180a2b511141fbe49141e50b31a8d542465e0fb572f81f36feea2addfe92"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.3.0",
 ]
 
 [[package]]
@@ -4058,7 +4064,7 @@ name = "symmetric-cipher"
 version = "0.5.0"
 source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#250973e0d8d988bd6ef3403912f1ea1b7d584dbd"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.2.1",
  "rand 0.7.3",
  "thiserror",
 ]
