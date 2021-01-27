@@ -11,7 +11,7 @@ use super::jormungandr::JormungandrProcess;
 use crate::common::configuration;
 use api::{Address, Certificate, Genesis, Key, Rest, Transaction, Votes};
 use jormungandr_lib::crypto::hash::Hash;
-use services::{CertificateBuilder, FragmentSender, FragmentsCheck, TransactionBuilder};
+pub use services::{CertificateBuilder, FragmentSender, FragmentsCheck, TransactionBuilder};
 use std::{
     path::{Path, PathBuf},
     process::Command,

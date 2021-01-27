@@ -3,8 +3,9 @@ use jormungandr_integration_tests::common::startup;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
     testing::{
-        node::Explorer, FragmentGenerator, FragmentSender, FragmentSenderSetup,
-        FragmentStatusProvider, RemoteJormungandrBuilder,
+        node::{time, Explorer},
+        FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentStatusProvider,
+        RemoteJormungandrBuilder,
     },
     wallet::Wallet,
 };
@@ -57,6 +58,10 @@ pub struct AllFragments {
 
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
+
+    /// load test rump up period
+    #[structopt(long = "rump-up")]
+    rump_up: u32,
 }
 
 impl AllFragments {
@@ -77,15 +82,26 @@ impl AllFragments {
         let fragment_sender =
             FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
 
+        let explorer = Explorer::new(self.explorer_endpoint.clone());
+
         let mut generator = FragmentGenerator::new(
             faucet,
             receiver,
             remote_jormungandr.clone(),
-            Explorer::new(self.explorer_endpoint.clone()),
+            explorer.clone(),
             settings.slots_per_epoch,
             fragment_sender,
         );
-        generator.prepare();
+
+        let current_date = explorer.current_time();
+        let target_date = current_date.shift_slot(
+            self.rump_up,
+            &current_date.time_era(settings.slots_per_epoch),
+        );
+
+        generator.prepare(target_date);
+
+        time::wait_for_date(target_date, explorer);
 
         let config = Configuration::duration(
             self.count,

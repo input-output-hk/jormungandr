@@ -82,7 +82,7 @@ pub fn send_transaction_and_ensure_block_was_produced(
 
     jcli.fragment_sender(&jormungandr)
         .send_many(transation_messages)
-        .wait_until_all_processed()
+        .wait_until_all_processed(&Default::default())
         .map_err(NodeStuckError::InternalJcliError)?;
 
     let block_tip_after_transaction = jcli.rest().v0().tip(jormungandr.rest_uri());
