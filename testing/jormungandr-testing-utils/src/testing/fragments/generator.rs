@@ -52,11 +52,7 @@ impl<'a> FragmentGenerator<'a> {
     }
 
     pub fn prepare(&mut self, start_block_date: BlockDate) {
-        let time_era = TimeEra::new(
-            (start_block_date.slot() as u64).into(),
-            chain_time::Epoch(start_block_date.epoch()),
-            self.slots_per_epoch,
-        );
+        let time_era = start_block_date.time_era(self.slots_per_epoch);
 
         let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
             .take(30)
