@@ -56,6 +56,12 @@ pub struct ExplorerDB {
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
+    stable_store: StableIndex,
+}
+
+#[derive(Clone)]
+pub struct StableIndex {
+    confirmed_block_chain_length: Arc<AtomicU32>,
 }
 
 #[derive(Clone)]
@@ -214,6 +220,9 @@ impl ExplorerDB {
             blockchain_config,
             blockchain: blockchain.clone(),
             blockchain_tip,
+            stable_store: StableIndex {
+                confirmed_block_chain_length: Arc::new(AtomicU32::default()),
+            },
         };
 
         let maybe_head = blockchain.storage().get_tag(MAIN_BRANCH_TAG)?;
@@ -322,11 +331,6 @@ impl ExplorerDB {
         Ok(state_ref)
     }
 
-    pub async fn set_tip(&self, hash: HeaderHash) {
-        let mut guard = self.longest_chain_tip.0.write().await;
-        *guard = hash;
-    }
-
     pub async fn get_latest_block_hash(&self) -> HeaderHash {
         self.longest_chain_tip.get_block_id().await
     }
@@ -337,6 +341,45 @@ impl ExplorerDB {
             state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
         })
         .await
+    }
+
+    pub(self) async fn set_tip(&self, hash: HeaderHash) -> bool {
+        // the tip changes which means now a block is confirmed (at least after
+        // the initial epoch_stability_depth blocks).
+
+        let block = if let Some(state_ref) = self.multiverse.get_ref(hash).await {
+            let state = state_ref.state();
+            Arc::clone(state.blocks.lookup(&hash).unwrap())
+        } else {
+            return false;
+        };
+
+        if let Some(confirmed_block_chain_length) = block
+            .chain_length()
+            .nth_ancestor(self.blockchain_config.epoch_stability_depth)
+        {
+            debug_assert!(
+                ChainLength::from(
+                    self.stable_store
+                        .confirmed_block_chain_length
+                        .load(Ordering::Acquire)
+                ) <= block.chain_length()
+            );
+
+            self.stable_store
+                .confirmed_block_chain_length
+                .store(confirmed_block_chain_length.into(), Ordering::Release);
+
+            self.multiverse
+                .gc(self.blockchain_config.epoch_stability_depth)
+                .await;
+        }
+
+        let mut guard = self.longest_chain_tip.0.write().await;
+
+        *guard = hash;
+
+        true
     }
 
     pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
@@ -406,6 +449,19 @@ impl ExplorerDB {
                 .collect()
         })
         .await
+    }
+
+    pub async fn is_block_confirmed(&self, block_id: &HeaderHash) -> bool {
+        if let Some(block) = self.get_block(block_id).await {
+            let confirmed_block_chain_length: ChainLength = self
+                .stable_store
+                .confirmed_block_chain_length
+                .load(Ordering::Acquire)
+                .into();
+            block.chain_length <= confirmed_block_chain_length
+        } else {
+            false
+        }
     }
 
     pub async fn get_stake_pool_blocks(
