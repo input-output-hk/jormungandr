@@ -772,37 +772,36 @@ fn apply_block_to_vote_plans(
 
 impl BlockchainConfig {
     fn from_config_params(params: &ConfigParams) -> BlockchainConfig {
-        let discrimination = params
-            .iter()
-            .filter_map(|param| match param {
-                ConfigParam::Discrimination(discrimination) => Some(discrimination),
-                _ => None,
-            })
-            .next()
-            .expect("the discrimination to be present");
+        let mut discrimination: Option<Discrimination> = None;
+        let mut consensus_version: Option<ConsensusVersion> = None;
+        let mut fees: Option<LinearFee> = None;
+        let mut epoch_stability_depth: Option<u32> = None;
 
-        let consensus_version = params
-            .iter()
-            .filter_map(|param| match param {
-                ConfigParam::ConsensusVersion(version) => Some(version),
-                _ => None,
-            })
-            .next()
-            .expect("consensus version to be present");
-
-        let fees = params
-            .iter()
-            .filter_map(|param| match param {
-                ConfigParam::LinearFee(fee) => Some(fee),
-                _ => None,
-            })
-            .next()
-            .expect("fee is not in config params");
+        for p in params.iter() {
+            match p {
+                ConfigParam::Discrimination(d) => {
+                    discrimination.replace(*d);
+                }
+                ConfigParam::ConsensusVersion(v) => {
+                    consensus_version.replace(*v);
+                }
+                ConfigParam::LinearFee(fee) => {
+                    fees.replace(*fee);
+                }
+                ConfigParam::EpochStabilityDepth(d) => {
+                    epoch_stability_depth.replace(*d);
+                }
+                _ => (),
+            }
+        }
 
         BlockchainConfig {
-            discrimination: *discrimination,
-            consensus_version: *consensus_version,
-            fees: *fees,
+            discrimination: discrimination.expect("discrimination not found in initial params"),
+            consensus_version: consensus_version
+                .expect("consensus version not found in initial params"),
+            fees: fees.expect("fees not found in initial params"),
+            epoch_stability_depth: epoch_stability_depth
+                .expect("epoch stability depth not found in initial params"),
         }
     }
 }
