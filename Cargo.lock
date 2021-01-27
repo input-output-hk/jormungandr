@@ -568,7 +568,7 @@ dependencies = [
  "rand_core 0.5.1",
  "thiserror",
  "tonic 0.4.0",
- "tonic-build 0.4.0",
+ "tonic-build",
 ]
 
 [[package]]
@@ -2180,7 +2180,7 @@ dependencies = [
  "tokio 0.2.24",
  "tokio-codec",
  "tonic 0.3.1",
- "tonic-build 0.3.1",
+ "tonic-build",
  "typed-bytes",
  "url",
  "zip",
@@ -3136,24 +3136,6 @@ dependencies = [
 
 [[package]]
 name = "prost-build"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02b10678c913ecbd69350e8535c3aef91a8676c0773fc1d7b95cdd196d7f2f26"
-dependencies = [
- "bytes 0.5.6",
- "heck",
- "itertools 0.8.2",
- "log 0.4.13",
- "multimap",
- "petgraph",
- "prost 0.6.1",
- "prost-types 0.6.1",
- "tempfile",
- "which 3.1.1",
-]
-
-[[package]]
-name = "prost-build"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32d3ebd75ac2679c2af3a92246639f9fcc8a442ee420719cc4fe195b98dd5fa3"
@@ -3165,9 +3147,9 @@ dependencies = [
  "multimap",
  "petgraph",
  "prost 0.7.0",
- "prost-types 0.7.0",
+ "prost-types",
  "tempfile",
- "which 4.0.2",
+ "which",
 ]
 
 [[package]]
@@ -3194,16 +3176,6 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "syn 1.0.59",
-]
-
-[[package]]
-name = "prost-types"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1834f67c0697c001304b75be76f67add9c89742eda3a085ad8ee0bb38c3417aa"
-dependencies = [
- "bytes 0.5.6",
- "prost 0.6.1",
 ]
 
 [[package]]
@@ -4574,24 +4546,12 @@ dependencies = [
 
 [[package]]
 name = "tonic-build"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19970cf58f3acc820962be74c4021b8bbc8e8a1c4e3a02095d0aa60cde5f3633"
-dependencies = [
- "proc-macro2 1.0.24",
- "prost-build 0.6.1",
- "quote 1.0.8",
- "syn 1.0.59",
-]
-
-[[package]]
-name = "tonic-build"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1e8546fd40d56d28089835c0a81bb396848103b00f888aea42d46eb5974df07"
 dependencies = [
  "proc-macro2 1.0.24",
- "prost-build 0.7.0",
+ "prost-build",
  "quote 1.0.8",
  "syn 1.0.59",
 ]
@@ -5288,15 +5248,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f20dea7535251981a9670857150d571846545088359b28e4951d350bdaf179f"
 dependencies = [
  "webpki",
-]
-
-[[package]]
-name = "which"
-version = "3.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d011071ae14a2f6671d0b74080ae0cd8ebf3a6f8c9589a2cd45f23126fe29724"
-dependencies = [
- "libc",
 ]
 
 [[package]]
