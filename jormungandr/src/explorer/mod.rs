@@ -214,25 +214,25 @@ impl ExplorerDB {
 
         let block0_id = block0.id();
 
+        let maybe_head = blockchain.storage().get_tag(MAIN_BRANCH_TAG)?;
+        let (stream, hash) = match maybe_head {
+            Some(head) => (blockchain.storage().stream_from_to(block0_id, head)?, head),
+            None => {
+                return Err(Error::from(ErrorKind::BootstrapError(
+                    "Couldn't read the HEAD tag from storage".to_owned(),
+                )))
+            }
+        };
+
         let bootstraped_db = ExplorerDB {
             multiverse,
-            longest_chain_tip: Tip::new(block0.header.id()),
+            longest_chain_tip: Tip::new(hash),
             blockchain_config,
             blockchain: blockchain.clone(),
             blockchain_tip,
             stable_store: StableIndex {
                 confirmed_block_chain_length: Arc::new(AtomicU32::default()),
             },
-        };
-
-        let maybe_head = blockchain.storage().get_tag(MAIN_BRANCH_TAG)?;
-        let stream = match maybe_head {
-            Some(head) => blockchain.storage().stream_from_to(block0_id, head)?,
-            None => {
-                return Err(Error::from(ErrorKind::BootstrapError(
-                    "Couldn't read the HEAD tag from storage".to_owned(),
-                )))
-            }
         };
 
         let db = stream
