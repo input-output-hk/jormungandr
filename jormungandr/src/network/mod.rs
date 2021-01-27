@@ -87,8 +87,9 @@ use chain_network::data::gossip::Gossip;
 use chain_network::data::NodeKeyPair;
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
-use slog::Logger;
 use tonic::transport;
+use tracing::{span, Level, Span};
+use tracing_futures::Instrument;
 
 use std::collections::BTreeMap;
 use std::error;
@@ -99,8 +100,6 @@ use std::time::Duration;
 
 pub use self::bootstrap::Error as BootstrapError;
 use crate::stats_counter::StatsCounter;
-use tracing::{span, Level, Span};
-use tracing_futures::Instrument;
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -763,7 +762,6 @@ pub async fn bootstrap(
 pub async fn fetch_block(
     config: &Configuration,
     hash: HeaderHash,
-    logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
@@ -775,33 +773,40 @@ pub async fn fetch_block(
 
     let mut block = None;
 
-    let logger = logger.new(o!("block" => hash.to_string()));
+    let span = span!(Level::TRACE, "fetch_block", block = %hash.to_string());
+    async {
+        for address in trusted_peers_shuffled(&config) {
+            let peer_span = span!(Level::TRACE, "peer_address", address = %address.to_string());
+            async {
+                let peer = Peer::new(address);
+                match grpc::fetch_block(&peer, hash).await {
+                    Err(grpc::FetchBlockError::Connect { source: e }) => {
+                        tracing::warn!(reason = %e, "unable to reach peer for block download");
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = ?e, "failed to download block");
+                    }
+                    Ok(b) => {
+                        tracing::info!("genesis block fetched");
+                        block = Some(b);
+                        break;
+                    }
+                }
+            }
+            .instrument(peer_span)
+            .await;
+        }
 
-    for address in trusted_peers_shuffled(&config) {
-        let logger = logger.new(o!("peer_address" => address.to_string()));
-        let peer = Peer::new(address);
-        match grpc::fetch_block(&peer, hash, &logger).await {
-            Err(grpc::FetchBlockError::Connect { source: e }) => {
-                warn!(logger, "unable to reach peer for block download"; "reason" => %e);
-            }
-            Err(e) => {
-                warn!(logger, "failed to download block"; "error" => ?e);
-            }
-            Ok(b) => {
-                info!(logger, "genesis block fetched");
-                block = Some(b);
-                break;
-            }
+        if let Some(block) = block {
+            Ok(block)
+        } else {
+            Err(FetchBlockError::CouldNotDownloadBlock {
+                block: hash.to_owned(),
+            })
         }
     }
-
-    if let Some(block) = block {
-        Ok(block)
-    } else {
-        Err(FetchBlockError::CouldNotDownloadBlock {
-            block: hash.to_owned(),
-        })
-    }
+    .instrument(span)
+    .await
 }
 
 #[derive(Debug, Error)]

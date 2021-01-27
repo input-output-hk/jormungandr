@@ -1,5 +1,7 @@
 mod error;
 
+use tracing::{span, Level};
+
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::{Block, HeaderId},
@@ -7,22 +9,23 @@ use crate::{
     log, network,
     settings::start::Settings,
 };
-use slog::Logger;
 
 /// prepare the block storage from the given settings
-pub fn prepare_storage(setting: &Settings, logger: &Logger) -> Result<Storage, Error> {
-    let logger = logger.new(o!(log::KEY_SUB_TASK => "storage"));
+pub fn prepare_storage(setting: &Settings) -> Result<Storage, Error> {
+    let span = span!(Level::TRACE, "sub_task", name = "storage");
+    let storage_span = span.clone();
+    let _enter = span.enter();
     if let Some(dir) = &setting.storage {
         std::fs::create_dir_all(dir).map_err(|err| Error::IO {
             source: err,
             reason: ErrorKind::BlockStorage,
         })?;
 
-        info!(logger, "storing blockchain in '{:?}'", dir);
+        tracing::info!("storing blockchain in '{:?}'", dir);
 
-        Storage::file(dir, logger).map_err(Into::into)
+        Storage::file(dir, storage_span).map_err(Into::into)
     } else {
-        Storage::memory(logger).map_err(Into::into)
+        Storage::memory(storage_span).map_err(Into::into)
     }
 }
 
@@ -135,8 +138,7 @@ pub async fn prepare_block_0(settings: &Settings, storage: &Storage) -> Result<B
             match storage_or_http_block0 {
                 Some(block0) => Ok(block0),
                 None => {
-                    let block0 =
-                        network::fetch_block(&settings.network, *block0_id, logger).await?;
+                    let block0 = network::fetch_block(&settings.network, *block0_id).await?;
                     Ok(block0)
                 }
             }
