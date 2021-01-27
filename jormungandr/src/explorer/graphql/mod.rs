@@ -702,6 +702,14 @@ impl Status {
         latest_block(context).await.map(|b| Block::from(&b))
     }
 
+    pub async fn epoch_stability_depth(&self, context: &Context) -> String {
+        context
+            .db
+            .blockchain_config
+            .epoch_stability_depth
+            .to_string()
+    }
+
     pub fn fee_settings(&self, context: &Context) -> FeeSettings {
         let chain_impl_mockchain::fee::LinearFee {
             constant,
