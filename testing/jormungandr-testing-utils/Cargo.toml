@@ -59,7 +59,7 @@ json = "0.12.4"
 symmetric-cipher = { git = "https://github.com/input-output-hk/chain-wallet-libs.git", branch = "master" }
 qrcodegen = "1.6"
 bardecoder = "0.2.2"
-image = "0.22"
+image = "0.23"
 
 [dependencies.reqwest]
 version = "0.10.10"
