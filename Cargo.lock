@@ -2098,7 +2098,7 @@ dependencies = [
  "slog",
  "structopt",
  "thiserror",
- "tokio 0.2.24",
+ "tokio 1.1.0",
  "yaml-rust",
 ]
 
