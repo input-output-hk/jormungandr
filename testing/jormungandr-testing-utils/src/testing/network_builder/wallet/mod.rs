@@ -19,7 +19,7 @@ use std::path::Path;
 
 pub type WalletAlias = String;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum WalletType {
     Account,
     UTxO,

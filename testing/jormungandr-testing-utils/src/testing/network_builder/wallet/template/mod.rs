@@ -7,7 +7,7 @@ use chain_impl_mockchain::value::Value;
 pub use external::ExternalWalletTemplate;
 pub use legacy::LegacyWalletTemplate;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct WalletTemplate {
     alias: WalletAlias,
     value: Value,
