@@ -8,8 +8,9 @@ use crate::settings::{command_arguments::*, Block0Info};
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
 use std::{fs::File, path::PathBuf};
 use thiserror::Error;
+use tracing::metadata::LevelFilter;
 
-const DEFAULT_FILTER_LEVEL: FilterLevel = FilterLevel::Info;
+const DEFAULT_FILTER_LEVEL: LevelFilter = LevelFilter::TRACE;
 const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Plain;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min

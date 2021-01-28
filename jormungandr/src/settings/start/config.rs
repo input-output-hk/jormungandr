@@ -9,6 +9,7 @@ use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
 use multiaddr::Multiaddr;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use tracing::metadata::LevelFilter;
 
 use std::{collections::BTreeMap, fmt, path::PathBuf};
 
@@ -51,7 +52,7 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigLogSettingsEntry {
     #[serde(with = "filter_level_opt_serde")]
-    pub level: Option<FilterLevel>,
+    pub level: Option<LevelFilter>,
     pub format: Option<LogFormat>,
     pub output: Option<LogOutput>,
 }
@@ -336,7 +337,7 @@ mod filter_level_opt_serde {
 
     pub fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
-    ) -> Result<Option<FilterLevel>, D::Error> {
+    ) -> Result<Option<LevelFilter>, D::Error> {
         Option::<String>::deserialize(deserializer)?
             .map(|variant| {
                 variant.parse().map_err(|_| {
@@ -347,9 +348,9 @@ mod filter_level_opt_serde {
     }
 
     pub fn serialize<S: Serializer>(
-        data: &Option<FilterLevel>,
+        data: &Option<LevelFilter>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        data.map(|level| level.as_str()).serialize(serializer)
+        data.map(|level| level.to_string()).serialize(serializer)
     }
 }

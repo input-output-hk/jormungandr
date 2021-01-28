@@ -6,7 +6,7 @@ use chain_core::property::{Deserialize, Serialize};
 use chain_storage::{BlockInfo, BlockStore, Error as StorageError};
 use futures::prelude::*;
 use thiserror::Error;
-use tracing::{span, Level, Span};
+use tracing::Span;
 
 use std::convert::identity;
 use std::path::Path;

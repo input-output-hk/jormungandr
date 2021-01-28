@@ -777,24 +777,36 @@ pub async fn fetch_block(
     async {
         for address in trusted_peers_shuffled(&config) {
             let peer_span = span!(Level::TRACE, "peer_address", address = %address.to_string());
-            async {
-                let peer = Peer::new(address);
-                match grpc::fetch_block(&peer, hash).await {
-                    Err(grpc::FetchBlockError::Connect { source: e }) => {
+            let peer = Peer::new(address);
+            match grpc::fetch_block(&peer, hash)
+                .instrument(peer_span.clone())
+                .await
+            {
+                Err(grpc::FetchBlockError::Connect { source: e }) => {
+                    async {
                         tracing::warn!(reason = %e, "unable to reach peer for block download");
                     }
-                    Err(e) => {
+                    .instrument(peer_span)
+                    .await
+                }
+                Err(e) => {
+                    async {
                         tracing::warn!(error = ?e, "failed to download block");
                     }
-                    Ok(b) => {
+                    .instrument(peer_span)
+                    .await
+                }
+                Ok(b) => {
+                    async {
                         tracing::info!("genesis block fetched");
-                        block = Some(b);
-                        break;
                     }
+                    .instrument(peer_span)
+                    .await;
+
+                    block = Some(b);
+                    break;
                 }
             }
-            .instrument(peer_span)
-            .await;
         }
 
         if let Some(block) = block {

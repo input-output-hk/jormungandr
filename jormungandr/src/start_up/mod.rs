@@ -6,7 +6,7 @@ pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::{Block, HeaderId},
     blockchain::{Blockchain, ErrorKind as BlockchainError, Storage, Tip},
-    log, network,
+    network,
     settings::start::Settings,
 };
 
