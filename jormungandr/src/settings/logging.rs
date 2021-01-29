@@ -4,16 +4,13 @@ use std::fs;
 use std::io;
 use std::str::FromStr;
 
-use tracing::{log::{Level, LevelFilter}, Span, Subscriber};
+use tracing::{log::LevelFilter, Subscriber};
 use tracing_appender::non_blocking::WorkerGuard;
 #[cfg(feature = "gelf")]
 use tracing_gelf::Gelf;
 #[cfg(feature = "systemd")]
 use tracing_journald::Layer;
 use tracing_subscriber::fmt::SubscriberBuilder;
-use tracing_subscriber::layer::{SubscriberExt, Layered};
-use tracing_futures::WithSubscriber;
-use std::net::SocketAddr;
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>);
 
@@ -87,13 +84,17 @@ impl FromStr for LogOutput {
 impl LogSettings {
     pub fn init_log(&self) -> Result<Vec<WorkerGuard>, Error> {
         let mut guards = Vec::new();
-        let subscribers: Vec<_> = self.0.iter().map(|entry| entry.to_subscriber()?).collect();
+        let mut subscribers: Vec<_> = Vec::new();
         for config in self.0.iter() {
-            let (layer, guard) = config.to_tracing_layer();
-            subscriber = subscriber.with(layer);
-            config.
+            let (subscriber, guard) = config.to_subscriber();
+            guards.push(guard);
+            subscribers.push(subscriber);
         }
-
+        let subscriber = subscribers
+            .drain(..)
+            .into_iter()
+            .fold_first(|s1, s2| s1.with_subscriber(s2))
+            .unwrap_or_else(|| tracing_subscriber::fmt().finish());
         tracing::subscriber::set_global_default(subscriber);
         Ok(guards)
     }
@@ -101,19 +102,41 @@ impl LogSettings {
 
 impl LogSettingsEntry {
     fn to_subscriber(
-        &self
-    ) -> Result<(impl Subscriber, Option<tracing_appender::WorkerGuard>), Error> {
-        let Self{output, level, format} = &self;
+        &self,
+    ) -> Result<
+        (
+            impl Subscriber,
+            Option<tracing_appender::non_blocking::WorkerGuard>,
+        ),
+        Error,
+    > {
+        let Self {
+            output,
+            level,
+            format,
+        } = &self;
         let builder = format.to_subscriber_builder();
         match output {
             LogOutput::Stdout => {
                 let (subscriber, guard) = tracing_appender::non_blocking(std::io::stdout());
-                Ok((builder.with_writer(subscriber).with_max_level(level).finish(), Some(guard)))
-            },
+                Ok((
+                    builder
+                        .with_writer(subscriber)
+                        .with_max_level(level)
+                        .finish(),
+                    Some(guard),
+                ))
+            }
             LogOutput::Stderr => {
                 let (subscriber, guard) = tracing_appender::non_blocking(std::io::stderr());
-                Ok((builder.with_writer(subscriber).with_max_level(level).finish(), Some(guard)))
-            },
+                Ok((
+                    builder
+                        .with_writer(subscriber)
+                        .with_max_level(level)
+                        .finish(),
+                    Some(guard),
+                ))
+            }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
                 let layer = tracing_journald::layer()?;
