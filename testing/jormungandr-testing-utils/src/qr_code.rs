@@ -7,10 +7,11 @@ use std::path::Path;
 use symmetric_cipher::{decrypt, encrypt, Error as SymmetricCipherError};
 use thiserror::Error;
 
-const QR_CODE_BORDER: i32 = 8;
+const MODULE_SIZE: i32 = 8;
+const QR_CODE_BORDER: i32 = 4 * 8;
 
 pub struct KeyQrCode {
-    inner: QrCode,
+    pub inner: QrCode,
 }
 
 #[derive(Error, Debug)]
@@ -22,9 +23,19 @@ pub enum KeyQrCodeError {
     #[error("invalid secret key")]
     SecretKey(#[from] SecretKeyError),
     #[error("couldn't decode QR code")]
-    QrDecodeError,
+    QrDecodeError(#[from] QrDecodeError),
     #[error("failed to decode hex")]
     HexDecodeError(#[from] hex::FromHexError),
+}
+
+#[derive(Error, Debug)]
+pub enum QrDecodeError {
+    #[error("couldn't decode QR code")]
+    DecodeError(#[from] quircs::DecodeError),
+    #[error("couldn't extract QR code")]
+    ExtractError(#[from] quircs::ExtractError),
+    #[error("QR code payload is not valid uf8")]
+    NonUtf8Payload,
 }
 
 impl KeyQrCode {
@@ -53,9 +64,8 @@ impl KeyQrCode {
     pub fn to_img(&self) -> ImageBuffer<Luma<u8>, Vec<u8>> {
         let qr = &self.inner;
 
-        let module_size = 8;
-        let pixel_size = qr.size() * module_size;
-        let size = QR_CODE_BORDER * 2 + pixel_size;
+        let inner_size_in_pixels = qr.size() * MODULE_SIZE;
+        let size = QR_CODE_BORDER * 2 + inner_size_in_pixels;
 
         let mut img = ImageBuffer::from_pixel(size as u32, size as u32, Luma([255u8]));
 
@@ -63,11 +73,11 @@ impl KeyQrCode {
             for y in 0..qr.size() {
                 if qr.get_module(x, y) {
                     // draw a block square of module_size * module_size
-                    for i in 0..module_size {
-                        for j in 0..module_size {
+                    for i in 0..MODULE_SIZE {
+                        for j in 0..MODULE_SIZE {
                             img.put_pixel(
-                                (x * module_size + i + QR_CODE_BORDER) as u32,
-                                (y * module_size + j + QR_CODE_BORDER) as u32,
+                                (x * MODULE_SIZE + i + QR_CODE_BORDER) as u32,
+                                (y * MODULE_SIZE + j + QR_CODE_BORDER) as u32,
                                 Luma([0u8]),
                             );
                         }
@@ -82,18 +92,27 @@ impl KeyQrCode {
     pub fn decode(
         img: DynamicImage,
         password: &[u8],
-    ) -> Result<SecretKey<Ed25519Extended>, KeyQrCodeError> {
-        let decoder = bardecoder::default_decoder();
+    ) -> Result<Vec<SecretKey<Ed25519Extended>>, KeyQrCodeError> {
+        let mut decoder = quircs::Quirc::default();
 
-        let results = decoder.decode(&img);
+        let img = img.into_luma8();
 
-        let bytes = hex::decode(
-            &results[0]
-                .as_ref()
-                .map_err(|_| KeyQrCodeError::QrDecodeError)?,
-        )?;
+        let codes = decoder.identify(img.width() as usize, img.height() as usize, &img);
 
-        SecretKey::from_binary(decrypt(password, bytes)?.as_ref()).map_err(KeyQrCodeError::from)
+        codes
+            .map(|code| -> Result<_, KeyQrCodeError> {
+                let decoded = code
+                    .map_err(QrDecodeError::ExtractError)
+                    .and_then(|c| c.decode().map_err(QrDecodeError::DecodeError))?;
+
+                // TODO: I actually don't know if this can fail
+                let h = std::str::from_utf8(&decoded.payload)
+                    .map_err(|_| QrDecodeError::NonUtf8Payload)?;
+                let encrypted_bytes = hex::decode(h)?;
+                let key = decrypt(password, &encrypted_bytes)?;
+                Ok(SecretKey::from_binary(&key)?)
+            })
+            .collect()
     }
 }
 
@@ -122,8 +141,8 @@ mod tests {
         // img.save("qr.png").unwrap();
         assert_eq!(
             sk.leak_secret().as_ref(),
-            KeyQrCode::decode(DynamicImage::ImageLuma8(img), PASSWORD)
-                .unwrap()
+            KeyQrCode::decode(DynamicImage::ImageLuma8(img), PASSWORD).unwrap()[0]
+                .clone()
                 .leak_secret()
                 .as_ref()
         );
