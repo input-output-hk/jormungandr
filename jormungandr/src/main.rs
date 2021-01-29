@@ -9,8 +9,6 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-#[cfg(unix)]
-extern crate slog_syslog;
 #[cfg(feature = "gelf")]
 extern crate tracing_gelf;
 #[cfg(feature = "systemd")]
@@ -520,7 +518,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let raw_settings = RawSettings::load(command_line)?;
 
     let log_settings = raw_settings.log_settings();
-    let base_span = log_settings.to_span()?;
+    let base_span = log_settings.init_log()?;
 
     let init_span = span!(parent: &base_span, Level::TRACE, "task", name = "init");
     let async_span = init_span.clone();
