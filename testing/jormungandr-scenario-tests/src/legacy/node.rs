@@ -21,7 +21,6 @@ pub use jormungandr_testing_utils::testing::{
     node::{grpc::JormungandrClient, JormungandrLogger},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
-use tokio::runtime;
 
 use futures::executor::block_on;
 use rand_core::RngCore;
@@ -527,9 +526,8 @@ impl LegacyNode {
 
         LegacyNodeController {
             alias: self.alias().clone(),
-            grpc_client: runtime::Runtime::new().unwrap().block_on(async {
-                JormungandrClient::from_address(&p2p_address).expect("cannot setup grpc client")
-            }),
+            grpc_client: JormungandrClient::from_address(&p2p_address)
+                .expect("cannot setup grpc client"),
             settings: self.node_settings.clone(),
             status: self.status.clone(),
             progress_bar: self.progress_bar.clone(),
