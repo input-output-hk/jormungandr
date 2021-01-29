@@ -11,7 +11,7 @@ const MODULE_SIZE: i32 = 8;
 const QR_CODE_BORDER: i32 = 4 * 8;
 
 pub struct KeyQrCode {
-    pub inner: QrCode,
+    inner: QrCode,
 }
 
 #[derive(Error, Debug)]
