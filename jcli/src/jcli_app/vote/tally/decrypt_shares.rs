@@ -45,9 +45,6 @@ pub struct TallyVotePlanWithAllShares {
     /// The minimum number of shares needed for decryption
     #[structopt(long = "threshold", default_value = "3")]
     threshold: usize,
-    /// Maximum supported number of votes
-    #[structopt(long = "max-votes")]
-    max_votes: u64,
     /// The path to json-encoded necessary base64 shares. If this parameter is not
     /// specified, the shares will be read from the standard input.
     #[structopt(long = "shares")]
@@ -67,7 +64,7 @@ fn read_shares_from_file<P: AsRef<Path>>(
     proposals: usize,
 ) -> Result<Vec<Vec<chain_vote::TallyDecryptShare>>, Error> {
     let shares: Vec<Vec<String>> = serde_json::from_reader(io::open_file_read(share_path)?)?;
-    if shares.len() >= threshold || shares[0].len() != proposals {
+    if shares[0].len() < threshold || shares.len() != proposals {
         return Err(Error::MissingShares);
     }
     shares
@@ -117,33 +114,41 @@ impl TallyVotePlanWithAllShares {
             super::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_deref())?;
         let shares =
             read_shares_from_file(&self.shares, self.threshold, vote_plan.proposals.len())?;
-        let table = chain_vote::TallyOptimizationTable::generate(self.max_votes);
+        let mut max_stake = 0;
+        let mut encrypted_tallies = Vec::new();
+        for proposal in &mut vote_plan.proposals {
+            match proposal.tally.take() {
+                Some(Tally::Private {
+                    state:
+                        PrivateTallyState::Encrypted {
+                            encrypted_tally,
+                            total_stake,
+                        },
+                }) => {
+                    max_stake = std::cmp::max(total_stake.into(), max_stake);
+                    encrypted_tallies.push(
+                        EncryptedTally::from_bytes(&encrypted_tally.into_bytes())
+                            .ok_or(Error::EncryptedTallyRead)?,
+                    );
+                }
+                other => return Err(Error::PrivateTallyExpected { found: other }),
+            }
+        }
+        let table = chain_vote::TallyOptimizationTable::generate(max_stake);
+
         vote_plan.proposals = vote_plan
             .proposals
             .into_par_iter()
+            .zip(encrypted_tallies.into_par_iter())
             .zip(shares.into_par_iter())
-            .map(|(mut proposal, shares)| {
-                proposal.tally = match proposal.tally {
-                    Some(Tally::Private {
-                        state:
-                            PrivateTallyState::Encrypted {
-                                encrypted_tally,
-                                total_stake,
-                            },
-                    }) => {
-                        let state = EncryptedTally::from_bytes(&encrypted_tally.to_bytes())
-                            .ok_or(Error::EncryptedTallyRead)?
-                            .state();
-                        let decrypted =
-                            chain_vote::tally(total_stake.into(), &state, shares.as_ref(), &table)?;
-                        Ok::<Option<Tally>, Error>(Some(Tally::Private {
-                            state: PrivateTallyState::Decrypted {
-                                result: decrypted.into(),
-                            },
-                        }))
-                    }
-                    decrypted => Ok(decrypted),
-                }?;
+            .map(|((mut proposal, encrypted_tally), shares)| {
+                let decrypted =
+                    chain_vote::tally(max_stake, &encrypted_tally.state(), &shares, &table)?;
+                proposal.tally = Some(Tally::Private {
+                    state: PrivateTallyState::Decrypted {
+                        result: decrypted.into(),
+                    },
+                });
                 Ok(proposal)
             })
             .collect::<Result<Vec<_>, Error>>()?;

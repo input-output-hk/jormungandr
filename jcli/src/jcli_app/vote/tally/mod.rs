@@ -37,6 +37,9 @@ impl Tally {
     }
 }
 
+// Read json-encoded vote plan(s) from file and returns the one
+// with the specified id. If there is only one vote plan in the input
+// the id can be omitted
 fn get_vote_plan_by_id<P: AsRef<Path>>(
     vote_plan_file: &Option<P>,
     id: Option<&str>,

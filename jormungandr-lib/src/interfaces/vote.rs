@@ -405,7 +405,7 @@ impl TallyResult {
 pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
 impl EncryptedTally {
-    pub fn to_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(self) -> Vec<u8> {
         self.0
     }
 }
@@ -547,7 +547,7 @@ impl From<vote::TallyResult> for TallyResult {
 impl From<chain_vote::Tally> for TallyResult {
     fn from(this: chain_vote::Tally) -> Self {
         Self {
-            results: this.votes.iter().map(|v| (*v).into()).collect(),
+            results: this.votes.iter().copied().collect(),
             options: (0..this.votes.len().try_into().unwrap()),
         }
     }

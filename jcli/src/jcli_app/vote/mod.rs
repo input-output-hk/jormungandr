@@ -1,4 +1,5 @@
 use crate::jcli_app::utils::output_file::{self, OutputFile};
+use jormungandr_lib::interfaces::Tally;
 
 pub mod bech32_constants;
 mod committee;
@@ -50,6 +51,8 @@ pub enum Error {
     DecryptionKeyRead,
     #[error("failed to read share bytes")]
     DecryptionShareRead,
+    #[error("expected encrypted private tally, found {found:?}")]
+    PrivateTallyExpected { found: Option<Tally> },
     #[error("missing shares for a proposal")]
     MissingShares,
     #[error(transparent)]
