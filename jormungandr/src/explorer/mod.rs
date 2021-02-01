@@ -4,7 +4,7 @@ mod indexing;
 mod multiverse;
 mod persistent_sequence;
 
-use self::error::{Error, ErrorKind, Result};
+use self::error::{ExplorerError as Error, Result};
 pub use self::graphql::create_schema;
 use self::graphql::Context;
 use self::indexing::{
@@ -18,7 +18,7 @@ use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
     HeaderHash,
 };
-use crate::blockchain::{self, Blockchain, Multiverse, MAIN_BRANCH_TAG};
+use crate::blockchain::{self, Blockchain, MAIN_BRANCH_TAG};
 use crate::explorer::indexing::ExplorerVote;
 use crate::intercom::ExplorerMsg;
 use crate::utils::async_msg::MessageQueue;
@@ -27,8 +27,8 @@ use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::certificate::{Certificate, PoolId, VotePlanId};
 use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::multiverse;
 use futures::prelude::*;
+use multiverse::Multiverse;
 use std::convert::Infallible;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
@@ -49,7 +49,7 @@ pub struct ExplorerDB {
     /// Structure that keeps all the known states to allow easy branch management
     /// each new block is indexed by getting its previous `State` from the multiverse
     /// and inserted a new updated one.
-    multiverse: Multiverse<State>,
+    multiverse: Multiverse,
     /// This keeps track of the longest chain seen until now. All the queries are
     /// performed using the state of this branch, the HeaderHash is used as key for the
     /// multiverse, and the ChainLength is used in the updating process.
@@ -79,10 +79,9 @@ pub struct BlockchainConfig {
 /// A new state can be obtained to from a Block and it's previous state, getting two
 /// independent states but with memory sharing to minimize resource utilization
 #[derive(Clone)]
-struct State {
-    parent_ref: Option<multiverse::Ref<State>>,
-    transactions: Transactions,
-    blocks: Blocks,
+pub(self) struct State {
+    pub transactions: Transactions,
+    pub blocks: Blocks,
     addresses: Addresses,
     epochs: Epochs,
     chain_lengths: ChainLengths,
@@ -196,22 +195,18 @@ impl ExplorerDB {
         let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &blockchain_tip, &block);
 
         let initial_state = State {
+            transactions,
             blocks,
             epochs,
             chain_lengths,
-            transactions,
             addresses,
             stake_pool_data,
             stake_pool_blocks,
-            parent_ref: None,
             vote_plans,
         };
 
-        let multiverse = Multiverse::<State>::new();
         let block0_id = block0.id();
-        multiverse
-            .insert(block0.chain_length(), block0_id, initial_state)
-            .await;
+        let (_, multiverse) = Multiverse::new(block0.chain_length(), block0_id, initial_state);
 
         let block0_id = block0.id();
 
@@ -219,9 +214,9 @@ impl ExplorerDB {
         let (stream, hash) = match maybe_head {
             Some(head) => (blockchain.storage().stream_from_to(block0_id, head)?, head),
             None => {
-                return Err(Error::from(ErrorKind::BootstrapError(
+                return Err(Error::BootstrapError(
                     "Couldn't read the HEAD tag from storage".to_owned(),
-                )))
+                ))
             }
         };
 
@@ -252,10 +247,7 @@ impl ExplorerDB {
                     break;
                 }
                 let block = blockchain.storage().get(hash)?.ok_or_else(|| {
-                    Error::from(ErrorKind::BootstrapError(format!(
-                        "couldn't get block {} from the storage",
-                        hash
-                    )))
+                    Error::BootstrapError(format!("couldn't get block {} from the storage", hash))
                 })?;
                 hash = block.header.block_parent_hash();
                 blocks.push(block);
@@ -273,7 +265,7 @@ impl ExplorerDB {
     /// chain length is greater than the current.
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
-    async fn apply_block(&self, block: Block) -> Result<multiverse::Ref<State>> {
+    async fn apply_block(&self, block: Block) -> Result<multiverse::Ref> {
         let previous_block = block.header.block_parent_hash();
         let chain_length = block.header.chain_length();
         let block_id = block.header.hash();
@@ -281,11 +273,10 @@ impl ExplorerDB {
         let discrimination = self.blockchain_config.discrimination;
 
         let previous_state = multiverse
-            .get_ref(previous_block)
+            .get_ref(&previous_block)
             .await
-            .ok_or_else(|| Error::from(ErrorKind::AncestorNotFound(format!("{}", block.id()))))?;
+            .ok_or_else(|| Error::AncestorNotFound(block.id()))?;
         let State {
-            parent_ref: _,
             transactions,
             blocks,
             addresses,
@@ -310,9 +301,9 @@ impl ExplorerDB {
         let state_ref = multiverse
             .insert(
                 chain_length,
+                block.parent_id(),
                 block_id,
                 State {
-                    parent_ref: Some(previous_state),
                     transactions: apply_block_to_transactions(transactions, &explorer_block)?,
                     blocks: apply_block_to_blocks(blocks, &explorer_block)?,
                     addresses: apply_block_to_addresses(addresses, &explorer_block)?,
@@ -332,16 +323,14 @@ impl ExplorerDB {
         Ok(state_ref)
     }
 
-    pub async fn get_latest_block_hash(&self) -> HeaderHash {
-        self.longest_chain_tip.get_block_id().await
-    }
+    pub async fn get_block(&self, block_id: &HeaderHash) -> Option<Arc<ExplorerBlock>> {
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
+            if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
+                return Some(Arc::clone(b));
+            }
+        }
 
-    pub async fn get_block(&self, block_id: &HeaderHash) -> Option<ExplorerBlock> {
-        let block_id = *block_id;
-        self.with_latest_state(move |state| {
-            state.blocks.lookup(&block_id).map(|b| b.as_ref().clone())
-        })
-        .await
+        None
     }
 
     pub(self) async fn set_tip(&self, hash: HeaderHash) -> bool {
@@ -384,72 +373,14 @@ impl ExplorerDB {
     }
 
     pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
-        self.with_latest_state(move |state| state.epochs.lookup(&epoch).map(|e| e.as_ref().clone()))
-            .await
-    }
+        let tips = self.multiverse.tips().await;
+        let (_, state_ref) = &tips[0];
 
-    pub async fn find_block_by_chain_length(
-        &self,
-        chain_length: ChainLength,
-    ) -> Option<HeaderHash> {
-        self.with_latest_state(move |state| {
-            state
-                .chain_lengths
-                .lookup(&chain_length)
-                .map(|b| *b.as_ref())
-        })
-        .await
-    }
-
-    pub async fn find_block_hash_by_transaction(
-        &self,
-        transaction_id: &FragmentId,
-    ) -> Option<HeaderHash> {
-        self.with_latest_state(move |state| {
-            state
-                .transactions
-                .lookup(&transaction_id)
-                .map(|id| *id.as_ref())
-        })
-        .await
-    }
-
-    pub async fn get_transactions_by_address(
-        &self,
-        address: &ExplorerAddress,
-    ) -> Option<PersistentSequence<FragmentId>> {
-        let address = address.clone();
-        self.with_latest_state(move |state| {
-            state
-                .addresses
-                .lookup(&address)
-                .map(|set| set.as_ref().clone())
-        })
-        .await
-    }
-
-    // Get the hashes of all blocks in the range [from, to)
-    // the ChainLength is returned to for easy of use in the case where
-    // `to` is greater than the max
-    pub async fn get_block_hash_range(
-        &self,
-        from: ChainLength,
-        to: ChainLength,
-    ) -> Vec<(HeaderHash, ChainLength)> {
-        let from = u32::from(from);
-        let to = u32::from(to);
-
-        self.with_latest_state(move |state| {
-            (from..to)
-                .filter_map(|i| {
-                    state
-                        .chain_lengths
-                        .lookup(&i.into())
-                        .map(|b| (*b.as_ref(), i.into()))
-                })
-                .collect()
-        })
-        .await
+        state_ref
+            .state()
+            .epochs
+            .lookup(&epoch)
+            .map(|e| e.as_ref().clone())
     }
 
     pub async fn is_block_confirmed(&self, block_id: &HeaderHash) -> bool {
@@ -468,67 +399,54 @@ impl ExplorerDB {
     pub async fn get_stake_pool_blocks(
         &self,
         pool: &PoolId,
-    ) -> Option<PersistentSequence<HeaderHash>> {
+    ) -> Option<Arc<PersistentSequence<HeaderHash>>> {
         let pool = pool.clone();
-        self.with_latest_state(move |state| {
-            state
-                .stake_pool_blocks
-                .lookup(&pool)
-                .map(|i| i.as_ref().clone())
-        })
-        .await
+
+        // this is a tricky query, one option would be to take a hash and return
+        // only the blocks from a particular branch, but it's not like a stake
+        // pool would produce inconsistent branches itself, although there may
+        // be a need to know the blocks that a stake pool got in the main branch
+        // too.
+        // for the time being, this query uses the maximum, because the branch
+        // that has more blocks from this particular stake pool has all the
+        // blocks produced by it
+        self.multiverse
+            .tips()
+            .await
+            .iter()
+            .filter_map(|(_hash, state_ref)| state_ref.state().stake_pool_blocks.lookup(&pool))
+            .max_by_key(|seq| seq.len())
+            .map(Arc::clone)
     }
 
-    pub async fn get_stake_pool_data(&self, pool: &PoolId) -> Option<StakePoolData> {
+    pub async fn get_stake_pool_data(&self, pool: &PoolId) -> Option<Arc<StakePoolData>> {
         let pool = pool.clone();
-        self.with_latest_state(move |state| {
-            state
-                .stake_pool_data
-                .lookup(&pool)
-                .map(|i| i.as_ref().clone())
-        })
-        .await
+
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
+            if let Some(b) = state_ref.state().stake_pool_data.lookup(&pool) {
+                return Some(Arc::clone(b));
+            }
+        }
+
+        None
     }
 
-    pub async fn get_stake_pools(&self) -> Vec<(PoolId, Arc<StakePoolData>)> {
-        self.with_latest_state(move |state| {
-            state
-                .stake_pool_data
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect()
-        })
-        .await
+    pub async fn get_vote_plan_by_id(
+        &self,
+        vote_plan_id: &VotePlanId,
+    ) -> Option<Arc<ExplorerVotePlan>> {
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
+            if let Some(b) = state_ref.state().vote_plans.lookup(&vote_plan_id) {
+                return Some(Arc::clone(b));
+            }
+        }
+
+        None
     }
 
-    pub async fn get_vote_plan_by_id(&self, vote_plan_id: &VotePlanId) -> Option<ExplorerVotePlan> {
-        self.with_latest_state(move |state| {
-            state
-                .vote_plans
-                .lookup(vote_plan_id)
-                .map(|vote_plan| vote_plan.as_ref().clone())
-        })
-        .await
-    }
-
-    pub async fn get_vote_plans(&self) -> Vec<(VotePlanId, Arc<ExplorerVotePlan>)> {
-        self.with_latest_state(move |state| {
-            state
-                .vote_plans
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect()
-        })
-        .await
-    }
-
-    /// run given function with the longest branch's state
-    async fn with_latest_state<T>(&self, f: impl Fn(State) -> T) -> T {
-        let multiverse = self.multiverse.clone();
-        let branch_id = self.get_latest_block_hash().await;
-        let maybe_state = multiverse.get(branch_id).await;
-        let state = maybe_state.expect("the longest chain to be indexed");
-        f(state)
+    pub(self) async fn get_main_tip(&self) -> (HeaderHash, multiverse::Ref) {
+        let hash = self.longest_chain_tip.get_block_id().await;
+        (hash, self.multiverse.get_ref(&hash).await.unwrap())
     }
 
     fn blockchain(&self) -> &Blockchain {
@@ -546,7 +464,7 @@ fn apply_block_to_transactions(
     for id in ids {
         transactions = transactions
             .insert(id, Arc::new(block_id))
-            .map_err(|_| ErrorKind::TransactionAlreadyExists(format!("{}", id)))?;
+            .map_err(|_| Error::TransactionAlreadyExists(id))?;
     }
 
     Ok(transactions)
@@ -556,7 +474,7 @@ fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks
     let block_id = block.id();
     blocks
         .insert(block_id, Arc::new(block.clone()))
-        .map_err(|_| Error::from(ErrorKind::BlockAlreadyExists(format!("{}", block_id))))
+        .map_err(|_| Error::BlockAlreadyExists(block_id))
 }
 
 fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
@@ -620,9 +538,7 @@ fn apply_block_to_chain_lengths(
         .insert(new_block_chain_length, Arc::new(new_block_hash))
         .map_err(|_| {
             // I think this shouldn't happen
-            Error::from(ErrorKind::ChainLengthBlockAlreadyExists(u32::from(
-                new_block_chain_length,
-            )))
+            Error::ChainLengthBlockAlreadyExists(new_block_chain_length)
         })
 }
 
@@ -880,5 +796,65 @@ impl Tip {
 
     async fn get_block_id(&self) -> HeaderHash {
         *self.0.read().await
+    }
+}
+
+impl State {
+    pub fn get_vote_plans(&self) -> Vec<(VotePlanId, Arc<ExplorerVotePlan>)> {
+        self.vote_plans
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
+    pub fn get_stake_pools(&self) -> Vec<(PoolId, Arc<StakePoolData>)> {
+        self.stake_pool_data
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
+    pub fn transactions_by_address(
+        &self,
+        address: &ExplorerAddress,
+    ) -> Option<PersistentSequence<FragmentId>> {
+        self.addresses
+            .lookup(address)
+            .map(|txs| PersistentSequence::clone(txs))
+    }
+
+    // Get the hashes of all blocks in the range [from, to)
+    // the ChainLength is returned to for easy of use in the case where
+    // `to` is greater than the max
+    pub fn get_block_hash_range(
+        &self,
+        from: ChainLength,
+        to: ChainLength,
+    ) -> Vec<(HeaderHash, ChainLength)> {
+        let from = u32::from(from);
+        let to = u32::from(to);
+
+        (from..to)
+            .filter_map(|i| {
+                self.chain_lengths
+                    .lookup(&i.into())
+                    .map(|b| (*b.as_ref(), i.into()))
+            })
+            .collect()
+    }
+
+    pub fn find_block_by_chain_length(&self, chain_length: ChainLength) -> Option<HeaderHash> {
+        self.chain_lengths
+            .lookup(&chain_length)
+            .map(|b| *b.as_ref())
+    }
+
+    pub fn find_block_hash_by_transaction(
+        &self,
+        transaction_id: &FragmentId,
+    ) -> Option<HeaderHash> {
+        self.transactions
+            .lookup(&transaction_id)
+            .map(|id| *id.as_ref())
     }
 }
