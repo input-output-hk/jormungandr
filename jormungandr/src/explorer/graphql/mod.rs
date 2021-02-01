@@ -29,6 +29,7 @@ pub use juniper::http::GraphQLRequest;
 use juniper::{EmptyMutation, EmptySubscription, FieldResult, GraphQLUnion, RootNode};
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Block {
@@ -47,7 +48,7 @@ impl Block {
         Block { hash }
     }
 
-    async fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<ExplorerBlock> {
+    async fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<Arc<ExplorerBlock>> {
         db.get_block(&self.hash).await.ok_or_else(|| {
             ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned()).into()
         })
@@ -216,8 +217,8 @@ enum Leader {
     BftLeader(BftLeader),
 }
 
-impl From<&ExplorerBlock> for Block {
-    fn from(block: &ExplorerBlock) -> Block {
+impl From<Arc<ExplorerBlock>> for Block {
+    fn from(block: Arc<ExplorerBlock>) -> Block {
         Block::from_valid_hash(block.id())
     }
 }
@@ -262,8 +263,11 @@ impl Transaction {
     async fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
         let block_hash = context
             .db
-            .find_block_hash_by_transaction(&id)
+            .get_main_tip()
             .await
+            .1
+            .state()
+            .find_block_hash_by_transaction(&id)
             .ok_or_else(|| ErrorKind::NotFound(format!("transaction not found: {}", &id,)))?;
 
         Ok(Transaction {
@@ -289,13 +293,16 @@ impl Transaction {
         }
     }
 
-    async fn get_block(&self, context: &Context) -> FieldResult<ExplorerBlock> {
+    async fn get_block(&self, context: &Context) -> FieldResult<Arc<ExplorerBlock>> {
         let block_id = match self.block_hash {
             Some(block_id) => block_id,
             None => context
                 .db
-                .find_block_hash_by_transaction(&self.id)
+                .get_main_tip()
                 .await
+                .1
+                .state()
+                .find_block_hash_by_transaction(&self.id)
                 .ok_or_else(|| {
                     ErrorKind::InternalError("Transaction's block was not found".to_owned())
                 })?,
@@ -340,7 +347,7 @@ impl Transaction {
     /// The block this transaction is in
     pub async fn block(&self, context: &Context) -> FieldResult<Block> {
         let block = self.get_block(context).await?;
-        Ok(Block::from(&block))
+        Ok(Block::from(block))
     }
 
     pub async fn inputs(&self, context: &Context) -> FieldResult<Vec<TransactionInput>> {
@@ -467,8 +474,11 @@ impl Address {
     ) -> FieldResult<TransactionConnection> {
         let transactions = context
             .db
-            .get_transactions_by_address(&self.id)
+            .get_main_tip()
             .await
+            .1
+            .state()
+            .transactions_by_address(&self.id)
             .unwrap_or_else(PersistentSequence::<FragmentId>::new);
 
         let boundaries = if transactions.len() > 0 {
@@ -564,8 +574,8 @@ impl Proposal {
 #[derive(Clone)]
 pub struct Pool {
     id: certificate::PoolId,
-    data: Option<StakePoolData>,
-    blocks: Option<PersistentSequence<HeaderHash>>,
+    data: Option<Arc<StakePoolData>>,
+    blocks: Option<Arc<PersistentSequence<HeaderHash>>>,
 }
 
 impl Pool {
@@ -596,7 +606,7 @@ impl Pool {
         }
     }
 
-    fn new_with_data(id: certificate::PoolId, data: StakePoolData) -> Self {
+    fn new_with_data(id: certificate::PoolId, data: Arc<StakePoolData>) -> Self {
         Pool {
             id,
             blocks: None,
@@ -669,7 +679,7 @@ impl Pool {
                 .db
                 .get_stake_pool_data(&self.id)
                 .await
-                .map(|data| PoolRegistration::from(data.registration))
+                .map(|data| PoolRegistration::from(data.registration.clone()))
                 .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
         }
     }
@@ -682,7 +692,11 @@ impl Pool {
                 .get_stake_pool_data(&self.id)
                 .await
                 .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into())
-                .map(|data| data.retirement.map(PoolRetirement::from)),
+                .map(|data| {
+                    data.retirement
+                        .as_ref()
+                        .map(|r| PoolRetirement::from(r.clone()))
+                }),
         }
     }
 }
@@ -699,7 +713,7 @@ impl Status {
     }
 
     pub async fn latest_block(&self, context: &Context) -> FieldResult<Block> {
-        latest_block(context).await.map(|b| Block::from(&b))
+        latest_block(context).await.map(|b| Block::from(b))
     }
 
     pub async fn epoch_stability_depth(&self, context: &Context) -> String {
@@ -873,11 +887,14 @@ impl Epoch {
                 PaginationInterval::Empty => unreachable!("No blocks found (not even genesis)"),
                 PaginationInterval::Inclusive(range) => context
                     .db
+                    .get_main_tip()
+                    .await
+                    .1
+                    .state()
                     .get_block_hash_range(
                         (range.lower_bound + epoch_lower_bound).into(),
                         (range.upper_bound + epoch_lower_bound + 1).into(),
                     )
-                    .await
                     .iter()
                     .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
                     .collect(),
@@ -1053,7 +1070,7 @@ impl VotePlanStatus {
         .into())
     }
 
-    pub fn vote_plan_from_data(vote_plan: super::indexing::ExplorerVotePlan) -> Self {
+    pub fn vote_plan_from_data(vote_plan: Arc<super::indexing::ExplorerVotePlan>) -> Self {
         let super::indexing::ExplorerVotePlan {
             id,
             vote_start,
@@ -1061,7 +1078,7 @@ impl VotePlanStatus {
             committee_end,
             payload_type,
             proposals,
-        } = vote_plan;
+        } = (*vote_plan).clone();
 
         VotePlanStatus {
             id: VotePlanId::from(id),
@@ -1249,8 +1266,11 @@ impl Query {
     ) -> FieldResult<Option<Block>> {
         Ok(context
             .db
-            .find_block_by_chain_length(length.try_into()?)
+            .get_main_tip()
             .await
+            .1
+            .state()
+            .find_block_by_chain_length(length.try_into()?)
             .map(Block::from_valid_hash))
     }
 
@@ -1288,8 +1308,11 @@ impl Query {
                     let b = range.upper_bound.checked_add(1).unwrap().into();
                     context
                         .db
-                        .get_block_hash_range(a, b)
+                        .get_main_tip()
                         .await
+                        .1
+                        .state()
+                        .get_block_hash_range(a, b)
                         .iter_mut()
                         .map(|(hash, chain_length)| (*hash, u32::from(*chain_length)))
                         .collect()
@@ -1325,7 +1348,7 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<PoolConnection> {
-        let mut stake_pools = context.db.get_stake_pools().await;
+        let mut stake_pools = context.db.get_main_tip().await.1.state().get_stake_pools();
 
         // Although it's probably not a big performance concern
         // There are a few alternatives to not have to sort this
@@ -1368,7 +1391,7 @@ impl Query {
                         (
                             Pool::new_with_data(
                                 certificate::PoolId::clone(pool_id),
-                                StakePoolData::clone(stake_pool_data),
+                                Arc::clone(stake_pool_data),
                             ),
                             i,
                         )
@@ -1394,7 +1417,7 @@ impl Query {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<VotePlanConnection> {
-        let mut vote_plans = context.db.get_vote_plans().await;
+        let mut vote_plans = context.db.get_main_tip().await.1.state().get_vote_plans();
 
         vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
 
@@ -1430,7 +1453,7 @@ impl Query {
                     .map(|i: u32| {
                         let (_pool_id, vote_plan_data) = &vote_plans[usize::try_from(i).unwrap()];
                         (
-                            VotePlanStatus::vote_plan_from_data(vote_plan_data.as_ref().clone()),
+                            VotePlanStatus::vote_plan_from_data(Arc::clone(vote_plan_data)),
                             i,
                         )
                     })
@@ -1453,9 +1476,9 @@ pub fn create_schema() -> Schema {
     Schema::new(Query {}, EmptyMutation::new(), EmptySubscription::new())
 }
 
-async fn latest_block(context: &Context) -> FieldResult<ExplorerBlock> {
+async fn latest_block(context: &Context) -> FieldResult<Arc<ExplorerBlock>> {
     async {
-        let hash = context.db.get_latest_block_hash().await;
+        let hash = context.db.get_main_tip().await.0;
         context.db.get_block(&hash).await
     }
     .await
