@@ -1,6 +1,7 @@
 pub mod error;
 pub mod graphql;
 mod indexing;
+mod multiverse;
 mod persistent_sequence;
 
 use self::error::{Error, ErrorKind, Result};
