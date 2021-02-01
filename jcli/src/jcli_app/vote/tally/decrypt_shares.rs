@@ -1,8 +1,10 @@
 use super::Error;
 use crate::jcli_app::utils::{io, OutputFormat};
 use chain_vote::EncryptedTally;
+use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
+use rayon::prelude::*;
 use serde::Serialize;
-use std::io::BufRead;
+use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -20,10 +22,33 @@ pub struct TallyDecryptWithAllShares {
     /// Maximum supported number of votes
     #[structopt(long = "max-votes")]
     max_votes: u64,
-    /// Computing table cache size, usually total_votes/number_of_options
-    #[structopt(long = "table-size")]
-    table_size: usize,
     /// The path to encoded necessary shares. If this parameter is not
+    /// specified, the shares will be read from the standard input.
+    #[structopt(long = "shares")]
+    shares: Option<PathBuf>,
+    #[structopt(flatten)]
+    output_format: OutputFormat,
+}
+
+#[derive(StructOpt)]
+#[structopt(rename_all = "kebab-case")]
+pub struct TallyVotePlanWithAllShares {
+    /// The path to json-encoded vote plan to decrypt. If this parameter is not
+    /// specified, the vote plan will be read from the standard
+    /// input.
+    #[structopt(long = "vote-plan-file")]
+    vote_plan: Option<PathBuf>,
+    /// The id of the vote plan to decrypt.
+    /// Can be left unspecified if there is only one vote plan in the input
+    #[structopt(long = "vote-plan-id")]
+    vote_plan_id: Option<String>,
+    /// The minimum number of shares needed for decryption
+    #[structopt(long = "threshold", default_value = "3")]
+    threshold: usize,
+    /// Maximum supported number of votes
+    #[structopt(long = "max-votes")]
+    max_votes: u64,
+    /// The path to json-encoded necessary base64 shares. If this parameter is not
     /// specified, the shares will be read from the standard input.
     #[structopt(long = "shares")]
     shares: Option<PathBuf>,
@@ -33,7 +58,29 @@ pub struct TallyDecryptWithAllShares {
 
 #[derive(Serialize)]
 struct Output {
-    result: Vec<Option<u64>>,
+    result: Vec<u64>,
+}
+
+fn read_shares_from_file<P: AsRef<Path>>(
+    share_path: &Option<P>,
+    threshold: usize,
+    proposals: usize,
+) -> Result<Vec<Vec<chain_vote::TallyDecryptShare>>, Error> {
+    let shares: Vec<Vec<String>> = serde_json::from_reader(io::open_file_read(share_path)?)?;
+    if shares.len() >= threshold || shares[0].len() != proposals {
+        return Err(Error::MissingShares);
+    }
+    shares
+        .into_iter()
+        .map(|v| {
+            v.into_iter()
+                .map(|share| {
+                    chain_vote::TallyDecryptShare::from_bytes(&base64::decode(share)?)
+                        .ok_or(Error::DecryptionShareRead)
+                })
+                .collect::<Result<Vec<_>, Error>>()
+        })
+        .collect::<Result<Vec<_>, Error>>()
 }
 
 impl TallyDecryptWithAllShares {
@@ -43,30 +90,67 @@ impl TallyDecryptWithAllShares {
         let encrypted_tally =
             EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
 
-        let mut shares_file = io::open_file_read(&self.shares)?;
-
-        let shares: Vec<chain_vote::TallyDecryptShare> = {
-            let mut shares = Vec::with_capacity(self.threshold);
-            for _ in 0..self.threshold {
-                let mut buff = String::new();
-                shares_file.read_line(&mut buff)?;
-                let buff = buff.trim_end();
-                shares.push(
-                    chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
-                        .ok_or(Error::DecryptionShareRead)?,
-                );
-            }
-            shares
-        };
+        let shares = read_shares_from_file(&self.shares, self.threshold, 1)?;
 
         let state = encrypted_tally.state();
-        let result = chain_vote::result(self.max_votes, self.table_size, &state, &shares);
+        let result = chain_vote::tally(
+            self.max_votes,
+            &state,
+            &shares[0][..],
+            &chain_vote::TallyOptimizationTable::generate_with_balance(self.max_votes, 1),
+        )?;
         let output = self
             .output_format
             .format_json(serde_json::to_value(Output {
                 result: result.votes,
             })?)?;
 
+        println!("{}", output);
+
+        Ok(())
+    }
+}
+
+impl TallyVotePlanWithAllShares {
+    pub fn exec(&self) -> Result<(), Error> {
+        let mut vote_plan =
+            super::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_deref())?;
+        let shares =
+            read_shares_from_file(&self.shares, self.threshold, vote_plan.proposals.len())?;
+        let table = chain_vote::TallyOptimizationTable::generate(self.max_votes);
+        vote_plan.proposals = vote_plan
+            .proposals
+            .into_par_iter()
+            .zip(shares.into_par_iter())
+            .map(|(mut proposal, shares)| {
+                proposal.tally = match proposal.tally {
+                    Some(Tally::Private {
+                        state:
+                            PrivateTallyState::Encrypted {
+                                encrypted_tally,
+                                total_stake,
+                            },
+                    }) => {
+                        let state = EncryptedTally::from_bytes(&encrypted_tally.to_bytes())
+                            .ok_or(Error::EncryptedTallyRead)?
+                            .state();
+                        let decrypted =
+                            chain_vote::tally(total_stake.into(), &state, shares.as_ref(), &table)?;
+                        Ok::<Option<Tally>, Error>(Some(Tally::Private {
+                            state: PrivateTallyState::Decrypted {
+                                result: decrypted.into(),
+                            },
+                        }))
+                    }
+                    decrypted => Ok(decrypted),
+                }?;
+                Ok(proposal)
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+
+        let output = self
+            .output_format
+            .format_json(serde_json::to_value(vote_plan)?)?;
         println!("{}", output);
 
         Ok(())

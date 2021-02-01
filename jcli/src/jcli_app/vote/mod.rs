@@ -40,10 +40,20 @@ pub enum Error {
     InvalidCommitteMemberIndex,
     #[error("failed to read encrypted tally bytes")]
     EncryptedTallyRead,
+    #[error("failed to read vote plans")]
+    VotePlansRead,
+    #[error("no vote plan found with specified id")]
+    VotePlanIdNotFound,
+    #[error("please specify a vote plan id if multiple vote plans are provided")]
+    UnclearVotePlan,
     #[error("failed to read decryption key bytes")]
     DecryptionKeyRead,
     #[error("failed to read share bytes")]
     DecryptionShareRead,
+    #[error("missing shares for a proposal")]
+    MissingShares,
+    #[error(transparent)]
+    TallyError(#[from] chain_vote::TallyError),
     #[error(transparent)]
     FormatError(#[from] crate::jcli_app::utils::output_format::Error),
     #[error(transparent)]
