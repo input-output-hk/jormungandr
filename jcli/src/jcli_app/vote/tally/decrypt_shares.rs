@@ -116,6 +116,8 @@ impl TallyVotePlanWithAllShares {
             read_shares_from_file(&self.shares, self.threshold, vote_plan.proposals.len())?;
         let mut max_stake = 0;
         let mut encrypted_tallies = Vec::new();
+        // We need a first iteration to get the max stake used, and since we're there
+        // we unwrap and check tallies as well
         for proposal in &mut vote_plan.proposals {
             match proposal.tally.take() {
                 Some(Tally::Private {
@@ -126,10 +128,7 @@ impl TallyVotePlanWithAllShares {
                         },
                 }) => {
                     max_stake = std::cmp::max(total_stake.into(), max_stake);
-                    encrypted_tallies.push(
-                        EncryptedTally::from_bytes(&encrypted_tally.into_bytes())
-                            .ok_or(Error::EncryptedTallyRead)?,
-                    );
+                    encrypted_tallies.push(encrypted_tally.into_bytes());
                 }
                 other => return Err(Error::PrivateTallyExpected { found: other }),
             }
@@ -142,8 +141,10 @@ impl TallyVotePlanWithAllShares {
             .zip(encrypted_tallies.into_par_iter())
             .zip(shares.into_par_iter())
             .map(|((mut proposal, encrypted_tally), shares)| {
-                let decrypted =
-                    chain_vote::tally(max_stake, &encrypted_tally.state(), &shares, &table)?;
+                let state = EncryptedTally::from_bytes(&encrypted_tally)
+                    .ok_or(Error::EncryptedTallyRead)?
+                    .state();
+                let decrypted = chain_vote::tally(max_stake, &state, &shares, &table)?;
                 proposal.tally = Some(Tally::Private {
                     state: PrivateTallyState::Decrypted {
                         result: decrypted.into(),
