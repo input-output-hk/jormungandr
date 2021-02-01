@@ -36,7 +36,7 @@ pub struct TallyVotePlanWithAllShares {
     /// The path to json-encoded vote plan to decrypt. If this parameter is not
     /// specified, the vote plan will be read from the standard
     /// input.
-    #[structopt(long = "vote-plan-file")]
+    #[structopt(long = "vote-plan")]
     vote_plan: Option<PathBuf>,
     /// The id of the vote plan to decrypt.
     /// Can be left unspecified if there is only one vote plan in the input

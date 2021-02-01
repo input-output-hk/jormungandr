@@ -15,6 +15,14 @@ pub enum Tally {
     /// The decryption share data will be printed in hexadecimal encoding
     /// on standard output.
     DecryptionShare(decryption_tally::TallyGenerateDecryptionShare),
+    /// Create a decryption share for private voting tally.
+    ///
+    /// The decryption share data will be printed in hexadecimal encoding
+    /// on standard output.
+    VotePlanDecryptionShares(decryption_tally::TallyGenerateVotePlanDecryptionShares),
+    /// Merge multiple sets of shares in a single object to be used in the
+    /// decryption of a vote plan.
+    MergeShares(decryption_tally::MergeShares),
     /// Decrypt a tally with decryption shares.
     ///
     /// The decrypted tally data will be printed in hexadecimal encoding
@@ -31,15 +39,17 @@ impl Tally {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Tally::DecryptionShare(cmd) => cmd.exec(),
+            Tally::VotePlanDecryptionShares(cmd) => cmd.exec(),
             Tally::Decrypt(cmd) => cmd.exec(),
             Tally::DecryptVotePlan(cmd) => cmd.exec(),
+            Tally::MergeShares(cmd) => cmd.exec(),
         }
     }
 }
 
 // Read json-encoded vote plan(s) from file and returns the one
 // with the specified id. If there is only one vote plan in the input
-// the id can be omitted
+// the id can be
 fn get_vote_plan_by_id<P: AsRef<Path>>(
     vote_plan_file: &Option<P>,
     id: Option<&str>,
