@@ -84,28 +84,11 @@ impl JormungandrProcess {
     }
 
     pub fn assert_no_errors_in_log_with_message(&self, message: &str) {
-        let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
-
-        assert_eq!(
-            error_lines.len(),
-            0,
-            "{} there are some errors in log ({:?}): {:?}",
-            message,
-            self.logger.log_file_path,
-            error_lines,
-        );
+        self.logger.assert_no_errors(message);
     }
 
     pub fn assert_no_errors_in_log(&self) {
-        let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
-
-        assert_eq!(
-            error_lines.len(),
-            0,
-            "there are some errors in log ({:?}): {:?}",
-            self.logger.log_file_path,
-            error_lines
-        );
+        self.logger.assert_no_errors("");
     }
 
     pub fn check_no_errors_in_log(&self) -> Result<(), JormungandrError> {

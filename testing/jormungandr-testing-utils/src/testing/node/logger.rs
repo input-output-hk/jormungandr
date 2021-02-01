@@ -259,4 +259,17 @@ impl JormungandrLogger {
             println!("Error/Warn lines: {:?}", error_lines);
         }
     }
+
+    pub fn assert_no_errors(&self, message: &str) {
+        let error_lines = self.get_lines_with_error().collect::<Vec<String>>();
+
+        assert_eq!(
+            error_lines.len(),
+            0,
+            "{} there are some errors in log ({:?}): {:?}",
+            message,
+            self.log_file_path,
+            error_lines,
+        );
+    }
 }
