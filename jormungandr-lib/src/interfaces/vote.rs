@@ -538,15 +538,6 @@ impl From<vote::TallyResult> for TallyResult {
     }
 }
 
-impl From<chain_vote::TallyResult> for TallyResult {
-    fn from(this: chain_vote::TallyResult) -> Self {
-        Self {
-            results: this.votes.iter().map(|w| w.unwrap_or(0)).collect(),
-            options: (0..this.votes.len().try_into().unwrap()),
-        }
-    }
-}
-
 impl From<vote::Tally> for Tally {
     fn from(this: vote::Tally) -> Self {
         match this {
