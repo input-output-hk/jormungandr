@@ -4,13 +4,16 @@ use std::fs;
 use std::io;
 use std::str::FromStr;
 
-use tracing::{log::LevelFilter, Subscriber};
+use tracing::{level_filters::LevelFilter, Subscriber};
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_futures::WithSubscriber;
 #[cfg(feature = "gelf")]
 use tracing_gelf::Gelf;
+use tracing_subscriber::fmt::format::Format;
 #[cfg(feature = "systemd")]
-use tracing_journald::Layer;
 use tracing_subscriber::fmt::SubscriberBuilder;
+use tracing_subscriber::layer::{Layer, Layered, SubscriberExt};
+use tracing_subscriber::Registry;
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>);
 
@@ -82,20 +85,30 @@ impl FromStr for LogOutput {
 }
 
 impl LogSettings {
-    pub fn init_log(&self) -> Result<Vec<WorkerGuard>, Error> {
+    pub fn init_log(mut self) -> Result<Vec<WorkerGuard>, Error> {
+        use tracing_subscriber::prelude::*;
         let mut guards = Vec::new();
-        let mut subscribers: Vec<_> = Vec::new();
-        for config in self.0.iter() {
-            let (subscriber, guard) = config.to_subscriber();
-            guards.push(guard);
-            subscribers.push(subscriber);
+        // let mut layers: Vec<Box<dyn Layer<dyn Subscriber>>> = Vec::new();
+
+        let mut main_subscriber: Box<dyn Subscriber> = Box::new(tracing_subscriber::fmt().finish());
+        let mut final_subscriber: Option<Box<dyn Subscriber>> = None;
+        for config in self.0.drain(..) {
+            let (subscriber, guard) = config.to_subscriber()?;
+            // let layer = Layered::with_subscriber(subscriber);
+            // main_subscriber = Box::new(main_subscriber.with(layer));
+            final_subscriber = match final_subscriber {
+                Some(s) => Some(Box::new(s.with_subscriber(subscriber))),
+                None => Some(Box::new(main_subscriber.with_subscriber(subscriber))),
+            };
+            if let Some(guard) = guard {
+                guards.push(guard);
+            }
         }
-        let subscriber = subscribers
-            .drain(..)
-            .into_iter()
-            .fold_first(|s1, s2| s1.with_subscriber(s2))
-            .unwrap_or_else(|| tracing_subscriber::fmt().finish());
-        tracing::subscriber::set_global_default(subscriber);
+
+        if let Some(subscriber) = final_subscriber {
+            tracing::subscriber::set_global_default(subscriber);
+        }
+
         Ok(guards)
     }
 }
@@ -105,7 +118,7 @@ impl LogSettingsEntry {
         &self,
     ) -> Result<
         (
-            impl Subscriber,
+            Box<dyn Subscriber>,
             Option<tracing_appender::non_blocking::WorkerGuard>,
         ),
         Error,
@@ -115,33 +128,34 @@ impl LogSettingsEntry {
             level,
             format,
         } = &self;
-        let builder = format.to_subscriber_builder();
+
+        let builder = tracing_subscriber::fmt::SubscriberBuilder::default();
+
         match output {
             LogOutput::Stdout => {
                 let (subscriber, guard) = tracing_appender::non_blocking(std::io::stdout());
-                Ok((
-                    builder
-                        .with_writer(subscriber)
-                        .with_max_level(level)
-                        .finish(),
-                    Some(guard),
-                ))
+                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                match format {
+                    LogFormat::Plain => Ok((Box::new(builder.finish()), Some(guard))),
+                    LogFormat::Json => Ok((Box::new(builder.json().finish()), Some(guard))),
+                }
             }
             LogOutput::Stderr => {
                 let (subscriber, guard) = tracing_appender::non_blocking(std::io::stderr());
-                Ok((
-                    builder
-                        .with_writer(subscriber)
-                        .with_max_level(level)
-                        .finish(),
-                    Some(guard),
-                ))
+                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                match format {
+                    LogFormat::Plain => Ok((Box::new(builder.finish()), Some(guard))),
+                    LogFormat::Json => Ok((Box::new(builder.json().finish()), Some(guard))),
+                }
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
                 let layer = tracing_journald::layer()?;
                 format.require_plain()?;
-                Ok((builder.with_max_level(level).with_subscriber(layer), None))
+                Ok((
+                    Box::new(builder.with_max_level(level).with_subscriber(layer)),
+                    None,
+                ))
             }
             #[cfg(feature = "gelf")]
             LogOutput::Gelf {
@@ -157,7 +171,7 @@ impl LogSettingsEntry {
                 // TODO: maybe handle this tasks outside somehow.
                 let (subscriber, task) = tracing_gelf::Logger::builder().connect_tcp(address)?;
                 tokio::spawn(task);
-                Ok((subscriber, None))
+                Ok((Box::new(subscriber), None))
             }
             LogOutput::File(path) => {
                 let file = fs::OpenOptions::new()
@@ -167,7 +181,11 @@ impl LogSettingsEntry {
                     .open(path)
                     .map_err(Error::FileError)?;
                 let (subscriber, guard) = tracing_appender::non_blocking(file);
-                Ok((builder.with_writer(subscriber).finish(), Some(guard)))
+                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                match format {
+                    LogFormat::Plain => Ok((Box::new(builder.finish()), Some(guard))),
+                    LogFormat::Json => Ok((Box::new(builder.json().finish()), Some(guard))),
+                }
             }
         }
     }
@@ -179,13 +197,6 @@ impl LogFormat {
         match self {
             LogFormat::Plain => Ok(()),
             _ => Err(Error::PlainFormatRequired { specified: *self }),
-        }
-    }
-
-    fn to_subscriber_builder(&self) -> SubscriberBuilder {
-        match self {
-            LogFormat::Plain => tracing_subscriber::fmt(),
-            LogFormat::Json => tracing_subscriber::fmt().json(),
         }
     }
 }
