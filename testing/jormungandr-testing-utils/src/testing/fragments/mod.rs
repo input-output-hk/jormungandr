@@ -210,9 +210,7 @@ impl FragmentBuilder {
     ) -> Fragment {
         let inner_wallet = wallet.clone().into();
         let vote_tally = match payload {
-            VoteTallyPayload::Private { shares } => {
-                VoteTally::new_private(vote_plan.to_id(), shares)
-            }
+            VoteTallyPayload::Private { inner } => VoteTally::new_private(vote_plan.to_id(), inner),
             VoteTallyPayload::Public => VoteTally::new_public(vote_plan.to_id()),
         };
         self.fragment_factory()
