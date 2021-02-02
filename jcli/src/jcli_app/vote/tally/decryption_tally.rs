@@ -7,6 +7,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+// TODO: this generate shares for a single proposal, we might remove it later
 /// Create the decryption share for decrypting the tally of private voting.
 /// The outputs are provided as hex-encoded byte sequences.
 #[derive(StructOpt)]
@@ -31,15 +32,12 @@ pub struct TallyGenerateDecryptionShare {
 pub struct TallyGenerateVotePlanDecryptionShares {
     /// The path to json-encoded vote plan to decrypt. If this parameter is not
     /// specified, the vote plan will be read from standard input.
-    #[structopt(long = "vote-plan")]
     vote_plan: Option<PathBuf>,
     /// The id of the vote plan to decrypt.
     /// Can be left unspecified if there is only one vote plan in the input
-    #[structopt(long = "vote-plan-id")]
     vote_plan_id: Option<String>,
     /// The path to hex-encoded decryption key.
-    #[structopt(long = "key")]
-    decryption_key: PathBuf,
+    key: PathBuf,
 }
 
 /// Merge multiple sets of shares in a single object to be used in the
@@ -51,7 +49,6 @@ pub struct TallyGenerateVotePlanDecryptionShares {
 #[structopt(rename_all = "kebab-case")]
 pub struct MergeShares {
     /// The path to the shares to merge
-    #[structopt(long = "shares")]
     shares: Vec<PathBuf>,
 }
 
@@ -87,7 +84,7 @@ impl TallyGenerateDecryptionShare {
 impl TallyGenerateVotePlanDecryptionShares {
     pub fn exec(&self) -> Result<(), Error> {
         let vote_plan = super::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_deref())?;
-        let decryption_key = read_decryption_key(&Some(&self.decryption_key))?;
+        let decryption_key = read_decryption_key(&Some(&self.key))?;
 
         let shares = vote_plan
             .proposals
@@ -122,6 +119,7 @@ impl MergeShares {
             .collect::<Result<Vec<Vec<String>>, Error>>()?;
         let num_proposals = shares[0].len();
         let mut res = vec![Vec::new(); num_proposals];
+        // transponse 2d array
         for member_shares in shares {
             if member_shares.len() != num_proposals {
                 return Err(Error::MissingShares);

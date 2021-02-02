@@ -8,6 +8,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+// TODO: this decrypts a single proposal, we might remove it later
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct TallyDecryptWithAllShares {
@@ -36,18 +37,15 @@ pub struct TallyVotePlanWithAllShares {
     /// The path to json-encoded vote plan to decrypt. If this parameter is not
     /// specified, the vote plan will be read from the standard
     /// input.
-    #[structopt(long = "vote-plan")]
     vote_plan: Option<PathBuf>,
     /// The id of the vote plan to decrypt.
     /// Can be left unspecified if there is only one vote plan in the input
-    #[structopt(long = "vote-plan-id")]
     vote_plan_id: Option<String>,
     /// The minimum number of shares needed for decryption
-    #[structopt(long = "threshold", default_value = "3")]
+    #[structopt(default_value = "3")]
     threshold: usize,
     /// The path to json-encoded necessary base64 shares. If this parameter is not
     /// specified, the shares will be read from the standard input.
-    #[structopt(long = "shares")]
     shares: Option<PathBuf>,
     #[structopt(flatten)]
     output_format: OutputFormat,
@@ -64,12 +62,15 @@ fn read_shares_from_file<P: AsRef<Path>>(
     proposals: usize,
 ) -> Result<Vec<Vec<chain_vote::TallyDecryptShare>>, Error> {
     let shares: Vec<Vec<String>> = serde_json::from_reader(io::open_file_read(share_path)?)?;
-    if shares[0].len() < threshold || shares.len() != proposals {
+    if shares.len() != proposals {
         return Err(Error::MissingShares);
     }
     shares
         .into_iter()
         .map(|v| {
+            if v.len() < threshold {
+                return Err(Error::MissingShares);
+            }
             v.into_iter()
                 .map(|share| {
                     chain_vote::TallyDecryptShare::from_bytes(&base64::decode(share)?)
