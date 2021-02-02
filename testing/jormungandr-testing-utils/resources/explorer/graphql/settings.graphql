@@ -1,0 +1,14 @@
+query Settings {
+  settings {
+    fees {
+      constant
+      coefficient
+      certificate
+      certificatePoolRegistration
+      certificateStakeDelegation
+      certificateOwnerStakeDelegation
+      certificateVotePlan
+      certificateVoteCast
+    }
+  }
+}

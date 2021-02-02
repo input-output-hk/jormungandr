@@ -112,7 +112,8 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
     let explorer_blocks = blocks
         .data
         .unwrap()
-        .all_blocks
+        .main_tip
+        .blocks
         .edges
         .iter()
         .skip(1)
@@ -134,7 +135,7 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
 
 fn stake_pools(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
     let stake_pools = explorer.stake_pools(1000).unwrap();
-    let explorer_stake_pools = stake_pools.data.unwrap().all_stake_pools.edges;
+    let explorer_stake_pools = stake_pools.data.unwrap().main_tip.all_stake_pools.edges;
     // we are skipping first block because log doesn't contains genesis block
     assert_eq!(
         initial_stake_pools
@@ -163,11 +164,11 @@ fn stake_pool(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
 }
 
 fn block_at_chain_length(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
-    let block = explorer.block_at_chain_length(1).unwrap();
+    let block = explorer.blocks_at_chain_length(1).unwrap();
 
     assert_eq!(
         blocks_from_logs.first().unwrap().to_string(),
-        block.data.unwrap().block_by_chain_length.unwrap().id,
+        block.data.unwrap().blocks_by_chain_length[0].id,
         "can't find block"
     );
 }

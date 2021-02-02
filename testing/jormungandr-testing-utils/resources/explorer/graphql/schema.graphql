@@ -2,7 +2,7 @@ type Address {
   """The base32 representation of an address"""
   id: String!
   delegation: Pool!
-  transactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
+  confirmedTransactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
 }
 
 type BftLeader {
@@ -19,12 +19,13 @@ type Block {
 
   """The transactions contained in the block"""
   transactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
-  previousBlock: Block!
   chainLength: ChainLength!
   leader: Leader
+  previousBlock: Block!
   totalInput: Value!
   totalOutput: Value!
   treasury: Treasury
+  branches: [Branch!]!
 }
 
 type BlockConnection {
@@ -52,18 +53,31 @@ type BlockEdge {
   cursor: IndexCursor!
 }
 
-union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolUpdate | PoolRetirement | VotePlan | VoteCast | VoteTally
+type Branch {
+  id: String!
+  block: Block!
+  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
+  transactionsByAddress(addressBech32: String!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
+  allVotePlans(first: Int, last: Int, before: IndexCursor, after: IndexCursor): VotePlanConnection!
+  allStakePools(first: Int, last: Int, before: IndexCursor, after: IndexCursor): PoolConnection!
+
+  """Get a paginated view of all the blocks in this epoch"""
+  blocksByEpoch(epoch: EpochNumber!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection
+}
+
+union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolRetirement | PoolUpdate | VotePlan | VoteCast | VoteTally | EncryptedVoteTally
 
 scalar ChainLength
+
+type EncryptedVoteTally {
+  votePlan: VotePlanId!
+}
 
 type Epoch {
   id: EpochNumber!
 
   """Not yet implemented"""
   stakeDistribution: StakeDistribution!
-
-  """Get a paginated view of all the blocks in this epoch"""
-  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection
   firstBlock: Block
   lastBlock: Block
   totalBlocks: BlockCount!
@@ -188,23 +202,32 @@ scalar PublicKey
 
 type Query {
   block(id: String!): Block!
-  blockByChainLength(length: ChainLength!): Block
-
-  """query all the blocks in a paginated view"""
-  allBlocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
+  blocksByChainLength(length: ChainLength!): [Block!]!
   transaction(id: String!): Transaction!
+
+  """get all current tips, sorted (descending) by their length"""
+  tips: [Branch!]!
+
+  """
+  get the block that the ledger currently considers as the main branch's
+  tip
+  """
+  mainTip: Branch!
+  branch(id: String!): Branch!
   epoch(id: EpochNumber!): Epoch!
   address(bech32: String!): Address!
   stakePool(id: PoolId!): Pool!
-  allStakePools(first: Int, last: Int, before: IndexCursor, after: IndexCursor): PoolConnection!
-  status: Status!
+  settings: Settings!
   votePlan(id: String!): VotePlanStatus!
-  allVotePlans(first: Int, last: Int, before: IndexCursor, after: IndexCursor): VotePlanConnection!
 }
 
 type Ratio {
   numerator: Value!
   denominator: NonZero!
+}
+
+type Settings {
+  fees: FeeSettings!
 }
 
 scalar Slot
@@ -218,10 +241,9 @@ type StakeDistribution {
   pools: [PoolStakeDistribution!]!
 }
 
-type Status {
-  currentEpoch: Epoch!
-  latestBlock: Block!
-  feeSettings: FeeSettings!
+type TallyPrivateStatus {
+  results: [Weight!]
+  options: VoteOptionRange!
 }
 
 type TallyPublicStatus {
@@ -229,7 +251,7 @@ type TallyPublicStatus {
   options: VoteOptionRange!
 }
 
-union TallyStatus = TallyPublicStatus
+union TallyStatus = TallyPublicStatus | TallyPrivateStatus
 
 type TaxType {
   """what get subtracted as fixed value"""
@@ -249,8 +271,8 @@ type Transaction {
   """The hash that identifies the transaction"""
   id: String!
 
-  """The block this transaction is in"""
-  block: Block!
+  """All the blocks this transaction is included in"""
+  blocks: [Block!]!
   inputs: [TransactionInput!]!
   outputs: [TransactionOutput!]!
   certificate: Certificate
@@ -313,11 +335,16 @@ type VoteOptionRange {
   end: Int!
 }
 
+type VotePayloadPrivateStatus {
+  proof: String!
+  encryptedVote: String!
+}
+
 type VotePayloadPublicStatus {
   choice: Int!
 }
 
-union VotePayloadStatus = VotePayloadPublicStatus
+union VotePayloadStatus = VotePayloadPublicStatus | VotePayloadPrivateStatus
 
 type VotePlan {
   """the vote start validity"""

@@ -1,0 +1,5 @@
+query BlocksByChainLength($length: ChainLength!){ 
+    blocksByChainLength(length: $length) {
+        id,
+    }
+}

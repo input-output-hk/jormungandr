@@ -1,9 +1,9 @@
 use self::{
     client::GraphQLClient,
     data::{
-        address, all_blocks, all_stake_pools, all_vote_plans, block_by_chain_length, epoch,
-        last_block, stake_pool, status, transaction_by_id, Address, AllBlocks, AllStakePools,
-        AllVotePlans, BlockByChainLength, Epoch, LastBlock, StakePool, Status, TransactionById,
+        address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
+        last_block, settings, stake_pool, transaction_by_id, Address, AllBlocks, AllStakePools,
+        AllVotePlans, BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
     },
 };
 use chain_impl_mockchain::block::BlockDate as LibBlockDate;
@@ -117,11 +117,11 @@ impl Explorer {
         Ok(response_body)
     }
 
-    pub fn block_at_chain_length(
+    pub fn blocks_at_chain_length(
         &self,
         length: u32,
-    ) -> Result<Response<block_by_chain_length::ResponseData>, ExplorerError> {
-        let query = BlockByChainLength::build_query(block_by_chain_length::Variables {
+    ) -> Result<Response<blocks_by_chain_length::ResponseData>, ExplorerError> {
+        let query = BlocksByChainLength::build_query(blocks_by_chain_length::Variables {
             length: length.to_string(),
         });
         self.print_request(&query);
@@ -160,8 +160,8 @@ impl Explorer {
         Ok(response_body)
     }
 
-    pub fn status(&self) -> Result<Response<status::ResponseData>, ExplorerError> {
-        let query = Status::build_query(status::Variables);
+    pub fn settings(&self) -> Result<Response<settings::ResponseData>, ExplorerError> {
+        let query = Settings::build_query(settings::Variables);
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
@@ -196,14 +196,7 @@ impl Explorer {
     }
 
     pub fn current_time(&self) -> BlockDate {
-        let date = self
-            .status()
-            .unwrap()
-            .data
-            .unwrap()
-            .status
-            .latest_block
-            .date;
+        let date = self.last_block().unwrap().data.unwrap().main_tip.block.date;
 
         let block_date = LibBlockDate {
             epoch: date.epoch.id.parse().unwrap(),

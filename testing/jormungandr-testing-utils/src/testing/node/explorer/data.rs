@@ -37,11 +37,11 @@ pub struct AllStakePools;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    query_path = "resources/explorer/graphql/blockbychainlength.graphql",
+    query_path = "resources/explorer/graphql/blocksbychainlength.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
     response_derives = "Debug"
 )]
-pub struct BlockByChainLength;
+pub struct BlocksByChainLength;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -69,11 +69,11 @@ pub struct StakePool;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-    query_path = "resources/explorer/graphql/status.graphql",
+    query_path = "resources/explorer/graphql/settings.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
     response_derives = "Debug"
 )]
-pub struct Status;
+pub struct Settings;
 
 #[derive(GraphQLQuery)]
 #[graphql(

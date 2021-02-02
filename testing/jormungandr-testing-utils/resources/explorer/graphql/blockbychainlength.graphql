@@ -1,5 +1,0 @@
-query BlockByChainLength($length: ChainLength!){ 
-    blockByChainLength(length: $length) {
-        id,
-    }
-}

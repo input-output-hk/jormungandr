@@ -27,7 +27,7 @@ impl ExplorerRequestGen {
     pub fn do_setup(&mut self, addresses: Vec<String>) -> Result<(), ExplorerError> {
         self.addresses = addresses;
         let stake_pools = self.explorer.stake_pools(1000)?;
-        let explorer_stake_pools = stake_pools.data.unwrap().all_stake_pools.edges;
+        let explorer_stake_pools = stake_pools.data.unwrap().main_tip.all_stake_pools.edges;
         self.stake_pools = explorer_stake_pools
             .iter()
             .map(|x| x.node.id.clone())
@@ -87,7 +87,7 @@ impl RequestGenerator for ExplorerRequestGen {
             3 => {
                 let limit = self.next_usize_in_range(1, 30) as u32;
                 self.explorer
-                    .block_at_chain_length(limit)
+                    .blocks_at_chain_length(limit)
                     .map(|_| ())
                     .map_err(|e| {
                         RequestFailure::General(format!("Explorer - BlockAtChainLength: {:?}", e))
@@ -113,14 +113,14 @@ impl RequestGenerator for ExplorerRequestGen {
                         })
                 } else {
                     explorer
-                        .status()
+                        .settings()
                         .map(|_| ())
                         .map_err(|e| RequestFailure::General(format!("Status: {:?}", e)))
                 }
             }
             6 => self
                 .explorer
-                .status()
+                .settings()
                 .map(|_| ())
                 .map_err(|e| RequestFailure::General(format!("Status: {:?}", e))),
             7 => {
@@ -138,7 +138,7 @@ impl RequestGenerator for ExplorerRequestGen {
                     })
                 } else {
                     explorer
-                        .status()
+                        .settings()
                         .map(|_| ())
                         .map_err(|e| RequestFailure::General(format!("Status: {:?}", e)))
                 }

@@ -1,43 +1,45 @@
 query AllVotePlans($first: Int!) {
-  allVotePlans(first: $first) {
-    edges {
-      node {
-        id
-        voteStart {
-          epoch {
-            id
+  mainTip {
+    allVotePlans(first: $first) {
+      edges {
+        node {
+          id
+          voteStart {
+            epoch {
+              id
+            }
+            slot
           }
-          slot
-        }
-        voteEnd {
-          epoch {
-            id
+          voteEnd {
+            epoch {
+              id
+            }
+            slot
           }
-          slot
-        }
-        committeeEnd {
-          epoch {
-            id
+          committeeEnd {
+            epoch {
+              id
+            }
+            slot
           }
-          slot
-        }
-        payloadType
-        proposals {
-          # proposalId
-          options {
-            start
-            end
-          }
-          votes {
-            edges {
-              node {
-                address {
-                  id
-                }
-                payload {
-                   __typename
-                  ... on VotePayloadPublicStatus {
-                    choice
+          payloadType
+          proposals {
+            # proposalId
+            options {
+              start
+              end
+            }
+            votes {
+              edges {
+                node {
+                  address {
+                    id
+                  }
+                  payload {
+                    __typename
+                    ... on VotePayloadPublicStatus {
+                      choice
+                    }
                   }
                 }
               }
@@ -45,7 +47,7 @@ query AllVotePlans($first: Int!) {
           }
         }
       }
+      totalCount
     }
-    totalCount
   }
 }

@@ -1,19 +1,21 @@
-query Epoch($id: EpochNumber!, $blocks_limit: Int!){ 
-    epoch(id: $id) {
-        id,
-        blocks(first: $blocks_limit) {
-            edges{
-              node {
-                id
-              }
-            }
-        }    
-        firstBlock {
-            id
+query Epoch($id: EpochNumber!, $blocks_limit: Int!) {
+  epoch(id: $id) {
+    id
+    firstBlock {
+      id
+    }
+    lastBlock {
+      id
+    }
+    totalBlocks
+  }
+  mainTip {
+    blocksByEpoch(epoch: $id, first: $blocks_limit) {
+      edges {
+        node {
+          id
         }
-        lastBlock {
-            id
-        }
-        totalBlocks,
-   }
+      }
+    }
+  }
 }

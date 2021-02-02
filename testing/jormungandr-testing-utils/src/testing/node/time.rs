@@ -4,12 +4,12 @@ use jormungandr_lib::interfaces::BlockDate;
 pub fn wait_for_epoch(epoch_id: u64, mut explorer: Explorer) {
     explorer.enable_logs();
     while explorer
-        .status()
+        .last_block()
         .unwrap()
         .data
         .unwrap()
-        .status
-        .latest_block
+        .main_tip
+        .block
         .date
         .epoch
         .id
@@ -26,12 +26,12 @@ pub fn wait_for_date(target_block_date: BlockDate, mut explorer: Explorer) {
 
     loop {
         let current_block_date = explorer
-            .status()
+            .last_block()
             .unwrap()
             .data
             .unwrap()
-            .status
-            .latest_block
+            .main_tip
+            .block
             .date;
 
         let epoch = current_block_date.epoch.id.parse::<u32>().unwrap();
