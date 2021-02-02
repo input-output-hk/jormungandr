@@ -16,7 +16,6 @@ use serde::de::Visitor;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::TryInto;
-use std::fmt::Formatter;
 use std::str;
 use vote::{Weight, Choice};
 
@@ -605,16 +604,6 @@ impl Into<vote::TallyResult> for TallyResult {
             result.add_vote(Choice::new(idx as u8), weight).unwrap()
         }
         result
-    }
-}
-
-
-impl From<chain_vote::TallyResult> for TallyResult {
-    fn from(this: chain_vote::TallyResult) -> Self {
-        Self {
-            results: this.votes.iter().map(|w| w.unwrap_or(0)).collect(),
-            options: (0..this.votes.len().try_into().unwrap()),
-        }
     }
 }
 
