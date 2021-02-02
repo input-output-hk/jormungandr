@@ -6,8 +6,8 @@ use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
 use rayon::prelude::*;
 use serde::Serialize;
-use std::convert::TryFrom;
-use std::path::Path;
+use std::convert::TryInto;
+use std::io::BufRead;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -86,13 +86,26 @@ impl TallyDecryptWithAllShares {
         let encrypted_tally =
             EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
 
-        let shares = read_shares_from_file(&self.shares, 1, Some(self.threshold))?;
+        let mut shares_file = io::open_file_read(&self.shares)?;
 
+        let shares: Vec<chain_vote::TallyDecryptShare> = {
+            let mut shares = Vec::with_capacity(self.threshold);
+            for _ in 0..self.threshold {
+                let mut buff = String::new();
+                shares_file.read_line(&mut buff)?;
+                let buff = buff.trim_end();
+                shares.push(
+                    chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
+                        .ok_or(SharesError::InvalidBinaryShare)?,
+                );
+            }
+            shares
+        };
         let state = encrypted_tally.state();
         let result = chain_vote::tally(
             self.max_votes,
             &state,
-            &shares[0][..],
+            &shares,
             &chain_vote::TallyOptimizationTable::generate_with_balance(self.max_votes, 1),
         )?;
         let output = self
