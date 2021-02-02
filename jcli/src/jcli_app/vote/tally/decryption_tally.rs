@@ -1,8 +1,11 @@
 use super::Error;
 use crate::jcli_app::utils::io;
+use crate::jcli_app::utils::vote::{self, SingleMemberVotePlanShares, VotePlanDecryptShares};
 use bech32::FromBase32;
 use chain_vote::{EncryptedTally, OpeningVoteKey};
+use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
+use std::convert::TryFrom;
 use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -32,11 +35,14 @@ pub struct TallyGenerateDecryptionShare {
 pub struct TallyGenerateVotePlanDecryptionShares {
     /// The path to json-encoded vote plan to decrypt. If this parameter is not
     /// specified, the vote plan will be read from standard input.
+    #[structopt(long)]
     vote_plan: Option<PathBuf>,
     /// The id of the vote plan to decrypt.
     /// Can be left unspecified if there is only one vote plan in the input
-    vote_plan_id: Option<String>,
+    #[structopt(long)]
+    vote_plan_id: Option<Hash>,
     /// The path to hex-encoded decryption key.
+    #[structopt(long)]
     key: PathBuf,
 }
 
@@ -83,7 +89,7 @@ impl TallyGenerateDecryptionShare {
 
 impl TallyGenerateVotePlanDecryptionShares {
     pub fn exec(&self) -> Result<(), Error> {
-        let vote_plan = super::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_deref())?;
+        let vote_plan = vote::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_ref())?;
         let decryption_key = read_decryption_key(&Some(&self.key))?;
 
         let shares = vote_plan
@@ -98,38 +104,28 @@ impl TallyGenerateVotePlanDecryptionShares {
                 }) => {
                     let encrypted_tally =
                         EncryptedTally::from_bytes(&encrypted_tally.into_bytes())?;
-                    Some(base64::encode(
-                        encrypted_tally.finish(&decryption_key).1.to_bytes(),
-                    ))
+                    Some(encrypted_tally.finish(&decryption_key).1)
                 }
                 _ => None,
             })
             .collect::<Vec<_>>();
-        println!("{}", serde_json::to_value(shares)?);
+        println!(
+            "{}",
+            serde_json::to_value(SingleMemberVotePlanShares::from(shares))?
+        );
         Ok(())
     }
 }
 
 impl MergeShares {
     pub fn exec(&self) -> Result<(), Error> {
-        let shares = &self
+        let shares = self
             .shares
             .iter()
             .map(|path| Ok(serde_json::from_reader(io::open_file_read(&Some(path))?)?))
-            .collect::<Result<Vec<Vec<String>>, Error>>()?;
-        let num_proposals = shares[0].len();
-        let mut res = vec![Vec::new(); num_proposals];
-        // transponse 2d array
-        for member_shares in shares {
-            if member_shares.len() != num_proposals {
-                return Err(Error::MissingShares);
-            }
-            for (i, share) in member_shares.iter().enumerate() {
-                res[i].push(share);
-            }
-        }
-
-        println!("{}", serde_json::to_string(&res)?);
+            .collect::<Result<Vec<SingleMemberVotePlanShares>, Error>>()?;
+        let vote_plan_shares = VotePlanDecryptShares::try_from(shares)?;
+        println!("{}", serde_json::to_string(&vote_plan_shares)?);
         Ok(())
     }
 }

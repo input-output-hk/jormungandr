@@ -1,9 +1,12 @@
 use super::Error;
+use crate::jcli_app::utils::vote;
 use crate::jcli_app::utils::{io, OutputFormat};
 use chain_vote::EncryptedTally;
+use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
 use rayon::prelude::*;
 use serde::Serialize;
+use std::convert::TryFrom;
 use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -37,15 +40,18 @@ pub struct TallyVotePlanWithAllShares {
     /// The path to json-encoded vote plan to decrypt. If this parameter is not
     /// specified, the vote plan will be read from the standard
     /// input.
+    #[structopt(long)]
     vote_plan: Option<PathBuf>,
     /// The id of the vote plan to decrypt.
     /// Can be left unspecified if there is only one vote plan in the input
-    vote_plan_id: Option<String>,
+    #[structopt(long)]
+    vote_plan_id: Option<Hash>,
     /// The minimum number of shares needed for decryption
-    #[structopt(default_value = "3")]
+    #[structopt(long, default_value = "3")]
     threshold: usize,
     /// The path to json-encoded necessary base64 shares. If this parameter is not
     /// specified, the shares will be read from the standard input.
+    #[structopt(long)]
     shares: Option<PathBuf>,
     #[structopt(flatten)]
     output_format: OutputFormat,
@@ -56,29 +62,21 @@ struct Output {
     result: Vec<u64>,
 }
 
-fn read_shares_from_file<P: AsRef<Path>>(
+pub fn read_shares_from_file<P: AsRef<Path>>(
     share_path: &Option<P>,
-    threshold: usize,
     proposals: usize,
+    threshold: Option<usize>,
 ) -> Result<Vec<Vec<chain_vote::TallyDecryptShare>>, Error> {
-    let shares: Vec<Vec<String>> = serde_json::from_reader(io::open_file_read(share_path)?)?;
-    if shares.len() != proposals {
-        return Err(Error::MissingShares);
-    }
-    shares
+    let vote_plan_shares = vote::read_vote_plan_shares_from_file(share_path, proposals, threshold)?;
+    Ok(vote_plan_shares
+        .into_shares()
         .into_iter()
         .map(|v| {
-            if v.len() < threshold {
-                return Err(Error::MissingShares);
-            }
             v.into_iter()
-                .map(|share| {
-                    chain_vote::TallyDecryptShare::from_bytes(&base64::decode(share)?)
-                        .ok_or(Error::DecryptionShareRead)
-                })
+                .map(|s| chain_vote::TallyDecryptShare::try_from(s).map_err(Error::from))
                 .collect::<Result<Vec<_>, Error>>()
         })
-        .collect::<Result<Vec<_>, Error>>()
+        .collect::<Result<Vec<_>, Error>>()?)
 }
 
 impl TallyDecryptWithAllShares {
@@ -88,7 +86,7 @@ impl TallyDecryptWithAllShares {
         let encrypted_tally =
             EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
 
-        let shares = read_shares_from_file(&self.shares, self.threshold, 1)?;
+        let shares = read_shares_from_file(&self.shares, 1, Some(self.threshold))?;
 
         let state = encrypted_tally.state();
         let result = chain_vote::tally(
@@ -111,10 +109,12 @@ impl TallyDecryptWithAllShares {
 
 impl TallyVotePlanWithAllShares {
     pub fn exec(&self) -> Result<(), Error> {
-        let mut vote_plan =
-            super::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_deref())?;
-        let shares =
-            read_shares_from_file(&self.shares, self.threshold, vote_plan.proposals.len())?;
+        let mut vote_plan = vote::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_ref())?;
+        let shares = read_shares_from_file(
+            &self.shares,
+            vote_plan.proposals.len(),
+            Some(self.threshold),
+        )?;
         let mut max_stake = 0;
         let mut encrypted_tallies = Vec::new();
         // We need a first iteration to get the max stake used, and since we're there
