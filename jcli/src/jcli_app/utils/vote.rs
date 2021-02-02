@@ -25,10 +25,10 @@ pub enum VotePlanError {
 // with the specified id. If there is only one vote plan in the input
 // the id can be
 pub fn get_vote_plan_by_id<P: AsRef<Path>>(
-    vote_plan_file: &Option<P>,
+    vote_plan_file: Option<P>,
     id: Option<&Hash>,
 ) -> Result<VotePlanStatus, VotePlanError> {
-    let value: Value = serde_json::from_reader(io::open_file_read(vote_plan_file)?)?;
+    let value: Value = serde_json::from_reader(io::open_file_read(&vote_plan_file)?)?;
     match value {
         Value::Array(vote_plans) => {
             let plans = vote_plans
@@ -84,12 +84,6 @@ pub struct SingleMemberVotePlanShares(Vec<TallyDecryptShare>);
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VotePlanDecryptShares(Vec<Vec<TallyDecryptShare>>);
 
-impl VotePlanDecryptShares {
-    pub fn into_shares(self) -> Vec<Vec<TallyDecryptShare>> {
-        self.0
-    }
-}
-
 impl TryFrom<TallyDecryptShare> for chain_vote::TallyDecryptShare {
     type Error = SharesError;
 
@@ -130,13 +124,28 @@ impl TryFrom<Vec<SingleMemberVotePlanShares>> for VotePlanDecryptShares {
     }
 }
 
+impl TryFrom<VotePlanDecryptShares> for Vec<Vec<chain_vote::TallyDecryptShare>> {
+    type Error = SharesError;
+    fn try_from(vote_plan: VotePlanDecryptShares) -> Result<Self, Self::Error> {
+        Ok(vote_plan
+            .0
+            .into_iter()
+            .map(|v| {
+                v.into_iter()
+                    .map(chain_vote::TallyDecryptShare::try_from)
+                    .collect::<Result<Vec<_>, Self::Error>>()
+            })
+            .collect::<Result<Vec<_>, Self::Error>>()?)
+    }
+}
+
 pub fn read_vote_plan_shares_from_file<P: AsRef<Path>>(
-    share_path: &Option<P>,
+    share_path: Option<P>,
     proposals: usize,
     threshold: Option<usize>,
 ) -> Result<VotePlanDecryptShares, SharesError> {
     let vote_plan_shares: VotePlanDecryptShares =
-        serde_json::from_reader(io::open_file_read(share_path)?)?;
+        serde_json::from_reader(io::open_file_read(&share_path)?)?;
     if vote_plan_shares.0.len() != proposals || vote_plan_shares.0[0].len() < threshold.unwrap_or(1)
     {
         return Err(SharesError::InsufficientShares);

@@ -1,5 +1,5 @@
 use super::Error;
-use crate::jcli_app::utils::vote;
+use crate::jcli_app::utils::vote::{self, SharesError};
 use crate::jcli_app::utils::{io, OutputFormat};
 use chain_vote::EncryptedTally;
 use jormungandr_lib::crypto::hash::Hash;
@@ -62,23 +62,6 @@ struct Output {
     result: Vec<u64>,
 }
 
-pub fn read_shares_from_file<P: AsRef<Path>>(
-    share_path: &Option<P>,
-    proposals: usize,
-    threshold: Option<usize>,
-) -> Result<Vec<Vec<chain_vote::TallyDecryptShare>>, Error> {
-    let vote_plan_shares = vote::read_vote_plan_shares_from_file(share_path, proposals, threshold)?;
-    Ok(vote_plan_shares
-        .into_shares()
-        .into_iter()
-        .map(|v| {
-            v.into_iter()
-                .map(|s| chain_vote::TallyDecryptShare::try_from(s).map_err(Error::from))
-                .collect::<Result<Vec<_>, Error>>()
-        })
-        .collect::<Result<Vec<_>, Error>>()?)
-}
-
 impl TallyDecryptWithAllShares {
     pub fn exec(&self) -> Result<(), Error> {
         let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
@@ -122,12 +105,15 @@ impl TallyDecryptWithAllShares {
 
 impl TallyVotePlanWithAllShares {
     pub fn exec(&self) -> Result<(), Error> {
-        let mut vote_plan = vote::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_ref())?;
-        let shares = read_shares_from_file(
-            &self.shares,
-            vote_plan.proposals.len(),
-            Some(self.threshold),
-        )?;
+        let mut vote_plan =
+            vote::get_vote_plan_by_id(self.vote_plan.as_ref(), self.vote_plan_id.as_ref())?;
+        let shares: Vec<Vec<chain_vote::TallyDecryptShare>> =
+            vote::read_vote_plan_shares_from_file(
+                self.shares.as_ref(),
+                vote_plan.proposals.len(),
+                Some(self.threshold),
+            )?
+            .try_into()?;
         let mut max_stake = 0;
         let mut encrypted_tallies = Vec::new();
         // We need a first iteration to get the max stake used, and since we're there

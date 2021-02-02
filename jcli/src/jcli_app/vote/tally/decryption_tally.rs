@@ -89,7 +89,8 @@ impl TallyGenerateDecryptionShare {
 
 impl TallyGenerateVotePlanDecryptionShares {
     pub fn exec(&self) -> Result<(), Error> {
-        let vote_plan = vote::get_vote_plan_by_id(&self.vote_plan, self.vote_plan_id.as_ref())?;
+        let vote_plan =
+            vote::get_vote_plan_by_id(self.vote_plan.as_ref(), self.vote_plan_id.as_ref())?;
         let decryption_key = read_decryption_key(&Some(&self.key))?;
 
         let shares = vote_plan
