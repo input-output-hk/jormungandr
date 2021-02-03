@@ -2,6 +2,7 @@ use std::error;
 use std::fmt::{self, Display};
 use std::fs;
 use std::io;
+use std::ops::Deref;
 use std::str::FromStr;
 
 use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
@@ -9,7 +10,6 @@ use tracing_appender::non_blocking::WorkerGuard;
 #[cfg(feature = "gelf")]
 use tracing_gelf::Gelf;
 
-use std::ops::Deref;
 use tracing::span::{Attributes, Record};
 use tracing_subscriber::fmt::format::Format;
 use tracing_subscriber::fmt::SubscriberBuilder;
@@ -85,7 +85,7 @@ impl FromStr for LogOutput {
     }
 }
 
-struct BoxedSubscriber(Box<dyn Subscriber>);
+struct BoxedSubscriber(Box<dyn Subscriber + Send + Sync>);
 
 impl Subscriber for BoxedSubscriber {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
@@ -155,7 +155,7 @@ impl LogSettingsEntry {
         &self,
     ) -> Result<
         (
-            Box<dyn Subscriber>,
+            Box<dyn Subscriber + Send + Sync>,
             Option<tracing_appender::non_blocking::WorkerGuard>,
         ),
         Error,
