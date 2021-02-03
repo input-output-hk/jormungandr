@@ -9,7 +9,7 @@ use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
 use multiaddr::Multiaddr;
 use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
-use tracing::log::LevelFilter;
+use tracing::level_filters::LevelFilter;
 
 use std::{collections::BTreeMap, fmt, path::PathBuf};
 

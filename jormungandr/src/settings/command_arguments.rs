@@ -3,7 +3,7 @@ use poldercast::Address;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tracing::log::LevelFilter;
+use tracing::level_filters::LevelFilter;
 
 use crate::{
     blockcfg::HeaderHash,
