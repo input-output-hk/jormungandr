@@ -4,13 +4,14 @@ use std::fs;
 use std::io;
 use std::str::FromStr;
 
-use tracing::{level_filters::LevelFilter, Subscriber};
+use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_futures::WithSubscriber;
 #[cfg(feature = "gelf")]
 use tracing_gelf::Gelf;
+
+use std::ops::Deref;
+use tracing::span::{Attributes, Record};
 use tracing_subscriber::fmt::format::Format;
-#[cfg(feature = "systemd")]
 use tracing_subscriber::fmt::SubscriberBuilder;
 use tracing_subscriber::layer::{Layer, Layered, SubscriberExt};
 use tracing_subscriber::Registry;
@@ -84,29 +85,65 @@ impl FromStr for LogOutput {
     }
 }
 
+struct BoxedSubscriber(Box<dyn Subscriber>);
+
+impl Subscriber for BoxedSubscriber {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.0.enabled(metadata)
+    }
+
+    fn new_span(&self, span: &Attributes<'_>) -> Id {
+        self.0.new_span(span)
+    }
+
+    fn record(&self, span: &Id, values: &Record<'_>) {
+        self.0.record(span, values)
+    }
+
+    fn record_follows_from(&self, span: &Id, follows: &Id) {
+        self.0.record_follows_from(span, follows)
+    }
+
+    fn event(&self, event: &Event<'_>) {
+        self.0.event(event)
+    }
+
+    fn enter(&self, span: &Id) {
+        self.0.enter(span)
+    }
+
+    fn exit(&self, span: &Id) {
+        self.0.exit(span)
+    }
+}
+
+impl Layer<BoxedSubscriber> for BoxedSubscriber {}
+
 impl LogSettings {
     pub fn init_log(mut self) -> Result<Vec<WorkerGuard>, Error> {
         use tracing_subscriber::prelude::*;
         let mut guards = Vec::new();
-        // let mut layers: Vec<Box<dyn Layer<dyn Subscriber>>> = Vec::new();
-
-        let mut main_subscriber: Box<dyn Subscriber> = Box::new(tracing_subscriber::fmt().finish());
-        let mut final_subscriber: Option<Box<dyn Subscriber>> = None;
-        for config in self.0.drain(..) {
+        let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
+        for config in self.0.into_iter() {
             let (subscriber, guard) = config.to_subscriber()?;
-            // let layer = Layered::with_subscriber(subscriber);
-            // main_subscriber = Box::new(main_subscriber.with(layer));
-            final_subscriber = match final_subscriber {
-                Some(s) => Some(Box::new(s.with_subscriber(subscriber))),
-                None => Some(Box::new(main_subscriber.with_subscriber(subscriber))),
-            };
+            let subscriber = BoxedSubscriber(subscriber);
+
+            let layer: Layered<_, _, BoxedSubscriber> =
+                tracing_subscriber::layer::Identity::new().with_subscriber(subscriber);
+
+            layers.push(layer);
             if let Some(guard) = guard {
                 guards.push(guard);
             }
         }
 
-        if let Some(subscriber) = final_subscriber {
-            tracing::subscriber::set_global_default(subscriber);
+        let mut layer_iter = layers.into_iter();
+        if let Some(layer) = layer_iter.next() {
+            let mut init_layer: BoxedSubscriber = BoxedSubscriber(Box::new(layer));
+            for layer in layer_iter {
+                init_layer = BoxedSubscriber(Box::new(init_layer.with(layer)));
+            }
+            tracing::subscriber::set_global_default(init_layer);
         }
 
         Ok(guards)
