@@ -518,7 +518,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let raw_settings = RawSettings::load(command_line)?;
 
     let log_settings = raw_settings.log_settings();
-    let base_span = log_settings.init_log()?;
+    let _guards = log_settings.init_log()?;
 
     let init_span = span!(Level::TRACE, "task", name = "init");
     let async_span = init_span.clone();

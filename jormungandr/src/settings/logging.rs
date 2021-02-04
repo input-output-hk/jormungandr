@@ -2,7 +2,6 @@ use std::error;
 use std::fmt::{self, Display};
 use std::fs;
 use std::io;
-use std::ops::Deref;
 use std::str::FromStr;
 
 use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
@@ -11,10 +10,8 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_gelf::Gelf;
 
 use tracing::span::{Attributes, Record};
-use tracing_subscriber::fmt::format::Format;
-use tracing_subscriber::fmt::SubscriberBuilder;
-use tracing_subscriber::layer::{Layer, Layered, SubscriberExt};
-use tracing_subscriber::Registry;
+use tracing::subscriber::SetGlobalDefaultError;
+use tracing_subscriber::layer::{Layer, Layered};
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>);
 
@@ -120,7 +117,7 @@ impl Subscriber for BoxedSubscriber {
 impl Layer<BoxedSubscriber> for BoxedSubscriber {}
 
 impl LogSettings {
-    pub fn init_log(mut self) -> Result<Vec<WorkerGuard>, Error> {
+    pub fn init_log(self) -> Result<Vec<WorkerGuard>, Error> {
         use tracing_subscriber::prelude::*;
         let mut guards = Vec::new();
         let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
@@ -143,7 +140,8 @@ impl LogSettings {
             for layer in layer_iter {
                 init_layer = BoxedSubscriber(Box::new(init_layer.with(layer)));
             }
-            tracing::subscriber::set_global_default(init_layer);
+            tracing::subscriber::set_global_default(init_layer)
+                .map_err(Error::SetGlobalSubscriberError)?;
         }
 
         Ok(guards)
@@ -246,6 +244,7 @@ pub enum Error {
     #[cfg(feature = "gelf")]
     GelfConnectionFailed(io::Error),
     FileError(io::Error),
+    SetGlobalSubscriberError(SetGlobalDefaultError),
 }
 
 impl Display for Error {
@@ -259,6 +258,9 @@ impl Display for Error {
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(_) => write!(f, "GELF connection failed"),
             Error::FileError(e) => write!(f, "failed to open the log file: {}", e),
+            Error::SetGlobalSubscriberError(e) => {
+                write!(f, "failed to set global subscriber: {}", e)
+            }
         }
     }
 }
@@ -270,6 +272,7 @@ impl error::Error for Error {
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(err) => Some(err),
             Error::FileError(err) => Some(err),
+            Error::SetGlobalSubscriberError(err) => Some(err),
         }
     }
 }
