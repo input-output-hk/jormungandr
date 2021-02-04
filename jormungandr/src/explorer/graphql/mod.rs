@@ -190,6 +190,10 @@ impl Block {
             });
         Ok(treasury)
     }
+
+    pub async fn is_confirmed(&self, context: &Context) -> bool {
+        context.db.is_block_confirmed(&self.hash).await
+    }
 }
 
 struct BftLeader {
@@ -696,6 +700,14 @@ impl Status {
 
     pub async fn latest_block(&self, context: &Context) -> FieldResult<Block> {
         latest_block(context).await.map(|b| Block::from(&b))
+    }
+
+    pub async fn epoch_stability_depth(&self, context: &Context) -> String {
+        context
+            .db
+            .blockchain_config
+            .epoch_stability_depth
+            .to_string()
     }
 
     pub fn fee_settings(&self, context: &Context) -> FeeSettings {

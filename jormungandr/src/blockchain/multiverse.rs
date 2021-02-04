@@ -1,4 +1,4 @@
-use crate::blockcfg::{ChainLength, HeaderHash, Ledger, Multiverse as MultiverseData};
+use crate::blockcfg::{ChainLength, HeaderHash, Multiverse as MultiverseData};
 use chain_impl_mockchain::multiverse;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -43,12 +43,9 @@ impl<T: Clone> Multiverse<T> {
     }
 }
 
-impl Multiverse<Ledger> {
+impl<T> Multiverse<T> {
     /// run the garbage collection of the multiverse
     ///
-    /// TODO: this function is only working for the `Ledger` at the moment
-    ///       we need to generalize the `chain_impl_mockchain` to handle
-    ///       the garbage collection for any `T`
     pub async fn gc(&self, depth: u32) {
         let mut guard = self.inner.write().await;
         guard.gc(depth)
