@@ -280,7 +280,9 @@ jobs:
         if: matrix.config.os != 'windows-latest'
         run: |
           archive=jormungandr-${{ needs.create_release.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.tar.gz
-          tar -C ./target/${{ matrix.config.target }}/release -czvf $archive jormungandr jcli
+          sha256sum ./target/${{ matrix.config.target }}/release/jormungandr | awk '{print $1}' > ./target/${{ matrix.config.target }}/release/jormungandr.sha256
+          sha256sum ./target/${{ matrix.config.target }}/release/jcli | awk '{print $1}' > ./target/${{ matrix.config.target }}/release/jcli.sha256
+          tar -C ./target/${{ matrix.config.target }}/release -czvf $archive jormungandr jormungandr.sha256 jcli jcli.sha256
           cat <<EOF >> $GITHUB_ENV
           RELEASE_ARCHIVE=$archive
           RELEASE_CONTENT_TYPE=application/gzip
@@ -290,9 +292,13 @@ jobs:
         if: matrix.config.os == 'windows-latest'
         run: |
           $archive = "jormungandr-${{ needs.create_release.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip"
+          (Get-FileHash -Path "./target/${{ matrix.config.target }}/release/jormungandr.exe" -Algorithm SHA256).Hash | Out-File -FilePath "./jormungandr.exe.sha256"
+          (Get-FileHash -Path "./target/${{ matrix.config.target }}/release/jcli.exe" -Algorithm SHA256).Hash | Out-File -FilePath ""./jcli.exe.sha256"
           $args = @{
             Path  = "./target/${{ matrix.config.target }}/release/jormungandr.exe",
-                    "./target/${{ matrix.config.target }}/release/jcli.exe"
+                    "./jormungandr.exe.sha256",
+                    "./target/${{ matrix.config.target }}/release/jcli.exe",
+                    "./jcli.exe.sha256"
             DestinationPath = $archive
           }
           Compress-Archive @args
