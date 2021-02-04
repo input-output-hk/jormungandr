@@ -270,6 +270,12 @@ jobs:
             --release
             --target ${{ matrix.config.target }}
 
+      # https://github.com/actions/virtual-environments/issues/2619
+      - if: ${{ runner.os == 'macOS' }}
+        name: Augment PATH for GNU tar
+        run: |
+          echo PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+
       - name: Pack binaries (Unix)
         if: matrix.config.os != 'windows-latest'
         run: |
