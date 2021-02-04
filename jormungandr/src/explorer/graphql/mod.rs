@@ -713,7 +713,7 @@ impl Status {
     }
 
     pub async fn latest_block(&self, context: &Context) -> FieldResult<Block> {
-        latest_block(context).await.map(|b| Block::from(b))
+        latest_block(context).await.map(Block::from)
     }
 
     pub async fn epoch_stability_depth(&self, context: &Context) -> String {
