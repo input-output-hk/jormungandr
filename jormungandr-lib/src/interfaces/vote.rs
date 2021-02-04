@@ -19,9 +19,7 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::str;
 
-#[derive(
-    Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, serde::Deserialize,
-)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(remote = "PayloadType", rename_all = "snake_case")]
 enum PayloadTypeDef {
     Public,
@@ -135,42 +133,43 @@ impl Serialize for SerdeMemberPublicKey {
     }
 }
 
-#[derive(Deserialize)]
+fn committee_keys(v: &VotePlan) -> Vec<chain_vote::MemberPublicKey> {
+    v.committee_public_keys().to_vec()
+}
+
+#[derive(Deserialize, Serialize)]
 #[serde(remote = "VotePlan")]
 pub struct VotePlanDef {
-    #[serde(with = "PayloadTypeDef", getter = "payload_type")]
+    #[serde(with = "PayloadTypeDef", getter = "VotePlan::payload_type")]
     payload_type: PayloadType,
-    #[serde(with = "BlockDateDef", getter = "vote_start")]
+    #[serde(with = "BlockDateDef", getter = "VotePlan::vote_start")]
     vote_start: BlockDate,
-    #[serde(with = "BlockDateDef", getter = "vote_end")]
+    #[serde(with = "BlockDateDef", getter = "VotePlan::vote_end")]
     vote_end: BlockDate,
-    #[serde(with = "BlockDateDef", getter = "committee_end")]
+    #[serde(with = "BlockDateDef", getter = "VotePlan::committee_end")]
     committee_end: BlockDate,
-    #[serde(deserialize_with = "deserialize_proposals", getter = "proposals")]
+    #[serde(with = "serde_proposals", getter = "VotePlan::proposals")]
     proposals: Proposals,
     #[serde(
-        deserialize_with = "serde_committee_member_public_keys::deserialize",
-        getter = "committee_member_public_keys",
+        with = "serde_committee_member_public_keys",
+        getter = "committee_keys",
         default = "Vec::new"
     )]
     committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(remote = "Proposal")]
 struct VoteProposalDef {
-    #[serde(
-        deserialize_with = "deserialize_external_proposal_id",
-        getter = "external_id"
-    )]
+    #[serde(with = "serde_external_proposal_id", getter = "Proposal::external_id")]
     external_id: ExternalProposalId,
-    #[serde(deserialize_with = "deserialize_choices", getter = "options")]
+    #[serde(with = "serde_choices", getter = "Proposal::options")]
     options: Options,
-    #[serde(with = "VoteActionDef", getter = "action")]
+    #[serde(with = "VoteActionDef", getter = "Proposal::action")]
     action: VoteAction,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(remote = "VoteAction", rename_all = "snake_case")]
 enum VoteActionDef {
     OffChain,
@@ -184,22 +183,24 @@ enum VoteActionDef {
     },
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(remote = "ParametersGovernanceAction", rename_all = "snake_case")]
 enum ParametersGovernanceActionDef {
     RewardAdd {
         #[serde(with = "ValueDef")]
         value: Value,
     },
+    NoOp,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(remote = "TreasuryGovernanceAction", rename_all = "snake_case")]
 enum TreasuryGovernanceActionDef {
     TransferToRewards {
         #[serde(with = "ValueDef")]
         value: Value,
     },
+    NoOp,
 }
 
 impl From<VotePlanDef> for VotePlan {
@@ -271,100 +272,144 @@ impl From<VoteProposalDef> for Proposal {
     }
 }
 
-fn deserialize_external_proposal_id<'de, D>(deserializer: D) -> Result<ExternalProposalId, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
+mod serde_external_proposal_id {
+    use super::*;
+    use serde::{Deserializer, Serialize, Serializer};
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<ExternalProposalId, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
 
-    struct StringVisitor;
+        struct StringVisitor;
 
-    impl<'de> Visitor<'de> for StringVisitor {
-        type Value = ExternalProposalId;
+        impl<'de> Visitor<'de> for StringVisitor {
+            type Value = ExternalProposalId;
 
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("an external proposal id in hexadecimal form")
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<ExternalProposalId, E>
-        where
-            E: Error,
-        {
-            str::parse(value).map_err(Error::custom)
-        }
-    }
-
-    struct BinaryVisitor;
-
-    impl<'de> Visitor<'de> for BinaryVisitor {
-        type Value = ExternalProposalId;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("an external proposal id in the binary form")
-        }
-
-        fn visit_bytes<E>(self, value: &[u8]) -> Result<ExternalProposalId, E>
-        where
-            E: Error,
-        {
-            value.try_into().map_err(Error::custom)
-        }
-    }
-
-    if deserializer.is_human_readable() {
-        deserializer.deserialize_str(StringVisitor)
-    } else {
-        deserializer.deserialize_bytes(BinaryVisitor)
-    }
-}
-
-fn deserialize_choices<'de, D>(deserializer: D) -> Result<Options, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct OptionsVisitor;
-
-    impl<'de> serde::de::Visitor<'de> for OptionsVisitor {
-        type Value = Options;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a number of options from 0 to 255")
-        }
-
-        fn visit_u64<E>(self, value: u64) -> Result<Options, E>
-        where
-            E: serde::de::Error,
-        {
-            if value > 255 {
-                return Err(serde::de::Error::custom("expecting a value less than 256"));
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("an external proposal id in hexadecimal form")
             }
-            Options::new_length(value as u8).map_err(serde::de::Error::custom)
+
+            fn visit_str<E>(self, value: &str) -> Result<ExternalProposalId, E>
+            where
+                E: Error,
+            {
+                str::parse(value).map_err(Error::custom)
+            }
+        }
+
+        struct BinaryVisitor;
+
+        impl<'de> Visitor<'de> for BinaryVisitor {
+            type Value = ExternalProposalId;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("an external proposal id in the binary form")
+            }
+
+            fn visit_bytes<E>(self, value: &[u8]) -> Result<ExternalProposalId, E>
+            where
+                E: Error,
+            {
+                value.try_into().map_err(Error::custom)
+            }
+        }
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(StringVisitor)
+        } else {
+            deserializer.deserialize_bytes(BinaryVisitor)
         }
     }
 
-    deserializer.deserialize_u64(OptionsVisitor)
+    pub fn serialize<S>(id: &ExternalProposalId, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if serializer.is_human_readable() {
+            id.to_string().serialize(serializer)
+        } else {
+            id.as_ref().serialize(serializer)
+        }
+    }
 }
 
-fn deserialize_proposals<'de, D>(deserializer: D) -> Result<Proposals, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
+mod serde_choices {
+    use super::*;
+    use serde::{Deserializer, Serialize, Serializer};
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Options, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct OptionsVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for OptionsVisitor {
+            type Value = Options;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a number of options from 0 to 255")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Options, E>
+            where
+                E: serde::de::Error,
+            {
+                if value > 255 {
+                    return Err(serde::de::Error::custom("expecting a value less than 256"));
+                }
+                Options::new_length(value as u8).map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_u64(OptionsVisitor)
+    }
+
+    pub fn serialize<S>(options: &Options, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let v = options.choice_range().end as u64;
+        v.serialize(serializer)
+    }
+}
+
+mod serde_proposals {
+    use super::*;
+    use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
+    #[derive(Deserialize, Serialize)]
     struct ProposalInternal(#[serde(with = "VoteProposalDef")] Proposal);
 
     #[derive(Deserialize)]
     struct ProposalsList(Vec<ProposalInternal>);
 
-    let proposals_list = ProposalsList::deserialize(deserializer)?;
-    let mut proposals = Proposals::new();
-    for proposal in proposals_list.0.into_iter() {
-        if let chain_impl_mockchain::certificate::PushProposal::Full { .. } =
-            proposals.push(proposal.0)
-        {
-            panic!("too many proposals")
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Proposals, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let proposals_list = ProposalsList::deserialize(deserializer)?;
+        let mut proposals = Proposals::new();
+        for proposal in proposals_list.0.into_iter() {
+            if let chain_impl_mockchain::certificate::PushProposal::Full { .. } =
+                proposals.push(proposal.0)
+            {
+                panic!("too many proposals")
+            }
         }
+        Ok(proposals)
     }
-    Ok(proposals)
+
+    pub fn serialize<S>(proposals: &Proposals, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use std::ops::Deref;
+        let v = proposals.deref();
+        let mut seq = serializer.serialize_seq(Some(v.len()))?;
+        for prop in v {
+            let prop = ProposalInternal(prop.clone());
+            seq.serialize_element(&prop)?;
+        }
+        seq.end()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -590,8 +635,11 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::interfaces::vote::{serde_committee_member_public_keys, SerdeMemberPublicKey};
     use bech32::ToBase32;
+    use chain_impl_mockchain::block::BlockDate;
+    use chain_impl_mockchain::certificate::VotePlan;
     use rand_chacha::rand_core::SeedableRng;
 
     #[test]
@@ -613,5 +661,35 @@ mod test {
         let result =
             serde_committee_member_public_keys::deserialize(&mut json_deserializer).unwrap();
         assert_eq!(result[0], pk);
+    }
+
+    #[test]
+    fn test_deserialize_vote_plan_def() {
+        #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+        struct Helper(#[serde(with = "VotePlanDef")] VotePlan);
+
+        let mut rng = rand_chacha::ChaChaRng::from_entropy();
+        let crs = chain_vote::CRS::random(&mut rng);
+        let comm_key = chain_vote::MemberCommunicationKey::new(&mut rng);
+
+        let member_key =
+            chain_vote::MemberState::new(&mut rng, 1, &crs, &[comm_key.to_public()], 0)
+                .public_key();
+        let bd = "42.12".parse::<BlockDate>().unwrap();
+        let id = ExternalProposalId::from([0; 32]);
+        let prop = Proposal::new(id, Options::new_length(1).unwrap(), VoteAction::OffChain);
+        let mut proposals = Proposals::new();
+        let _ = proposals.push(prop);
+        let vote_plan = Helper(VotePlan::new(
+            bd,
+            bd,
+            bd,
+            proposals,
+            PayloadType::Private,
+            vec![member_key],
+        ));
+
+        let a = serde_json::to_string(&vote_plan).unwrap();
+        assert_eq!(vote_plan, serde_json::from_str(&a).unwrap());
     }
 }
