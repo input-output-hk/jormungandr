@@ -60,7 +60,8 @@ impl Multiverse {
 
     /// run the garbage collection of the multiverse
     ///
-    pub async fn gc(&self, depth: u32) {
+    #[allow(dead_code)]
+    pub(super) async fn gc(&self, depth: u32) {
         let mut guard = self.inner.write().await;
         guard.multiverse.gc(depth)
     }
