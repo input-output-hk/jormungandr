@@ -294,6 +294,8 @@ jobs:
           echo "$(cat ./archive-test/jcli.sha256) ./archive-test/jcli" | sha256sum --check
           rm -rf ./archive-test
 
+          sha256sum $archive | awk '{print $1}' > $archive.sha256
+
           cat <<EOF >> $GITHUB_ENV
           RELEASE_ARCHIVE=$archive
           RELEASE_CONTENT_TYPE=application/gzip
@@ -305,7 +307,7 @@ jobs:
           $archive = "jormungandr-${{ needs.create_release.outputs.version }}-${{ matrix.config.target }}-${{ matrix.target_cpu }}.zip"
 
           (Get-FileHash -Path "./target/${{ matrix.config.target }}/release/jormungandr.exe" -Algorithm SHA256).Hash.toLower() | Out-File -FilePath "./jormungandr.exe.sha256"
-          (Get-FileHash -Path "./target/${{ matrix.config.target }}/release/jcli.exe" -Algorithm SHA256).Hash.toLower() | Out-File -FilePath ""./jcli.exe.sha256"
+          (Get-FileHash -Path "./target/${{ matrix.config.target }}/release/jcli.exe" -Algorithm SHA256).Hash.toLower() | Out-File -FilePath "./jcli.exe.sha256"
 
           $args = @{
             Path  = "./target/${{ matrix.config.target }}/release/jormungandr.exe",
@@ -321,6 +323,8 @@ jobs:
           if ((Get-FileHash -Path "./archive-test/jcli.exe" -Algorithm SHA256).Hash -eq (Get-Content -Path "./archive-test/jcli.exe.sha256")) { exit 1 }
           Remove-Item -Recurse -Force -Path "./archive-test"
 
+          (Get-FileHash -Path "./target/${{ matrix.config.target }}/release/jcli.exe" -Algorithm SHA256).Hash.toLower() | Out-File -FilePath "$archive.sha256"
+
           @"
           RELEASE_ARCHIVE=$archive
           RELEASE_CONTENT_TYPE=application/zip
@@ -335,6 +339,16 @@ jobs:
           asset_path: ./${{ env.RELEASE_ARCHIVE }}
           asset_name: ${{ env.RELEASE_ARCHIVE }}
           asset_content_type: ${{ env.RELEASE_CONTENT_TYPE }}
+      
+      - name: Upload checksum to the release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./${{ env.RELEASE_ARCHIVE }}.sha256
+          asset_name: ${{ env.RELEASE_ARCHIVE }}.sha256
+          asset_content_type: text/plain
 
   publish_release:
     name: Publish release
