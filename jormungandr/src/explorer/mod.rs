@@ -337,7 +337,7 @@ impl ExplorerDB {
         // the tip changes which means now a block is confirmed (at least after
         // the initial epoch_stability_depth blocks).
 
-        let block = if let Some(state_ref) = self.multiverse.get_ref(hash).await {
+        let block = if let Some(state_ref) = self.multiverse.get_ref(&hash).await {
             let state = state_ref.state();
             Arc::clone(state.blocks.lookup(&hash).unwrap())
         } else {
