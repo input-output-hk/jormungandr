@@ -31,13 +31,10 @@ pub enum Level {
 
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
 
-// TODO: convert strings to enums for level/task/
-// TODO: convert ts to DateTime
 #[derive(Serialize, Deserialize, Debug)]
-pub struct LogEntry {
+pub struct Fields {
+    #[serde(alias = "message")]
     pub msg: String,
-    pub level: Level,
-    pub ts: String,
     pub task: Option<String>,
     pub hash: Option<String>,
     pub reason: Option<String>,
@@ -46,23 +43,34 @@ pub struct LogEntry {
     pub peer_addr: Option<String>,
 }
 
+// TODO: convert strings to enums for level/task/
+// TODO: convert ts to DateTime
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LogEntry {
+    pub level: Level,
+    #[serde(alias = "timestamp")]
+    pub ts: String,
+    pub fields: Fields,
+}
+
 impl LogEntry {
     pub fn reason_contains(&self, reason_part: &str) -> bool {
-        match &self.reason {
+        match &self.fields.reason {
             Some(reason) => reason.contains(reason_part),
             None => false,
         }
     }
 
     pub fn error_contains(&self, error_part: &str) -> bool {
-        match &self.error {
+        match &self.fields.error {
             Some(error) => error.contains(error_part),
             None => false,
         }
     }
 
     pub fn block_date(&self) -> Option<BlockDate> {
-        self.block_date
+        self.fields
+            .block_date
             .clone()
             .map(|block| block::BlockDate::from_str(&block).unwrap().into())
     }
@@ -115,7 +123,7 @@ impl JormungandrLogger {
 
     pub fn last_validated_block_date(&self) -> Option<BlockDate> {
         self.get_log_entries()
-            .filter(|x| x.msg.contains("validated block"))
+            .filter(|x| x.fields.msg.contains("validated block"))
             .map(|x| x.block_date())
             .last()
             .unwrap_or(None)
@@ -136,7 +144,9 @@ impl JormungandrLogger {
 
     pub fn contains_message(&self, message: &str) -> Result<bool, LoggerError> {
         self.verify_file_exists()?;
-        Ok(self.get_log_entries().any(|x| x.msg.contains(message)))
+        Ok(self
+            .get_log_entries()
+            .any(|x| x.fields.msg.contains(message)))
     }
 
     pub fn get_lines_with_warn(&self) -> impl Iterator<Item = String> + '_ {
@@ -151,14 +161,14 @@ impl JormungandrLogger {
 
     pub fn get_created_blocks_hashes(&self) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
-            .map(|item| Hash::from_str(&item.hash.unwrap()).unwrap())
+            .map(|item| Hash::from_str(&item.fields.hash.unwrap()).unwrap())
             .collect()
     }
 
     pub fn get_created_blocks_hashes_after(&self, reference_time: SystemTime) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
             .filter(|item| item.is_later_than(&reference_time))
-            .map(|item| Hash::from_str(&item.hash.unwrap()).unwrap())
+            .map(|item| Hash::from_str(&item.fields.hash.unwrap()).unwrap())
             .collect()
     }
 
@@ -169,7 +179,9 @@ impl JormungandrLogger {
     fn filter_entries_with_block_creation(&self) -> impl Iterator<Item = LogEntry> + '_ {
         let expected_task = Some("block".to_string());
         self.get_log_entries().filter(move |x| {
-            x.msg == SUCCESFULLY_CREATED_BLOCK_MSG && x.task == expected_task && x.hash.is_some()
+            x.fields.msg == SUCCESFULLY_CREATED_BLOCK_MSG
+                && x.fields.task == expected_task
+                && x.fields.hash.is_some()
         })
     }
 
@@ -230,7 +242,7 @@ impl JormungandrLogger {
 
         Ok(self
             .get_log_entries()
-            .filter(|x| x.msg.contains(message))
+            .filter(|x| x.fields.msg.contains(message))
             .count()
             == count)
     }
