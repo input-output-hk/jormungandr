@@ -42,7 +42,7 @@ impl Blockchain {
             slot_duration,
             kes_update_speed,
             consensus_genesis_praos_active_slot_coeff,
-            linear_fee: LinearFee::new(1,1,1,)
+            linear_fee: LinearFee::new(1, 1, 1),
         }
     }
 
