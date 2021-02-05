@@ -1,6 +1,6 @@
 use super::{ExternalWalletTemplate, LegacyWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
+use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
@@ -19,6 +19,7 @@ pub struct Blockchain {
     wallets: HashMap<WalletAlias, WalletTemplate>,
     kes_update_speed: KESUpdateSpeed,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
+    linear_fee: LinearFee,
 }
 
 impl Blockchain {
@@ -41,6 +42,7 @@ impl Blockchain {
             slot_duration,
             kes_update_speed,
             consensus_genesis_praos_active_slot_coeff,
+            linear_fee: LinearFee::new(1,1,1,)
         }
     }
 
@@ -58,6 +60,14 @@ impl Blockchain {
 
     pub fn vote_plans(&self) -> Vec<VotePlanDef> {
         self.vote_plans.clone()
+    }
+
+    pub fn linear_fee(&self) -> LinearFee {
+        self.linear_fee.clone()
+    }
+
+    pub fn set_linear_fee(&mut self, linear_fee: LinearFee) {
+        self.linear_fee = linear_fee;
     }
 
     pub fn vote_plan(&self, alias: &str) -> Option<VotePlanDef> {

@@ -183,6 +183,7 @@ impl Settings {
         let mut blockchain_configuration = &mut self.block0.blockchain_configuration;
 
         // TODO blockchain_configuration.block0_date = ;
+        blockchain_configuration.linear_fees = blockchain.linear_fee();
         blockchain_configuration.discrimination = chain_addr::Discrimination::Test;
         blockchain_configuration.block0_consensus = *blockchain.consensus();
         blockchain_configuration.consensus_leader_ids = {
