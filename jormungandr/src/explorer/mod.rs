@@ -118,7 +118,7 @@ impl Explorer {
 
     pub async fn start(&self, info: TokioServiceInfo, messages: MessageQueue<ExplorerMsg>) {
         let tip_candidate: Arc<Mutex<Option<HeaderHash>>> = Arc::new(Mutex::new(None));
-
+        let span_parent = info.span();
         messages
             .for_each(|input| {
                 let explorer_db = self.db.clone();
@@ -147,7 +147,7 @@ impl Explorer {
                     }
                     ExplorerMsg::NewTip(hash) => {
                         info.spawn_fallible::<_, Error>(
-                            "apply block to explorer",
+                            "apply tip to explorer",
                             async move {
                                 let successful = explorer_db.set_tip(hash).await;
 
@@ -161,7 +161,7 @@ impl Explorer {
                             .instrument(span!(
                                 parent: span_parent,
                                 Level::TRACE,
-                                "apply block",
+                                "apply tip",
                             )),
                         );
                     }

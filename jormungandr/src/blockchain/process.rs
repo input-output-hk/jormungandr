@@ -366,7 +366,7 @@ pub async fn process_new_ref(
                     .send(ExplorerMsg::NewTip(candidate_hash))
                     .await
                     .unwrap_or_else(|err| {
-                        error!(logger, "cannot send new tip to explorer: {}", err)
+                        tracing::error!("cannot send new tip to explorer: {}", err)
                     });
             }
         }

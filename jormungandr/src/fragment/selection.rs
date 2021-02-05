@@ -9,6 +9,7 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use tracing::{span, Level};
 
+use std::error::Error;
 use std::iter;
 
 pub enum SelectionOutput {
@@ -72,6 +73,8 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             let fragment_raw = fragment.to_raw(); // TODO: replace everything to FragmentRaw in the node
             let fragment_size = fragment_raw.size_bytes_plus_size() as u32;
 
+            let span = span!(Level::TRACE, "fragment_selection_algorithm", kind="older_first", hash=%id.to_string());
+            let _enter = span.enter();
             if fragment_size > ledger_params.block_content_max_size {
                 let reason = format!(
                     "fragment size {} exceeds maximum block content size {}",
@@ -85,12 +88,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             let total_size = self.current_total_size + fragment_size;
 
             if total_size <= ledger_params.block_content_max_size {
-                let span = span!(
-                    Level::TRACE,
-                    "fragment_selection_algorithm",
-                    hash = %id.to_string()
-                );
-                let _enter = span.enter();
                 tracing::debug!("applying fragment in simulation");
                 match ledger_simulation.apply_fragment(ledger_params, &fragment, block_date) {
                     Ok(ledger_new) => {
@@ -114,11 +111,11 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 if total_size == ledger_params.block_content_max_size {
                     break;
                 }
-                drop(_enter);
             } else {
                 // return a fragment to the pool later if does not fit the contents size limit
                 return_to_pool.push(fragment);
             }
+            drop(_enter);
         }
 
         pool.insert_all(return_to_pool);

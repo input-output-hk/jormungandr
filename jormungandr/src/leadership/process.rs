@@ -345,17 +345,16 @@ impl Module {
                         "system woke a bit early for the event, delaying until right time."
                     );
 
-                // await the right_time before starting the action
-                tokio::time::sleep_until(tokio::time::Instant::from_std(right_time)).await;
-                self.action_run_entry_in_bound(entry, logger, event_end)
-                    .await
-            } else {
-                // because we checked that the entry's slot was below the current
-                // time, if we cannot compute the _right_time_ it means the time
-                // is just starting now to be correct. So it's okay to start
-                // running it now still
-                self.action_run_entry_in_bound(entry, logger, event_end)
-                    .await
+                    // await the right_time before starting the action
+                    tokio::time::sleep_until(tokio::time::Instant::from_std(right_time)).await;
+                    self.action_run_entry_in_bound(entry, event_end).await
+                } else {
+                    // because we checked that the entry's slot was below the current
+                    // time, if we cannot compute the _right_time_ it means the time
+                    // is just starting now to be correct. So it's okay to start
+                    // running it now still
+                    self.action_run_entry_in_bound(entry, event_end).await
+                }
             }
         }
         .instrument(span)
