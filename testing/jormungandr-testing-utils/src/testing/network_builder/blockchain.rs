@@ -63,7 +63,7 @@ impl Blockchain {
     }
 
     pub fn linear_fee(&self) -> LinearFee {
-        self.linear_fee.clone()
+        self.linear_fee
     }
 
     pub fn set_linear_fee(&mut self, linear_fee: LinearFee) {
