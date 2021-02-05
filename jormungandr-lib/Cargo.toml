@@ -24,8 +24,8 @@ poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f
 multiaddr = { package = "parity-multiaddr", version = "0.9" }
 hex = "0.4"
 bech32 = "0.7"
-warp = { version = "0.3", features = ["tls"] }
 base64 = "0.13.0"
+http = "0.2.2"
 
 [dev-dependencies]
 rand = "0.7"

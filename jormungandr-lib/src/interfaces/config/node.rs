@@ -60,7 +60,7 @@ impl<'de> Deserialize<'de> for CorsOrigin {
             {
                 use serde::de::Unexpected;
 
-                let uri = warp::http::uri::Uri::from_str(v).map_err(E::custom)?;
+                let uri = http::uri::Uri::from_str(v).map_err(E::custom)?;
                 if let Some(s) = uri.scheme_str() {
                     if s != "http" && s != "https" {
                         return Err(E::invalid_value(Unexpected::Str(v), &self));
