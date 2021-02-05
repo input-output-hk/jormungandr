@@ -24,9 +24,9 @@ pub struct JormungandrLogger {
 pub enum Level {
     WARN,
     INFO,
-    ERRO,
-    TRCE,
-    DEBG,
+    ERROR,
+    TRACE,
+    DEBUG,
 }
 
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
@@ -187,7 +187,7 @@ impl JormungandrLogger {
 
     fn is_error_line(&self, line: &str) -> bool {
         match self.try_parse_line_as_entry(line) {
-            Ok(entry) => entry.level == Level::ERRO,
+            Ok(entry) => entry.level == Level::ERROR,
             Err(_) => false,
         }
     }
@@ -201,7 +201,7 @@ impl JormungandrLogger {
 
     fn is_error_line_or_invalid(&self, line: &str) -> bool {
         match self.try_parse_line_as_entry(&line) {
-            Ok(entry) => entry.level == Level::ERRO,
+            Ok(entry) => entry.level == Level::ERROR,
             Err(_) => true,
         }
     }
