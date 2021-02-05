@@ -73,7 +73,7 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::ContextLock>,
     services: Services,
-    logger_guards: Vec<WorkerGuard>,
+    _logger_guards: Vec<WorkerGuard>,
 }
 
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
@@ -304,7 +304,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         rest_context,
         mut services,
         cancellation_token,
-        logger_guards,
+        _logger_guards,
     } = initialized_node;
 
     let BootstrapData {
@@ -333,7 +333,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         services,
-        logger_guards,
+        _logger_guards,
     })
 }
 
@@ -454,7 +454,7 @@ pub struct InitializedNode {
     pub rest_context: Option<rest::ContextLock>,
     pub services: Services,
     pub cancellation_token: CancellationToken,
-    pub logger_guards: Vec<WorkerGuard>,
+    pub _logger_guards: Vec<WorkerGuard>,
 }
 
 #[cfg(unix)]
@@ -523,7 +523,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let raw_settings = RawSettings::load(command_line)?;
 
     let log_settings = raw_settings.log_settings();
-    let logger_guards = log_settings.init_log()?;
+    let _logger_guards = log_settings.init_log()?;
 
     let init_span = span!(Level::TRACE, "task", name = "init");
     let async_span = init_span.clone();
@@ -621,7 +621,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         rest_context,
         services,
         cancellation_token,
-        logger_guards,
+        _logger_guards,
     })
 }
 
