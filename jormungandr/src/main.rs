@@ -469,7 +469,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
         }
     }
 
-    services.spawn_future("sigterm_watcher", move |info| {
+    services.spawn_future("sigterm_watcher", move |_info| {
         match signal::unix::signal(SignalKind::terminate()) {
             Ok(signal) => recv_signal_and_cancel(signal, token).left_future(),
             Err(e) => {
@@ -479,7 +479,7 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
         }
     });
 
-    services.spawn_future("sigint_watcher", move |info| {
+    services.spawn_future("sigint_watcher", move |_info| {
         match signal::unix::signal(SignalKind::interrupt()) {
             Ok(signal) => recv_signal_and_cancel(signal, token_1).left_future(),
             Err(e) => {
