@@ -384,7 +384,13 @@ impl ExplorerDB {
     }
 
     pub async fn is_block_confirmed(&self, block_id: &HeaderHash) -> bool {
-        if let Some(block) = self.get_block(block_id).await {
+        let current_branch = self
+            .multiverse
+            .get_ref(&self.longest_chain_tip.get_block_id().await)
+            .await
+            .unwrap();
+
+        if let Some(block) = current_branch.state().blocks.lookup(&block_id) {
             let confirmed_block_chain_length: ChainLength = self
                 .stable_store
                 .confirmed_block_chain_length
