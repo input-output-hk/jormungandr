@@ -32,7 +32,7 @@ pub struct NodeService {
 
 impl NodeService {
     pub fn new(channels: Channels, global_state: GlobalStateR) -> Self {
-        let span = span!(parent: global_state.span(), Level::TRACE, "sub_task", name = "server");
+        let span = span!(parent: global_state.span(), Level::TRACE, "sub_task", kind = "server");
         NodeService {
             channels,
             span,
@@ -126,7 +126,7 @@ impl BlockService for NodeService {
     type SubscriptionStream = SubscriptionStream<BlockEventSubscription>;
 
     async fn tip(&self) -> Result<Header, Error> {
-        let span = span!(Level::TRACE, "request", name = "Tip");
+        let span = span!(Level::TRACE, "request", kind = "Tip");
         let (reply_handle, reply_future) = intercom::unary_reply();
         let reply_future = reply_future.instrument(span.clone());
         let mbox = self.channels.client_box.clone();
@@ -144,7 +144,7 @@ impl BlockService for NodeService {
     ) -> Result<Self::PullBlocksStream, Error> {
         let from = from.decode()?;
         let to = to.decode()?;
-        let span = span!(Level::TRACE, "request", name = "PullBlocks");
+        let span = span!(Level::TRACE, "request", kind = "PullBlocks");
         let (handle, future) = intercom::stream_reply(buffer_sizes::outbound::BLOCKS);
         let future = future.instrument(span.clone());
         let client_box = self.channels.client_box.clone();
@@ -160,7 +160,7 @@ impl BlockService for NodeService {
         from: BlockIds,
     ) -> Result<Self::PullBlocksToTipStream, Error> {
         let from = from.decode()?;
-        let span = span!(Level::TRACE, "request", name = "PullBlocksToTip");
+        let span = span!(Level::TRACE, "request", kind = "PullBlocksToTip");
         let (handle, future) = intercom::stream_reply(buffer_sizes::outbound::BLOCKS);
         let future = future.instrument(span.clone());
         let client_box = self.channels.client_box.clone();
@@ -173,7 +173,7 @@ impl BlockService for NodeService {
 
     async fn get_blocks(&self, ids: BlockIds) -> Result<Self::GetBlocksStream, Error> {
         let ids = ids.decode()?;
-        let span = span!(Level::TRACE, "request", name = "GetBlocks");
+        let span = span!(Level::TRACE, "request", kind = "GetBlocks");
         let (handle, future) = intercom::stream_reply(buffer_sizes::outbound::BLOCKS);
         let future = future.instrument(span.clone());
         let client_box = self.channels.client_box.clone();
@@ -184,7 +184,7 @@ impl BlockService for NodeService {
 
     async fn get_headers(&self, ids: BlockIds) -> Result<Self::GetHeadersStream, Error> {
         let ids = ids.decode()?;
-        let span = span!(Level::TRACE, "request", name = "GetHeaders");
+        let span = span!(Level::TRACE, "request", kind = "GetHeaders");
         let (handle, future) = intercom::stream_reply(buffer_sizes::outbound::HEADERS);
         let future = future.instrument(span.clone());
         let client_box = self.channels.client_box.clone();
@@ -202,7 +202,7 @@ impl BlockService for NodeService {
     ) -> Result<Self::PullHeadersStream, Error> {
         let from = from.decode()?;
         let to = to.decode()?;
-        let span = span!(Level::TRACE, "request", name = "PullHeaders");
+        let span = span!(Level::TRACE, "request", kind = "PullHeaders");
         let (handle, future) = intercom::stream_reply(buffer_sizes::outbound::HEADERS);
         let future = future.instrument(span.clone());
         let client_box = self.channels.client_box.clone();
@@ -214,7 +214,7 @@ impl BlockService for NodeService {
     }
 
     async fn push_headers(&self, stream: PushStream<Header>) -> Result<(), Error> {
-        let span = span!(Level::TRACE, "request", name = "PushHeaders");
+        let span = span!(Level::TRACE, "request", kind = "PushHeaders");
         let (handle, sink, reply) = intercom::stream_request(buffer_sizes::inbound::HEADERS);
         let reply = reply.instrument(span.clone());
         let block_box = self.channels.block_box.clone();
@@ -231,7 +231,7 @@ impl BlockService for NodeService {
     }
 
     async fn upload_blocks(&self, stream: PushStream<Block>) -> Result<(), Error> {
-        let span = span!(Level::TRACE, "request", name = "UploadBlocks");
+        let span = span!(Level::TRACE, "request", kind = "UploadBlocks");
         let (handle, sink, reply) = intercom::stream_request(buffer_sizes::inbound::BLOCKS);
         let reply = reply.instrument(span.clone());
         let block_box = self.channels.block_box.clone();

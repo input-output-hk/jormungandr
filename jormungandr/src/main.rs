@@ -168,7 +168,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         bootstrapped_node.block0_hash,
         bootstrapped_node.settings.network.clone(),
         stats_counter.clone(),
-        span!(Level::TRACE, "task", name = "network"),
+        span!(Level::TRACE, "task", kind = "network"),
     ));
 
     {
@@ -525,7 +525,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let log_settings = raw_settings.log_settings();
     let _logger_guards = log_settings.init_log()?;
 
-    let init_span = span!(Level::TRACE, "task", name = "init");
+    let init_span = span!(Level::TRACE, "task", kind = "init");
     let async_span = init_span.clone();
     let _enter = init_span.enter();
     tracing::info!("Starting {}", env!("FULL_VERSION"),);

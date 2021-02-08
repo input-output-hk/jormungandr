@@ -268,7 +268,7 @@ impl Client {
             parent: &self.span,
             Level::TRACE,
             "solicitation",
-            name = "UploadBlocks"
+            kind = "UploadBlocks"
         );
         let _enter = span.enter();
 
@@ -326,7 +326,7 @@ impl Client {
             parent: &self.span,
             Level::TRACE,
             "solicitation",
-            name = "PushHeaders"
+            kind = "PushHeaders"
         );
         let _enter = span.enter();
 
@@ -387,7 +387,7 @@ impl Client {
             parent: &self.span,
             Level::TRACE,
             "request",
-            name = "PullHeaders"
+            kind = "PullHeaders"
         );
         let _enter = span.enter();
 
@@ -439,7 +439,7 @@ impl Client {
             parent: self.span(),
             Level::TRACE,
             "request",
-            name = "GetBlocks"
+            kind = "GetBlocks"
         );
         let (handle, sink, _) = intercom::stream_request(buffer_sizes::inbound::BLOCKS);
         // TODO: make sure that back pressure on the number of requests

@@ -42,7 +42,7 @@ impl Builder {
     fn set_policy(mut self, policy: PolicyConfig) -> Self {
         self.topology.set_policy(Policy::new(
             policy,
-            span!(parent: &self.span, Level::TRACE, "sub_task", name = "policy"),
+            span!(parent: &self.span, Level::TRACE, "sub_task", kind = "policy"),
         ));
         self
     }

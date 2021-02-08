@@ -101,7 +101,7 @@ impl Services {
     {
         let handle = self.runtime.handle().clone();
         let now = Instant::now();
-        let tracing_span = span!(Level::TRACE, "service", name = name);
+        let tracing_span = span!(Level::TRACE, "service", kind = name);
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
@@ -119,7 +119,7 @@ impl Services {
                 parent: span_parent,
                 Level::TRACE,
                 "service",
-                name = name
+                kind = name
             )),
         );
         self.finish_listener.push(handle);
@@ -138,7 +138,7 @@ impl Services {
     {
         let handle = self.runtime.handle().clone();
         let now = Instant::now();
-        let tracing_span = span!(Level::TRACE, "service", name = name);
+        let tracing_span = span!(Level::TRACE, "service", kind = name);
 
         let future_service_info = TokioServiceInfo {
             name,
@@ -161,7 +161,7 @@ impl Services {
                 parent: parent_span,
                 Level::TRACE,
                 "service",
-                name = name
+                kind = name
             )),
         );
         self.finish_listener.push(handle);
@@ -203,7 +203,7 @@ impl Services {
     {
         let handle = self.runtime.handle().clone();
         let now = Instant::now();
-        let tracing_span = span!(Level::TRACE, "service", name = name);
+        let tracing_span = span!(Level::TRACE, "service", kind = name);
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
@@ -216,7 +216,7 @@ impl Services {
                 parent: parent_span,
                 Level::TRACE,
                 "service",
-                name = name
+                kind = name
             )))
     }
 }
@@ -253,7 +253,7 @@ impl TokioServiceInfo {
     {
         tracing::trace!("service `{}` spawning task `{}`", self.name, name);
         self.handle
-            .spawn(future.instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)));
+            .spawn(future.instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)));
     }
 
     /// just like spawn but instead log an error on Result::Err
@@ -273,7 +273,7 @@ impl TokioServiceInfo {
                     }
                 }
             }
-            .instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)),
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
         );
     }
 
@@ -290,7 +290,7 @@ impl TokioServiceInfo {
                     Ok(()) => {}
                 };
             }
-            .instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)),
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
         );
     }
 
@@ -310,7 +310,7 @@ impl TokioServiceInfo {
                     Ok(Ok(())) => {}
                 };
             }
-            .instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)),
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
         );
     }
 
@@ -346,7 +346,7 @@ impl TokioServiceInfo {
                     );
                 }
             }
-            .instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)),
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
         );
     }
 
@@ -394,7 +394,7 @@ impl TokioServiceInfo {
                     };
                 }
             }
-            .instrument(span!(parent: &self.span, Level::TRACE, "task", name = name)),
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
         );
     }
 }

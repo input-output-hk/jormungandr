@@ -176,7 +176,7 @@ impl GlobalState {
 
         let topology = P2pTopology::new(
             &config,
-            span!(parent: &span, Level::TRACE, "sub_task", name = "poldercast"),
+            span!(parent: &span, Level::TRACE, "sub_task", kind = "poldercast"),
             prng,
         );
 
@@ -423,7 +423,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
 async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let config = &state.config;
     let topology = &state.topology;
-    let span = span!(parent: &state.span, Level::TRACE, "sub_task", name = "start_gossip");
+    let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "start_gossip");
     // inject the trusted peers as initial gossips, this will make the node
     // gossip with them at least at the beginning
     async {
@@ -463,7 +463,7 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
 
 async fn send_gossip(state: GlobalStateR, channels: Channels) {
     let topology = &state.topology;
-    let span = span!(parent: &state.span, Level::TRACE, "sub_task", name = "send_gossip");
+    let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "send_gossip");
     async {
         let view = topology.view(poldercast::Selection::Any).await;
         let peers = view.peers;
