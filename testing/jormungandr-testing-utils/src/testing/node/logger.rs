@@ -9,6 +9,8 @@ use thiserror::Error;
 
 use crate::testing::Timestamp;
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
+use std::collections::HashMap;
+
 #[derive(Debug, Error)]
 pub enum LoggerError {
     #[error("{log_file}")]
@@ -35,6 +37,7 @@ const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfull
 pub struct Fields {
     #[serde(alias = "message")]
     pub msg: String,
+    #[serde(alias = "kind")]
     pub task: Option<String>,
     pub hash: Option<String>,
     pub reason: Option<String>,
@@ -207,7 +210,32 @@ impl JormungandrLogger {
     }
 
     fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
-        serde_json::from_str(&line)
+        let mut jsonize_entry: serde_json::Value = serde_json::from_str(&line)?;
+        let mut aggreagated: HashMap<String, serde_json::Value> = HashMap::new();
+        if let Some(fields) = jsonize_entry.get_mut("fields") {
+            // main span "fields" is ensured be an object, it is safe to unwrap here
+            for (k, v) in fields.take().as_object().unwrap().iter() {
+                aggreagated.insert(k.clone(), v.clone());
+            }
+        }
+        if let Some(main_span) = jsonize_entry.get("span") {
+            // main span "span" is ensured be an object, it is safe to unwrap here
+            for (k, v) in main_span.as_object().unwrap().iter() {
+                aggreagated.insert(k.clone(), v.clone());
+            }
+        }
+        if let Some(spans) = jsonize_entry.get("spans") {
+            // spans is ensured to be an array, so it should be safe to unwrap here
+            for s in spans.as_array().unwrap() {
+                // same here, inner spans are represented as objects
+                let span_values = s.as_object().unwrap();
+                for (k, v) in span_values.iter() {
+                    aggreagated.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        *jsonize_entry.get_mut("fields").unwrap() = serde_json::to_value(aggreagated)?;
+        serde_json::from_value(jsonize_entry)
     }
 
     pub fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
