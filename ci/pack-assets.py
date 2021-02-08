@@ -21,7 +21,7 @@ target_cpu = sys.argv[3]
 
 archive_basename = 'jormungandr-{}-{}-{}'.format(version, target, target_cpu)
 
-root_dir = './target/{}/debug'.format(target)
+root_dir = './target/{}/release'.format(target)
 
 if platform.system() == 'Windows':
     jormungandr_name = 'jormungandr.exe'
