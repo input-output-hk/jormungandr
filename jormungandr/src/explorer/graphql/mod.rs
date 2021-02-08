@@ -635,7 +635,7 @@ impl Transaction {
     fn from_valid_id(id: FragmentId) -> Transaction {
         Transaction {
             id,
-            block_hashes: vec![],
+            block_hashes: Default::default(),
             contents: None,
         }
     }
@@ -643,7 +643,7 @@ impl Transaction {
     fn from_contents(contents: ExplorerTransaction) -> Transaction {
         Transaction {
             id: contents.id,
-            block_hashes: vec![],
+            block_hashes: Default::default(),
             contents: Some(contents),
         }
     }

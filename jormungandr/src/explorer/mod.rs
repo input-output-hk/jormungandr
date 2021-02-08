@@ -453,7 +453,8 @@ impl ExplorerDB {
     }
 
     pub async fn find_blocks_by_transaction(&self, transaction_id: &FragmentId) -> Vec<HeaderHash> {
-        self.multiverse
+        let mut txs: Vec<_> = self
+            .multiverse
             .tips()
             .await
             .iter()
@@ -464,7 +465,12 @@ impl ExplorerDB {
                     .lookup(&transaction_id)
                     .map(|arc| *arc.clone())
             })
-            .collect()
+            .collect();
+
+        txs.sort_unstable();
+        txs.dedup();
+
+        txs
     }
 
     pub async fn get_stake_pool_blocks(
