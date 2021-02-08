@@ -73,8 +73,6 @@ checksum_filename = '{}.sha256'.format(archive_name)
 with open(checksum_filename, 'x') as f:
     f.write(archive_checksum)
 
-# set environment variables for GitHub Actions (default is for local testing)
-gh_actions_env = os.getenv('GITHUB_ENV', default='test-github-env')
-with open(gh_actions_env, 'a') as f:
-    print('RELEASE_ARCHIVE={}'.format(archive_name), file=f)
-    print('RELEASE_CONTENT_TYPE={}'.format(content_type), file=f)
+# set GitHub Action step outputs
+print('::set-output name=release-archive::{}'.format(archive_name))
+print('::set-output name=release-content-type::{}'.format(content_type))

@@ -270,7 +270,9 @@ jobs:
             --release
             --target ${{ matrix.config.target }}
 
-      - name: Pack binaries
+      - id: pack-assets
+        name: Pack binaries
+        shell: bash
         run: python3 ./ci/pack-assets.py ${{ needs.create_release.outputs.version }} ${{ matrix.config.target }} ${{ matrix.target_cpu }}
 
       - name: Upload binaries to the release
@@ -279,9 +281,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./${{ env.RELEASE_ARCHIVE }}
-          asset_name: ${{ env.RELEASE_ARCHIVE }}
-          asset_content_type: ${{ env.RELEASE_CONTENT_TYPE }}
+          asset_path: ./${{ steps.pack-assets.outputs.release-archive }}
+          asset_name: ${{ steps.pack-assets.outputs.release-archive }}
+          asset_content_type: ${{ steps.pack-assets.outputs.release-content-type }}
       
       - name: Upload checksum to the release
         uses: actions/upload-release-asset@v1
@@ -289,8 +291,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./${{ env.RELEASE_ARCHIVE }}.sha256
-          asset_name: ${{ env.RELEASE_ARCHIVE }}.sha256
+          asset_path: ./${{ steps.pack-assets.outputs.release-archive }}.sha256
+          asset_name: ${{ steps.pack-assets.outputs.release-archive }}.sha256
           asset_content_type: text/plain
 
   publish_release:
