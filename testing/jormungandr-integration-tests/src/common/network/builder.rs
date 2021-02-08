@@ -1,4 +1,5 @@
 use super::{Controller, ControllerError};
+use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::{
@@ -109,11 +110,17 @@ pub struct WalletTemplateBuilder {
     value: u64,
     wallet_template: Option<WalletTemplate>,
     node_alias: Option<NodeAlias>,
+    discrimination: Discrimination,
 }
 
 impl WalletTemplateBuilder {
     pub fn with(&mut self, value: u64) -> &mut Self {
         self.value = value;
+        self
+    }
+
+    pub fn discrimination(&mut self, discrimination: Discrimination) -> &mut Self {
+        self.discrimination = discrimination;
         self
     }
 
@@ -123,7 +130,8 @@ impl WalletTemplateBuilder {
     }
 
     pub fn build(&self) -> WalletTemplate {
-        let mut wallet = WalletTemplate::new_account(self.alias.clone(), Value(self.value));
+        let mut wallet =
+            WalletTemplate::new_account(self.alias.clone(), Value(self.value), self.discrimination);
         *wallet.delegate_mut() = self.node_alias.clone();
         wallet
     }
@@ -135,6 +143,7 @@ pub fn wallet(alias: &str) -> WalletTemplateBuilder {
         value: 0u64,
         wallet_template: None,
         node_alias: None,
+        discrimination: Discrimination::Test,
     }
 }
 
