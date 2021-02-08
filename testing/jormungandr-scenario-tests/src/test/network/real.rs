@@ -105,16 +105,22 @@ fn prepare_real_scenario(
 
     for i in 1..leader_counter {
         let initial_wallet_name = wallet_name(i);
-        let mut wallet =
-            WalletTemplate::new_account(initial_wallet_name.to_owned(), Value(100_000));
+        let mut wallet = WalletTemplate::new_account(
+            initial_wallet_name.to_owned(),
+            Value(100_000),
+            blockchain.discrimination(),
+        );
         *wallet.delegate_mut() = Some(leader_name(i).to_owned());
         blockchain.add_wallet(wallet);
     }
 
     for i in 1..legacy_nodes_counter {
         let initial_wallet_name = wallet_name(i);
-        let mut wallet =
-            WalletTemplate::new_account(initial_wallet_name.to_owned(), Value(100_000));
+        let mut wallet = WalletTemplate::new_account(
+            initial_wallet_name.to_owned(),
+            Value(100_000),
+            blockchain.discrimination(),
+        );
         *wallet.delegate_mut() = Some(legacy_name(i).to_owned());
         blockchain.add_wallet(wallet);
     }

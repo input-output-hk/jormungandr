@@ -111,7 +111,8 @@ macro_rules! prepare_scenario {
                     #[allow(unused_mut)]
                     let mut wallet = jormungandr_testing_utils::testing::network_builder::WalletTemplate::new_account(
                         $initial_wallet_name.to_owned(),
-                        chain_impl_mockchain::value::Value($initial_wallet_funds).into()
+                        chain_impl_mockchain::value::Value($initial_wallet_funds).into(),
+                        blockchain.discrimination()
                     );
 
                     $(
@@ -127,7 +128,8 @@ macro_rules! prepare_scenario {
                     #[allow(unused_mut)]
                     let wallet = jormungandr_testing_utils::testing::network_builder::WalletTemplate::new_utxo(
                         $initial_wallet_name.to_owned(),
-                        chain_impl_mockchain::value::Value($initial_wallet_funds).into()
+                        chain_impl_mockchain::value::Value($initial_wallet_funds).into(),
+                        blockchain.discrimination()
                     );
                     wallet
                 } else {
