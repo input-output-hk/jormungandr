@@ -479,7 +479,7 @@ impl Client {
                     }
                 }
             }
-            .instrument(span.clone()),
+            .instrument(span),
         );
     }
 

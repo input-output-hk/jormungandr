@@ -338,14 +338,15 @@ impl GossipService for NodeService {
             direction = "in"
         );
 
-        self.global_state
-            .spawn(subscription::process_gossip(
+        self.global_state.spawn(
+            subscription::process_gossip(
                 stream,
                 subscriber.clone(),
                 self.global_state.clone(),
                 span.clone(),
-            ))
-            .instrument(span);
+            )
+            .instrument(span),
+        );
 
         let outbound = self
             .global_state

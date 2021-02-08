@@ -221,6 +221,12 @@ impl Services {
     }
 }
 
+impl Default for Services {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TokioServiceInfo {
     /// get the time this service has been running since
     #[inline]

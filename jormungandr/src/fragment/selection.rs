@@ -51,6 +51,12 @@ impl OldestFirst {
     }
 }
 
+impl Default for OldestFirst {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FragmentSelectionAlgorithm for OldestFirst {
     fn finalize(self) -> Contents {
         self.builder.into()
