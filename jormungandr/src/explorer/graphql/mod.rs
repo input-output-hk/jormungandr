@@ -1120,6 +1120,14 @@ impl Settings {
             )),
         }
     }
+
+    pub fn epoch_stability_depth(&self, context: &Context) -> String {
+        context
+            .db
+            .blockchain_config
+            .epoch_stability_depth
+            .to_string()
+    }
 }
 
 struct Treasury {
