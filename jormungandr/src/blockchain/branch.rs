@@ -21,8 +21,6 @@ pub struct Branch {
 struct BranchData {
     /// reference to the block where the branch points to
     reference: Arc<Ref>,
-
-    last_updated: std::time::SystemTime,
 }
 
 impl Default for Branches {
@@ -129,17 +127,11 @@ impl BranchData {
     /// create the branch data with the current `last_updated` to
     /// the current time this function was called
     fn new(reference: Arc<Ref>) -> Self {
-        BranchData {
-            reference,
-            last_updated: std::time::SystemTime::now(),
-        }
+        BranchData { reference }
     }
 
     fn update(&mut self, reference: Arc<Ref>) -> Arc<Ref> {
-        let old_reference = std::mem::replace(&mut self.reference, reference);
-        self.last_updated = std::time::SystemTime::now();
-
-        old_reference
+        std::mem::replace(&mut self.reference, reference)
     }
 
     fn reference(&self) -> Arc<Ref> {
