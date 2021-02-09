@@ -449,6 +449,12 @@ impl TallyResult {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EncryptedTally(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
+impl EncryptedTally {
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0
+    }
+}
+
 pub mod serde_base64_bytes {
     use serde::de::{Error, Visitor};
     use serde::{Deserializer, Serializer};
@@ -579,6 +585,15 @@ impl From<vote::TallyResult> for TallyResult {
         Self {
             results: this.results().iter().map(|v| (*v).into()).collect(),
             options: this.options().choice_range().clone(),
+        }
+    }
+}
+
+impl From<chain_vote::Tally> for TallyResult {
+    fn from(this: chain_vote::Tally) -> Self {
+        Self {
+            results: this.votes.iter().copied().collect(),
+            options: (0..this.votes.len().try_into().unwrap()),
         }
     }
 }

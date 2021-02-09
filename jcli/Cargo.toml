@@ -23,6 +23,7 @@ mime = "^0.3.7"
 structopt = "^0.3"
 bech32 = "0.7"
 hex = "0.4.2"
+rayon = "1.5"
 base64 = "0.13.0"
 chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
