@@ -1,6 +1,5 @@
 use crate::jcli_app::utils::output_file::{self, OutputFile};
 use crate::jcli_app::utils::vote::{SharesError, VotePlanError};
-use jormungandr_lib::interfaces::Tally;
 
 pub mod bech32_constants;
 mod committee;
@@ -44,8 +43,8 @@ pub enum Error {
     EncryptedTallyRead,
     #[error("failed to read decryption key bytes")]
     DecryptionKeyRead,
-    #[error("expected encrypted private tally, found {found:?}")]
-    PrivateTallyExpected { found: Option<Tally> },
+    #[error("expected encrypted private tally, found {found}")]
+    PrivateTallyExpected { found: &'static str },
     #[error(transparent)]
     TallyError(#[from] chain_vote::TallyError),
     #[error(transparent)]

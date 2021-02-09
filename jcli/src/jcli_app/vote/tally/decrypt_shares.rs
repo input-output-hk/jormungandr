@@ -49,8 +49,9 @@ pub struct TallyVotePlanWithAllShares {
     /// The minimum number of shares needed for decryption
     #[structopt(long, default_value = "3")]
     threshold: usize,
-    /// The path to json-encoded necessary base64 shares. If this parameter is not
-    /// specified, the shares will be read from the standard input.
+    /// The path to a JSON file containing decryption shares necessary to decrypt
+    /// the vote plan. If this parameter is not specified, the shares will be read
+    /// from the standard input.
     #[structopt(long)]
     shares: Option<PathBuf>,
     #[structopt(flatten)]
@@ -130,7 +131,14 @@ impl TallyVotePlanWithAllShares {
                     max_stake = std::cmp::max(total_stake.into(), max_stake);
                     encrypted_tallies.push(encrypted_tally.into_bytes());
                 }
-                other => return Err(Error::PrivateTallyExpected { found: other }),
+                other => {
+                    let found = match other {
+                        Some(Tally::Public { .. }) => "public tally",
+                        Some(Tally::Private { .. }) => "private decrypted tally",
+                        None => "none",
+                    };
+                    return Err(Error::PrivateTallyExpected { found });
+                }
             }
         }
         let table = chain_vote::TallyOptimizationTable::generate(max_stake);
