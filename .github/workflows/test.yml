@@ -100,17 +100,26 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-        flags: ['', '--release']
+        release: [true, false]
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            flags: ''
+            release: false
             toolchain: nightly
     env:
       RUSTFLAGS: -D warnings
       RUST_BACKTRACE: 1
       CARGO_FLAGS: --verbose --locked
     steps:
+      - name: Setup release environment
+        if: ${{ matrix.release }}
+        shell: bash
+        run: |
+          echo <<EOF >>$GITHUB_ENV
+          RUSTFLAGS=$RUSTFLAGS -C lto=no
+          CARGO_FLAGS=$CARGO_FLAGS --release
+          EOF
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
@@ -140,35 +149,35 @@ jobs:
         timeout-minutes: 30
         with:
           command: build
-          args: -p jormungandr ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
+          args: -p jormungandr ${{ env.CARGO_FLAGS }}
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
         timeout-minutes: 30
         with:
           command: build
-          args: -p jcli ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
+          args: -p jcli ${{ env.CARGO_FLAGS }}
 
       - name: Build tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 30
         with:
           command: build
-          args: --tests ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
+          args: --tests ${{ env.CARGO_FLAGS }}
 
       - name: Build scenario tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 30
         with:
           command: build
-          args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
+          args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }}
 
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 30
         with:
           command: test
-          args: --tests ${{ env.CARGO_FLAGS }} ${{ matrix.flags }}
+          args: --tests ${{ env.CARGO_FLAGS }}
 
   lints:
     name: Lints
