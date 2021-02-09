@@ -1,6 +1,6 @@
 use super::Error;
 use crate::jcli_app::utils::io;
-use crate::jcli_app::utils::vote::{self, SingleMemberVotePlanShares, VotePlanDecryptShares};
+use crate::jcli_app::utils::vote::{self, MemberVotePlanShares, VotePlanDecryptShares};
 use bech32::FromBase32;
 use chain_vote::{EncryptedTally, OpeningVoteKey};
 use jormungandr_lib::crypto::hash::Hash;
@@ -112,7 +112,7 @@ impl TallyGenerateVotePlanDecryptionShares {
             .collect::<Vec<_>>();
         println!(
             "{}",
-            serde_json::to_value(SingleMemberVotePlanShares::from(shares))?
+            serde_json::to_value(MemberVotePlanShares::from(shares))?
         );
         Ok(())
     }
@@ -124,7 +124,7 @@ impl MergeShares {
             .shares
             .iter()
             .map(|path| Ok(serde_json::from_reader(io::open_file_read(&Some(path))?)?))
-            .collect::<Result<Vec<SingleMemberVotePlanShares>, Error>>()?;
+            .collect::<Result<Vec<MemberVotePlanShares>, Error>>()?;
         let vote_plan_shares = VotePlanDecryptShares::try_from(shares)?;
         println!("{}", serde_json::to_string(&vote_plan_shares)?);
         Ok(())

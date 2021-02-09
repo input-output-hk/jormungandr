@@ -77,7 +77,7 @@ pub struct TallyDecryptShare(#[serde(with = "serde_base64_bytes")] Vec<u8>);
 
 // Set of shares (belonging to a single committee member) for the decryption of a vote plan
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SingleMemberVotePlanShares(Vec<TallyDecryptShare>);
+pub struct MemberVotePlanShares(Vec<TallyDecryptShare>);
 
 // Set of decrypt shares (belonging to different committee members)
 // that decrypts a vote plan
@@ -92,7 +92,7 @@ impl TryFrom<TallyDecryptShare> for chain_vote::TallyDecryptShare {
     }
 }
 
-impl From<Vec<chain_vote::TallyDecryptShare>> for SingleMemberVotePlanShares {
+impl From<Vec<chain_vote::TallyDecryptShare>> for MemberVotePlanShares {
     fn from(shares: Vec<chain_vote::TallyDecryptShare>) -> Self {
         Self(
             shares
@@ -103,9 +103,9 @@ impl From<Vec<chain_vote::TallyDecryptShare>> for SingleMemberVotePlanShares {
     }
 }
 
-impl TryFrom<Vec<SingleMemberVotePlanShares>> for VotePlanDecryptShares {
+impl TryFrom<Vec<MemberVotePlanShares>> for VotePlanDecryptShares {
     type Error = SharesError;
-    fn try_from(shares: Vec<SingleMemberVotePlanShares>) -> Result<Self, Self::Error> {
+    fn try_from(shares: Vec<MemberVotePlanShares>) -> Result<Self, Self::Error> {
         let shares = shares.into_iter().map(|s| s.0).collect::<Vec<_>>();
         if shares.is_empty() {
             return Err(SharesError::Empty);
