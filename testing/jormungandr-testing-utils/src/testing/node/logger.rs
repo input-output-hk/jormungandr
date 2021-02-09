@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use crate::testing::Timestamp;
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
+use serde::de::Error;
 use std::collections::HashMap;
 
 #[derive(Debug, Error)]
@@ -54,6 +55,37 @@ pub struct LogEntry {
     #[serde(alias = "timestamp")]
     pub ts: String,
     pub fields: Fields,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LogEntryLegacy {
+    pub level: Level,
+    pub ts: String,
+    pub msg: String,
+    pub task: Option<String>,
+    pub hash: Option<String>,
+    pub reason: Option<String>,
+    pub error: Option<String>,
+    pub block_date: Option<String>,
+    pub peer_addr: Option<String>,
+}
+
+impl From<LogEntryLegacy> for LogEntry {
+    fn from(log_entry: LogEntryLegacy) -> Self {
+        Self {
+            level: log_entry.level,
+            ts: log_entry.ts,
+            fields: Fields {
+                msg: log_entry.msg,
+                task: log_entry.task,
+                hash: log_entry.hash,
+                reason: log_entry.reason,
+                error: log_entry.error,
+                block_date: log_entry.block_date,
+                peer_addr: log_entry.peer_addr,
+            },
+        }
+    }
 }
 
 impl LogEntry {
@@ -210,11 +242,17 @@ impl JormungandrLogger {
     }
 
     fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
+        // try legacy log first
+        let legacy_entry: Result<LogEntryLegacy, _> = serde_json::from_str(line);
+        if let Ok(result) = legacy_entry {
+            return Ok(result.into());
+        }
+        // parse and aggregate spans fields
         let mut jsonize_entry: serde_json::Value = serde_json::from_str(&line)?;
         let mut aggreagated: HashMap<String, serde_json::Value> = HashMap::new();
-        if let Some(fields) = jsonize_entry.get_mut("fields") {
+        if let Some(fields) = jsonize_entry.get("fields") {
             // main span "fields" is ensured be an object, it is safe to unwrap here
-            for (k, v) in fields.take().as_object().unwrap().iter() {
+            for (k, v) in fields.as_object().unwrap().iter() {
                 aggreagated.insert(k.clone(), v.clone());
             }
         }
@@ -234,7 +272,10 @@ impl JormungandrLogger {
                 }
             }
         }
-        *jsonize_entry.get_mut("fields").unwrap() = serde_json::to_value(aggreagated)?;
+        *(jsonize_entry
+            .get_mut("fields")
+            .ok_or_else(|| serde_json::error::Error::custom("Could not get mutable `fields`"))?) =
+            serde_json::to_value(aggreagated)?;
         serde_json::from_value(jsonize_entry)
     }
 

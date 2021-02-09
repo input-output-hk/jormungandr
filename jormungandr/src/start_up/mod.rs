@@ -12,7 +12,7 @@ use crate::{
 
 /// prepare the block storage from the given settings
 pub fn prepare_storage(setting: &Settings) -> Result<Storage, Error> {
-    let span = span!(Level::TRACE, "sub_task", name = "storage");
+    let span = span!(Level::TRACE, "sub_task", kind = "storage");
     let storage_span = span.clone();
     let _enter = span.enter();
     if let Some(dir) = &setting.storage {
