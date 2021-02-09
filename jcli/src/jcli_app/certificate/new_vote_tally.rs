@@ -93,7 +93,14 @@ impl PrivateTally {
                     decrypt_shares: shares.into_boxed_slice(),
                     tally_result: result.results().into_boxed_slice(),
                 }),
-                other => Err(Error::PrivateTallyExpected { found: other }),
+                other => {
+                    let found = match other {
+                        Some(Tally::Public { .. }) => "public tally",
+                        Some(Tally::Private { .. }) => "private encrypted tally",
+                        None => "none",
+                    };
+                    Err(Error::PrivateTallyExpected { found })
+                }
             })
             .collect::<Result<Vec<_>, Error>>()?;
         let vote_tally =
