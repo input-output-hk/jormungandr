@@ -17,6 +17,7 @@ use crate::{
     settings::start::Settings,
     utils::{async_msg, task::Services},
 };
+use chain_impl_mockchain::leadership::LeadershipConsensus;
 use futures::executor::block_on;
 use futures::prelude::*;
 use jormungandr_lib::interfaces::NodeState;
@@ -186,19 +187,45 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     }
 
-    let leader_secrets: Result<Vec<Leader>, start_up::Error> = bootstrapped_node
+    let bft_leaders = block_on(async {
+        if let LeadershipConsensus::Bft(data) = blockchain_tip
+            .get_ref()
+            .await
+            .epoch_leadership_schedule()
+            .consensus()
+        {
+            Some(
+                data.leaders()
+                    .iter()
+                    .map(|k| k.as_public_key().clone())
+                    .collect::<Vec<_>>(),
+            )
+        } else {
+            None
+        }
+    });
+    let leader_secrets = bootstrapped_node
         .settings
         .secrets
         .iter()
         .map(|secret_path| {
             let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
+            if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
+                let public_key = &leader.sig_key.to_public();
+                if !leaders.contains(&public_key) {
+                    tracing::warn!(
+                        "node was started with a BFT secret key but the corresponding \
+                        public key {} is not listed among consensus leaders",
+                        public_key
+                    );
+                }
+            };
             Ok(Leader {
                 bft_leader: secret.bft(),
                 genesis_leader: secret.genesis(),
             })
         })
-        .collect();
-    let leader_secrets = leader_secrets?;
+        .collect::<Result<Vec<Leader>, start_up::Error>>()?;
     let n_pools = leader_secrets.len();
     let enclave = block_on(Enclave::from_vec(leader_secrets));
 
