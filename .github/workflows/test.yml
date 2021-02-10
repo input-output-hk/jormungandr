@@ -115,10 +115,8 @@ jobs:
         if: ${{ matrix.release }}
         shell: bash
         run: |
-          echo <<EOF >>$GITHUB_ENV
-          RUSTFLAGS=$RUSTFLAGS -C lto=no
-          CARGO_FLAGS=$CARGO_FLAGS --release
-          EOF
+          echo "RUSTFLAGS=$RUSTFLAGS -C lto=no" >> $GITHUB_ENV
+          echo "CARGO_FLAGS=$CARGO_FLAGS --release" >> $GITHUB_ENV
 
       - uses: actions-rs/toolchain@v1
         with:
