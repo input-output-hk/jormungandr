@@ -15,7 +15,10 @@ pub(crate) use self::sign::{
     pool_owner_sign, stake_delegation_account_binding_sign,
 };
 
-use crate::jcli_app::utils::{io, key_parser};
+use crate::jcli_app::utils::{
+    io, key_parser,
+    vote::{SharesError, VotePlanError},
+};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
 use std::{
@@ -100,10 +103,14 @@ pub enum Error {
     InvalidBech32Key { expected: String, actual: String },
     #[error("invalid shares JSON representation")]
     InvalidJson(#[from] serde_json::Error),
-    #[error("invalid binary share data")]
-    InvalidBinaryShare,
     #[error("private vote plans `committee_public_keys` cannot be empty")]
     InvalidPrivateVotePlanCommitteeKeys,
+    #[error(transparent)]
+    VotePlanError(#[from] VotePlanError),
+    #[error(transparent)]
+    SharesError(#[from] SharesError),
+    #[error("expected decrypted private tally, found {found}")]
+    PrivateTallyExpected { found: &'static str },
 }
 
 #[allow(clippy::large_enum_variant)]
