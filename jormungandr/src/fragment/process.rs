@@ -1,5 +1,5 @@
 use crate::{
-    fragment::{Logs, Pool},
+    fragment::{Logs, Pools},
     intercom::{NetworkMsg, TransactionMsg},
     stats_counter::StatsCounter,
     utils::{
@@ -44,7 +44,7 @@ impl Process {
         stats_counter: StatsCounter,
         mut input: MessageQueue<TransactionMsg>,
     ) -> Result<(), Error> {
-        let mut pool = Pool::new(
+        let mut pool = Pools::new(
             self.pool_max_entries,
             n_pools,
             self.logs,

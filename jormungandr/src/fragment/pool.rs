@@ -15,7 +15,7 @@ use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 use thiserror::Error;
 
-pub struct Pool {
+pub struct Pools {
     logs: Logs,
     pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
@@ -28,7 +28,7 @@ pub enum Error {
     CannotPropagate(#[source] SendError),
 }
 
-impl Pool {
+impl Pools {
     pub fn new(
         max_entries: usize,
         n_pools: usize,
@@ -39,7 +39,7 @@ impl Pool {
         let pools = (0..=n_pools)
             .map(|_| internal::Pool::new(max_entries))
             .collect();
-        Pool {
+        Pools {
             logs,
             pools,
             network_msg_box,
@@ -117,7 +117,7 @@ impl Pool {
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
     ) -> Contents {
-        let Pool { logs, pools, .. } = self;
+        let Pools { logs, pools, .. } = self;
         let pool = &mut pools[pool_idx];
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
