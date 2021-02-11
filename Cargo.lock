@@ -407,7 +407,7 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#d0
 dependencies = [
  "cbor_event",
  "chain-ser",
- "cryptoxide 0.3.0",
+ "cryptoxide",
  "ed25519-bip32",
 ]
 
@@ -465,7 +465,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
- "cryptoxide 0.3.0",
+ "cryptoxide",
  "quickcheck",
 ]
 
@@ -484,7 +484,7 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#d0
 dependencies = [
  "bech32",
  "cfg-if 1.0.0",
- "cryptoxide 0.3.0",
+ "cryptoxide",
  "curve25519-dalek",
  "digest 0.9.0",
  "ed25519-bip32",
@@ -586,7 +586,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#d081f0bebc32cedc56dc867177e78abf23c91038"
 dependencies = [
- "cryptoxide 0.3.0",
+ "cryptoxide",
  "eccoxide",
  "rand_core 0.5.1",
  "rayon",
@@ -807,15 +807,9 @@ dependencies = [
 
 [[package]]
 name = "cryptoxide"
-version = "0.2.1"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da24927b5b899890bcb29205436c957b7892ec3a3fbffce81d710b9611e77778"
-
-[[package]]
-name = "cryptoxide"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2824e117f942b77e942b14162316711d66f07d14b0f37a44fa4b4cad592b8fa"
+checksum = "d72d614cd84f5e3a5611f09abcf5cc2fe07a37bf05ff864b85119ea61db9f5fe"
 
 [[package]]
 name = "csv"
@@ -1012,7 +1006,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8827180a2b511141fbe49141e50b31a8d542465e0fb572f81f36feea2addfe92"
 dependencies = [
- "cryptoxide 0.3.0",
+ "cryptoxide",
 ]
 
 [[package]]
@@ -4002,9 +3996,9 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 [[package]]
 name = "symmetric-cipher"
 version = "0.5.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#250973e0d8d988bd6ef3403912f1ea1b7d584dbd"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#456bdff178d45ad55c1d74db77db59a67500c25c"
 dependencies = [
- "cryptoxide 0.2.1",
+ "cryptoxide",
  "rand 0.7.3",
  "thiserror",
 ]
