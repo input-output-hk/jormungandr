@@ -52,7 +52,7 @@ slog-async = "2.5.0"
 slog-gelf = { version = "0.1.2", optional = true }
 slog-journald = { version = "2.1.1", optional = true }
 slog-json = "2.3.0"
-slog-term = "2.6.0"
+slog-term = "2.8.0"
 structopt = "^0.3"
 thiserror = "1.0.21"
 tokio = { version = "^1.0", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
