@@ -189,7 +189,7 @@ impl ExplorerDB {
         let epochs = apply_block_to_epochs(Epochs::new(), &block);
         let chain_lengths = apply_block_to_chain_lengths(ChainLengths::new(), &block)?;
         let transactions = apply_block_to_transactions(Transactions::new(), &block)?;
-        let addresses = apply_block_to_addresses(Addresses::new(), &block)?;
+        let addresses = apply_block_to_addresses(Addresses::new(), &block);
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
         let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &blockchain_tip, &block);
@@ -306,7 +306,7 @@ impl ExplorerDB {
                 State {
                     transactions: apply_block_to_transactions(transactions, &explorer_block)?,
                     blocks: apply_block_to_blocks(blocks, &explorer_block)?,
-                    addresses: apply_block_to_addresses(addresses, &explorer_block)?,
+                    addresses: apply_block_to_addresses(addresses, &explorer_block),
                     epochs: apply_block_to_epochs(epochs, &explorer_block),
                     chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                     stake_pool_data,
@@ -483,7 +483,7 @@ fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks
         .map_err(|_| Error::BlockAlreadyExists(block_id))
 }
 
-fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> Result<Addresses> {
+fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> Addresses {
     let transactions = block.transactions.values();
 
     for tx in transactions {
@@ -510,7 +510,7 @@ fn apply_block_to_addresses(mut addresses: Addresses, block: &ExplorerBlock) -> 
             )
         }
     }
-    Ok(addresses)
+    addresses
 }
 
 fn apply_block_to_epochs(epochs: Epochs, block: &ExplorerBlock) -> Epochs {

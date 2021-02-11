@@ -46,7 +46,10 @@ pub enum Error {
 impl Genesis {
     pub fn exec(self) -> Result<(), Error> {
         match self {
-            Genesis::Init => init_genesis_yaml(),
+            Genesis::Init => {
+                init_genesis_yaml();
+                Ok(())
+            }
             Genesis::Encode(create_arguments) => encode_block_0(create_arguments),
             Genesis::Decode(info_arguments) => decode_block_0(info_arguments),
             Genesis::Hash(hash_arguments) => print_hash(hash_arguments),
@@ -54,9 +57,8 @@ impl Genesis {
     }
 }
 
-fn init_genesis_yaml() -> Result<(), Error> {
+fn init_genesis_yaml() {
     println!("{}", block0_configuration_documented_example());
-    Ok(())
 }
 
 fn encode_block_0(common: Common) -> Result<(), Error> {
