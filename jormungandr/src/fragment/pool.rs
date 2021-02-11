@@ -85,18 +85,20 @@ impl Pool {
                 .iter()
                 .map(move |fragment| FragmentLog::new(fragment.id(), origin))
                 .collect::<Vec<_>>();
-            for fragment in new_fragments.into_iter() {
-                let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
-                network_msg_box
-                    .send(fragment_msg)
-                    .await
-                    .map_err(Error::CannotPropagate)?;
-            }
             self.logs.insert_all(fragment_logs);
             if count > max_added {
                 max_added = count;
             }
         }
+
+        for fragment in new_fragments.into_iter() {
+            let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
+            network_msg_box
+                .send(fragment_msg)
+                .await
+                .map_err(Error::CannotPropagate)?;
+        }
+
         Ok(max_added)
     }
 
