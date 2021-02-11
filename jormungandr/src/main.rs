@@ -574,8 +574,6 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         None => None,
     };
 
-    let storage = start_up::prepare_storage(&settings)?;
-
     // TODO: load network module here too (if needed)
 
     if let Some(context) = rest_context.as_ref() {
