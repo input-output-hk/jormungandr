@@ -87,6 +87,10 @@ impl FragmentLog {
     /// set the new status
     #[inline]
     pub fn modify(&mut self, new_status: FragmentStatus) {
+        // we must not be able to transition from InABlock to Pending or Rejected
+        if self.status.is_in_a_block() && !new_status.is_in_a_block() {
+            return;
+        }
         self.status = new_status;
         self.last_updated_at = SystemTime::now();
     }
