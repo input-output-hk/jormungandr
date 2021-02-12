@@ -36,7 +36,7 @@ const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfull
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Fields {
-    #[serde(alias = "message")]
+    #[serde(alias = "message", default = "String::new")]
     pub msg: String,
     #[serde(alias = "kind")]
     pub task: Option<String>,
