@@ -5,14 +5,17 @@
   outputs = { self, nixpkgs, utils }:
   utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
   let
+    cargoPackage =
+      (builtins.fromTOML (builtins.readFile ./jormungandr/Cargo.toml)).package;
+
     overlay = self: super: {
       jormungandr = self.callPackage (
         { lib, rustPlatform, fetchFromGitHub, pkg-config, openssl, protobuf, rustfmt }:
         rustPlatform.buildRustPackage rec {
-          pname = "jormungandr";
-          version = "HEAD";
+          pname = cargoPackage.name;
+          version = cargoPackage.version;
           src = ./.;
-          cargoSha256 = "sha256-D6eLH8ZSejdc8mKnJdAJ+6PeFXUMVTDNhTA4Lfk+qU8=";
+          cargoSha256 = "sha256-rfgmtKweYxk8BELv2YoF3BsGfdGlQGP8HNLE4xklDHs=";
           nativeBuildInputs = [ pkg-config protobuf rustfmt ];
           buildInputs = [ openssl ];
           configurePhase =''
