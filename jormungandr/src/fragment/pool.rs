@@ -104,7 +104,7 @@ impl Pools {
 
     pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
         for pool in &mut self.pools {
-            pool.remove_all(fragment_ids.iter().cloned());
+            pool.remove_all(fragment_ids.iter());
         }
         self.logs.modify_all(fragment_ids, status);
     }
@@ -192,9 +192,9 @@ pub(super) mod internal {
                 .collect()
         }
 
-        pub fn remove_all(&mut self, fragment_ids: impl IntoIterator<Item = FragmentId>) {
+        pub fn remove_all<'a>(&mut self, fragment_ids: impl IntoIterator<Item = &'a FragmentId>) {
             for fragment_id in fragment_ids {
-                self.entries.pop(&fragment_id);
+                self.entries.pop(fragment_id);
             }
         }
 
