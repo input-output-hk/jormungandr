@@ -176,7 +176,7 @@ fn do_for_all_alias<F: Fn(&NodeController), G: Fn(&LegacyNodeController)>(
     legacy_nodes: &[LegacyNodeController],
     f: F,
     g: G,
-) -> Result<()> {
+) {
     if let Some(alias) = alias {
         if let Some(node) = nodes.iter().find(|x| *x.alias() == *alias) {
             f(node);
@@ -184,7 +184,7 @@ fn do_for_all_alias<F: Fn(&NodeController), G: Fn(&LegacyNodeController)>(
         if let Some(node) = legacy_nodes.iter().find(|x| *x.alias() == *alias) {
             g(node)
         }
-        return Ok(());
+        return;
     }
 
     for node in nodes.iter() {
@@ -193,5 +193,4 @@ fn do_for_all_alias<F: Fn(&NodeController), G: Fn(&LegacyNodeController)>(
     for node in legacy_nodes.iter() {
         g(node);
     }
-    Ok(())
 }

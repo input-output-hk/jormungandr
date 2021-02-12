@@ -325,7 +325,7 @@ impl Module {
 
             Ok(self)
         } else {
-            let right_time = entry.instant(&self)?;
+            let right_time = entry.instant(&self);
 
             if let Some(right_time) = right_time {
                 warn!(
@@ -618,10 +618,10 @@ impl Module {
 }
 
 impl Entry {
-    fn instant(&self, module: &Module) -> Result<Option<Instant>, LeadershipError> {
+    fn instant(&self, module: &Module) -> Option<Instant> {
         let epoch = Epoch(self.event.date.epoch);
         let slot = EpochSlotOffset(self.event.date.slot_id);
-        Ok(module.slot_instant(epoch, slot))
+        module.slot_instant(epoch, slot)
     }
 }
 

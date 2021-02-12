@@ -1,5 +1,4 @@
 use super::{do_for_all_alias, UserInteractionController};
-use crate::test::Result;
 use jormungandr_testing_utils::testing::node::JormungandrLogger;
 use structopt::StructOpt;
 
@@ -70,7 +69,7 @@ pub struct ActiveVotePlans {
 }
 
 impl ActiveVotePlans {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
@@ -94,20 +93,19 @@ pub struct ShowStatus {
 }
 
 impl ShowStatus {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
             controller.legacy_nodes(),
             |node| println!("{} is up", node.alias()),
             |node| println!("{} is up", node.alias()),
-        )?;
-        Ok(())
+        )
     }
 }
 
 impl ShowFragmentCount {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
@@ -125,7 +123,7 @@ impl ShowFragmentCount {
 }
 
 impl ShowFragments {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
@@ -143,7 +141,7 @@ impl ShowFragments {
 }
 
 impl ShowBlockHeight {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
@@ -167,7 +165,7 @@ impl ShowBlockHeight {
 }
 
 impl ShowPeerStats {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
@@ -179,7 +177,7 @@ impl ShowPeerStats {
 }
 
 impl ShowNodeStats {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
@@ -227,7 +225,7 @@ fn show_logs_for(
 }
 
 impl ShowLogs {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         do_for_all_alias(
             &self.alias,
             controller.nodes(),
@@ -255,7 +253,7 @@ impl ShowLogs {
 }
 
 impl Show {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) {
         match self {
             Show::Status(status) => status.exec(controller),
             Show::Stats(stats) => stats.exec(controller),

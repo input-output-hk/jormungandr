@@ -282,7 +282,7 @@ where
                     lower_bound,
                 } = total_elements;
 
-                let page = compute_range_boundaries(total_elements, pagination_arguments)?;
+                let page = compute_range_boundaries(total_elements, pagination_arguments);
 
                 let has_next_page = page.upper_bound < upper_bound;
                 let has_previous_page = page.lower_bound > lower_bound;
@@ -313,11 +313,10 @@ where
                     },
                 )
             })
-            .map_err(|_| "computed page interval is outside pagination boundaries")
-            .unwrap())
+            .map_err(|_| "computed page interval is outside pagination boundaries")?)
     }
 
-    fn from_vec<I>(v: Vec<(E::Node, I)>, page_meta: PageMeta) -> FieldResult<Connection<E, C>>
+    fn from_vec<I>(v: Vec<(E::Node, I)>, page_meta: PageMeta) -> Connection<E, C>
     where
         I: TryFrom<u64> + Clone,
         IndexCursor: From<I>,
@@ -341,7 +340,7 @@ where
             total_count,
         } = page_meta;
 
-        Ok(Connection {
+        Connection {
             edges,
             page_info: PageInfo {
                 has_next_page,
@@ -350,7 +349,7 @@ where
                 end_cursor,
             },
             total_count: total_count.into(),
-        })
+        }
     }
 
     pub async fn new_async<I, F>(
@@ -366,7 +365,7 @@ where
     {
         let (interval, page_meta) = Self::compute_interval(bounds, pagination_arguments)?;
         let vec = get_node_range(interval).await;
-        Self::from_vec(vec, page_meta)
+        Ok(Self::from_vec(vec, page_meta))
     }
 
     pub fn new<I>(
@@ -381,7 +380,7 @@ where
     {
         let (interval, page_meta) = Self::compute_interval(bounds, pagination_arguments)?;
         let vec = get_node_range(interval);
-        Self::from_vec(vec, page_meta)
+        Ok(Self::from_vec(vec, page_meta))
     }
 }
 
@@ -466,7 +465,7 @@ impl Edge for VoteStatusEdge {
 fn compute_range_boundaries(
     total_elements: InclusivePaginationInterval<u64>,
     pagination_arguments: ValidatedPaginationArguments<u64>,
-) -> FieldResult<InclusivePaginationInterval<u64>>
+) -> InclusivePaginationInterval<u64>
 where
 {
     use std::cmp::{max, min};
@@ -510,10 +509,10 @@ where
         );
     }
 
-    Ok(InclusivePaginationInterval {
+    InclusivePaginationInterval {
         lower_bound: from,
         upper_bound: to,
-    })
+    }
 }
 
 impl<I> PaginationArguments<I> {

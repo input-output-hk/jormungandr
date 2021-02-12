@@ -89,7 +89,10 @@ impl InteractiveCommandExec for JormungandrInteractiveCommandExec {
             Ok(interactive) => {
                 if let Err(err) = {
                     match interactive {
-                        InteractiveCommand::Show(show) => show.exec(&mut self.controller),
+                        InteractiveCommand::Show(show) => {
+                            show.exec(&mut self.controller);
+                            Ok(())
+                        }
                         InteractiveCommand::Spawn(spawn) => spawn.exec(&mut self.controller),
                         InteractiveCommand::Exit => Ok(()),
                         InteractiveCommand::Describe(describe) => {
