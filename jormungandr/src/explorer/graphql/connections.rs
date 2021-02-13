@@ -1,15 +1,5 @@
-use super::scalars::{IndexCursor, TransactionCount, VotePlanCount, VoteStatusCount};
-use super::{Block, Context, Pool, Transaction, VotePlanStatus, VoteStatus};
-use crate::blockcfg::HeaderHash;
 use async_graphql::*;
 use std::convert::TryFrom;
-
-pub struct PageInfo {
-    pub has_next_page: bool,
-    pub has_previous_page: bool,
-    pub start_cursor: Option<IndexCursor>,
-    pub end_cursor: Option<IndexCursor>,
-}
 
 pub struct ValidatedPaginationArguments<I> {
     pub first: Option<usize>,

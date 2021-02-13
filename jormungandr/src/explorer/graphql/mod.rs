@@ -1754,11 +1754,11 @@ impl Query {
         .await
     }
 
-    pub async fn epoch(&self, context: &Context<'_>, id: EpochNumber) -> FieldResult<Epoch> {
+    pub async fn epoch(&self, _context: &Context<'_>, id: EpochNumber) -> FieldResult<Epoch> {
         Epoch::from_epoch_number(id)
     }
 
-    pub async fn address(&self, context: &Context<'_>, bech32: String) -> FieldResult<Address> {
+    pub async fn address(&self, _context: &Context<'_>, bech32: String) -> FieldResult<Address> {
         Address::from_bech32(&bech32)
     }
 
@@ -1775,7 +1775,7 @@ impl Query {
         .await
     }
 
-    pub async fn settings(&self, context: &Context<'_>) -> FieldResult<Settings> {
+    pub async fn settings(&self, _context: &Context<'_>) -> FieldResult<Settings> {
         Ok(Settings {})
     }
 
