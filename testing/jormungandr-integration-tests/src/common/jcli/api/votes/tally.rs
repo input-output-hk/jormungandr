@@ -29,19 +29,12 @@ impl Tally {
     pub fn decrypt_with_shares<P: AsRef<Path>, R: AsRef<Path>>(
         self,
         encrypted_tally: P,
-        vote_stake_limit: u64,
+        max_votes: u64,
         shares: R,
-        tablesize: u32,
         threshold: u32,
     ) -> String {
         self.tally_command
-            .decrypt_with_shares(
-                encrypted_tally,
-                vote_stake_limit,
-                shares,
-                tablesize,
-                threshold,
-            )
+            .decrypt_with_shares(encrypted_tally, max_votes, shares, threshold)
             .build()
             .assert()
             .success()

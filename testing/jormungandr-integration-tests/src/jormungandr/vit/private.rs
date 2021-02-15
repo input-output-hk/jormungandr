@@ -220,6 +220,11 @@ pub fn jcli_e2e_flow_private_vote() {
     let vote_tally = jormungandr.rest().vote_plan_statuses().unwrap();
     let vote_tally_file = temp_dir.child("vote_tally_proposal_0.yaml");
 
+    let vote_plan_status = temp_dir.child("vote_plan_status.json");
+    vote_plan_status
+        .write_str(&serde_json::to_string(&vote_tally).unwrap())
+        .unwrap();
+
     let encrypted_tally = match vote_tally
         .get(0)
         .unwrap()
@@ -257,7 +262,6 @@ pub fn jcli_e2e_flow_private_vote() {
         3_000_000,
         decryption_share_file.path(),
         1,
-        1,
     );
 
     println!("{:#?}", generated_share);
@@ -289,9 +293,11 @@ pub fn jcli_e2e_flow_private_vote() {
         (wallet_initial_funds)
     );*/
 
-    let vote_tally_cert = jcli
-        .certificate()
-        .new_private_vote_tally(vote_plan_id, shares_file.path());
+    let vote_tally_cert = jcli.certificate().new_private_vote_tally(
+        &vote_plan_status.path(),
+        vote_plan_id,
+        shares_file.path(),
+    );
 
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
