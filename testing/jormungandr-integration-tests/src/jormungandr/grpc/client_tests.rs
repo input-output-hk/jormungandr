@@ -164,6 +164,7 @@ pub async fn pull_blocks_to_tip_correct_hash() {
 
 // L1014 PullBlocksToTip incorrect hash
 #[tokio::test]
+#[ignore]
 pub async fn pull_blocks_to_tip_incorrect_hash() {
     let fixture = Fixture::new(1);
     let (server, config) = fixture.bootstrap_node();
@@ -222,6 +223,7 @@ pub async fn pull_headers_incorrect_hash() {
 
 // L1019A Pull headers empty hash
 #[tokio::test]
+#[ignore]
 pub async fn pull_headers_empty_start_hash() {
     let fixture = Fixture::new(1);
     let (server, config) = fixture.bootstrap_node();
