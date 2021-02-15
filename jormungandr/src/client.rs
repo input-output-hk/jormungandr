@@ -10,6 +10,7 @@ use tokio::time::timeout;
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 
+use std::convert::identity;
 use std::time::Duration;
 
 const PROCESS_TIMEOUT_GET_BLOCK_TIP: u64 = 5;
@@ -108,22 +109,59 @@ async fn get_block_tip(blockchain_tip: Tip) -> Header {
     tip.header().clone()
 }
 
-async fn handle_get_headers_range(
-    storage: Storage,
-    checkpoints: Vec<HeaderHash>,
-    to: HeaderHash,
-    handle: ReplyStreamHandle<Header>,
-) -> Result<(), ReplySendError> {
-    let res = storage.find_closest_ancestor(checkpoints, to);
-    match res {
-        Ok(maybe_ancestor) => {
-            let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
-            storage
-                .send_branch_with(to, depth, handle, |block| block.header())
-                .await
+fn get_block_from_storage(storage: &Storage, id: HeaderHash) -> Result<Block, Error> {
+    match storage.get(id) {
+        Ok(Some(block)) => Ok(block),
+        Ok(None) => Err(Error::not_found(format!(
+            "block {} is not known to this node",
+            id
+        ))),
+        Err(e) => Err(e.into()),
+    }
+}
+
+async fn fuse_send_items<T, V>(
+    items: T,
+    reply_handle: ReplyStreamHandle<V>,
+) -> Result<(), ReplySendError>
+where
+    T: IntoIterator<Item = Result<V, Error>>,
+{
+    let mut sink = reply_handle.start_sending();
+    for item in items.into_iter() {
+        let err = item.is_err();
+        sink.feed(item).await?;
+        if err {
+            break;
         }
+    }
+    sink.close().await
+}
+
+async fn send_range_from_storage<T, F>(
+    storage: Storage,
+    from: Vec<HeaderHash>,
+    to: HeaderHash,
+    f: F,
+    handle: ReplyStreamHandle<T>,
+) -> Result<(), ReplySendError>
+where
+    F: FnMut(Block) -> T,
+    F: Send + 'static,
+    T: Send + 'static,
+{
+    let closes_ancestor = storage
+        .find_closest_ancestor(from, to)
+        .map_err(Into::into)
+        .and_then(move |maybe_ancestor| {
+            maybe_ancestor
+                .map(|ancestor| (to, ancestor.distance))
+                .ok_or_else(|| Error::not_found("Could not find a known block in `from`"))
+        });
+    match closes_ancestor {
+        Ok((to, depth)) => storage.send_branch_with(to, Some(depth), handle, f).await,
         Err(e) => {
-            handle.reply_error(e.into());
+            handle.reply_error(e);
             Ok(())
         }
     }
@@ -134,23 +172,12 @@ async fn handle_get_blocks(
     ids: Vec<HeaderHash>,
     handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
-    let mut sink = handle.start_sending();
-    for id in ids {
-        let res = match storage.get(id) {
-            Ok(Some(block)) => Ok(block),
-            Ok(None) => Err(Error::not_found(format!(
-                "block {} is not known to this node",
-                id
-            ))),
-            Err(e) => Err(e.into()),
-        };
-        let is_err = res.is_err();
-        sink.send(res).await?;
-        if is_err {
-            break;
-        }
-    }
-    sink.close().await
+    fuse_send_items(
+        ids.into_iter()
+            .map(|id| get_block_from_storage(&storage, id)),
+        handle,
+    )
+    .await
 }
 
 async fn handle_get_headers(
@@ -158,23 +185,21 @@ async fn handle_get_headers(
     ids: Vec<HeaderHash>,
     handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
-    let mut sink = handle.start_sending();
-    for id in ids {
-        let res = match storage.get(id) {
-            Ok(Some(block)) => Ok(block.header()),
-            Ok(None) => Err(Error::not_found(format!(
-                "block {} is not known to this node",
-                id
-            ))),
-            Err(e) => Err(e.into()),
-        };
-        let is_err = res.is_err();
-        sink.send(res).await?;
-        if is_err {
-            break;
-        }
-    }
-    sink.close().await
+    fuse_send_items(
+        ids.into_iter()
+            .map(|id| get_block_from_storage(&storage, id).map(|block| block.header())),
+        handle,
+    )
+    .await
+}
+
+async fn handle_get_headers_range(
+    storage: Storage,
+    from: Vec<HeaderHash>,
+    to: HeaderHash,
+    handle: ReplyStreamHandle<Header>,
+) -> Result<(), ReplySendError> {
+    send_range_from_storage(storage, from, to, |block| block.header(), handle).await
 }
 
 async fn handle_pull_blocks(
@@ -183,44 +208,15 @@ async fn handle_pull_blocks(
     to: HeaderHash,
     handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
-    use crate::intercom::Error as IntercomError;
-
-    let res = storage
-        .find_closest_ancestor(from, to)
-        .map_err(Into::into)
-        .and_then(move |maybe_ancestor| {
-            maybe_ancestor
-                .map(|ancestor| (to, ancestor.distance))
-                .ok_or_else(|| IntercomError::not_found("`from` not found"))
-        });
-    match res {
-        Ok((to, depth)) => storage.send_branch(to, Some(depth), handle).await,
-        Err(e) => {
-            handle.reply_error(e);
-            Ok(())
-        }
-    }
+    send_range_from_storage(storage, from, to, identity, handle).await
 }
 
 async fn handle_pull_blocks_to_tip(
     storage: Storage,
     blockchain_tip: Tip,
-    checkpoints: Vec<HeaderHash>,
+    from: Vec<HeaderHash>,
     handle: ReplyStreamHandle<Block>,
 ) -> Result<(), ReplySendError> {
-    let tip = blockchain_tip.get_ref().await;
-    let tip_hash = tip.hash();
-    let res = storage
-        .find_closest_ancestor(checkpoints, tip_hash)
-        .map(move |maybe_ancestor| {
-            let depth = maybe_ancestor.map(|ancestor| ancestor.distance);
-            (tip_hash, depth)
-        });
-    match res {
-        Ok((to, depth)) => storage.send_branch(to, depth, handle).await,
-        Err(e) => {
-            handle.reply_error(e.into());
-            Ok(())
-        }
-    }
+    let tip = get_block_tip(blockchain_tip).await.id();
+    send_range_from_storage(storage, from, tip, identity, handle).await
 }
