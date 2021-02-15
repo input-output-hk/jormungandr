@@ -336,9 +336,9 @@ impl Module {
                     })
                     .await;
 
-            Ok(self)
-        } else {
-            let right_time = entry.instant(&self);
+                Ok(self)
+            } else {
+                let right_time = entry.instant(&self);
 
                 if let Some(right_time) = right_time {
                     tracing::warn!(
