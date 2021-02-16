@@ -77,7 +77,7 @@ impl Process {
                         service_info.logger(),
                         "removing fragments added to block {:?}: {:?}", status, fragment_ids
                     );
-                    pool.remove_added_to_block(fragment_ids, status);
+                    pool.remove_added_to_block(fragment_ids, status, service_info.logger());
                 }
                 TransactionMsg::GetLogs(reply_handle) => {
                     let logs = pool.logs().logs().cloned().collect();

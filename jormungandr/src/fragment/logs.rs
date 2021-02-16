@@ -4,6 +4,7 @@ use jormungandr_lib::{
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus},
 };
 use lru::LruCache;
+use slog::Logger;
 use std::collections::HashMap;
 
 pub struct Logs {
@@ -48,11 +49,13 @@ impl Logs {
             .count()
     }
 
-    pub fn modify(&mut self, fragment_id: FragmentId, status: FragmentStatus) {
+    pub fn modify(&mut self, fragment_id: FragmentId, status: FragmentStatus, logger: &Logger) {
         let fragment_id: Hash = fragment_id.into();
         match self.entries.get_mut(&fragment_id) {
             Some(entry) => {
-                entry.modify(status);
+                if !entry.modify(status) {
+                    debug!(logger, "the fragment log update was refused: cannot mark the fragment as invalid if it was already committed to a block");
+                }
             }
             None => {
                 // while a log modification, if the log was not already present in the
@@ -72,9 +75,10 @@ impl Logs {
         &mut self,
         fragment_ids: impl IntoIterator<Item = FragmentId>,
         status: FragmentStatus,
+        logger: &Logger,
     ) {
         for fragment_id in fragment_ids {
-            self.modify(fragment_id, status.clone());
+            self.modify(fragment_id, status.clone(), logger);
         }
     }
 

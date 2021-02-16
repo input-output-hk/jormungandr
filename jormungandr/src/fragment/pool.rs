@@ -102,11 +102,16 @@ impl Pools {
         Ok(max_added)
     }
 
-    pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
+    pub fn remove_added_to_block(
+        &mut self,
+        fragment_ids: Vec<FragmentId>,
+        status: FragmentStatus,
+        logger: &Logger,
+    ) {
         for pool in &mut self.pools {
             pool.remove_all(fragment_ids.iter());
         }
-        self.logs.modify_all(fragment_ids, status);
+        self.logs.modify_all(fragment_ids, status, logger);
     }
 
     pub fn select(

@@ -82,7 +82,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     fragment_size, ledger_params.block_content_max_size
                 );
                 debug!(logger, "{}", reason);
-                logs.modify(id, FragmentStatus::Rejected { reason });
+                logs.modify(id, FragmentStatus::Rejected { reason }, &logger);
                 continue;
             }
 
@@ -104,7 +104,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                             msg.push_str(&e.to_string());
                         }
                         debug!(logger, "fragment is rejected"; "error" => ?error);
-                        logs.modify(id, FragmentStatus::Rejected { reason: msg })
+                        logs.modify(id, FragmentStatus::Rejected { reason: msg }, &logger)
                     }
                 }
 
