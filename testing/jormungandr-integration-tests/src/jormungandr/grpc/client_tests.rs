@@ -146,7 +146,6 @@ pub async fn pull_blocks_to_tip_correct_hash() {
 
 // Disable until the error returned from gRPC methods is stabilized
 #[tokio::test]
-#[ignore]
 pub async fn pull_range_invalid_params() {
     let setup = setup::client::default().await;
 
@@ -155,7 +154,9 @@ pub async fn pull_range_invalid_params() {
     let client = setup.client;
     let tip_hash = client.tip().await.hash();
     let fake_hash = TestGen::hash();
-    let error = MockClientError::InvalidRequest("not found (block not found)".into());
+    let error = MockClientError::InvalidRequest(
+        "not found (Could not find a known block in `from`)".into(),
+    );
 
     let invalid_params: [(&[Hash], Hash); 3] = [
         (&[], tip_hash),
