@@ -10,7 +10,6 @@ on:
 name: Release
 
 jobs:
-
   create_release:
     name: Create release
     if: >
@@ -136,44 +135,44 @@ jobs:
       matrix:
         config:
           # Linux
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-gnu}
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
           # Macos
-          - {os: macos-latest, target: x86_64-apple-darwin}
+          - { os: macos-latest, target: x86_64-apple-darwin }
         target_cpu: [generic, broadwell]
         toolchain: [stable]
         cross: [false]
         include:
           # Windows
-          - config: {os: windows-latest, target: x86_64-pc-windows-gnu}
+          - config: { os: windows-latest, target: x86_64-pc-windows-msvc }
             target_cpu: generic
             toolchain: stable-x86_64-pc-windows-msvc
             cross: false
-          - config: {os: windows-latest, target: x86_64-pc-windows-msvc}
+          - config: { os: windows-latest, target: x86_64-pc-windows-msvc }
             target_cpu: broadwell
             toolchain: stable-x86_64-pc-windows-msvc
             cross: false
           # Cross targets
-          - config: {os: ubuntu-latest, target: aarch64-unknown-linux-gnu}
+          - config: { os: ubuntu-latest, target: aarch64-unknown-linux-gnu }
             target_cpu: generic
             toolchain: stable
             cross: true
-          - config: {os: ubuntu-latest, target: arm-unknown-linux-gnueabi}
+          - config: { os: ubuntu-latest, target: arm-unknown-linux-gnueabi }
             target_cpu: generic
             toolchain: stable
             cross: true
-          - config: {os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf}
+          - config: { os: ubuntu-latest, target: armv7-unknown-linux-gnueabihf }
             target_cpu: generic
             toolchain: stable
             cross: true
-          - config: {os: ubuntu-latest,  target: x86_64-unknown-linux-musl}
+          - config: { os: ubuntu-latest, target: x86_64-unknown-linux-musl }
             target_cpu: generic
             toolchain: stable
             cross: true
-          - config: {os: ubuntu-latest,  target: x86_64-unknown-linux-musl}
+          - config: { os: ubuntu-latest, target: x86_64-unknown-linux-musl }
             target_cpu: broadwell
             toolchain: stable
             cross: true
-          - config: {os: ubuntu-latest, target: aarch64-linux-android}
+          - config: { os: ubuntu-latest, target: aarch64-linux-android }
             target_cpu: generic
             toolchain: stable
             cross: true
@@ -186,7 +185,6 @@ jobs:
           #   toolchain: stable
           #   cross: true
     steps:
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
@@ -276,7 +274,7 @@ jobs:
           asset_path: ./${{ steps.pack-assets.outputs.release-archive }}
           asset_name: ${{ steps.pack-assets.outputs.release-archive }}
           asset_content_type: ${{ steps.pack-assets.outputs.release-content-type }}
-      
+
       - name: Upload checksum to the release
         uses: actions/upload-release-asset@v1
         env:
