@@ -146,14 +146,6 @@ jobs:
           # Windows
           - config: {os: windows-latest, target: x86_64-pc-windows-gnu}
             target_cpu: generic
-            toolchain: stable-x86_64-pc-windows-gnu
-            cross: false
-          - config: {os: windows-latest, target: x86_64-pc-windows-gnu}
-            target_cpu: broadwell
-            toolchain: stable-x86_64-pc-windows-gnu
-            cross: false
-          - config: {os: windows-latest, target: x86_64-pc-windows-msvc}
-            target_cpu: generic
             toolchain: stable-x86_64-pc-windows-msvc
             cross: false
           - config: {os: windows-latest, target: x86_64-pc-windows-msvc}
