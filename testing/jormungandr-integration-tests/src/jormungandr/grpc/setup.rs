@@ -1,18 +1,15 @@
-use crate::common::{
-    configuration::JormungandrParams,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
-};
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
 use jormungandr_testing_utils::testing::node::grpc::JormungandrClient;
 
+use crate::common::{
+    configuration::JormungandrParams,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+};
 use assert_fs::TempDir;
-use std::thread;
 use std::time::Duration;
-
-const DEFAULT_SLOT_DURATION: u8 = 4;
+const DEFAULT_SLOT_DURATION: u8 = 1;
 const LOCALHOST: &str = "127.0.0.1";
-
 pub struct Config {
     host: String,
     port: u16,
@@ -31,57 +28,76 @@ impl Config {
     }
 }
 
-pub struct Fixture {
-    temp_dir: TempDir,
-    slot_duration: u8,
-}
+pub mod client {
+    use super::*;
+    pub struct ClientBootstrap {
+        pub client: JormungandrClient,
+        pub server: JormungandrProcess,
+        pub config: JormungandrParams,
+        _dir: TempDir, // deleted on drop
+    }
 
-impl Fixture {
-    pub fn new(slot_duration: u8) -> Self {
-        let temp_dir = TempDir::new().unwrap();
-        Fixture {
-            temp_dir,
-            slot_duration,
+    pub async fn default() -> ClientBootstrap {
+        bootstrap(
+            ConfigurationBuilder::new()
+                .with_slot_duration(DEFAULT_SLOT_DURATION)
+                .to_owned(),
+        )
+        .await
+    }
+
+    pub async fn bootstrap(config: ConfigurationBuilder) -> ClientBootstrap {
+        let dir = TempDir::new().unwrap();
+        let config = config.build(&dir);
+        let server = Starter::new().config(config.clone()).start_async().unwrap();
+        tokio::time::sleep(Duration::from_secs(4)).await;
+        let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
+        ClientBootstrap {
+            client,
+            server,
+            config,
+            _dir: dir,
         }
     }
+}
 
-    pub fn bootstrap_node(&self) -> (JormungandrProcess, JormungandrParams) {
-        let config = ConfigurationBuilder::new()
-            .with_slot_duration(self.slot_duration)
-            .build(&self.temp_dir);
-        let server = Starter::new().config(config.clone()).start_async().unwrap();
-        thread::sleep(Duration::from_secs(4));
-        (server, config)
+pub mod server {
+    use super::*;
+    use crate::common::configuration;
+
+    pub struct ServerBootstrap {
+        pub server: JormungandrProcess,
+        pub config: JormungandrParams,
+        pub mock_port: u16,
+        _dir: TempDir, // deleted on drop
     }
 
-    pub fn build_configuration(&self, mock_port: u16) -> JormungandrParams {
+    pub async fn default() -> ServerBootstrap {
+        bootstrap(
+            configuration::get_available_port(),
+            ConfigurationBuilder::new()
+                .with_slot_duration(DEFAULT_SLOT_DURATION)
+                .with_block0_consensus(ConsensusVersion::GenesisPraos)
+                .to_owned(),
+        )
+        .await
+    }
+
+    pub async fn bootstrap(mock_port: u16, mut config: ConfigurationBuilder) -> ServerBootstrap {
+        let dir = TempDir::new().unwrap();
         let trusted_peer = TrustedPeer {
             address: format!("/ip4/{}/tcp/{}", LOCALHOST, mock_port)
                 .parse()
                 .unwrap(),
             id: None,
         };
-
-        ConfigurationBuilder::new()
-            .with_slot_duration(4)
-            .with_block0_consensus(ConsensusVersion::GenesisPraos)
-            .with_trusted_peers(vec![trusted_peer])
-            .build(&self.temp_dir)
-    }
-
-    pub fn bootstrap_node_with_peer(
-        &self,
-        mock_port: u16,
-    ) -> (JormungandrProcess, JormungandrParams) {
-        let config = self.build_configuration(mock_port);
+        let config = config.with_trusted_peers(vec![trusted_peer]).build(&dir);
         let server = Starter::new().config(config.clone()).start_async().unwrap();
-        thread::sleep(Duration::from_secs(4));
-        (server, config)
-    }
-}
-
-impl Default for Fixture {
-    fn default() -> Self {
-        Self::new(DEFAULT_SLOT_DURATION)
+        ServerBootstrap {
+            server,
+            config,
+            mock_port,
+            _dir: dir,
+        }
     }
 }
