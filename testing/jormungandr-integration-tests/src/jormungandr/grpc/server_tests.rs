@@ -14,7 +14,7 @@ use std::time::Duration;
 #[tokio::test]
 #[ignore]
 pub async fn wrong_protocol() {
-    let fixture = Fixture::new();
+    let fixture = Fixture::default();
 
     let mock_port = configuration::get_available_port();
     let config = fixture.build_configuration(mock_port);
@@ -43,7 +43,7 @@ pub async fn wrong_protocol() {
 #[tokio::test]
 #[ignore]
 pub async fn wrong_genesis_hash() {
-    let fixture = Fixture::new();
+    let fixture = Fixture::default();
 
     let mock_port = configuration::get_available_port();
     let config = fixture.build_configuration(mock_port);
@@ -84,7 +84,7 @@ pub async fn wrong_genesis_hash() {
 #[tokio::test]
 #[ignore]
 pub async fn handshake_ok() {
-    let fixture = Fixture::new();
+    let fixture = Fixture::default();
 
     let mock_port = configuration::get_available_port();
     let config = fixture.build_configuration(mock_port);

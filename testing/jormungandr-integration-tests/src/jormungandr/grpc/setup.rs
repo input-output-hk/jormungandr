@@ -10,6 +10,7 @@ use assert_fs::TempDir;
 use std::thread;
 use std::time::Duration;
 
+const DEFAULT_SLOT_DURATION: u8 = 4;
 const LOCALHOST: &str = "127.0.0.1";
 
 pub struct Config {
@@ -32,17 +33,21 @@ impl Config {
 
 pub struct Fixture {
     temp_dir: TempDir,
+    slot_duration: u8,
 }
 
 impl Fixture {
-    pub fn new() -> Self {
+    pub fn new(slot_duration: u8) -> Self {
         let temp_dir = TempDir::new().unwrap();
-        Fixture { temp_dir }
+        Fixture {
+            temp_dir,
+            slot_duration,
+        }
     }
 
     pub fn bootstrap_node(&self) -> (JormungandrProcess, JormungandrParams) {
         let config = ConfigurationBuilder::new()
-            .with_slot_duration(4)
+            .with_slot_duration(self.slot_duration)
             .build(&self.temp_dir);
         let server = Starter::new().config(config.clone()).start_async().unwrap();
         thread::sleep(Duration::from_secs(4));
@@ -72,5 +77,11 @@ impl Fixture {
         let server = Starter::new().config(config.clone()).start_async().unwrap();
         thread::sleep(Duration::from_secs(4));
         (server, config)
+    }
+}
+
+impl Default for Fixture {
+    fn default() -> Self {
+        Self::new(DEFAULT_SLOT_DURATION)
     }
 }
