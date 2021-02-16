@@ -60,7 +60,9 @@ pub async fn handshake_sanity() {
 // L1006 Tip request
 #[tokio::test]
 pub async fn tip_request() {
-    let setup = setup::client::default().await;
+    let setup =
+        setup::client::bootstrap(ConfigurationBuilder::new().with_slot_duration(9).to_owned())
+            .await;
 
     let tip_header = setup.client.tip().await;
     let block_hashes = setup.server.logger.get_created_blocks_hashes();
