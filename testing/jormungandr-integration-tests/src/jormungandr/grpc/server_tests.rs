@@ -76,7 +76,8 @@ pub async fn wrong_genesis_hash() {
                 && x.peer_addr == Some(mock_address.clone())
                 && x.level == Level::INFO
         }),
-        format!("Log content: {}", server.logger.get_log_content())
+        "Log content: {}",
+        server.logger.get_log_content()
     );
 }
 
