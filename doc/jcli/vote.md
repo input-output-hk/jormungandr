@@ -139,43 +139,36 @@ jcli rest v0 message post --file vote-tally.fragment
 To tally private votes, all committee members are needed.
 The process is similar to the public one, but we need to issue different certificates.
 
+First, we need to retrieve vote plans info:
+```shell
+jcli rest v0 vote active plans > active_plans.json
+```
+If there is more than one vote plan in the this file, we also need to provide the id of the vote plan we are interested in to following commands. We can get the id of the first vote plan with:
 ```shell
 ...
-vote_plan_id=$(jcli rest v0 vote active plans get --output-format json|jq '.[0].id')
-jcli certificate new encrypted-vote-tally --vote-plan-id "$vote_plan_id" --output encrypted-vote-tally.certificate
+vote_plan_id=$(cat active_plans.json |jq '.[0].id')
 ...
 ```
-
-**WIP**
-
-After the certificate is issued we need each of the committee members to create a share for each voteplan:
-```shell
-jcli res v0 vote active plans > active_plans.json
-```
-For each proposal in the `active_plans.json` we need to retrieve the `proposal["tally"]["private"]["encrypted"]["encrypted_tally"]` and dump it to a file.
-
-Then, for each of those encrypted tally each of the committee member need to generate a share.
+Each committee member needs to generate their shares for the vote plan, which we will use later to decrypt the tally. 
 
 ```shell
-jcli votes tally decyption-share --encrypted-tally voteplan1.secret_tally --key member.sk --output-format json 
+jcli votes tally decryption-shares --vote-plan active_plans.json --vote-plan-id $"vote_plan_id" --key member.sk --output-format json 
+```
+Then, the committee members need to exchange their shares (only one full set of shares is needed).
+Once all shares are available, we need to merge them in a single file with the following command (needed even if there is only one set of shares):
+
+```shell
+jcli votes tally merge-shares  share_file1 share_file2 ... > merged_shares.json 
 ```
 
-Then the committee members need to exchange their share (only one full set of shares is needed) for finally get the results.
-We will need those share files merged into a single file where each of the shares are in separated lines.
-With that we can process the final tally result as follows:
+
+With the merged shares file, we are finally able to process the final tally result as follows:
 
 ```shell
 jcli votes tally decrypt \
---encrypted-tally voteplan1.secret_tally \
---shares merged_shares_file_path.shares \
+--vote-plan active_plans.json \
+--vote-plan-id $"vote_plan_id" \
+--shares merged_shares.json \
 --threshold number_of_committee_members \
---max-votes total_votes_cast \
---table-size table_size \
 --output-format json > result.json
 ```
-
-Notes:
-
-The table size is a cache parameter, any value greater than one would be enough but the best approximated values would be
-`table_size = votes_cast / vote_options`. So, if we had `1000` votes and `2` options (*yes*, *no*), and optimum table size value
-would be `1000/2 = 500`
