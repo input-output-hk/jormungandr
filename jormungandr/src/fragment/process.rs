@@ -55,61 +55,62 @@ impl Process {
             self.network_msg_box,
         );
 
-        while let Some(input_result) = input.next().await {
-            match input_result {
-                TransactionMsg::SendTransaction(origin, txs) => {
-                    // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
-                    // those blocks. one valid tx in a given context, could be invalid in another. for example
-                    // fee calculations, existence utxo / account solvency.
+        async move {
+            while let Some(input_result) = input.next().await {
+                match input_result {
+                    TransactionMsg::SendTransaction(origin, txs) => {
+                        // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
+                        // those blocks. one valid tx in a given context, could be invalid in another. for example
+                        // fee calculations, existence utxo / account solvency.
 
-                    // FIXME/TODO check that the txs are valid within themselves with basic requirements (e.g. inputs >= outputs).
-                    // we also want to keep a basic capability to filter away repetitive queries or definitely discarded txid.
+                        // FIXME/TODO check that the txs are valid within themselves with basic requirements (e.g. inputs >= outputs).
+                        // we also want to keep a basic capability to filter away repetitive queries or definitely discarded txid.
 
-                    // This interface only makes sense for messages coming from arbitrary users (like transaction, certificates),
-                    // for other message we don't want to receive them through this interface, and possibly
-                    // put them in another pool.
+                        // This interface only makes sense for messages coming from arbitrary users (like transaction, certificates),
+                        // for other message we don't want to receive them through this interface, and possibly
+                        // put them in another pool.
 
-                    let stats_counter = stats_counter.clone();
+                        let stats_counter = stats_counter.clone();
 
-                    pool.insert_and_propagate_all(origin, txs)
-                        .await
-                        .map(move |count| stats_counter.add_tx_recv_cnt(count))?;
-                }
-                TransactionMsg::RemoveTransactions(fragment_ids, status) => {
-                    tracing::debug!(
-                        "removing fragments added to block {:?}: {:?}",
-                        status,
-                        fragment_ids
-                    );
-                    pool.remove_added_to_block(fragment_ids, status, service_info.logger());
-                }
-                TransactionMsg::GetLogs(reply_handle) => {
-                    let logs = pool.logs().logs().cloned().collect();
-                    reply_handle.reply_ok(logs);
-                }
-                TransactionMsg::GetStatuses(fragment_ids, reply_handle) => {
-                    let mut statuses = HashMap::new();
-                    pool.logs().logs_by_ids(fragment_ids).into_iter().for_each(
-                        |(fragment_id, log)| {
-                            statuses.insert(fragment_id, log.status().clone());
-                        },
-                    );
-                    reply_handle.reply_ok(statuses);
-                }
-                TransactionMsg::SelectTransactions {
-                    pool_idx,
-                    ledger,
-                    block_date,
-                    ledger_params,
-                    selection_alg,
-                    reply_handle,
-                } => {
-                    let contents =
-                        pool.select(pool_idx, ledger, block_date, ledger_params, selection_alg);
-                    reply_handle.reply_ok(contents);
+                        pool.insert_and_propagate_all(origin, txs)
+                            .await
+                            .map(move |count| stats_counter.add_tx_recv_cnt(count))?;
+                    }
+                    TransactionMsg::RemoveTransactions(fragment_ids, status) => {
+                        tracing::debug!(
+                            "removing fragments added to block {:?}: {:?}",
+                            status,
+                            fragment_ids
+                        );
+                        pool.remove_added_to_block(fragment_ids, status);
+                    }
+                    TransactionMsg::GetLogs(reply_handle) => {
+                        let logs = pool.logs().logs().cloned().collect();
+                        reply_handle.reply_ok(logs);
+                    }
+                    TransactionMsg::GetStatuses(fragment_ids, reply_handle) => {
+                        let mut statuses = HashMap::new();
+                        pool.logs().logs_by_ids(fragment_ids).into_iter().for_each(
+                            |(fragment_id, log)| {
+                                statuses.insert(fragment_id, log.status().clone());
+                            },
+                        );
+                        reply_handle.reply_ok(statuses);
+                    }
+                    TransactionMsg::SelectTransactions {
+                        pool_idx,
+                        ledger,
+                        block_date,
+                        ledger_params,
+                        selection_alg,
+                        reply_handle,
+                    } => {
+                        let contents =
+                            pool.select(pool_idx, ledger, block_date, ledger_params, selection_alg);
+                        reply_handle.reply_ok(contents);
+                    }
                 }
             }
-
             Ok(())
         }
         .instrument(span!(parent: service_info.span(), Level::TRACE, "process", kind = "fragment"))

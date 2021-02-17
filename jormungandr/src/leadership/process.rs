@@ -451,14 +451,7 @@ impl Module {
             return Ok(());
         };
 
-        let contents = prepare_block(
-            pool,
-            event.id,
-            event.date,
-            ledger,
-            ledger_parameters,
-        )
-        .await?;
+        let contents = prepare_block(pool, event.id, event.date, ledger, ledger_parameters).await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
