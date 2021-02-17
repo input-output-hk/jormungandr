@@ -134,6 +134,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           override: true
           default: true
+          components: rustfmt
 
       - name: Checkout code
         uses: actions/checkout@v2
