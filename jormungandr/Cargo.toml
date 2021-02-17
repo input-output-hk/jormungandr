@@ -15,7 +15,7 @@ edition = "2018"
 arc-swap = "^1.1.0"
 async-trait = "=0.1.42" # https://github.com/dtolnay/async-trait/issues/144
 async-graphql = "2.5.1"
-async-graphql-warp = "2.5.2"
+async-graphql-warp = "2.5.4"
 base64 = "0.13.0"
 bincode = "1.2.1"
 bytes = "1.0"
