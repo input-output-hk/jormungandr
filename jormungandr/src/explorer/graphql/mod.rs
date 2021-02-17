@@ -825,57 +825,6 @@ impl Address {
     fn delegation() -> FieldResult<Pool> {
         Err(ErrorKind::Unimplemented.into())
     }
-
-    async fn confirmed_transactions(
-        &self,
-        first: Option<i32>,
-        last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-        context: &Context,
-    ) -> FieldResult<TransactionConnection> {
-        let transactions = context
-            .db
-            .get_main_tip()
-            .await
-            .1
-            .state()
-            .transactions_by_address(&self.id)
-            .unwrap_or_else(PersistentSequence::<FragmentId>::new);
-
-        let boundaries = if transactions.len() > 0 {
-            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: 0u64,
-                upper_bound: transactions.len(),
-            })
-        } else {
-            PaginationInterval::Empty
-        };
-
-        let pagination_arguments = PaginationArguments {
-            first,
-            last,
-            before: before.map(u64::from),
-            after: after.map(u64::from),
-        }
-        .validate()?;
-
-        TransactionConnection::new(
-            boundaries,
-            pagination_arguments,
-            |range: PaginationInterval<u64>| match range {
-                PaginationInterval::Empty => vec![],
-                PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                    .filter_map(|i| {
-                        transactions
-                            .get(i)
-                            .map(|h| HeaderHash::clone(h))
-                            .map(|h| (TransactionNodeFetchInfo::Id(h), i))
-                    })
-                    .collect(),
-            },
-        )
-    }
 }
 
 struct TaxType(chain_impl_mockchain::rewards::TaxType);

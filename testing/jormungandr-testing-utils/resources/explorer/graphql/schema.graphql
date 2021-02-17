@@ -2,7 +2,6 @@ type Address {
   """The base32 representation of an address"""
   id: String!
   delegation: Pool!
-  confirmedTransactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
 }
 
 type BftLeader {
@@ -25,6 +24,7 @@ type Block {
   totalInput: Value!
   totalOutput: Value!
   treasury: Treasury
+  isConfirmed: Boolean!
   branches: [Branch!]!
 }
 
@@ -228,6 +228,7 @@ type Ratio {
 
 type Settings {
   fees: FeeSettings!
+  epochStabilityDepth: String!
 }
 
 scalar Slot
