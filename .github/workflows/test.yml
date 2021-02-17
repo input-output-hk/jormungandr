@@ -27,7 +27,6 @@ on:
       - .github/workflows/test.yml
 
 jobs:
-
   cache_info:
     name: Bootstrap cache
     runs-on: ubuntu-latest
@@ -100,30 +99,35 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-        release: [true, false]
+        profile: [debug, release]
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            release: false
+            profile: debug
             toolchain: nightly
     env:
       RUSTFLAGS: -D warnings
       RUST_BACKTRACE: 1
       CARGO_FLAGS: --verbose --locked
     steps:
-      - name: Setup release environment
-        if: ${{ matrix.release }}
+      - name: Set up environment variables
         shell: bash
         run: |
-          echo "RUSTFLAGS=$RUSTFLAGS -C lto=no" >> $GITHUB_ENV
-          echo "CARGO_FLAGS=$CARGO_FLAGS --release" >> $GITHUB_ENV
+          if [ '${{ matrix.profile }}' == release ]; then
+            echo "RUSTFLAGS=$RUSTFLAGS -C lto=no" >> $GITHUB_ENV
+            echo "CARGO_FLAGS=$CARGO_FLAGS --release" >> $GITHUB_ENV
+          fi
+          case '${{ matrix.os }}' in
+            ubuntu-latest)  features=systemd,gelf ;;
+            *)              features=gelf ;;
+          esac
+          echo "JORMUNGANDR_FEATURES=$features" >> $GITHUB_ENV
 
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
           default: true
-          components: rustfmt
 
       - name: Checkout code
         uses: actions/checkout@v2
@@ -147,7 +151,11 @@ jobs:
         timeout-minutes: 30
         with:
           command: build
-          args: -p jormungandr ${{ env.CARGO_FLAGS }}
+          args: |
+            --manifest-path jormungandr/Cargo.toml
+            --no-default-features
+            --features ${{ env.JORMUNGANDR_FEATURES }}
+            ${{ env.CARGO_FLAGS }}
 
       - name: Build jcli
         uses: actions-rs/cargo@v1
