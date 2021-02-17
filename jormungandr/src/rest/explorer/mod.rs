@@ -53,9 +53,9 @@ pub fn filter(
             ))
     });
 
-    let graphiql = warp::path!("graphiql").and(graphql_playground).boxed();
+    let playground = warp::path!("playground").and(graphql_playground).boxed();
 
-    root.and(graphql.or(graphiql)).recover(handle_rejection)
+    root.and(graphql.or(playground)).recover(handle_rejection)
 }
 
 pub async fn handler(
