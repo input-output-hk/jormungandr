@@ -4,7 +4,7 @@ mod version;
 pub use crate::testing::node::configuration::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
-use crate::testing::{decompress, download_file, CachedReleases, GitHubApi, Release};
+use crate::testing::{decompress, CachedReleases, GitHubApi, Release};
 pub use jormungandr_lib::interfaces::{
     Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
 };
@@ -12,7 +12,6 @@ use jortestkit::file;
 
 use assert_fs::fixture::PathChild;
 use assert_fs::prelude::*;
-use url::Url;
 
 use std::path::PathBuf;
 
@@ -41,16 +40,11 @@ pub fn get_jormungandr_bin(release: &Release, temp_dir: &impl PathChild) -> Path
         .get_asset_for_current_os_by_version(release.version_str())
         .unwrap()
         .unwrap();
-
-    let url = Url::parse(&asset.download_url()).expect("cannot parse url");
-    let file_name = url
-        .path_segments()
-        .unwrap()
-        .last()
-        .expect("cannot get last element from path");
-
-    let output = temp_dir.child(&file_name);
-    download_file(asset.download_url(), output.path()).expect("cannot download file");
+    let asset_name = asset.name();
+    let output = temp_dir.child(&asset_name);
+    asset
+        .download_to(output.path())
+        .expect("cannot download file");
     let release_dir = temp_dir.child(format!("release-{}", release.version()));
     release_dir.create_dir_all().unwrap();
     decompress(output.path(), release_dir.path()).unwrap();
