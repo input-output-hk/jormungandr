@@ -6,7 +6,7 @@ rustPlatform.buildRustPackage rec {
   pname = cargoPackage.name;
   version = cargoPackage.version;
   src = ./.;
-  cargoSha256 = "sha256-rfgmtKweYxk8BELv2YoF3BsGfdGlQGP8HNLE4xklDHs=";
+  cargoSha256 = "sha256-m+vu/OmYHKMRa08pSJh0Ru9RzyYFoiLKvXOMPnoMF0s=";
   nativeBuildInputs = [ pkg-config protobuf rustfmt ];
   buildInputs = [ openssl ];
   configurePhase =''
