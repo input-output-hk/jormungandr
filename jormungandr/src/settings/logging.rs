@@ -27,13 +27,21 @@ pub struct LogSettingsEntry {
 #[serde(rename_all = "lowercase")]
 /// Format of the logger.
 pub enum LogFormat {
+    Default,
     Plain,
     Json,
+}
+
+impl Default for LogFormat {
+    fn default() -> Self {
+        LogFormat::Default
+    }
 }
 
 impl Display for LogFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
+            LogFormat::Default => "default",
             LogFormat::Plain => "plain",
             LogFormat::Json => "json",
         };
@@ -64,6 +72,7 @@ impl FromStr for LogFormat {
         match &*s.trim().to_lowercase() {
             "plain" => Ok(LogFormat::Plain),
             "json" => Ok(LogFormat::Json),
+            "default" => Ok(LogFormat::Default),
             other => Err(format!("unknown log format '{}'", other)),
         }
     }
@@ -170,7 +179,7 @@ impl LogSettingsEntry {
             let (subscriber, guard) = tracing_appender::non_blocking(writer);
             let builder = builder.with_writer(subscriber).with_max_level(level);
             let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
-                LogFormat::Plain => Box::new(builder.finish()),
+                LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
                 LogFormat::Json => Box::new(builder.json().finish()),
             };
             (subscriber, Some(guard))
@@ -200,8 +209,8 @@ impl LogSettingsEntry {
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
+                format.require_default()?;
                 let layer = tracing_journald::layer()?;
-                format.require_plain()?;
                 Ok((
                     Box::new(builder.with_max_level(level).with_subscriber(layer)),
                     None,
@@ -212,11 +221,7 @@ impl LogSettingsEntry {
                 backend: graylog_host_port,
                 log_id: _graylog_source,
             } => {
-                // Both currently recognized formats can be understood to apply:
-                // GELF formats payloads in JSON so 'json' is redundant,
-                // and plain messages are worked into JSON just the same.
-                // Match them irrefutably so that any new format will need to
-                // be addressed here when added.
+                format.require_default()?;
                 let address: SocketAddr = graylog_host_port.parse().unwrap();
                 // TODO: maybe handle this tasks outside somehow.
                 let (subscriber, task) = tracing_gelf::Logger::builder().connect_tcp(address)?;
@@ -229,17 +234,17 @@ impl LogSettingsEntry {
 
 impl LogFormat {
     #[allow(dead_code)]
-    fn require_plain(&self) -> Result<(), Error> {
+    fn require_default(&self) -> Result<(), Error> {
         match self {
-            LogFormat::Plain => Ok(()),
-            _ => Err(Error::PlainFormatRequired { specified: *self }),
+            LogFormat::Default => Ok(()),
+            _ => Err(Error::FormatNotSupported { specified: *self }),
         }
     }
 }
 
 #[derive(Debug)]
 pub enum Error {
-    PlainFormatRequired {
+    FormatNotSupported {
         specified: LogFormat,
     },
     #[cfg(feature = "gelf")]
@@ -251,7 +256,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::PlainFormatRequired { specified } => write!(
+            Error::FormatNotSupported { specified } => write!(
                 f,
                 "log format `{}` is not supported for this output",
                 specified
@@ -269,7 +274,7 @@ impl Display for Error {
 impl error::Error for Error {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self {
-            Error::PlainFormatRequired { .. } => None,
+            Error::FormatNotSupported { .. } => None,
             #[cfg(feature = "gelf")]
             Error::GelfConnectionFailed(err) => Some(err),
             Error::FileError(err) => Some(err),

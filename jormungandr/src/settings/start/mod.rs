@@ -11,7 +11,7 @@ use thiserror::Error;
 use tracing::level_filters::LevelFilter;
 
 const DEFAULT_FILTER_LEVEL: LevelFilter = LevelFilter::TRACE;
-const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Plain;
+const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 
