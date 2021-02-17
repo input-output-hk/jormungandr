@@ -1,13 +1,12 @@
 use super::error::ErrorKind;
 use crate::blockcfg;
-use chain_crypto::bech32::Bech32;
-use chain_impl_mockchain::{value, vote};
-// use juniper::{ParseScalarResult, ParseScalarValue};
 use async_graphql::*;
+use chain_crypto::bech32::Bech32;
+use chain_impl_mockchain::vote;
 use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone)]
-pub struct Slot(pub String);
+pub struct Slot(pub blockcfg::SlotId);
 
 #[Scalar]
 impl ScalarType for Slot {
@@ -24,15 +23,19 @@ impl ScalarType for Slot {
     }
 }
 
-/// Custom scalar type that represents a block's position in the blockchain.
-/// It's a either 0 (the genesis block) or a positive number in string representation.
-pub struct ChainLength(pub String);
+#[derive(Clone)]
+pub struct ChainLength(pub blockcfg::ChainLength);
 
 #[Scalar]
+/// Custom scalar type that represents a block's position in the blockchain.
+/// It's a either 0 (the genesis block) or a positive number in string representation.
 impl ScalarType for ChainLength {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(ChainLength)?)
+            Ok(value
+                .parse::<u32>()
+                .map(blockcfg::ChainLength::from)
+                .map(ChainLength)?)
         } else {
             Err(InputValueError::expected_type(value))
         }
@@ -43,7 +46,7 @@ impl ScalarType for ChainLength {
     }
 }
 
-pub struct PoolId(pub String);
+pub struct PoolId(pub chain_impl_mockchain::certificate::PoolId);
 
 #[Scalar]
 impl ScalarType for PoolId {
@@ -60,12 +63,13 @@ impl ScalarType for PoolId {
     }
 }
 
-pub struct Value(pub String);
+pub struct Value(pub blockcfg::Value);
+
 #[Scalar]
 impl ScalarType for Value {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(Value)?)
+            Ok(value.parse::<u64>().map(blockcfg::Value).map(Value)?)
         } else {
             Err(InputValueError::expected_type(value))
         }
@@ -76,71 +80,12 @@ impl ScalarType for Value {
     }
 }
 
-pub struct EpochNumber(pub String);
-#[Scalar]
-impl ScalarType for EpochNumber {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(EpochNumber)?)
-        } else {
-            Err(InputValueError::expected_type(value))
-        }
-    }
-
-    fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::String(self.0.to_string())
-    }
-}
-
-pub struct BlockCount(pub String);
-#[Scalar]
-impl ScalarType for BlockCount {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(BlockCount)?)
-        } else {
-            Err(InputValueError::expected_type(value))
-        }
-    }
-
-    fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::String(self.0.to_string())
-    }
-}
-
-pub struct TransactionCount(pub String);
-#[Scalar]
-impl ScalarType for TransactionCount {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(TransactionCount)?)
-        } else {
-            Err(InputValueError::expected_type(value))
-        }
-    }
-
-    fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::String(self.0.to_string())
-    }
-}
-
-pub struct PoolCount(pub String);
-#[Scalar]
-impl ScalarType for PoolCount {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(PoolCount)?)
-        } else {
-            Err(InputValueError::expected_type(value))
-        }
-    }
-
-    fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::String(self.0.to_string())
-    }
-}
+pub type BlockCount = u64;
+pub type TransactionCount = u64;
+pub type PoolCount = u64;
 
 pub struct PublicKey(pub String);
+
 #[Scalar]
 impl ScalarType for PublicKey {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -157,6 +102,7 @@ impl ScalarType for PublicKey {
 }
 
 pub struct TimeOffsetSeconds(pub String);
+
 #[Scalar]
 impl ScalarType for TimeOffsetSeconds {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -172,7 +118,8 @@ impl ScalarType for TimeOffsetSeconds {
     }
 }
 
-pub struct NonZero(pub String);
+pub struct NonZero(pub std::num::NonZeroU64);
+
 #[Scalar]
 impl ScalarType for NonZero {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -190,6 +137,7 @@ impl ScalarType for NonZero {
 
 #[derive(Clone)]
 pub struct VotePlanId(pub String);
+
 #[Scalar]
 impl ScalarType for VotePlanId {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -207,6 +155,7 @@ impl ScalarType for VotePlanId {
 
 #[derive(Clone)]
 pub struct ExternalProposalId(pub String);
+
 #[Scalar]
 impl ScalarType for ExternalProposalId {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -247,6 +196,7 @@ impl ScalarType for Weight {
 }
 
 pub struct VotePlanCount(pub String);
+
 #[Scalar]
 impl ScalarType for VotePlanCount {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -263,6 +213,7 @@ impl ScalarType for VotePlanCount {
 }
 
 pub struct VoteStatusCount(pub String);
+
 #[Scalar]
 impl ScalarType for VoteStatusCount {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
@@ -327,56 +278,6 @@ impl ScalarType for IndexCursor {
 /*------- Conversions ---------*/
 /*----------------------------*/
 
-impl From<blockcfg::ChainLength> for ChainLength {
-    fn from(length: blockcfg::ChainLength) -> ChainLength {
-        ChainLength(u32::from(length).to_string())
-    }
-}
-
-impl TryFrom<ChainLength> for blockcfg::ChainLength {
-    type Error = std::num::ParseIntError;
-    fn try_from(length: ChainLength) -> Result<blockcfg::ChainLength, Self::Error> {
-        length.0.parse::<u32>().map(blockcfg::ChainLength::from)
-    }
-}
-
-impl From<&value::Value> for Value {
-    fn from(v: &value::Value) -> Value {
-        Value(format!("{}", v))
-    }
-}
-
-impl From<value::Value> for Value {
-    fn from(v: value::Value) -> Value {
-        (&v).into()
-    }
-}
-
-impl From<blockcfg::Epoch> for EpochNumber {
-    fn from(e: blockcfg::Epoch) -> EpochNumber {
-        EpochNumber(format!("{}", e))
-    }
-}
-
-impl TryFrom<EpochNumber> for blockcfg::Epoch {
-    type Error = std::num::ParseIntError;
-    fn try_from(e: EpochNumber) -> Result<blockcfg::Epoch, Self::Error> {
-        e.0.parse::<u32>()
-    }
-}
-
-impl From<u64> for BlockCount {
-    fn from(number: u64) -> BlockCount {
-        BlockCount(format!("{}", number))
-    }
-}
-
-impl From<u32> for BlockCount {
-    fn from(number: u32) -> BlockCount {
-        BlockCount(format!("{}", number))
-    }
-}
-
 impl From<&chain_crypto::PublicKey<chain_crypto::Ed25519>> for PublicKey {
     fn from(pk: &chain_crypto::PublicKey<chain_crypto::Ed25519>) -> PublicKey {
         PublicKey(pk.to_bech32_str())
@@ -386,18 +287,6 @@ impl From<&chain_crypto::PublicKey<chain_crypto::Ed25519>> for PublicKey {
 impl From<chain_time::TimeOffsetSeconds> for TimeOffsetSeconds {
     fn from(time: chain_time::TimeOffsetSeconds) -> TimeOffsetSeconds {
         TimeOffsetSeconds(format!("{}", u64::from(time)))
-    }
-}
-
-impl From<u64> for TransactionCount {
-    fn from(n: u64) -> TransactionCount {
-        TransactionCount(format!("{}", n))
-    }
-}
-
-impl From<u64> for PoolCount {
-    fn from(n: u64) -> PoolCount {
-        PoolCount(format!("{}", n))
     }
 }
 
@@ -500,5 +389,11 @@ impl From<u32> for VotePlanCount {
 impl From<u64> for VoteStatusCount {
     fn from(number: u64) -> VoteStatusCount {
         VoteStatusCount(format!("{}", number))
+    }
+}
+
+impl From<u64> for Value {
+    fn from(number: u64) -> Value {
+        Value(blockcfg::Value(number))
     }
 }

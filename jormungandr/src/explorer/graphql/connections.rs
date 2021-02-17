@@ -1,6 +1,11 @@
 use async_graphql::*;
 use std::convert::TryFrom;
 
+#[derive(SimpleObject)]
+pub struct ConnectionFields<C: OutputType + Send + Sync> {
+    pub total_count: C,
+}
+
 pub struct ValidatedPaginationArguments<I> {
     pub first: Option<usize>,
     pub last: Option<usize>,

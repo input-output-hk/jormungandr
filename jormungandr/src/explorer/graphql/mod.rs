@@ -7,12 +7,13 @@ use async_graphql::connection::*;
 use async_graphql::*;
 
 use self::connections::{
-    compute_interval, InclusivePaginationInterval, PaginationInterval, ValidatedPaginationArguments,
+    compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
+    ValidatedPaginationArguments,
 };
 use self::error::ErrorKind;
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
-    PoolId, PublicKey, Slot, Value, VoteOptionRange, VotePlanId, Weight,
+    BlockCount, ChainLength, ExternalProposalId, IndexCursor, NonZero, PayloadType, PoolCount,
+    PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange, VotePlanId, Weight,
 };
 use super::indexing::{
     BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
@@ -70,7 +71,8 @@ impl Branch {
         last: Option<i32>,
         before: Option<String>,
         after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, Block, EmptyFields, EmptyFields>> {
+    ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>>
+    {
         let block0 = 0u32;
         let chain_length = self.state.state().blocks.size();
 
@@ -96,8 +98,13 @@ impl Branch {
 
                 let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
 
-                let mut connection =
-                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
                 let edges = match range {
                     PaginationInterval::Empty => Default::default(),
@@ -128,7 +135,9 @@ impl Branch {
         last: Option<i32>,
         before: Option<String>,
         after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, Transaction, EmptyFields, EmptyFields>> {
+    ) -> FieldResult<
+        Connection<IndexCursor, Transaction, ConnectionFields<TransactionCount>, EmptyFields>,
+    > {
         let address = chain_addr::AddressReadable::from_string_anyprefix(&address_bech32)
             .map(|adr| ExplorerAddress::New(adr.to_address()))
             .or_else(|_| OldAddress::from_str(&address_bech32).map(ExplorerAddress::Old))
@@ -166,8 +175,13 @@ impl Branch {
 
                 let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
 
-                let mut connection =
-                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
                 let edges = match range {
                     PaginationInterval::Empty => vec![],
@@ -177,10 +191,7 @@ impl Branch {
                 };
 
                 connection.append(edges.iter().map(|(h, i)| {
-                    Edge::new(
-                        IndexCursor::from(u64::from(*i)),
-                        Transaction::from_valid_id(*h),
-                    )
+                    Edge::new(IndexCursor::from(*i), Transaction::from_valid_id(*h))
                 }));
 
                 Ok(connection)
@@ -268,7 +279,7 @@ impl Branch {
         last: Option<i32>,
         before: Option<String>,
         after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, Pool, EmptyFields, EmptyFields>> {
+    ) -> FieldResult<Connection<IndexCursor, Pool, ConnectionFields<PoolCount>, EmptyFields>> {
         let mut stake_pools = self.state.state().get_stake_pools();
 
         // Although it's probably not a big performance concern
@@ -306,8 +317,13 @@ impl Branch {
                 };
 
                 let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
-                let mut connection =
-                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
                 let edges = match range {
                     PaginationInterval::Empty => vec![],
@@ -347,7 +363,7 @@ impl Branch {
     pub async fn blocks_by_epoch(
         &self,
         context: &Context<'_>,
-        epoch: EpochNumber,
+        epoch: blockcfg::Epoch,
         first: Option<i32>,
         last: Option<i32>,
         before: Option<String>,
@@ -359,7 +375,7 @@ impl Branch {
             .await
             .unwrap()
             .db
-            .get_epoch(epoch.try_into()?)
+            .get_epoch(epoch)
             .await
         {
             Some(epoch_data) => epoch_data,
@@ -621,7 +637,7 @@ impl Block {
                 .db,
         )
         .await
-        .map(|block| block.chain_length().into())
+        .map(|block| ChainLength(block.chain_length()))
     }
 
     pub async fn leader(&self, context: &Context<'_>) -> FieldResult<Option<Leader>> {
@@ -666,7 +682,7 @@ impl Block {
                 .db,
         )
         .await
-        .map(|block| Value(format!("{}", block.total_input)))
+        .map(|block| Value(block.total_input))
     }
 
     pub async fn total_output(&self, context: &Context<'_>) -> FieldResult<Value> {
@@ -679,7 +695,7 @@ impl Block {
                 .db,
         )
         .await
-        .map(|block| Value(format!("{}", block.total_output)))
+        .map(|block| Value(block.total_output))
     }
 
     pub async fn treasury(&self, context: &Context<'_>) -> FieldResult<Option<Treasury>> {
@@ -697,8 +713,8 @@ impl Block {
                 let ledger = reference.ledger();
                 let treasury_tax = reference.epoch_ledger_parameters().treasury_tax;
                 Treasury {
-                    rewards: ledger.remaining_rewards().into(),
-                    treasury: ledger.treasury_value().into(),
+                    rewards: Value(ledger.remaining_rewards()),
+                    treasury: Value(ledger.treasury_value()),
                     treasury_tax: TaxType(treasury_tax),
                 }
             });
@@ -766,7 +782,7 @@ impl From<blockcfg::BlockDate> for BlockDate {
     fn from(date: blockcfg::BlockDate) -> BlockDate {
         BlockDate {
             epoch: Epoch { id: date.epoch },
-            slot: Slot(format!("{}", date.slot_id)),
+            slot: Slot(date.slot_id),
         }
     }
 }
@@ -914,7 +930,7 @@ impl Transaction {
             .iter()
             .map(|input| TransactionInput {
                 address: Address::from(&input.address),
-                amount: Value::from(&input.value),
+                amount: Value(input.value),
             })
             .collect())
     }
@@ -926,7 +942,7 @@ impl Transaction {
             .iter()
             .map(|input| TransactionOutput {
                 address: Address::from(&input.address),
-                amount: Value::from(&input.value),
+                amount: Value(input.value),
             })
             .collect())
     }
@@ -1008,7 +1024,7 @@ pub struct TaxType(chain_impl_mockchain::rewards::TaxType);
 impl TaxType {
     /// what get subtracted as fixed value
     pub async fn fixed(&self) -> Value {
-        Value(format!("{}", self.0.fixed))
+        Value(self.0.fixed)
     }
     /// Ratio of tax after fixed amout subtracted
     pub async fn ratio(&self) -> Ratio {
@@ -1017,7 +1033,7 @@ impl TaxType {
 
     /// Max limit of tax
     pub async fn max_limit(&self) -> Option<NonZero> {
-        self.0.max_limit.map(|n| NonZero(format!("{}", n)))
+        self.0.max_limit.map(NonZero)
     }
 }
 
@@ -1026,11 +1042,11 @@ pub struct Ratio(chain_impl_mockchain::rewards::Ratio);
 #[Object]
 impl Ratio {
     pub async fn numerator(&self) -> Value {
-        Value(format!("{}", self.0.numerator))
+        Value::from(self.0.numerator)
     }
 
     pub async fn denominator(&self) -> NonZero {
-        NonZero(format!("{}", self.0.denominator))
+        NonZero(self.0.denominator)
     }
 }
 
@@ -1099,7 +1115,7 @@ impl Pool {
 #[Object]
 impl Pool {
     pub async fn id(&self) -> PoolId {
-        PoolId(format!("{}", &self.id))
+        PoolId(self.id.clone())
     }
 
     pub async fn blocks(
@@ -1109,7 +1125,7 @@ impl Pool {
         last: Option<i32>,
         before: Option<String>,
         after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, Block>> {
+    ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>>> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
             None => context
@@ -1161,8 +1177,13 @@ impl Pool {
                         .collect(),
                 };
 
-                let mut connection =
-                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
                 connection.append(
                     edges
@@ -1234,44 +1255,39 @@ impl Settings {
             .fees;
 
         FeeSettings {
-            constant: Value(format!("{}", constant)),
-            coefficient: Value(format!("{}", coefficient)),
-            certificate: Value(format!("{}", certificate)),
-            certificate_pool_registration: Value(format!(
-                "{}",
+            constant: Value::from(constant),
+            coefficient: Value::from(coefficient),
+            certificate: Value::from(certificate),
+            certificate_pool_registration: Value::from(
                 per_certificate_fees
                     .certificate_pool_registration
                     .map(|v| v.get())
-                    .unwrap_or(certificate)
-            )),
-            certificate_stake_delegation: Value(format!(
-                "{}",
+                    .unwrap_or(certificate),
+            ),
+            certificate_stake_delegation: Value::from(
                 per_certificate_fees
                     .certificate_stake_delegation
                     .map(|v| v.get())
-                    .unwrap_or(certificate)
-            )),
-            certificate_owner_stake_delegation: Value(format!(
-                "{}",
+                    .unwrap_or(certificate),
+            ),
+            certificate_owner_stake_delegation: Value::from(
                 per_certificate_fees
                     .certificate_owner_stake_delegation
                     .map(|v| v.get())
-                    .unwrap_or(certificate)
-            )),
-            certificate_vote_plan: Value(format!(
-                "{}",
+                    .unwrap_or(certificate),
+            ),
+            certificate_vote_plan: Value::from(
                 per_vote_certificate_fees
                     .certificate_vote_plan
                     .map(|v| v.get())
-                    .unwrap_or(certificate)
-            )),
-            certificate_vote_cast: Value(format!(
-                "{}",
+                    .unwrap_or(certificate),
+            ),
+            certificate_vote_cast: Value::from(
                 per_vote_certificate_fees
                     .certificate_vote_cast
                     .map(|v| v.get())
-                    .unwrap_or(certificate)
-            )),
+                    .unwrap_or(certificate),
+            ),
         }
     }
 
@@ -1313,8 +1329,8 @@ pub struct Epoch {
 }
 
 impl Epoch {
-    fn from_epoch_number(id: EpochNumber) -> FieldResult<Epoch> {
-        Ok(Epoch { id: id.try_into()? })
+    fn from_epoch_number(id: blockcfg::Epoch) -> Epoch {
+        Epoch { id }
     }
 
     async fn get_epoch_data(&self, db: &ExplorerDB) -> Option<EpochData> {
@@ -1324,8 +1340,8 @@ impl Epoch {
 
 #[Object]
 impl Epoch {
-    pub async fn id(&self) -> EpochNumber {
-        self.id.into()
+    pub async fn id(&self) -> blockcfg::Epoch {
+        self.id
     }
 
     /// Not yet implemented
@@ -1612,7 +1628,7 @@ impl VoteProposalStatus {
         last: Option<i32>,
         before: Option<String>,
         after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, VoteStatus, EmptyFields, EmptyFields>> {
+    ) -> FieldResult<Connection<IndexCursor, VoteStatus, ConnectionFields<u64>, EmptyFields>> {
         query(
             after,
             before,
@@ -1642,8 +1658,13 @@ impl VoteProposalStatus {
                 };
 
                 let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
-                let mut connection =
-                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
                 let edges = match range {
                     PaginationInterval::Empty => vec![],
@@ -1698,7 +1719,7 @@ impl Query {
             .await
             .unwrap()
             .db
-            .find_blocks_by_chain_length(length.try_into()?)
+            .find_blocks_by_chain_length(length.0)
             .await
             .iter()
             .cloned()
@@ -1754,7 +1775,7 @@ impl Query {
         .await
     }
 
-    pub async fn epoch(&self, _context: &Context<'_>, id: EpochNumber) -> FieldResult<Epoch> {
+    pub async fn epoch(&self, _context: &Context<'_>, id: blockcfg::Epoch) -> Epoch {
         Epoch::from_epoch_number(id)
     }
 
@@ -1764,7 +1785,7 @@ impl Query {
 
     pub async fn stake_pool(&self, context: &Context<'_>, id: PoolId) -> FieldResult<Pool> {
         Pool::from_string_id(
-            &id.0,
+            &id.0.to_string(),
             &context
                 .data_unchecked::<RestContext>()
                 .get()

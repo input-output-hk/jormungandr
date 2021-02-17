@@ -6,7 +6,6 @@ use std::convert::TryFrom;
 use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
 use super::{Address, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
 use crate::rest::explorer::EContext as RestContext;
-use FieldResult;
 
 // interface for grouping certificates as a graphl union
 #[derive(Union)]
@@ -174,7 +173,7 @@ impl OwnerStakeDelegation {
 #[Object]
 impl PoolRetirement {
     pub async fn pool_id(&self) -> PoolId {
-        PoolId(format!("{}", self.0.pool_id))
+        PoolId(self.0.pool_id.clone())
     }
 
     pub async fn retirement_time(&self) -> TimeOffsetSeconds {
@@ -185,7 +184,7 @@ impl PoolRetirement {
 #[Object]
 impl PoolUpdate {
     pub async fn pool_id(&self) -> PoolId {
-        PoolId(format!("{}", self.0.pool_id))
+        PoolId(self.0.pool_id.clone())
     }
 
     pub async fn start_validity(&self) -> TimeOffsetSeconds {
