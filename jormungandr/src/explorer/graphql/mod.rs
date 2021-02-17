@@ -3,10 +3,11 @@ mod connections;
 mod error;
 mod scalars;
 
+use async_graphql::connection::*;
+use async_graphql::*;
+
 use self::connections::{
-    BlockConnection, InclusivePaginationInterval, PaginationArguments, PaginationInterval,
-    PoolConnection, TransactionConnection, TransactionNodeFetchInfo, VotePlanConnection,
-    VoteStatusConnection,
+    compute_interval, InclusivePaginationInterval, PaginationInterval, ValidatedPaginationArguments,
 };
 use self::error::ErrorKind;
 use self::scalars::{
@@ -25,12 +26,11 @@ use certificates::*;
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::vote::{EncryptedVote, ProofOfCorrectVote};
-pub use juniper::http::GraphQLRequest;
-use juniper::FieldError;
-use juniper::{EmptyMutation, EmptySubscription, FieldResult, GraphQLUnion, RootNode};
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 use std::sync::Arc;
+
+pub(crate) type RestContext = crate::rest::explorer::EContext;
 
 pub struct Branch {
     state: super::multiverse::Ref,
@@ -38,7 +38,7 @@ pub struct Branch {
 }
 
 impl Branch {
-    async fn try_from_id(id: HeaderHash, context: &Context) -> FieldResult<Branch> {
+    async fn try_from_id(id: HeaderHash, context: &EContext) -> FieldResult<Branch> {
         context
             .db
             .get_branch(&id)
@@ -52,15 +52,13 @@ impl Branch {
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl Branch {
-    pub fn id(&self) -> String {
+    pub async fn id(&self) -> String {
         format!("{}", self.id)
     }
 
-    pub fn block(&self) -> Block {
+    pub async fn block(&self) -> Block {
         Block::from_contents(Arc::clone(
             self.state.state().blocks.lookup(&self.id).unwrap(),
         ))
@@ -70,43 +68,56 @@ impl Branch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-    ) -> FieldResult<BlockConnection> {
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, Block, EmptyFields, EmptyFields>> {
         let block0 = 0u32;
-
         let chain_length = self.state.state().blocks.size();
 
-        let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
-            lower_bound: block0,
-            // this try_from cannot fail, as there can't be more than 2^32
-            // blocks (because ChainLength is u32)
-            upper_bound: u32::try_from(chain_length).unwrap(),
-        });
-
-        let pagination_arguments = PaginationArguments {
+        query(
+            after,
+            before,
             first,
             last,
-            before: before.map(u32::try_from).transpose()?,
-            after: after.map(u32::try_from).transpose()?,
-        }
-        .validate()?;
+            |after, before, first, last| async move {
+                let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+                    lower_bound: block0,
+                    // this try_from cannot fail, as there can't be more than 2^32
+                    // blocks (because ChainLength is u32)
+                    upper_bound: u32::try_from(chain_length).unwrap(),
+                });
 
-        BlockConnection::new_async(boundaries, pagination_arguments, |range| async {
-            match range {
-                PaginationInterval::Empty => vec![],
-                PaginationInterval::Inclusive(range) => {
-                    let a = range.lower_bound.into();
-                    let b = range.upper_bound.checked_add(1).unwrap().into();
-                    self.state
-                        .state()
-                        .get_block_hash_range(a, b)
-                        .iter_mut()
-                        .map(|(hash, chain_length)| (*hash, u32::from(*chain_length)))
-                        .collect()
-                }
-            }
-        })
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
+
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+
+                let mut connection =
+                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+
+                let edges = match range {
+                    PaginationInterval::Empty => Default::default(),
+                    PaginationInterval::Inclusive(range) => {
+                        let a = range.lower_bound.into();
+                        let b = range.upper_bound.checked_add(1).unwrap().into();
+                        self.state.state().get_block_hash_range(a, b)
+                    }
+                };
+
+                connection.append(edges.iter().map(|(h, chain_length)| {
+                    Edge::new(
+                        IndexCursor::from(u32::from(*chain_length)),
+                        Block::from_valid_hash(*h),
+                    )
+                }));
+
+                Ok(connection)
+            },
+        )
         .await
     }
 
@@ -115,9 +126,9 @@ impl Branch {
         address_bech32: String,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-    ) -> FieldResult<TransactionConnection> {
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, Transaction, EmptyFields, EmptyFields>> {
         let address = chain_addr::AddressReadable::from_string_anyprefix(&address_bech32)
             .map(|adr| ExplorerAddress::New(adr.to_address()))
             .or_else(|_| OldAddress::from_str(&address_bech32).map(ExplorerAddress::Old))
@@ -131,99 +142,133 @@ impl Branch {
 
         let len = transactions.len();
 
-        let boundaries = if len > 0 {
-            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: 0u64,
-                upper_bound: len,
-            })
-        } else {
-            PaginationInterval::Empty
-        };
-
-        let pagination_arguments = PaginationArguments {
+        query(
+            after,
+            before,
             first,
             last,
-            before: before.map(u64::from),
-            after: after.map(u64::from),
-        }
-        .validate()?;
-
-        TransactionConnection::new(
-            boundaries,
-            pagination_arguments,
-            |range: PaginationInterval<u64>| match range {
-                PaginationInterval::Empty => vec![],
-                PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                    .filter_map(|i| {
-                        transactions
-                            .get(i)
-                            .map(|h| HeaderHash::clone(h))
-                            .map(|h| (TransactionNodeFetchInfo::Id(h), i))
+            |after, before, first, last| async move {
+                let boundaries = if len > 0 {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u64,
+                        upper_bound: len,
                     })
-                    .collect(),
+                } else {
+                    PaginationInterval::Empty
+                };
+
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u64::from),
+                    after: after.map(u64::from),
+                };
+
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+
+                let mut connection =
+                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
+                        .filter_map(|i| transactions.get(i).map(|h| (HeaderHash::clone(h), i)))
+                        .collect(),
+                };
+
+                connection.append(edges.iter().map(|(h, i)| {
+                    Edge::new(
+                        IndexCursor::from(u64::from(*i)),
+                        Transaction::from_valid_id(*h),
+                    )
+                }));
+
+                Ok(connection)
             },
         )
+        .await
     }
 
     pub async fn all_vote_plans(
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-    ) -> FieldResult<VotePlanConnection> {
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, VotePlanStatus, EmptyFields, EmptyFields>> {
         let mut vote_plans = self.state.state().get_vote_plans();
 
         vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
 
-        let boundaries = if !vote_plans.is_empty() {
-            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: 0u32,
-                upper_bound: vote_plans
-                    .len()
-                    .checked_sub(1)
-                    .unwrap()
-                    .try_into()
-                    .expect("tried to paginate more than 2^32 elements"),
-            })
-        } else {
-            PaginationInterval::Empty
-        };
-
-        let pagination_arguments = PaginationArguments {
+        query(
+            after,
+            before,
             first,
             last,
-            before: before.map(u32::try_from).transpose()?,
-            after: after.map(u32::try_from).transpose()?,
-        }
-        .validate()?;
-
-        VotePlanConnection::new(boundaries, pagination_arguments, |range| match range {
-            PaginationInterval::Empty => vec![],
-            PaginationInterval::Inclusive(range) => {
-                let from = range.lower_bound;
-                let to = range.upper_bound;
-
-                (from..=to)
-                    .map(|i: u32| {
-                        let (_pool_id, vote_plan_data) = &vote_plans[usize::try_from(i).unwrap()];
-                        (
-                            VotePlanStatus::vote_plan_from_data(Arc::clone(vote_plan_data)),
-                            i,
-                        )
+            |after, before, first, last| async move {
+                let boundaries = if !vote_plans.is_empty() {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u32,
+                        upper_bound: vote_plans
+                            .len()
+                            .checked_sub(1)
+                            .unwrap()
+                            .try_into()
+                            .expect("tried to paginate more than 2^32 elements"),
                     })
-                    .collect::<Vec<(VotePlanStatus, u32)>>()
-            }
-        })
+                } else {
+                    PaginationInterval::Empty
+                };
+
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
+
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                let mut connection =
+                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => {
+                        let from = range.lower_bound;
+                        let to = range.upper_bound;
+
+                        (from..=to)
+                            .map(|i: u32| {
+                                let (_pool_id, vote_plan_data) =
+                                    &vote_plans[usize::try_from(i).unwrap()];
+                                (
+                                    VotePlanStatus::vote_plan_from_data(Arc::clone(vote_plan_data)),
+                                    i,
+                                )
+                            })
+                            .collect::<Vec<(VotePlanStatus, u32)>>()
+                    }
+                };
+
+                connection.append(
+                    edges
+                        .iter()
+                        .map(|(vps, cursor)| Edge::new(IndexCursor::from(*cursor), vps.clone())),
+                );
+
+                Ok(connection)
+            },
+        )
+        .await
     }
 
     pub async fn all_stake_pools(
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-    ) -> FieldResult<PoolConnection> {
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, Pool, EmptyFields, EmptyFields>> {
         let mut stake_pools = self.state.state().get_stake_pools();
 
         // Although it's probably not a big performance concern
@@ -233,113 +278,161 @@ impl Branch {
         // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea)
         stake_pools.sort_unstable_by_key(|(id, _data)| id.clone());
 
-        let boundaries = if !stake_pools.is_empty() {
-            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: 0u32,
-                upper_bound: stake_pools
-                    .len()
-                    .checked_sub(1)
-                    .unwrap()
-                    .try_into()
-                    .expect("tried to paginate more than 2^32 elements"),
-            })
-        } else {
-            PaginationInterval::Empty
-        };
-
-        let pagination_arguments = PaginationArguments {
+        query(
+            after,
+            before,
             first,
             last,
-            before: before.map(u32::try_from).transpose()?,
-            after: after.map(u32::try_from).transpose()?,
-        }
-        .validate()?;
-
-        PoolConnection::new(boundaries, pagination_arguments, |range| match range {
-            PaginationInterval::Empty => vec![],
-            PaginationInterval::Inclusive(range) => {
-                let from = range.lower_bound;
-                let to = range.upper_bound;
-
-                (from..=to)
-                    .map(|i: u32| {
-                        let (pool_id, stake_pool_data) = &stake_pools[usize::try_from(i).unwrap()];
-                        (
-                            Pool::new_with_data(
-                                certificate::PoolId::clone(pool_id),
-                                Arc::clone(stake_pool_data),
-                            ),
-                            i,
-                        )
+            |after, before, first, last| async move {
+                let boundaries = if !stake_pools.is_empty() {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u32,
+                        upper_bound: stake_pools
+                            .len()
+                            .checked_sub(1)
+                            .unwrap()
+                            .try_into()
+                            .expect("tried to paginate more than 2^32 elements"),
                     })
-                    .collect::<Vec<(Pool, u32)>>()
-            }
-        })
+                } else {
+                    PaginationInterval::Empty
+                };
+
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
+
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                let mut connection =
+                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => {
+                        let from = range.lower_bound;
+                        let to = range.upper_bound;
+
+                        (from..=to)
+                            .map(|i: u32| {
+                                let (pool_id, stake_pool_data) =
+                                    &stake_pools[usize::try_from(i).unwrap()];
+                                (
+                                    Pool::new_with_data(
+                                        certificate::PoolId::clone(pool_id),
+                                        Arc::clone(stake_pool_data),
+                                    ),
+                                    i,
+                                )
+                            })
+                            .collect::<Vec<(Pool, u32)>>()
+                    }
+                };
+
+                connection.append(
+                    edges
+                        .iter()
+                        .map(|(pool, cursor)| Edge::new(IndexCursor::from(*cursor), pool.clone())),
+                );
+
+                Ok(connection)
+            },
+        )
+        .await
     }
 
     /// Get a paginated view of all the blocks in this epoch
     pub async fn blocks_by_epoch(
         &self,
+        context: &Context<'_>,
         epoch: EpochNumber,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-        context: &Context,
-    ) -> FieldResult<Option<BlockConnection>> {
-        let epoch_data = match context.db.get_epoch(epoch.try_into()?).await {
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Option<Connection<IndexCursor, Block, EmptyFields, EmptyFields>>> {
+        let epoch_data = match context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .get_epoch(epoch.try_into()?)
+            .await
+        {
             Some(epoch_data) => epoch_data,
             None => return Ok(None),
         };
 
-        let epoch_lower_bound = self
-            .state
-            .state()
-            .blocks
-            .lookup(&epoch_data.first_block)
-            .map(|block| u32::from(block.chain_length))
-            .expect("Epoch lower bound");
+        Some(
+            query(
+                after,
+                before,
+                first,
+                last,
+                |after, before, first, last| async move {
+                    let epoch_lower_bound = self
+                        .state
+                        .state()
+                        .blocks
+                        .lookup(&epoch_data.first_block)
+                        .map(|block| u32::from(block.chain_length))
+                        .expect("Epoch lower bound");
 
-        let epoch_upper_bound = self
-            .state
-            .state()
-            .blocks
-            .lookup(&epoch_data.last_block)
-            .map(|block| u32::from(block.chain_length))
-            .expect("Epoch upper bound");
+                    let epoch_upper_bound = self
+                        .state
+                        .state()
+                        .blocks
+                        .lookup(&epoch_data.last_block)
+                        .map(|block| u32::from(block.chain_length))
+                        .expect("Epoch upper bound");
 
-        let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
-            lower_bound: 0,
-            upper_bound: epoch_upper_bound
-                .checked_sub(epoch_lower_bound)
-                .expect("pagination upper_bound to be greater or equal than lower_bound"),
-        });
+                    let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0,
+                        upper_bound: epoch_upper_bound.checked_sub(epoch_lower_bound).expect(
+                            "pagination upper_bound to be greater or equal than lower_bound",
+                        ),
+                    });
 
-        let pagination_arguments = PaginationArguments {
-            first,
-            last,
-            before: before.map(u32::try_from).transpose()?,
-            after: after.map(u32::try_from).transpose()?,
-        }
-        .validate()?;
+                    let pagination_arguments = ValidatedPaginationArguments {
+                        first,
+                        last,
+                        before: before.map(u32::try_from).transpose()?,
+                        after: after.map(u32::try_from).transpose()?,
+                    };
 
-        BlockConnection::new_async(boundaries, pagination_arguments, |range| async {
-            match range {
-                PaginationInterval::Empty => unreachable!("No blocks found (not even genesis)"),
-                PaginationInterval::Inclusive(range) => self
-                    .state
-                    .state()
-                    .get_block_hash_range(
-                        (range.lower_bound + epoch_lower_bound).into(),
-                        (range.upper_bound + epoch_lower_bound + 1).into(),
-                    )
-                    .iter()
-                    .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
-                    .collect(),
-            }
-        })
-        .await
-        .map(Some)
+                    let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                    let mut connection =
+                        Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+
+                    let edges = match range {
+                        PaginationInterval::Empty => {
+                            unreachable!("No blocks found (not even genesis)")
+                        }
+                        PaginationInterval::Inclusive(range) => self
+                            .state
+                            .state()
+                            .get_block_hash_range(
+                                (range.lower_bound + epoch_lower_bound).into(),
+                                (range.upper_bound + epoch_lower_bound + 1u32).into(),
+                            )
+                            .iter()
+                            .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
+                            .collect::<Vec<_>>(),
+                    };
+
+                    connection.append(edges.iter().map(|(id, cursor)| {
+                        Edge::new(IndexCursor::from(*cursor), Block::from_valid_hash(*id))
+                    }));
+
+                    Ok(connection)
+                },
+            )
+            .await,
+        )
+        .transpose()
     }
 }
 
@@ -408,32 +501,47 @@ impl Block {
 }
 
 /// A Block
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl Block {
     /// The Block unique identifier
-    pub fn id(&self) -> String {
+    pub async fn id(&self) -> String {
         format!("{}", self.hash)
     }
 
     /// Date the Block was included in the blockchain
-    pub async fn date(&self, context: &Context) -> FieldResult<BlockDate> {
-        self.fetch_explorer_block(&context.db)
-            .await
-            .map(|b| b.date().into())
+    pub async fn date(&self, context: &Context<'_>) -> FieldResult<BlockDate> {
+        self.fetch_explorer_block(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|b| b.date().into())
     }
 
     /// The transactions contained in the block
     pub async fn transactions(
         &self,
+        context: &Context<'_>,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-        context: &Context,
-    ) -> FieldResult<TransactionConnection> {
-        let explorer_block = self.fetch_explorer_block(&context.db).await?;
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, Transaction, EmptyFields, EmptyFields>> {
+        let explorer_block = self
+            .fetch_explorer_block(
+                &context
+                    .data_unchecked::<RestContext>()
+                    .get()
+                    .await
+                    .unwrap()
+                    .db,
+            )
+            .await?;
+
         let mut transactions: Vec<&ExplorerTransaction> =
             explorer_block.transactions.values().collect();
 
@@ -443,90 +551,143 @@ impl Block {
             .as_mut_slice()
             .sort_unstable_by_key(|tx| tx.offset_in_block);
 
-        let pagination_arguments = PaginationArguments {
+        query(
+            after,
+            before,
             first,
             last,
-            before: before.map(u32::try_from).transpose()?,
-            after: after.map(u32::try_from).transpose()?,
-        }
-        .validate()?;
+            |after, before, first, last| async move {
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
 
-        let boundaries = if !transactions.is_empty() {
-            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: 0u32,
-                upper_bound: transactions
-                    .len()
-                    .checked_sub(1)
-                    .unwrap()
-                    .try_into()
-                    .expect("tried to paginate more than 2^32 elements"),
-            })
-        } else {
-            PaginationInterval::Empty
-        };
+                let boundaries = if !transactions.is_empty() {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u32,
+                        upper_bound: transactions
+                            .len()
+                            .checked_sub(1)
+                            .unwrap()
+                            .try_into()
+                            .expect("tried to paginate more than 2^32 elements"),
+                    })
+                } else {
+                    PaginationInterval::Empty
+                };
 
-        TransactionConnection::new(
-            boundaries,
-            pagination_arguments,
-            |range: PaginationInterval<u32>| match range {
-                PaginationInterval::Empty => vec![],
-                PaginationInterval::Inclusive(range) => {
-                    let from = usize::try_from(range.lower_bound).unwrap();
-                    let to = usize::try_from(range.upper_bound).unwrap();
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                let mut connection =
+                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
 
-                    (from..=to)
-                        .map(|i| {
-                            (
-                                TransactionNodeFetchInfo::Contents(transactions[i].clone()),
-                                i.try_into().unwrap(),
-                            )
-                        })
-                        .collect::<Vec<(TransactionNodeFetchInfo, u32)>>()
-                }
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => {
+                        let from = usize::try_from(range.lower_bound).unwrap();
+                        let to = usize::try_from(range.upper_bound).unwrap();
+
+                        (from..=to)
+                            .map(|i| {
+                                (
+                                    Transaction::from_contents(transactions[i].clone()),
+                                    i.try_into().unwrap(),
+                                )
+                            })
+                            .collect::<Vec<(_, u32)>>()
+                    }
+                };
+
+                connection.append(
+                    edges
+                        .iter()
+                        .map(|(tx, cursor)| Edge::new(IndexCursor::from(*cursor), tx.clone())),
+                );
+
+                Ok(connection)
             },
         )
+        .await
     }
 
-    pub async fn chain_length(&self, context: &Context) -> FieldResult<ChainLength> {
-        self.fetch_explorer_block(&context.db)
-            .await
-            .map(|block| block.chain_length().into())
+    pub async fn chain_length(&self, context: &Context<'_>) -> FieldResult<ChainLength> {
+        self.fetch_explorer_block(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|block| block.chain_length().into())
     }
 
-    pub async fn leader(&self, context: &Context) -> FieldResult<Option<Leader>> {
-        self.fetch_explorer_block(&context.db)
-            .await
-            .map(|block| match block.producer() {
-                BlockProducer::StakePool(pool) => {
-                    Some(Leader::StakePool(Pool::from_valid_id(pool.clone())))
-                }
-                BlockProducer::BftLeader(id) => {
-                    Some(Leader::BftLeader(BftLeader { id: id.clone() }))
-                }
-                BlockProducer::None => None,
-            })
+    pub async fn leader(&self, context: &Context<'_>) -> FieldResult<Option<Leader>> {
+        self.fetch_explorer_block(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|block| match block.producer() {
+            BlockProducer::StakePool(pool) => {
+                Some(Leader::StakePool(Pool::from_valid_id(pool.clone())))
+            }
+            BlockProducer::BftLeader(id) => Some(Leader::BftLeader(BftLeader { id: id.clone() })),
+            BlockProducer::None => None,
+        })
     }
 
-    pub async fn previous_block(&self, context: &Context) -> FieldResult<Block> {
-        self.fetch_explorer_block(&context.db)
-            .await
-            .map(|b| Block::from_valid_hash(b.parent_hash))
+    pub async fn previous_block(&self, context: &Context<'_>) -> FieldResult<Block> {
+        self.fetch_explorer_block(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|b| Block::from_valid_hash(b.parent_hash))
     }
 
-    pub async fn total_input(&self, context: &Context) -> FieldResult<Value> {
-        self.fetch_explorer_block(&context.db)
-            .await
-            .map(|block| Value(format!("{}", block.total_input)))
+    pub async fn total_input(&self, context: &Context<'_>) -> FieldResult<Value> {
+        self.fetch_explorer_block(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|block| Value(format!("{}", block.total_input)))
     }
 
-    pub async fn total_output(&self, context: &Context) -> FieldResult<Value> {
-        self.fetch_explorer_block(&context.db)
-            .await
-            .map(|block| Value(format!("{}", block.total_output)))
+    pub async fn total_output(&self, context: &Context<'_>) -> FieldResult<Value> {
+        self.fetch_explorer_block(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|block| Value(format!("{}", block.total_output)))
     }
 
-    pub async fn treasury(&self, context: &Context) -> FieldResult<Option<Treasury>> {
+    pub async fn treasury(&self, context: &Context<'_>) -> FieldResult<Option<Treasury>> {
         let treasury = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
             .db
             .blockchain()
             .get_ref(self.hash)
@@ -544,33 +705,46 @@ impl Block {
         Ok(treasury)
     }
 
-    pub async fn is_confirmed(&self, context: &Context) -> bool {
-        context.db.is_block_confirmed(&self.hash).await
+    pub async fn is_confirmed(&self, context: &Context<'_>) -> bool {
+        context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .is_block_confirmed(&self.hash)
+            .await
     }
 
-    pub async fn branches(&self, context: &Context) -> FieldResult<Vec<Branch>> {
-        let branches = self.get_branches(&context.db).await?;
+    pub async fn branches(&self, context: &Context<'_>) -> FieldResult<Vec<Branch>> {
+        let branches = self
+            .get_branches(
+                &context
+                    .data_unchecked::<RestContext>()
+                    .get()
+                    .await
+                    .unwrap()
+                    .db,
+            )
+            .await?;
 
         Ok(branches)
     }
 }
 
-struct BftLeader {
+pub struct BftLeader {
     id: BftLeaderId,
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl BftLeader {
-    fn id(&self) -> PublicKey {
+    async fn id(&self) -> PublicKey {
         self.id.as_public_key().into()
     }
 }
 
-#[derive(GraphQLUnion)]
-#[graphql(Context = Context)]
-enum Leader {
+#[derive(Union)]
+pub enum Leader {
     StakePool(Pool),
     BftLeader(BftLeader),
 }
@@ -581,24 +755,11 @@ impl From<Arc<ExplorerBlock>> for Block {
     }
 }
 
-#[derive(Clone)]
-struct BlockDate {
+/// Block's date, composed of an Epoch and a Slot
+#[derive(Clone, SimpleObject)]
+pub struct BlockDate {
     epoch: Epoch,
     slot: Slot,
-}
-
-/// Block's date, composed of an Epoch and a Slot
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl BlockDate {
-    pub fn epoch(&self) -> &Epoch {
-        &self.epoch
-    }
-
-    pub fn slot(&self) -> &Slot {
-        &self.slot
-    }
 }
 
 impl From<blockcfg::BlockDate> for BlockDate {
@@ -611,15 +772,22 @@ impl From<blockcfg::BlockDate> for BlockDate {
 }
 
 #[derive(Clone)]
-struct Transaction {
+pub struct Transaction {
     id: FragmentId,
     block_hashes: Vec<HeaderHash>,
     contents: Option<ExplorerTransaction>,
 }
 
 impl Transaction {
-    async fn from_id(id: FragmentId, context: &Context) -> FieldResult<Transaction> {
-        let block_hashes = context.db.find_blocks_by_transaction(&id).await;
+    async fn from_id(id: FragmentId, context: &Context<'_>) -> FieldResult<Transaction> {
+        let block_hashes = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .find_blocks_by_transaction(&id)
+            .await;
 
         if block_hashes.is_empty() {
             return Err(ErrorKind::NotFound(format!("transaction not found: {}", &id,)).into());
@@ -648,9 +816,16 @@ impl Transaction {
         }
     }
 
-    async fn get_blocks(&self, context: &Context) -> FieldResult<Vec<Arc<ExplorerBlock>>> {
+    async fn get_blocks(&self, context: &Context<'_>) -> FieldResult<Vec<Arc<ExplorerBlock>>> {
         let block_ids = if self.block_hashes.is_empty() {
-            context.db.find_blocks_by_transaction(&self.id).await
+            context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db
+                .find_blocks_by_transaction(&self.id)
+                .await
         } else {
             self.block_hashes.clone()
         };
@@ -664,11 +839,19 @@ impl Transaction {
         let mut result = Vec::new();
 
         for block_id in block_ids {
-            let block = context.db.get_block(&block_id).await.ok_or_else(|| {
-                FieldError::from(ErrorKind::InternalError(
-                    "transaction is in explorer but couldn't find its block".to_owned(),
-                ))
-            })?;
+            let block = context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db
+                .get_block(&block_id)
+                .await
+                .ok_or_else(|| {
+                    FieldError::from(ErrorKind::InternalError(
+                        "transaction is in explorer but couldn't find its block".to_owned(),
+                    ))
+                })?;
 
             result.push(block);
         }
@@ -676,13 +859,17 @@ impl Transaction {
         Ok(result)
     }
 
-    async fn get_contents(&self, context: &Context) -> FieldResult<ExplorerTransaction> {
+    async fn get_contents(&self, context: &Context<'_>) -> FieldResult<ExplorerTransaction> {
         if let Some(c) = &self.contents {
             Ok(c.clone())
         } else {
             //TODO: maybe store transactions outside blocks? as Arc, as doing it this way is pretty wasty
 
             let block = context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
                 .db
                 .get_block(&self.block_hashes[0])
                 .await
@@ -706,23 +893,21 @@ impl Transaction {
 }
 
 /// A transaction in the blockchain
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl Transaction {
     /// The hash that identifies the transaction
-    pub fn id(&self) -> String {
+    pub async fn id(&self) -> String {
         format!("{}", self.id)
     }
 
     /// All the blocks this transaction is included in
-    pub async fn blocks(&self, context: &Context) -> FieldResult<Vec<Block>> {
+    pub async fn blocks(&self, context: &Context<'_>) -> FieldResult<Vec<Block>> {
         let blocks = self.get_blocks(context).await?;
 
         Ok(blocks.iter().map(|b| Block::from(Arc::clone(b))).collect())
     }
 
-    pub async fn inputs(&self, context: &Context) -> FieldResult<Vec<TransactionInput>> {
+    pub async fn inputs(&self, context: &Context<'_>) -> FieldResult<Vec<TransactionInput>> {
         let transaction = self.get_contents(context).await?;
         Ok(transaction
             .inputs()
@@ -734,7 +919,7 @@ impl Transaction {
             .collect())
     }
 
-    pub async fn outputs(&self, context: &Context) -> FieldResult<Vec<TransactionOutput>> {
+    pub async fn outputs(&self, context: &Context<'_>) -> FieldResult<Vec<TransactionOutput>> {
         let transaction = self.get_contents(context).await?;
         Ok(transaction
             .outputs()
@@ -748,7 +933,7 @@ impl Transaction {
 
     pub async fn certificate(
         &self,
-        context: &Context,
+        context: &Context<'_>,
     ) -> FieldResult<Option<certificates::Certificate>> {
         let transaction = self.get_contents(context).await?;
         match transaction.certificate {
@@ -758,44 +943,20 @@ impl Transaction {
     }
 }
 
-struct TransactionInput {
+#[derive(SimpleObject)]
+pub struct TransactionInput {
     amount: Value,
     address: Address,
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl TransactionInput {
-    fn amount(&self) -> &Value {
-        &self.amount
-    }
-
-    fn address(&self) -> &Address {
-        &self.address
-    }
-}
-
-struct TransactionOutput {
+#[derive(SimpleObject)]
+pub struct TransactionOutput {
     amount: Value,
     address: Address,
-}
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl TransactionOutput {
-    fn amount(&self) -> &Value {
-        &self.amount
-    }
-
-    fn address(&self) -> &Address {
-        &self.address
-    }
 }
 
 #[derive(Clone)]
-struct Address {
+pub struct Address {
     id: ExplorerAddress,
 }
 
@@ -816,15 +977,19 @@ impl From<&ExplorerAddress> for Address {
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl Address {
     /// The base32 representation of an address
-    fn id(&self, context: &Context) -> String {
+    async fn id(&self, context: &Context<'_>) -> String {
         match &self.id {
             ExplorerAddress::New(addr) => chain_addr::AddressReadable::from_address(
-                &context.settings.address_bech32_prefix,
+                &context
+                    .data_unchecked::<RestContext>()
+                    .get()
+                    .await
+                    .unwrap()
+                    .settings
+                    .address_bech32_prefix,
                 addr,
             )
             .to_string(),
@@ -832,54 +997,48 @@ impl Address {
         }
     }
 
-    fn delegation() -> FieldResult<Pool> {
+    async fn delegation(&self, _context: &Context<'_>) -> FieldResult<Pool> {
         Err(ErrorKind::Unimplemented.into())
     }
 }
 
-struct TaxType(chain_impl_mockchain::rewards::TaxType);
+pub struct TaxType(chain_impl_mockchain::rewards::TaxType);
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl TaxType {
     /// what get subtracted as fixed value
-    pub fn fixed(&self) -> Value {
+    pub async fn fixed(&self) -> Value {
         Value(format!("{}", self.0.fixed))
     }
     /// Ratio of tax after fixed amout subtracted
-    pub fn ratio(&self) -> Ratio {
+    pub async fn ratio(&self) -> Ratio {
         Ratio(self.0.ratio)
     }
 
     /// Max limit of tax
-    pub fn max_limit(&self) -> Option<NonZero> {
+    pub async fn max_limit(&self) -> Option<NonZero> {
         self.0.max_limit.map(|n| NonZero(format!("{}", n)))
     }
 }
 
-struct Ratio(chain_impl_mockchain::rewards::Ratio);
+pub struct Ratio(chain_impl_mockchain::rewards::Ratio);
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl Ratio {
-    pub fn numerator(&self) -> Value {
+    pub async fn numerator(&self) -> Value {
         Value(format!("{}", self.0.numerator))
     }
 
-    pub fn denominator(&self) -> NonZero {
+    pub async fn denominator(&self) -> NonZero {
         NonZero(format!("{}", self.0.denominator))
     }
 }
 
 pub struct Proposal(certificate::Proposal);
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl Proposal {
-    pub fn external_id(&self) -> ExternalProposalId {
+    pub async fn external_id(&self) -> ExternalProposalId {
         ExternalProposalId(self.0.external_id().to_string())
     }
 
@@ -888,7 +1047,7 @@ impl Proposal {
     /// this is the available range of choices to make for the given
     /// proposal. all casted votes for this proposals ought to be in
     /// within the given range
-    pub fn options(&self) -> VoteOptionRange {
+    pub async fn options(&self) -> VoteOptionRange {
         self.0.options().clone().into()
     }
 }
@@ -937,25 +1096,27 @@ impl Pool {
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl Pool {
-    pub fn id(&self) -> PoolId {
+    pub async fn id(&self) -> PoolId {
         PoolId(format!("{}", &self.id))
     }
 
     pub async fn blocks(
         &self,
+        context: &Context<'_>,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-        context: &Context,
-    ) -> FieldResult<BlockConnection> {
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, Block>> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
             None => context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
                 .db
                 .get_stake_pool_blocks(&self.id)
                 .await
@@ -964,40 +1125,65 @@ impl Pool {
                 })?,
         };
 
-        let bounds = if blocks.len() > 0 {
-            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: 0u32,
-                upper_bound: blocks
-                    .len()
-                    .checked_sub(1)
-                    .unwrap()
-                    .try_into()
-                    .expect("Tried to paginate more than 2^32 blocks"),
-            })
-        } else {
-            PaginationInterval::Empty
-        };
-
-        let pagination_arguments = PaginationArguments {
+        query(
+            after,
+            before,
             first,
             last,
-            before: before.map(u32::try_from).transpose()?,
-            after: after.map(u32::try_from).transpose()?,
-        }
-        .validate()?;
+            |after, before, first, last| async move {
+                let bounds = if blocks.len() > 0 {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u32,
+                        upper_bound: blocks
+                            .len()
+                            .checked_sub(1)
+                            .unwrap()
+                            .try_into()
+                            .expect("Tried to paginate more than 2^32 blocks"),
+                    })
+                } else {
+                    PaginationInterval::Empty
+                };
 
-        BlockConnection::new(bounds, pagination_arguments, |range| match range {
-            PaginationInterval::Empty => vec![],
-            PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
-                .filter_map(|i| blocks.get(i).map(|h| (*h.as_ref(), i)))
-                .collect(),
-        })
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
+
+                let (range, page_meta) = compute_interval(bounds, pagination_arguments)?;
+
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => (range.lower_bound..=range.upper_bound)
+                        .filter_map(|i| blocks.get(i).map(|h| (*h.as_ref(), i)))
+                        .collect(),
+                };
+
+                let mut connection =
+                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+
+                connection.append(
+                    edges
+                        .iter()
+                        .map(|(h, i)| Edge::new(IndexCursor::from(*i), Block::from_valid_hash(*h))),
+                );
+
+                Ok(connection)
+            },
+        )
+        .await
     }
 
-    pub async fn registration(&self, context: &Context) -> FieldResult<PoolRegistration> {
+    pub async fn registration(&self, context: &Context<'_>) -> FieldResult<PoolRegistration> {
         match &self.data {
             Some(data) => Ok(data.registration.clone().into()),
             None => context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
                 .db
                 .get_stake_pool_data(&self.id)
                 .await
@@ -1006,10 +1192,14 @@ impl Pool {
         }
     }
 
-    pub async fn retirement(&self, context: &Context) -> FieldResult<Option<PoolRetirement>> {
+    pub async fn retirement(&self, context: &Context<'_>) -> FieldResult<Option<PoolRetirement>> {
         match &self.data {
             Some(data) => Ok(data.retirement.clone().map(PoolRetirement::from)),
             None => context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
                 .db
                 .get_stake_pool_data(&self.id)
                 .await
@@ -1023,20 +1213,25 @@ impl Pool {
     }
 }
 
-struct Settings {}
+pub struct Settings {}
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl Settings {
-    pub fn fees(&self, context: &Context) -> FeeSettings {
+    pub async fn fees(&self, context: &Context<'_>) -> FeeSettings {
         let chain_impl_mockchain::fee::LinearFee {
             constant,
             coefficient,
             certificate,
             per_certificate_fees,
             per_vote_certificate_fees,
-        } = context.db.blockchain_config.fees;
+        } = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .blockchain_config
+            .fees;
 
         FeeSettings {
             constant: Value(format!("{}", constant)),
@@ -1080,8 +1275,12 @@ impl Settings {
         }
     }
 
-    pub fn epoch_stability_depth(&self, context: &Context) -> String {
+    pub async fn epoch_stability_depth(&self, context: &Context<'_>) -> String {
         context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
             .db
             .blockchain_config
             .epoch_stability_depth
@@ -1089,31 +1288,15 @@ impl Settings {
     }
 }
 
-struct Treasury {
+#[derive(SimpleObject)]
+pub struct Treasury {
     rewards: Value,
     treasury: Value,
     treasury_tax: TaxType,
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl Treasury {
-    fn rewards(&self) -> &Value {
-        &self.rewards
-    }
-
-    fn treasury(&self) -> &Value {
-        &self.treasury
-    }
-
-    fn treasury_tax(&self) -> &TaxType {
-        &self.treasury_tax
-    }
-}
-
-#[derive(juniper::GraphQLObject)]
-struct FeeSettings {
+#[derive(SimpleObject)]
+pub struct FeeSettings {
     constant: Value,
     coefficient: Value,
     certificate: Value,
@@ -1125,7 +1308,7 @@ struct FeeSettings {
 }
 
 #[derive(Clone)]
-struct Epoch {
+pub struct Epoch {
     id: blockcfg::Epoch,
 }
 
@@ -1139,65 +1322,80 @@ impl Epoch {
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl Epoch {
-    pub fn id(&self) -> EpochNumber {
+    pub async fn id(&self) -> EpochNumber {
         self.id.into()
     }
 
     /// Not yet implemented
-    pub fn stake_distribution(&self) -> FieldResult<StakeDistribution> {
+    pub async fn stake_distribution(&self) -> FieldResult<StakeDistribution> {
         Err(ErrorKind::Unimplemented.into())
     }
 
-    pub async fn first_block(&self, context: &Context) -> Option<Block> {
-        self.get_epoch_data(&context.db)
-            .await
-            .map(|data| Block::from_valid_hash(data.first_block))
+    pub async fn first_block(&self, context: &Context<'_>) -> Option<Block> {
+        self.get_epoch_data(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|data| Block::from_valid_hash(data.first_block))
     }
 
-    pub async fn last_block(&self, context: &Context) -> Option<Block> {
-        self.get_epoch_data(&context.db)
-            .await
-            .map(|data| Block::from_valid_hash(data.last_block))
+    pub async fn last_block(&self, context: &Context<'_>) -> Option<Block> {
+        self.get_epoch_data(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map(|data| Block::from_valid_hash(data.last_block))
     }
 
-    pub async fn total_blocks(&self, context: &Context) -> BlockCount {
-        self.get_epoch_data(&context.db)
-            .await
-            .map_or(0u32.into(), |data| data.total_blocks.into())
+    pub async fn total_blocks(&self, context: &Context<'_>) -> BlockCount {
+        self.get_epoch_data(
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
+        .map_or(0u32.into(), |data| data.total_blocks.into())
     }
 }
 
-struct StakeDistribution {
+pub struct StakeDistribution {
     pools: Vec<PoolStakeDistribution>,
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl StakeDistribution {
-    pub fn pools(&self) -> &Vec<PoolStakeDistribution> {
+    pub async fn pools(&self) -> &Vec<PoolStakeDistribution> {
         &self.pools
     }
 }
 
-struct PoolStakeDistribution {
+pub struct PoolStakeDistribution {
     pool: Pool,
     delegated_stake: Value,
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl PoolStakeDistribution {
-    pub fn pool(&self) -> &Pool {
+    pub async fn pool(&self) -> &Pool {
         &self.pool
     }
 
-    pub fn delegated_stake(&self) -> &Value {
+    pub async fn delegated_stake(&self) -> &Value {
         &self.delegated_stake
     }
 }
@@ -1213,32 +1411,27 @@ pub struct VotePayloadPrivateStatus {
     encrypted_vote: EncryptedVote,
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl VotePayloadPublicStatus {
-    pub fn choice(&self, _context: &Context) -> i32 {
+    pub async fn choice(&self, _context: &Context<'_>) -> i32 {
         self.choice
     }
 }
 
-#[juniper::graphql_object(
-Context = Context
-)]
+#[Object]
 impl VotePayloadPrivateStatus {
-    pub fn proof(&self, _context: &Context) -> String {
+    pub async fn proof(&self, _context: &Context<'_>) -> String {
         let bytes_proof = self.proof.serialize();
         base64::encode_config(bytes_proof, base64::URL_SAFE)
     }
 
-    pub fn encrypted_vote(&self, _context: &Context) -> String {
+    pub async fn encrypted_vote(&self, _context: &Context<'_>) -> String {
         let encrypted_bote_bytes = self.encrypted_vote.serialize();
         base64::encode_config(encrypted_bote_bytes, base64::URL_SAFE)
     }
 }
 
-#[derive(Clone, GraphQLUnion)]
-#[graphql(Context = Context)]
+#[derive(Clone, Union)]
 pub enum VotePayloadStatus {
     Public(VotePayloadPublicStatus),
     Private(VotePayloadPrivateStatus),
@@ -1251,15 +1444,13 @@ pub struct TallyPublicStatus {
     options: VoteOptionRange,
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl TallyPublicStatus {
-    fn results(&self) -> &[Weight] {
+    async fn results(&self) -> &[Weight] {
         &self.results
     }
 
-    fn options(&self) -> &VoteOptionRange {
+    async fn options(&self) -> &VoteOptionRange {
         &self.options
     }
 }
@@ -1270,25 +1461,24 @@ pub struct TallyPrivateStatus {
     options: VoteOptionRange,
 }
 
-#[juniper::graphql_object(Context = Context)]
+#[Object]
 impl TallyPrivateStatus {
-    fn results(&self) -> Option<&[Weight]> {
+    async fn results(&self) -> Option<&[Weight]> {
         self.results.as_ref().map(AsRef::as_ref)
     }
 
-    fn options(&self) -> &VoteOptionRange {
+    async fn options(&self) -> &VoteOptionRange {
         &self.options
     }
 }
 
-#[derive(Clone, GraphQLUnion)]
-#[graphql(Context = Context)]
+#[derive(Clone, Union)]
 pub enum TallyStatus {
     Public(TallyPublicStatus),
     Private(TallyPrivateStatus),
 }
 
-#[derive(Clone)]
+#[derive(Clone, SimpleObject)]
 pub struct VotePlanStatus {
     id: VotePlanId,
     vote_start: BlockDate,
@@ -1301,13 +1491,19 @@ pub struct VotePlanStatus {
 impl VotePlanStatus {
     pub async fn vote_plan_from_id(
         vote_plan_id: VotePlanId,
-        context: &Context,
+        context: &Context<'_>,
     ) -> FieldResult<Self> {
         let vote_plan_id = chain_impl_mockchain::certificate::VotePlanId::from_str(&vote_plan_id.0)
-            .map_err(|err| -> juniper::FieldError {
-                ErrorKind::InvalidAddress(err.to_string()).into()
-            })?;
-        if let Some(vote_plan) = context.db.get_vote_plan_by_id(&vote_plan_id).await {
+            .map_err(|err| -> FieldError { ErrorKind::InvalidAddress(err.to_string()).into() })?;
+        if let Some(vote_plan) = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .get_vote_plan_by_id(&vote_plan_id)
+            .await
+        {
             return Ok(Self::vote_plan_from_data(vote_plan));
         }
 
@@ -1382,52 +1578,10 @@ impl VotePlanStatus {
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl VotePlanStatus {
-    pub fn id(&self) -> &VotePlanId {
-        &self.id
-    }
-
-    pub fn vote_start(&self) -> &BlockDate {
-        &self.vote_start
-    }
-
-    pub fn vote_end(&self) -> &BlockDate {
-        &self.vote_end
-    }
-
-    pub fn committee_end(&self) -> &BlockDate {
-        &self.committee_end
-    }
-
-    pub fn payload_type(&self) -> &PayloadType {
-        &self.payload_type
-    }
-
-    pub fn proposals(&self) -> &[VoteProposalStatus] {
-        &self.proposals
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, SimpleObject)]
 pub struct VoteStatus {
     address: Address,
     payload: VotePayloadStatus,
-}
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl VoteStatus {
-    pub fn address(&self) -> &Address {
-        &self.address
-    }
-
-    pub fn payload(&self) -> &VotePayloadStatus {
-        &self.payload
-    }
 }
 
 #[derive(Clone)]
@@ -1438,81 +1592,111 @@ pub struct VoteProposalStatus {
     votes: Vec<VoteStatus>,
 }
 
-#[juniper::graphql_object(
-    Context = Context
-)]
+#[Object]
 impl VoteProposalStatus {
-    pub fn proposal_id(&self) -> &ExternalProposalId {
+    pub async fn proposal_id(&self) -> &ExternalProposalId {
         &self.proposal_id
     }
 
-    pub fn options(&self) -> &VoteOptionRange {
+    pub async fn options(&self) -> &VoteOptionRange {
         &self.options
     }
 
-    pub fn tally(&self) -> Option<&TallyStatus> {
+    pub async fn tally(&self) -> Option<&TallyStatus> {
         self.tally.as_ref()
     }
 
-    pub fn votes(
+    pub async fn votes(
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
-    ) -> FieldResult<VoteStatusConnection> {
-        let boundaries = if !self.votes.is_empty() {
-            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: 0u32,
-                upper_bound: self
-                    .votes
-                    .len()
-                    .checked_sub(1)
-                    .unwrap()
-                    .try_into()
-                    .expect("tried to paginate more than 2^32 elements"),
-            })
-        } else {
-            PaginationInterval::Empty
-        };
-
-        let pagination_arguments = PaginationArguments {
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, VoteStatus, EmptyFields, EmptyFields>> {
+        query(
+            after,
+            before,
             first,
             last,
-            before: before.map(u32::try_from).transpose()?,
-            after: after.map(u32::try_from).transpose()?,
-        }
-        .validate()?;
+            |after, before, first, last| async move {
+                let boundaries = if !self.votes.is_empty() {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u32,
+                        upper_bound: self
+                            .votes
+                            .len()
+                            .checked_sub(1)
+                            .unwrap()
+                            .try_into()
+                            .expect("tried to paginate more than 2^32 elements"),
+                    })
+                } else {
+                    PaginationInterval::Empty
+                };
 
-        VoteStatusConnection::new(boundaries, pagination_arguments, |range| match range {
-            PaginationInterval::Empty => vec![],
-            PaginationInterval::Inclusive(range) => {
-                let from = range.lower_bound;
-                let to = range.upper_bound;
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
 
-                (from..=to)
-                    .map(|i: u32| (self.votes[i as usize].clone(), i))
-                    .collect::<Vec<(VoteStatus, u32)>>()
-            }
-        })
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                let mut connection =
+                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => {
+                        let from = range.lower_bound;
+                        let to = range.upper_bound;
+
+                        (from..=to)
+                            .map(|i: u32| (self.votes[i as usize].clone(), i))
+                            .collect::<Vec<(VoteStatus, u32)>>()
+                    }
+                };
+
+                connection.append(
+                    edges
+                        .iter()
+                        .map(|(vs, cursor)| Edge::new(IndexCursor::from(*cursor), vs.clone())),
+                );
+
+                Ok(connection)
+            },
+        )
+        .await
     }
 }
 
 pub struct Query;
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl Query {
-    async fn block(id: String, context: &Context) -> FieldResult<Block> {
-        Block::from_string_hash(id, &context.db).await
+    async fn block(&self, context: &Context<'_>, id: String) -> FieldResult<Block> {
+        Block::from_string_hash(
+            id,
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
     }
 
     async fn blocks_by_chain_length(
+        &self,
+        context: &Context<'_>,
         length: ChainLength,
-        context: &Context,
     ) -> FieldResult<Vec<Block>> {
         let blocks = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
             .db
             .find_blocks_by_chain_length(length.try_into()?)
             .await
@@ -1524,15 +1708,19 @@ impl Query {
         Ok(blocks)
     }
 
-    async fn transaction(id: String, context: &Context) -> FieldResult<Transaction> {
+    async fn transaction(&self, context: &Context<'_>, id: String) -> FieldResult<Transaction> {
         let id = FragmentId::from_str(&id)?;
 
         Transaction::from_id(id, context).await
     }
 
     /// get all current tips, sorted (descending) by their length
-    async fn branches(&self, context: &Context) -> Vec<Branch> {
+    pub async fn branches(&self, context: &Context<'_>) -> Vec<Branch> {
         context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
             .db
             .get_branches()
             .await
@@ -1542,47 +1730,65 @@ impl Query {
             .collect()
     }
 
-    /// get the ref that the ledger currently considers as the main branch's
-    async fn tip(&self, context: &Context) -> Branch {
-        let (hash, state_ref) = context.db.get_tip().await;
+    /// get the block that the ledger currently considers as the main branch's
+    /// tip
+    async fn tip(&self, context: &Context<'_>) -> Branch {
+        let (hash, state_ref) = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .get_tip()
+            .await;
+
         Branch::from_id_and_state(hash, state_ref)
     }
 
-    async fn branch(&self, id: String, context: &Context) -> FieldResult<Branch> {
+    pub async fn branch(&self, context: &Context<'_>, id: String) -> FieldResult<Branch> {
         let id = HeaderHash::from_str(&id)?;
-        Branch::try_from_id(id, context).await
+        Branch::try_from_id(
+            id,
+            &context.data_unchecked::<RestContext>().get().await.unwrap(),
+        )
+        .await
     }
 
-    fn epoch(id: EpochNumber) -> FieldResult<Epoch> {
+    pub async fn epoch(&self, context: &Context<'_>, id: EpochNumber) -> FieldResult<Epoch> {
         Epoch::from_epoch_number(id)
     }
 
-    fn address(bech32: String) -> FieldResult<Address> {
+    pub async fn address(&self, context: &Context<'_>, bech32: String) -> FieldResult<Address> {
         Address::from_bech32(&bech32)
     }
 
-    pub async fn stake_pool(id: PoolId, context: &Context) -> FieldResult<Pool> {
-        Pool::from_string_id(&id.0, &context.db).await
+    pub async fn stake_pool(&self, context: &Context<'_>, id: PoolId) -> FieldResult<Pool> {
+        Pool::from_string_id(
+            &id.0,
+            &context
+                .data_unchecked::<RestContext>()
+                .get()
+                .await
+                .unwrap()
+                .db,
+        )
+        .await
     }
 
-    pub fn settings() -> FieldResult<Settings> {
+    pub async fn settings(&self, context: &Context<'_>) -> FieldResult<Settings> {
         Ok(Settings {})
     }
 
-    pub async fn vote_plan(&self, id: String, context: &Context) -> FieldResult<VotePlanStatus> {
+    pub async fn vote_plan(
+        &self,
+        context: &Context<'_>,
+        id: String,
+    ) -> FieldResult<VotePlanStatus> {
         VotePlanStatus::vote_plan_from_id(VotePlanId(id), context).await
     }
 }
 
-pub struct Context {
+pub struct EContext {
     pub db: ExplorerDB,
     pub settings: ChainSettings,
-}
-
-impl juniper::Context for Context {}
-
-pub type Schema = RootNode<'static, Query, EmptyMutation<Context>, EmptySubscription<Context>>;
-
-pub fn create_schema() -> Schema {
-    Schema::new(Query {}, EmptyMutation::new(), EmptySubscription::new())
 }

@@ -1,196 +1,8 @@
-use super::error::ErrorKind;
-use super::scalars::{
-    BlockCount, IndexCursor, PoolCount, TransactionCount, VotePlanCount, VoteStatusCount,
-};
+use super::scalars::{IndexCursor, TransactionCount, VotePlanCount, VoteStatusCount};
 use super::{Block, Context, Pool, Transaction, VotePlanStatus, VoteStatus};
 use crate::blockcfg::HeaderHash;
-use crate::explorer::indexing::ExplorerTransaction;
-use juniper::FieldResult;
+use async_graphql::*;
 use std::convert::TryFrom;
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl PageInfo {
-    pub fn has_next_page(&self) -> bool {
-        self.has_next_page
-    }
-
-    pub fn has_previous_page(&self) -> bool {
-        self.has_previous_page
-    }
-
-    pub fn start_cursor(&self) -> &Option<IndexCursor> {
-        &self.start_cursor
-    }
-
-    pub fn end_cursor(&self) -> &Option<IndexCursor> {
-        &self.end_cursor
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl BlockEdge {
-    pub fn node(&self) -> &Block {
-        &self.node
-    }
-
-    /// A cursor for use in pagination
-    pub fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl TransactionEdge {
-    pub fn node(&self) -> &Transaction {
-        &self.node
-    }
-
-    /// A cursor for use in pagination
-    pub fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl PoolEdge {
-    pub fn node(&self) -> &Pool {
-        &self.node
-    }
-
-    /// A cursor for use in pagination
-    pub fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl VotePlanEdge {
-    pub fn node(&self) -> &VotePlanStatus {
-        &self.node
-    }
-
-    pub fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context
-)]
-impl VoteStatusEdge {
-    pub fn node(&self) -> &VoteStatus {
-        &self.node
-    }
-
-    pub fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context,
-    name = "BlockConnection"
-)]
-impl BlockConnection {
-    pub fn page_info(&self) -> &PageInfo {
-        &self.page_info
-    }
-
-    pub fn edges(&self) -> &Vec<BlockEdge> {
-        &self.edges
-    }
-
-    /// A count of the total number of objects in this connection, ignoring pagination.
-    pub fn total_count(&self) -> &BlockCount {
-        &self.total_count
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context,
-    name = "TransactionConnection"
-)]
-impl TransactionConnection {
-    pub fn page_info(&self) -> &PageInfo {
-        &self.page_info
-    }
-
-    pub fn edges(&self) -> &Vec<TransactionEdge> {
-        &self.edges
-    }
-
-    /// A count of the total number of objects in this connection, ignoring pagination.
-    pub fn total_count(&self) -> &TransactionCount {
-        &self.total_count
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context,
-    name = "PoolConnection"
-)]
-impl PoolConnection {
-    pub fn page_info(&self) -> &PageInfo {
-        &self.page_info
-    }
-
-    pub fn edges(&self) -> &Vec<PoolEdge> {
-        &self.edges
-    }
-
-    /// A count of the total number of objects in this connection, ignoring pagination.
-    pub fn total_count(&self) -> &PoolCount {
-        &self.total_count
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context,
-    name = "VotePlanConnection"
-)]
-impl VotePlanConnection {
-    pub fn page_info(&self) -> &PageInfo {
-        &self.page_info
-    }
-
-    pub fn edges(&self) -> &Vec<VotePlanEdge> {
-        &self.edges
-    }
-
-    /// A count of the total number of objects in this connection, ignoring pagination.
-    pub fn total_count(&self) -> &VotePlanCount {
-        &self.total_count
-    }
-}
-
-#[juniper::graphql_object(
-    Context = Context,
-    name = "VoteStatusConnection"
-)]
-impl VoteStatusConnection {
-    pub fn page_info(&self) -> &PageInfo {
-        &self.page_info
-    }
-
-    pub fn edges(&self) -> &Vec<VoteStatusEdge> {
-        &self.edges
-    }
-
-    /// A count of the total number of objects in this connection, ignoring pagination.
-    pub fn total_count(&self) -> &VoteStatusCount {
-        &self.total_count
-    }
-}
 
 pub struct PageInfo {
     pub has_next_page: bool,
@@ -199,267 +11,17 @@ pub struct PageInfo {
     pub end_cursor: Option<IndexCursor>,
 }
 
-pub struct Connection<E, C> {
-    page_info: PageInfo,
-    edges: Vec<E>,
-    total_count: C,
-}
-
-pub struct TransactionEdge {
-    node: Transaction,
-    cursor: IndexCursor,
-}
-
-pub struct BlockEdge {
-    pub node: Block,
-    pub cursor: IndexCursor,
-}
-
-pub struct PoolEdge {
-    node: Pool,
-    pub cursor: IndexCursor,
-}
-
-pub struct VotePlanEdge {
-    node: VotePlanStatus,
-    pub cursor: IndexCursor,
-}
-
-pub struct VoteStatusEdge {
-    node: VoteStatus,
-    pub cursor: IndexCursor,
-}
-
-pub trait Edge {
-    type Node;
-    fn new(node: Self::Node, cursor: IndexCursor) -> Self;
-
-    fn cursor(&self) -> &IndexCursor;
-}
-
 pub struct ValidatedPaginationArguments<I> {
-    first: Option<u32>,
-    last: Option<u32>,
-    before: Option<I>,
-    after: Option<I>,
-}
-
-pub struct PaginationArguments<I> {
-    pub first: Option<i32>,
-    pub last: Option<i32>,
+    pub first: Option<usize>,
+    pub last: Option<usize>,
     pub before: Option<I>,
     pub after: Option<I>,
 }
 
-struct PageMeta {
-    has_next_page: bool,
-    has_previous_page: bool,
-    total_count: u64,
-}
-
-impl<E, C> Connection<E, C>
-where
-    E: Edge,
-    C: From<u64>,
-    E::Node: Clone,
-{
-    fn compute_interval<I>(
-        bounds: PaginationInterval<I>,
-        pagination_arguments: ValidatedPaginationArguments<I>,
-    ) -> FieldResult<(PaginationInterval<I>, PageMeta)>
-    where
-        I: TryFrom<u64> + Clone,
-        u64: From<I>,
-    {
-        let pagination_arguments = pagination_arguments.cursors_into::<u64>();
-        let bounds = bounds.bounds_into::<u64>();
-
-        let (page_interval, has_next_page, has_previous_page, total_count) = match bounds {
-            PaginationInterval::Empty => (PaginationInterval::Empty, false, false, 0u64),
-            PaginationInterval::Inclusive(total_elements) => {
-                let InclusivePaginationInterval {
-                    upper_bound,
-                    lower_bound,
-                } = total_elements;
-
-                let page = compute_range_boundaries(total_elements, pagination_arguments);
-
-                let has_next_page = page.upper_bound < upper_bound;
-                let has_previous_page = page.lower_bound > lower_bound;
-
-                let total_count = upper_bound
-                    .checked_add(1)
-                    .unwrap()
-                    .checked_sub(lower_bound)
-                    .expect("upper_bound should be >= than lower_bound");
-                (
-                    PaginationInterval::Inclusive(page),
-                    has_next_page,
-                    has_previous_page,
-                    total_count,
-                )
-            }
-        };
-
-        Ok(page_interval
-            .bounds_try_into::<I>()
-            .map(|interval| {
-                (
-                    interval,
-                    PageMeta {
-                        has_next_page,
-                        has_previous_page,
-                        total_count,
-                    },
-                )
-            })
-            .map_err(|_| "computed page interval is outside pagination boundaries")?)
-    }
-
-    fn from_vec<I>(v: Vec<(E::Node, I)>, page_meta: PageMeta) -> Connection<E, C>
-    where
-        I: TryFrom<u64> + Clone,
-        IndexCursor: From<I>,
-    {
-        let edges: Vec<_> = v
-            .iter()
-            .map(|(hash, node_pagination_identifier)| {
-                E::new((*hash).clone(), node_pagination_identifier.clone().into())
-            })
-            .collect();
-
-        let start_cursor = edges.first().map(|e| e.cursor().clone());
-        let end_cursor = edges
-            .last()
-            .map(|e| e.cursor().clone())
-            .or_else(|| start_cursor.clone());
-
-        let PageMeta {
-            has_next_page,
-            has_previous_page,
-            total_count,
-        } = page_meta;
-
-        Connection {
-            edges,
-            page_info: PageInfo {
-                has_next_page,
-                has_previous_page,
-                start_cursor,
-                end_cursor,
-            },
-            total_count: total_count.into(),
-        }
-    }
-
-    pub async fn new_async<I, F>(
-        bounds: PaginationInterval<I>,
-        pagination_arguments: ValidatedPaginationArguments<I>,
-        get_node_range: impl Fn(PaginationInterval<I>) -> F,
-    ) -> FieldResult<Connection<E, C>>
-    where
-        I: TryFrom<u64> + Clone,
-        u64: From<I>,
-        IndexCursor: From<I>,
-        F: std::future::Future<Output = Vec<(E::Node, I)>>,
-    {
-        let (interval, page_meta) = Self::compute_interval(bounds, pagination_arguments)?;
-        let vec = get_node_range(interval).await;
-        Ok(Self::from_vec(vec, page_meta))
-    }
-
-    pub fn new<I>(
-        bounds: PaginationInterval<I>,
-        pagination_arguments: ValidatedPaginationArguments<I>,
-        get_node_range: impl Fn(PaginationInterval<I>) -> Vec<(E::Node, I)>,
-    ) -> FieldResult<Connection<E, C>>
-    where
-        I: TryFrom<u64> + Clone,
-        u64: From<I>,
-        IndexCursor: From<I>,
-    {
-        let (interval, page_meta) = Self::compute_interval(bounds, pagination_arguments)?;
-        let vec = get_node_range(interval);
-        Ok(Self::from_vec(vec, page_meta))
-    }
-}
-
-pub type BlockConnection = Connection<BlockEdge, BlockCount>;
-pub type TransactionConnection = Connection<TransactionEdge, TransactionCount>;
-pub type PoolConnection = Connection<PoolEdge, PoolCount>;
-pub type VotePlanConnection = Connection<VotePlanEdge, VotePlanCount>;
-pub type VoteStatusConnection = Connection<VoteStatusEdge, VoteStatusCount>;
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Clone)]
-pub enum TransactionNodeFetchInfo {
-    Id(HeaderHash),
-    Contents(ExplorerTransaction),
-}
-
-impl Edge for TransactionEdge {
-    type Node = TransactionNodeFetchInfo;
-    fn new(node: Self::Node, cursor: IndexCursor) -> TransactionEdge {
-        let tx = match node {
-            TransactionNodeFetchInfo::Id(hash) => Transaction::from_valid_id(hash),
-            TransactionNodeFetchInfo::Contents(tx) => Transaction::from_contents(tx),
-        };
-
-        TransactionEdge { node: tx, cursor }
-    }
-
-    fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-impl Edge for BlockEdge {
-    type Node = HeaderHash;
-    fn new(node: Self::Node, cursor: IndexCursor) -> Self {
-        BlockEdge {
-            node: Block::from_valid_hash(node),
-            cursor,
-        }
-    }
-
-    fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-impl Edge for PoolEdge {
-    type Node = Pool;
-    fn new(node: Self::Node, cursor: IndexCursor) -> Self {
-        PoolEdge { node, cursor }
-    }
-
-    fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-impl Edge for VotePlanEdge {
-    type Node = VotePlanStatus;
-
-    fn new(node: Self::Node, cursor: IndexCursor) -> Self {
-        VotePlanEdge { node, cursor }
-    }
-
-    fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
-}
-
-impl Edge for VoteStatusEdge {
-    type Node = VoteStatus;
-
-    fn new(node: Self::Node, cursor: IndexCursor) -> Self {
-        VoteStatusEdge { node, cursor }
-    }
-
-    fn cursor(&self) -> &IndexCursor {
-        &self.cursor
-    }
+pub struct PageMeta {
+    pub has_next_page: bool,
+    pub has_previous_page: bool,
+    pub total_count: u64,
 }
 
 fn compute_range_boundaries(
@@ -492,7 +54,7 @@ where
     // Move `to` enough values to make the result have `first` blocks
     if let Some(first) = pagination_arguments.first {
         to = min(
-            from.checked_add(u64::from(first))
+            from.checked_add(u64::try_from(first).unwrap())
                 .and_then(|n| n.checked_sub(1))
                 .unwrap_or(to),
             to,
@@ -502,7 +64,7 @@ where
     // Move `from` enough values to make the result have `last` blocks
     if let Some(last) = pagination_arguments.last {
         from = max(
-            to.checked_sub(u64::from(last))
+            to.checked_sub(u64::try_from(last).unwrap())
                 .and_then(|n| n.checked_add(1))
                 .unwrap_or(from),
             from,
@@ -515,46 +77,58 @@ where
     }
 }
 
-impl<I> PaginationArguments<I> {
-    pub fn validate(self) -> FieldResult<ValidatedPaginationArguments<I>> {
-        let first = self
-            .first
-            .map(|signed| -> FieldResult<u32> {
-                if signed < 0 {
-                    Err(
-                        ErrorKind::ArgumentError("first argument should be positive".to_owned())
-                            .into(),
-                    )
-                } else {
-                    Ok(u32::try_from(signed).unwrap())
-                }
-            })
-            .transpose()?;
+pub fn compute_interval<I>(
+    bounds: PaginationInterval<I>,
+    pagination_arguments: ValidatedPaginationArguments<I>,
+) -> FieldResult<(PaginationInterval<I>, PageMeta)>
+where
+    I: TryFrom<u64> + Clone,
+    u64: From<I>,
+{
+    let pagination_arguments = pagination_arguments.cursors_into::<u64>();
+    let bounds = bounds.bounds_into::<u64>();
 
-        let last = self
-            .last
-            .map(|signed| -> FieldResult<u32> {
-                if signed < 0 {
-                    Err(
-                        ErrorKind::ArgumentError("last argument should be positive".to_owned())
-                            .into(),
-                    )
-                } else {
-                    Ok(u32::try_from(signed).unwrap())
-                }
-            })
-            .transpose()?;
+    let (page_interval, has_next_page, has_previous_page, total_count) = match bounds {
+        PaginationInterval::Empty => (PaginationInterval::Empty, false, false, 0u64),
+        PaginationInterval::Inclusive(total_elements) => {
+            let InclusivePaginationInterval {
+                upper_bound,
+                lower_bound,
+            } = total_elements;
 
-        let before = self.before;
-        let after = self.after;
+            let page = compute_range_boundaries(total_elements, pagination_arguments);
 
-        Ok(ValidatedPaginationArguments {
-            first,
-            after,
-            last,
-            before,
+            let has_next_page = page.upper_bound < upper_bound;
+            let has_previous_page = page.lower_bound > lower_bound;
+
+            let total_count = upper_bound
+                .checked_add(1)
+                .unwrap()
+                .checked_sub(lower_bound)
+                .expect("upper_bound should be >= than lower_bound");
+            (
+                PaginationInterval::Inclusive(page),
+                has_next_page,
+                has_previous_page,
+                total_count,
+            )
+        }
+    };
+
+    Ok(page_interval
+        .bounds_try_into::<I>()
+        .map(|interval| {
+            (
+                interval,
+                PageMeta {
+                    has_next_page,
+                    has_previous_page,
+                    total_count,
+                },
+            )
         })
-    }
+        .map_err(|_| "computed page interval is outside pagination boundaries")
+        .unwrap())
 }
 
 impl<I> ValidatedPaginationArguments<I> {

@@ -5,8 +5,7 @@ mod multiverse;
 mod persistent_sequence;
 
 use self::error::{ExplorerError as Error, Result};
-pub use self::graphql::create_schema;
-use self::graphql::Context;
+use self::graphql::EContext;
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
     ExplorerVotePlan, ExplorerVoteProposal, ExplorerVoteTally, StakePool, StakePoolBlocks,
@@ -106,8 +105,8 @@ impl Explorer {
         Explorer { db }
     }
 
-    pub fn context(&self) -> Context {
-        Context {
+    pub fn context(&self) -> EContext {
+        EContext {
             db: self.db.clone(),
             settings: Settings {
                 // Hardcoded bech32 prefix

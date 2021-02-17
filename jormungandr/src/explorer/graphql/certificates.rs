@@ -1,14 +1,15 @@
 use super::error::ErrorKind;
+use async_graphql::*;
 use chain_impl_mockchain::certificate;
-use juniper::GraphQLUnion;
 use std::convert::TryFrom;
 
 use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
-use super::{Address, BlockDate, Context, ExplorerAddress, Pool, Proposal, TaxType};
-use juniper::FieldResult;
+use super::{Address, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
+use crate::rest::explorer::EContext as RestContext;
+use FieldResult;
 
 // interface for grouping certificates as a graphl union
-#[derive(GraphQLUnion)]
+#[derive(Union)]
 #[graphql(Context = Context)]
 pub enum Certificate {
     StakeDelegation(StakeDelegation),
@@ -41,13 +42,18 @@ pub struct VoteTally(certificate::VoteTally);
 
 pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl StakeDelegation {
     // FIXME: Maybe a new Account type would be better?
-    pub fn account(&self, context: &Context) -> FieldResult<Address> {
-        let discrimination = context.db.blockchain_config.discrimination;
+    pub async fn account(&self, context: &Context<'_>) -> FieldResult<Address> {
+        let discrimination = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .blockchain_config
+            .discrimination;
         self.0
             .account_id
             .to_single_account()
@@ -60,7 +66,7 @@ impl StakeDelegation {
             .map(|addr| Address::from(&ExplorerAddress::New(addr)))
     }
 
-    pub fn pools(&self) -> Vec<Pool> {
+    pub async fn pools(&self) -> Vec<Pool> {
         use chain_impl_mockchain::account::DelegationType;
 
         match self.0.get_delegation_type() {
@@ -76,43 +82,48 @@ impl StakeDelegation {
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl PoolRegistration {
-    pub fn pool(&self) -> Pool {
+    pub async fn pool(&self) -> Pool {
         Pool::from_valid_id(self.0.to_id())
     }
 
     /// Beginning of validity for this pool, this is used
     /// to keep track of the period of the expected key and the expiry
-    pub fn start_validity(&self) -> TimeOffsetSeconds {
+    pub async fn start_validity(&self) -> TimeOffsetSeconds {
         self.0.start_validity.into()
     }
 
     /// Management threshold for owners, this need to be <= #owners and > 0
-    pub fn management_threshold(&self) -> i32 {
+    pub async fn management_threshold(&self) -> i32 {
         // XXX: u8 fits in i32, but maybe some kind of custom scalar is better?
         self.0.management_threshold().into()
     }
 
     /// Owners of this pool
-    pub fn owners(&self) -> Vec<PublicKey> {
+    pub async fn owners(&self) -> Vec<PublicKey> {
         self.0.owners.iter().map(PublicKey::from).collect()
     }
 
-    pub fn operators(&self) -> Vec<PublicKey> {
+    pub async fn operators(&self) -> Vec<PublicKey> {
         self.0.operators.iter().map(PublicKey::from).collect()
     }
 
-    pub fn rewards(&self) -> TaxType {
+    pub async fn rewards(&self) -> TaxType {
         TaxType(self.0.rewards)
     }
 
     /// Reward account
-    pub fn reward_account(&self, context: &Context) -> Option<Address> {
+    pub async fn reward_account(&self, context: &Context<'_>) -> Option<Address> {
         use chain_impl_mockchain::transaction::AccountIdentifier;
-        let discrimination = context.db.blockchain_config.discrimination;
+        let discrimination = context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .blockchain_config
+            .discrimination;
 
         // FIXME: Move this transformation to a point earlier
 
@@ -142,11 +153,9 @@ impl PoolRegistration {
     // pub keys: GenesisPraosLeader,
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl OwnerStakeDelegation {
-    fn pools(&self) -> Vec<Pool> {
+    async fn pools(&self) -> Vec<Pool> {
         use chain_impl_mockchain::account::DelegationType;
 
         match self.0.get_delegation_type() {
@@ -162,28 +171,24 @@ impl OwnerStakeDelegation {
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl PoolRetirement {
-    pub fn pool_id(&self) -> PoolId {
+    pub async fn pool_id(&self) -> PoolId {
         PoolId(format!("{}", self.0.pool_id))
     }
 
-    pub fn retirement_time(&self) -> TimeOffsetSeconds {
+    pub async fn retirement_time(&self) -> TimeOffsetSeconds {
         self.0.retirement_time.into()
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl PoolUpdate {
-    pub fn pool_id(&self) -> PoolId {
+    pub async fn pool_id(&self) -> PoolId {
         PoolId(format!("{}", self.0.pool_id))
     }
 
-    pub fn start_validity(&self) -> TimeOffsetSeconds {
+    pub async fn start_validity(&self) -> TimeOffsetSeconds {
         self.0.new_pool_reg.start_validity.into()
     }
 
@@ -191,64 +196,56 @@ impl PoolUpdate {
     // TODO: Updated keys?
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl VotePlan {
     /// the vote start validity
-    pub fn vote_start(&self) -> BlockDate {
+    pub async fn vote_start(&self) -> BlockDate {
         self.0.vote_start().into()
     }
 
     /// the duration within which it is possible to vote for one of the proposals
     /// of this voting plan.
-    pub fn vote_end(&self) -> BlockDate {
+    pub async fn vote_end(&self) -> BlockDate {
         self.0.vote_end().into()
     }
 
     /// the committee duration is the time allocated to the committee to open
     /// the ballots and publish the results on chain
-    pub fn committee_end(&self) -> BlockDate {
+    pub async fn committee_end(&self) -> BlockDate {
         self.0.committee_end().into()
     }
 
-    pub fn payload_type(&self) -> PayloadType {
+    pub async fn payload_type(&self) -> PayloadType {
         self.0.payload_type().into()
     }
 
     /// the proposals to vote for
-    pub fn proposals(&self) -> Vec<Proposal> {
+    pub async fn proposals(&self) -> Vec<Proposal> {
         self.0.proposals().iter().cloned().map(Proposal).collect()
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl VoteCast {
-    pub fn vote_plan(&self) -> VotePlanId {
+    pub async fn vote_plan(&self) -> VotePlanId {
         self.0.vote_plan().clone().into()
     }
 
-    pub fn proposal_index(&self) -> i32 {
+    pub async fn proposal_index(&self) -> i32 {
         self.0.proposal_index() as i32
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl VoteTally {
-    pub fn vote_plan(&self) -> VotePlanId {
+    pub async fn vote_plan(&self) -> VotePlanId {
         self.0.id().clone().into()
     }
 }
 
-#[juniper::graphql_object(
-    Context = Context,
-)]
+#[Object]
 impl EncryptedVoteTally {
-    pub fn vote_plan(&self) -> VotePlanId {
+    pub async fn vote_plan(&self) -> VotePlanId {
         self.0.id().clone().into()
     }
 }

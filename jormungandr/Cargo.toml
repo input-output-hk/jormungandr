@@ -14,8 +14,8 @@ edition = "2018"
 [dependencies]
 arc-swap = "^1.1.0"
 async-trait = "=0.1.42" # https://github.com/dtolnay/async-trait/issues/144
-juniper = "0.15.3"
-juniper_warp = "0.6.2"
+async-graphql = "2.5.1"
+async-graphql-warp = "2.5.2"
 base64 = "0.13.0"
 bincode = "1.2.1"
 bytes = "1.0"
@@ -60,7 +60,7 @@ tokio-stream = "0.1.4"
 tokio-util = { version = "0.6.0", features = ["time"] }
 tonic = "0.4"
 lru = "^0.6.1"
-warp = { version = "0.2", features = ["tls"] }
+warp = { version = "0.3.0", features = ["tls"] }
 pin-project = "1.0"
 tokio-compat-02 = "0.2.0"
 

@@ -2,71 +2,288 @@ use super::error::ErrorKind;
 use crate::blockcfg;
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{value, vote};
-use juniper::{ParseScalarResult, ParseScalarValue};
+// use juniper::{ParseScalarResult, ParseScalarValue};
+use async_graphql::*;
 use std::convert::{TryFrom, TryInto};
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
+#[derive(Clone)]
 pub struct Slot(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for Slot {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(Slot)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 /// Custom scalar type that represents a block's position in the blockchain.
 /// It's a either 0 (the genesis block) or a positive number in string representation.
 pub struct ChainLength(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for ChainLength {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(ChainLength)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct PoolId(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for PoolId {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(PoolId)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct Value(pub String);
+#[Scalar]
+impl ScalarType for Value {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(Value)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct EpochNumber(pub String);
+#[Scalar]
+impl ScalarType for EpochNumber {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(EpochNumber)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct BlockCount(pub String);
+#[Scalar]
+impl ScalarType for BlockCount {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(BlockCount)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct TransactionCount(pub String);
+#[Scalar]
+impl ScalarType for TransactionCount {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(TransactionCount)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct PoolCount(pub String);
+#[Scalar]
+impl ScalarType for PoolCount {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(PoolCount)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct PublicKey(pub String);
+#[Scalar]
+impl ScalarType for PublicKey {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(PublicKey)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct TimeOffsetSeconds(pub String);
+#[Scalar]
+impl ScalarType for TimeOffsetSeconds {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(TimeOffsetSeconds)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct NonZero(pub String);
+#[Scalar]
+impl ScalarType for NonZero {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(NonZero)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone)]
 pub struct VotePlanId(pub String);
+#[Scalar]
+impl ScalarType for VotePlanId {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(VotePlanId)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone)]
 pub struct ExternalProposalId(pub String);
+#[Scalar]
+impl ScalarType for ExternalProposalId {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(ExternalProposalId)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(Clone, juniper::GraphQLEnum)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Enum)]
 pub enum PayloadType {
     Public,
     Private,
 }
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
+#[derive(Clone)]
 pub struct Weight(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct VotePlanCount(pub String);
+#[Scalar]
+impl ScalarType for Weight {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(Weight)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+pub struct VotePlanCount(pub String);
+#[Scalar]
+impl ScalarType for VotePlanCount {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(VotePlanCount)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct VoteStatusCount(pub String);
+#[Scalar]
+impl ScalarType for VoteStatusCount {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(VoteStatusCount)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
 
 /// Vote option range
 ///
 /// provide a range of available choices for a given proposal. Usual value would
 /// be `[0, 3[` (or `0..3` in rust's range syntax), meaning there are 3 options
 /// available: `0`, `1` and `2`
-#[derive(Clone, juniper::GraphQLObject)]
+#[derive(Clone, SimpleObject)]
 pub struct VoteOptionRange {
     /// the start of the vote option range, starting from 0 usually
     start: i32,
@@ -79,25 +296,30 @@ pub struct VoteOptionRange {
 #[derive(Clone)]
 pub struct IndexCursor(pub u64);
 
-#[juniper::graphql_scalar(
-    description = "Non-opaque cursor that can be used for offset-based pagination"
-)]
-impl<S> GraphQLScalar for IndexCursor
-where
-    S: juniper::ScalarValue,
-{
-    fn resolve(&self) -> Value {
-        juniper::Value::scalar(self.0.to_string())
+impl async_graphql::connection::CursorType for IndexCursor {
+    type Error = std::num::ParseIntError;
+
+    fn decode_cursor(s: &str) -> Result<Self, Self::Error> {
+        s.parse::<u64>().map(IndexCursor)
     }
 
-    fn from_input_value(v: &InputValue) -> Option<IndexCursor> {
-        v.as_string_value()
-            .and_then(|s| s.parse::<u64>().ok())
-            .map(IndexCursor)
+    fn encode_cursor(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+#[Scalar]
+impl ScalarType for IndexCursor {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(IndexCursor)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
     }
 
-    fn from_str<'a>(value: ScalarToken<'a>) -> ParseScalarResult<'a, S> {
-        <String as ParseScalarValue<S>>::from_str(value)
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
     }
 }
 
