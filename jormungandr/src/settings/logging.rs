@@ -1,7 +1,7 @@
 use std::error;
 use std::fmt::{self, Display};
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::str::FromStr;
 
 use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
@@ -11,6 +11,7 @@ use tracing_gelf::Gelf;
 
 use tracing::span::{Attributes, Record};
 use tracing::subscriber::SetGlobalDefaultError;
+use tracing_subscriber::fmt::SubscriberBuilder;
 use tracing_subscriber::layer::{Layer, Layered};
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>);
@@ -151,37 +152,51 @@ impl LogSettings {
 impl LogSettingsEntry {
     fn to_subscriber(
         &self,
-    ) -> Result<
-        (
-            Box<dyn Subscriber + Send + Sync>,
-            Option<tracing_appender::non_blocking::WorkerGuard>,
-        ),
-        Error,
-    > {
+    ) -> Result<(Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>), Error> {
         let Self {
             output,
             level,
             format,
         } = &self;
 
-        let builder = tracing_subscriber::fmt::SubscriberBuilder::default();
+        let builder = SubscriberBuilder::default();
+
+        fn build_writer_subscriber(
+            builder: SubscriberBuilder,
+            writer: impl Write + Send + Sync + 'static,
+            level: LevelFilter,
+            format: LogFormat,
+        ) -> (Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>) {
+            let (subscriber, guard) = tracing_appender::non_blocking(writer);
+            let builder = builder.with_writer(subscriber).with_max_level(level);
+            let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
+                LogFormat::Plain => Box::new(builder.finish()),
+                LogFormat::Json => Box::new(builder.json().finish()),
+            };
+            (subscriber, Some(guard))
+        }
 
         match output {
-            LogOutput::Stdout => {
-                let (subscriber, guard) = tracing_appender::non_blocking(std::io::stdout());
-                let builder = builder.with_writer(subscriber).with_max_level(*level);
-                match format {
-                    LogFormat::Plain => Ok((Box::new(builder.finish()), Some(guard))),
-                    LogFormat::Json => Ok((Box::new(builder.json().finish()), Some(guard))),
-                }
-            }
-            LogOutput::Stderr => {
-                let (subscriber, guard) = tracing_appender::non_blocking(std::io::stderr());
-                let builder = builder.with_writer(subscriber).with_max_level(*level);
-                match format {
-                    LogFormat::Plain => Ok((Box::new(builder.finish()), Some(guard))),
-                    LogFormat::Json => Ok((Box::new(builder.json().finish()), Some(guard))),
-                }
+            LogOutput::Stdout => Ok(build_writer_subscriber(
+                builder,
+                std::io::stdout(),
+                *level,
+                *format,
+            )),
+            LogOutput::Stderr => Ok(build_writer_subscriber(
+                builder,
+                std::io::stderr(),
+                *level,
+                *format,
+            )),
+            LogOutput::File(path) => {
+                let file = fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .append(true)
+                    .open(path)
+                    .map_err(Error::FileError)?;
+                Ok(build_writer_subscriber(builder, file, *level, *format))
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
@@ -207,20 +222,6 @@ impl LogSettingsEntry {
                 let (subscriber, task) = tracing_gelf::Logger::builder().connect_tcp(address)?;
                 tokio::spawn(task);
                 Ok((Box::new(subscriber), None))
-            }
-            LogOutput::File(path) => {
-                let file = fs::OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .append(true)
-                    .open(path)
-                    .map_err(Error::FileError)?;
-                let (subscriber, guard) = tracing_appender::non_blocking(file);
-                let builder = builder.with_writer(subscriber).with_max_level(*level);
-                match format {
-                    LogFormat::Plain => Ok((Box::new(builder.finish()), Some(guard))),
-                    LogFormat::Json => Ok((Box::new(builder.json().finish()), Some(guard))),
-                }
             }
         }
     }
