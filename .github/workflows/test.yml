@@ -111,11 +111,10 @@ jobs:
       CARGO_FLAGS: --verbose --locked
       CARGO_INCREMENTAL: 0
     steps:
-      - name: Set up environment variables
+      - name: Set up environment variables and cargo config
         shell: bash
         run: |
           if [ '${{ matrix.profile }}' == release ]; then
-            echo "RUSTFLAGS=$RUSTFLAGS -C lto=thin -C embed-bitcode=yes" >> $GITHUB_ENV
             echo "CARGO_FLAGS=$CARGO_FLAGS --release" >> $GITHUB_ENV
           fi
           case '${{ matrix.os }}' in
@@ -123,6 +122,12 @@ jobs:
             *)              features=gelf ;;
           esac
           echo "JORMUNGANDR_FEATURES=$features" >> $GITHUB_ENV
+
+          mkdir .cargo
+          cat > .cargo/config.toml <<EOF
+          [profile.release]
+          lto = "thin"
+          EOF
 
       - uses: actions-rs/toolchain@v1
         with:
