@@ -212,7 +212,9 @@ pub async fn pull_headers_incorrect_hash() {
     let (_server, config) = fixture.bootstrap_node();
     let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
     assert_eq!(
-        MockClientError::InvalidRequest(format!("not found (block not found)")),
+        MockClientError::InvalidRequest(format!(
+            "not found (Could not find a known block in `from`)"
+        )),
         client
             .pull_headers(&[], TestGen::hash().into())
             .await
