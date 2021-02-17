@@ -84,11 +84,20 @@ impl FragmentLog {
         self.status().is_in_a_block()
     }
 
-    /// set the new status
+    /// Set the new status
+    ///
+    /// # Returns
+    ///
+    /// `true` if the value was updated. `false` if the upadte was refused.
     #[inline]
-    pub fn modify(&mut self, new_status: FragmentStatus) {
+    pub fn modify(&mut self, new_status: FragmentStatus) -> bool {
+        // we must not be able to transition from InABlock to Pending or Rejected
+        if self.status.is_in_a_block() && !new_status.is_in_a_block() {
+            return false;
+        }
         self.status = new_status;
         self.last_updated_at = SystemTime::now();
+        true
     }
 
     #[inline]

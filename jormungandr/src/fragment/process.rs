@@ -1,5 +1,5 @@
 use crate::{
-    fragment::{Logs, Pool},
+    fragment::{Logs, Pools},
     intercom::{NetworkMsg, TransactionMsg},
     stats_counter::StatsCounter,
     utils::{
@@ -39,12 +39,14 @@ impl Process {
 
     pub async fn start(
         self,
+        n_pools: usize,
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
         mut input: MessageQueue<TransactionMsg>,
     ) -> Result<(), Error> {
-        let mut pool = Pool::new(
+        let mut pool = Pools::new(
             self.pool_max_entries,
+            n_pools,
             self.logs,
             self.network_msg_box,
             service_info.logger().clone(),
@@ -75,7 +77,7 @@ impl Process {
                         service_info.logger(),
                         "removing fragments added to block {:?}: {:?}", status, fragment_ids
                     );
-                    pool.remove_added_to_block(fragment_ids, status);
+                    pool.remove_added_to_block(fragment_ids, status, service_info.logger());
                 }
                 TransactionMsg::GetLogs(reply_handle) => {
                     let logs = pool.logs().logs().cloned().collect();
@@ -91,13 +93,15 @@ impl Process {
                     reply_handle.reply_ok(statuses);
                 }
                 TransactionMsg::SelectTransactions {
+                    pool_idx,
                     ledger,
                     block_date,
                     ledger_params,
                     selection_alg,
                     reply_handle,
                 } => {
-                    let contents = pool.select(ledger, block_date, ledger_params, selection_alg);
+                    let contents =
+                        pool.select(pool_idx, ledger, block_date, ledger_params, selection_alg);
                     reply_handle.reply_ok(contents);
                 }
             }

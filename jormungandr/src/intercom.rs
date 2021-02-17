@@ -523,6 +523,7 @@ pub enum TransactionMsg {
         ReplyHandle<HashMap<FragmentId, FragmentStatus>>,
     ),
     SelectTransactions {
+        pool_idx: usize,
         ledger: Ledger,
         block_date: BlockDate,
         ledger_params: LedgerParameters,

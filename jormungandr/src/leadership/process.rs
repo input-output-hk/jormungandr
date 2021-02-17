@@ -18,7 +18,7 @@ use chain_time::{
 };
 use futures::{future::TryFutureExt, sink::SinkExt};
 use jormungandr_lib::{
-    interfaces::{LeadershipLog, LeadershipLogStatus},
+    interfaces::{EnclaveLeaderId, LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
 };
 use slog::Logger;
@@ -441,8 +441,15 @@ impl Module {
             return Ok(());
         };
 
-        let contents =
-            prepare_block(pool, event.date, ledger, ledger_parameters, logger.clone()).await?;
+        let contents = prepare_block(
+            pool,
+            event.id,
+            event.date,
+            ledger,
+            ledger_parameters,
+            logger.clone(),
+        )
+        .await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -627,6 +634,7 @@ impl Entry {
 
 async fn prepare_block(
     mut fragment_pool: MessageBox<TransactionMsg>,
+    leader_id: EnclaveLeaderId,
     block_date: BlockDate,
     ledger: Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
@@ -636,7 +644,10 @@ async fn prepare_block(
 
     let (reply_handle, reply_future) = unary_reply(logger.clone());
 
+    let pool_idx: u32 = leader_id.into();
+
     let msg = TransactionMsg::SelectTransactions {
+        pool_idx: pool_idx as usize,
         ledger: ledger.as_ref().clone(),
         block_date,
         ledger_params: epoch_parameters.as_ref().clone(),

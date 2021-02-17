@@ -15,9 +15,9 @@ use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
 use slog::Logger;
 use thiserror::Error;
 
-pub struct Pool {
+pub struct Pools {
     logs: Logs,
-    pool: internal::Pool,
+    pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
     logger: Logger,
 }
@@ -28,16 +28,20 @@ pub enum Error {
     CannotPropagate(#[source] SendError),
 }
 
-impl Pool {
+impl Pools {
     pub fn new(
         max_entries: usize,
+        n_pools: usize,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
         logger: Logger,
     ) -> Self {
-        Pool {
+        let pools = (0..=n_pools)
+            .map(|_| internal::Pool::new(max_entries))
+            .collect();
+        Pools {
             logs,
-            pool: internal::Pool::new(max_entries),
+            pools,
             network_msg_box,
             logger,
         }
@@ -67,16 +71,26 @@ impl Pool {
             .zip(fragments_exist_in_logs)
             .filter(|(_, exists_in_logs)| !exists_in_logs)
             .map(|(fragment, _)| fragment);
-        let new_fragments = self.pool.insert_all(new_fragments);
-        let count = new_fragments.len();
-        debug!(
-            self.logger,
-            "{} of the received fragments were added to the pool", count
-        );
-        let fragment_logs = new_fragments
-            .iter()
-            .map(move |fragment| FragmentLog::new(fragment.id(), origin))
-            .collect::<Vec<_>>();
+
+        let mut max_added = 0;
+
+        for (i, pool) in self.pools.iter_mut().enumerate() {
+            let new_fragments = pool.insert_all(new_fragments.clone());
+            let count = new_fragments.len();
+            debug!(
+                self.logger,
+                "{} of the received fragments were added to the pool number {}", count, i
+            );
+            let fragment_logs = new_fragments
+                .iter()
+                .map(move |fragment| FragmentLog::new(fragment.id(), origin))
+                .collect::<Vec<_>>();
+            self.logs.insert_all(fragment_logs);
+            if count > max_added {
+                max_added = count;
+            }
+        }
+
         for fragment in new_fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
@@ -84,23 +98,32 @@ impl Pool {
                 .await
                 .map_err(Error::CannotPropagate)?;
         }
-        self.logs.insert_all(fragment_logs);
-        Ok(count)
+
+        Ok(max_added)
     }
 
-    pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
-        self.pool.remove_all(fragment_ids.iter().cloned());
-        self.logs.modify_all(fragment_ids, status);
+    pub fn remove_added_to_block(
+        &mut self,
+        fragment_ids: Vec<FragmentId>,
+        status: FragmentStatus,
+        logger: &Logger,
+    ) {
+        for pool in &mut self.pools {
+            pool.remove_all(fragment_ids.iter());
+        }
+        self.logs.modify_all(fragment_ids, status, logger);
     }
 
     pub fn select(
         &mut self,
+        pool_idx: usize,
         ledger: Ledger,
         block_date: BlockDate,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
     ) -> Contents {
-        let Pool { logs, pool, .. } = self;
+        let Pools { logs, pools, .. } = self;
+        let pool = &mut pools[pool_idx];
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new(self.logger.clone());
@@ -174,9 +197,9 @@ pub(super) mod internal {
                 .collect()
         }
 
-        pub fn remove_all(&mut self, fragment_ids: impl IntoIterator<Item = FragmentId>) {
+        pub fn remove_all<'a>(&mut self, fragment_ids: impl IntoIterator<Item = &'a FragmentId>) {
             for fragment_id in fragment_ids {
-                self.entries.pop(&fragment_id);
+                self.entries.pop(fragment_id);
             }
         }
 
