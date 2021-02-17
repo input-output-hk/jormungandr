@@ -1,17 +1,19 @@
-use std::error;
 use std::fmt::{self, Display};
 use std::fs;
 use std::io::{self, Write};
+#[cfg(feature = "gelf")]
+use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
 use tracing_appender::non_blocking::WorkerGuard;
-#[cfg(feature = "gelf")]
-use tracing_gelf::Gelf;
 
 use tracing::span::{Attributes, Record};
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing_subscriber::fmt::SubscriberBuilder;
+#[allow(unused_imports)]
+use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::layer::{Layer, Layered};
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>);
@@ -55,14 +57,14 @@ impl Display for LogFormat {
 pub enum LogOutput {
     Stdout,
     Stderr,
+    File(PathBuf),
     #[cfg(feature = "systemd")]
     Journald,
     #[cfg(feature = "gelf")]
     Gelf {
-        backend: String,
+        backend: SocketAddr,
         log_id: String,
     },
-    File(String),
 }
 
 impl FromStr for LogFormat {
@@ -166,7 +168,7 @@ impl LogSettingsEntry {
             output,
             level,
             format,
-        } = &self;
+        } = self;
 
         let builder = SubscriberBuilder::default();
 
@@ -203,29 +205,32 @@ impl LogSettingsEntry {
                     .create(true)
                     .write(true)
                     .append(true)
-                    .open(path)
-                    .map_err(Error::FileError)?;
+                    .open(&path)
+                    .map_err(|cause| Error::FileError {
+                        path: path.clone(),
+                        cause,
+                    })?;
                 Ok(build_writer_subscriber(builder, file, *level, *format))
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
                 format.require_default()?;
-                let layer = tracing_journald::layer()?;
-                Ok((
-                    Box::new(builder.with_max_level(level).with_subscriber(layer)),
-                    None,
-                ))
+                let layer = tracing_journald::layer().map_err(Error::Journald)?;
+                let subscriber = builder.with_max_level(*level).finish().with(layer);
+                Ok((Box::new(subscriber), None))
             }
             #[cfg(feature = "gelf")]
             LogOutput::Gelf {
-                backend: graylog_host_port,
+                backend: address,
                 log_id: _graylog_source,
             } => {
                 format.require_default()?;
-                let address: SocketAddr = graylog_host_port.parse().unwrap();
                 // TODO: maybe handle this tasks outside somehow.
-                let (subscriber, task) = tracing_gelf::Logger::builder().connect_tcp(address)?;
+                let (layer, task) = tracing_gelf::Logger::builder()
+                    .connect_tcp(address.clone())
+                    .map_err(Error::Gelf)?;
                 tokio::spawn(task);
+                let subscriber = builder.with_max_level(*level).finish().with(layer);
                 Ok((Box::new(subscriber), None))
             }
         }
@@ -242,43 +247,22 @@ impl LogFormat {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    FormatNotSupported {
-        specified: LogFormat,
+    #[error("log format `{specified}` is not supported for this output")]
+    FormatNotSupported { specified: LogFormat },
+    #[error("failed to open the log file `{}`", .path.to_string_lossy())]
+    FileError {
+        path: PathBuf,
+        #[source]
+        cause: io::Error,
     },
+    #[cfg(feature = "systemd")]
+    #[error("cannot open journald socket")]
+    Journald(#[source] io::Error),
     #[cfg(feature = "gelf")]
-    GelfConnectionFailed(io::Error),
-    FileError(io::Error),
-    SetGlobalSubscriberError(SetGlobalDefaultError),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::FormatNotSupported { specified } => write!(
-                f,
-                "log format `{}` is not supported for this output",
-                specified
-            ),
-            #[cfg(feature = "gelf")]
-            Error::GelfConnectionFailed(_) => write!(f, "GELF connection failed"),
-            Error::FileError(e) => write!(f, "failed to open the log file: {}", e),
-            Error::SetGlobalSubscriberError(e) => {
-                write!(f, "failed to set global subscriber: {}", e)
-            }
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::FormatNotSupported { .. } => None,
-            #[cfg(feature = "gelf")]
-            Error::GelfConnectionFailed(err) => Some(err),
-            Error::FileError(err) => Some(err),
-            Error::SetGlobalSubscriberError(err) => Some(err),
-        }
-    }
+    #[error("GELF connection failed")]
+    Gelf(tracing_gelf::BuilderError),
+    #[error("failed to set global subscriber")]
+    SetGlobalSubscriberError(#[source] SetGlobalDefaultError),
 }
