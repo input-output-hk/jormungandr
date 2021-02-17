@@ -8,11 +8,6 @@ extern crate error_chain;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-#[cfg(feature = "gelf")]
-extern crate tracing_gelf;
-#[cfg(feature = "systemd")]
-extern crate tracing_journald;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
