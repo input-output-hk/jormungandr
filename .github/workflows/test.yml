@@ -114,7 +114,7 @@ jobs:
         shell: bash
         run: |
           if [ '${{ matrix.profile }}' == release ]; then
-            echo "RUSTFLAGS=$RUSTFLAGS -C lto=no" >> $GITHUB_ENV
+            echo "RUSTFLAGS=$RUSTFLAGS -C lto=thin" >> $GITHUB_ENV
             echo "CARGO_FLAGS=$CARGO_FLAGS --release" >> $GITHUB_ENV
           fi
           case '${{ matrix.os }}' in
