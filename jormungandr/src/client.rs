@@ -120,6 +120,9 @@ fn get_block_from_storage(storage: &Storage, id: HeaderHash) -> Result<Block, Er
     }
 }
 
+// Stop after sending the first Err() variant
+//
+// Common base for GetBlocks and GetHeaders
 async fn fuse_send_items<T, V>(
     items: T,
     reply_handle: ReplyStreamHandle<V>,
@@ -138,6 +141,13 @@ where
     sink.close().await
 }
 
+// Send a range of blocks info directly from the storage to the stream.
+// The starting point is determined by the closest ancestor of 'to'
+// among the blocks specified in 'from'.
+// The transformation function is applied to the block contents before
+// sending it.
+//
+// Commong behavior for GetHeadersRange, PullBlocks, PullBlocksToTip
 async fn send_range_from_storage<T, F>(
     storage: Storage,
     from: Vec<HeaderHash>,
