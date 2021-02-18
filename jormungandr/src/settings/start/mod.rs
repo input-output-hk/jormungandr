@@ -60,21 +60,6 @@ impl RawSettings {
     }
 
     pub fn log_settings(&self) -> LogSettings {
-        // FIXME: remove this after refactoring is done
-        // changing the flow for creating the LogSettings inner Vec to this:
-        //  * [X] Read log settings from the config file path
-        //  * [X] If no log settings are found:
-        //    + [X] add LogSettingsEntry with default values
-        //  * [X] If the command line specifies log arguments:
-        //    + [X] Check that the arg is Some(output), else, skip
-        //    + [X] Read the log settings, and look if we already
-        //          have this output configured
-        //    + [X] If the output is aleady configured:
-        //      - [X] overwrite entry.level if cli_entry.level is Some(level)
-        //      - [X] overwrite entry.format if cli_entry.format is Some(format)
-        //      - [X] log to info! that the output was overriden
-        //    + [X] If the output is not aleady configured:
-        //      - [X] add new entry for output with default values for other fields.
         let mut entries = Vec::new();
 
         //  Read log settings from the config file path.
