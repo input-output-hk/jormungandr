@@ -95,7 +95,7 @@ impl RawSettings {
             // have this output configured
             for entry in entries.iter_mut() {
                 // If the output is aleady configured:
-                if &entry.output == &output {
+                if entry.output == output {
                     // overwrite entry.level if cli_entry.level is Some(level)
                     // overwrite entry.format if cli_entry.format is Some(format)
                     let override_entry = LogSettingsEntry {
