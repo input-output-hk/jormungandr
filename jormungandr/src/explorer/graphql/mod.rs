@@ -1621,6 +1621,30 @@ impl Query {
     }
 }
 
+pub struct Subscription;
+
+#[Subscription]
+impl Subscription {
+    async fn main_tip(&self, context: &Context<'_>) -> impl futures::Stream<Item = Branch> {
+        use futures::StreamExt;
+        context
+            .data_unchecked::<RestContext>()
+            .get()
+            .await
+            .unwrap()
+            .db
+            .tip_subscription()
+            // missing a tip update doesn't seem that important, so I think it's
+            // fine to ignore the error
+            .filter_map(|tip| async move {
+                tip.ok()
+                    .map(|(hash, state)| Branch::from_id_and_state(hash, state))
+            })
+    }
+}
+
+pub type Schema = async_graphql::Schema<Query, EmptyMutation, Subscription>;
+
 pub struct EContext {
     pub db: ExplorerDB,
     pub settings: ChainSettings,

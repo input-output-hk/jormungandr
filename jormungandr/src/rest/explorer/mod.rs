@@ -34,13 +34,13 @@ pub fn filter(
     let schema = async_graphql::Schema::build(
         crate::explorer::graphql::Query {},
         async_graphql::EmptyMutation,
-        async_graphql::EmptySubscription,
+        crate::explorer::graphql::Subscription {},
     )
     .data(EContext { context })
     .finish();
 
     let graphql_post = with_full_context
-        .and(async_graphql_warp::graphql(schema))
+        .and(async_graphql_warp::graphql(schema.clone()))
         .and_then(|_, (schema, request)| handler(schema, request));
 
     let graphql = warp::path!("graphql").and(graphql_post).boxed();
@@ -49,21 +49,22 @@ pub fn filter(
         HttpResponse::builder()
             .header("content-type", "text/html")
             .body(playground_source(
-                GraphQLPlaygroundConfig::new("/").subscription_endpoint("/"),
+                GraphQLPlaygroundConfig::new("/explorer/graphql")
+                    .subscription_endpoint("/explorer/subscription"),
             ))
     });
 
+    let subscription =
+        warp::path!("subscription").and(async_graphql_warp::graphql_subscription(schema));
+
     let playground = warp::path!("playground").and(graphql_playground).boxed();
 
-    root.and(graphql.or(playground)).recover(handle_rejection)
+    root.and(subscription.or(graphql).or(playground))
+        .recover(handle_rejection)
 }
 
 pub async fn handler(
-    schema: async_graphql::Schema<
-        crate::explorer::graphql::Query,
-        async_graphql::EmptyMutation,
-        async_graphql::EmptySubscription,
-    >,
+    schema: crate::explorer::graphql::Schema,
     request: async_graphql::Request,
 ) -> Result<impl Reply, std::convert::Infallible> {
     Ok::<_, std::convert::Infallible>(async_graphql_warp::Response::from(
