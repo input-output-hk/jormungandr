@@ -18,6 +18,7 @@ pub mod load;
 use data::PoolId;
 use jortestkit::file;
 use serde::Serialize;
+use std::convert::TryInto;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -134,7 +135,7 @@ impl Explorer {
         limit: i64,
     ) -> Result<Response<epoch::ResponseData>, ExplorerError> {
         let query = Epoch::build_query(epoch::Variables {
-            id: epoch_number.to_string(),
+            id: epoch_number.into(),
             blocks_limit: limit,
         });
         self.print_request(&query);
@@ -196,7 +197,7 @@ impl Explorer {
         let date = self.last_block().unwrap().data.unwrap().tip.block.date;
 
         let block_date = LibBlockDate {
-            epoch: date.epoch.id.parse().unwrap(),
+            epoch: date.epoch.id.try_into().unwrap(),
             slot_id: date.slot.parse().unwrap(),
         };
         BlockDate::from(block_date)
