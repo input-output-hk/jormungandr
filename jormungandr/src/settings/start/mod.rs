@@ -65,16 +65,16 @@ impl RawSettings {
         //  * [X] Read log settings from the config file path
         //  * [X] If no log settings are found:
         //    + [X] add LogSettingsEntry with default values
-        //  * [ ] If the command line specifies log arguments:
+        //  * [X] If the command line specifies log arguments:
         //    + [X] Check that the arg is Some(output), else, skip
-        //    + [ ] Read the log settings, and look if we already
+        //    + [X] Read the log settings, and look if we already
         //          have this output configured
-        //    + [ ] If the output is aleady configured:
-        //      - [ ] overwrite entry.level if cli_entry.level is Some(level)
-        //      - [ ] overwrite entry.format if cli_entry.format is Some(format)
-        //      - [ ] log to info! that the output was overriden
-        //    + [ ] If the output is not aleady configured:
-        //      - [ ] add new entry for output with default values for other fields.
+        //    + [X] If the output is aleady configured:
+        //      - [X] overwrite entry.level if cli_entry.level is Some(level)
+        //      - [X] overwrite entry.format if cli_entry.format is Some(format)
+        //      - [X] log to info! that the output was overriden
+        //    + [X] If the output is not aleady configured:
+        //      - [X] add new entry for output with default values for other fields.
         let mut entries = Vec::new();
 
         //  Read log settings from the config file path.
@@ -85,18 +85,6 @@ impl RawSettings {
                     format: entry.format.clone().unwrap_or(DEFAULT_LOG_FORMAT),
                     output: entry.output.clone().unwrap_or(DEFAULT_LOG_OUTPUT),
                 })
-            });
-        }
-
-        let cmd_level = self.command_line.log_level;
-        let cmd_format = self.command_line.log_format;
-        let cmd_output = self.command_line.log_output.clone();
-
-        if cmd_level.is_some() || cmd_format.is_some() || cmd_output.is_some() {
-            entries.push(LogSettingsEntry {
-                level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
-                format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
-                output: cmd_output.unwrap_or(DEFAULT_LOG_OUTPUT),
             });
         }
 
@@ -123,12 +111,28 @@ impl RawSettings {
             for entry in entries.iter_mut() {
                 // If the output is aleady configured:
                 if &entry.output == &output {
-                    // - [ ] overwrite entry.level if cli_entry.level is Some(level)
-                    // - [ ] overwrite entry.format if cli_entry.format is Some(format)
-                    // - [ ] log to info! that the output was overriden
+                    // overwrite entry.level if cli_entry.level is Some(level)
+                    // overwrite entry.format if cli_entry.format is Some(format)
+                    let override_entry = LogSettingsEntry {
+                        level: cmd_level.unwrap_or(entry.level),
+                        format: cmd_format.unwrap_or(entry.format),
+                        output: output.clone(),
+                    };
+                    // log to info! that the output was overriden
+                    tracing::info!(
+                        "Log settings overriden from cli: {:?} replaced with {:?}",
+                        entry,
+                        override_entry
+                    );
+                    *entry = override_entry;
                 } else {
                     // If the output is not aleady configured:
-                    // - [ ] add new entry for output with default values for other fields.
+                    // add new entry for output with default values for other fields.
+                    *entry = LogSettingsEntry {
+                        level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
+                        format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
+                        output: output.clone(),
+                    };
                 }
             }
         }
