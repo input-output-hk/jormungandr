@@ -13,7 +13,8 @@ use self::connections::{
 use self::error::ErrorKind;
 use self::scalars::{
     BlockCount, ChainLength, ExternalProposalId, IndexCursor, NonZero, PayloadType, PoolCount,
-    PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange, VotePlanId, Weight,
+    PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange, VotePlanId,
+    VotePlanStatusCount, Weight,
 };
 use super::indexing::{
     BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
@@ -206,7 +207,9 @@ impl Branch {
         last: Option<i32>,
         before: Option<String>,
         after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, VotePlanStatus, EmptyFields, EmptyFields>> {
+    ) -> FieldResult<
+        Connection<IndexCursor, VotePlanStatus, ConnectionFields<VotePlanStatusCount>, EmptyFields>,
+    > {
         let mut vote_plans = self.state.state().get_vote_plans();
 
         vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
@@ -239,8 +242,13 @@ impl Branch {
                 };
 
                 let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
-                let mut connection =
-                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
                 let edges = match range {
                     PaginationInterval::Empty => vec![],
