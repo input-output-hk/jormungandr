@@ -369,15 +369,7 @@ impl Branch {
         before: Option<String>,
         after: Option<String>,
     ) -> FieldResult<Option<Connection<IndexCursor, Block, EmptyFields, EmptyFields>>> {
-        let epoch_data = match context
-            .data_unchecked::<RestContext>()
-            .get()
-            .await
-            .unwrap()
-            .db
-            .get_epoch(epoch)
-            .await
-        {
+        let epoch_data = match extract_context(&context).await.db.get_epoch(epoch).await {
             Some(epoch_data) => epoch_data,
             None => return Ok(None),
         };
@@ -526,16 +518,9 @@ impl Block {
 
     /// Date the Block was included in the blockchain
     pub async fn date(&self, context: &Context<'_>) -> FieldResult<BlockDate> {
-        self.fetch_explorer_block(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|b| b.date().into())
+        self.fetch_explorer_block(&extract_context(&context).await.db)
+            .await
+            .map(|b| b.date().into())
     }
 
     /// The transactions contained in the block
@@ -548,14 +533,7 @@ impl Block {
         after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, Transaction, EmptyFields, EmptyFields>> {
         let explorer_block = self
-            .fetch_explorer_block(
-                &context
-                    .data_unchecked::<RestContext>()
-                    .get()
-                    .await
-                    .unwrap()
-                    .db,
-            )
+            .fetch_explorer_block(&extract_context(&context).await.db)
             .await?;
 
         let mut transactions: Vec<&ExplorerTransaction> =
@@ -628,82 +606,46 @@ impl Block {
     }
 
     pub async fn chain_length(&self, context: &Context<'_>) -> FieldResult<ChainLength> {
-        self.fetch_explorer_block(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|block| ChainLength(block.chain_length()))
+        self.fetch_explorer_block(&extract_context(&context).await.db)
+            .await
+            .map(|block| ChainLength(block.chain_length()))
     }
 
     pub async fn leader(&self, context: &Context<'_>) -> FieldResult<Option<Leader>> {
-        self.fetch_explorer_block(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|block| match block.producer() {
-            BlockProducer::StakePool(pool) => {
-                Some(Leader::StakePool(Pool::from_valid_id(pool.clone())))
-            }
-            BlockProducer::BftLeader(id) => Some(Leader::BftLeader(BftLeader { id: id.clone() })),
-            BlockProducer::None => None,
-        })
+        self.fetch_explorer_block(&extract_context(&context).await.db)
+            .await
+            .map(|block| match block.producer() {
+                BlockProducer::StakePool(pool) => {
+                    Some(Leader::StakePool(Pool::from_valid_id(pool.clone())))
+                }
+                BlockProducer::BftLeader(id) => {
+                    Some(Leader::BftLeader(BftLeader { id: id.clone() }))
+                }
+                BlockProducer::None => None,
+            })
     }
 
     pub async fn previous_block(&self, context: &Context<'_>) -> FieldResult<Block> {
-        self.fetch_explorer_block(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|b| Block::from_valid_hash(b.parent_hash))
+        self.fetch_explorer_block(&extract_context(&context).await.db)
+            .await
+            .map(|b| Block::from_valid_hash(b.parent_hash))
     }
 
     pub async fn total_input(&self, context: &Context<'_>) -> FieldResult<Value> {
-        self.fetch_explorer_block(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|block| Value(block.total_input))
+        self.fetch_explorer_block(&extract_context(&context).await.db)
+            .await
+            .map(|block| Value(block.total_input))
     }
 
     pub async fn total_output(&self, context: &Context<'_>) -> FieldResult<Value> {
-        self.fetch_explorer_block(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|block| Value(block.total_output))
+        self.fetch_explorer_block(&extract_context(&context).await.db)
+            .await
+            .map(|block| Value(block.total_output))
     }
 
     pub async fn treasury(&self, context: &Context<'_>) -> FieldResult<Option<Treasury>> {
-        let treasury = context
-            .data_unchecked::<RestContext>()
-            .get()
+        let treasury = extract_context(&context)
             .await
-            .unwrap()
             .db
             .blockchain()
             .get_ref(self.hash)
@@ -718,15 +660,13 @@ impl Block {
                     treasury_tax: TaxType(treasury_tax),
                 }
             });
+
         Ok(treasury)
     }
 
     pub async fn is_confirmed(&self, context: &Context<'_>) -> bool {
-        context
-            .data_unchecked::<RestContext>()
-            .get()
+        extract_context(&context)
             .await
-            .unwrap()
             .db
             .is_block_confirmed(&self.hash)
             .await
@@ -734,14 +674,7 @@ impl Block {
 
     pub async fn branches(&self, context: &Context<'_>) -> FieldResult<Vec<Branch>> {
         let branches = self
-            .get_branches(
-                &context
-                    .data_unchecked::<RestContext>()
-                    .get()
-                    .await
-                    .unwrap()
-                    .db,
-            )
+            .get_branches(&extract_context(&context).await.db)
             .await?;
 
         Ok(branches)
@@ -796,11 +729,8 @@ pub struct Transaction {
 
 impl Transaction {
     async fn from_id(id: FragmentId, context: &Context<'_>) -> FieldResult<Transaction> {
-        let block_hashes = context
-            .data_unchecked::<RestContext>()
-            .get()
+        let block_hashes = extract_context(&context)
             .await
-            .unwrap()
             .db
             .find_blocks_by_transaction(&id)
             .await;
@@ -834,11 +764,8 @@ impl Transaction {
 
     async fn get_blocks(&self, context: &Context<'_>) -> FieldResult<Vec<Arc<ExplorerBlock>>> {
         let block_ids = if self.block_hashes.is_empty() {
-            context
-                .data_unchecked::<RestContext>()
-                .get()
+            extract_context(&context)
                 .await
-                .unwrap()
                 .db
                 .find_blocks_by_transaction(&self.id)
                 .await
@@ -855,11 +782,8 @@ impl Transaction {
         let mut result = Vec::new();
 
         for block_id in block_ids {
-            let block = context
-                .data_unchecked::<RestContext>()
-                .get()
+            let block = extract_context(&context)
                 .await
-                .unwrap()
                 .db
                 .get_block(&block_id)
                 .await
@@ -999,11 +923,8 @@ impl Address {
     async fn id(&self, context: &Context<'_>) -> String {
         match &self.id {
             ExplorerAddress::New(addr) => chain_addr::AddressReadable::from_address(
-                &context
-                    .data_unchecked::<RestContext>()
-                    .get()
+                &extract_context(&context)
                     .await
-                    .unwrap()
                     .settings
                     .address_bech32_prefix,
                 addr,
@@ -1128,11 +1049,8 @@ impl Pool {
     ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>>> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
-            None => context
-                .data_unchecked::<RestContext>()
-                .get()
+            None => extract_context(&context)
                 .await
-                .unwrap()
                 .db
                 .get_stake_pool_blocks(&self.id)
                 .await
@@ -1200,11 +1118,8 @@ impl Pool {
     pub async fn registration(&self, context: &Context<'_>) -> FieldResult<PoolRegistration> {
         match &self.data {
             Some(data) => Ok(data.registration.clone().into()),
-            None => context
-                .data_unchecked::<RestContext>()
-                .get()
+            None => extract_context(&context)
                 .await
-                .unwrap()
                 .db
                 .get_stake_pool_data(&self.id)
                 .await
@@ -1216,11 +1131,8 @@ impl Pool {
     pub async fn retirement(&self, context: &Context<'_>) -> FieldResult<Option<PoolRetirement>> {
         match &self.data {
             Some(data) => Ok(data.retirement.clone().map(PoolRetirement::from)),
-            None => context
-                .data_unchecked::<RestContext>()
-                .get()
+            None => extract_context(&context)
                 .await
-                .unwrap()
                 .db
                 .get_stake_pool_data(&self.id)
                 .await
@@ -1245,14 +1157,7 @@ impl Settings {
             certificate,
             per_certificate_fees,
             per_vote_certificate_fees,
-        } = context
-            .data_unchecked::<RestContext>()
-            .get()
-            .await
-            .unwrap()
-            .db
-            .blockchain_config
-            .fees;
+        } = extract_context(&context).await.db.blockchain_config.fees;
 
         FeeSettings {
             constant: Value::from(constant),
@@ -1292,11 +1197,8 @@ impl Settings {
     }
 
     pub async fn epoch_stability_depth(&self, context: &Context<'_>) -> String {
-        context
-            .data_unchecked::<RestContext>()
-            .get()
+        extract_context(&context)
             .await
-            .unwrap()
             .db
             .blockchain_config
             .epoch_stability_depth
@@ -1350,42 +1252,21 @@ impl Epoch {
     }
 
     pub async fn first_block(&self, context: &Context<'_>) -> Option<Block> {
-        self.get_epoch_data(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|data| Block::from_valid_hash(data.first_block))
+        self.get_epoch_data(&extract_context(&context).await.db)
+            .await
+            .map(|data| Block::from_valid_hash(data.first_block))
     }
 
     pub async fn last_block(&self, context: &Context<'_>) -> Option<Block> {
-        self.get_epoch_data(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map(|data| Block::from_valid_hash(data.last_block))
+        self.get_epoch_data(&extract_context(&context).await.db)
+            .await
+            .map(|data| Block::from_valid_hash(data.last_block))
     }
 
     pub async fn total_blocks(&self, context: &Context<'_>) -> BlockCount {
-        self.get_epoch_data(
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
-        .map_or(0u32.into(), |data| data.total_blocks.into())
+        self.get_epoch_data(&extract_context(&context).await.db)
+            .await
+            .map_or(0u32.into(), |data| data.total_blocks.into())
     }
 }
 
@@ -1511,11 +1392,8 @@ impl VotePlanStatus {
     ) -> FieldResult<Self> {
         let vote_plan_id = chain_impl_mockchain::certificate::VotePlanId::from_str(&vote_plan_id.0)
             .map_err(|err| -> FieldError { ErrorKind::InvalidAddress(err.to_string()).into() })?;
-        if let Some(vote_plan) = context
-            .data_unchecked::<RestContext>()
-            .get()
+        if let Some(vote_plan) = extract_context(&context)
             .await
-            .unwrap()
             .db
             .get_vote_plan_by_id(&vote_plan_id)
             .await
@@ -1696,16 +1574,7 @@ pub struct Query;
 #[Object]
 impl Query {
     async fn block(&self, context: &Context<'_>, id: String) -> FieldResult<Block> {
-        Block::from_string_hash(
-            id,
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
+        Block::from_string_hash(id, &extract_context(&context).await.db).await
     }
 
     async fn blocks_by_chain_length(
@@ -1713,11 +1582,8 @@ impl Query {
         context: &Context<'_>,
         length: ChainLength,
     ) -> FieldResult<Vec<Block>> {
-        let blocks = context
-            .data_unchecked::<RestContext>()
-            .get()
+        let blocks = extract_context(&context)
             .await
-            .unwrap()
             .db
             .find_blocks_by_chain_length(length.0)
             .await
@@ -1737,11 +1603,8 @@ impl Query {
 
     /// get all current tips, sorted (descending) by their length
     pub async fn branches(&self, context: &Context<'_>) -> Vec<Branch> {
-        context
-            .data_unchecked::<RestContext>()
-            .get()
+        extract_context(&context)
             .await
-            .unwrap()
             .db
             .get_branches()
             .await
@@ -1754,25 +1617,13 @@ impl Query {
     /// get the block that the ledger currently considers as the main branch's
     /// tip
     async fn tip(&self, context: &Context<'_>) -> Branch {
-        let (hash, state_ref) = context
-            .data_unchecked::<RestContext>()
-            .get()
-            .await
-            .unwrap()
-            .db
-            .get_tip()
-            .await;
-
+        let (hash, state_ref) = extract_context(&context).await.db.get_tip().await;
         Branch::from_id_and_state(hash, state_ref)
     }
 
     pub async fn branch(&self, context: &Context<'_>, id: String) -> FieldResult<Branch> {
         let id = HeaderHash::from_str(&id)?;
-        Branch::try_from_id(
-            id,
-            &context.data_unchecked::<RestContext>().get().await.unwrap(),
-        )
-        .await
+        Branch::try_from_id(id, &extract_context(context).await).await
     }
 
     pub async fn epoch(&self, _context: &Context<'_>, id: blockcfg::Epoch) -> Epoch {
@@ -1784,16 +1635,7 @@ impl Query {
     }
 
     pub async fn stake_pool(&self, context: &Context<'_>, id: PoolId) -> FieldResult<Pool> {
-        Pool::from_string_id(
-            &id.0.to_string(),
-            &context
-                .data_unchecked::<RestContext>()
-                .get()
-                .await
-                .unwrap()
-                .db,
-        )
-        .await
+        Pool::from_string_id(&id.0.to_string(), &extract_context(&context).await.db).await
     }
 
     pub async fn settings(&self, _context: &Context<'_>) -> FieldResult<Settings> {
@@ -1812,4 +1654,8 @@ impl Query {
 pub struct EContext {
     pub db: ExplorerDB,
     pub settings: ChainSettings,
+}
+
+async fn extract_context(context: &Context<'_>) -> EContext {
+    context.data_unchecked::<RestContext>().get().await.unwrap()
 }
