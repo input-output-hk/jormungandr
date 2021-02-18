@@ -110,6 +110,29 @@ impl RawSettings {
             });
         }
 
+        // If the command line specifies log arguments, check that the arg
+        // is Some(output), else, skip.
+        let cmd_output = self.command_line.log_output.clone();
+
+        if let Some(output) = cmd_output {
+            let cmd_level = self.command_line.log_level;
+            let cmd_format = self.command_line.log_format;
+
+            // Read the log settings, and look if we already
+            // have this output configured
+            for entry in entries.iter_mut() {
+                // If the output is aleady configured:
+                if &entry.output == &output {
+                    // - [ ] overwrite entry.level if cli_entry.level is Some(level)
+                    // - [ ] overwrite entry.format if cli_entry.format is Some(format)
+                    // - [ ] log to info! that the output was overriden
+                } else {
+                    // If the output is not aleady configured:
+                    // - [ ] add new entry for output with default values for other fields.
+                }
+            }
+        }
+
         LogSettings(entries)
     }
 
