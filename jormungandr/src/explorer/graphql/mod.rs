@@ -1270,31 +1270,15 @@ impl Epoch {
     }
 }
 
+#[derive(SimpleObject)]
 pub struct StakeDistribution {
     pools: Vec<PoolStakeDistribution>,
 }
 
-#[Object]
-impl StakeDistribution {
-    pub async fn pools(&self) -> &Vec<PoolStakeDistribution> {
-        &self.pools
-    }
-}
-
+#[derive(SimpleObject)]
 pub struct PoolStakeDistribution {
     pool: Pool,
     delegated_stake: Value,
-}
-
-#[Object]
-impl PoolStakeDistribution {
-    pub async fn pool(&self) -> &Pool {
-        &self.pool
-    }
-
-    pub async fn delegated_stake(&self) -> &Value {
-        &self.delegated_stake
-    }
 }
 
 #[derive(Clone)]
@@ -1335,38 +1319,16 @@ pub enum VotePayloadStatus {
 }
 
 // TODO do proper vote tally
-#[derive(Clone)]
+#[derive(Clone, SimpleObject)]
 pub struct TallyPublicStatus {
     results: Vec<Weight>,
     options: VoteOptionRange,
 }
 
-#[Object]
-impl TallyPublicStatus {
-    async fn results(&self) -> &[Weight] {
-        &self.results
-    }
-
-    async fn options(&self) -> &VoteOptionRange {
-        &self.options
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, SimpleObject)]
 pub struct TallyPrivateStatus {
     results: Option<Vec<Weight>>,
     options: VoteOptionRange,
-}
-
-#[Object]
-impl TallyPrivateStatus {
-    async fn results(&self) -> Option<&[Weight]> {
-        self.results.as_ref().map(AsRef::as_ref)
-    }
-
-    async fn options(&self) -> &VoteOptionRange {
-        &self.options
-    }
 }
 
 #[derive(Clone, Union)]
